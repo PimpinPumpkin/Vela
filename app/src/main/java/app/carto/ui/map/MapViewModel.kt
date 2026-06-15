@@ -1,5 +1,6 @@
 package app.carto.ui.map
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.carto.core.data.CalibrationNeededException
@@ -9,12 +10,13 @@ import app.carto.core.location.LocationProvider
 import app.carto.core.model.LatLng
 import app.carto.core.model.Place
 import app.carto.core.model.Route
-import app.carto.core.nav.NavEngine
-import app.carto.core.nav.NavEvent
+import app.carto.core.nav.NavSession
 import app.carto.core.nav.NavState
 import app.carto.core.voice.VoiceEngine
 import app.carto.core.voice.VoiceGuide
+import app.carto.service.NavigationService
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +37,8 @@ data class MapUiState(
     val navigating: Boolean = false,
     val nav: NavState = NavState(),
     val maneuverText: String = "",
+    val fasterRoute: Route? = null,
+    val fasterSavingSeconds: Double = 0.0,
     val status: String? = null,
     val showPsdsTip: Boolean = false,
     val styleUri: String = MapStyle.DEFAULT.uri,
@@ -44,16 +48,17 @@ data class MapUiState(
 )
 
 /**
- * The single state holder for the whole map experience: location stream,
- * search, route preview and the live turn-by-turn loop. Search/route failures
- * are caught and surfaced as [MapUiState.status] (especially the routine
- * [CalibrationNeededException]) rather than crashing.
+ * State holder for the map experience. Nav itself lives in the shared
+ * [NavSession] (driven by the foreground service so it survives backgrounding);
+ * this VM just starts/stops it and mirrors its state for the UI.
  */
 @HiltViewModel
 class MapViewModel @Inject constructor(
+    @ApplicationContext private val appContext: Context,
     private val dataSource: MapDataSource,
     private val locationProvider: LocationProvider,
     private val voice: VoiceGuide,
+    private val navSession: NavSession,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -63,14 +68,26 @@ class MapViewModel @Inject constructor(
     private var locationJob: Job? = null
 
     init {
-        // Instant map: seed the camera from the cached last-known fix.
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
-        // Warm up TTS early so the engine list is ready in Settings.
-        voice.init()
+        voice.init() // warm TTS so the engine list is ready in Settings
+
+        viewModelScope.launch {
+            navSession.state.collect { ns ->
+                _state.update {
+                    it.copy(
+                        navigating = ns.navigating,
+                        nav = ns.nav,
+                        maneuverText = ns.maneuverText,
+                        activeRoute = if (ns.navigating && ns.route != null) ns.route else it.activeRoute,
+                        fasterRoute = ns.fasterRoute,
+                        fasterSavingSeconds = ns.fasterSavingSeconds,
+                    )
+                }
+            }
+        }
     }
 
-    /** Call once location permission is granted. Idempotent. */
     fun startLocation() {
         if (locationJob != null) return
         locationJob = viewModelScope.launch {
@@ -80,10 +97,7 @@ class MapViewModel @Inject constructor(
             }
             locationProvider.updates().collect { loc ->
                 val here = LatLng(loc.latitude, loc.longitude)
-                _state.update {
-                    it.copy(myLocation = here, showPsdsTip = false, center = it.center ?: here)
-                }
-                if (_state.value.navigating) advanceNav(here)
+                _state.update { it.copy(myLocation = here, showPsdsTip = false, center = it.center ?: here) }
             }
         }
     }
@@ -119,9 +133,7 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val routes = dataSource.directions(origin, dest)
-                _state.update {
-                    it.copy(routes = routes, activeRoute = routes.firstOrNull(), status = null)
-                }
+                _state.update { it.copy(routes = routes, activeRoute = routes.firstOrNull(), status = null) }
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = "Directions need recalibration: ${e.message}") }
             } catch (e: Exception) {
@@ -132,44 +144,19 @@ class MapViewModel @Inject constructor(
 
     fun startNav() {
         val route = _state.value.activeRoute ?: return
-        voice.init(_state.value.selectedEngine?.packageName)
-        val first = route.maneuvers.firstOrNull()?.instruction.orEmpty()
-        _state.update { it.copy(navigating = true, nav = NavState(), maneuverText = first) }
-        voice.speak("Starting navigation. $first")
+        val dest = destination ?: route.polyline.lastOrNull() ?: return
+        navSession.start(route, dest, _state.value.selectedEngine?.packageName)
+        NavigationService.start(appContext)
     }
 
     fun stopNav() {
-        voice.stop()
-        _state.update { it.copy(navigating = false, nav = NavState(), maneuverText = "") }
+        NavigationService.stop(appContext)
+        navSession.stop()
     }
 
-    private fun advanceNav(here: LatLng) {
-        val route = _state.value.activeRoute ?: return
-        val (next, events) = NavEngine.update(route, _state.value.nav, here)
-        val maneuver = route.maneuvers.getOrNull(next.stepIndex)
-        _state.update { it.copy(nav = next, maneuverText = maneuver?.instruction.orEmpty()) }
-        events.forEach { ev ->
-            when (ev) {
-                is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
-                NavEvent.Arrived -> _state.update { it.copy(navigating = false) }
-                NavEvent.RerouteNeeded -> reroute(here)
-            }
-        }
-    }
+    fun acceptFasterRoute() = navSession.acceptFasterRoute()
 
-    private fun reroute(from: LatLng) {
-        val dest = destination ?: return
-        viewModelScope.launch {
-            voice.speak("Rerouting", interrupt = true)
-            runCatching { dataSource.directions(from, dest) }.onSuccess { routes ->
-                _state.update {
-                    it.copy(routes = routes, activeRoute = routes.firstOrNull(), nav = NavState())
-                }
-            }
-        }
-    }
-
-    // --- settings ----------------------------------------------------------
+    fun dismissFasterRoute() = navSession.dismissFasterRoute()
 
     fun setStyle(style: MapStyle) =
         _state.update { it.copy(styleUri = style.uri, styleName = style.label) }
@@ -183,8 +170,4 @@ class MapViewModel @Inject constructor(
     fun recenter() = _state.update { it.copy(center = it.myLocation) }
 
     fun clearStatus() = _state.update { it.copy(status = null) }
-
-    override fun onCleared() {
-        voice.shutdown()
-    }
 }
