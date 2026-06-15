@@ -2,6 +2,7 @@ package app.carto.ui.map
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -18,7 +19,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -41,6 +44,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.carto.core.model.LatLng
 import app.carto.core.model.Place
 import app.carto.ui.formatDistance
+import app.carto.ui.formatDuration
 import app.carto.ui.nav.ManeuverBanner
 import app.carto.ui.nav.NavControls
 import app.carto.ui.place.PlaceSheet
@@ -72,6 +76,21 @@ fun MapScreen(
                     Manifest.permission.ACCESS_COARSE_LOCATION,
                 ),
             )
+        }
+    }
+
+    val notifPermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { vm.startNav() }
+    val onStartNav: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                context, Manifest.permission.POST_NOTIFICATIONS,
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            vm.startNav()
         }
     }
 
@@ -116,6 +135,18 @@ fun MapScreen(
             }
         }
 
+        if (state.navigating && state.fasterRoute != null) {
+            FasterRouteCard(
+                savingSeconds = state.fasterSavingSeconds,
+                onSwitch = vm::acceptFasterRoute,
+                onDismiss = vm::dismissFasterRoute,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 96.dp, start = 12.dp, end = 12.dp),
+            )
+        }
+
         // --- bottom overlay: nav controls / place sheet ---------------------
         when {
             state.navigating -> NavControls(
@@ -134,7 +165,7 @@ fun MapScreen(
                 route = state.activeRoute,
                 onClose = vm::clearSelection,
                 onDirections = vm::routeToSelected,
-                onStartNav = vm::startNav,
+                onStartNav = onStartNav,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding(),
@@ -232,6 +263,38 @@ private fun InfoCard(
                 Text(body, style = MaterialTheme.typography.bodySmall)
             }
             TextButton(onClick = onAction) { Text(actionLabel) }
+        }
+    }
+}
+
+@Composable
+private fun FasterRouteCard(
+    savingSeconds: Double,
+    onSwitch: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        ),
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Faster route", fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Saves ~${formatDuration(savingSeconds)} in current traffic",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            TextButton(onClick = onDismiss) { Text("No") }
+            Button(onClick = onSwitch) { Text("Switch") }
         }
     }
 }
