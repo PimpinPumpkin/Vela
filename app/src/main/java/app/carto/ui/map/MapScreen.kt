@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -32,6 +33,9 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -57,6 +61,7 @@ fun MapScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    var searchFocused by remember { mutableStateOf(false) }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -98,10 +103,11 @@ fun MapScreen(
         CartoMapView(
             styleUri = state.styleUri,
             myLocation = state.myLocation,
+            myBearing = state.myBearing,
             cameraTarget = state.center,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             markers = markersOf(state),
-            followMe = state.navigating,
+            navMode = state.navigating,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -128,9 +134,16 @@ fun MapScreen(
                     onQueryChange = vm::onQueryChange,
                     onSearch = vm::search,
                     onOpenSettings = onOpenSettings,
+                    onFocusChange = { searchFocused = it },
                 )
                 if (state.results.isNotEmpty()) {
                     SearchResults(results = state.results, onPick = vm::selectPlace)
+                } else if (searchFocused && state.query.isBlank() && state.recents.isNotEmpty()) {
+                    RecentsList(
+                        recents = state.recents,
+                        onPick = vm::searchRecent,
+                        onClear = vm::clearRecents,
+                    )
                 }
             }
         }
@@ -239,6 +252,35 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit) {
                     }
                 }
                 Divider()
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecentsList(recents: List<String>, onPick: (String) -> Unit, onClear: () -> Unit) {
+    Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+        Column {
+            recents.forEach { q ->
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onPick(q) }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Default.History,
+                        contentDescription = null,
+                        modifier = Modifier.padding(end = 12.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(q, style = MaterialTheme.typography.bodyLarge)
+                }
+                Divider()
+            }
+            TextButton(onClick = onClear, modifier = Modifier.padding(start = 8.dp)) {
+                Text("Clear recent searches")
             }
         }
     }

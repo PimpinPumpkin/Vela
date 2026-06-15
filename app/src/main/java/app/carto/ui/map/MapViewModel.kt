@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.carto.core.data.CalibrationNeededException
 import app.carto.core.data.MapDataSource
+import app.carto.core.data.RecentSearchStore
 import app.carto.core.data.tiles.MapStyle
 import app.carto.core.location.LocationProvider
 import app.carto.core.model.LatLng
@@ -29,6 +30,7 @@ import javax.inject.Inject
 data class MapUiState(
     val center: LatLng? = null,
     val myLocation: LatLng? = null,
+    val myBearing: Float? = null,
     val query: String = "",
     val results: List<Place> = emptyList(),
     val selected: Place? = null,
@@ -45,6 +47,7 @@ data class MapUiState(
     val styleName: String = MapStyle.DEFAULT.label,
     val selectedEngine: VoiceEngine? = null,
     val searching: Boolean = false,
+    val recents: List<String> = emptyList(),
 )
 
 /**
@@ -59,6 +62,7 @@ class MapViewModel @Inject constructor(
     private val locationProvider: LocationProvider,
     private val voice: VoiceGuide,
     private val navSession: NavSession,
+    private val recentStore: RecentSearchStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -71,6 +75,7 @@ class MapViewModel @Inject constructor(
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         voice.init() // warm TTS so the engine list is ready in Settings
+        _state.update { it.copy(recents = recentStore.recent()) }
 
         viewModelScope.launch {
             navSession.state.collect { ns ->
@@ -97,16 +102,32 @@ class MapViewModel @Inject constructor(
             }
             locationProvider.updates().collect { loc ->
                 val here = LatLng(loc.latitude, loc.longitude)
-                _state.update { it.copy(myLocation = here, showPsdsTip = false, center = it.center ?: here) }
+                // Keep the last good bearing while stopped (GPS bearing is noise at rest).
+                val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
+                _state.update {
+                    it.copy(myLocation = here, myBearing = bearing, showPsdsTip = false, center = it.center ?: here)
+                }
             }
         }
     }
 
     fun onQueryChange(q: String) = _state.update { it.copy(query = q) }
 
+    fun searchRecent(q: String) {
+        onQueryChange(q)
+        search()
+    }
+
+    fun clearRecents() {
+        recentStore.clear()
+        _state.update { it.copy(recents = emptyList()) }
+    }
+
     fun search() {
         val q = _state.value.query.trim()
         if (q.isEmpty()) return
+        recentStore.add(q)
+        _state.update { it.copy(recents = recentStore.recent()) }
         viewModelScope.launch {
             _state.update { it.copy(searching = true) }
             try {

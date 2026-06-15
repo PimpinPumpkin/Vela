@@ -6,7 +6,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
 - ✅ Open base tiles (MapLibre demo default; Protomaps wired)
 - ✅ Route line, search markers, location dot as GeoJSON layers
-- ✅ Camera follow during navigation; recenter FAB
+- ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, 3D buildings, hillshade, POI icons)
 - ⬜ Light/dark/satellite style switching beyond the basics
 - ⬜ Map rotation/tilt + heading-up mode during nav
@@ -15,6 +15,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Place search — name, category, address, rating, review count, coordinates
 - ✅ Place details inline: **price, website, open/closed, full weekly hours**
 - ✅ Viewport-biased "near me" search
+- ✅ Recent searches (persisted, shown on search focus)
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
 - ⬜ Place photos
 - ⬜ Categories / "search this area" / filters (open now, rating, price)
@@ -48,7 +49,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 ## Location (degoogled)
 - ✅ AOSP `LocationManager` (GPS + NETWORK), no Fused/GMS
 - ✅ Last-known seeding for instant map; PSDS slow-fix tip
-- ⬜ Heading/compass integration
+- ✅ Heading arrow on the location dot (from GPS bearing)
+- ⬜ Compass heading when stationary
 - ⬜ Optional BeaconDB WiFi positioning for faster coarse fix
 
 ## Offline (v2)
