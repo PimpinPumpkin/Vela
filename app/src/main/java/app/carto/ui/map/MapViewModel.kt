@@ -6,11 +6,13 @@ import androidx.lifecycle.viewModelScope
 import app.carto.core.data.CalibrationNeededException
 import app.carto.core.data.MapDataSource
 import app.carto.core.data.RecentSearchStore
+import app.carto.core.data.SavedPlaceStore
 import app.carto.core.data.tiles.MapStyle
 import app.carto.core.location.LocationProvider
 import app.carto.core.model.LatLng
 import app.carto.core.model.Place
 import app.carto.core.model.Route
+import app.carto.core.model.SavedPlace
 import app.carto.core.nav.NavSession
 import app.carto.core.nav.NavState
 import app.carto.core.voice.VoiceEngine
@@ -48,6 +50,7 @@ data class MapUiState(
     val selectedEngine: VoiceEngine? = null,
     val searching: Boolean = false,
     val recents: List<String> = emptyList(),
+    val saved: List<SavedPlace> = emptyList(),
 )
 
 /**
@@ -63,6 +66,7 @@ class MapViewModel @Inject constructor(
     private val voice: VoiceGuide,
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
+    private val savedStore: SavedPlaceStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -75,7 +79,7 @@ class MapViewModel @Inject constructor(
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         voice.init() // warm TTS so the engine list is ready in Settings
-        _state.update { it.copy(recents = recentStore.recent()) }
+        _state.update { it.copy(recents = recentStore.recent(), saved = savedStore.saved()) }
 
         viewModelScope.launch {
             navSession.state.collect { ns ->
@@ -122,6 +126,15 @@ class MapViewModel @Inject constructor(
         recentStore.clear()
         _state.update { it.copy(recents = emptyList()) }
     }
+
+    fun toggleSave() {
+        val p = _state.value.selected ?: return
+        savedStore.toggle(SavedPlace.of(p))
+        _state.update { it.copy(saved = savedStore.saved()) }
+    }
+
+    fun selectSaved(sp: SavedPlace) =
+        selectPlace(Place(id = sp.id, name = sp.name, location = sp.location))
 
     fun search() {
         val q = _state.value.query.trim()

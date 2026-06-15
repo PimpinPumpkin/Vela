@@ -6,6 +6,8 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -47,6 +50,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.carto.core.model.LatLng
 import app.carto.core.model.Place
+import app.carto.core.model.SavedPlace
 import app.carto.ui.formatDistance
 import app.carto.ui.formatDuration
 import app.carto.ui.nav.ManeuverBanner
@@ -138,11 +142,15 @@ fun MapScreen(
                 )
                 if (state.results.isNotEmpty()) {
                     SearchResults(results = state.results, onPick = vm::selectPlace)
-                } else if (searchFocused && state.query.isBlank() && state.recents.isNotEmpty()) {
-                    RecentsList(
+                } else if (searchFocused && state.query.isBlank() &&
+                    (state.saved.isNotEmpty() || state.recents.isNotEmpty())
+                ) {
+                    SuggestionsPanel(
+                        saved = state.saved,
                         recents = state.recents,
-                        onPick = vm::searchRecent,
-                        onClear = vm::clearRecents,
+                        onPickSaved = vm::selectSaved,
+                        onPickRecent = vm::searchRecent,
+                        onClearRecents = vm::clearRecents,
                     )
                 }
             }
@@ -176,7 +184,9 @@ fun MapScreen(
             state.selected != null -> PlaceSheet(
                 place = state.selected!!,
                 route = state.activeRoute,
+                isSaved = state.saved.any { it.id == state.selected!!.id },
                 onClose = vm::clearSelection,
+                onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
                 onStartNav = onStartNav,
                 modifier = Modifier
@@ -258,31 +268,55 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit) {
 }
 
 @Composable
-private fun RecentsList(recents: List<String>, onPick: (String) -> Unit, onClear: () -> Unit) {
+private fun SuggestionsPanel(
+    saved: List<SavedPlace>,
+    recents: List<String>,
+    onPickSaved: (SavedPlace) -> Unit,
+    onPickRecent: (String) -> Unit,
+    onClearRecents: () -> Unit,
+) {
     Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Column {
-            recents.forEach { q ->
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .clickable { onPick(q) }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        Icons.Default.History,
-                        contentDescription = null,
-                        modifier = Modifier.padding(end = 12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(q, style = MaterialTheme.typography.bodyLarge)
-                }
+        Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
+            saved.forEach { sp ->
+                SuggestionRow(
+                    icon = Icons.Default.Star,
+                    tint = MaterialTheme.colorScheme.primary,
+                    label = sp.name,
+                    onClick = { onPickSaved(sp) },
+                )
                 Divider()
             }
-            TextButton(onClick = onClear, modifier = Modifier.padding(start = 8.dp)) {
-                Text("Clear recent searches")
+            recents.forEach { q ->
+                SuggestionRow(
+                    icon = Icons.Default.History,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = q,
+                    onClick = { onPickRecent(q) },
+                )
+                Divider()
+            }
+            if (recents.isNotEmpty()) {
+                TextButton(onClick = onClearRecents, modifier = Modifier.padding(start = 8.dp)) {
+                    Text("Clear recent searches")
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun SuggestionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    tint: androidx.compose.ui.graphics.Color,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
+        Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
 

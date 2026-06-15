@@ -19,7 +19,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
 - ⬜ Place photos
 - ⬜ Categories / "search this area" / filters (open now, rating, price)
-- ⬜ Search history + saved/favorite places
+- ✅ Saved / favourite places (star from the place sheet)
 - ⬜ Overture/OSM POIs as a fallback source
 
 ## Routing & traffic

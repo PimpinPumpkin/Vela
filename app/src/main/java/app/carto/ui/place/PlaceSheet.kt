@@ -12,6 +12,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
@@ -33,7 +35,9 @@ import java.util.Locale
 fun PlaceSheet(
     place: Place,
     route: Route?,
+    isSaved: Boolean,
     onClose: () -> Unit,
+    onToggleSave: () -> Unit,
     onDirections: () -> Unit,
     onStartNav: () -> Unit,
     modifier: Modifier = Modifier,
@@ -47,6 +51,13 @@ fun PlaceSheet(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(onClick = onToggleSave) {
+                    Icon(
+                        if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (isSaved) "Saved" else "Save",
+                        tint = if (isSaved) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close") }
             }
 
