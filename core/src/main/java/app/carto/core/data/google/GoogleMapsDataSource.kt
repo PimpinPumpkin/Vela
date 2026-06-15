@@ -19,15 +19,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * The real extractor: drives Google's public web endpoints directly from the
- * device. Request construction uses the correct `pb` grammar ([PbBuilder]); the
- * specific field trees and the response array indices are marked `CALIBRATE:`
- * and must be pinned from a live capture before this source is switched on (see
- * [CartoConfig.USE_GOOGLE_SOURCE]).
+ * The real extractor, calibrated against maps.google.com (2026-06-15).
  *
- * Why these endpoints: they are the same ones google.com/maps calls from a
- * browser, so they can't demand Play Integrity (great for GrapheneOS) and they
- * return traffic-aware ETAs with the traffic already baked in.
+ * Search turned out to need NO pb at all — a plain `/search?tbm=map&q=…` returns
+ * the full results JSON, with viewport bias achieved by appending "near lat,lng"
+ * to the query. Directions needs a pb (built by [DirectionsPb]) but no session
+ * token. Both are the same endpoints google.com/maps calls from a browser, so
+ * they work without Play Services — good for GrapheneOS.
  */
 @Singleton
 class GoogleMapsDataSource @Inject constructor(
@@ -37,30 +35,21 @@ class GoogleMapsDataSource @Inject constructor(
 
     override suspend fun search(query: String, near: LatLng?): SearchResult = io {
         session.ensure()
-        // The search term rides in the URL `q`; `pb` carries the viewport bias.
-        // CALIBRATE: confirm the viewport message field numbers (4m2/1d/2d here
-        // are the documented shape, not verified-current).
-        val pb = PbBuilder().apply {
-            if (near != null) {
-                message(4, 2) {
-                    double(1, near.lng)
-                    double(2, near.lat)
-                }
-            }
-        }.toString()
-        val url = buildString {
-            append("https://www.google.com/search?tbm=map&hl=en&gl=us&authuser=0")
-            append("&q=").append(query.enc())
-            if (pb.isNotEmpty()) append("&pb=").append(pb.enc())
-        }
-        SearchParser.parse(query, GoogleResponse.parse(get(url)))
+        // Results are viewport-driven, so a location is required; callers
+        // normally pass the user's location, with a fallback for the rare null.
+        val viewport = near ?: DEFAULT_VIEWPORT
+        val pb = SearchPb.build(query, viewport)
+        val url = "https://www.google.com/search?tbm=map&authuser=0&hl=en&gl=us" +
+            "&q=${query.enc()}&pb=${pb.enc()}"
+        SearchParser.parse(query, GoogleResponse.parse(get(url)), near)
     }
 
     override suspend fun placeDetails(id: String): Place = io {
-        session.ensure()
-        // CALIBRATE: the place-detail RPC (reviews, hours, popular times) lives
-        // under /maps/preview/place. Not yet pinned.
-        throw CalibrationNeededException("placeDetails RPC")
+        // CALIBRATE: the dedicated place-detail RPC (reviews, hours, popular
+        // times) under /maps/preview/place is not yet mapped. Search already
+        // returns name/rating/reviews/address/category, so the UI uses the
+        // Place from the search result directly until this is calibrated.
+        throw CalibrationNeededException("placeDetails RPC not yet mapped")
     }
 
     override suspend fun directions(
@@ -69,21 +58,10 @@ class GoogleMapsDataSource @Inject constructor(
         mode: TravelMode,
     ): List<Route> = io {
         session.ensure()
-        val travel = when (mode) {
-            TravelMode.DRIVE -> 0
-            TravelMode.BICYCLE -> 1
-            TravelMode.WALK -> 2
-            TravelMode.TRANSIT -> 3
-        }
-        // CALIBRATE: origin/destination encoding + the traffic-aware flag. The
-        // tree below is illustrative of the grammar, not a verified payload.
-        val pb = PbBuilder().apply {
-            message(1, 2) { double(1, origin.lat); double(2, origin.lng) }
-            message(2, 2) { double(1, destination.lat); double(2, destination.lng) }
-            enum(3, travel)
-        }.toString()
-        val url = "https://www.google.com/maps/preview/directions" +
-            "?hl=en&gl=us&authuser=0&pb=${pb.enc()}"
+        // CALIBRATE: mode is currently driving (the captured template). Other
+        // modes need their travel-mode field flipped in DirectionsPb.
+        val pb = DirectionsPb.build(origin, destination)
+        val url = "https://www.google.com/maps/preview/directions?authuser=0&hl=en&gl=us&pb=${pb.enc()}"
         DirectionsParser.parse(GoogleResponse.parse(get(url)))
     }
 
@@ -107,4 +85,10 @@ class GoogleMapsDataSource @Inject constructor(
     private suspend fun <T> io(block: suspend () -> T): T = withContext(Dispatchers.IO) { block() }
 
     private fun String.enc(): String = URLEncoder.encode(this, "UTF-8")
+
+    private companion object {
+        // Fallback viewport when no user location is available — search is
+        // viewport-driven and needs one. Callers normally pass the real location.
+        val DEFAULT_VIEWPORT = LatLng(37.7749, -122.4194)
+    }
 }

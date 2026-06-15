@@ -6,11 +6,12 @@ Google's public web endpoints (per-user, no backend) for the things only Google
 does well: POI quality, routing, and **traffic-aware ETAs**. Built to run on
 GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 
-> Status: **early scaffold, builds and runs.** The whole UI — search, place
-> sheet, route preview, turn-by-turn with spoken guidance — works today against
-> built-in mock data. The Google extractor is wired end-to-end with the correct
-> request grammar but its exact field/response shapes are **not yet calibrated**
-> against a live capture (see [Calibration](#the-google-extractor--calibration)).
+> Status: **builds, runs, and pulls live Google data.** Search and directions
+> were calibrated against a live capture (2026-06-15) and verified end-to-end —
+> real POIs (name / rating / reviews / address / category) and real
+> **traffic-aware ETAs** (typical vs live `duration_in_traffic`). Place details
+> and exact route geometry are the remaining calibration items;
+> `MockMapDataSource` stays as an offline fallback. Both build types are green.
 
 ---
 
@@ -91,17 +92,26 @@ style, so it's fully clickable with zero configuration.
 
 ## The Google extractor & calibration
 
-The extractor is real code with the correct, stable *grammar* — what it lacks is
-the *current field layout*, which Google changes and which must be read off a
-live capture rather than trusted from memory. Every such spot is marked
-`CALIBRATE:` in source. To bring it online:
+Calibrated live on 2026-06-15. The shapes Google can change are pinned here so
+re-calibration is a lookup, not a rediscovery:
 
-1. Capture a live session (devtools → Network on `maps.google.com`, or mitmproxy)
-   for a search and an A→B route. Note the `pb` request and the response body.
-2. Pin the field numbers in `GoogleMapsDataSource` (`PbBuilder` trees) and the
-   positional indices in `SearchParser` / `DirectionsParser`, and the session
-   regexes in `GoogleSession`.
-3. Flip `CartoConfig.USE_GOOGLE_SOURCE = true`.
+**Search** — `GET /search?tbm=map&q=<q>&pb=<SearchPb>`. A bare `q=` returns an
+empty envelope; the `pb` (viewport-driven, captured in [`SearchPb`](core/src/main/java/app/carto/core/data/google/SearchPb.kt),
+no session token needed) is what populates results. Results at `root[64][i]`,
+each rooted at `[1]`: name `[1][11]`, address `[1][2][0]`, rating `[1][4][7]`,
+reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
+
+**Directions** — `GET /maps/preview/directions?pb=<DirectionsPb>` (no token).
+Routes at `root[0][1][r]`, summary at `[0]`: distance m `[2][0]`, typical
+duration s `[3][0]`, and **live `duration_in_traffic` s `[10][0][0]`**. Steps
+arrive as `<step maneuver='TURN_LEFT' meters='120'>…</step>` markup — type and
+distance parse straight out of the attributes. Overview geometry didn't decode
+cleanly, so the route line is currently approximated (the one open item).
+
+To re-calibrate when a shape drifts: capture the request in DevTools, mask the
+query/coords, and replace the `pb` template in `SearchPb`/`DirectionsPb`; re-pin
+the response indices in `SearchParser`/`DirectionsParser`. `CartoConfig.USE_GOOGLE_SOURCE`
+is already `true`.
 
 When a response no longer matches, the parsers throw `CalibrationNeededException`
 and the UI shows a non-fatal "needs recalibration" notice — that's the *expected*
@@ -137,8 +147,9 @@ icons). Styles are plain URLs, updatable over-the-air without an app release.
 - [x] Project scaffold, two-module architecture, CI-style signing
 - [x] MapLibre rendering, location, search UI, place sheet
 - [x] Turn-by-turn engine + spoken guidance (works on mock routes)
-- [x] Google extractor scaffolding (grammar complete, shapes uncalibrated)
-- [ ] **Calibrate** search / directions / place-details against live captures
+- [x] Google extractor scaffolding (grammar complete)
+- [x] **Calibrate search + directions** against a live capture — live & verified
+- [ ] Calibrate place-details (reviews/hours/popular times) + exact route geometry
 - [ ] Protomaps style + cartographic polish pass
 - [ ] Place details: reviews, hours, popular times
 - [ ] Foreground navigation service (screen-off guidance + notification)

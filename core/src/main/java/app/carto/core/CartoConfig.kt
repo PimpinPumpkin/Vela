@@ -7,13 +7,16 @@ package app.carto.core
  * endpoints directly, per-user, with no Carto backend in the middle. The exact
  * request (`pb`) and response (positional-array) shapes are NOT hard knowledge
  * — they must be calibrated against a live capture of maps.google.com (see the
- * `CALIBRATE:` markers in `data/google/`). Until that calibration is done the
- * app runs on [app.carto.core.data.MockMapDataSource] so the entire UI —
- * search, place sheet, routing, turn-by-turn, voice — is exercisable offline.
+ * `CALIBRATE:` markers in `data/google/`). Search and directions were calibrated
+ * on 2026-06-15 and now return real data; [app.carto.core.data.MockMapDataSource]
+ * remains as an offline fallback so the whole UI still runs with no network.
  */
 object CartoConfig {
-    /** Flip to true once the Google request/response shapes are calibrated. */
-    const val USE_GOOGLE_SOURCE = false
+    /**
+     * Search + directions are calibrated and live, so the real source is on by
+     * default. Set to false to fall back to the mock for offline demos.
+     */
+    const val USE_GOOGLE_SOURCE = true
 
     /** Carto identifies as a normal desktop Chrome to the web endpoints. */
     const val USER_AGENT =

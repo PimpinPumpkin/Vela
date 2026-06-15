@@ -4,58 +4,62 @@ import app.carto.core.data.CalibrationNeededException
 import app.carto.core.data.google.arr
 import app.carto.core.data.google.at
 import app.carto.core.data.google.dbl
-import app.carto.core.data.google.findString
+import app.carto.core.data.google.int
+import app.carto.core.data.google.str
 import app.carto.core.model.LatLng
 import app.carto.core.model.Place
 import app.carto.core.model.SearchResult
+import app.carto.core.model.distanceTo
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 
 /**
- * Parses the `tbm=map` search response (positional arrays). The index paths are
- * the part that rots when Google reshuffles, so they live as named CALIBRATE
- * constants with a structural fallback: an entry that carries both a name and a
- * plausible lat/lng is treated as a place. A minor reshuffle then degrades to
- * "fewer fields populated" instead of a crash.
+ * Parses the `/search?tbm=map` response.
+ *
+ * Schema calibrated against a live capture (2026-06-15): the results live at
+ * `root[64]`, and within each result everything hangs off `[1]`:
+ *   name `[1][11]`, address line `[1][2][0]`, rating `[1][4][7]`,
+ *   reviewCount `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
+ * If `[64]` ever moves, [findResultsArray] falls back to the largest array whose
+ * entries carry both a name and a coordinate, so a reshuffle degrades instead of
+ * crashing.
  */
 object SearchParser {
 
-    // CALIBRATE: top-level path to the array of result entries.
-    private val RESULTS_PATH = intArrayOf(0, 1)
+    private const val RESULTS_INDEX = 64
 
-    fun parse(query: String, root: JsonElement): SearchResult {
-        val results = root.at(*RESULTS_PATH).arr()
-            ?: firstResultsArrayOrNull(root)
-            ?: throw CalibrationNeededException("search results array")
-        val places = results.mapNotNull { toPlaceOrNull(it) }
-        if (places.isEmpty()) throw CalibrationNeededException("search entries (0 parsed)")
-        return SearchResult(query, places)
+    fun parse(query: String, root: JsonElement, near: LatLng? = null): SearchResult {
+        val results = root.at(RESULTS_INDEX).arr()
+            ?: findResultsArray(root)
+            ?: throw CalibrationNeededException("search results array (root[$RESULTS_INDEX])")
+
+        val places = results.mapNotNull { entry -> toPlace(entry, near) }
+        if (places.isEmpty()) throw CalibrationNeededException("search: 0 results parsed")
+        return SearchResult(query, places.sortedBy { it.distanceMeters ?: Double.MAX_VALUE })
     }
 
-    private fun toPlaceOrNull(entry: JsonElement): Place? {
-        // CALIBRATE: exact per-entry offsets for name/address/rating/etc.
-        val name = entry.findString { it.length in 1..120 && it.any(Char::isLetter) } ?: return null
-        val loc = findLatLng(entry) ?: return null
-        return Place(id = "g:" + name.hashCode(), name = name, location = loc)
+    private fun toPlace(entry: JsonElement, near: LatLng?): Place? {
+        val name = entry.at(1, 11).str() ?: return null
+        val lat = entry.at(1, 9, 2).dbl() ?: return null
+        val lng = entry.at(1, 9, 3).dbl() ?: return null
+        val loc = LatLng(lat, lng)
+        return Place(
+            id = "g:" + name.hashCode() + ":" + (lat * 1e4).toInt(),
+            name = name,
+            location = loc,
+            category = entry.at(1, 13, 0).str(),
+            address = entry.at(1, 2, 0).str(),
+            rating = entry.at(1, 4, 7).dbl(),
+            reviewCount = entry.at(1, 4, 8).int(),
+            distanceMeters = near?.distanceTo(loc),
+        )
     }
 
-    /** A lat/lng usually appears as two adjacent doubles in valid ranges. */
-    private fun findLatLng(node: JsonElement): LatLng? {
-        if (node is JsonArray) {
-            for (i in 0 until node.size - 1) {
-                val a = node[i].dbl()
-                val b = node[i + 1].dbl()
-                if (a != null && b != null && a in -90.0..90.0 && b in -180.0..180.0 &&
-                    (a != 0.0 || b != 0.0)
-                ) {
-                    return LatLng(a, b) // CALIBRATE: confirm lat,lng vs lng,lat ordering
-                }
-            }
-            for (e in node) findLatLng(e)?.let { return it }
-        }
-        return null
+    /** Fallback: the largest array whose first entry has a name + coordinate. */
+    private fun findResultsArray(root: JsonElement): JsonArray? {
+        if (root !is JsonArray) return null
+        return root.filterIsInstance<JsonArray>()
+            .filter { it.size >= 1 && it.firstOrNull()?.at(1, 11).str() != null }
+            .maxByOrNull { it.size }
     }
-
-    private fun firstResultsArrayOrNull(root: JsonElement): JsonArray? =
-        (root as? JsonArray)?.firstOrNull { it is JsonArray && it.size > 1 } as? JsonArray
 }
