@@ -51,8 +51,33 @@ object SearchParser {
             address = entry.at(1, 2, 0).str(),
             rating = entry.at(1, 4, 7).dbl(),
             reviewCount = entry.at(1, 4, 8).int(),
+            priceText = entry.at(1, 4, 2).str(),
+            website = entry.at(1, 7, 0).str(),
+            openNow = parseOpenNow(entry.at(1, 203, 1, 8, 0).str()),
+            hours = parseHours(entry),
             distanceMeters = near?.distanceTo(loc),
         )
+    }
+
+    /** Live status text → open/closed. "Closes 6 PM" means open now; "Closed
+     *  · Opens 7 AM" means closed. Calibrated path: `[1][203][1][8][0]`. */
+    private fun parseOpenNow(status: String?): Boolean? = when {
+        status == null -> null
+        status.startsWith("Open") || status.startsWith("Closes") -> true
+        status.startsWith("Closed") || status.startsWith("Temporarily") ||
+            status.startsWith("Permanently") -> false
+        else -> null
+    }
+
+    /** Weekly hours at `[1][118][0][3][0]`: 7 entries, each day name `[0]`
+     *  + hours text `[3][0][0]` → "Monday: 7 AM–2 PM". */
+    private fun parseHours(entry: JsonElement): List<String> {
+        val days = entry.at(1, 118, 0, 3, 0).arr() ?: return emptyList()
+        return days.mapNotNull { day ->
+            val name = day.at(0).str() ?: return@mapNotNull null
+            val hrs = day.at(3, 0, 0).str() ?: return@mapNotNull null
+            "$name: $hrs"
+        }
     }
 
     /** Fallback: the largest array whose first entry has a name + coordinate. */

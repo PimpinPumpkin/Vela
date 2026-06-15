@@ -14,6 +14,7 @@ data class Place(
     val rating: Double? = null,
     val reviewCount: Int? = null,
     val priceLevel: Int? = null,   // 0..4, Google-style ($ to $$$$)
+    val priceText: String? = null, // Google's own label, e.g. "$1–10" / "$$"
     val phone: String? = null,
     val website: String? = null,
     val openNow: Boolean? = null,

@@ -54,7 +54,7 @@ fun PlaceSheet(
                 place.rating?.let { r ->
                     add("★ " + String.format(Locale.US, "%.1f", r) + (place.reviewCount?.let { " ($it)" } ?: ""))
                 }
-                place.priceLevel?.let { add("$".repeat(it.coerceIn(1, 4))) }
+                place.priceText?.let { add(it) }
                 place.category?.let { add(it) }
                 place.openNow?.let { add(if (it) "Open" else "Closed") }
             }
@@ -68,6 +68,25 @@ fun PlaceSheet(
             }
             place.address?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+            }
+            place.website?.let { site ->
+                Text(
+                    site.removePrefix("https://").removePrefix("http://").trimEnd('/'),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+            if (place.hours.isNotEmpty()) {
+                Column(Modifier.padding(top = 8.dp)) {
+                    place.hours.forEach { line ->
+                        Text(
+                            line,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
             }
 
             route?.let { r ->

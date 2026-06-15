@@ -6,12 +6,14 @@ Google's public web endpoints (per-user, no backend) for the things only Google
 does well: POI quality, routing, and **traffic-aware ETAs**. Built to run on
 GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 
-> Status: **builds, runs, and pulls live Google data.** Search and directions
-> were calibrated against a live capture (2026-06-15) and verified end-to-end —
-> real POIs (name / rating / reviews / address / category) and real
-> **traffic-aware ETAs** (typical vs live `duration_in_traffic`). Place details
-> and exact route geometry are the remaining calibration items;
-> `MockMapDataSource` stays as an offline fallback. Both build types are green.
+> Status: **builds, runs, and pulls live Google data.** Calibrated against a
+> live capture (2026-06-15) and verified end-to-end: real POIs with **name,
+> rating, reviews, address, category, price, website and weekly hours**, real
+> **traffic-aware ETAs** (typical vs live `duration_in_traffic`), and turn-by-turn
+> maneuvers. The route line is drawn from an open router (OSRM) because Google's
+> is vector-tile-only. Remaining: popular-times / individual reviews (sign-in
+> gated) and non-driving modes. `MockMapDataSource` stays as an offline fallback;
+> both build types are green.
 
 ---
 
@@ -105,8 +107,16 @@ reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
 Routes at `root[0][1][r]`, summary at `[0]`: distance m `[2][0]`, typical
 duration s `[3][0]`, and **live `duration_in_traffic` s `[10][0][0]`**. Steps
 arrive as `<step maneuver='TURN_LEFT' meters='120'>…</step>` markup — type and
-distance parse straight out of the attributes. Overview geometry didn't decode
-cleanly, so the route line is currently approximated (the one open item).
+distance parse straight out of the attributes. The overview geometry isn't in
+the JSON at all (Google renders it from vector tiles), so the drawn line comes
+from an open router — see [`RouteGeometry`](core/src/main/java/app/carto/core/data/RouteGeometry.kt)
+(OSRM today; point it at self-hosted OSRM/Valhalla before release).
+
+**Place details** ride along in the search response — no separate RPC for the
+common fields: website `[1][7][0]`, price text `[1][4][2]`, open-status
+`[1][203][1][8][0]`, and weekly hours `[1][118][0][3][0]` (7 entries, day name
+`[0]` + hours text `[3][0][0]`). Popular times and individual review text are
+the sign-in-gated exceptions, still unmapped.
 
 To re-calibrate when a shape drifts: capture the request in DevTools, mask the
 query/coords, and replace the `pb` template in `SearchPb`/`DirectionsPb`; re-pin
@@ -149,7 +159,9 @@ icons). Styles are plain URLs, updatable over-the-air without an app release.
 - [x] Turn-by-turn engine + spoken guidance (works on mock routes)
 - [x] Google extractor scaffolding (grammar complete)
 - [x] **Calibrate search + directions** against a live capture — live & verified
-- [ ] Calibrate place-details (reviews/hours/popular times) + exact route geometry
+- [x] Place details (hours / website / price / open-status) from the search response
+- [x] Route geometry via open router (OSRM) — Google's line is vector-tile-only
+- [ ] Popular times + individual reviews (sign-in-gated place RPC); travel modes
 - [ ] Protomaps style + cartographic polish pass
 - [ ] Place details: reviews, hours, popular times
 - [ ] Foreground navigation service (screen-off guidance + notification)

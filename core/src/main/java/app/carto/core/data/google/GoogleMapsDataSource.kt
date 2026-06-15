@@ -3,6 +3,7 @@ package app.carto.core.data.google
 import app.carto.core.CartoConfig
 import app.carto.core.data.CalibrationNeededException
 import app.carto.core.data.MapDataSource
+import app.carto.core.data.RouteGeometry
 import app.carto.core.data.google.parse.DirectionsParser
 import app.carto.core.data.google.parse.SearchParser
 import app.carto.core.model.LatLng
@@ -62,7 +63,15 @@ class GoogleMapsDataSource @Inject constructor(
         // modes need their travel-mode field flipped in DirectionsPb.
         val pb = DirectionsPb.build(origin, destination)
         val url = "https://www.google.com/maps/preview/directions?authuser=0&hl=en&gl=us&pb=${pb.enc()}"
-        DirectionsParser.parse(GoogleResponse.parse(get(url)))
+        val routes = DirectionsParser.parse(GoogleResponse.parse(get(url)))
+        // Google's response carries no decodable line; draw it via an open
+        // router. Best-effort: keep the approximate line if OSRM is unavailable.
+        val geometry = RouteGeometry.fetch(http, origin, destination)
+        if (geometry != null && routes.isNotEmpty()) {
+            listOf(RouteGeometry.reposition(routes.first(), geometry)) + routes.drop(1)
+        } else {
+            routes
+        }
     }
 
     // --- plumbing -----------------------------------------------------------
