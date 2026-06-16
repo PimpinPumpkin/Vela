@@ -13,6 +13,7 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.Route
 import app.vela.core.model.SavedPlace
+import app.vela.core.model.TravelMode
 import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
 import app.vela.core.voice.VoiceEngine
@@ -38,6 +39,7 @@ data class MapUiState(
     val selected: Place? = null,
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
+    val travelMode: TravelMode = TravelMode.DRIVE,
     val navigating: Boolean = false,
     val nav: NavState = NavState(),
     val maneuverText: String = "",
@@ -162,12 +164,28 @@ class MapViewModel @Inject constructor(
 
     fun routeToSelected() {
         val dest = _state.value.selected?.location ?: return
-        val origin = _state.value.myLocation ?: return
         destination = dest
+        route(dest, _state.value.travelMode)
+    }
+
+    fun setTravelMode(mode: TravelMode) {
+        if (_state.value.travelMode == mode) return
+        _state.update { it.copy(travelMode = mode) }
+        destination?.let { route(it, mode) }
+    }
+
+    private fun route(dest: LatLng, mode: TravelMode) {
+        val origin = _state.value.myLocation ?: return
         viewModelScope.launch {
             try {
-                val routes = dataSource.directions(origin, dest)
-                _state.update { it.copy(routes = routes, activeRoute = routes.firstOrNull(), status = null) }
+                val routes = dataSource.directions(origin, dest, mode)
+                _state.update {
+                    it.copy(
+                        routes = routes,
+                        activeRoute = routes.firstOrNull(),
+                        status = if (routes.isEmpty()) "No ${mode.name.lowercase()} route found" else null,
+                    )
+                }
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = "Directions need recalibration: ${e.message}") }
             } catch (e: Exception) {

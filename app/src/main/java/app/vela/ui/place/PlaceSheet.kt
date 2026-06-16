@@ -20,6 +20,7 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -32,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.core.model.Place
 import app.vela.core.model.Route
+import app.vela.core.model.TravelMode
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import java.util.Locale
@@ -41,8 +43,10 @@ fun PlaceSheet(
     place: Place,
     route: Route?,
     isSaved: Boolean,
+    currentMode: TravelMode,
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
+    onModeSelected: (TravelMode) -> Unit,
     onDirections: () -> Unit,
     onStartNav: () -> Unit,
     modifier: Modifier = Modifier,
@@ -127,6 +131,21 @@ fun PlaceSheet(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
+                }
+            }
+
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    TravelMode.DRIVE to "Drive",
+                    TravelMode.WALK to "Walk",
+                    TravelMode.BICYCLE to "Bike",
+                ).forEach { (mode, label) ->
+                    FilterChip(
+                        selected = currentMode == mode,
+                        onClick = { onModeSelected(mode) },
+                        label = { Text(label) },
+                    )
                 }
             }
 

@@ -185,8 +185,10 @@ fun MapScreen(
                 place = state.selected!!,
                 route = state.activeRoute,
                 isSaved = state.saved.any { it.id == state.selected!!.id },
+                currentMode = state.travelMode,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
+                onModeSelected = vm::setTravelMode,
                 onDirections = vm::routeToSelected,
                 onStartNav = onStartNav,
                 modifier = Modifier

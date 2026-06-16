@@ -30,7 +30,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Route geometry via open router (OSRM today; Valhalla later)
 - 🟡 **Live route re-check while navigating** — periodically re-query traffic and
   offer a faster route if one appears (see Navigation below)
-- ⬜ Walking / cycling / transit modes
+- ✅ Walking + cycling modes (drive/walk/bike); transit response shape is a separate TODO
 - ⬜ Departure/arrival time selection; avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace OSRM demo server)
 

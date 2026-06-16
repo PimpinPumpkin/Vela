@@ -59,14 +59,13 @@ class GoogleMapsDataSource @Inject constructor(
         mode: TravelMode,
     ): List<Route> = io {
         session.ensure()
-        // CALIBRATE: mode is currently driving (the captured template). Other
-        // modes need their travel-mode field flipped in DirectionsPb.
-        val pb = DirectionsPb.build(origin, destination)
+        val pb = DirectionsPb.build(origin, destination, mode)
         val url = "https://www.google.com/maps/preview/directions?authuser=0&hl=en&gl=us&pb=${pb.enc()}"
         val routes = DirectionsParser.parse(GoogleResponse.parse(get(url)))
         // Google's response carries no decodable line; draw it via an open
-        // router. Best-effort: keep the approximate line if OSRM is unavailable.
-        val geometry = RouteGeometry.fetch(http, origin, destination)
+        // router. OSRM's demo server is car-only, so only driving gets real road
+        // geometry — walk/bike fall back to the parser's approximation.
+        val geometry = if (mode == TravelMode.DRIVE) RouteGeometry.fetch(http, origin, destination) else null
         if (geometry != null && routes.isNotEmpty()) {
             listOf(RouteGeometry.reposition(routes.first(), geometry)) + routes.drop(1)
         } else {
