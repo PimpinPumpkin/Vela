@@ -4,22 +4,25 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Map & rendering
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
-- ✅ Open base tiles (MapLibre demo default; Protomaps wired)
+- ✅ Detailed open basemap (OpenFreeMap Liberty default + injected house numbers at z17; Positron/Bright/demo/Protomaps options)
 - ✅ Route line, search markers, location dot as GeoJSON layers
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
+- ✅ Tap a labelled POI on the map to open it
+- 🟡 More polished cartography (OpenFreeMap is functional but not Google-pretty; MapTiler-with-key or a custom style is the upgrade)
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, 3D buildings, hillshade, POI icons)
 - ⬜ Light/dark/satellite style switching beyond the basics
 - ⬜ Map rotation/tilt + heading-up mode during nav
 
 ## Search & POIs (live Google data)
 - ✅ Place search — name, category, address, rating, review count, coordinates
-- ✅ Place details inline: **price, website, open/closed, full weekly hours**
+- ✅ Place sheet: golden rating, **colour-coded open/closed status** (green/amber/red), price, weekly hours
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted, shown on search focus)
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
-- ✅ Place actions: open website, share (geo: link)
+- ✅ Place actions: "Website" link, share (geo: link)
 - ⬜ Place photos
-- ⬜ Categories / "search this area" / filters (open now, rating, price)
+- ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
+- ⬜ "Search this area" / filters (open now, rating, price)
 - ✅ Saved / favourite places (star from the place sheet)
 - ⬜ Overture/OSM POIs as a fallback source
 

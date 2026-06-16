@@ -9,11 +9,12 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 > Status: **builds, runs, and pulls live Google data.** Calibrated against a
 > live capture (2026-06-15) and verified end-to-end: real POIs with **name,
 > rating, reviews, address, category, price, website and weekly hours**, real
-> **traffic-aware ETAs** (typical vs live `duration_in_traffic`), and turn-by-turn
-> maneuvers. The route line is drawn from an open router (OSRM) because Google's
-> is vector-tile-only. Remaining: popular-times / individual reviews (sign-in
-> gated) and non-driving modes. `MockMapDataSource` stays as an offline fallback;
-> both build types are green.
+> **traffic-aware ETAs** (typical vs live `duration_in_traffic`), turn-by-turn
+> maneuvers, and walk/bike modes. The route line is drawn from an open router
+> (OSRM) because Google's is vector-tile-only. **Installed + verified on a Pixel 9
+> (Android 16)**; v0.1.0 is on GitHub Releases. Remaining: popular-times /
+> reviews (sign-in gated) and richer cartography. `MockMapDataSource` stays as an
+> offline fallback; both build types are green.
 
 ---
 

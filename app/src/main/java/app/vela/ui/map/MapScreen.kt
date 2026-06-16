@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -68,6 +69,7 @@ fun MapScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -144,15 +146,27 @@ fun MapScreen(
                     onFocusChange = { searchFocused = it },
                 )
                 if (state.results.isNotEmpty()) {
-                    SearchResults(results = state.results, onPick = vm::selectPlace)
+                    SearchResults(
+                        results = state.results,
+                        onPick = {
+                            focusManager.clearFocus()
+                            vm.selectPlace(it)
+                        },
+                    )
                 } else if (searchFocused && state.query.isBlank() &&
                     (state.saved.isNotEmpty() || state.recents.isNotEmpty())
                 ) {
                     SuggestionsPanel(
                         saved = state.saved,
                         recents = state.recents,
-                        onPickSaved = vm::selectSaved,
-                        onPickRecent = vm::searchRecent,
+                        onPickSaved = {
+                            focusManager.clearFocus()
+                            vm.selectSaved(it)
+                        },
+                        onPickRecent = {
+                            focusManager.clearFocus()
+                            vm.searchRecent(it)
+                        },
                         onClearRecents = vm::clearRecents,
                     )
                 } else if (!searchFocused && state.selected == null) {
