@@ -132,6 +132,13 @@ fun PlaceSheet(
                         )
                     }
                 }
+            } else if (place.address != null) {
+                Text(
+                    "Hours not listed",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
 
             Spacer(Modifier.height(12.dp))
