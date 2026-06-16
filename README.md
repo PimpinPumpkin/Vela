@@ -126,9 +126,13 @@ from an open router — see [`RouteGeometry`](core/src/main/java/app/vela/core/d
 
 **Place details** ride along in the search response — no separate RPC for the
 common fields: website `[1][7][0]`, price text `[1][4][2]`, open-status
-`[1][203][1][8][0]`, and weekly hours `[1][118][0][3][0]` (7 entries, day name
-`[0]` + hours text `[3][0][0]`). Popular times and individual review text are
-the sign-in-gated exceptions, still unmapped.
+`[1][203][1][8][0]`, rich status with closing time `[1][203][1][4][0]`
+("Open · Closes 9 PM"), and **weekly hours `[1][203][0]`** for most places —
+falling back to `[1][118][0][3][0]`. Both are 7-entry arrays starting with
+today: day name `[0]` + hours text `[3][0][0]`. (Re-calibrated 2026-06-16;
+reading only `[118]` had missed hours for the majority of businesses.) Popular
+times and individual review text are the sign-in-gated exceptions, still
+unmapped.
 
 To re-calibrate when a shape drifts: capture the request in DevTools, mask the
 query/coords, and replace the `pb` template in `SearchPb`/`DirectionsPb`; re-pin
