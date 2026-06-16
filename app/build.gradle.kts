@@ -16,8 +16,10 @@ android {
         applicationId = "app.vela"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // Overridable from CI: -PappVersionCode / -PappVersionName (release.yml
+        // derives them from the git tag). Defaults are for local/dev builds.
+        versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

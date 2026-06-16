@@ -24,6 +24,11 @@ genuinely needs no doc edit, say why in the commit.
   during map scroll/nav (same lesson as Arcana). R8 lives in the `release`
   buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
+- CI in `.github/workflows/`: every push to `main` builds + tests the APK
+  (uploaded as an artifact); a `v*` tag triggers a signed GitHub release. For
+  real signing add repo secrets `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`,
+  `VELA_KEY_ALIAS` (else the APK is debug-signed). Tag versioning:
+  `-PappVersionName`/`-PappVersionCode`.
 - Toolchain mirrors Arcana/Callguard exactly: AGP 8.7.3, Kotlin 2.1.0, Gradle
   8.11.1, compileSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
 - Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /

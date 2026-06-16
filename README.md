@@ -90,8 +90,14 @@ Release signing comes from CI env vars (`VELA_KEYSTORE_PATH`,
 `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`); local builds fall back to the
 debug keystore so `adb install` still works.
 
-Out of the box the app runs on `MockMapDataSource` and the keyless MapLibre demo
-style, so it's fully clickable with zero configuration.
+**CI** (`.github/workflows/`): every push to `main` builds + tests the APK and
+uploads it as an artifact; pushing a `v*` tag builds a release and attaches the
+APK to the GitHub release. Add repo secrets `VELA_KEYSTORE_BASE64`,
+`VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` for a properly-signed build (otherwise
+it's debug-signed — still installable for testing).
+
+Out of the box the app talks to the live Google source over the keyless
+OpenFreeMap basemap; `MockMapDataSource` is the offline fallback.
 
 ## The Google extractor & calibration
 
