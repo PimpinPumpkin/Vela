@@ -55,6 +55,7 @@ data class MapUiState(
     val styleName: String = MapStyle.DEFAULT.label,
     val selectedEngine: VoiceEngine? = null,
     val searching: Boolean = false,
+    val resultsCollapsed: Boolean = false,
     val recents: List<String> = emptyList(),
     val saved: List<SavedPlace> = emptyList(),
 )
@@ -124,6 +125,19 @@ class MapViewModel @Inject constructor(
 
     fun onQueryChange(q: String) = _state.update { it.copy(query = q) }
 
+    /** The X in the search bar: wipe the query, results and selection. */
+    fun clearSearch() = _state.update {
+        it.copy(
+            query = "", results = emptyList(), selected = null,
+            resultsCollapsed = false, showSearchThisArea = false,
+        )
+    }
+
+    /** Hide the results list (swipe-up / back) to browse the map; pins stay. */
+    fun collapseResults() = _state.update { it.copy(resultsCollapsed = true) }
+
+    fun expandResults() = _state.update { it.copy(resultsCollapsed = false) }
+
     fun searchRecent(q: String) {
         onQueryChange(q)
         search()
@@ -161,7 +175,7 @@ class MapViewModel @Inject constructor(
         recentStore.add(q)
         _state.update { it.copy(recents = recentStore.recent()) }
         viewModelScope.launch {
-            _state.update { it.copy(searching = true, showSearchThisArea = false) }
+            _state.update { it.copy(searching = true, showSearchThisArea = false, resultsCollapsed = false) }
             try {
                 val res = dataSource.search(q, near)
                 _state.update {

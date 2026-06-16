@@ -19,6 +19,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Place sheet: **5-star rating visual**, **swipe-down to dismiss**, colour-coded open/closed status (green/amber/red), price, **collapsible weekly hours** (today first, expand for the week)
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted, shown on search focus)
+- ✅ Clear-search (X) button; dismiss the results list (swipe-up / back gesture) to browse the map — pins stay, a chip re-opens it
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
 - ✅ Place actions: **Call** (dialer), Website, **Share menu (Google Maps link / coordinates / address)**
 - ⬜ Place photos

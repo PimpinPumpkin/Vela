@@ -3,9 +3,11 @@ package app.vela.ui.map
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +24,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -45,6 +49,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -76,6 +81,12 @@ fun MapScreen(
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
+
+    // Back hides the search results (so you can browse the map) before exiting.
+    BackHandler(
+        enabled = state.results.isNotEmpty() && state.selected == null &&
+            !state.resultsCollapsed && !state.navigating,
+    ) { vm.collapseResults() }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -153,15 +164,24 @@ fun MapScreen(
                     onQueryChange = vm::onQueryChange,
                     onSearch = vm::search,
                     onOpenSettings = onOpenSettings,
+                    onClear = vm::clearSearch,
                     onFocusChange = { searchFocused = it },
                 )
-                if (state.results.isNotEmpty() && state.selected == null) {
+                if (state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed) {
                     SearchResults(
                         results = state.results,
                         onPick = {
                             focusManager.clearFocus()
                             vm.selectPlace(it)
                         },
+                        onCollapse = vm::collapseResults,
+                    )
+                } else if (state.results.isNotEmpty() && state.selected == null && state.resultsCollapsed) {
+                    ElevatedAssistChip(
+                        onClick = vm::expandResults,
+                        label = { Text("${state.results.size} results") },
+                        leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) },
+                        modifier = Modifier.padding(top = 8.dp),
                     )
                 } else if (searchFocused && state.query.isBlank() &&
                     (state.saved.isNotEmpty() || state.recents.isNotEmpty())
@@ -304,10 +324,41 @@ private fun markersOf(state: MapUiState): List<MapMarker> =
     }
 
 @Composable
-private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit) {
+private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onCollapse: () -> Unit) {
     Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        LazyColumn(Modifier.heightIn(max = 280.dp)) {
-            items(results) { place ->
+        Column {
+            // Swipe this header up (or press back) to hide the list and browse the map.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        var total = 0f
+                        detectVerticalDragGestures(
+                            onDragStart = { total = 0f },
+                            onVerticalDrag = { change, dy -> change.consume(); total += dy },
+                            onDragEnd = { if (total < -40f) onCollapse() },
+                        )
+                    }
+                    .clickable { onCollapse() }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    "${results.size} results",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    Icons.Default.KeyboardArrowUp,
+                    contentDescription = "Hide results",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Divider()
+            LazyColumn(Modifier.heightIn(max = 280.dp)) {
+                items(results) { place ->
                 Column(
                     Modifier
                         .fillMaxWidth()
@@ -354,6 +405,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit) {
                 }
                 Divider()
             }
+        }
         }
     }
 }
