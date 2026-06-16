@@ -1,19 +1,17 @@
 name: CI
 
-# Builds the APK (and runs unit tests) on every push to main and on PRs. The
-# release APK is uploaded as a downloadable artifact on each run; a push to main
-# also refreshes the rolling `nightly` pre-release so the latest build is
-# installable straight from the Releases page (Obtainium-friendly). Stable,
-# versioned releases are cut from `v*` tags by release.yml.
+# Builds + tests the APK on every push to main and on PRs. Each push to main is
+# published as a normal, versioned GitHub release (v0.1.<run>) so update trackers
+# like Obtainium "just work" — no pre-releases, no "include prereleases" toggle,
+# plain-semver versionName. The APK is also uploaded as a workflow artifact.
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
-# `contents: write` is needed to publish the nightly release. The publish step
-# is gated to push-to-main, so PRs (and fork PRs, whose token is read-only) never
-# touch releases.
+# `contents: write` is needed to publish releases. The publish step is gated to
+# push-to-main, so PRs (and fork PRs, whose token is read-only) never touch them.
 permissions:
   contents: write
 
@@ -54,12 +52,11 @@ jobs:
 
       - name: Derive build version
         id: ver
-        # Monotonic versionCode from the run number so Obtainium sees each
-        # nightly as an update; readable nightly-<run>-<sha> versionName.
+        # versionName is plain semver (0.1.<run>) so Obtainium can compare it;
+        # versionCode is 1000+run — monotonic and safely above earlier builds.
         run: |
-          SHA=$(git rev-parse --short HEAD)
-          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "name=nightly-${{ github.run_number }}-$SHA" >> "$GITHUB_OUTPUT"
+          echo "name=0.1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "code=$(( 1000 + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
         env:
@@ -78,26 +75,17 @@ jobs:
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
-      - name: Refresh rolling nightly pre-release
-        # Only for real pushes to main — never PRs. Each build gets an
-        # incrementing tag (nightly-<run>) so update trackers like Obtainium
-        # detect a new version, but the previous nightly release + tag is
-        # deleted first so only the newest one is ever on the Releases page.
-        # Stable builds come from v* tags (release.yml).
+      - name: Publish release
+        # Every push to main → a normal (non-prerelease) GitHub release, kept as a
+        # revision history. Obtainium tracks the latest with zero configuration.
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          cp app/build/outputs/apk/release/app-release.apk vela-maps-nightly.apk
-          TAG="nightly-${{ github.run_number }}"
-          # Drop older nightly release(s) + tag(s) so the page keeps just the latest.
-          for old in $(gh release list -R "$GITHUB_REPOSITORY" --json tagName -q '.[].tagName' | grep '^nightly' || true); do
-            [ "$old" = "$TAG" ] && continue
-            gh release delete "$old" --cleanup-tag --yes 2>/dev/null || true
-          done
-          gh release create "$TAG" \
-            --prerelease \
+          VER="0.1.${{ github.run_number }}"
+          cp app/build/outputs/apk/release/app-release.apk "vela-maps-v${VER}.apk"
+          gh release create "v${VER}" \
+            --title "Vela $VER" \
             --target "$GITHUB_SHA" \
-            --title "Nightly build ${{ github.run_number }}" \
-            --notes "Rolling latest build of \`main\` (\`${{ github.sha }}\`, run ${{ github.run_number }}). Only the newest nightly is kept — older ones are removed automatically. For a pinned, versioned build push a \`vX.Y.Z\` tag instead." \
-            vela-maps-nightly.apk
+            --generate-notes \
+            "vela-maps-v${VER}.apk"

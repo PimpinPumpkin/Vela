@@ -12,7 +12,7 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 > **traffic-aware ETAs** (typical vs live `duration_in_traffic`), turn-by-turn
 > maneuvers, and walk/bike modes. The route line is drawn from an open router
 > (OSRM) because Google's is vector-tile-only. **Installed + verified on a Pixel 9
-> (Android 16)**; signed `v0.1.1` is the latest release, with `nightly` pre-releases on every push. Remaining: popular-times /
+> (Android 16)**; every push to `main` publishes a normal, signed `v0.1.<run>` release (Obtainium-friendly). Remaining: popular-times /
 > reviews (sign-in gated) and richer cartography. `MockMapDataSource` stays as an
 > offline fallback; both build types are green.
 
@@ -91,11 +91,9 @@ Release signing comes from CI env vars (`VELA_KEYSTORE_PATH`,
 debug keystore so `adb install` still works.
 
 **CI** (`.github/workflows/`): every push to `main` builds + tests the APK,
-uploads it as an artifact, and publishes it as a **`nightly-<run>`** pre-release
-— only the newest nightly is kept on the Releases page, but the tag and
-versionCode (= the CI run number) increment each build, so Obtainium detects
-every one as an update. Pushing a `v*` tag instead cuts a pinned, versioned
-stable release. The release APK is signed with the keystore from repo secrets
+uploads it as an artifact, and publishes a **normal versioned release**
+(`v0.1.<run>`, versionCode `1000+run`) — kept as a revision history, so Obtainium
+tracks the latest with zero configuration and no pre-release toggle. The release APK is signed with the keystore from repo secrets
 `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (without them
 it's debug-signed — installable, but not update-compatible across builds). The
 repo is public, so release assets (e.g. for Obtainium) download with no token;
