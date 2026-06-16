@@ -25,11 +25,14 @@ genuinely needs no doc edit, say why in the commit.
   buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
 - CI in `.github/workflows/`: every push to `main` builds + tests the APK
-  (uploaded as an artifact) and refreshes the rolling `nightly` pre-release
-  (versionCode = `github.run_number`, versionName `nightly-<run>-<sha>`); a `v*`
-  tag triggers a pinned signed GitHub release. For real signing add repo secrets
-  `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (else the APK
-  is debug-signed). Tag/version override: `-PappVersionName`/`-PappVersionCode`.
+  (uploaded as an artifact) and publishes a rolling `nightly-<run>` pre-release —
+  only the newest nightly is kept on the Releases page; versionCode =
+  `github.run_number`, versionName `nightly-<run>-<sha>` (so Obtainium detects
+  each build). A `v*` tag triggers a pinned stable GitHub release. Release signing
+  uses repo secrets `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`,
+  `VELA_KEY_ALIAS` (now set; the keystore lives at `~/.vela-signing/`, outside the
+  repo — back it up). Without them the APK is debug-signed. Tag/version override:
+  `-PappVersionName`/`-PappVersionCode`.
 - Toolchain mirrors Arcana/Callguard exactly: AGP 8.7.3, Kotlin 2.1.0, Gradle
   8.11.1, compileSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
 - Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /
