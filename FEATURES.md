@@ -1,4 +1,4 @@
-# Carto — feature list
+# Vela — feature list
 
 Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 

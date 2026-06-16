@@ -9,11 +9,11 @@ plugins {
 }
 
 android {
-    namespace = "app.carto"
+    namespace = "app.vela"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "app.carto"
+        applicationId = "app.vela"
         minSdk = 26
         targetSdk = 35
         versionCode = 1
@@ -25,15 +25,15 @@ android {
 
     // Mirrors Arcana/Callguard: real release signing comes from CI env vars;
     // local dev falls back to the debug keystore so `adb install` still works.
-    //   CARTO_KEYSTORE_PATH / CARTO_KEYSTORE_PASSWORD / CARTO_KEY_ALIAS (=carto)
+    //   VELA_KEYSTORE_PATH / VELA_KEYSTORE_PASSWORD / VELA_KEY_ALIAS (=vela)
     signingConfigs {
         create("releaseFromEnv") {
-            val path = System.getenv("CARTO_KEYSTORE_PATH")
+            val path = System.getenv("VELA_KEYSTORE_PATH")
             if (!path.isNullOrBlank() && File(path).exists()) {
                 storeFile = File(path)
-                storePassword = System.getenv("CARTO_KEYSTORE_PASSWORD")
-                keyAlias = System.getenv("CARTO_KEY_ALIAS") ?: "carto"
-                keyPassword = System.getenv("CARTO_KEYSTORE_PASSWORD")
+                storePassword = System.getenv("VELA_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("VELA_KEY_ALIAS") ?: "vela"
+                keyPassword = System.getenv("VELA_KEYSTORE_PASSWORD")
             }
         }
     }

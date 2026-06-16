@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Pre-Compose window theme only (splash + system bars). All real
-         colouring is done by CartoTheme in Compose. Uses a plain AOSP parent so
+         colouring is done by VelaTheme in Compose. Uses a plain AOSP parent so
          we don't drag in the Material Components XML library. -->
-    <style name="Theme.Carto" parent="android:Theme.Material.Light.NoActionBar">
+    <style name="Theme.Vela" parent="android:Theme.Material.Light.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>

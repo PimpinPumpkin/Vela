@@ -13,4 +13,4 @@
 }
 
 # Travel/maneuver enums are persisted in nav state + prefs by name.
--keepnames enum app.carto.core.model.** { *; }
+-keepnames enum app.vela.core.model.** { *; }

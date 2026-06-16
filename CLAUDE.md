@@ -1,4 +1,4 @@
-# Carto — project guide for Claude
+# Vela — project guide for Claude
 
 Degoogled Google-Maps replacement for Android (the "NewPipe for Maps"). Open
 vector tiles for the basemap; the device scrapes Google's public web endpoints
@@ -13,8 +13,8 @@ ETAs. Targets GrapheneOS / no-GMS ROMs; F-Droid distribution. GPLv3.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
 - Toolchain mirrors Arcana/Callguard exactly: AGP 8.7.3, Kotlin 2.1.0, Gradle
   8.11.1, compileSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
-- Release signing from env: `CARTO_KEYSTORE_PATH` / `CARTO_KEYSTORE_PASSWORD` /
-  `CARTO_KEY_ALIAS` (default alias `carto`); falls back to debug keystore locally.
+- Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /
+  `VELA_KEY_ALIAS` (default alias `vela`); falls back to debug keystore locally.
 
 ## Layout
 
@@ -31,7 +31,7 @@ ETAs. Targets GrapheneOS / no-GMS ROMs; F-Droid distribution. GPLv3.
   stable. The **field numbers, response array indices, and session regexes are
   NOT** — they're marked `CALIBRATE:` and must be pinned from a live capture of
   `maps.google.com` (devtools/mitmproxy). Never trust a remembered `pb` layout.
-- Turn the real source on with `CartoConfig.USE_GOOGLE_SOURCE = true` after
+- Turn the real source on with `VelaConfig.USE_GOOGLE_SOURCE = true` after
   calibrating. Parsers throw `CalibrationNeededException` (routine, non-fatal)
   when shapes drift; the UI surfaces it as a notice.
 - **Never embed a static Google API key.** Per-user `GoogleSession` bootstrap
@@ -44,7 +44,8 @@ ETAs. Targets GrapheneOS / no-GMS ROMs; F-Droid distribution. GPLv3.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
 
-## Naming caveat
+## Name
 
-"Carto" collides with CARTO (carto.com). Renaming now is one `applicationId` +
-one `rootProject.name`; decide before any public release.
+Vela Maps (`app.vela`). Renamed from "Carto" on 2026-06-15 (Carto collided with
+CARTO, carto.com); "Vela" was clearance-checked and is free of maps-app and
+trademark collisions.

@@ -23,7 +23,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Carto"
+rootProject.name = "Vela"
 
 // Two modules, deliberately. `:core` is the "extractor" — all Google interop,
 // routing, location and voice live here with no UI dependency, the same way

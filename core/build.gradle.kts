@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "app.carto.core"
+    namespace = "app.vela.core"
     compileSdk = 35
     defaultConfig {
         minSdk = 26

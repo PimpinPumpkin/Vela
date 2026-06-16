@@ -1,4 +1,4 @@
-# Carto
+# Vela Maps
 
 A degoogled maps & navigation client for Android — *what NewPipe is to YouTube,
 for Google Maps.* Open vector tiles for the basemap, the device itself scraping
@@ -21,7 +21,7 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 
 Two decisions from the planning phase shape everything:
 
-1. **No Carto backend.** Like NewPipe, every install talks to Google directly
+1. **No Vela backend.** Like NewPipe, every install talks to Google directly
    from the user's own IP, behaving like a single browser. There is no shared
    API key and no server farm to run, scrape from, or get subpoenaed. The cost
    is a maintenance lifestyle: Google rotates these endpoints, so the extractor
@@ -54,11 +54,11 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
         ├─ location/         LocationProvider — AOSP LocationManager (no Fused)
         ├─ voice/            VoiceGuide — AOSP TextToSpeech, engine-selectable
         ├─ nav/              NavEngine — pure turn-by-turn logic (unit-tested)
-        └─ di/               Hilt wiring; picks Mock vs Google off CartoConfig
+        └─ di/               Hilt wiring; picks Mock vs Google off VelaConfig
 
 :app    Jetpack Compose UI (Material 3)
-        ├─ MainActivity, CartoApp
-        ├─ ui/map/           MapScreen, CartoMapView (MapLibre), MapViewModel
+        ├─ MainActivity, VelaApp
+        ├─ ui/map/           MapScreen, VelaMapView (MapLibre), MapViewModel
         ├─ ui/search/        SearchBar
         ├─ ui/place/         PlaceSheet
         ├─ ui/nav/           ManeuverBanner, NavControls
@@ -67,7 +67,7 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
 
 The `MapDataSource` interface is the load-bearing seam: Mock today, Google once
 calibrated, and a future Overture/OSM source or self-hostable backend (the
-"Piped for Carto" idea) drops in the same way.
+"Piped for Vela" idea) drops in the same way.
 
 ## Build & run
 
@@ -85,8 +85,8 @@ Standard Android toolchain (the repo already mirrors Arcana's Gradle setup):
 ./gradlew :core:test
 ```
 
-Release signing comes from CI env vars (`CARTO_KEYSTORE_PATH`,
-`CARTO_KEYSTORE_PASSWORD`, `CARTO_KEY_ALIAS`); local builds fall back to the
+Release signing comes from CI env vars (`VELA_KEYSTORE_PATH`,
+`VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`); local builds fall back to the
 debug keystore so `adb install` still works.
 
 Out of the box the app runs on `MockMapDataSource` and the keyless MapLibre demo
@@ -98,7 +98,7 @@ Calibrated live on 2026-06-15. The shapes Google can change are pinned here so
 re-calibration is a lookup, not a rediscovery:
 
 **Search** — `GET /search?tbm=map&q=<q>&pb=<SearchPb>`. A bare `q=` returns an
-empty envelope; the `pb` (viewport-driven, captured in [`SearchPb`](core/src/main/java/app/carto/core/data/google/SearchPb.kt),
+empty envelope; the `pb` (viewport-driven, captured in [`SearchPb`](core/src/main/java/app/vela/core/data/google/SearchPb.kt),
 no session token needed) is what populates results. Results at `root[64][i]`,
 each rooted at `[1]`: name `[1][11]`, address `[1][2][0]`, rating `[1][4][7]`,
 reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
@@ -109,7 +109,7 @@ duration s `[3][0]`, and **live `duration_in_traffic` s `[10][0][0]`**. Steps
 arrive as `<step maneuver='TURN_LEFT' meters='120'>…</step>` markup — type and
 distance parse straight out of the attributes. The overview geometry isn't in
 the JSON at all (Google renders it from vector tiles), so the drawn line comes
-from an open router — see [`RouteGeometry`](core/src/main/java/app/carto/core/data/RouteGeometry.kt)
+from an open router — see [`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt)
 (OSRM today; point it at self-hosted OSRM/Valhalla before release).
 
 **Place details** ride along in the search response — no separate RPC for the
@@ -120,7 +120,7 @@ the sign-in-gated exceptions, still unmapped.
 
 To re-calibrate when a shape drifts: capture the request in DevTools, mask the
 query/coords, and replace the `pb` template in `SearchPb`/`DirectionsPb`; re-pin
-the response indices in `SearchParser`/`DirectionsParser`. `CartoConfig.USE_GOOGLE_SOURCE`
+the response indices in `SearchParser`/`DirectionsParser`. `VelaConfig.USE_GOOGLE_SOURCE`
 is already `true`.
 
 When a response no longer matches, the parsers throw `CalibrationNeededException`
@@ -142,7 +142,7 @@ decodes Google's geometry exactly and is covered by a reference-vector test.
   user pick (RHVoice / eSpeak NG from F-Droid sound far better than stock Pico).
 - **No GMS anywhere:** no Fused location, no FCM, no Firebase, no Play Integrity.
   Everything (MapLibre, OkHttp, Compose, Hilt) is pure AOSP. OrganicMaps is the
-  existence proof; Carto's stack is a superset.
+  existence proof; Vela's stack is a superset.
 
 ## Map style
 
@@ -169,12 +169,12 @@ icons). Styles are plain URLs, updatable over-the-air without an app release.
 - [ ] Traffic overlay tiles (the colored lines) — separate from ETA, later
 - [ ] F-Droid submission + reproducible build
 
-## A naming note
+## A note on the name
 
-"Carto" collides with **CARTO** (carto.com), an established geospatial company —
-worth a deliberate decision before any public release, the same way the planning
-notes flagged keeping "Google"/"Maps" out of the name. Easy to rename now (one
-`applicationId`, one `rootProject.name`); harder after launch.
+**Vela Maps** (`app.vela`) — the navigator's constellation "the Sails", and
+"sail" in several languages. Renamed from "Carto" (which collided with CARTO,
+the geospatial company); "Vela" was vetted clear of maps-app and trademark
+collisions before the switch.
 
 ## License
 

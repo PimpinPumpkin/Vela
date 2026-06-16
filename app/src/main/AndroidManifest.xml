@@ -19,18 +19,18 @@
         android:required="false" />
 
     <application
-        android:name=".CartoApp"
+        android:name=".VelaApp"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Carto">
+        android:theme="@style/Theme.Vela">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode"
-            android:theme="@style/Theme.Carto">
+            android:theme="@style/Theme.Vela">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
