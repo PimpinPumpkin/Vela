@@ -23,12 +23,14 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedAssistChip
+import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,12 +56,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.SavedPlace
+import app.vela.ui.RatingStars
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.nav.ManeuverBanner
 import app.vela.ui.nav.NavControls
+import app.vela.ui.placeStatusColor
 import app.vela.ui.place.PlaceSheet
 import app.vela.ui.search.SearchBar
+import java.util.Locale
 
 @Composable
 fun MapScreen(
@@ -115,8 +120,11 @@ fun MapScreen(
             cameraTarget = state.center,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             markers = markersOf(state),
+            frameMarkers = state.results.isNotEmpty() && state.selected == null,
             navMode = state.navigating,
             onPoiTap = vm::onPoiTap,
+            onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
+            onCameraIdle = vm::onCameraIdle,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -145,7 +153,7 @@ fun MapScreen(
                     onOpenSettings = onOpenSettings,
                     onFocusChange = { searchFocused = it },
                 )
-                if (state.results.isNotEmpty()) {
+                if (state.results.isNotEmpty() && state.selected == null) {
                     SearchResults(
                         results = state.results,
                         onPick = {
@@ -185,6 +193,19 @@ fun MapScreen(
                     .statusBarsPadding()
                     .padding(top = 96.dp, start = 12.dp, end = 12.dp),
             )
+        }
+
+        if (!state.navigating && state.showSearchThisArea && state.selected == null) {
+            ElevatedButton(
+                onClick = vm::searchThisArea,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp),
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text("Search this area")
+            }
         }
 
         // --- bottom overlay: nav controls / place sheet ---------------------
@@ -257,10 +278,12 @@ fun MapScreen(
     }
 }
 
-private fun markersOf(state: MapUiState): List<LatLng> = buildList {
-    state.results.forEach { add(it.location) }
-    state.selected?.let { add(it.location) }
-}
+private fun markersOf(state: MapUiState): List<MapMarker> =
+    if (state.results.isNotEmpty()) {
+        state.results.map { MapMarker(it.name, it.location) }
+    } else {
+        state.selected?.let { listOf(MapMarker(it.name, it.location)) } ?: emptyList()
+    }
 
 @Composable
 private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit) {
@@ -274,12 +297,41 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit) {
                         .padding(horizontal = 16.dp, vertical = 12.dp),
                 ) {
                     Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                    place.rating?.let { r ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp),
+                        ) {
+                            Text(
+                                String.format(Locale.US, "%.1f", r),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            RatingStars(r, starSize = 12.dp, modifier = Modifier.padding(horizontal = 4.dp))
+                            place.reviewCount?.let {
+                                Text(
+                                    "($it)",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                        }
+                    }
                     val sub = listOfNotNull(
                         place.category,
                         place.distanceMeters?.let { formatDistance(it) },
                     ).joinToString(" · ")
                     if (sub.isNotEmpty()) {
                         Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    place.statusText?.let { status ->
+                        Text(
+                            status,
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = placeStatusColor(status),
+                            modifier = Modifier.padding(top = 2.dp),
+                        )
                     }
                 }
                 Divider()

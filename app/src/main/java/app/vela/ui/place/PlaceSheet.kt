@@ -2,14 +2,20 @@ package app.vela.ui.place
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
@@ -26,28 +32,27 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.vela.core.model.Place
 import app.vela.core.model.Route
 import app.vela.core.model.TravelMode
+import app.vela.ui.RatingStars
+import app.vela.ui.placeStatusColor
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import java.util.Locale
-
-private val StarGold = Color(0xFFF5B400)
-
-/** Google-style status colour: green if open, amber if closing/opening soon,
- *  red if closed. */
-private fun statusColor(status: String): Color = when {
-    status.contains("soon", ignoreCase = true) -> Color(0xFFE8A100)
-    status.startsWith("Open") || status.startsWith("Closes") -> Color(0xFF1E8E3E)
-    else -> Color(0xFFD93025)
-}
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 @Composable
 fun PlaceSheet(
@@ -63,8 +68,40 @@ fun PlaceSheet(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
-        Column(Modifier.padding(20.dp)) {
+    val offsetY = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val dismissPx = with(LocalDensity.current) { 110.dp.toPx() }
+    Card(
+        modifier
+            .fillMaxWidth()
+            .offset { IntOffset(0, offsetY.value.roundToInt()) }
+            .pointerInput(Unit) {
+                // Swipe the sheet down past a threshold to dismiss; otherwise snap back.
+                detectVerticalDragGestures(
+                    onVerticalDrag = { change, dragAmount ->
+                        change.consume()
+                        scope.launch { offsetY.snapTo((offsetY.value + dragAmount).coerceAtLeast(0f)) }
+                    },
+                    onDragEnd = {
+                        if (offsetY.value > dismissPx) onClose()
+                        else scope.launch { offsetY.animateTo(0f) }
+                    },
+                )
+            },
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+    ) {
+        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp, top = 10.dp)) {
+            Box(
+                Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier
+                        .size(width = 36.dp, height = 4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     place.name,
@@ -104,12 +141,19 @@ fun PlaceSheet(
 
             Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 place.rating?.let { r ->
-                    Text("★", color = StarGold, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        " " + String.format(Locale.US, "%.1f", r) + (place.reviewCount?.let { " ($it)" } ?: ""),
+                        String.format(Locale.US, "%.1f", r),
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium,
                     )
+                    RatingStars(r, modifier = Modifier.padding(horizontal = 4.dp))
+                    place.reviewCount?.let {
+                        Text(
+                            "($it)",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
                 val rest = listOfNotNull(place.priceText, place.category)
                 if (rest.isNotEmpty()) {
@@ -125,7 +169,7 @@ fun PlaceSheet(
                     status,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
-                    color = statusColor(status),
+                    color = placeStatusColor(status),
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }

@@ -43,10 +43,15 @@ private const val ROUTE_SRC = "vela-route-src"
 private const val ROUTE_LAYER = "vela-route"
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
+private const val PIN_IMG = "vela-pin"
+private const val MARKER_INDEX_PROP = "vela-marker-index"
 private const val ME_SRC = "vela-me-src"
 private const val ME_LAYER = "vela-me"
 private const val ME_ARROW_LAYER = "vela-me-arrow"
 private const val ME_ARROW_IMG = "vela-arrow"
+
+/** A tappable search-result pin on the map. */
+data class MapMarker(val name: String, val location: LatLng)
 
 /**
  * MapLibre wrapped for Compose. Three camera behaviours:
@@ -62,13 +67,19 @@ fun VelaMapView(
     myBearing: Float?,
     cameraTarget: LatLng?,
     routePolyline: List<LatLng>,
-    markers: List<LatLng>,
+    markers: List<MapMarker>,
+    frameMarkers: Boolean,
     navMode: Boolean,
     onPoiTap: (name: String, location: LatLng) -> Unit,
+    onMarkerTap: (index: Int) -> Unit,
+    onCameraIdle: (center: LatLng) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val poiTap = rememberUpdatedState(onPoiTap)
+    val markerTap = rememberUpdatedState(onMarkerTap)
+    val cameraIdle = rememberUpdatedState(onCameraIdle)
+    val gestureMove = remember { booleanArrayOf(false) }
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
 
@@ -77,6 +88,7 @@ fun VelaMapView(
     var appliedStyleUri by remember { mutableStateOf<String?>(null) }
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
+    var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -107,15 +119,35 @@ fun VelaMapView(
                 // Tap a labelled POI on the map to open it.
                 map.addOnMapClickListener { tapped ->
                     val p = map.projection.toScreenLocation(tapped)
-                    val r = 18f
-                    val hit = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r))
-                        .firstOrNull { it.geometry() is Point && it.hasProperty("name") }
+                    val r = 22f
+                    val feats = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r))
+                    // Our own search-result pins take priority over basemap POI labels.
+                    val pin = feats.firstOrNull { it.hasProperty(MARKER_INDEX_PROP) }
+                    if (pin != null) {
+                        markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
+                        return@addOnMapClickListener true
+                    }
+                    val hit = feats.firstOrNull { it.geometry() is Point && it.hasProperty("name") }
                     if (hit != null) {
                         val pt = hit.geometry() as Point
                         poiTap.value(hit.getStringProperty("name"), LatLng(pt.latitude(), pt.longitude()))
                         true
                     } else {
                         false
+                    }
+                }
+                // Only flag camera settling when the user dragged the map (not
+                // our own programmatic framing) → drives "Search this area".
+                map.addOnCameraMoveStartedListener { reason ->
+                    gestureMove[0] = reason ==
+                        MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
+                }
+                map.addOnCameraIdleListener {
+                    if (gestureMove[0]) {
+                        gestureMove[0] = false
+                        map.cameraPosition.target?.let { t ->
+                            cameraIdle.value(LatLng(t.latitude, t.longitude))
+                        }
                     }
                 }
                 mapRef = map
@@ -155,6 +187,23 @@ fun VelaMapView(
                 routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                 runCatching {
                     map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 140), 800)
+                }
+            }
+
+            frameMarkers && markers.isNotEmpty() && markers.hashCode() != lastFittedMarkersKey -> {
+                lastFittedMarkersKey = markers.hashCode()
+                if (markers.size == 1) {
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(
+                            MLLatLng(markers[0].location.lat, markers[0].location.lng), 15.0,
+                        ),
+                    )
+                } else {
+                    val builder = MLLatLngBounds.Builder()
+                    markers.forEach { builder.include(MLLatLng(it.location.lat, it.location.lng)) }
+                    runCatching {
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160), 700)
+                    }
                 }
             }
 
@@ -205,14 +254,15 @@ private fun ensureLayers(style: Style) {
             ),
         )
     }
+    if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
         style.addSource(GeoJsonSource(MARKERS_SRC))
         style.addLayer(
-            CircleLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
-                PropertyFactory.circleColor("#14857A"),
-                PropertyFactory.circleRadius(7f),
-                PropertyFactory.circleStrokeColor("#FFFFFF"),
-                PropertyFactory.circleStrokeWidth(2f),
+            SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
+                PropertyFactory.iconImage(PIN_IMG),
+                PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
             ),
         )
     }
@@ -241,7 +291,7 @@ private fun ensureLayers(style: Style) {
 private fun applyData(
     style: Style,
     route: List<LatLng>,
-    markers: List<LatLng>,
+    markers: List<MapMarker>,
     me: LatLng?,
     bearing: Float?,
 ) {
@@ -255,7 +305,12 @@ private fun applyData(
     style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
 
     val markersFc = FeatureCollection.fromFeatures(
-        markers.map { Feature.fromGeometry(Point.fromLngLat(it.lng, it.lat)) },
+        markers.mapIndexed { i, m ->
+            Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
+                addStringProperty("name", m.name)
+                addNumberProperty(MARKER_INDEX_PROP, i)
+            }
+        },
     )
     style.getSourceAs<GeoJsonSource>(MARKERS_SRC)?.setGeoJson(markersFc)
 
@@ -296,5 +351,29 @@ private fun arrowBitmap(): Bitmap {
             strokeWidth = 2.5f
         },
     )
+    return bmp
+}
+
+/** A Google-style red map pin with a white centre dot, anchored at its bottom tip. */
+private fun pinBitmap(): Bitmap {
+    val w = 60
+    val h = 80
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val cx = w / 2f
+    val headR = w * 0.38f
+    val headCy = headR + 4f
+    val red = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFEA4335.toInt() }
+    val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    // Tail: a triangle from the lower edge of the head down to the tip.
+    val tail = Path().apply {
+        moveTo(cx - headR * 0.72f, headCy + headR * 0.70f)
+        lineTo(cx + headR * 0.72f, headCy + headR * 0.70f)
+        lineTo(cx, h - 3f)
+        close()
+    }
+    canvas.drawPath(tail, red)
+    canvas.drawCircle(cx, headCy, headR, red)
+    canvas.drawCircle(cx, headCy, headR * 0.40f, white)
     return bmp
 }

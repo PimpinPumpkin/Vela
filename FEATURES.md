@@ -5,9 +5,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 ## Map & rendering
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
 - ✅ Detailed open basemap (OpenFreeMap Liberty default + injected house numbers at z17; Positron/Bright/demo/Protomaps options)
-- ✅ Route line, search markers, location dot as GeoJSON layers
+- ✅ Route line, **tappable Google-style search-result pins**, location dot as GeoJSON layers
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
-- ✅ Tap a labelled POI on the map to open it
+- ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
 - 🟡 More polished cartography (OpenFreeMap is functional but not Google-pretty; MapTiler-with-key or a custom style is the upgrade)
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, 3D buildings, hillshade, POI icons)
 - ⬜ Light/dark/satellite style switching beyond the basics
@@ -15,14 +15,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Search & POIs (live Google data)
 - ✅ Place search — name, category, address, rating, review count, coordinates
-- ✅ Place sheet: golden rating, **colour-coded open/closed status** (green/amber/red), price, weekly hours
+- ✅ Search-result rows show **5-star rating** + colour-coded open/closed status
+- ✅ Place sheet: **5-star rating visual**, **swipe-down to dismiss**, **colour-coded open/closed status** (green/amber/red), price, weekly hours
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted, shown on search focus)
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
 - ✅ Place actions: "Website" link, share (geo: link)
 - ⬜ Place photos
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
-- ⬜ "Search this area" / filters (open now, rating, price)
+- ✅ "Search this area" — re-search after panning the map
+- ⬜ Filters (open now, rating, price)
 - ✅ Saved / favourite places (star from the place sheet)
 - ⬜ Overture/OSM POIs as a fallback source
 

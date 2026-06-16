@@ -48,6 +48,7 @@ data class MapUiState(
     val fasterSavingSeconds: Double = 0.0,
     val status: String? = null,
     val showPsdsTip: Boolean = false,
+    val showSearchThisArea: Boolean = false,
     val styleUri: String = MapStyle.DEFAULT.uri,
     val styleName: String = MapStyle.DEFAULT.label,
     val selectedEngine: VoiceEngine? = null,
@@ -76,6 +77,7 @@ class MapViewModel @Inject constructor(
     val state: StateFlow<MapUiState> = _state.asStateFlow()
 
     private var destination: LatLng? = null
+    private var mapCenter: LatLng? = null
     private var locationJob: Job? = null
 
     init {
@@ -139,16 +141,30 @@ class MapViewModel @Inject constructor(
     fun selectSaved(sp: SavedPlace) =
         selectPlace(Place(id = sp.id, name = sp.name, location = sp.location))
 
-    fun search() {
-        val q = _state.value.query.trim()
+    fun search() = runSearch(_state.value.query.trim(), _state.value.myLocation)
+
+    /** Re-run the current query biased to the area the user has panned to. */
+    fun searchThisArea() = runSearch(_state.value.query.trim(), mapCenter)
+
+    /** Map settled after a user pan: offer "Search this area" while results show. */
+    fun onCameraIdle(center: LatLng) {
+        mapCenter = center
+        if (_state.value.results.isNotEmpty() && _state.value.selected == null) {
+            _state.update { it.copy(showSearchThisArea = true) }
+        }
+    }
+
+    private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
         recentStore.add(q)
         _state.update { it.copy(recents = recentStore.recent()) }
         viewModelScope.launch {
-            _state.update { it.copy(searching = true) }
+            _state.update { it.copy(searching = true, showSearchThisArea = false) }
             try {
-                val res = dataSource.search(q, _state.value.myLocation)
-                _state.update { it.copy(results = res.places, status = null, searching = false) }
+                val res = dataSource.search(q, near)
+                _state.update {
+                    it.copy(results = res.places, selected = null, status = null, searching = false)
+                }
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = "Search needs recalibration: ${e.message}", searching = false) }
             } catch (e: Exception) {
@@ -158,7 +174,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun selectPlace(p: Place) =
-        _state.update { it.copy(selected = p, results = emptyList(), center = p.location) }
+        _state.update { it.copy(selected = p, center = p.location) }
 
     fun clearSelection() =
         _state.update { it.copy(selected = null, routes = emptyList(), activeRoute = null) }
