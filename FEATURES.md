@@ -9,9 +9,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
 - ✅ Keyless style tuning over OpenFreeMap Liberty (cleaner water, richer parks/greens, more solid 3D buildings at z14+) — recolours the vector style client-side, no host/key
-- 🟡 More polished cartography (further keyless tuning chosen; MapTiler-with-key or self-hosted PMTiles remain the bigger upgrades)
-- ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, 3D buildings, hillshade, POI icons)
-- ⬜ Light/dark/satellite style switching beyond the basics
+- ✅ **Dark / light map** following the system theme (keyless recolour of the OpenMapTiles layers — dark base/water/roads/buildings + light labels)
+- 🟡 More polished cartography (keyless tuning has a ceiling; MapTiler-with-key or self-hosted PMTiles are the realistic Google-look + custom-font upgrades)
+- ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, hillshade, POI icons)
+- ⬜ Satellite / terrain layers
 - ⬜ Map rotation/tilt + heading-up mode during nav
 
 ## Search & POIs (live Google data)
