@@ -174,6 +174,26 @@ fun VelaMapView(
 private fun ensureLayers(style: Style) {
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
 
+    // House numbers at high zoom. OpenFreeMap's tiles carry the OpenMapTiles
+    // "housenumber" source-layer; the Liberty style just doesn't draw it.
+    // Guarded to the openmaptiles vector source so other styles don't error.
+    if (style.getSource("openmaptiles") != null && style.getLayer("vela-housenumber") == null) {
+        style.addLayer(
+            SymbolLayer("vela-housenumber", "openmaptiles").apply {
+                setSourceLayer("housenumber")
+                setMinZoom(17f)
+                setProperties(
+                    PropertyFactory.textField(Expression.get("housenumber")),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textSize(10f),
+                    PropertyFactory.textColor("#8a8a8a"),
+                    PropertyFactory.textHaloColor("#ffffff"),
+                    PropertyFactory.textHaloWidth(1f),
+                )
+            },
+        )
+    }
+
     if (style.getSource(ROUTE_SRC) == null) {
         style.addSource(GeoJsonSource(ROUTE_SRC))
         style.addLayer(

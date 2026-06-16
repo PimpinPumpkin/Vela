@@ -18,6 +18,7 @@ data class Place(
     val phone: String? = null,
     val website: String? = null,
     val openNow: Boolean? = null,
+    val statusText: String? = null, // Google's own status, e.g. "Open · Closes 9 PM"
     val hours: List<String> = emptyList(),
     val photoUrls: List<String> = emptyList(),
     val distanceMeters: Double? = null, // filled when searched relative to a point

@@ -54,6 +54,9 @@ object SearchParser {
             priceText = entry.at(1, 4, 2).str(),
             website = entry.at(1, 7, 0).str(),
             openNow = parseOpenNow(entry.at(1, 203, 1, 8, 0).str()),
+            // Richer status (with closing time) at [1][118][0][3][1][4][0],
+            // e.g. "Open · Closes 9 PM"; fall back to the short "Open"/"Closed".
+            statusText = entry.at(1, 118, 0, 3, 1, 4, 0).str() ?: entry.at(1, 203, 1, 8, 0).str(),
             hours = parseHours(entry),
             distanceMeters = near?.distanceTo(loc),
         )

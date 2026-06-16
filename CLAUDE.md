@@ -5,6 +5,19 @@ vector tiles for the basemap; the device scrapes Google's public web endpoints
 per-user (no backend, no shared API key) for POIs, routing and traffic-aware
 ETAs. Targets GrapheneOS / no-GMS ROMs; F-Droid distribution. GPLv3.
 
+## ⚠️ Docs discipline (read first)
+
+**Every change updates the docs in the same commit.** Hard rule for all
+collaborators (human or Claude). When you change behaviour, calibration,
+features, or structure, update — in the *same* commit:
+- `README.md` — status, architecture, calibrated request/response paths
+- `FEATURES.md` — tick/retire the affected items
+- `CLAUDE.md` — this file (build rules, layout, gotchas)
+- the `project-vela` memory note if a load-bearing fact changed
+
+Stale docs are treated as a bug. Code-only commits are not OK; if a change
+genuinely needs no doc edit, say why in the commit.
+
 ## Build
 
 - **Always build release** for anything run on-device — debug builds visibly lag

@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,6 +38,16 @@ import app.vela.core.model.TravelMode
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import java.util.Locale
+
+private val StarGold = Color(0xFFF5B400)
+
+/** Google-style status colour: green if open, amber if closing/opening soon,
+ *  red if closed. */
+private fun statusColor(status: String): Color = when {
+    status.contains("soon", ignoreCase = true) -> Color(0xFFE8A100)
+    status.startsWith("Open") || status.startsWith("Closes") -> Color(0xFF1E8E3E)
+    else -> Color(0xFFD93025)
+}
 
 @Composable
 fun PlaceSheet(
@@ -91,19 +102,30 @@ fun PlaceSheet(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close") }
             }
 
-            val meta = buildList {
+            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 place.rating?.let { r ->
-                    add("★ " + String.format(Locale.US, "%.1f", r) + (place.reviewCount?.let { " ($it)" } ?: ""))
+                    Text("★", color = StarGold, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        " " + String.format(Locale.US, "%.1f", r) + (place.reviewCount?.let { " ($it)" } ?: ""),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
-                place.priceText?.let { add(it) }
-                place.category?.let { add(it) }
-                place.openNow?.let { add(if (it) "Open" else "Closed") }
+                val rest = listOfNotNull(place.priceText, place.category)
+                if (rest.isNotEmpty()) {
+                    Text(
+                        (if (place.rating != null) "   ·   " else "") + rest.joinToString("   ·   "),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
-            if (meta.isNotEmpty()) {
+            place.statusText?.let { status ->
                 Text(
-                    meta.joinToString("   ·   "),
+                    status,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = FontWeight.Bold,
+                    color = statusColor(status),
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
@@ -112,8 +134,9 @@ fun PlaceSheet(
             }
             place.website?.let { site ->
                 Text(
-                    site.removePrefix("https://").removePrefix("http://").trimEnd('/'),
+                    "Website",
                     style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = Modifier
                         .padding(top = 6.dp)
