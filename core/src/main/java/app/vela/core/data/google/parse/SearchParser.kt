@@ -54,9 +54,12 @@ object SearchParser {
             priceText = entry.at(1, 4, 2).str(),
             website = entry.at(1, 7, 0).str(),
             openNow = parseOpenNow(entry.at(1, 203, 1, 8, 0).str()),
-            // Richer status (with closing time) at [1][118][0][3][1][4][0],
-            // e.g. "Open · Closes 9 PM"; fall back to the short "Open"/"Closed".
-            statusText = entry.at(1, 118, 0, 3, 1, 4, 0).str() ?: entry.at(1, 203, 1, 8, 0).str(),
+            // Rich status with closing time ("Open · Closes 9 PM") lives at
+            // [1][118][0][3][1][4][0] (118-format) or [1][203][1][4][0] (203-format);
+            // fall back to the short "Open"/"Closed" at [1][203][1][8][0].
+            statusText = entry.at(1, 118, 0, 3, 1, 4, 0).str()
+                ?: entry.at(1, 203, 1, 4, 0).str()
+                ?: entry.at(1, 203, 1, 8, 0).str(),
             hours = parseHours(entry),
             distanceMeters = near?.distanceTo(loc),
         )
@@ -72,11 +75,17 @@ object SearchParser {
         else -> null
     }
 
-    /** Weekly hours at `[1][118][0][3][0]`: 7 entries, each day name `[0]`
-     *  + hours text `[3][0][0]` → "Monday: 7 AM–2 PM". */
-    private fun parseHours(entry: JsonElement): List<String> {
-        val days = entry.at(1, 118, 0, 3, 0).arr() ?: return emptyList()
-        return days.mapNotNull { day ->
+    /** Weekly hours. Most places carry them at `[1][203][0]`; some only at the
+     *  older `[1][118][0][3][0]`. Both are a 7-entry array (starting with today)
+     *  where each day has its name at `[0]` and the hours text at `[3][0][0]`,
+     *  e.g. "Tuesday: 6 AM–8 PM". Read `[203]` first, fall back to `[118]`.
+     *  (Calibrated 2026-06-16 across 60 live results: `[118]`-only missed most.) */
+    private fun parseHours(entry: JsonElement): List<String> =
+        readHours(entry.at(1, 203, 0)).ifEmpty { readHours(entry.at(1, 118, 0, 3, 0)) }
+
+    internal fun readHours(days: JsonElement?): List<String> {
+        val arr = days.arr() ?: return emptyList()
+        return arr.mapNotNull { day ->
             val name = day.at(0).str() ?: return@mapNotNull null
             val hrs = day.at(3, 0, 0).str() ?: return@mapNotNull null
             "$name: $hrs"

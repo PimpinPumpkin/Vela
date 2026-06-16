@@ -1,6 +1,7 @@
 package app.vela.core
 
 import app.vela.core.data.google.PolylineCodec
+import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
@@ -12,6 +13,7 @@ import app.vela.core.nav.NavState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.serialization.json.Json
 
 class PolylineCodecTest {
 
@@ -94,5 +96,34 @@ class NavEngineTest {
             if (events.any { it is NavEvent.RerouteNeeded }) sawReroute = true
         }
         assertTrue("repeated off-route fixes should request a reroute", sawReroute)
+    }
+}
+
+class SearchParserHoursTest {
+
+    private fun json(s: String) = Json.parseToJsonElement(s)
+
+    /** Day-entry shape from the live response — the `[203][0]` and `[118][0][3][0]`
+     *  formats share it: day name at `[0]`, hours text at `[3][0][0]`. */
+    @Test
+    fun parsesWeeklyHours() {
+        val days = json(
+            """
+            [
+              ["Tuesday",2,[2026,6,16],[["6 AM–8 PM",[[6],[20]]]],0,1],
+              ["Wednesday",3,[2026,6,17],[["7 AM–9 PM",[[7],[21]]]],0,1]
+            ]
+            """.trimIndent(),
+        )
+        assertEquals(
+            listOf("Tuesday: 6 AM–8 PM", "Wednesday: 7 AM–9 PM"),
+            SearchParser.readHours(days),
+        )
+    }
+
+    @Test
+    fun ignoresNonHourArrays() {
+        assertEquals(emptyList<String>(), SearchParser.readHours(null))
+        assertEquals(emptyList<String>(), SearchParser.readHours(json("[[1,2,3],[4,5,6]]")))
     }
 }
