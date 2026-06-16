@@ -8,7 +8,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Route line, **tappable Google-style search-result pins**, location dot as GeoJSON layers
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
-- 🟡 More polished cartography (OpenFreeMap is functional but not Google-pretty; MapTiler-with-key or a custom style is the upgrade)
+- ✅ 3D building extrusions at z15+ (keyless — from the OpenMapTiles `building` layer, render_height)
+- 🟡 More polished cartography (OpenFreeMap is functional but not Google-pretty; MapTiler-with-key, custom style tuning, or self-hosted PMTiles are the next upgrades)
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, 3D buildings, hillshade, POI icons)
 - ⬜ Light/dark/satellite style switching beyond the basics
 - ⬜ Map rotation/tilt + heading-up mode during nav
