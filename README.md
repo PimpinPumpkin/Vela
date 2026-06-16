@@ -51,7 +51,7 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
         │   │   ├─ GoogleResponse        XSSI strip + positional-array navigator
         │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
         │   │   └─ parse/                 SearchParser, DirectionsParser
-        │   └─ tiles/                MapStyle catalog (demo / Protomaps / Google raster)
+        │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
         ├─ location/         LocationProvider — AOSP LocationManager (no Fused)
         ├─ voice/            VoiceGuide — AOSP TextToSpeech, engine-selectable
         ├─ nav/              NavEngine — pure turn-by-turn logic (unit-tested)
@@ -153,10 +153,11 @@ decodes Google's geometry exactly and is covered by a reference-vector test.
 
 ## Map style
 
-Defaults to the keyless **MapLibre demo style** so it renders immediately. The
-real target is **Protomaps** (`MapStyle.PROTOMAPS_*`) — point it at a hosted
-style (needs a key) or a self-hosted PMTiles archive, then apply the
-"Google-Maps-ify" diff (road hierarchy, 3D buildings, hillshade, custom POI
+Defaults to the keyless **OpenFreeMap Liberty** style (full street detail; we
+inject house-number labels at z17). Positron, Bright, the MapLibre demo, and
+Protomaps are alternates in the `MapStyle` catalog. The polish target is a
+custom **Protomaps** (`MapStyle.PROTOMAPS_*`) or MapTiler-keyed style carrying
+the "Google-Maps-ify" diff (road hierarchy, 3D buildings, hillshade, custom POI
 icons). Styles are plain URLs, updatable over-the-air without an app release.
 
 ## Roadmap
@@ -168,9 +169,9 @@ icons). Styles are plain URLs, updatable over-the-air without an app release.
 - [x] **Calibrate search + directions** against a live capture — live & verified
 - [x] Place details (hours / website / price / open-status) from the search response
 - [x] Route geometry via open router (OSRM) — Google's line is vector-tile-only
-- [ ] Popular times + individual reviews (sign-in-gated place RPC); travel modes
-- [ ] Protomaps style + cartographic polish pass
-- [ ] Place details: reviews, hours, popular times
+- [x] Travel modes (drive / walk / bike)
+- [ ] Popular times + individual reviews (sign-in-gated place RPC)
+- [ ] Protomaps / MapTiler style + cartographic polish pass
 - [ ] Foreground navigation service (screen-off guidance + notification)
 - [ ] Offline: bundle PMTiles + embed a routing engine (Valhalla JNI) — v2
 - [ ] Traffic overlay tiles (the colored lines) — separate from ETA, later
