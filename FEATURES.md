@@ -17,6 +17,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted, shown on search focus)
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
+- ✅ Place actions: open website, share (geo: link)
 - ⬜ Place photos
 - ⬜ Categories / "search this area" / filters (open now, rating, price)
 - ✅ Saved / favourite places (star from the place sheet)

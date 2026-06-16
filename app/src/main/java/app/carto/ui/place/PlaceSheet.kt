@@ -1,5 +1,8 @@
 package app.carto.ui.place
 
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,6 +15,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
@@ -23,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.carto.core.model.Place
@@ -42,6 +47,7 @@ fun PlaceSheet(
     onStartNav: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
         Column(Modifier.padding(20.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -51,6 +57,26 @@ fun PlaceSheet(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f),
                 )
+                IconButton(onClick = {
+                    val text = buildString {
+                        append(place.name)
+                        place.address?.let { append('\n').append(it) }
+                        append("\ngeo:${place.location.lat},${place.location.lng}?q=")
+                        append("${place.location.lat},${place.location.lng}(")
+                        append(Uri.encode(place.name)).append(')')
+                    }
+                    runCatching {
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, text)
+                                },
+                                "Share place",
+                            ),
+                        )
+                    }
+                }) { Icon(Icons.Default.Share, contentDescription = "Share") }
                 IconButton(onClick = onToggleSave) {
                     Icon(
                         if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
@@ -85,7 +111,11 @@ fun PlaceSheet(
                     site.removePrefix("https://").removePrefix("http://").trimEnd('/'),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 6.dp),
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .clickable {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                        },
                 )
             }
             if (place.hours.isNotEmpty()) {
