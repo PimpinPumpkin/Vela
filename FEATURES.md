@@ -16,16 +16,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 ## Search & POIs (live Google data)
 - ✅ Place search — name, category, address, rating, review count, coordinates
 - ✅ Search-result rows show **5-star rating** + colour-coded open/closed status
-- ✅ Place sheet: **5-star rating visual**, **swipe-down to dismiss**, **colour-coded open/closed status** (green/amber/red), price, weekly hours
+- ✅ Place sheet: **5-star rating visual**, **swipe-down to dismiss**, colour-coded open/closed status (green/amber/red), price, **collapsible weekly hours** (today first, expand for the week)
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted, shown on search focus)
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
-- ✅ Place actions: "Website" link, share (geo: link)
+- ✅ Place actions: **Call** (dialer), Website, **Share menu (Google Maps link / coordinates / address)**
 - ⬜ Place photos
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
 - ✅ "Search this area" — re-search after panning the map
 - ⬜ Filters (open now, rating, price)
 - ✅ Saved / favourite places (star from the place sheet)
+- ⬜ **Export / import saved places** (portable, user-savable bookmarks — planned)
 - ⬜ Overture/OSM POIs as a fallback source
 
 ## Routing & traffic
@@ -43,6 +44,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute)
 - ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable)
 - ✅ Maneuver banner + remaining time/distance
+- ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map
 - 🟡 **Foreground navigation service** — guidance continues with the app
   backgrounded / screen off, persistent notification (this iteration)
 - 🟡 **Periodic live re-routing** — every ~2 min while underway, re-check

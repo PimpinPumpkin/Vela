@@ -62,7 +62,7 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
         ├─ ui/map/           MapScreen, VelaMapView (MapLibre), MapViewModel
         ├─ ui/search/        SearchBar
         ├─ ui/place/         PlaceSheet
-        ├─ ui/nav/           ManeuverBanner, NavControls
+        ├─ ui/nav/           ManeuverBanner, NavControls, StepsSheet (step overview)
         └─ ui/settings/      SettingsScreen (style / voice / data-source)
 ```
 

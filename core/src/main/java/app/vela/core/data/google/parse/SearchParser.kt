@@ -53,6 +53,7 @@ object SearchParser {
             reviewCount = entry.at(1, 4, 8).int(),
             priceText = entry.at(1, 4, 2).str(),
             website = entry.at(1, 7, 0).str(),
+            phone = entry.at(1, 178, 0, 0).str(), // formatted display number, e.g. "(530) 979-5888"
             openNow = parseOpenNow(entry.at(1, 203, 1, 8, 0).str()),
             // Rich status with closing time ("Open · Closes 9 PM") lives at
             // [1][118][0][3][1][4][0] (118-format) or [1][203][1][4][0] (203-format);

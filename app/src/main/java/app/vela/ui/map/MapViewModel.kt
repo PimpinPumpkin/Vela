@@ -49,6 +49,8 @@ data class MapUiState(
     val status: String? = null,
     val showPsdsTip: Boolean = false,
     val showSearchThisArea: Boolean = false,
+    val showSteps: Boolean = false,
+    val previewStepIndex: Int? = null,
     val styleUri: String = MapStyle.DEFAULT.uri,
     val styleName: String = MapStyle.DEFAULT.label,
     val selectedEngine: VoiceEngine? = null,
@@ -177,7 +179,19 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(selected = p, center = p.location) }
 
     fun clearSelection() =
-        _state.update { it.copy(selected = null, routes = emptyList(), activeRoute = null) }
+        _state.update {
+            it.copy(
+                selected = null, routes = emptyList(), activeRoute = null,
+                showSteps = false, previewStepIndex = null,
+            )
+        }
+
+    fun openSteps() = _state.update { it.copy(showSteps = true) }
+
+    fun closeSteps() = _state.update { it.copy(showSteps = false, previewStepIndex = null) }
+
+    /** Tapped a step in the list → preview that maneuver's spot on the map. */
+    fun previewStep(index: Int) = _state.update { it.copy(previewStepIndex = index) }
 
     /** Tapped a POI on the map: show it immediately, then enrich with full
      *  details (hours, rating, …) from a search for that name nearby. */
@@ -246,6 +260,7 @@ class MapViewModel @Inject constructor(
     fun stopNav() {
         NavigationService.stop(appContext)
         navSession.stop()
+        _state.update { it.copy(showSteps = false, previewStepIndex = null) }
     }
 
     fun acceptFasterRoute() = navSession.acceptFasterRoute()

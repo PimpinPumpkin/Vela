@@ -49,6 +49,8 @@ private const val ME_SRC = "vela-me-src"
 private const val ME_LAYER = "vela-me"
 private const val ME_ARROW_LAYER = "vela-me-arrow"
 private const val ME_ARROW_IMG = "vela-arrow"
+private const val PREVIEW_SRC = "vela-preview-src"
+private const val PREVIEW_LAYER = "vela-preview"
 
 /** A tappable search-result pin on the map. */
 data class MapMarker(val name: String, val location: LatLng)
@@ -70,6 +72,7 @@ fun VelaMapView(
     markers: List<MapMarker>,
     frameMarkers: Boolean,
     navMode: Boolean,
+    previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     onCameraIdle: (center: LatLng) -> Unit,
@@ -89,6 +92,7 @@ fun VelaMapView(
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
+    var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -160,13 +164,28 @@ fun VelaMapView(
             map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
                 styleRef = style
                 ensureLayers(style)
-                applyData(style, routePolyline, markers, myLocation, myBearing)
+                applyData(style, routePolyline, markers, myLocation, myBearing, previewTarget)
             }
         } else {
-            styleRef?.let { applyData(it, routePolyline, markers, myLocation, myBearing) }
+            styleRef?.let { applyData(it, routePolyline, markers, myLocation, myBearing, previewTarget) }
         }
 
+        if (previewTarget == null) lastPreviewTarget = null
         when {
+            // Previewing a step takes over the camera (and holds, suppressing
+            // nav-follow) so you can look ahead at where you'd turn.
+            previewTarget != null -> {
+                if (previewTarget != lastPreviewTarget) {
+                    lastPreviewTarget = previewTarget
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngZoom(
+                            MLLatLng(previewTarget.lat, previewTarget.lng), 16.5,
+                        ),
+                        700,
+                    )
+                }
+            }
+
             navMode && myLocation != null -> {
                 map.animateCamera(
                     CameraUpdateFactory.newCameraPosition(
@@ -286,6 +305,19 @@ private fun ensureLayers(style: Style) {
             ),
         )
     }
+
+    // Highlight dot for the step being previewed from the directions list.
+    if (style.getSource(PREVIEW_SRC) == null) {
+        style.addSource(GeoJsonSource(PREVIEW_SRC))
+        style.addLayer(
+            CircleLayer(PREVIEW_LAYER, PREVIEW_SRC).withProperties(
+                PropertyFactory.circleColor("#1F6FEB"),
+                PropertyFactory.circleRadius(9f),
+                PropertyFactory.circleStrokeColor("#FFFFFF"),
+                PropertyFactory.circleStrokeWidth(3f),
+            ),
+        )
+    }
 }
 
 private fun applyData(
@@ -294,6 +326,7 @@ private fun applyData(
     markers: List<MapMarker>,
     me: LatLng?,
     bearing: Float?,
+    preview: LatLng?,
 ) {
     val routeFc = if (route.size >= 2) {
         FeatureCollection.fromFeature(
@@ -328,6 +361,13 @@ private fun applyData(
     style.getLayer(ME_ARROW_LAYER)?.setProperties(
         PropertyFactory.visibility(if (me != null && bearing != null) Property.VISIBLE else Property.NONE),
     )
+
+    val previewFc = if (preview != null) {
+        FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(preview.lng, preview.lat)))
+    } else {
+        FeatureCollection.fromFeatures(emptyList<Feature>())
+    }
+    style.getSourceAs<GeoJsonSource>(PREVIEW_SRC)?.setGeoJson(previewFc)
 }
 
 /** A small upward-pointing arrow (north = 0°) for the heading indicator. */

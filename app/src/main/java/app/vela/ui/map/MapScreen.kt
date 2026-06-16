@@ -61,6 +61,7 @@ import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.nav.ManeuverBanner
 import app.vela.ui.nav.NavControls
+import app.vela.ui.nav.StepsSheet
 import app.vela.ui.placeStatusColor
 import app.vela.ui.place.PlaceSheet
 import app.vela.ui.search.SearchBar
@@ -122,6 +123,7 @@ fun MapScreen(
             markers = markersOf(state),
             frameMarkers = state.results.isNotEmpty() && state.selected == null,
             navMode = state.navigating,
+            previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
@@ -210,11 +212,26 @@ fun MapScreen(
 
         // --- bottom overlay: nav controls / place sheet ---------------------
         when {
+            state.showSteps -> StepsSheet(
+                maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
+                etaSeconds = state.activeRoute?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0,
+                distanceMeters = state.activeRoute?.distanceMeters ?: 0.0,
+                hasLiveTraffic = state.activeRoute?.hasLiveTraffic ?: false,
+                previewIndex = state.previewStepIndex,
+                currentStep = if (state.navigating) state.nav.stepIndex else null,
+                onStep = vm::previewStep,
+                onClose = vm::closeSteps,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding(),
+            )
+
             state.navigating -> NavControls(
                 remainingDistanceMeters = state.nav.remainingDistance,
                 remainingSeconds = state.nav.remainingDuration,
                 offRoute = state.nav.offRoute,
                 onStop = vm::stopNav,
+                onSteps = vm::openSteps,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -231,6 +248,7 @@ fun MapScreen(
                 onModeSelected = vm::setTravelMode,
                 onDirections = vm::routeToSelected,
                 onStartNav = onStartNav,
+                onSteps = if (state.activeRoute != null) vm::openSteps else null,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding(),
