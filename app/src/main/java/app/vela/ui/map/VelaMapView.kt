@@ -72,6 +72,7 @@ fun VelaMapView(
     markers: List<MapMarker>,
     frameMarkers: Boolean,
     navMode: Boolean,
+    darkTheme: Boolean,
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
@@ -88,7 +89,7 @@ fun VelaMapView(
 
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleRef by remember { mutableStateOf<Style?>(null) }
-    var appliedStyleUri by remember { mutableStateOf<String?>(null) }
+    var appliedStyleKey by remember { mutableStateOf<String?>(null) }
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
@@ -159,12 +160,13 @@ fun VelaMapView(
         }
         val map = mapRef ?: return@AndroidView
 
-        if (appliedStyleUri != styleUri) {
-            appliedStyleUri = styleUri
+        val styleKey = "$styleUri|dark=$darkTheme"
+        if (appliedStyleKey != styleKey) {
+            appliedStyleKey = styleKey
             map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
                 styleRef = style
                 ensureLayers(style)
-                tuneStyle(style)
+                applyMapTheme(style, darkTheme)
                 applyData(style, routePolyline, markers, myLocation, myBearing, previewTarget)
             }
         } else {
@@ -322,31 +324,60 @@ private fun ensureLayers(style: Style) {
 }
 
 /**
- * Recolour the OpenFreeMap (OpenMapTiles) style for a cleaner, higher-contrast
- * look: the default water leans periwinkle and the greens are washed out. Liberty
- * already ships a `building-3d` extrusion — we just make it a touch more solid.
+ * Recolour the OpenFreeMap (OpenMapTiles) style for a cleaner look and a proper
+ * dark theme that follows the system. We reload the style when the theme flips
+ * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
  */
-private fun tuneStyle(style: Style) {
+private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
+    if (dark) applyDark(style) else applyLight(style)
+}
+
+private fun applyLight(style: Style) {
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#a7cfeb"))
-    style.getLayer("park")?.setProperties(
-        PropertyFactory.fillColor("#c8e6b9"),
-        PropertyFactory.fillOpacity(0.8f),
-    )
-    style.getLayer("landcover_grass")?.setProperties(
-        PropertyFactory.fillColor("#c4e2a8"),
-        PropertyFactory.fillOpacity(0.45f),
-    )
-    style.getLayer("landcover_wood")?.setProperties(
-        PropertyFactory.fillColor("#aedb91"),
-        PropertyFactory.fillOpacity(0.5f),
-    )
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#c8e6b9"), PropertyFactory.fillOpacity(0.85f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#c4e2a8"), PropertyFactory.fillOpacity(0.5f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#aedb91"), PropertyFactory.fillOpacity(0.55f))
     style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#e7e1d5"))
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#e7e1d5"),
         PropertyFactory.fillExtrusionOpacity(0.92f),
     )
+}
+
+/** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */
+private fun applyDark(style: Style) {
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
+    style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
+    style.getLayer("landuse_residential")?.setProperties(
+        PropertyFactory.fillColor("#2a3447"),
+        PropertyFactory.fillOpacity(0.4f),
+    )
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.5f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#1a3023"), PropertyFactory.fillOpacity(0.6f))
+    listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#38414e"))
+    }
+    style.getLayer("road_trunk_primary")?.setProperties(PropertyFactory.lineColor("#4b5563"))
+    style.getLayer("road_motorway")?.setProperties(PropertyFactory.lineColor("#5a6577"))
+    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#2b3647"))
+    style.getLayer("building-3d")?.setProperties(
+        PropertyFactory.fillExtrusionColor("#2b3647"),
+        PropertyFactory.fillExtrusionOpacity(0.9f),
+    )
+    // Light labels with a dark halo so place names read on the dark basemap.
+    style.layers.forEach { layer ->
+        if (layer is SymbolLayer) {
+            layer.setProperties(
+                PropertyFactory.textColor("#c3cad6"),
+                PropertyFactory.textHaloColor("#1a2230"),
+                PropertyFactory.textHaloWidth(1.1f),
+            )
+        }
+    }
 }
 
 private fun applyData(

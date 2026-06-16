@@ -9,6 +9,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +79,7 @@ fun MapScreen(
     onOpenSettings: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val darkTheme = isSystemInDarkTheme()
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -134,6 +136,7 @@ fun MapScreen(
             markers = markersOf(state),
             frameMarkers = state.results.isNotEmpty() && state.selected == null,
             navMode = state.navigating,
+            darkTheme = darkTheme,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
