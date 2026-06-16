@@ -44,8 +44,8 @@ jobs:
       - name: Derive version from tag
         id: version
         run: |
-          # v0.1.7 -> versionName 0.1.7, versionCode 10007 (MAJOR*10000 +
-          # MINOR*100 + PATCH) so it increases monotonically for Obtainium.
+          # MAJOR*10000 + MINOR*100 + PATCH, so the code rises monotonically for
+          # Obtainium — e.g. v1.2.3 -> versionName 1.2.3, versionCode 10203.
           TAG="${{ github.ref_name }}"
           VER="${TAG#v}"
           IFS='.' read -r MA MI PA <<< "$VER"
