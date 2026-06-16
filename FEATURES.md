@@ -65,7 +65,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 ## Platform & distribution
 - ✅ No Google Play Services anywhere
 - ✅ Material 3 Compose UI; Hilt DI; R8 release builds
-- ✅ Private GitHub repo + local mirror + offline bundle
+- ✅ Public GitHub repo + local mirror + offline bundle
 - ✅ CI (GitHub Actions): every push builds + tests + signs the APK (artifact) and publishes a rolling `nightly-<run>` pre-release (only newest kept; Obtainium-trackable); `v*` tag → pinned stable release
 - ⬜ F-Droid submission + reproducible build
 - ⬜ UnifiedPush for delay alerts (no FCM)

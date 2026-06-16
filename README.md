@@ -12,7 +12,7 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 > **traffic-aware ETAs** (typical vs live `duration_in_traffic`), turn-by-turn
 > maneuvers, and walk/bike modes. The route line is drawn from an open router
 > (OSRM) because Google's is vector-tile-only. **Installed + verified on a Pixel 9
-> (Android 16)**; v0.1.0 is on GitHub Releases. Remaining: popular-times /
+> (Android 16)**; signed `v0.1.1` is the latest release, with `nightly` pre-releases on every push. Remaining: popular-times /
 > reviews (sign-in gated) and richer cartography. `MockMapDataSource` stays as an
 > offline fallback; both build types are green.
 
@@ -98,8 +98,8 @@ every one as an update. Pushing a `v*` tag instead cuts a pinned, versioned
 stable release. The release APK is signed with the keystore from repo secrets
 `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (without them
 it's debug-signed — installable, but not update-compatible across builds). The
-repo is private, so pulling the artifact or a release asset (e.g. in Obtainium)
-needs a GitHub token.
+repo is public, so release assets (e.g. for Obtainium) download with no token;
+workflow artifacts still need you signed in to GitHub.
 
 Out of the box the app talks to the live Google source over the keyless
 OpenFreeMap basemap; `MockMapDataSource` is the offline fallback.
