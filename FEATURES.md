@@ -8,6 +8,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Route line, **tappable Google-style search-result pins**, location dot as GeoJSON layers
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
+- ✅ **Long-press the map** → drop a pin, reverse-geocode it to an address (Nominatim/OSM, keyless), then get Directions — works even where no building is drawn
 - ✅ Keyless style tuning over OpenFreeMap Liberty (cleaner water, richer parks/greens, more solid 3D buildings at z14+) — recolours the vector style client-side, no host/key
 - ✅ **Dark / light map** following the system theme (keyless recolour of the OpenMapTiles layers — dark base/water/roads/buildings + light labels)
 - 🟡 More polished cartography (keyless tuning has a ceiling; MapTiler-with-key or self-hosted PMTiles are the realistic Google-look + custom-font upgrades)

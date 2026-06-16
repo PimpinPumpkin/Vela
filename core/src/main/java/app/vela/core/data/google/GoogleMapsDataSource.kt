@@ -13,6 +13,10 @@ import app.vela.core.model.SearchResult
 import app.vela.core.model.TravelMode
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
@@ -53,6 +57,30 @@ class GoogleMapsDataSource @Inject constructor(
         throw CalibrationNeededException("placeDetails RPC not yet mapped")
     }
 
+    override suspend fun reverseGeocode(location: LatLng): Place? = io {
+        // OpenStreetMap's Nominatim — keyless, on-ethos (open data), and a stable
+        // documented API, so unlike the Google endpoints it needs no recalibration.
+        // Best-effort: any failure (network, rate-limit, no match) → null.
+        runCatching {
+            val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18" +
+                "&lat=${location.lat}&lon=${location.lng}"
+            val root = Json.parseToJsonElement(getNominatim(url)).jsonObject
+            val addr = root["address"]?.jsonObject ?: return@runCatching null
+            fun str(k: String): String? = (addr[k] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content
+            val street = listOfNotNull(str("house_number"), str("road")).joinToString(" ").ifBlank { null }
+            val city = str("city") ?: str("town") ?: str("village") ?: str("hamlet") ?: str("suburb")
+            val regionPost = listOfNotNull(str("state"), str("postcode")).joinToString(" ").ifBlank { null }
+            val addressLine = listOfNotNull(street, city, regionPost).joinToString(", ")
+                .ifBlank { (root["display_name"] as? JsonPrimitive)?.content }
+            Place(
+                id = "pin:${location.lat},${location.lng}",
+                name = street ?: city ?: "Dropped pin",
+                location = location,
+                address = addressLine,
+            )
+        }.getOrNull()
+    }
+
     override suspend fun directions(
         origin: LatLng,
         destination: LatLng,
@@ -88,6 +116,15 @@ class GoogleMapsDataSource @Inject constructor(
             }
             return resp.body?.string().orEmpty()
         }
+    }
+
+    private fun getNominatim(url: String): String {
+        val req = Request.Builder()
+            .url(url)
+            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
+            .header("Accept-Language", "en")
+            .build()
+        http.newCall(req).execute().use { resp -> return resp.body?.string().orEmpty() }
     }
 
     private suspend fun <T> io(block: suspend () -> T): T = withContext(Dispatchers.IO) { block() }

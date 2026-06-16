@@ -141,6 +141,7 @@ fun MapScreen(
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
+            onMapLongPress = vm::onMapLongPress,
             modifier = Modifier.fillMaxSize(),
         )
 

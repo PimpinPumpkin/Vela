@@ -132,6 +132,10 @@ reading only `[118]` had missed hours for the majority of businesses.) Popular
 times and individual review text are the sign-in-gated exceptions, still
 unmapped.
 
+**Reverse-geocode** (long-press the map → drop a pin → address) uses
+OpenStreetMap's **Nominatim** (`/reverse`, keyless and documented) rather than
+Google, since Google's map search doesn't reverse-geocode a `lat,lng` query.
+
 To re-calibrate when a shape drifts: capture the request in DevTools, mask the
 query/coords, and replace the `pb` template in `SearchPb`/`DirectionsPb`; re-pin
 the response indices in `SearchParser`/`DirectionsParser`. `VelaConfig.USE_GOOGLE_SOURCE`

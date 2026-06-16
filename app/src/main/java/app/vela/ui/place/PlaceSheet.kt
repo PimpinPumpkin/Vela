@@ -203,7 +203,7 @@ fun PlaceSheet(
 
             if (place.hours.isNotEmpty()) {
                 HoursSection(place.hours)
-            } else if (place.address != null) {
+            } else if (place.category != null) {
                 Text(
                     "Hours not listed",
                     style = MaterialTheme.typography.bodySmall,

@@ -227,6 +227,25 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Long-press the map (or a building) → drop a pin and reverse-geocode it
+     *  to an address, like Google's press-and-hold. */
+    fun onMapLongPress(location: LatLng) {
+        _state.update {
+            it.copy(
+                selected = Place(id = "pin:${location.lat},${location.lng}", name = "Dropped pin", location = location),
+                results = emptyList(),
+                resultsCollapsed = false,
+                showSearchThisArea = false,
+            )
+        }
+        viewModelScope.launch {
+            val place = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
+            if (place != null && _state.value.selected?.location == location) {
+                _state.update { it.copy(selected = place) }
+            }
+        }
+    }
+
     fun quickSearch(category: String) {
         _state.update { it.copy(query = category) }
         search()

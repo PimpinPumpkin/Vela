@@ -22,6 +22,10 @@ interface MapDataSource {
 
     suspend fun placeDetails(id: String): Place
 
+    /** Reverse-geocode a tapped point to an address (drop-a-pin / tap-a-building).
+     *  Best-effort — returns null if nothing is found. */
+    suspend fun reverseGeocode(location: LatLng): Place? = null
+
     suspend fun directions(
         origin: LatLng,
         destination: LatLng,

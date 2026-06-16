@@ -77,12 +77,14 @@ fun VelaMapView(
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     onCameraIdle: (center: LatLng) -> Unit,
+    onMapLongPress: (location: LatLng) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val poiTap = rememberUpdatedState(onPoiTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
+    val longPress = rememberUpdatedState(onMapLongPress)
     val gestureMove = remember { booleanArrayOf(false) }
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
@@ -154,6 +156,11 @@ fun VelaMapView(
                             cameraIdle.value(LatLng(t.latitude, t.longitude))
                         }
                     }
+                }
+                // Press-and-hold anywhere → drop a pin and reverse-geocode it.
+                map.addOnMapLongClickListener { p ->
+                    longPress.value(LatLng(p.latitude, p.longitude))
+                    true
                 }
                 mapRef = map
             }
