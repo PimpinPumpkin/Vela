@@ -27,7 +27,6 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
-import org.maplibre.android.style.layers.FillExtrusionLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
@@ -165,6 +164,7 @@ fun VelaMapView(
             map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
                 styleRef = style
                 ensureLayers(style)
+                tuneStyle(style)
                 applyData(style, routePolyline, markers, myLocation, myBearing, previewTarget)
             }
         } else {
@@ -263,25 +263,6 @@ private fun ensureLayers(style: Style) {
         )
     }
 
-    // 3D building extrusions — OpenMapTiles' "building" layer carries
-    // render_height / render_min_height. Inserted below the first label layer so
-    // place names still read on top. A big "Google/Apple" upgrade with no key or
-    // hosting; applies to any OpenMapTiles style (Liberty/Positron/Bright).
-    if (style.getSource("openmaptiles") != null && style.getLayer("vela-buildings-3d") == null) {
-        val ext = FillExtrusionLayer("vela-buildings-3d", "openmaptiles").apply {
-            setSourceLayer("building")
-            setMinZoom(15f)
-            setProperties(
-                PropertyFactory.fillExtrusionColor("#dcd8cf"),
-                PropertyFactory.fillExtrusionHeight(Expression.get("render_height")),
-                PropertyFactory.fillExtrusionBase(Expression.get("render_min_height")),
-                PropertyFactory.fillExtrusionOpacity(0.75f),
-            )
-        }
-        val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-        if (firstSymbol != null) style.addLayerBelow(ext, firstSymbol) else style.addLayer(ext)
-    }
-
     if (style.getSource(ROUTE_SRC) == null) {
         style.addSource(GeoJsonSource(ROUTE_SRC))
         style.addLayer(
@@ -338,6 +319,34 @@ private fun ensureLayers(style: Style) {
             ),
         )
     }
+}
+
+/**
+ * Recolour the OpenFreeMap (OpenMapTiles) style for a cleaner, higher-contrast
+ * look: the default water leans periwinkle and the greens are washed out. Liberty
+ * already ships a `building-3d` extrusion — we just make it a touch more solid.
+ * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
+ */
+private fun tuneStyle(style: Style) {
+    if (style.getSource("openmaptiles") == null) return
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#a7cfeb"))
+    style.getLayer("park")?.setProperties(
+        PropertyFactory.fillColor("#c8e6b9"),
+        PropertyFactory.fillOpacity(0.8f),
+    )
+    style.getLayer("landcover_grass")?.setProperties(
+        PropertyFactory.fillColor("#c4e2a8"),
+        PropertyFactory.fillOpacity(0.45f),
+    )
+    style.getLayer("landcover_wood")?.setProperties(
+        PropertyFactory.fillColor("#aedb91"),
+        PropertyFactory.fillOpacity(0.5f),
+    )
+    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#e7e1d5"))
+    style.getLayer("building-3d")?.setProperties(
+        PropertyFactory.fillExtrusionColor("#e7e1d5"),
+        PropertyFactory.fillExtrusionOpacity(0.92f),
+    )
 }
 
 private fun applyData(
