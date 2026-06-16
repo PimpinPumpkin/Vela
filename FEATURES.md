@@ -66,7 +66,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ No Google Play Services anywhere
 - ✅ Material 3 Compose UI; Hilt DI; R8 release builds
 - ✅ Private GitHub repo + local mirror + offline bundle
-- ✅ CI (GitHub Actions): build + test the APK on every push (artifact), `v*` tag → signed release
+- ✅ CI (GitHub Actions): every push builds + tests the APK (artifact) and refreshes a rolling `nightly` pre-release; `v*` tag → pinned signed release
 - ⬜ F-Droid submission + reproducible build
 - ⬜ UnifiedPush for delay alerts (no FCM)
 - ⬜ ACRA / self-hosted crash reporting

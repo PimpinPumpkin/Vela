@@ -1,16 +1,21 @@
 name: CI
 
 # Builds the APK (and runs unit tests) on every push to main and on PRs. The
-# release APK is uploaded as a downloadable artifact on each run. Mirrors the
-# Arcana/Callguard build setup; tag releases are handled by release.yml.
+# release APK is uploaded as a downloadable artifact on each run; a push to main
+# also refreshes the rolling `nightly` pre-release so the latest build is
+# installable straight from the Releases page (Obtainium-friendly). Stable,
+# versioned releases are cut from `v*` tags by release.yml.
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
 
+# `contents: write` is needed to publish the nightly release. The publish step
+# is gated to push-to-main, so PRs (and fork PRs, whose token is read-only) never
+# touch releases.
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -47,12 +52,24 @@ jobs:
       - name: Unit tests
         run: ./gradlew :core:test --no-daemon
 
+      - name: Derive build version
+        id: ver
+        # Monotonic versionCode from the run number so Obtainium sees each
+        # nightly as an update; readable nightly-<run>-<sha> versionName.
+        run: |
+          SHA=$(git rev-parse --short HEAD)
+          echo "code=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "name=nightly-${{ github.run_number }}-$SHA" >> "$GITHUB_OUTPUT"
+
       - name: Build release APK
         env:
           VELA_KEYSTORE_PATH: ${{ runner.temp }}/vela-release.jks
           VELA_KEYSTORE_PASSWORD: ${{ secrets.VELA_KEYSTORE_PASSWORD }}
           VELA_KEY_ALIAS: ${{ secrets.VELA_KEY_ALIAS }}
-        run: ./gradlew :app:assembleRelease --no-daemon
+        run: >
+          ./gradlew :app:assembleRelease --no-daemon
+          -PappVersionName=${{ steps.ver.outputs.name }}
+          -PappVersionCode=${{ steps.ver.outputs.code }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -60,3 +77,19 @@ jobs:
           name: vela-maps-apk
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      - name: Refresh rolling nightly pre-release
+        # Only for real pushes to main — never PRs. Replaces the single `nightly`
+        # release + tag so the Releases page always carries the latest main build.
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk vela-maps-nightly.apk
+          gh release delete nightly --cleanup-tag --yes 2>/dev/null || true
+          gh release create nightly \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "Nightly build ${{ github.run_number }}" \
+            --notes "Rolling latest build of \`main\` (\`${{ github.sha }}\`, run ${{ github.run_number }}). Replaced on every push to main. For a pinned, versioned build push a \`vX.Y.Z\` tag instead." \
+            vela-maps-nightly.apk

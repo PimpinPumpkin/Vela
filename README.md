@@ -90,11 +90,14 @@ Release signing comes from CI env vars (`VELA_KEYSTORE_PATH`,
 `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`); local builds fall back to the
 debug keystore so `adb install` still works.
 
-**CI** (`.github/workflows/`): every push to `main` builds + tests the APK and
-uploads it as an artifact; pushing a `v*` tag builds a release and attaches the
-APK to the GitHub release. Add repo secrets `VELA_KEYSTORE_BASE64`,
-`VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` for a properly-signed build (otherwise
-it's debug-signed — still installable for testing).
+**CI** (`.github/workflows/`): every push to `main` builds + tests the APK,
+uploads it as an artifact, and refreshes a rolling **`nightly`** pre-release on
+the Releases page (versionCode = the CI run number, so Obtainium treats every
+build as an update). Pushing a `v*` tag instead cuts a pinned, versioned stable
+release. Add repo secrets `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`,
+`VELA_KEY_ALIAS` for a properly-signed build (otherwise it's debug-signed — still
+installable for testing). The repo is private, so pulling the artifact or a
+release asset (e.g. in Obtainium) needs a GitHub token.
 
 Out of the box the app talks to the live Google source over the keyless
 OpenFreeMap basemap; `MockMapDataSource` is the offline fallback.
