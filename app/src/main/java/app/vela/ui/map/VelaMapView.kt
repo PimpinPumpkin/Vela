@@ -4,11 +4,13 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.RectF
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -62,9 +64,11 @@ fun VelaMapView(
     routePolyline: List<LatLng>,
     markers: List<LatLng>,
     navMode: Boolean,
+    onPoiTap: (name: String, location: LatLng) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val poiTap = rememberUpdatedState(onPoiTap)
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
 
@@ -100,6 +104,20 @@ fun VelaMapView(
         if (mapRef == null) {
             mv.getMapAsync { map ->
                 map.uiSettings.isLogoEnabled = false
+                // Tap a labelled POI on the map to open it.
+                map.addOnMapClickListener { tapped ->
+                    val p = map.projection.toScreenLocation(tapped)
+                    val r = 18f
+                    val hit = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r))
+                        .firstOrNull { it.geometry() is Point && it.hasProperty("name") }
+                    if (hit != null) {
+                        val pt = hit.geometry() as Point
+                        poiTap.value(hit.getStringProperty("name"), LatLng(pt.latitude(), pt.longitude()))
+                        true
+                    } else {
+                        false
+                    }
+                }
                 mapRef = map
             }
         }

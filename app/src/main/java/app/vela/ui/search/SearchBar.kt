@@ -3,6 +3,7 @@ package app.vela.ui.search
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,7 +17,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,41 +39,37 @@ fun SearchBar(
 ) {
     Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp)) {
         Row(
-            Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+            Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 Icons.Default.Search,
                 contentDescription = null,
-                modifier = Modifier.padding(10.dp),
+                modifier = Modifier.padding(start = 6.dp, end = 4.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Box(Modifier.weight(1f)) {
+            // Placeholder and input share one centered Box so they line up exactly.
+            Box(Modifier.weight(1f).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
+                if (query.isEmpty()) {
+                    Text(
+                        "Search Vela",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,
                     singleLine = true,
-                    textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onSurface),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .onFocusChanged { onFocusChange(it.isFocused) }
-                        .padding(vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
                 )
-                if (query.isEmpty()) {
-                    Text(
-                        "Search Vela",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
             }
             if (searching) {
-                CircularProgressIndicator(
-                    Modifier.size(22.dp).padding(end = 10.dp),
-                    strokeWidth = 2.dp,
-                )
+                CircularProgressIndicator(Modifier.size(22.dp).padding(end = 10.dp), strokeWidth = 2.dp)
             } else {
                 IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Default.Settings, contentDescription = "Settings")

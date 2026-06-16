@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -112,6 +114,7 @@ fun MapScreen(
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             markers = markersOf(state),
             navMode = state.navigating,
+            onPoiTap = vm::onPoiTap,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -152,6 +155,8 @@ fun MapScreen(
                         onPickRecent = vm::searchRecent,
                         onClearRecents = vm::clearRecents,
                     )
+                } else if (!searchFocused && state.selected == null) {
+                    CategoryChips(onPick = vm::quickSearch)
                 }
             }
         }
@@ -265,6 +270,19 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit) {
                 }
                 Divider()
             }
+        }
+    }
+}
+
+@Composable
+private fun CategoryChips(onPick: (String) -> Unit) {
+    val categories = listOf("Restaurants", "Coffee", "Gas", "Groceries", "Hotels", "Pharmacy", "ATMs", "Parks")
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        categories.forEach { c ->
+            ElevatedAssistChip(onClick = { onPick(c) }, label = { Text(c) })
         }
     }
 }

@@ -14,6 +14,7 @@ import app.vela.core.model.Place
 import app.vela.core.model.Route
 import app.vela.core.model.SavedPlace
 import app.vela.core.model.TravelMode
+import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
 import app.vela.core.voice.VoiceEngine
@@ -161,6 +162,31 @@ class MapViewModel @Inject constructor(
 
     fun clearSelection() =
         _state.update { it.copy(selected = null, routes = emptyList(), activeRoute = null) }
+
+    /** Tapped a POI on the map: show it immediately, then enrich with full
+     *  details (hours, rating, …) from a search for that name nearby. */
+    fun onPoiTap(name: String, location: LatLng) {
+        _state.update {
+            it.copy(
+                selected = Place(id = "poi:" + name.hashCode(), name = name, location = location),
+                results = emptyList(),
+                center = location,
+            )
+        }
+        viewModelScope.launch {
+            val full = runCatching {
+                dataSource.search(name, location).places.minByOrNull { p -> p.location.distanceTo(location) }
+            }.getOrNull()
+            if (full != null && _state.value.selected?.name == name) {
+                _state.update { it.copy(selected = full) }
+            }
+        }
+    }
+
+    fun quickSearch(category: String) {
+        _state.update { it.copy(query = category) }
+        search()
+    }
 
     fun routeToSelected() {
         val dest = _state.value.selected?.location ?: return
