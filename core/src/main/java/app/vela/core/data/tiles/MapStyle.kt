@@ -1,20 +1,25 @@
 package app.vela.core.data.tiles
 
 /**
- * Base-layer styles. Default is the MapLibre demo style — free, keyless, always
- * resolves — so the map renders out of the box. [PROTOMAPS_LIGHT]/[_DARK] are
- * the real target from planning: point them at a hosted Protomaps style (needs
- * a key) or a self-hosted PMTiles archive + style JSON, then make one default
- * and apply the "Google-Maps-ify" diff. Keeping styles as plain URLs means they
- * can be updated over-the-air without an app release.
+ * Base-layer styles. Default is **OpenFreeMap Liberty** — a full detailed OSM
+ * vector style (roads, labels, POIs) served free with no API key, so the map
+ * looks real out of the box. Positron is the light/minimal variant. The MapLibre
+ * demo style (country outlines only) and a Protomaps slot (needs a key, the
+ * "Google-Maps-ify" target) are kept as options. Styles are plain URLs, so they
+ * can be swapped over-the-air without an app release.
+ *
+ * NOTE: OpenFreeMap is a free community service — fine for now, but self-host
+ * tiles (or Protomaps PMTiles) before any real release.
  */
 enum class MapStyle(val label: String, val uri: String) {
-    DEMO("MapLibre Demo", "https://demotiles.maplibre.org/style.json"),
-    PROTOMAPS_LIGHT("Protomaps Light", "https://api.protomaps.com/styles/v4/light/en.json?key=YOUR_PROTOMAPS_KEY"),
-    PROTOMAPS_DARK("Protomaps Dark", "https://api.protomaps.com/styles/v4/dark/en.json?key=YOUR_PROTOMAPS_KEY");
+    LIBERTY("OpenFreeMap Liberty", "https://tiles.openfreemap.org/styles/liberty"),
+    POSITRON("OpenFreeMap Positron", "https://tiles.openfreemap.org/styles/positron"),
+    BRIGHT("OpenFreeMap Bright", "https://tiles.openfreemap.org/styles/bright"),
+    DEMO("MapLibre Demo (outline only)", "https://demotiles.maplibre.org/style.json"),
+    PROTOMAPS_LIGHT("Protomaps (needs key)", "https://api.protomaps.com/styles/v4/light/en.json?key=YOUR_PROTOMAPS_KEY");
 
     companion object {
-        val DEFAULT = DEMO
+        val DEFAULT = LIBERTY
     }
 }
 

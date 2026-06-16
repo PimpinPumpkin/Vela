@@ -23,16 +23,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.core.data.tiles.MapStyle
+import app.vela.ui.Units
 import app.vela.ui.map.MapViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     Scaffold(
         topBar = {
             TopAppBar(
@@ -59,7 +62,20 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     onClick = { vm.setStyle(style) },
                 )
             }
-            Hint("Protomaps styles need an API key or a self-hosted PMTiles archive — see the README. The default demo style is keyless.")
+            Hint("OpenFreeMap (the default) is keyless and detailed. Protomaps needs an API key; the demo style is country outlines only.")
+
+            Spacer(Modifier.height(20.dp))
+            SectionTitle("Units")
+            SelectableRow(
+                label = "Imperial (miles, feet)",
+                selected = Units.imperial.value,
+                onClick = { Units.set(context, true) },
+            )
+            SelectableRow(
+                label = "Metric (kilometers, meters)",
+                selected = !Units.imperial.value,
+                onClick = { Units.set(context, false) },
+            )
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Voice")
@@ -78,10 +94,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             Spacer(Modifier.height(20.dp))
             SectionTitle("Data source")
             Hint(
-                "Vela currently runs on built-in mock data so the whole app works offline. " +
-                    "The Google extractor switches on once its request/response shapes are " +
-                    "calibrated (VelaConfig.USE_GOOGLE_SOURCE). No Google account or API key " +
-                    "is used — each device behaves like a single browser.",
+                "Vela talks to Google's public web endpoints directly from this device — no " +
+                    "Vela backend, no Google account, no API key. Each device behaves like a " +
+                    "single browser, falling back to built-in mock data if the shapes drift.",
             )
 
             Spacer(Modifier.height(20.dp))
