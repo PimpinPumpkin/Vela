@@ -32,6 +32,7 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
@@ -418,10 +419,6 @@ private fun applyDark(style: Style) {
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
     style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
-    style.getLayer("landuse_residential")?.setProperties(
-        PropertyFactory.fillColor("#2a3447"),
-        PropertyFactory.fillOpacity(0.4f),
-    )
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.7f))
     style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.5f))
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#1a3023"), PropertyFactory.fillOpacity(0.6f))
@@ -438,14 +435,20 @@ private fun applyDark(style: Style) {
         PropertyFactory.fillExtrusionColor("#2b3647"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
-    // Light labels with a dark halo so place names read on the dark basemap.
+    // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
+    // retail, industrial, sand, …) must go dark too, or it stays a jarring cream
+    // patch in dark mode.
+    val greens = setOf("park", "landcover_grass", "landcover_wood")
     style.layers.forEach { layer ->
-        if (layer is SymbolLayer) {
-            layer.setProperties(
+        when {
+            layer is SymbolLayer -> layer.setProperties(
                 PropertyFactory.textColor("#c3cad6"),
                 PropertyFactory.textHaloColor("#1a2230"),
                 PropertyFactory.textHaloWidth(1.1f),
             )
+            layer is FillLayer && layer.id !in greens &&
+                (layer.id.startsWith("landuse") || layer.id.startsWith("landcover")) ->
+                layer.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
         }
     }
 }

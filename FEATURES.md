@@ -12,7 +12,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Long-press the map** → drop a pin, reverse-geocode it to an address (Nominatim/OSM, keyless), then get Directions — works even where no building is drawn
 - ✅ Keyless **OpenFreeMap Liberty** basemap (active, loaded by URL — the setup that renders on-device, no key): **Google-style POI markers + category-coloured labels**, a Google-like **road hierarchy** (gold motorways, white arterials, casing that lightens down the hierarchy so minor roads recede), and light/dark recolour all applied at **runtime**
 - 🟡 **MapTiler Streets** path stays wired but off (`USE_MAPTILER=true` to enable, needs the key). The bundled-style **Roboto font** is parked — its vector tiles wouldn't load via `fromJson` on-device (loading Liberty by URL is what works)
-- ✅ **Dark / light map** follows the system theme (keyless recolour; or MapTiler dark if enabled)
+- ✅ **Dark / light map** follows the system theme (keyless recolour; or MapTiler dark if enabled). Dark mode recolours **every** landuse/landcover fill (commercial, school, retail, …), not just a hardcoded few, so no light/cream patches break the night palette (verified on-device)
 - ✅ **Google-style POI markers** — category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; in light mode the POI **label text is coloured by category too** (like Google); minor POI tiers decluttered to higher zoom
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, hillshade, POI icons)
@@ -30,7 +30,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Clear-search (X) button; **draggable results list** — swipe the handle **up to expand** it toward the top (~⅔ screen), **down to shrink**, and down again to hide it and browse the map (pins stay, a chip re-opens it); back gesture also hides it
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
-- ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: info → action row → hours → photos → tabs
+- ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: info → **hours** → action row → photos → tabs
 - ✅ Travel mode lives in the action row: a **Directions** button opens a Drive/Walk/Bike chooser ("how are you getting there?"), then previews the route (ETA + Start)
 - ✅ Place sheet is **height-capped (88% screen) and scrolls** so a tall place (hours + photos + tabs) is fully reachable; the drag handle still dismisses
 - ⬜ Popular times; "hours updated N ago" (both place-RPC-only, absent from the search response); Updates/posts tab

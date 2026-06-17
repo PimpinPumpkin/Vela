@@ -256,6 +256,13 @@ fun PlaceSheet(
                 }
             }
 
+            // Hours sit above the action buttons (Directions/Call/…), per request.
+            if (place.hours.isNotEmpty()) {
+                HoursSection(place.hours, ink, dim)
+            } else if (place.category != null) {
+                Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
+            }
+
             // Quick-action row — Directions (primary) + Call / Website / Save / Share.
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
@@ -328,13 +335,7 @@ fun PlaceSheet(
                 }
             }
 
-            // Hours, then photos, then the Reviews / About tabs.
-            if (place.hours.isNotEmpty()) {
-                HoursSection(place.hours, ink, dim)
-            } else if (place.category != null) {
-                Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
-            }
-
+            // Photos, then the Reviews / About tabs.
             if (place.photoUrls.isNotEmpty()) {
                 LazyRow(
                     Modifier.fillMaxWidth().padding(top = 12.dp),
