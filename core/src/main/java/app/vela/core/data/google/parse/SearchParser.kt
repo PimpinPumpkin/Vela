@@ -13,6 +13,7 @@ import app.vela.core.model.SearchResult
 import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 
 /**
  * Parses the `/search?tbm=map` response.
@@ -30,13 +31,29 @@ object SearchParser {
     private const val RESULTS_INDEX = 64
 
     fun parse(query: String, root: JsonElement, near: LatLng? = null): SearchResult {
-        val results = root.at(RESULTS_INDEX).arr()
-            ?: findResultsArray(root)
-            ?: throw CalibrationNeededException("search results array (root[$RESULTS_INDEX])")
+        // A fundamentally wrong envelope (consent wall, error page) is a real
+        // calibration problem; an otherwise-valid response with no matches is just
+        // "no results" and must NOT be reported as a calibration error.
+        if (root !is JsonArray) throw CalibrationNeededException("search: response not a JSON array")
+        val entries: List<JsonElement> =
+            root.at(RESULTS_INDEX).arr()?.takeIf { it.isNotEmpty() }
+                ?: singleResultEntry(root)
+                ?: findResultsArray(root)
+                ?: return SearchResult(query, emptyList())
 
-        val places = results.mapNotNull { entry -> toPlace(entry, near) }
-        if (places.isEmpty()) throw CalibrationNeededException("search: 0 results parsed")
+        val places = entries.mapNotNull { entry -> toPlace(entry, near) }
         return SearchResult(query, places.sortedBy { it.distanceMeters ?: Double.MAX_VALUE })
+    }
+
+    /** A specific/far address resolves to a *single* geocoded result rather than
+     *  the [64] POI list — its place node sits at `[0][1][0][14]` (same internal
+     *  schema as a list entry's `[1]`). Wrap it as `[null, node]` so [toPlace],
+     *  which reads `entry[1]`, parses it unchanged. (Verified live 2026-06-16 —
+     *  this is the "calibration error when searching a far address" fix.) */
+    private fun singleResultEntry(root: JsonElement): List<JsonElement>? {
+        val node = root.at(0, 1, 0, 14) ?: return null
+        if (node.at(11).str() == null) return null
+        return listOf(JsonArray(listOf(JsonNull, node)))
     }
 
     private fun toPlace(entry: JsonElement, near: LatLng?): Place? {
