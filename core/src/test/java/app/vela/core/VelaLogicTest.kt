@@ -97,6 +97,69 @@ class NavEngineTest {
         }
         assertTrue("repeated off-route fixes should request a reroute", sawReroute)
     }
+
+    @Test
+    fun rerouteRequestedOnceNotEveryFix() {
+        val route = straightRoute()
+        val offPoint = LatLng(37.0050, -121.9955)
+        var state = NavState()
+        var reroutes = 0
+        repeat(8) {
+            val (next, events) = NavEngine.update(route, state, offPoint)
+            state = next
+            reroutes += events.count { it is NavEvent.RerouteNeeded }
+        }
+        // Edge-triggered: one request on the off-route transition, not one per fix.
+        assertEquals(1, reroutes)
+    }
+
+    @Test
+    fun offRouteClearsWhenBackOnPath() {
+        val route = straightRoute()
+        val offPoint = LatLng(37.0050, -121.9955)
+        var state = NavState()
+        repeat(6) { state = NavEngine.update(route, state, offPoint).first }
+        assertTrue("should be off-route after repeated off fixes", state.offRoute)
+
+        val (back, _) = NavEngine.update(route, state, LatLng(37.0050, -122.0000)) // on the line
+        assertTrue("off-route should clear once back on the path", !back.offRoute)
+        assertEquals(0, back.offRouteHits)
+    }
+
+    /** Reaching a non-final maneuver advances the step but must NOT mark arrival —
+     *  only the final ARRIVE maneuver does. */
+    @Test
+    fun arrivalRequiresTheFinalManeuver() {
+        val a = LatLng(37.0000, -122.0000)
+        val mid = LatLng(37.0050, -122.0000)
+        val b = LatLng(37.0100, -122.0000)
+        val route = Route(
+            polyline = listOf(a, mid, b),
+            legs = listOf(
+                RouteLeg(
+                    distanceMeters = 1100.0,
+                    durationSeconds = 80.0,
+                    durationInTrafficSeconds = null,
+                    maneuvers = listOf(
+                        Maneuver(ManeuverType.DEPART, "Head north", a, 550.0, 40.0),
+                        Maneuver(ManeuverType.TURN_RIGHT, "Turn right", mid, 550.0, 40.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive", b, 0.0, 0.0),
+                    ),
+                ),
+            ),
+            distanceMeters = 1100.0,
+            durationSeconds = 80.0,
+            durationInTrafficSeconds = null,
+        )
+        val (s1, _) = NavEngine.update(route, NavState(), a) // off DEPART
+        assertTrue(s1.stepIndex >= 1)
+        val (s2, e2) = NavEngine.update(route, s1, mid) // at the middle turn
+        assertTrue("a non-final maneuver must not arrive", !s2.arrived)
+        assertTrue("no Arrived event mid-route", e2.none { it is NavEvent.Arrived })
+        val (s3, e3) = NavEngine.update(route, s2, b) // the final point
+        assertTrue("the final maneuver arrives", s3.arrived)
+        assertTrue(e3.any { it is NavEvent.Arrived })
+    }
 }
 
 class SearchParserHoursTest {

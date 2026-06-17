@@ -46,6 +46,10 @@ class NavSession @Inject constructor(
         val remainingDuration: Double = 0.0,
         val fasterRoute: Route? = null,
         val fasterSavingSeconds: Double = 0.0,
+        // Trip summary, populated on arrival (and carried for the arrival card).
+        val destinationLabel: String = "",
+        val tripDistanceMeters: Double = 0.0,
+        val tripElapsedSeconds: Double = 0.0,
     )
 
     private val _state = MutableStateFlow(State())
@@ -54,12 +58,14 @@ class NavSession @Inject constructor(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var destination: LatLng? = null
     private var lastRecheckMs = 0L
+    private var tripStartMs = 0L
     private var recheckJob: Job? = null
 
-    fun start(route: Route, destination: LatLng, voiceEngine: String? = null) {
+    fun start(route: Route, destination: LatLng, destinationLabel: String = "", voiceEngine: String? = null) {
         this.destination = destination
         voice.init(voiceEngine)
         lastRecheckMs = SystemClock.elapsedRealtime()
+        tripStartMs = SystemClock.elapsedRealtime()
         val first = route.maneuvers.firstOrNull()?.instruction.orEmpty()
         _state.value = State(
             navigating = true,
@@ -67,6 +73,8 @@ class NavSession @Inject constructor(
             maneuverText = first,
             remainingDistance = route.distanceMeters,
             remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
+            destinationLabel = destinationLabel,
+            tripDistanceMeters = route.distanceMeters,
         )
         voice.speak("Starting navigation. $first")
     }
@@ -97,7 +105,13 @@ class NavSession @Inject constructor(
             when (ev) {
                 is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
                 is NavEvent.Haptic -> haptics.cue(ev.type, ev.approaching)
-                NavEvent.Arrived -> _state.update { it.copy(navigating = false, arrived = true) }
+                NavEvent.Arrived -> _state.update {
+                    it.copy(
+                        navigating = false,
+                        arrived = true,
+                        tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
+                    )
+                }
                 NavEvent.RerouteNeeded -> reroute(loc)
             }
         }

@@ -75,6 +75,7 @@ import app.vela.core.model.SavedPlace
 import app.vela.ui.RatingStars
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
+import app.vela.ui.nav.ArrivalSummary
 import app.vela.ui.nav.ManeuverBanner
 import app.vela.ui.nav.NavControls
 import app.vela.ui.nav.StepsSheet
@@ -295,8 +296,19 @@ fun MapScreen(
             }
         }
 
-        // --- bottom overlay: nav controls / place sheet ---------------------
+        // --- bottom overlay: arrival summary / nav controls / place sheet ---
         when {
+            state.arrived -> ArrivalSummary(
+                destinationLabel = state.arrivedLabel,
+                tripSeconds = state.arrivedSeconds,
+                tripDistanceMeters = state.arrivedDistanceMeters,
+                onDone = vm::finishNav,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(16.dp),
+            )
+
             state.showSteps -> StepsSheet(
                 maneuvers = state.activeRoute?.maneuvers ?: emptyList(),
                 etaSeconds = state.activeRoute?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0,

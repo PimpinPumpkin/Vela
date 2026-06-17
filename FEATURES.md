@@ -69,7 +69,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
-- ✅ Turn-by-turn engine (step advancement, off-route detection, reroute)
+- ✅ Turn-by-turn engine (step advancement, off-route detection, reroute) —
+  pure/Android-free, **unit-tested** (arrival-requires-final-maneuver, reroute
+  fires once per off-route transition not per fix, off-route clears on return)
 - ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable)
 - ✅ **Haptic turn cues** — a light "get ready" tick at the pre-turn prompt, then a
   firm **direction-coded** buzz at the turn (left = two long pulses, right = three
@@ -84,7 +86,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   switch (this iteration)
 - ⬜ Lane guidance / speed limits / speed-camera + hazard alerts
 - ⬜ Android Auto (needs GMS — likely out of scope)
-- ⬜ Trip overview / arrival summary
+- ✅ **Arrival / trip summary** — on reaching the destination, a "You've arrived"
+  card replaces the nav controls with the trip's total time and distance (and the
+  destination name), and a Done button returns to a clean map. (Real-drive
+  hardening of the foreground service + live re-route is still pending an
+  on-device test run.)
 
 ## Location (degoogled)
 - ✅ AOSP `LocationManager` (GPS + NETWORK), no Fused/GMS

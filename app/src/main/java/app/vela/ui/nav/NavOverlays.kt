@@ -3,11 +3,14 @@ package app.vela.ui.nav
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -93,6 +96,61 @@ fun NavControls(
                     Icon(Icons.AutoMirrored.Filled.DirectionsRun, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                     Text("End")
                 }
+            }
+        }
+    }
+}
+
+/** Arrival/trip summary shown when nav reaches the destination: a "you've
+ *  arrived" card with the trip's total time and distance, and a Done button to
+ *  return to the map. */
+@Composable
+fun ArrivalSummary(
+    destinationLabel: String,
+    tripSeconds: Double,
+    tripDistanceMeters: Double,
+    onDone: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(20.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
+                Column {
+                    Text("You've arrived", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    if (destinationLabel.isNotBlank()) {
+                        Text(destinationLabel, style = MaterialTheme.typography.bodyLarge)
+                    }
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
+                Column {
+                    Text("Trip time", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        formatDuration(tripSeconds),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+                Column {
+                    Text("Distance", style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        formatDistance(tripDistanceMeters),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                }
+            }
+            Spacer(Modifier.height(16.dp))
+            Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
+                Text("Done")
             }
         }
     }

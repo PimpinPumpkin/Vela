@@ -50,10 +50,14 @@ data class MapUiState(
     val activeRoute: Route? = null,
     val travelMode: TravelMode = TravelMode.DRIVE,
     val navigating: Boolean = false,
+    val arrived: Boolean = false,
     val nav: NavState = NavState(),
     val maneuverText: String = "",
     val fasterRoute: Route? = null,
     val fasterSavingSeconds: Double = 0.0,
+    val arrivedLabel: String = "",
+    val arrivedDistanceMeters: Double = 0.0,
+    val arrivedSeconds: Double = 0.0,
     val status: String? = null,
     val showPsdsTip: Boolean = false,
     val showSearchThisArea: Boolean = false,
@@ -107,11 +111,15 @@ class MapViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
+                        arrived = ns.arrived,
                         nav = ns.nav,
                         maneuverText = ns.maneuverText,
                         activeRoute = if (ns.navigating && ns.route != null) ns.route else it.activeRoute,
                         fasterRoute = ns.fasterRoute,
                         fasterSavingSeconds = ns.fasterSavingSeconds,
+                        arrivedLabel = ns.destinationLabel,
+                        arrivedDistanceMeters = ns.tripDistanceMeters,
+                        arrivedSeconds = ns.tripElapsedSeconds,
                     )
                 }
             }
@@ -339,7 +347,7 @@ class MapViewModel @Inject constructor(
     fun startNav() {
         val route = _state.value.activeRoute ?: return
         val dest = destination ?: route.polyline.lastOrNull() ?: return
-        navSession.start(route, dest, _state.value.selectedEngine?.packageName)
+        navSession.start(route, dest, _state.value.selected?.name.orEmpty(), _state.value.selectedEngine?.packageName)
         NavigationService.start(appContext)
     }
 
@@ -347,6 +355,13 @@ class MapViewModel @Inject constructor(
         NavigationService.stop(appContext)
         navSession.stop()
         _state.update { it.copy(showSteps = false, previewStepIndex = null) }
+    }
+
+    /** Dismiss the arrival summary and return to a clean map (drops the finished
+     *  route + selection). */
+    fun finishNav() {
+        stopNav()
+        clearSelection()
     }
 
     fun acceptFasterRoute() = navSession.acceptFasterRoute()
