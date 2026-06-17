@@ -55,6 +55,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -445,6 +446,17 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     ).joinToString(" · ")
                     if (sub.isNotEmpty()) {
                         Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    // Full address (city/state/zip) to disambiguate similar names
+                    // and identical-looking residential addresses.
+                    place.address?.let { addr ->
+                        Text(
+                            addr,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     place.statusText?.let { status ->
                         Text(

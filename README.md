@@ -120,7 +120,11 @@ feature id `[1][10]` (`0x..:0x..`, → reviews endpoint), place id `[1][78]`,
 **photos `[1][105][0][1][0][i][6][0]`** (FIFE URLs; re-size with a `=w500-h350`
 suffix), **featured review snippet `[1][142][1][0][1][0][0]`**, and the **About**
 attributes at `[1][100][1]` (see below). Full reviews come from a separate
-keyless endpoint (below).
+keyless endpoint (below). A **specific/far address** doesn't come back as a `[64]`
+list — it's a single geocoded result whose place node sits at `[0][1][0][14]`
+(same internal schema), so the parser falls back to that, then to the largest
+name+coord array; a structurally-valid response with no matches returns empty
+(not a calibration error).
 
 **Directions** — `GET /maps/preview/directions?pb=<DirectionsPb>` (no token).
 Routes at `root[0][1][r]`, summary at `[0]`: distance m `[2][0]`, typical
@@ -153,7 +157,9 @@ endpoint (no token: the `!5m2!1s<session>` block accepts any string). The pb is
 (`0xHIGH:0xLOW`) as unsigned-64 decimals. Reviews come back at `root[2]`, each:
 author `[0][1]`, author photo `[0][2]`, relative time `[1]`, text `[3]`, rating
 `[4]`. It needs the same consent cookies as search (the shared cookie jar carries
-them); a cookieless request returns an empty envelope.
+them); a cookieless request returns an empty envelope. It serves a **fixed top
+~20** (the `2i` offset is ignored and `3i` count is capped); deeper pagination is
+behind an obfuscated continuation token, deliberately not chased.
 
 **Reverse-geocode** (long-press the map → drop a pin → address) uses
 OpenStreetMap's **Nominatim** (`/reverse`, keyless and documented) rather than

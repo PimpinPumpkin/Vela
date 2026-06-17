@@ -21,7 +21,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Search & POIs (live Google data)
 - ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
-- ✅ Search-result rows show **5-star rating** + colour-coded open/closed status
+- ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list — fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
+- ✅ Search-result rows show **5-star rating**, colour-coded open/closed status, and the **full address (city/state/ZIP)** to disambiguate similar names / lookalike residential addresses
 - ✅ Place sheet (**Google-styled**): high-contrast white-on-dark / black-on-white name + status time (fixed palette, not washed-out by Material You), **5-star rating visual**, **swipe-down to dismiss**, status with the **word colour-coded** (Open green / Closed red) and the time in plain ink, price, **full address with a copy button**, **collapsible weekly hours** (today first, expand for the week)
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted)
@@ -30,7 +31,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
 - ✅ **Tabbed place sheet** (Google-style): **Overview** (hours + featured review), **Reviews**, **About** (Service options, Highlights, Accessibility, … from Google's attributes)
-- ⬜ Popular times; review pagination (currently first ~20) + Updates/posts tab
+- ⬜ Popular times; "hours updated N ago" (both place-RPC-only, absent from the search response); Updates/posts tab
+- ℹ️ Reviews are the **top ~20** — the `listentitiesreviews` endpoint serves a fixed page (offset ignored) and deeper paging is behind an obfuscated continuation token; not chased (fragility vs. value)
 - ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)**
 - ✅ **Place photos** — business photo strip (horizontally scrollable) at the top of the place sheet, from Google's photo array
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
