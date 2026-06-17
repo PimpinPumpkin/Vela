@@ -5,6 +5,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import okhttp3.OkHttpClient
@@ -73,6 +75,12 @@ class CalibrationStore @Inject constructor(
             (o[k] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: fallback
         val version = (o["version"] as? JsonPrimitive)?.content?.toIntOrNull() ?: return@runCatching null
         val d = Calibration.DEFAULT
+        // Field-index paths: each value is a JSON array of ints; merge the remote
+        // ones over the bundled defaults so a file can override just one path.
+        val remotePaths = (o["paths"] as? JsonObject)?.mapNotNull { (k, v) ->
+            val list = (v as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.content?.toIntOrNull() }
+            if (!list.isNullOrEmpty()) k to list else null
+        }?.toMap().orEmpty()
         Calibration(
             version = version,
             searchEndpoint = str("searchEndpoint", d.searchEndpoint),
@@ -82,6 +90,7 @@ class CalibrationStore @Inject constructor(
             reviewsEndpoint = str("reviewsEndpoint", d.reviewsEndpoint),
             reviewsPb = str("reviewsPb", d.reviewsPb),
             sessionWarmUrl = str("sessionWarmUrl", d.sessionWarmUrl),
+            paths = Calibration.DEFAULT_PATHS + remotePaths,
         )
     }.getOrNull()
 

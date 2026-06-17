@@ -126,4 +126,28 @@ class SearchParserHoursTest {
         assertEquals(emptyList<String>(), SearchParser.readHours(null))
         assertEquals(emptyList<String>(), SearchParser.readHours(json("[[1,2,3],[4,5,6]]")))
     }
+
+    /** Phase-2: the parser reads every field from the *provided* path map, so a
+     *  remote calibration can relocate an index without an app update. Fixture
+     *  uses low indices (results at root[0]; name/coords/address shallow) — proving
+     *  parse() honours the supplied paths rather than the hard-coded ones. */
+    @Test
+    fun readsFieldsFromProvidedPaths() {
+        val root = json(
+            """[ [ [ null, ["Joe's Cafe", [37.5, -122.5], "1 Main St, SF, CA 94101"] ] ] ]""",
+        )
+        val paths = mapOf(
+            "results" to listOf(0),
+            "name" to listOf(1, 0),
+            "lat" to listOf(1, 1, 0),
+            "lng" to listOf(1, 1, 1),
+            "address" to listOf(1, 2),
+        )
+        val places = SearchParser.parse("q", root, null, paths).places
+        assertEquals(1, places.size)
+        assertEquals("Joe's Cafe", places[0].name)
+        assertEquals("1 Main St, SF, CA 94101", places[0].address)
+        assertEquals(37.5, places[0].location.lat, 1e-6)
+        assertEquals(-122.5, places[0].location.lng, 1e-6)
+    }
 }

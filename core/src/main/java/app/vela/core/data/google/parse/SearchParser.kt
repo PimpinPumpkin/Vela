@@ -1,5 +1,6 @@
 package app.vela.core.data.google.parse
 
+import app.vela.core.config.Calibration
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.google.arr
 import app.vela.core.data.google.at
@@ -18,92 +19,85 @@ import kotlinx.serialization.json.JsonNull
 /**
  * Parses the `/search?tbm=map` response.
  *
- * Schema calibrated against a live capture (2026-06-15): the results live at
- * `root[64]`, and within each result everything hangs off `[1]`:
- *   name `[1][11]`, full address `[1][39]` (street/city/state/zip), rating `[1][4][7]`,
- *   reviewCount `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
- * If `[64]` ever moves, [findResultsArray] falls back to the largest array whose
- * entries carry both a name and a coordinate, so a reshuffle degrades instead of
- * crashing.
+ * The positional field-index paths are no longer hard-coded — they come from
+ * [Calibration.paths] (remotely updatable, phase 2), defaulting to
+ * [Calibration.DEFAULT_PATHS]. Paths are relative to a result *entry* (whose
+ * place node is `[1]`), except `results`/`single` which are relative to the root.
+ * Schema first calibrated 2026-06-15; `[64]` results, name `[1][11]`, full
+ * address `[1][39]`, coords `[1][9][2/3]`, etc. (see DEFAULT_PATHS).
  */
 object SearchParser {
 
-    private const val RESULTS_INDEX = 64
-
-    fun parse(query: String, root: JsonElement, near: LatLng? = null): SearchResult {
+    fun parse(
+        query: String,
+        root: JsonElement,
+        near: LatLng? = null,
+        paths: Map<String, List<Int>> = Calibration.DEFAULT_PATHS,
+    ): SearchResult {
         // A fundamentally wrong envelope (consent wall, error page) is a real
         // calibration problem; an otherwise-valid response with no matches is just
         // "no results" and must NOT be reported as a calibration error.
         if (root !is JsonArray) throw CalibrationNeededException("search: response not a JSON array")
         val entries: List<JsonElement> =
-            root.at(RESULTS_INDEX).arr()?.takeIf { it.isNotEmpty() }
-                ?: singleResultEntry(root)
+            root.atPath(pathOf(paths, "results")).arr()?.takeIf { it.isNotEmpty() }
+                ?: singleResultEntry(root, paths)
                 ?: findResultsArray(root)
                 ?: return SearchResult(query, emptyList())
 
-        val places = entries.mapNotNull { entry -> toPlace(entry, near) }
+        val places = entries.mapNotNull { entry -> toPlace(entry, near, paths) }
         return SearchResult(query, places.sortedBy { it.distanceMeters ?: Double.MAX_VALUE })
     }
 
     /** A specific/far address resolves to a *single* geocoded result rather than
-     *  the [64] POI list — its place node sits at `[0][1][0][14]` (same internal
-     *  schema as a list entry's `[1]`). Wrap it as `[null, node]` so [toPlace],
-     *  which reads `entry[1]`, parses it unchanged. (Verified live 2026-06-16 —
-     *  this is the "calibration error when searching a far address" fix.) */
-    private fun singleResultEntry(root: JsonElement): List<JsonElement>? {
-        val node = root.at(0, 1, 0, 14) ?: return null
+     *  the `[64]` POI list — its place node sits at `single` (`[0][1][0][14]`, same
+     *  internal schema as a list entry's `[1]`). Wrap it as `[null, node]` so
+     *  [toPlace], which reads `entry[1]`, parses it unchanged. */
+    private fun singleResultEntry(root: JsonElement, paths: Map<String, List<Int>>): List<JsonElement>? {
+        val node = root.atPath(pathOf(paths, "single")) ?: return null
         if (node.at(11).str() == null) return null
         return listOf(JsonArray(listOf(JsonNull, node)))
     }
 
-    private fun toPlace(entry: JsonElement, near: LatLng?): Place? {
-        val name = entry.at(1, 11).str() ?: return null
-        val lat = entry.at(1, 9, 2).dbl() ?: return null
-        val lng = entry.at(1, 9, 3).dbl() ?: return null
+    private fun toPlace(entry: JsonElement, near: LatLng?, paths: Map<String, List<Int>>): Place? {
+        fun field(key: String): JsonElement? = entry.atPath(pathOf(paths, key))
+        val name = field("name").str() ?: return null
+        val lat = field("lat").dbl() ?: return null
+        val lng = field("lng").dbl() ?: return null
         val loc = LatLng(lat, lng)
         return Place(
             id = "g:" + name.hashCode() + ":" + (lat * 1e4).toInt(),
             name = name,
             location = loc,
-            category = entry.at(1, 13, 0).str(),
-            // Full address incl. city/state/zip. `[1][39]` is the clean one-line
-            // form ("1410 Lombard St, San Francisco, CA 94123"); fall back to
-            // joining the component array `[1][2]` (["street","City, ST ZIP"]),
-            // then to just the street line. (Verified live 2026-06-16.)
-            address = entry.at(1, 39).str()
-                ?: entry.at(1, 2).arr()?.mapNotNull { it.str() }?.joinToString(", ")?.ifBlank { null }
-                ?: entry.at(1, 2, 0).str(),
-            rating = entry.at(1, 4, 7).dbl(),
-            reviewCount = entry.at(1, 4, 8).int(),
-            priceText = entry.at(1, 4, 2).str(),
-            website = entry.at(1, 7, 0).str(),
-            phone = entry.at(1, 178, 0, 0).str(), // formatted display number, e.g. "(530) 979-5888"
-            openNow = parseOpenNow(entry.at(1, 203, 1, 8, 0).str()),
-            // Rich status with closing time ("Open · Closes 9 PM") lives at
-            // [1][118][0][3][1][4][0] (118-format) or [1][203][1][4][0] (203-format);
-            // fall back to the short "Open"/"Closed" at [1][203][1][8][0].
-            statusText = entry.at(1, 118, 0, 3, 1, 4, 0).str()
-                ?: entry.at(1, 203, 1, 4, 0).str()
-                ?: entry.at(1, 203, 1, 8, 0).str(),
-            hours = parseHours(entry),
-            photoUrls = parsePhotos(entry),
-            // Google's single highlighted review snippet at [1][142][1][0][1][0][0]
-            // (the search response carries only this one; the full list needs the
-            // place-details RPC). Strip its surrounding quotes.
-            featuredReview = entry.at(1, 142, 1, 0, 1, 0, 0).str()
+            category = field("category").str(),
+            // Full address incl. city/state/zip — clean one-liner, else join the
+            // component array, else just the street line.
+            address = field("address").str()
+                ?: field("addressComponents").arr()?.mapNotNull { it.str() }?.joinToString(", ")?.ifBlank { null }
+                ?: field("addressComponents").at(0).str(),
+            rating = field("rating").dbl(),
+            reviewCount = field("reviewCount").int(),
+            priceText = field("priceText").str(),
+            website = field("website").str(),
+            phone = field("phone").str(),
+            openNow = parseOpenNow(field("openStatus").str()),
+            statusText = field("status118").str()
+                ?: field("statusRich").str()
+                ?: field("openStatus").str(),
+            hours = parseHours(entry, paths),
+            photoUrls = parsePhotos(entry, paths),
+            featuredReview = field("featuredReview").str()
                 ?.trim()?.trim('"', '“', '”')?.ifBlank { null },
-            featureId = entry.at(1, 10).str(),  // "0x..:0x.." → reviews RPC
-            placeId = entry.at(1, 78).str(),    // "ChIJ.." → deep links
-            about = parseAbout(entry),
+            featureId = field("featureId").str(),  // "0x..:0x.." → reviews RPC
+            placeId = field("placeId").str(),      // "ChIJ.." → deep links
+            about = parseAbout(entry, paths),
             distanceMeters = near?.distanceTo(loc),
         )
     }
 
-    /** Google's "About" panel: `[1][100][1]` is a list of sections, each with a
-     *  title at `[s][1]` and items at `[s][2][j][1]` (e.g. "Service options" →
-     *  ["Outdoor seating","Takeout","Dine-in"]). */
-    private fun parseAbout(entry: JsonElement): List<AboutSection> {
-        val sections = entry.at(1, 100, 1).arr() ?: return emptyList()
+    /** "About" sections: `about` → a list, each with title `[s][1]` + items
+     *  `[s][2][j][1]` (the leaf indices are stable, so kept in code). */
+    private fun parseAbout(entry: JsonElement, paths: Map<String, List<Int>>): List<AboutSection> {
+        val sections = entry.atPath(pathOf(paths, "about")).arr() ?: return emptyList()
         return sections.mapNotNull { s ->
             val title = s.at(1).str() ?: return@mapNotNull null
             val items = s.at(2).arr()?.mapNotNull { it.at(1).str()?.ifBlank { null } }.orEmpty()
@@ -111,18 +105,17 @@ object SearchParser {
         }
     }
 
-    /** Business photos: `[1][105][0][1][0]` is an array of photo objects, each
-     *  carrying its FIFE URL at `[6][0]`. The URL ends with a size suffix
-     *  (…=w109-h195-k-no); re-size it up for the sheet's photo strip. */
-    private fun parsePhotos(entry: JsonElement): List<String> {
-        val arr = entry.at(1, 105, 0, 1, 0).arr() ?: return emptyList()
+    /** Business photos: `photos` → an array of photo objects, URL at `[6][0]`
+     *  (leaf stable). Re-size the FIFE URL up for the sheet's photo strip. */
+    private fun parsePhotos(entry: JsonElement, paths: Map<String, List<Int>>): List<String> {
+        val arr = entry.atPath(pathOf(paths, "photos")).arr() ?: return emptyList()
         return arr.take(12).mapNotNull { photo ->
             photo.at(6, 0).str()?.replace(Regex("=w\\d+-h\\d+.*$"), "=w500-h350")
         }
     }
 
     /** Live status text → open/closed. "Closes 6 PM" means open now; "Closed
-     *  · Opens 7 AM" means closed. Calibrated path: `[1][203][1][8][0]`. */
+     *  · Opens 7 AM" means closed. */
     private fun parseOpenNow(status: String?): Boolean? = when {
         status == null -> null
         status.startsWith("Open") || status.startsWith("Closes") -> true
@@ -131,13 +124,12 @@ object SearchParser {
         else -> null
     }
 
-    /** Weekly hours. Most places carry them at `[1][203][0]`; some only at the
-     *  older `[1][118][0][3][0]`. Both are a 7-entry array (starting with today)
-     *  where each day has its name at `[0]` and the hours text at `[3][0][0]`,
-     *  e.g. "Tuesday: 6 AM–8 PM". Read `[203]` first, fall back to `[118]`.
-     *  (Calibrated 2026-06-16 across 60 live results: `[118]`-only missed most.) */
-    private fun parseHours(entry: JsonElement): List<String> =
-        readHours(entry.at(1, 203, 0)).ifEmpty { readHours(entry.at(1, 118, 0, 3, 0)) }
+    /** Weekly hours — `hours203` first, falling back to `hours118`. Both are a
+     *  7-entry array starting today; each day = name `[0]` + text `[3][0][0]`
+     *  (leaf indices stable). */
+    private fun parseHours(entry: JsonElement, paths: Map<String, List<Int>>): List<String> =
+        readHours(entry.atPath(pathOf(paths, "hours203")))
+            .ifEmpty { readHours(entry.atPath(pathOf(paths, "hours118"))) }
 
     internal fun readHours(days: JsonElement?): List<String> {
         val arr = days.arr() ?: return emptyList()
@@ -155,4 +147,10 @@ object SearchParser {
             .filter { it.size >= 1 && it.firstOrNull()?.at(1, 11).str() != null }
             .maxByOrNull { it.size }
     }
+
+    private fun pathOf(paths: Map<String, List<Int>>, key: String): List<Int>? =
+        paths[key] ?: Calibration.DEFAULT_PATHS[key]
+
+    private fun JsonElement?.atPath(path: List<Int>?): JsonElement? =
+        if (path == null) null else this.at(*path.toIntArray())
 }

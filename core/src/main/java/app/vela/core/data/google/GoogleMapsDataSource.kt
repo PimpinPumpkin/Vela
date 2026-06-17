@@ -50,7 +50,7 @@ class GoogleMapsDataSource @Inject constructor(
         val cal = calibration.current()
         val pb = SearchPb.build(query, viewport, cal.searchPb)
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}"
-        SearchParser.parse(query, GoogleResponse.parse(get(url)), near)
+        SearchParser.parse(query, GoogleResponse.parse(get(url)), near, cal.paths)
     }
 
     override suspend fun placeDetails(id: String): Place = io {

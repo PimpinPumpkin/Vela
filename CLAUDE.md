@@ -71,8 +71,12 @@ genuinely needs no doc edit, say why in the commit.
   `calibration.json`, **bump `version`**, commit to `main` — users pick it up on
   their next launch (raw.githubusercontent caches ~5 min). Keep
   `Calibration.DEFAULT` (the compiled fallback) and `calibration.json` in sync when
-  you cut an actual release. The field-index paths the parsers read are NOT yet
-  remote — a shape change that needs new parsing still needs a build.
+  you cut an actual release. **Phase 2 (done): the search parser's positional
+  field-index paths are remote too** — the `paths` object in `calibration.json`
+  (`name`, `address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays,
+  relative to a result entry whose place node is `[1]`; `results`/`single` are
+  root-relative). So a "Google moved field X to a new index" fix is also just an
+  edit + version bump. Only a change that needs new parsing *logic* needs a build.
 
 ## Degoogled constraints (hard rules)
 

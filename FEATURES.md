@@ -36,7 +36,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Popular times; "hours updated N ago" (both place-RPC-only, absent from the search response); Updates/posts tab
 - ℹ️ Reviews are the **top ~20** — the `listentitiesreviews` endpoint serves a fixed page (offset ignored) and deeper paging is behind an obfuscated continuation token; not chased (fragility vs. value)
 - ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)**
-- ✅ **Place photos** — business photo strip (horizontally scrollable); **tap a photo to open a full-screen, swipeable gallery** with a counter. (~10 photos from the search response's preview group; the full categorized photo set is behind an obfuscated endpoint, not pulled.)
+- ✅ **Place photos** — business photo strip (horizontally scrollable); **tap a photo to open a full-screen, swipeable gallery** with a counter. (~10–20 photos from the search response's preview group; the full categorised set loads only via the token-gated `batchexecute` `hspqX` RPC — no keyless GET exists like reviews had, so it's not pulled.)
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
 - ✅ "Search this area" — re-search after panning the map
 - ⬜ Filters (open now, rating, price)
@@ -95,12 +95,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ ACRA / self-hosted crash reporting
 
 ## Resilience / maintainability
-- ✅ **Remotely-updatable scraper calibration (phase 1)** — the `pb` templates +
-  endpoint URLs live in `calibration.json` at the repo root; the app fetches it at
-  launch and adopts a newer `version` (host-allowlisted to google.com) without an
-  app update. Push a `pb`/endpoint fix by editing that file + bumping `version`.
-- ⬜ Phase 2: externalise the positional field-index paths too (then most drift is
-  a remote fix; only new parsing *logic* needs a release).
+- ✅ **Remotely-updatable scraper calibration** — `calibration.json` at the repo
+  root holds the `pb` templates, endpoint URLs **and (phase 2) the search parser's
+  positional field-index paths** (`name`, `address`, `rating`, `photos`, … as
+  `[i,j,…]` arrays). The app fetches it at launch and adopts a newer `version`
+  (host-allowlisted to google.com) **without an app update** — so most Google
+  drift (a moved `pb`, endpoint, or field index) is now a one-line edit + version
+  bump, not a release. Only a change needing genuinely new parsing *logic* still
+  ships as a build.
 
 ## Known calibration debts (the NewPipe lifestyle)
 - Google request/response shapes are pinned to a 2026-06-15 capture; expect

@@ -168,11 +168,14 @@ endpoint URLs above — are not hard-compiled; they live in
 ships a bundled `Calibration.DEFAULT`, then fetches that file from the repo's raw
 URL at launch and **adopts it when its `version` is newer** — gated by a host
 allowlist (every endpoint must be `google.com`, so a tampered file can't redirect
-requests). So when Google reshuffles a `pb` or moves an endpoint, the fix is a
-one-line edit + `version` bump committed to `main` — **every user gets it on their
-next launch, no app update**. (Phase 1: pb + endpoints. The positional field-index
-paths the parsers read are still compiled in — phase 2. A change needing genuinely
-new parsing *logic* still ships as a release.)
+requests). So when Google reshuffles a `pb`, moves an endpoint, **or relocates a
+field index**, the fix is a one-line edit + `version` bump committed to `main` —
+**every user gets it on their next launch, no app update**. Phase 2 added the
+`paths` object — the search parser's positional field-index paths (`name`,
+`address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays; relative to a
+result entry whose place node is `[1]`, except `results`/`single` which are
+root-relative). Only a change that needs genuinely new parsing *logic* still ships
+as a release.
 
 **Reverse-geocode** (long-press the map → drop a pin → address) uses
 OpenStreetMap's **Nominatim** (`/reverse`, keyless and documented) rather than
