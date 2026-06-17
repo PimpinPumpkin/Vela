@@ -30,11 +30,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Clear-search (X) button; dismiss the results list (swipe-up / back gesture) to browse the map — pins stay, a chip re-opens it
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
-- ✅ **Tabbed place sheet** (Google-style): **Overview** (hours + featured review), **Reviews**, **About** (Service options, Highlights, Accessibility, … from Google's attributes)
+- ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: info → action row → hours → photos → tabs
+- ✅ Travel mode lives in the action row: a **Directions** button opens a Drive/Walk/Bike chooser ("how are you getting there?"), then previews the route (ETA + Start)
 - ⬜ Popular times; "hours updated N ago" (both place-RPC-only, absent from the search response); Updates/posts tab
 - ℹ️ Reviews are the **top ~20** — the `listentitiesreviews` endpoint serves a fixed page (offset ignored) and deeper paging is behind an obfuscated continuation token; not chased (fragility vs. value)
 - ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)**
-- ✅ **Place photos** — business photo strip (horizontally scrollable) at the top of the place sheet, from Google's photo array
+- ✅ **Place photos** — business photo strip (horizontally scrollable); **tap a photo to open a full-screen, swipeable gallery** with a counter. (~10 photos from the search response's preview group; the full categorized photo set is behind an obfuscated endpoint, not pulled.)
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
 - ✅ "Search this area" — re-search after panning the map
 - ⬜ Filters (open now, rating, price)

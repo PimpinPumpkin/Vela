@@ -18,15 +18,19 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -54,6 +58,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -86,6 +91,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import app.vela.core.model.AboutSection
 import app.vela.core.model.Place
 import app.vela.core.model.Review
@@ -133,6 +140,12 @@ fun PlaceSheet(
     val offsetY = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     val dismissPx = with(LocalDensity.current) { 110.dp.toPx() }
+
+    // Tapping "Directions" reveals a travel-mode chooser; a tapped photo opens the
+    // full-screen gallery. Both reset when the sheet switches to another place.
+    var modePromptOpen by remember(place.id) { mutableStateOf(false) }
+    var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
+
     Card(
         modifier
             .fillMaxWidth()
@@ -165,25 +178,6 @@ fun PlaceSheet(
                         .background(dim.copy(alpha = 0.5f)),
                 )
             }
-            // Business photo strip (Google-style) — horizontally scrollable.
-            if (place.photoUrls.isNotEmpty()) {
-                LazyRow(
-                    Modifier.fillMaxWidth().padding(bottom = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    items(place.photoUrls) { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(width = 152.dp, height = 110.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(dim.copy(alpha = 0.2f)),
-                        )
-                    }
-                }
-            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     place.name,
@@ -207,11 +201,7 @@ fun PlaceSheet(
                     )
                     RatingStars(r, modifier = Modifier.padding(horizontal = 4.dp))
                     place.reviewCount?.let {
-                        Text(
-                            "($it)",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = dim,
-                        )
+                        Text("($it)", style = MaterialTheme.typography.bodyMedium, color = dim)
                     }
                 }
                 val rest = listOfNotNull(place.priceText, place.category)
@@ -235,20 +225,34 @@ fun PlaceSheet(
                         withStyle(SpanStyle(color = ink)) { append("  ·  ${parts[1]}") }
                     }
                 }
-                Text(
-                    annotated,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
+                Text(annotated, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
             }
-            // Google-style quick-action row: Call / Website / Save / Share.
+            place.address?.let { addr ->
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Place, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(addr, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        val cb = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cb.setPrimaryClip(ClipData.newPlainText("address", addr))
+                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy address", tint = dim, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // Quick-action row — Directions (primary) + Call / Website / Save / Share.
             Row(
-                Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(top = 12.dp),
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                SheetAction(Icons.Default.Directions, "Directions", dim, emphasized = true) {
+                    modePromptOpen = true
+                }
                 place.phone?.let { ph ->
                     SheetAction(Icons.Default.Call, "Call", dim) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
@@ -269,84 +273,122 @@ fun PlaceSheet(
                 ShareAction(place, dim)
             }
 
-            place.address?.let { addr ->
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Default.Place, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
+            // Directions: pick a travel mode, then preview the route (ETA + Start).
+            if (modePromptOpen || route != null) {
+                Spacer(Modifier.height(12.dp))
+                if (route == null) {
+                    Text("How are you getting there?", style = MaterialTheme.typography.bodyMedium, color = dim, modifier = Modifier.padding(bottom = 6.dp))
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(TravelMode.DRIVE to "Drive", TravelMode.WALK to "Walk", TravelMode.BICYCLE to "Bike").forEach { (mode, label) ->
+                        FilterChip(
+                            selected = currentMode == mode,
+                            onClick = {
+                                onModeSelected(mode)
+                                if (route == null) onDirections()
+                            },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+                route?.let { r ->
+                    Spacer(Modifier.height(10.dp))
+                    val eta = formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds)
+                    val label = "$eta  ·  ${formatDistance(r.distanceMeters)}" +
+                        if (r.hasLiveTraffic) "  ·  live traffic" else ""
                     Text(
-                        addr,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ink,
-                        modifier = Modifier.weight(1f),
+                        label,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (r.hasLiveTraffic) MaterialTheme.colorScheme.primary else ink,
                     )
-                    IconButton(onClick = {
-                        val cb = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cb.setPrimaryClip(ClipData.newPlainText("address", addr))
-                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy address", tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.height(10.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
+                            Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            Text("Start")
+                        }
+                        onSteps?.let {
+                            OutlinedButton(onClick = it) {
+                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                                Text("Steps")
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Hours, then photos, then the Reviews / About tabs.
+            if (place.hours.isNotEmpty()) {
+                HoursSection(place.hours, ink, dim)
+            } else if (place.category != null) {
+                Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
+            }
+
+            if (place.photoUrls.isNotEmpty()) {
+                LazyRow(
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    itemsIndexed(place.photoUrls) { i, url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "Photo ${i + 1}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(width = 152.dp, height = 110.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(dim.copy(alpha = 0.2f))
+                                .clickable { galleryStart = i },
+                        )
                     }
                 }
             }
 
             PlaceTabs(place, reviews, reviewsLoading, ink, dim)
+        }
+    }
 
-            Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf(
-                    TravelMode.DRIVE to "Drive",
-                    TravelMode.WALK to "Walk",
-                    TravelMode.BICYCLE to "Bike",
-                ).forEach { (mode, label) ->
-                    FilterChip(
-                        selected = currentMode == mode,
-                        onClick = { onModeSelected(mode) },
-                        label = { Text(label) },
-                    )
-                }
-            }
+    galleryStart?.let { start ->
+        PhotoGallery(place.photoUrls, start) { galleryStart = null }
+    }
+}
 
-            route?.let { r ->
-                Spacer(Modifier.height(12.dp))
-                val eta = formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds)
-                val label = "$eta  ·  ${formatDistance(r.distanceMeters)}" +
-                    if (r.hasLiveTraffic) "  ·  live traffic" else ""
-                Text(
-                    label,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = if (r.hasLiveTraffic) MaterialTheme.colorScheme.primary else ink,
+/** Full-screen, swipeable photo viewer (tap a photo in the strip to open). */
+@Composable
+private fun PhotoGallery(urls: List<String>, start: Int, onDismiss: () -> Unit) {
+    if (urls.isEmpty()) return
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
+        Box(Modifier.fillMaxSize().background(Color.Black)) {
+            HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
+                AsyncImage(
+                    model = urls[page].atWidth(1280),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
-
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (route == null) {
-                    Button(onClick = onDirections, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text("Directions")
-                    }
-                } else {
-                    Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
-                        Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                        Text("Start")
-                    }
-                    onSteps?.let {
-                        OutlinedButton(onClick = it) {
-                            Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                            Text("Steps")
-                        }
-                    }
-                }
+            Text(
+                "${pager.currentPage + 1} / ${urls.size}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White,
+                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(12.dp),
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(4.dp),
+            ) {
+                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
             }
         }
     }
 }
 
-/** Google-style Overview / Reviews / About tabs. Only tabs with content show;
- *  the content area is height-capped and scrolls (e.g. the reviews list). */
+/** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
+private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
+
+/** Reviews / About tabs. Only tabs with content show; the content area is
+ *  height-capped and scrolls (e.g. the reviews list). */
 @Composable
 private fun PlaceTabs(
     place: Place,
@@ -355,11 +397,9 @@ private fun PlaceTabs(
     ink: Color,
     dim: Color,
 ) {
-    val hasOverview = place.hours.isNotEmpty() || place.featuredReview != null
-    val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading
+    val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null
     val hasAbout = place.about.isNotEmpty()
     val tabs = buildList {
-        if (hasOverview) add("Overview")
         if (hasReviews) add("Reviews")
         if (hasAbout) add("About")
     }
@@ -367,7 +407,7 @@ private fun PlaceTabs(
     var sel by remember(place.id) { mutableIntStateOf(0) }
     val selected = sel.coerceIn(0, tabs.lastIndex)
 
-    Column(Modifier.padding(top = 8.dp)) {
+    Column(Modifier.padding(top = 12.dp)) {
         TabRow(
             selectedTabIndex = selected,
             containerColor = Color.Transparent,
@@ -384,28 +424,9 @@ private fun PlaceTabs(
                 .padding(top = 10.dp),
         ) {
             when (tabs[selected]) {
-                "Overview" -> OverviewTab(place, ink, dim)
                 "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, ink, dim)
                 "About" -> AboutTab(place.about, ink, dim)
             }
-        }
-    }
-}
-
-@Composable
-private fun OverviewTab(place: Place, ink: Color, dim: Color) {
-    Column {
-        place.featuredReview?.let { rev ->
-            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.Top) {
-                Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
-            }
-        }
-        if (place.hours.isNotEmpty()) {
-            HoursSection(place.hours, ink, dim)
-        } else if (place.category != null) {
-            Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim)
         }
     }
 }
@@ -422,6 +443,13 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, in
                     Spacer(Modifier.width(8.dp))
                     Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
                 }
+            }
+        }
+        place.featuredReview?.let { rev ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
             }
         }
         when {
@@ -496,20 +524,28 @@ private fun AboutTab(sections: List<AboutSection>, ink: Color, dim: Color) {
     }
 }
 
-/** One circular icon-button + label in the quick-action row (Google style). */
+/** One circular icon-button + label in the quick-action row (Google style).
+ *  [emphasized] gives the primary filled treatment (used for Directions). */
 @Composable
 private fun SheetAction(
     icon: ImageVector,
     label: String,
     labelColor: Color,
+    emphasized: Boolean = false,
     onClick: () -> Unit,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier.width(72.dp),
     ) {
-        FilledTonalIconButton(onClick = onClick) {
-            Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
+        if (emphasized) {
+            FilledIconButton(onClick = onClick) {
+                Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
+            }
+        } else {
+            FilledTonalIconButton(onClick = onClick) {
+                Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
+            }
         }
         Spacer(Modifier.height(4.dp))
         Text(label, style = MaterialTheme.typography.labelSmall, color = labelColor, maxLines = 1)
@@ -572,7 +608,7 @@ private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
             if (i < 0) listOf(it, "") else listOf(it.substring(0, i), it.substring(i + 2))
         }
     }
-    Column(Modifier.padding(top = 10.dp)) {
+    Column(Modifier.padding(top = 12.dp)) {
         Row(
             Modifier
                 .fillMaxWidth()
