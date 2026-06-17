@@ -352,6 +352,13 @@ private fun applyLight(style: Style) {
         PropertyFactory.fillExtrusionColor("#e7e1d5"),
         PropertyFactory.fillExtrusionOpacity(0.92f),
     )
+    // White roads + light-grey casing (Liberty's motorways/trunks lean orange).
+    listOf("road_motorway", "road_trunk_primary", "road_secondary_tertiary").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#ffffff"))
+    }
+    listOf("road_motorway_casing", "road_trunk_primary_casing", "road_secondary_tertiary_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#d8d8d6"))
+    }
 }
 
 /** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */
@@ -371,6 +378,9 @@ private fun applyDark(style: Style) {
     }
     style.getLayer("road_trunk_primary")?.setProperties(PropertyFactory.lineColor("#4b5563"))
     style.getLayer("road_motorway")?.setProperties(PropertyFactory.lineColor("#5a6577"))
+    listOf("road_motorway_casing", "road_trunk_primary_casing", "road_secondary_tertiary_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#2a313c"))
+    }
     style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#2b3647"))
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#2b3647"),

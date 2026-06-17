@@ -74,6 +74,11 @@ import app.vela.ui.place.PlaceSheet
 import app.vela.ui.search.SearchBar
 import java.util.Locale
 
+// Basemap provider. Keyless OpenFreeMap (full styling control, no key) is the
+// active choice; flip to true to use MapTiler Streets (needs the MAPTILER_KEY
+// secret) — all the MapTiler plumbing stays wired either way.
+private const val USE_MAPTILER = false
+
 @Composable
 fun MapScreen(
     vm: MapViewModel,
@@ -81,7 +86,7 @@ fun MapScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val darkTheme = isSystemInDarkTheme()
-    val hasMapTiler = BuildConfig.MAPTILER_KEY.isNotBlank()
+    val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // MapTiler (when a key is built in) gives the Google-like look + its own
     // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
     // with our own dark/light recolour.
