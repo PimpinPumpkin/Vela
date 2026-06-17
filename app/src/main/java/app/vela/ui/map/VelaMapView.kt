@@ -174,7 +174,7 @@ fun VelaMapView(
             map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
                 styleRef = style
                 ensureLayers(style)
-                if (applyKeylessTheme) applyMapTheme(style, darkTheme)
+                if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 applyData(style, routePolyline, markers, myLocation, myBearing, previewTarget)
             }
         } else {
@@ -385,6 +385,23 @@ private fun applyDark(style: Style) {
                 PropertyFactory.textHaloWidth(1.1f),
             )
         }
+    }
+}
+
+/**
+ * Tweak the MapTiler Streets style: its light variant colours motorways / major
+ * roads orange (OSM-classification style). Recolour them white with a light-grey
+ * casing (Google-like); dark Streets is already a calm blue-grey, kept consistent.
+ * MapTiler layer ids carry spaces ("Major road", "Highway", …).
+ */
+private fun tuneMapTiler(style: Style, dark: Boolean) {
+    val road = if (dark) "#39414e" else "#ffffff"
+    val casing = if (dark) "#2a313c" else "#d6d6d4"
+    listOf("Highway", "Major road", "Tunnel", "Bridge").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(road))
+    }
+    listOf("Highway outline", "Major road outline", "Tunnel outline", "Bridge outline").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(casing))
     }
 }
 
