@@ -12,22 +12,22 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Keyless **OpenFreeMap Liberty** basemap (active, loaded by URL — the setup that renders on-device, no key): **Google-style POI markers + category-coloured labels**, a Google-like **road hierarchy** (gold motorways, white arterials, casing that lightens down the hierarchy so minor roads recede), and light/dark recolour all applied at **runtime**
 - 🟡 **MapTiler Streets** path stays wired but off (`USE_MAPTILER=true` to enable, needs the key). The bundled-style **Roboto font** is parked — its vector tiles wouldn't load via `fromJson` on-device (loading Liberty by URL is what works)
 - ✅ **Dark / light map** follows the system theme (keyless recolour; or MapTiler dark if enabled)
-- ✅ **Google-style POI markers** — small category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; in light mode the POI **label text is coloured by category too** (like Google); minor POI tiers decluttered to higher zoom
+- ✅ **Google-style POI markers** — category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; in light mode the POI **label text is coloured by category too** (like Google); minor POI tiers decluttered to higher zoom
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, hillshade, POI icons)
 - ⬜ Satellite / terrain layers
 - ⬜ Map rotation/tilt + heading-up mode during nav
 
 ## Search & POIs (live Google data)
-- ✅ Place search — name, category, address, rating, review count, coordinates
+- ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Search-result rows show **5-star rating** + colour-coded open/closed status
-- ✅ Place sheet: **5-star rating visual**, **swipe-down to dismiss**, colour-coded open/closed status (green/amber/red), price, **collapsible weekly hours** (today first, expand for the week)
+- ✅ Place sheet (**Google-styled**): high-contrast white-on-dark / black-on-white name + status time (fixed palette, not washed-out by Material You), **5-star rating visual**, **swipe-down to dismiss**, status with the **word colour-coded** (Open green / Closed red) and the time in plain ink, price, **full address with a copy button**, **collapsible weekly hours** (today first, expand for the week)
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted, shown on search focus)
 - ✅ Clear-search (X) button; dismiss the results list (swipe-up / back gesture) to browse the map — pins stay, a chip re-opens it
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
-- ✅ Place actions: **Call** (dialer), Website, **Share menu (Google Maps link / coordinates / address)**
+- ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)**
 - ⬜ Place photos
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
 - ✅ "Search this area" — re-search after panning the map

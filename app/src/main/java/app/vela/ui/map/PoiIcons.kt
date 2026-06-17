@@ -78,7 +78,7 @@ object PoiIcons {
                 val layer = style.getLayer(id) ?: return@forEach
                 layer.setProperties(
                     PropertyFactory.iconImage(icon),
-                    PropertyFactory.iconSize(0.4f),
+                    PropertyFactory.iconSize(0.55f),
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
@@ -98,7 +98,7 @@ object PoiIcons {
     }
 
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
-        val size = 64
+        val size = 84
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val cx = size / 2f

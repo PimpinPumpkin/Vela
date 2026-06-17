@@ -113,7 +113,8 @@ re-calibration is a lookup, not a rediscovery:
 **Search** — `GET /search?tbm=map&q=<q>&pb=<SearchPb>`. A bare `q=` returns an
 empty envelope; the `pb` (viewport-driven, captured in [`SearchPb`](core/src/main/java/app/vela/core/data/google/SearchPb.kt),
 no session token needed) is what populates results. Results at `root[64][i]`,
-each rooted at `[1]`: name `[1][11]`, address `[1][2][0]`, rating `[1][4][7]`,
+each rooted at `[1]`: name `[1][11]`, **full address `[1][39]`** (street, city,
+state, ZIP — fall back to joining the components at `[1][2]`), rating `[1][4][7]`,
 reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
 
 **Directions** — `GET /maps/preview/directions?pb=<DirectionsPb>` (no token).

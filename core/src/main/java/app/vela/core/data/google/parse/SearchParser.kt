@@ -18,7 +18,7 @@ import kotlinx.serialization.json.JsonElement
  *
  * Schema calibrated against a live capture (2026-06-15): the results live at
  * `root[64]`, and within each result everything hangs off `[1]`:
- *   name `[1][11]`, address line `[1][2][0]`, rating `[1][4][7]`,
+ *   name `[1][11]`, full address `[1][39]` (street/city/state/zip), rating `[1][4][7]`,
  *   reviewCount `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
  * If `[64]` ever moves, [findResultsArray] falls back to the largest array whose
  * entries carry both a name and a coordinate, so a reshuffle degrades instead of
@@ -48,7 +48,13 @@ object SearchParser {
             name = name,
             location = loc,
             category = entry.at(1, 13, 0).str(),
-            address = entry.at(1, 2, 0).str(),
+            // Full address incl. city/state/zip. `[1][39]` is the clean one-line
+            // form ("1410 Lombard St, San Francisco, CA 94123"); fall back to
+            // joining the component array `[1][2]` (["street","City, ST ZIP"]),
+            // then to just the street line. (Verified live 2026-06-16.)
+            address = entry.at(1, 39).str()
+                ?: entry.at(1, 2).arr()?.mapNotNull { it.str() }?.joinToString(", ")?.ifBlank { null }
+                ?: entry.at(1, 2, 0).str(),
             rating = entry.at(1, 4, 7).dbl(),
             reviewCount = entry.at(1, 4, 8).int(),
             priceText = entry.at(1, 4, 2).str(),
