@@ -350,6 +350,7 @@ private fun ensureLayers(style: Style) {
 private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     if (dark) applyDark(style) else applyLight(style)
+    PoiIcons.applyToLiberty(style)
 }
 
 private fun applyLight(style: Style) {

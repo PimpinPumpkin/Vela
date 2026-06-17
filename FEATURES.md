@@ -9,8 +9,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
 - ✅ **Long-press the map** → drop a pin, reverse-geocode it to an address (Nominatim/OSM, keyless), then get Directions — works even where no building is drawn
-- ✅ **MapTiler Streets** basemap (active — `USE_MAPTILER=true`): Google-like look + real fonts, **white/grey roads** (recoloured from MapTiler's orange) + our **Google-style POI markers** dropped onto its POI layers. Chosen because OpenFreeMap's vector tiles don't load on every device.
-- 🟡 Keyless **OpenFreeMap** path (Roboto font, custom POI icons, recolour, versioned vector tiles) stays fully wired but **off** (`USE_MAPTILER=false`) — its vector tiles failed to load on the test device
+- ✅ Keyless **OpenFreeMap Liberty** basemap (active, loaded by URL — the setup that renders on-device, no key): **Google-style POI markers**, white/grey roads, and light/dark recolour all applied at **runtime**
+- 🟡 **MapTiler Streets** path stays wired but off (`USE_MAPTILER=true` to enable, needs the key). The bundled-style **Roboto font** is parked — its vector tiles wouldn't load via `fromJson` on-device (loading Liberty by URL is what works)
 - ✅ **Dark / light map** follows the system theme (keyless recolour; or MapTiler dark if enabled)
 - ✅ **Google-style POI markers** — category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; minor POI tiers decluttered to higher zoom
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later

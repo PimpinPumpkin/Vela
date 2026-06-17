@@ -12,13 +12,12 @@ package app.vela.core.data.tiles
  * tiles (or Protomaps PMTiles) before any real release.
  */
 enum class MapStyle(val label: String, val uri: String) {
-    // The active basemap: a bundled copy of OpenFreeMap Liberty re-pointed at
-    // Roboto glyphs + Google-style POI icons, with the OpenMapTiles vector source
-    // pinned to OpenFreeMap's current *versioned* tile path (the un-versioned path
-    // serves empty tiles — that was the blank-map bug). Tiles/sprite stay remote,
-    // keyless. Other styles were removed: the demo style is outlines-only, and
-    // Positron/Bright/Protomaps weren't wired through the versioned-tile fix.
-    LIBERTY("OpenFreeMap Liberty", "asset://styles/liberty-roboto.json");
+    // The keyless basemap: OpenFreeMap Liberty loaded from its remote URL — the
+    // setup that always rendered on-device. POI markers + colours are applied at
+    // runtime (see VelaMapView.applyMapTheme / PoiIcons.applyToLiberty). A bundled
+    // copy was tried for a Roboto font, but its vector tiles wouldn't load via
+    // fromJson on-device, so that approach was dropped.
+    LIBERTY("OpenFreeMap Liberty", "https://tiles.openfreemap.org/styles/liberty");
 
     companion object {
         val DEFAULT = LIBERTY

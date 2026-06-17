@@ -7,6 +7,8 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Typeface
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.PropertyFactory
 
 /**
  * Google-style POI markers: a category-coloured circle with a white Material
@@ -44,6 +46,42 @@ object PoiIcons {
         GROUPS.forEach { (key, codepoint, color) ->
             if (style.getImage("vela-poi-$key") == null) {
                 style.addImage("vela-poi-$key", marker(tf, codepoint, color))
+            }
+        }
+    }
+
+    // class -> group, for OpenFreeMap Liberty's rank-tiered poi layers
+    // (poi_r1/r7/r20 mix all categories, so they need a class match).
+    private val CLASS_GROUPS = linkedMapOf(
+        "food" to listOf("restaurant", "fast_food", "cafe", "bar", "pub", "food_court", "ice_cream", "bakery", "food", "beer", "deli", "confectionery"),
+        "shop" to listOf("shop", "grocery", "supermarket", "convenience", "clothing_store", "mall", "department_store", "jewelry", "gift", "books", "furniture", "hardware", "florist", "mobile_phone", "optician", "hairdresser", "laundry", "butcher", "greengrocer", "marketplace", "car", "bicycle", "outdoor", "chemist", "shoes", "toys"),
+        "lodging" to listOf("lodging"),
+        "fuel" to listOf("fuel"),
+        "parking" to listOf("parking", "bicycle_parking"),
+        "park" to listOf("park", "garden", "nature_reserve", "golf", "pitch", "playground", "dog_park", "picnic_site"),
+        "health" to listOf("hospital", "pharmacy", "doctors", "dentist", "veterinary", "clinic"),
+        "edu" to listOf("school", "college", "university", "library", "kindergarten"),
+        "civic" to listOf("bank", "atm", "post", "police", "fire_station", "town_hall", "courthouse", "place_of_worship", "cemetery", "community_centre"),
+        "culture" to listOf("museum", "art_gallery", "cinema", "theatre", "attraction", "gallery", "information", "artwork", "viewpoint", "aquarium", "zoo"),
+        "sport" to listOf("stadium", "sports", "sports_centre", "fitness_centre", "swimming_pool"),
+        "transit" to listOf("bus", "railway", "aerodrome", "station", "subway", "tram", "ferry_terminal", "airport"),
+    )
+
+    /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our coloured markers. */
+    fun applyToLiberty(style: Style) {
+        runCatching {
+            val sb = StringBuilder("""["match",["get","class"]""")
+            CLASS_GROUPS.forEach { (group, classes) ->
+                sb.append(',').append(classes.joinToString(",", "[", "]") { "\"$it\"" })
+                sb.append(",\"vela-poi-").append(group).append('"')
+            }
+            sb.append(",\"vela-poi-default\"]")
+            val expr = Expression.raw(sb.toString())
+            listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
+                style.getLayer(id)?.setProperties(
+                    PropertyFactory.iconImage(expr),
+                    PropertyFactory.iconSize(0.5f),
+                )
             }
         }
     }
