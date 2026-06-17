@@ -6,6 +6,7 @@ import app.vela.core.data.google.at
 import app.vela.core.data.google.dbl
 import app.vela.core.data.google.int
 import app.vela.core.data.google.str
+import app.vela.core.model.AboutSection
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.SearchResult
@@ -74,8 +75,23 @@ object SearchParser {
             // place-details RPC). Strip its surrounding quotes.
             featuredReview = entry.at(1, 142, 1, 0, 1, 0, 0).str()
                 ?.trim()?.trim('"', '“', '”')?.ifBlank { null },
+            featureId = entry.at(1, 10).str(),  // "0x..:0x.." → reviews RPC
+            placeId = entry.at(1, 78).str(),    // "ChIJ.." → deep links
+            about = parseAbout(entry),
             distanceMeters = near?.distanceTo(loc),
         )
+    }
+
+    /** Google's "About" panel: `[1][100][1]` is a list of sections, each with a
+     *  title at `[s][1]` and items at `[s][2][j][1]` (e.g. "Service options" →
+     *  ["Outdoor seating","Takeout","Dine-in"]). */
+    private fun parseAbout(entry: JsonElement): List<AboutSection> {
+        val sections = entry.at(1, 100, 1).arr() ?: return emptyList()
+        return sections.mapNotNull { s ->
+            val title = s.at(1).str() ?: return@mapNotNull null
+            val items = s.at(2).arr()?.mapNotNull { it.at(1).str()?.ifBlank { null } }.orEmpty()
+            if (items.isEmpty()) null else AboutSection(title, items)
+        }
     }
 
     /** Business photos: `[1][105][0][1][0]` is an array of photo objects, each

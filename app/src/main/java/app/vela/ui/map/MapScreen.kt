@@ -314,6 +314,8 @@ fun MapScreen(
                 route = state.activeRoute,
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 currentMode = state.travelMode,
+                reviews = state.reviews,
+                reviewsLoading = state.reviewsLoading,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
                 onModeSelected = vm::setTravelMode,
@@ -551,7 +553,7 @@ private fun SuggestionRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
-        Text(label, style = MaterialTheme.typography.bodyLarge)
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
     }
 }
 

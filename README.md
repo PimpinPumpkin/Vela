@@ -116,9 +116,11 @@ no session token needed) is what populates results. Results at `root[64][i]`,
 each rooted at `[1]`: name `[1][11]`, **full address `[1][39]`** (street, city,
 state, ZIP — fall back to joining the components at `[1][2]`), rating `[1][4][7]`,
 reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`,
+feature id `[1][10]` (`0x..:0x..`, → reviews endpoint), place id `[1][78]`,
 **photos `[1][105][0][1][0][i][6][0]`** (FIFE URLs; re-size with a `=w500-h350`
-suffix), **featured review snippet `[1][142][1][0][1][0][0]`** (the search
-response carries only this one — the full review list needs the place RPC).
+suffix), **featured review snippet `[1][142][1][0][1][0][0]`**, and the **About**
+attributes at `[1][100][1]` (see below). Full reviews come from a separate
+keyless endpoint (below).
 
 **Directions** — `GET /maps/preview/directions?pb=<DirectionsPb>` (no token).
 Routes at `root[0][1][r]`, summary at `[0]`: distance m `[2][0]`, typical
@@ -139,9 +141,19 @@ common fields: website `[1][7][0]`, price text `[1][4][2]`, open-status
 ("Open · Closes 9 PM"), and **weekly hours `[1][203][0]`** for most places —
 falling back to `[1][118][0][3][0]`. Both are 7-entry arrays starting with
 today: day name `[0]` + hours text `[3][0][0]`. (Re-calibrated 2026-06-16;
-reading only `[118]` had missed hours for the majority of businesses.) Popular
-times and individual review text are the sign-in-gated exceptions, still
-unmapped.
+reading only `[118]` had missed hours for the majority of businesses.) The
+**About** panel rides along too at `[1][100][1]` — a list of sections, each with
+a title `[s][1]` and items `[s][2][j][1]` (Service options, Highlights,
+Accessibility, …). Popular times remain the sign-in-gated exception.
+
+**Reviews** — `GET /maps/preview/review/listentitiesreviews?pb=…` is a keyless
+endpoint (no token: the `!5m2!1s<session>` block accepts any string). The pb is
+`!1m2!1y<HIGH>!2y<LOW>!2m2!2i<offset>!3i<count>!3e1!5m2!1svela!7e81`, where
+`<HIGH>`/`<LOW>` are the two halves of the place's feature id `[1][10]`
+(`0xHIGH:0xLOW`) as unsigned-64 decimals. Reviews come back at `root[2]`, each:
+author `[0][1]`, author photo `[0][2]`, relative time `[1]`, text `[3]`, rating
+`[4]`. It needs the same consent cookies as search (the shared cookie jar carries
+them); a cookieless request returns an empty envelope.
 
 **Reverse-geocode** (long-press the map → drop a pin → address) uses
 OpenStreetMap's **Nominatim** (`/reverse`, keyless and documented) rather than

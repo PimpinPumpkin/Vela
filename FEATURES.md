@@ -28,8 +28,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Full-screen search page** (Google-style) — focusing the search box opens an opaque page with saved + recent searches over the map (back arrow / back gesture closes it); running a search drops back to the map with the results list + red pins
 - ✅ Clear-search (X) button; dismiss the results list (swipe-up / back gesture) to browse the map — pins stay, a chip re-opens it
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
-- 🟡 Reviews — **Google's featured review snippet** shows in the place sheet; the full multi-review list (author, rating, date) needs the place-details RPC
-- ⬜ Popular times + full review list + Updates/About tabs (sign-in-gated place RPC)
+- ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
+- ✅ **Tabbed place sheet** (Google-style): **Overview** (hours + featured review), **Reviews**, **About** (Service options, Highlights, Accessibility, … from Google's attributes)
+- ⬜ Popular times; review pagination (currently first ~20) + Updates/posts tab
 - ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)**
 - ✅ **Place photos** — business photo strip (horizontally scrollable) at the top of the place sheet, from Google's photo array
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search

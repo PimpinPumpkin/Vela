@@ -2,6 +2,7 @@ package app.vela.core.data
 
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
+import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.SearchResult
 import app.vela.core.model.TravelMode
@@ -25,6 +26,10 @@ interface MapDataSource {
     /** Reverse-geocode a tapped point to an address (drop-a-pin / tap-a-building).
      *  Best-effort — returns null if nothing is found. */
     suspend fun reverseGeocode(location: LatLng): Place? = null
+
+    /** Full user reviews for a place, by Google feature id ("0x..:0x..").
+     *  Best-effort — returns empty if unavailable. */
+    suspend fun reviews(featureId: String): List<Review> = emptyList()
 
     suspend fun directions(
         origin: LatLng,

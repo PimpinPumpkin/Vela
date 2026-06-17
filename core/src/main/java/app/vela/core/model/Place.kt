@@ -22,7 +22,23 @@ data class Place(
     val hours: List<String> = emptyList(),
     val photoUrls: List<String> = emptyList(),
     val featuredReview: String? = null, // Google's single highlighted review snippet
+    val featureId: String? = null,      // Google feature id "0x..:0x.." → reviews RPC
+    val placeId: String? = null,        // "ChIJ..." place id (for deep links)
+    val about: List<AboutSection> = emptyList(),
     val distanceMeters: Double? = null, // filled when searched relative to a point
+)
+
+/** One section of Google's "About" panel, e.g. title="Service options",
+ *  items=["Outdoor seating","Takeout","Dine-in"]. */
+data class AboutSection(val title: String, val items: List<String>)
+
+/** A single user review. [rating] is 1..5; [text] is null for rating-only reviews. */
+data class Review(
+    val author: String,
+    val authorPhoto: String?,
+    val rating: Int,
+    val relativeTime: String?,
+    val text: String?,
 )
 
 data class SearchResult(

@@ -5,9 +5,11 @@ import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteGeometry
 import app.vela.core.data.google.parse.DirectionsParser
+import app.vela.core.data.google.parse.ReviewsParser
 import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
+import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.SearchResult
 import app.vela.core.model.TravelMode
@@ -79,6 +81,21 @@ class GoogleMapsDataSource @Inject constructor(
                 address = addressLine,
             )
         }.getOrNull()
+    }
+
+    override suspend fun reviews(featureId: String): List<Review> = io {
+        // /maps/preview/review/listentitiesreviews — a keyless GET. The feature id
+        // "0xHIGH:0xLOW" splits into two unsigned-64 decimals (1y/2y); 2i/3i page,
+        // 3e1 sorts by most-relevant. The 1s session token can be any string.
+        // (Calibrated live 2026-06-16.)
+        val parts = featureId.split(":")
+        if (parts.size != 2) return@io emptyList()
+        val high = runCatching { java.math.BigInteger(parts[0].removePrefix("0x"), 16) }.getOrNull() ?: return@io emptyList()
+        val low = runCatching { java.math.BigInteger(parts[1].removePrefix("0x"), 16) }.getOrNull() ?: return@io emptyList()
+        val pb = "!1m2!1y$high!2y$low!2m2!2i0!3i20!3e1!5m2!1svela!7e81"
+        val url = "https://www.google.com/maps/preview/review/listentitiesreviews" +
+            "?authuser=0&hl=en&gl=us&pb=${pb.enc()}"
+        runCatching { ReviewsParser.parse(GoogleResponse.parse(get(url))) }.getOrDefault(emptyList())
     }
 
     override suspend fun directions(

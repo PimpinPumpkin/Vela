@@ -22,15 +22,19 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
@@ -47,6 +51,7 @@ import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledTonalIconButton
@@ -55,9 +60,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -78,7 +86,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import app.vela.core.model.AboutSection
 import app.vela.core.model.Place
+import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.TravelMode
 import coil.compose.AsyncImage
@@ -106,6 +116,8 @@ fun PlaceSheet(
     route: Route?,
     isSaved: Boolean,
     currentMode: TravelMode,
+    reviews: List<Review> = emptyList(),
+    reviewsLoading: Boolean = false,
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
     onModeSelected: (TravelMode) -> Unit,
@@ -229,29 +241,6 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            place.address?.let { addr ->
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(Icons.Default.Place, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        addr,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = ink,
-                        modifier = Modifier.weight(1f),
-                    )
-                    IconButton(onClick = {
-                        val cb = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        cb.setPrimaryClip(ClipData.newPlainText("address", addr))
-                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
-                    }) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy address", tint = dim, modifier = Modifier.size(18.dp))
-                    }
-                }
-            }
-
             // Google-style quick-action row: Call / Website / Save / Share.
             Row(
                 Modifier
@@ -280,33 +269,30 @@ fun PlaceSheet(
                 ShareAction(place, dim)
             }
 
-            place.featuredReview?.let { rev ->
+            place.address?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 12.dp),
-                    verticalAlignment = Alignment.Top,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Place, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        rev,
+                        addr,
                         style = MaterialTheme.typography.bodyMedium,
-                        fontStyle = FontStyle.Italic,
                         color = ink,
                         modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = {
+                        val cb = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cb.setPrimaryClip(ClipData.newPlainText("address", addr))
+                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy address", tint = dim, modifier = Modifier.size(18.dp))
+                    }
                 }
             }
 
-            if (place.hours.isNotEmpty()) {
-                HoursSection(place.hours, ink, dim)
-            } else if (place.category != null) {
-                Text(
-                    "Hours not listed",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = dim,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
+            PlaceTabs(place, reviews, reviewsLoading, ink, dim)
 
             Spacer(Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -353,6 +339,157 @@ fun PlaceSheet(
                             Text("Steps")
                         }
                     }
+                }
+            }
+        }
+    }
+}
+
+/** Google-style Overview / Reviews / About tabs. Only tabs with content show;
+ *  the content area is height-capped and scrolls (e.g. the reviews list). */
+@Composable
+private fun PlaceTabs(
+    place: Place,
+    reviews: List<Review>,
+    reviewsLoading: Boolean,
+    ink: Color,
+    dim: Color,
+) {
+    val hasOverview = place.hours.isNotEmpty() || place.featuredReview != null
+    val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading
+    val hasAbout = place.about.isNotEmpty()
+    val tabs = buildList {
+        if (hasOverview) add("Overview")
+        if (hasReviews) add("Reviews")
+        if (hasAbout) add("About")
+    }
+    if (tabs.isEmpty()) return
+    var sel by remember(place.id) { mutableIntStateOf(0) }
+    val selected = sel.coerceIn(0, tabs.lastIndex)
+
+    Column(Modifier.padding(top = 8.dp)) {
+        TabRow(
+            selectedTabIndex = selected,
+            containerColor = Color.Transparent,
+            contentColor = ink,
+        ) {
+            tabs.forEachIndexed { i, title ->
+                Tab(selected = i == selected, onClick = { sel = i }, text = { Text(title) })
+            }
+        }
+        Column(
+            Modifier
+                .heightIn(max = 360.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(top = 10.dp),
+        ) {
+            when (tabs[selected]) {
+                "Overview" -> OverviewTab(place, ink, dim)
+                "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, ink, dim)
+                "About" -> AboutTab(place.about, ink, dim)
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverviewTab(place: Place, ink: Color, dim: Color) {
+    Column {
+        place.featuredReview?.let { rev ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.Top) {
+                Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
+            }
+        }
+        if (place.hours.isNotEmpty()) {
+            HoursSection(place.hours, ink, dim)
+        } else if (place.category != null) {
+            Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim)
+        }
+    }
+}
+
+@Composable
+private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, ink: Color, dim: Color) {
+    Column {
+        place.rating?.let { r ->
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
+                Spacer(Modifier.width(8.dp))
+                RatingStars(r)
+                place.reviewCount?.let {
+                    Spacer(Modifier.width(8.dp))
+                    Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
+                }
+            }
+        }
+        when {
+            loading && reviews.isEmpty() -> Row(
+                Modifier.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(10.dp))
+                Text("Loading reviews…", style = MaterialTheme.typography.bodyMedium, color = dim)
+            }
+            reviews.isEmpty() -> Text("No reviews available.", style = MaterialTheme.typography.bodyMedium, color = dim)
+            else -> reviews.forEach { ReviewRow(it, ink, dim) }
+        }
+    }
+}
+
+@Composable
+private fun ReviewRow(review: Review, ink: Color, dim: Color) {
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (review.authorPhoto != null) {
+                AsyncImage(
+                    model = review.authorPhoto,
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.size(32.dp).clip(CircleShape).background(dim.copy(alpha = 0.2f)),
+                )
+            } else {
+                Box(
+                    Modifier.size(32.dp).clip(CircleShape).background(dim.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center,
+                ) { Text(review.author.take(1), style = MaterialTheme.typography.bodyMedium, color = ink) }
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
+                Text(review.author, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = ink, maxLines = 1)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    RatingStars(review.rating.toDouble(), starSize = 12.dp)
+                    review.relativeTime?.let {
+                        Spacer(Modifier.width(6.dp))
+                        Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
+                    }
+                }
+            }
+        }
+        review.text?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
+        }
+    }
+}
+
+@Composable
+private fun AboutTab(sections: List<AboutSection>, ink: Color, dim: Color) {
+    Column {
+        sections.forEach { sec ->
+            Text(
+                sec.title,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Medium,
+                color = dim,
+                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+            )
+            sec.items.forEach { item ->
+                Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Check, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(item, style = MaterialTheme.typography.bodyMedium, color = ink)
                 }
             }
         }

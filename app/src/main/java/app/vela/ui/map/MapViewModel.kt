@@ -11,6 +11,7 @@ import app.vela.core.data.tiles.MapStyle
 import app.vela.core.location.LocationProvider
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
+import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.SavedPlace
 import app.vela.core.model.TravelMode
@@ -38,6 +39,8 @@ data class MapUiState(
     val query: String = "",
     val results: List<Place> = emptyList(),
     val selected: Place? = null,
+    val reviews: List<Review> = emptyList(),
+    val reviewsLoading: Boolean = false,
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
     val travelMode: TravelMode = TravelMode.DRIVE,
@@ -189,13 +192,33 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun selectPlace(p: Place) =
-        _state.update { it.copy(selected = p, center = p.location) }
+    fun selectPlace(p: Place) {
+        _state.update { it.copy(selected = p, center = p.location, reviews = emptyList()) }
+        fetchReviews(p)
+    }
+
+    /** Pull full reviews for a place by its Google feature id (best-effort,
+     *  applied only if it's still the selected place when they arrive). */
+    private fun fetchReviews(p: Place) {
+        val fid = p.featureId
+        if (fid.isNullOrBlank()) {
+            _state.update { it.copy(reviews = emptyList(), reviewsLoading = false) }
+            return
+        }
+        _state.update { it.copy(reviewsLoading = true) }
+        viewModelScope.launch {
+            val revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
+            if (_state.value.selected?.featureId == fid) {
+                _state.update { it.copy(reviews = revs, reviewsLoading = false) }
+            }
+        }
+    }
 
     fun clearSelection() =
         _state.update {
             it.copy(
-                selected = null, routes = emptyList(), activeRoute = null,
+                selected = null, reviews = emptyList(), reviewsLoading = false,
+                routes = emptyList(), activeRoute = null,
                 showSteps = false, previewStepIndex = null,
             )
         }
@@ -224,6 +247,7 @@ class MapViewModel @Inject constructor(
                 selected = Place(id = "poi:" + name.hashCode(), name = name, location = location),
                 results = emptyList(),
                 center = location,
+                reviews = emptyList(),
             )
         }
         viewModelScope.launch {
@@ -232,6 +256,7 @@ class MapViewModel @Inject constructor(
             }.getOrNull()
             if (full != null && _state.value.selected?.name == name) {
                 _state.update { it.copy(selected = full) }
+                fetchReviews(full)
             }
         }
     }
@@ -245,6 +270,7 @@ class MapViewModel @Inject constructor(
                 results = emptyList(),
                 resultsCollapsed = false,
                 showSearchThisArea = false,
+                reviews = emptyList(),
             )
         }
         viewModelScope.launch {
