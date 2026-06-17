@@ -19,7 +19,9 @@ import app.vela.core.model.TravelMode
  * current parser doesn't read, so the UI offers drive / walk / bike only.
  */
 object DirectionsPb {
-    private const val TEMPLATE =
+    // Shipped default; the live template comes from CalibrationStore and is passed
+    // into [build].
+    const val DEFAULT_TEMPLATE =
         "!1m4!3m2!3d{OLAT}!4d{OLNG}!6e2!1m4!3m2!3d{DLAT}!4d{DLNG}!6e2" +
         "!3m12!1m3!1d24960.741896132306!2d-121.7527808!3d38.554674999999996!2m3!1f0.0!2f0.0!3f0.0" +
         "!3m2!1i1024!2i768!4f13.1!6m56!1m5!18b1!30b1!31m1!1b1!34e1!2m4!5m1!6e2!20e3!39b1!6m27!32i1" +
@@ -29,14 +31,14 @@ object DirectionsPb {
         "!1i0!2i0!2m2!1i530!2i768!1m6!1m2!1i974!2i0!2m2!1i1024!2i768!1m6!1m2!1i0!2i0!2m2!1i1024" +
         "!2i20!1m6!1m2!1i0!2i748!2m2!1i1024!2i768!27b1!40i783!47m2!8b1!10e2"
 
-    fun build(origin: LatLng, destination: LatLng, mode: TravelMode): String {
+    fun build(origin: LatLng, destination: LatLng, mode: TravelMode, template: String = DEFAULT_TEMPLATE): String {
         val modeCode = when (mode) {
             TravelMode.DRIVE -> 0
             TravelMode.BICYCLE -> 1
             TravelMode.WALK -> 2
             TravelMode.TRANSIT -> 3
         }
-        return TEMPLATE
+        return template
             .replace("{OLAT}", origin.lat.toString())
             .replace("{OLNG}", origin.lng.toString())
             .replace("{DLAT}", destination.lat.toString())

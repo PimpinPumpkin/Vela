@@ -1,6 +1,7 @@
 package app.vela.core.data.google
 
 import app.vela.core.VelaConfig
+import app.vela.core.config.CalibrationStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -25,6 +26,7 @@ import javax.inject.Singleton
 @Singleton
 class GoogleSession @Inject constructor(
     private val http: OkHttpClient,
+    private val calibration: CalibrationStore,
 ) {
     @Volatile
     private var warmed = false
@@ -34,7 +36,7 @@ class GoogleSession @Inject constructor(
         withContext(Dispatchers.IO) {
             runCatching {
                 val req = Request.Builder()
-                    .url("https://www.google.com/maps?hl=en&gl=us")
+                    .url(calibration.current().sessionWarmUrl)
                     .header("User-Agent", VelaConfig.USER_AGENT)
                     .header("Accept-Language", "en-US,en;q=0.9")
                     .header("Accept", "text/html,application/xhtml+xml")

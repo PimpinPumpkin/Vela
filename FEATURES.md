@@ -93,7 +93,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ UnifiedPush for delay alerts (no FCM)
 - ⬜ ACRA / self-hosted crash reporting
 
+## Resilience / maintainability
+- ✅ **Remotely-updatable scraper calibration (phase 1)** — the `pb` templates +
+  endpoint URLs live in `calibration.json` at the repo root; the app fetches it at
+  launch and adopts a newer `version` (host-allowlisted to google.com) without an
+  app update. Push a `pb`/endpoint fix by editing that file + bumping `version`.
+- ⬜ Phase 2: externalise the positional field-index paths too (then most drift is
+  a remote fix; only new parsing *logic* needs a release).
+
 ## Known calibration debts (the NewPipe lifestyle)
 - Google request/response shapes are pinned to a 2026-06-15 capture; expect
-  periodic re-calibration (paths documented in the README).
+  periodic re-calibration (paths documented in the README). Pb/endpoint drift is
+  now a remote `calibration.json` fix (above); index-path drift still needs a build.
 - EU consent wall for cookieless sessions is unhandled.

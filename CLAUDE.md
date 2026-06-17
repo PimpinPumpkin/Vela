@@ -62,6 +62,17 @@ genuinely needs no doc edit, say why in the commit.
   when shapes drift; the UI surfaces it as a notice.
 - **Never embed a static Google API key.** Per-user `GoogleSession` bootstrap
   only — that's what keeps the NewPipe legal footing.
+- **Remote calibration (`calibration.json` at the repo root).** The `pb` templates
+  and endpoint URLs are remotely updatable: `CalibrationStore` (in `:core`,
+  `config/`) fetches `calibration.json` from the repo's raw URL at launch and
+  adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
+  provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).
+  **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
+  `calibration.json`, **bump `version`**, commit to `main` — users pick it up on
+  their next launch (raw.githubusercontent caches ~5 min). Keep
+  `Calibration.DEFAULT` (the compiled fallback) and `calibration.json` in sync when
+  you cut an actual release. The field-index paths the parsers read are NOT yet
+  remote — a shape change that needs new parsing still needs a build.
 
 ## Degoogled constraints (hard rules)
 

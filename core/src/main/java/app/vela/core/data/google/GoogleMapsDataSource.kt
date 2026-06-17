@@ -1,6 +1,7 @@
 package app.vela.core.data.google
 
 import app.vela.core.VelaConfig
+import app.vela.core.config.CalibrationStore
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteGeometry
@@ -38,6 +39,7 @@ import javax.inject.Singleton
 class GoogleMapsDataSource @Inject constructor(
     private val http: OkHttpClient,
     private val session: GoogleSession,
+    private val calibration: CalibrationStore,
 ) : MapDataSource {
 
     override suspend fun search(query: String, near: LatLng?): SearchResult = io {
@@ -45,9 +47,9 @@ class GoogleMapsDataSource @Inject constructor(
         // Results are viewport-driven, so a location is required; callers
         // normally pass the user's location, with a fallback for the rare null.
         val viewport = near ?: DEFAULT_VIEWPORT
-        val pb = SearchPb.build(query, viewport)
-        val url = "https://www.google.com/search?tbm=map&authuser=0&hl=en&gl=us" +
-            "&q=${query.enc()}&pb=${pb.enc()}"
+        val cal = calibration.current()
+        val pb = SearchPb.build(query, viewport, cal.searchPb)
+        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}"
         SearchParser.parse(query, GoogleResponse.parse(get(url)), near)
     }
 
@@ -92,9 +94,9 @@ class GoogleMapsDataSource @Inject constructor(
         if (parts.size != 2) return@io emptyList()
         val high = runCatching { java.math.BigInteger(parts[0].removePrefix("0x"), 16) }.getOrNull() ?: return@io emptyList()
         val low = runCatching { java.math.BigInteger(parts[1].removePrefix("0x"), 16) }.getOrNull() ?: return@io emptyList()
-        val pb = "!1m2!1y$high!2y$low!2m2!2i0!3i20!3e1!5m2!1svela!7e81"
-        val url = "https://www.google.com/maps/preview/review/listentitiesreviews" +
-            "?authuser=0&hl=en&gl=us&pb=${pb.enc()}"
+        val cal = calibration.current()
+        val pb = cal.reviewsPb.replace("{HIGH}", high.toString()).replace("{LOW}", low.toString())
+        val url = "${cal.reviewsEndpoint}&pb=${pb.enc()}"
         runCatching { ReviewsParser.parse(GoogleResponse.parse(get(url))) }.getOrDefault(emptyList())
     }
 
@@ -104,8 +106,9 @@ class GoogleMapsDataSource @Inject constructor(
         mode: TravelMode,
     ): List<Route> = io {
         session.ensure()
-        val pb = DirectionsPb.build(origin, destination, mode)
-        val url = "https://www.google.com/maps/preview/directions?authuser=0&hl=en&gl=us&pb=${pb.enc()}"
+        val cal = calibration.current()
+        val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb)
+        val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
         val routes = DirectionsParser.parse(GoogleResponse.parse(get(url)))
         // Google's response carries no decodable line; draw it via an open router.
         // FOSSGIS OSRM has a per-mode backend, so drive/walk/bike each get a real

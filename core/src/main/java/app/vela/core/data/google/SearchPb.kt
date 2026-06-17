@@ -16,7 +16,9 @@ import app.vela.core.model.LatLng
  * query + the `!2d`/`!3d` viewport coords) and replace TEMPLATE.
  */
 object SearchPb {
-    private const val TEMPLATE =
+    // The shipped default; the live template comes from CalibrationStore (remotely
+    // updatable) and is passed into [build].
+    const val DEFAULT_TEMPLATE =
         "!1s{QUERY}!4m8!1m3!1d25229.167291701906!2d{LNG}!3d{LAT}!3m2!1i1024!2i768!4f13.1!7i20" +
         "!10b1!12m52!1m5!18b1!30b1!31m1!1b1!34e1!2m4!5m1!6e2!20e3!39b1!6m25!32i1!49b1!63m0!66b1" +
         "!85b1!114b1!149b1!206b1!209b1!212b1!216b1!222b1!223b1!232b1!234b1!235b1!244b1!246b1" +
@@ -37,8 +39,8 @@ object SearchPb {
         "!23b1!25b1!26b1!31b1!37m1!1e81!42b1!49m10!3b1!6m2!1b1!2b1!7m2!1e3!2b1!8b1!9b1!10e2!50m3" +
         "!2e2!3m1!3b1!61b1!67m5!7b1!10b1!14b1!15m1!1b0!69i782!77b1"
 
-    fun build(query: String, viewport: LatLng): String =
-        TEMPLATE
+    fun build(query: String, viewport: LatLng, template: String = DEFAULT_TEMPLATE): String =
+        template
             .replace("{QUERY}", query.replace('!', ' ').trim())
             .replace("{LNG}", viewport.lng.toString())
             .replace("{LAT}", viewport.lat.toString())

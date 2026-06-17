@@ -161,6 +161,19 @@ them); a cookieless request returns an empty envelope. It serves a **fixed top
 ~20** (the `2i` offset is ignored and `3i` count is capped); deeper pagination is
 behind an obfuscated continuation token, deliberately not chased.
 
+**Remote calibration.** The brittle bits that drift — the `pb` templates and the
+endpoint URLs above — are not hard-compiled; they live in
+[`calibration.json`](calibration.json) at the repo root.
+[`CalibrationStore`](core/src/main/java/app/vela/core/config/CalibrationStore.kt)
+ships a bundled `Calibration.DEFAULT`, then fetches that file from the repo's raw
+URL at launch and **adopts it when its `version` is newer** — gated by a host
+allowlist (every endpoint must be `google.com`, so a tampered file can't redirect
+requests). So when Google reshuffles a `pb` or moves an endpoint, the fix is a
+one-line edit + `version` bump committed to `main` — **every user gets it on their
+next launch, no app update**. (Phase 1: pb + endpoints. The positional field-index
+paths the parsers read are still compiled in — phase 2. A change needing genuinely
+new parsing *logic* still ships as a release.)
+
 **Reverse-geocode** (long-press the map → drop a pin → address) uses
 OpenStreetMap's **Nominatim** (`/reverse`, keyless and documented) rather than
 Google, since Google's map search doesn't reverse-geocode a `lat,lng` query.

@@ -3,6 +3,7 @@ package app.vela.ui.map
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import app.vela.core.config.CalibrationStore
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RecentSearchStore
@@ -77,6 +78,7 @@ class MapViewModel @Inject constructor(
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
     private val savedStore: SavedPlaceStore,
+    private val calibration: CalibrationStore,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -91,6 +93,8 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         voice.init() // warm TTS so the engine list is ready in Settings
         _state.update { it.copy(recents = recentStore.recent(), saved = savedStore.saved()) }
+        // Pull the latest scraper calibration from the repo (non-blocking, once).
+        viewModelScope.launch { runCatching { calibration.refresh() } }
 
         viewModelScope.launch {
             navSession.state.collect { ns ->
