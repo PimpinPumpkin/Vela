@@ -12,8 +12,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -82,6 +86,12 @@ fun VelaMapView(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    val density = LocalDensity.current
+    // Push MapLibre's compass below the status bar (it defaults to the top-right
+    // corner, which sits *under* the status bar).
+    val statusBarTopPx = WindowInsets.statusBars.getTop(density)
+    val compassTopPx = statusBarTopPx + with(density) { 8.dp.roundToPx() }
+    val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
@@ -167,6 +177,8 @@ fun VelaMapView(
             }
         }
         val map = mapRef ?: return@AndroidView
+        // Keep the compass clear of the status bar (insets are ready post-layout).
+        map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
 
         val styleKey = "$styleUri|dark=$darkTheme"
         if (appliedStyleKey != styleKey) {

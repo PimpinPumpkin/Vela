@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -105,12 +106,13 @@ fun MapScreen(
     // dropping straight out of the app. Only the bare map (or collapsed pins,
     // which a back already peeled down to) lets the system handle back and exit.
     BackHandler(
-        enabled = state.showSteps || state.navigating ||
+        enabled = searchFocused || state.showSteps || state.navigating ||
             state.activeRoute != null || state.routes.isNotEmpty() ||
             state.selected != null ||
             (state.results.isNotEmpty() && !state.resultsCollapsed),
     ) {
         when {
+            searchFocused -> focusManager.clearFocus()
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
             state.activeRoute != null || state.routes.isNotEmpty() -> vm.clearRoute()
@@ -186,55 +188,70 @@ fun MapScreen(
                     .padding(12.dp),
             )
         } else {
-            Column(
+            // While the search box is focused the whole thing becomes a full-screen
+            // page (recent searches over an opaque background, like Google Maps);
+            // otherwise it's the floating bar over the map. Running a search clears
+            // focus, which drops back to the map + results-list + red pins.
+            Box(
                 Modifier
                     .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(12.dp),
+                    .then(
+                        if (searchFocused) {
+                            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        },
+                    ),
             ) {
-                SearchBar(
-                    query = state.query,
-                    searching = state.searching,
-                    onQueryChange = vm::onQueryChange,
-                    onSearch = vm::search,
-                    onOpenSettings = onOpenSettings,
-                    onClear = vm::clearSearch,
-                    onFocusChange = { searchFocused = it },
-                )
-                if (state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed) {
-                    SearchResults(
-                        results = state.results,
-                        onPick = {
+                Column(Modifier.statusBarsPadding().padding(12.dp)) {
+                    SearchBar(
+                        query = state.query,
+                        searching = state.searching,
+                        onQueryChange = vm::onQueryChange,
+                        onSearch = {
                             focusManager.clearFocus()
-                            vm.selectPlace(it)
+                            vm.search()
                         },
-                        onCollapse = vm::collapseResults,
+                        onOpenSettings = onOpenSettings,
+                        onClear = vm::clearSearch,
+                        onFocusChange = { searchFocused = it },
+                        onBack = if (searchFocused) ({ focusManager.clearFocus() }) else null,
                     )
-                } else if (state.results.isNotEmpty() && state.selected == null && state.resultsCollapsed) {
-                    ElevatedAssistChip(
-                        onClick = vm::expandResults,
-                        label = { Text("${state.results.size} results") },
-                        leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) },
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                } else if (searchFocused && state.query.isBlank() &&
-                    (state.saved.isNotEmpty() || state.recents.isNotEmpty())
-                ) {
-                    SuggestionsPanel(
-                        saved = state.saved,
-                        recents = state.recents,
-                        onPickSaved = {
-                            focusManager.clearFocus()
-                            vm.selectSaved(it)
-                        },
-                        onPickRecent = {
-                            focusManager.clearFocus()
-                            vm.searchRecent(it)
-                        },
-                        onClearRecents = vm::clearRecents,
-                    )
-                } else if (!searchFocused && state.selected == null) {
-                    CategoryChips(onPick = vm::quickSearch)
+                    when {
+                        searchFocused -> SearchEntryContent(
+                            saved = state.saved,
+                            recents = state.recents,
+                            onPickSaved = {
+                                focusManager.clearFocus()
+                                vm.selectSaved(it)
+                            },
+                            onPickRecent = {
+                                focusManager.clearFocus()
+                                vm.searchRecent(it)
+                            },
+                            onClearRecents = vm::clearRecents,
+                        )
+
+                        state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed ->
+                            SearchResults(
+                                results = state.results,
+                                onPick = {
+                                    focusManager.clearFocus()
+                                    vm.selectPlace(it)
+                                },
+                                onCollapse = vm::collapseResults,
+                            )
+
+                        state.results.isNotEmpty() && state.selected == null && state.resultsCollapsed ->
+                            ElevatedAssistChip(
+                                onClick = vm::expandResults,
+                                label = { Text("${state.results.size} results") },
+                                leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) },
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+
+                        state.selected == null -> CategoryChips(onPick = vm::quickSearch)
+                    }
                 }
             }
         }
@@ -251,7 +268,7 @@ fun MapScreen(
             )
         }
 
-        if (!state.navigating && state.showSearchThisArea && state.selected == null) {
+        if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchFocused) {
             ElevatedButton(
                 onClick = vm::searchThisArea,
                 modifier = Modifier
@@ -309,7 +326,7 @@ fun MapScreen(
             )
         }
 
-        if (!state.navigating && state.selected == null) {
+        if (!state.navigating && state.selected == null && !searchFocused) {
             FloatingActionButton(
                 onClick = vm::recenter,
                 modifier = Modifier
@@ -457,16 +474,24 @@ private fun CategoryChips(onPick: (String) -> Unit) {
     }
 }
 
+/** Full-screen search page body: saved places + recent searches, shown over an
+ *  opaque background while the search box is focused (Google-style). */
 @Composable
-private fun SuggestionsPanel(
+private fun SearchEntryContent(
     saved: List<SavedPlace>,
     recents: List<String>,
     onPickSaved: (SavedPlace) -> Unit,
     onPickRecent: (String) -> Unit,
     onClearRecents: () -> Unit,
 ) {
-    Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-        Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState())) {
+    Column(
+        Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(top = 8.dp),
+    ) {
+        if (saved.isNotEmpty()) {
+            SectionLabel("Saved")
             saved.forEach { sp ->
                 SuggestionRow(
                     icon = Icons.Default.Star,
@@ -476,6 +501,9 @@ private fun SuggestionsPanel(
                 )
                 Divider()
             }
+        }
+        if (recents.isNotEmpty()) {
+            SectionLabel("Recent")
             recents.forEach { q ->
                 SuggestionRow(
                     icon = Icons.Default.History,
@@ -485,13 +513,30 @@ private fun SuggestionsPanel(
                 )
                 Divider()
             }
-            if (recents.isNotEmpty()) {
-                TextButton(onClick = onClearRecents, modifier = Modifier.padding(start = 8.dp)) {
-                    Text("Clear recent searches")
-                }
+            TextButton(onClick = onClearRecents, modifier = Modifier.padding(start = 8.dp)) {
+                Text("Clear recent searches")
             }
         }
+        if (saved.isEmpty() && recents.isEmpty()) {
+            Text(
+                "Search for places, addresses and categories.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        fontWeight = FontWeight.Medium,
+        modifier = Modifier.padding(start = 16.dp, top = 8.dp, bottom = 4.dp),
+    )
 }
 
 @Composable

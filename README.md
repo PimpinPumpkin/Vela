@@ -115,7 +115,10 @@ empty envelope; the `pb` (viewport-driven, captured in [`SearchPb`](core/src/mai
 no session token needed) is what populates results. Results at `root[64][i]`,
 each rooted at `[1]`: name `[1][11]`, **full address `[1][39]`** (street, city,
 state, ZIP — fall back to joining the components at `[1][2]`), rating `[1][4][7]`,
-reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`.
+reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`,
+**photos `[1][105][0][1][0][i][6][0]`** (FIFE URLs; re-size with a `=w500-h350`
+suffix), **featured review snippet `[1][142][1][0][1][0][0]`** (the search
+response carries only this one — the full review list needs the place RPC).
 
 **Directions** — `GET /maps/preview/directions?pb=<DirectionsPb>` (no token).
 Routes at `root[0][1][r]`, summary at `[0]`: distance m `[2][0]`, typical

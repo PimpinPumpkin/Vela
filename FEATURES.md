@@ -7,6 +7,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Detailed open basemap: bundled OpenFreeMap Liberty + injected house numbers at z17; OpenMapTiles vector source pinned to OpenFreeMap's **versioned** tile path (the un-versioned path serves empty tiles — that was a blank-map bug)
 - ✅ Route line, **tappable Google-style search-result pins**, location dot as GeoJSON layers
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
+- ✅ Compass kept clear of the status bar (inset-aware margins)
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
 - ✅ **Long-press the map** → drop a pin, reverse-geocode it to an address (Nominatim/OSM, keyless), then get Directions — works even where no building is drawn
 - ✅ Keyless **OpenFreeMap Liberty** basemap (active, loaded by URL — the setup that renders on-device, no key): **Google-style POI markers + category-coloured labels**, a Google-like **road hierarchy** (gold motorways, white arterials, casing that lightens down the hierarchy so minor roads recede), and light/dark recolour all applied at **runtime**
@@ -23,12 +24,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Search-result rows show **5-star rating** + colour-coded open/closed status
 - ✅ Place sheet (**Google-styled**): high-contrast white-on-dark / black-on-white name + status time (fixed palette, not washed-out by Material You), **5-star rating visual**, **swipe-down to dismiss**, status with the **word colour-coded** (Open green / Closed red) and the time in plain ink, price, **full address with a copy button**, **collapsible weekly hours** (today first, expand for the week)
 - ✅ Viewport-biased "near me" search
-- ✅ Recent searches (persisted, shown on search focus)
+- ✅ Recent searches (persisted)
+- ✅ **Full-screen search page** (Google-style) — focusing the search box opens an opaque page with saved + recent searches over the map (back arrow / back gesture closes it); running a search drops back to the map with the results list + red pins
 - ✅ Clear-search (X) button; dismiss the results list (swipe-up / back gesture) to browse the map — pins stay, a chip re-opens it
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
-- ⬜ Popular times + individual review text (sign-in-gated place RPC)
+- 🟡 Reviews — **Google's featured review snippet** shows in the place sheet; the full multi-review list (author, rating, date) needs the place-details RPC
+- ⬜ Popular times + full review list + Updates/About tabs (sign-in-gated place RPC)
 - ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)**
-- ⬜ Place photos
+- ✅ **Place photos** — business photo strip (horizontally scrollable) at the top of the place sheet, from Google's photo array
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
 - ✅ "Search this area" — re-search after panning the map
 - ⬜ Filters (open now, rating, price)

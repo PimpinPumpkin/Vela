@@ -68,8 +68,24 @@ object SearchParser {
                 ?: entry.at(1, 203, 1, 4, 0).str()
                 ?: entry.at(1, 203, 1, 8, 0).str(),
             hours = parseHours(entry),
+            photoUrls = parsePhotos(entry),
+            // Google's single highlighted review snippet at [1][142][1][0][1][0][0]
+            // (the search response carries only this one; the full list needs the
+            // place-details RPC). Strip its surrounding quotes.
+            featuredReview = entry.at(1, 142, 1, 0, 1, 0, 0).str()
+                ?.trim()?.trim('"', '“', '”')?.ifBlank { null },
             distanceMeters = near?.distanceTo(loc),
         )
+    }
+
+    /** Business photos: `[1][105][0][1][0]` is an array of photo objects, each
+     *  carrying its FIFE URL at `[6][0]`. The URL ends with a size suffix
+     *  (…=w109-h195-k-no); re-size it up for the sheet's photo strip. */
+    private fun parsePhotos(entry: JsonElement): List<String> {
+        val arr = entry.at(1, 105, 0, 1, 0).arr() ?: return emptyList()
+        return arr.take(12).mapNotNull { photo ->
+            photo.at(6, 0).str()?.replace(Regex("=w\\d+-h\\d+.*$"), "=w500-h350")
+        }
     }
 
     /** Live status text → open/closed. "Closes 6 PM" means open now; "Closed

@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -34,6 +36,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Place
@@ -65,10 +68,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.IntOffset
@@ -76,6 +81,7 @@ import androidx.compose.ui.unit.dp
 import app.vela.core.model.Place
 import app.vela.core.model.Route
 import app.vela.core.model.TravelMode
+import coil.compose.AsyncImage
 import app.vela.ui.RatingStars
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
@@ -146,6 +152,25 @@ fun PlaceSheet(
                         .clip(RoundedCornerShape(2.dp))
                         .background(dim.copy(alpha = 0.5f)),
                 )
+            }
+            // Business photo strip (Google-style) — horizontally scrollable.
+            if (place.photoUrls.isNotEmpty()) {
+                LazyRow(
+                    Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(place.photoUrls) { url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(width = 152.dp, height = 110.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(dim.copy(alpha = 0.2f)),
+                        )
+                    }
+                }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -253,6 +278,23 @@ fun PlaceSheet(
                     onClick = onToggleSave,
                 )
                 ShareAction(place, dim)
+            }
+
+            place.featuredReview?.let { rev ->
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        rev,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontStyle = FontStyle.Italic,
+                        color = ink,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
 
             if (place.hours.isNotEmpty()) {
