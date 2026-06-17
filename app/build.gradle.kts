@@ -23,6 +23,15 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
+
+        // MapTiler key injected from the CI secret (-PmaptilerKey); empty for
+        // local builds, in which case the app falls back to the keyless
+        // OpenFreeMap basemap. Never stored in the repo.
+        buildConfigField(
+            "String",
+            "MAPTILER_KEY",
+            "\"${(project.findProperty("maptilerKey") as String?) ?: ""}\"",
+        )
     }
 
     // Mirrors Arcana/Callguard: real release signing comes from CI env vars;
@@ -61,7 +70,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true }
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
     }

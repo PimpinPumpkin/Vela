@@ -32,7 +32,11 @@ genuinely needs no doc edit, say why in the commit.
   confused Obtainium.) Release signing uses repo secrets `VELA_KEYSTORE_BASE64`,
   `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`,
   outside the repo — back it up). Without them the APK is debug-signed. Version
-  override: `-PappVersionName`/`-PappVersionCode`.
+  override: `-PappVersionName`/`-PappVersionCode`. An optional `MAPTILER_KEY`
+  secret → `BuildConfig.MAPTILER_KEY` (`-PmaptilerKey`) switches the basemap to
+  MapTiler Streets (Google-like, with a dark variant by system theme); empty
+  locally → keyless OpenFreeMap. **Never commit the MapTiler key** — CI-secret +
+  BuildConfig only.
 - Toolchain mirrors Arcana/Callguard exactly: AGP 8.7.3, Kotlin 2.1.0, Gradle
   8.11.1, compileSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
 - Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /

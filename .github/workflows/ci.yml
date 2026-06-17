@@ -67,6 +67,7 @@ jobs:
           ./gradlew :app:assembleRelease --no-daemon
           -PappVersionName=${{ steps.ver.outputs.name }}
           -PappVersionCode=${{ steps.ver.outputs.code }}
+          -PmaptilerKey=${{ secrets.MAPTILER_KEY }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4

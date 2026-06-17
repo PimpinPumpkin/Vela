@@ -95,9 +95,12 @@ uploads it as an artifact, and publishes a **normal versioned release**
 (`v0.1.<run>`, versionCode `1000+run`) — kept as a revision history, so Obtainium
 tracks the latest with zero configuration and no pre-release toggle. The release APK is signed with the keystore from repo secrets
 `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (without them
-it's debug-signed — installable, but not update-compatible across builds). The
-repo is public, so release assets (e.g. for Obtainium) download with no token;
-workflow artifacts still need you signed in to GitHub.
+it's debug-signed — installable, but not update-compatible across builds). An
+optional `MAPTILER_KEY` secret is injected into `BuildConfig` (`-PmaptilerKey`)
+to switch the basemap to MapTiler; it's never committed, and the app falls back
+to keyless OpenFreeMap without it. The repo is public, so release assets (e.g.
+for Obtainium) download with no token; workflow artifacts still need you signed
+in to GitHub.
 
 Out of the box the app talks to the live Google source over the keyless
 OpenFreeMap basemap; `MockMapDataSource` is the offline fallback.
@@ -164,12 +167,15 @@ decodes Google's geometry exactly and is covered by a reference-vector test.
 
 ## Map style
 
-Defaults to the keyless **OpenFreeMap Liberty** style (full street detail; we
-inject house-number labels at z17). Positron, Bright, the MapLibre demo, and
-Protomaps are alternates in the `MapStyle` catalog. The polish target is a
-custom **Protomaps** (`MapStyle.PROTOMAPS_*`) or MapTiler-keyed style carrying
-the "Google-Maps-ify" diff (road hierarchy, 3D buildings, hillshade, custom POI
-icons). Styles are plain URLs, updatable over-the-air without an app release.
+When a `MAPTILER_KEY` is built in (CI secret), the basemap is **MapTiler
+Streets** — a Google-like look with proper fonts — and **Streets Dark** is
+selected automatically on a dark system theme. With no key the app falls back to
+the keyless **OpenFreeMap Liberty** style (full street detail; we inject
+house-number labels at z17) and applies our own light/dark recolour; Positron,
+Bright, the MapLibre demo and Protomaps are alternates in the `MapStyle` catalog.
+The keyless route has a ceiling (notably the font, which OpenFreeMap fixes to
+Noto Sans); self-hosted PMTiles is the no-key, no-quota path for later. Styles
+are plain URLs, updatable over-the-air without an app release.
 
 ## Roadmap
 

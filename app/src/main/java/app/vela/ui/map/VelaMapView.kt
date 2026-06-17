@@ -73,6 +73,7 @@ fun VelaMapView(
     frameMarkers: Boolean,
     navMode: Boolean,
     darkTheme: Boolean,
+    applyKeylessTheme: Boolean,
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
@@ -173,7 +174,7 @@ fun VelaMapView(
             map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
                 styleRef = style
                 ensureLayers(style)
-                applyMapTheme(style, darkTheme)
+                if (applyKeylessTheme) applyMapTheme(style, darkTheme)
                 applyData(style, routePolyline, markers, myLocation, myBearing, previewTarget)
             }
         } else {

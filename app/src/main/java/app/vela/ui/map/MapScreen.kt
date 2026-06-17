@@ -59,6 +59,7 @@ import androidx.core.content.ContextCompat
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vela.BuildConfig
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.SavedPlace
@@ -80,6 +81,16 @@ fun MapScreen(
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val darkTheme = isSystemInDarkTheme()
+    val hasMapTiler = BuildConfig.MAPTILER_KEY.isNotBlank()
+    // MapTiler (when a key is built in) gives the Google-like look + its own
+    // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
+    // with our own dark/light recolour.
+    val mapStyleUri = if (hasMapTiler) {
+        val variant = if (darkTheme) "streets-v2-dark" else "streets-v2"
+        "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
+    } else {
+        state.styleUri
+    }
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
@@ -128,7 +139,7 @@ fun MapScreen(
 
     Box(Modifier.fillMaxSize()) {
         VelaMapView(
-            styleUri = state.styleUri,
+            styleUri = mapStyleUri,
             myLocation = state.myLocation,
             myBearing = state.myBearing,
             cameraTarget = state.center,
@@ -137,6 +148,7 @@ fun MapScreen(
             frameMarkers = state.results.isNotEmpty() && state.selected == null,
             navMode = state.navigating,
             darkTheme = darkTheme,
+            applyKeylessTheme = !hasMapTiler,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
