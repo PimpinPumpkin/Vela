@@ -27,6 +27,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.vela.BuildConfig
 import app.vela.core.data.tiles.MapStyle
 import app.vela.ui.Units
 import app.vela.ui.map.MapViewModel
@@ -105,6 +106,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 "Vela is a degoogled maps client: open tiles for the basemap, scraped Google " +
                     "for POIs, routing and traffic-aware ETAs, AOSP TextToSpeech for voice. GPLv3. " +
                     "No Play Services required.",
+            )
+            Spacer(Modifier.height(20.dp))
+            SectionTitle("Version")
+            Text(
+                "Vela ${BuildConfig.VERSION_NAME}  (build ${BuildConfig.VERSION_CODE})",
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.padding(vertical = 4.dp),
             )
             Spacer(Modifier.height(32.dp))
         }
