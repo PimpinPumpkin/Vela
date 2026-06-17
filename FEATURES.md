@@ -61,10 +61,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   offer a faster route if one appears (see Navigation below)
 - ✅ Walking + cycling modes (drive/walk/bike) — each with its **own** path-following
   line, not a car route reused
-- ⬜ **Public transit** directions (lines + schedules/times) — `/maps/preview/directions`
-  with mode 3 returns an empty envelope, so transit isn't a clean GET like driving;
-  the web UI renders it from embedded/batchexecute data, so it needs its own
-  endpoint calibration (a focused effort, like the full-photos endpoint)
+- 🟡 **Public transit** directions (lines + schedules/times) — **data source pinned
+  (2026-06-17):** unlike the photos RPC, transit is **not** a clean endpoint. The
+  mode-3 (`!3e3`) directions GET returns an empty envelope; the web UI renders the
+  full transit result (route options, departure/arrival times, line names + fares,
+  "every N min") from **`APP_INITIALIZATION_STATE` embedded in the `/maps/dir/…/data=…!3e3`
+  page HTML** (~180 KB, deeply nested). So wiring it means an HTML-scrape + a deep
+  positional parse (heaviest scraper task) — deliberately **deferred until it can be
+  verified on a device**, since an unverified transit parser could show wrong times.
+  The path is now known, not a mystery.
 - ⬜ Departure/arrival time selection; avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
