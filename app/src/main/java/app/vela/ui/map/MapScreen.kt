@@ -186,6 +186,7 @@ fun MapScreen(
             onMapLongPress = vm::onMapLongPress,
             downloadTick = downloadTick,
             onDownloadStatus = vm::showStatus,
+            onDownloadArea = vm::downloadOfflinePois,
             modifier = Modifier.fillMaxSize(),
         )
 

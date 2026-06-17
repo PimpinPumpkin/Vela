@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import app.vela.core.config.CalibrationStore
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
+import app.vela.core.data.OfflinePoiStore
+import app.vela.core.data.OverpassPois
 import app.vela.core.data.RecentSearchStore
 import app.vela.core.data.SavedPlaceStore
 import app.vela.core.data.tiles.MapStyle
@@ -24,8 +26,10 @@ import app.vela.core.voice.VoiceGuide
 import app.vela.service.NavigationService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -79,6 +83,8 @@ class MapViewModel @Inject constructor(
     private val recentStore: RecentSearchStore,
     private val savedStore: SavedPlaceStore,
     private val calibration: CalibrationStore,
+    private val offlinePoiStore: OfflinePoiStore,
+    private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -191,7 +197,15 @@ class MapViewModel @Inject constructor(
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = "Search needs recalibration: ${e.message}", searching = false) }
             } catch (e: Exception) {
-                _state.update { it.copy(status = "Search failed: ${e.message}", searching = false) }
+                // Network/Google failure → fall back to the offline OSM index.
+                val offline = withContext(Dispatchers.IO) {
+                    runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                }
+                if (offline.isNotEmpty()) {
+                    _state.update { it.copy(results = offline, selected = null, status = "Offline results (no connection)", searching = false) }
+                } else {
+                    _state.update { it.copy(status = "Search failed: ${e.message}", searching = false) }
+                }
             }
         }
     }
@@ -353,4 +367,16 @@ class MapViewModel @Inject constructor(
     fun clearStatus() = _state.update { it.copy(status = null) }
 
     fun showStatus(msg: String) = _state.update { it.copy(status = msg) }
+
+    /** When a map region is downloaded for offline use, also pull its POIs from
+     *  OSM/Overpass into the on-device index so search works there with no signal. */
+    fun downloadOfflinePois(south: Double, west: Double, north: Double, east: Double) {
+        viewModelScope.launch {
+            val pois = withContext(Dispatchers.IO) { OverpassPois.fetch(http, south, west, north, east) }
+            if (pois.isNotEmpty()) {
+                withContext(Dispatchers.IO) { offlinePoiStore.add(pois) }
+                showStatus("Saved ${pois.size} places for offline search")
+            }
+        }
+    }
 }

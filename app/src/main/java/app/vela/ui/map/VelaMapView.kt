@@ -87,6 +87,7 @@ fun VelaMapView(
     onMapLongPress: (location: LatLng) -> Unit,
     downloadTick: Int = 0,
     onDownloadStatus: (String) -> Unit = {},
+    onDownloadArea: (south: Double, west: Double, north: Double, east: Double) -> Unit = { _, _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -101,6 +102,7 @@ fun VelaMapView(
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
     val downloadStatus = rememberUpdatedState(onDownloadStatus)
+    val downloadArea = rememberUpdatedState(onDownloadArea)
     var lastDownloadTick by remember { mutableStateOf(0) }
     val gestureMove = remember { booleanArrayOf(false) }
     remember { MapLibre.getInstance(context) }
@@ -196,6 +198,7 @@ fun VelaMapView(
             val maxZ = (z + 3).coerceIn(minZ, 16.0)
             val name = center?.let { "Area near %.2f, %.2f".format(it.latitude, it.longitude) } ?: "Saved area"
             OfflineMaps.download(context, styleUri, bounds, minZ, maxZ, name) { downloadStatus.value(it) }
+            downloadArea.value(bounds.latitudeSouth, bounds.longitudeWest, bounds.latitudeNorth, bounds.longitudeEast)
         }
 
         val styleKey = "$styleUri|dark=$darkTheme"

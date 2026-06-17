@@ -60,7 +60,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - 🟡 **Live route re-check while navigating** — periodically re-query traffic and
   offer a faster route if one appears (see Navigation below)
 - ✅ Walking + cycling modes (drive/walk/bike) — each with its **own** path-following
-  line, not a car route reused; transit response shape is a separate TODO
+  line, not a car route reused
+- ⬜ **Public transit** directions (lines + schedules/times) — `/maps/preview/directions`
+  with mode 3 returns an empty envelope, so transit isn't a clean GET like driving;
+  the web UI renders it from embedded/batchexecute data, so it needs its own
+  endpoint calibration (a focused effort, like the full-photos endpoint)
 - ⬜ Departure/arrival time selection; avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
@@ -94,8 +98,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the visible area's tiles/glyphs/sprites (via MapLibre's built-in offline store)
   so it renders later with **no network**; manage/delete saved areas in Settings →
   Offline maps. Open tiles, no Google, no backend.
-- ⬜ Offline routing (embedded Valhalla / routing graph) — heavier follow-on
-- ⬜ Offline search (SQLite FTS over an OSM/Overture POI subset)
+- ✅ **Offline search** — downloading a map area also pulls its POIs from
+  **OpenStreetMap/Overpass** (keyless) into an on-device SQLite index; when Google
+  search can't be reached, search falls back to that index ("Offline results")
+- ⬜ Offline routing (embedded Valhalla / routing graph) — the heavy native lift
 - ⬜ Region downloads as portable PMTiles + historical traffic
 
 ## Platform & distribution

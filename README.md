@@ -51,6 +51,8 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
         │   │   ├─ GoogleResponse        XSSI strip + positional-array navigator
         │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
         │   │   └─ parse/                 SearchParser, DirectionsParser
+        │   ├─ OverpassPois              keyless OSM POI fetch (offline-search source)
+        │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
         │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
         ├─ location/         LocationProvider — AOSP LocationManager (no Fused)
         ├─ voice/            VoiceGuide — AOSP TextToSpeech, engine-selectable
