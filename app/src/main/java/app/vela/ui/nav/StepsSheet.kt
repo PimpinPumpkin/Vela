@@ -109,6 +109,14 @@ fun StepsSheet(
                             m.road?.let {
                                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
+                            m.laneHint?.let {
+                                Text(
+                                    it,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                            }
                         }
                         if (m.distanceMeters > 0) {
                             Text(

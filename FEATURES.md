@@ -51,6 +51,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   isn't reliably in the response and our line is OSRM geometry, so it's whole-route)
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
+- ✅ **Lane guidance** — Google's lane hints ("Use the right 2 lanes to turn") are
+  pulled out of the step markup into their own field, shown highlighted in the step
+  list and the nav banner (the main instruction stays clean: "Turn right onto …")
 - ✅ Route geometry via open router — **per-mode** FOSSGIS OSRM backends
   (`routed-car`/`routed-bike`/`routed-foot`), so drive/walk/bike each follow the
   correct network; Valhalla later

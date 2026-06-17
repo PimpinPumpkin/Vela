@@ -80,6 +80,9 @@ object DirectionsParser {
     private val METERS_ATTR = Regex("meters='([0-9]+)'")
     private val TAGS = Regex("<[^>]+>")
     private val WS = Regex("\\s+")
+    // Google prefixes lane steps with "Use the right 2 lanes to …" / "Use any lane
+    // to …". Pull that clause out as a separate hint and leave a clean instruction.
+    private val LANE_PHRASE = Regex("^(Use (?:the .+? lanes?|any lane)) to ", RegexOption.IGNORE_CASE)
 
     private fun collectSteps(route: JsonElement): List<Maneuver> {
         val raw = ArrayList<String>()
@@ -98,7 +101,11 @@ object DirectionsParser {
         val type = mapType(MANEUVER_ATTR.find(s)?.groupValues?.get(1))
         val meters = METERS_ATTR.find(s)?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
         val text = s.replace(TAGS, " ").replace(WS, " ").trim()
-        return Maneuver(type, text.ifEmpty { "Continue" }, LatLng(0.0, 0.0), meters, 0.0)
+        val lane = LANE_PHRASE.find(text)
+        val laneHint = lane?.groupValues?.get(1)?.trim()
+        val instruction = (lane?.let { text.removeRange(it.range) } ?: text)
+            .trim().replaceFirstChar { it.uppercase() }
+        return Maneuver(type, instruction.ifEmpty { "Continue" }, LatLng(0.0, 0.0), meters, 0.0, laneHint = laneHint)
     }
 
     private fun mapType(s: String?): ManeuverType = when (s?.uppercase()) {

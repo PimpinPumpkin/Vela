@@ -17,6 +17,7 @@ data class Maneuver(
     val distanceMeters: Double,   // length of the step that ENDS at this maneuver
     val durationSeconds: Double,
     val road: String? = null,     // road being entered, for "… onto Elm Street"
+    val laneHint: String? = null, // e.g. "Use the right 2 lanes" (from Google's step markup)
 )
 
 data class RouteLeg(

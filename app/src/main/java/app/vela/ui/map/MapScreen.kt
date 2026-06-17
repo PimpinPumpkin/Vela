@@ -194,6 +194,7 @@ fun MapScreen(
             ManeuverBanner(
                 text = state.maneuverText,
                 distanceMeters = state.nav.distanceToNextManeuver,
+                laneHint = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)?.laneHint,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
