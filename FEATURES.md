@@ -61,6 +61,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 ## Navigation
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute)
 - ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable)
+- ✅ **Haptic turn cues** — a light "get ready" tick at the pre-turn prompt, then a
+  firm **direction-coded** buzz at the turn (left = two long pulses, right = three
+  short, straight/other = one), so you can navigate by feel while biking/walking.
+  Toggle in Settings → Navigation ("Vibrate on turns", default on)
 - ✅ Maneuver banner + remaining time/distance
 - ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map
 - 🟡 **Foreground navigation service** — guidance continues with the app
@@ -108,4 +112,6 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - Google request/response shapes are pinned to a 2026-06-15 capture; expect
   periodic re-calibration (paths documented in the README). Pb/endpoint drift is
   now a remote `calibration.json` fix (above); index-path drift still needs a build.
-- EU consent wall for cookieless sessions is unhandled.
+- EU/EEA consent wall: pre-seeds Google's `SOCS`/`CONSENT` cookies in the shared
+  jar so a cookieless session isn't bounced to `consent.google.com` (best-effort,
+  US-verified only; the full form-POST handshake is the follow-up if it persists).

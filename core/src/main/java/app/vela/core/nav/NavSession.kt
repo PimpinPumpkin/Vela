@@ -2,6 +2,7 @@ package app.vela.core.nav
 
 import android.os.SystemClock
 import app.vela.core.data.MapDataSource
+import app.vela.core.feedback.Haptics
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
 import app.vela.core.voice.VoiceGuide
@@ -33,6 +34,7 @@ import javax.inject.Singleton
 class NavSession @Inject constructor(
     private val dataSource: MapDataSource,
     private val voice: VoiceGuide,
+    private val haptics: Haptics,
 ) {
     data class State(
         val navigating: Boolean = false,
@@ -94,6 +96,7 @@ class NavSession @Inject constructor(
         events.forEach { ev ->
             when (ev) {
                 is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
+                is NavEvent.Haptic -> haptics.cue(ev.type, ev.approaching)
                 NavEvent.Arrived -> _state.update { it.copy(navigating = false, arrived = true) }
                 NavEvent.RerouteNeeded -> reroute(loc)
             }

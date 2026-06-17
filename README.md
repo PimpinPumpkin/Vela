@@ -54,6 +54,8 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
         │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
         ├─ location/         LocationProvider — AOSP LocationManager (no Fused)
         ├─ voice/            VoiceGuide — AOSP TextToSpeech, engine-selectable
+        ├─ feedback/         Haptics — direction-coded vibration turn cues
+        ├─ config/           Calibration + CalibrationStore (remote pb/paths)
         ├─ nav/              NavEngine — pure turn-by-turn logic (unit-tested)
         └─ di/               Hilt wiring; picks Mock vs Google off VelaConfig
 

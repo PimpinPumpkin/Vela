@@ -82,6 +82,11 @@ genuinely needs no doc edit, say why in the commit.
 
 - Location: AOSP `LocationManager` only — never `FusedLocationProviderClient`.
 - Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS.
+- Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
+  (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.
+- EU consent: `InMemoryCookieJar` (CoreModule) pre-seeds Google's `SOCS`/`CONSENT`
+  cookies so a cookieless EU session isn't bounced to `consent.google.com` — don't
+  strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
 

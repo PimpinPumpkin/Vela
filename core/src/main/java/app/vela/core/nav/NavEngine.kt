@@ -42,6 +42,9 @@ object NavEngine {
                 if (dtn <= p && p !in spoken) {
                     spoken = spoken + p
                     events += NavEvent.Speak("In $p meters, ${target.instruction}")
+                    // A light "get ready" tick at the closest pre-turn prompt, so
+                    // bikers/walkers feel the turn coming without looking or hearing.
+                    if (p == PROMPT_DISTANCES.last()) events += NavEvent.Haptic(target.type, approaching = true)
                 }
             }
         }
@@ -49,6 +52,7 @@ object NavEngine {
         if (dtn <= ARRIVE_RADIUS_M) {
             if (idx < maneuvers.lastIndex) {
                 events += NavEvent.Speak(target.instruction, interrupt = true)
+                events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 stepIndex = idx + 1
                 spoken = emptySet()
             } else {

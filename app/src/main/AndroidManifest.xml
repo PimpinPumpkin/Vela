@@ -13,6 +13,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
     <!-- GPS strongly preferred but don't hard-exclude tablets/AAOS units. -->
     <uses-feature
         android:name="android.hardware.location.gps"

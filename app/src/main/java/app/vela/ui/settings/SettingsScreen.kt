@@ -17,10 +17,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -91,6 +95,25 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     onClick = { vm.setVoiceEngine(e) },
                 )
             }
+
+            Spacer(Modifier.height(20.dp))
+            SectionTitle("Navigation")
+            val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
+            var haptics by remember { mutableStateOf(prefs.getBoolean("haptics_on", true)) }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Vibrate on turns", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = haptics,
+                    onCheckedChange = {
+                        haptics = it
+                        prefs.edit().putBoolean("haptics_on", it).apply()
+                    },
+                )
+            }
+            Hint("Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel while biking or walking, without looking at the screen.")
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Data source")
