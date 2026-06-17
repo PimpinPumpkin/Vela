@@ -183,6 +183,7 @@ fun VelaMapView(
             map.setStyle(builder) { style ->
                 styleRef = style
                 ensureLayers(style)
+                PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 applyData(style, routePolyline, markers, myLocation, myBearing, previewTarget)
             }

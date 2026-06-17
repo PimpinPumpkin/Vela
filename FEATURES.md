@@ -12,7 +12,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Keyless **OpenFreeMap** basemap (active default — full styling control, no key): **Roboto font** (Google-like — bundled style re-pointed at the keyless `fonts.openmaptiles.org` glyph host), light/dark recolour, white/grey roads, cleaner water, richer greens, 3D buildings
 - 🟡 **MapTiler Streets** (Google-like look + real fonts) is wired but off (`USE_MAPTILER=false`); flip on with the `MAPTILER_KEY` secret. Roads auto-recoloured white/grey there too
 - ✅ **Dark / light map** follows the system theme (keyless recolour; or MapTiler dark if enabled)
-- ✅ POI declutter — minor POI tiers pushed to higher zoom (Google-like restraint); icon art is still OpenFreeMap's sprite (custom colour icons = a separate sprite task)
+- ✅ **Google-style POI markers** — category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; minor POI tiers decluttered to higher zoom
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, hillshade, POI icons)
 - ⬜ Satellite / terrain layers
