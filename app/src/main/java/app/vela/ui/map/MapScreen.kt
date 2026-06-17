@@ -6,12 +6,14 @@ import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
@@ -51,7 +54,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -379,10 +384,18 @@ private fun markersOf(state: MapUiState): List<MapMarker> =
 
 @Composable
 private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onCollapse: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    val screenH = LocalConfiguration.current.screenHeightDp
+    val maxH by animateDpAsState(
+        if (expanded) (screenH * 0.68f).dp else 300.dp,
+        label = "resultsHeight",
+    )
     Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
         Column {
-            // Swipe this header up (or press back) to hide the list and browse the map.
-            Row(
+            // Drag the handle UP to expand the list toward the top (like the place
+            // sheet); DOWN to shrink it, and down again (when already small) to hide
+            // it and browse the map.
+            Column(
                 Modifier
                     .fillMaxWidth()
                     .pointerInput(Unit) {
@@ -390,28 +403,50 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         detectVerticalDragGestures(
                             onDragStart = { total = 0f },
                             onVerticalDrag = { change, dy -> change.consume(); total += dy },
-                            onDragEnd = { if (total < -40f) onCollapse() },
+                            onDragEnd = {
+                                when {
+                                    total < -40f -> expanded = true
+                                    total > 40f && expanded -> expanded = false
+                                    total > 40f -> onCollapse()
+                                }
+                            },
                         )
-                    }
-                    .clickable { onCollapse() }
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
+                    },
             ) {
-                Text(
-                    "${results.size} results",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                Icon(
-                    Icons.Default.KeyboardArrowUp,
-                    contentDescription = "Hide results",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Box(
+                    Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Box(
+                        Modifier
+                            .size(width = 36.dp, height = 4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                    )
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = !expanded }
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        "${results.size} results",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Icon(
+                        if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        contentDescription = if (expanded) "Shrink list" else "Expand list",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             Divider()
-            LazyColumn(Modifier.heightIn(max = 280.dp)) {
+            LazyColumn(Modifier.heightIn(max = maxH)) {
                 items(results) { place ->
                 Column(
                     Modifier

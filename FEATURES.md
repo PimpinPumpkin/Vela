@@ -27,7 +27,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted)
 - ✅ **Full-screen search page** (Google-style) — focusing the search box opens an opaque page with saved + recent searches over the map (back arrow / back gesture closes it); running a search drops back to the map with the results list + red pins
-- ✅ Clear-search (X) button; dismiss the results list (swipe-up / back gesture) to browse the map — pins stay, a chip re-opens it
+- ✅ Clear-search (X) button; **draggable results list** — swipe the handle **up to expand** it toward the top (~⅔ screen), **down to shrink**, and down again to hide it and browse the map (pins stay, a chip re-opens it); back gesture also hides it
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
 - ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: info → action row → hours → photos → tabs
