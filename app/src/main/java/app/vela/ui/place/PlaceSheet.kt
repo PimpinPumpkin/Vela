@@ -7,7 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
@@ -73,7 +72,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,13 +82,11 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
@@ -105,8 +101,6 @@ import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.placeStatusColor
 import java.util.Locale
-import kotlin.math.roundToInt
-import kotlinx.coroutines.launch
 
 // Google-like, fixed sheet palette — independent of the Material You wallpaper
 // tint so the name/time/address always read crisp (white-on-dark / black-on-white)
@@ -138,39 +132,40 @@ fun PlaceSheet(
     val dark = isSystemInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
-    val offsetY = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
-    val dismissPx = with(LocalDensity.current) { 110.dp.toPx() }
-
     // Tapping "Directions" reveals a travel-mode chooser; a tapped photo opens the
     // full-screen gallery. Both reset when the sheet switches to another place.
     var modePromptOpen by remember(place.id) { mutableStateOf(false) }
     var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
 
-    val maxSheetHeight = (LocalConfiguration.current.screenHeightDp * 0.88f).dp
+    // The place card PEEKS at ~half-screen (so business info isn't immediately
+    // full-screen); drag the handle up to expand for the reviews.
+    var sheetExpanded by remember(place.id) { mutableStateOf(false) }
+    val screenH = LocalConfiguration.current.screenHeightDp
+    val maxSheetHeight by animateDpAsState(
+        if (sheetExpanded) (screenH * 0.92f).dp else (screenH * 0.56f).dp,
+        label = "placeSheetHeight",
+    )
     Card(
-        modifier
-            .fillMaxWidth()
-            .heightIn(max = maxSheetHeight)
-            .offset { IntOffset(0, offsetY.value.roundToInt()) },
+        modifier.fillMaxWidth().heightIn(max = maxSheetHeight),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
         Column {
-            // Drag this handle down to dismiss; everything below it scrolls, so a
-            // tall place (hours + photos + tabs) is always fully reachable.
+            // Drag the handle UP to expand (reviews), DOWN to shrink, down again to dismiss.
             Box(
                 Modifier
                     .fillMaxWidth()
                     .pointerInput(Unit) {
+                        var total = 0f
                         detectVerticalDragGestures(
-                            onVerticalDrag = { change, dragAmount ->
-                                change.consume()
-                                scope.launch { offsetY.snapTo((offsetY.value + dragAmount).coerceAtLeast(0f)) }
-                            },
+                            onDragStart = { total = 0f },
+                            onVerticalDrag = { change, dy -> change.consume(); total += dy },
                             onDragEnd = {
-                                if (offsetY.value > dismissPx) onClose()
-                                else scope.launch { offsetY.animateTo(0f) }
+                                when {
+                                    total < -40f -> sheetExpanded = true
+                                    total > 40f && sheetExpanded -> sheetExpanded = false
+                                    total > 40f -> onClose()
+                                }
                             },
                         )
                     }
@@ -189,6 +184,27 @@ fun PlaceSheet(
                     .verticalScroll(rememberScrollState())
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
+            // Photo hero at the top (Google-style) — always visible, even at the
+            // peek height / in landscape; tap one to open the full gallery.
+            if (place.photoUrls.isNotEmpty()) {
+                LazyRow(
+                    Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    itemsIndexed(place.photoUrls) { i, url ->
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "Photo ${i + 1}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(width = 152.dp, height = 110.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(dim.copy(alpha = 0.2f))
+                                .clickable { galleryStart = i },
+                        )
+                    }
+                }
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     place.name,
@@ -331,27 +347,6 @@ fun PlaceSheet(
                                 Text("Steps")
                             }
                         }
-                    }
-                }
-            }
-
-            // Photos, then the Reviews / About tabs.
-            if (place.photoUrls.isNotEmpty()) {
-                LazyRow(
-                    Modifier.fillMaxWidth().padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    itemsIndexed(place.photoUrls) { i, url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = "Photo ${i + 1}",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(width = 152.dp, height = 110.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(dim.copy(alpha = 0.2f))
-                                .clickable { galleryStart = i },
-                        )
                     }
                 }
             }
