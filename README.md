@@ -168,9 +168,20 @@ them); a cookieless request returns an empty envelope. It serves a **fixed top
 ~20** (the `2i` offset is ignored and `3i` count is capped); deeper pagination is
 behind an obfuscated continuation token, deliberately not chased.
 
-**Remote calibration.** The brittle bits that drift — the `pb` templates and the
-endpoint URLs above — are not hard-compiled; they live in
-[`calibration.json`](calibration.json) at the repo root.
+**Photos (full gallery)** — the search response carries only a ~10-photo preview.
+The full gallery (~40+) comes from `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX`
+(the `/MapsPhotoService.ListEntityPhotos` RPC). Body is `f.req=<[[["hspqX",<proto>,null,"generic"]]]>`;
+the proto carries the feature id at `[2][0]` and the page size at `[4][2][1]`.
+**No `at`/`SNlM0e` token is needed** — just the warmed session cookies, so it's as
+keyless as reviews (the earlier "token-gated" belief was wrong). The response is
+the chunked batchexecute envelope; the `["wrb.fr","hspqX",<payload>,…]` row's
+payload holds the photo list at `[0]`, each URL at `[i][6][0]` (the same `[6][0]`
+leaf as the search preview). Best-effort — a failure keeps the preview photos.
+([`PhotosParser`](core/src/main/java/app/vela/core/data/google/parse/PhotosParser.kt).)
+
+**Remote calibration.** The brittle bits that drift — the `pb`/proto templates and
+the endpoint URLs above (search, directions, reviews, **photos**) — are not
+hard-compiled; they live in [`calibration.json`](calibration.json) at the repo root.
 [`CalibrationStore`](core/src/main/java/app/vela/core/config/CalibrationStore.kt)
 ships a bundled `Calibration.DEFAULT`, then fetches that file from the repo's raw
 URL at launch and **adopts it when its `version` is newer** — gated by a host

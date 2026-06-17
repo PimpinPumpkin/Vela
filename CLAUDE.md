@@ -62,8 +62,10 @@ genuinely needs no doc edit, say why in the commit.
   when shapes drift; the UI surfaces it as a notice.
 - **Never embed a static Google API key.** Per-user `GoogleSession` bootstrap
   only — that's what keeps the NewPipe legal footing.
-- **Remote calibration (`calibration.json` at the repo root).** The `pb` templates
-  and endpoint URLs are remotely updatable: `CalibrationStore` (in `:core`,
+- **Remote calibration (`calibration.json` at the repo root).** The `pb`/proto
+  templates and endpoint URLs (search, directions, reviews, **photos** —
+  `photosEndpoint`/`photosProto` for the `hspqX` gallery RPC) are remotely
+  updatable: `CalibrationStore` (in `:core`,
   `config/`) fetches `calibration.json` from the repo's raw URL at launch and
   adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
   provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).

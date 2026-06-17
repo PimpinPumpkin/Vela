@@ -23,6 +23,12 @@ data class Calibration(
     val reviewsEndpoint: String,
     val reviewsPb: String,
     val sessionWarmUrl: String,
+    // Full place gallery: the batchexecute `hspqX` (/MapsPhotoService.ListEntityPhotos)
+    // POST — keyless (no `at` token, just the warmed session cookies). `{FID}` is the
+    // place feature id, `{COUNT}` the page size. Returns ~40+ photos vs the search
+    // preview's ~10. (Calibrated live 2026-06-17.)
+    val photosEndpoint: String = DEFAULT_PHOTOS_ENDPOINT,
+    val photosProto: String = DEFAULT_PHOTOS_PROTO,
     // Phase 2: the positional field-index paths the search parser reads. A missing
     // key falls back to [DEFAULT_PATHS], so a remote file can override just the one
     // that drifted. Paths are relative to a result entry (whose place node is [1]),
@@ -30,6 +36,16 @@ data class Calibration(
     val paths: Map<String, List<Int>> = DEFAULT_PATHS,
 ) {
     companion object {
+        const val DEFAULT_PHOTOS_ENDPOINT =
+            "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX&source-path=/maps&hl=en&_reqid=1&rt=c"
+
+        // hspqX request proto: feature id at [2][0], page size at [4][2][1].
+        const val DEFAULT_PHOTOS_PROTO =
+            "[2,null,[\"{FID}\",null,null,null,null,null,null,null,0],null," +
+                "[null,[1200,1000],[null,{COUNT},null,null,1],null,null,null," +
+                "[[[1,0,3],[2,1,2],[2,0,3],[8,0,3],[10,0,3],[10,1,2],[10,0,4],[9,1,2]],1],null,0]," +
+                "null,null,null,null,null,null,null,null,null,null,[null,1,null,1]]"
+
         val DEFAULT_PATHS: Map<String, List<Int>> = mapOf(
             "results" to listOf(64),
             "single" to listOf(0, 1, 0, 14),
@@ -65,6 +81,8 @@ data class Calibration(
             reviewsEndpoint = "https://www.google.com/maps/preview/review/listentitiesreviews?authuser=0&hl=en&gl=us",
             reviewsPb = "!1m2!1y{HIGH}!2y{LOW}!2m2!2i0!3i20!3e1!5m2!1svela!7e81",
             sessionWarmUrl = "https://www.google.com/maps?hl=en&gl=us",
+            photosEndpoint = DEFAULT_PHOTOS_ENDPOINT,
+            photosProto = DEFAULT_PHOTOS_PROTO,
             paths = DEFAULT_PATHS,
         )
     }

@@ -31,6 +31,11 @@ interface MapDataSource {
      *  Best-effort — returns empty if unavailable. */
     suspend fun reviews(featureId: String): List<Review> = emptyList()
 
+    /** The full place photo gallery (~40+), by Google feature id. The search
+     *  response only carries a ~10-photo preview; this pulls the rest via the
+     *  keyless `hspqX` RPC. Best-effort — empty (→ keep the preview) on failure. */
+    suspend fun placePhotos(featureId: String): List<String> = emptyList()
+
     suspend fun directions(
         origin: LatLng,
         destination: LatLng,

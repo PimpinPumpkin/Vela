@@ -221,6 +221,24 @@ class MapViewModel @Inject constructor(
     fun selectPlace(p: Place) {
         _state.update { it.copy(selected = p, center = p.location, reviews = emptyList()) }
         fetchReviews(p)
+        fetchPhotos(p)
+    }
+
+    /** Pull the full photo gallery (~40+) by feature id and swap it in for the
+     *  search response's ~10-photo preview. Best-effort: an empty/failed fetch
+     *  leaves the preview untouched (no regression). */
+    private fun fetchPhotos(p: Place) {
+        val fid = p.featureId
+        if (fid.isNullOrBlank() || !fid.contains(":")) return
+        viewModelScope.launch {
+            val full = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+            if (full.isNotEmpty()) {
+                _state.update { st ->
+                    val sel = st.selected
+                    if (sel?.featureId == fid) st.copy(selected = sel.copy(photoUrls = full)) else st
+                }
+            }
+        }
     }
 
     /** Pull full reviews for a place by its Google feature id (best-effort,
@@ -283,6 +301,7 @@ class MapViewModel @Inject constructor(
             if (full != null && _state.value.selected?.name == name) {
                 _state.update { it.copy(selected = full) }
                 fetchReviews(full)
+                fetchPhotos(full)
             }
         }
     }

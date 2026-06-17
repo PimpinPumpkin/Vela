@@ -6,6 +6,7 @@ import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteGeometry
 import app.vela.core.data.google.parse.DirectionsParser
+import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.ReviewsParser
 import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.model.LatLng
@@ -20,8 +21,10 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URLEncoder
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -100,6 +103,21 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { ReviewsParser.parse(GoogleResponse.parse(get(url))) }.getOrDefault(emptyList())
     }
 
+    override suspend fun placePhotos(featureId: String): List<String> = io {
+        // batchexecute `hspqX` (/MapsPhotoService.ListEntityPhotos) — a keyless POST
+        // (no `at` token, just the warmed session cookies). The feature id goes in
+        // the proto verbatim ([2][0]); the response carries the full gallery, URL at
+        // each entry's [6][0]. (Calibrated live 2026-06-17.) Best-effort: any failure
+        // returns empty so the caller keeps the search-preview photos.
+        if (!featureId.contains(":")) return@io emptyList()
+        session.ensure()
+        val cal = calibration.current()
+        val inner = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", PHOTO_COUNT.toString())
+        // JsonPrimitive(...).toString() = the proto as a properly-escaped JSON string literal.
+        val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
+        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
+    }
+
     override suspend fun directions(
         origin: LatLng,
         destination: LatLng,
@@ -138,6 +156,24 @@ class GoogleMapsDataSource @Inject constructor(
         }
     }
 
+    private fun post(url: String, body: String): String {
+        val media = "application/x-www-form-urlencoded;charset=UTF-8".toMediaType()
+        val req = Request.Builder()
+            .url(url)
+            .post(body.toRequestBody(media))
+            .header("User-Agent", VelaConfig.USER_AGENT)
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Referer", "https://www.google.com/maps/")
+            .header("X-Same-Domain", "1") // batchexecute expects this from a same-origin caller
+            .build()
+        http.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) {
+                throw CalibrationNeededException("HTTP ${resp.code} from ${req.url.encodedPath}")
+            }
+            return resp.body?.string().orEmpty()
+        }
+    }
+
     private fun getNominatim(url: String): String {
         val req = Request.Builder()
             .url(url)
@@ -155,5 +191,6 @@ class GoogleMapsDataSource @Inject constructor(
         // Fallback viewport when no user location is available — search is
         // viewport-driven and needs one. Callers normally pass the real location.
         val DEFAULT_VIEWPORT = LatLng(37.7749, -122.4194)
+        const val PHOTO_COUNT = 50 // gallery page size for the hspqX request
     }
 }

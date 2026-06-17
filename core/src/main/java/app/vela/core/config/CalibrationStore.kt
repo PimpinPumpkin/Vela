@@ -90,6 +90,8 @@ class CalibrationStore @Inject constructor(
             reviewsEndpoint = str("reviewsEndpoint", d.reviewsEndpoint),
             reviewsPb = str("reviewsPb", d.reviewsPb),
             sessionWarmUrl = str("sessionWarmUrl", d.sessionWarmUrl),
+            photosEndpoint = str("photosEndpoint", d.photosEndpoint),
+            photosProto = str("photosProto", d.photosProto),
             paths = Calibration.DEFAULT_PATHS + remotePaths,
         )
     }.getOrNull()
@@ -97,7 +99,7 @@ class CalibrationStore @Inject constructor(
     /** Security gate: every endpoint must point at an allow-listed host, so a
      *  compromised config can never exfiltrate requests to an attacker's server. */
     private fun isAllowed(c: Calibration): Boolean {
-        val hosts = listOf(c.searchEndpoint, c.directionsEndpoint, c.reviewsEndpoint, c.sessionWarmUrl)
+        val hosts = listOf(c.searchEndpoint, c.directionsEndpoint, c.reviewsEndpoint, c.photosEndpoint, c.sessionWarmUrl)
             .map { runCatching { URI(it).host }.getOrNull() }
         return hosts.all { it != null && it in ALLOWED_HOSTS }
     }

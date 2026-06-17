@@ -1,6 +1,7 @@
 package app.vela.core
 
 import app.vela.core.data.google.PolylineCodec
+import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
@@ -159,6 +160,30 @@ class NavEngineTest {
         val (s3, e3) = NavEngine.update(route, s2, b) // the final point
         assertTrue("the final maneuver arrives", s3.arrived)
         assertTrue(e3.any { it is NavEvent.Arrived })
+    }
+}
+
+class PhotosParserTest {
+
+    /** The hspqX response is the chunked batchexecute envelope: `)]}'`, a length
+     *  line, then the `["wrb.fr","hspqX",<payload-json-string>,…]` row. Photos live
+     *  at payload[0][i][6][0]; the FIFE size suffix is normalised. */
+    @Test
+    fun extractsPhotoUrlsFromBatchexecuteEnvelope() {
+        val payload = """[[["pid1",10,12,null,null,null,["https://lh3.googleusercontent.com/abc=w2117-h1000-k-no","",[4608,2176]]],""" +
+            """["pid2",10,12,null,null,null,["https://lh3.googleusercontent.com/def=w1776-h1000-k-no"]]],1]"""
+        val escaped = payload.replace("\\", "\\\\").replace("\"", "\\\"")
+        val body = ")]}'\n\n321\n[[\"wrb.fr\",\"hspqX\",\"$escaped\",null,null,null,\"generic\"],[\"di\",45]]\n"
+        val urls = PhotosParser.parse(body)
+        assertEquals(2, urls.size)
+        assertEquals("https://lh3.googleusercontent.com/abc=w1024-h768", urls[0])
+        assertEquals("https://lh3.googleusercontent.com/def=w1024-h768", urls[1])
+    }
+
+    @Test
+    fun returnsEmptyOnGarbage() {
+        assertEquals(emptyList<String>(), PhotosParser.parse(""))
+        assertEquals(emptyList<String>(), PhotosParser.parse(")]}'\n\n5\n[[\"er\",null]]"))
     }
 }
 
