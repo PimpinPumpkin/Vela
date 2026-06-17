@@ -82,6 +82,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
@@ -146,29 +147,34 @@ fun PlaceSheet(
     var modePromptOpen by remember(place.id) { mutableStateOf(false) }
     var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
 
+    val maxSheetHeight = (LocalConfiguration.current.screenHeightDp * 0.88f).dp
     Card(
         modifier
             .fillMaxWidth()
-            .offset { IntOffset(0, offsetY.value.roundToInt()) }
-            .pointerInput(Unit) {
-                // Swipe the sheet down past a threshold to dismiss; otherwise snap back.
-                detectVerticalDragGestures(
-                    onVerticalDrag = { change, dragAmount ->
-                        change.consume()
-                        scope.launch { offsetY.snapTo((offsetY.value + dragAmount).coerceAtLeast(0f)) }
-                    },
-                    onDragEnd = {
-                        if (offsetY.value > dismissPx) onClose()
-                        else scope.launch { offsetY.animateTo(0f) }
-                    },
-                )
-            },
+            .heightIn(max = maxSheetHeight)
+            .offset { IntOffset(0, offsetY.value.roundToInt()) },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
-        Column(Modifier.padding(start = 20.dp, end = 20.dp, bottom = 20.dp, top = 10.dp)) {
+        Column {
+            // Drag this handle down to dismiss; everything below it scrolls, so a
+            // tall place (hours + photos + tabs) is always fully reachable.
             Box(
-                Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures(
+                            onVerticalDrag = { change, dragAmount ->
+                                change.consume()
+                                scope.launch { offsetY.snapTo((offsetY.value + dragAmount).coerceAtLeast(0f)) }
+                            },
+                            onDragEnd = {
+                                if (offsetY.value > dismissPx) onClose()
+                                else scope.launch { offsetY.animateTo(0f) }
+                            },
+                        )
+                    }
+                    .padding(top = 10.dp, bottom = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
@@ -178,6 +184,11 @@ fun PlaceSheet(
                         .background(dim.copy(alpha = 0.5f)),
                 )
             }
+            Column(
+                Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+            ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     place.name,
@@ -345,6 +356,7 @@ fun PlaceSheet(
             }
 
             PlaceTabs(place, reviews, reviewsLoading, ink, dim)
+            }
         }
     }
 
@@ -417,12 +429,7 @@ private fun PlaceTabs(
                 Tab(selected = i == selected, onClick = { sel = i }, text = { Text(title) })
             }
         }
-        Column(
-            Modifier
-                .heightIn(max = 360.dp)
-                .verticalScroll(rememberScrollState())
-                .padding(top = 10.dp),
-        ) {
+        Column(Modifier.padding(top = 10.dp)) {
             when (tabs[selected]) {
                 "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, ink, dim)
                 "About" -> AboutTab(place.about, ink, dim)

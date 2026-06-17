@@ -32,6 +32,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
 - ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: info → action row → hours → photos → tabs
 - ✅ Travel mode lives in the action row: a **Directions** button opens a Drive/Walk/Bike chooser ("how are you getting there?"), then previews the route (ETA + Start)
+- ✅ Place sheet is **height-capped (88% screen) and scrolls** so a tall place (hours + photos + tabs) is fully reachable; the drag handle still dismisses
 - ⬜ Popular times; "hours updated N ago" (both place-RPC-only, absent from the search response); Updates/posts tab
 - ℹ️ Reviews are the **top ~20** — the `listentitiesreviews` endpoint serves a fixed page (offset ignored) and deeper paging is behind an obfuscated continuation token; not chased (fragility vs. value)
 - ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)**
