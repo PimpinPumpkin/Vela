@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -21,11 +22,14 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import app.vela.offline.OfflineMaps
+import org.maplibre.android.offline.OfflineRegion
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -114,6 +118,30 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 )
             }
             Hint("Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel while biking or walking, without looking at the screen.")
+
+            Spacer(Modifier.height(20.dp))
+            SectionTitle("Offline maps")
+            var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
+            LaunchedEffect(Unit) { OfflineMaps.list(context) { regions = it } }
+            if (regions.isEmpty()) {
+                Hint("Tap the download button on the map to save the visible area for offline viewing — open tiles, no network needed to see it later. (Routing and search still need a connection; offline routing is a separate, heavier feature.)")
+            } else {
+                regions.forEach { r ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            OfflineMaps.nameOf(r),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.weight(1f),
+                        )
+                        IconButton(onClick = { OfflineMaps.delete(r) { OfflineMaps.list(context) { regions = it } } }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete this offline area")
+                        }
+                    }
+                }
+            }
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Data source")
