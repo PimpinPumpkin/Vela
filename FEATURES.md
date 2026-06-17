@@ -86,10 +86,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Compass heading when stationary
 - ⬜ Optional BeaconDB WiFi positioning for faster coarse fix
 
-## Offline (v2)
-- ⬜ Region downloads: PMTiles + routing graph + POI subset + historical traffic
-- ⬜ Embedded Valhalla for offline routing
-- ⬜ Offline search (SQLite FTS)
+## Offline
+- ✅ **Offline basemap region downloads** — the download button on the map saves
+  the visible area's tiles/glyphs/sprites (via MapLibre's built-in offline store)
+  so it renders later with **no network**; manage/delete saved areas in Settings →
+  Offline maps. Open tiles, no Google, no backend.
+- ⬜ Offline routing (embedded Valhalla / routing graph) — heavier follow-on
+- ⬜ Offline search (SQLite FTS over an OSM/Overture POI subset)
+- ⬜ Region downloads as portable PMTiles + historical traffic
 
 ## Platform & distribution
 - ✅ No Google Play Services anywhere

@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -42,6 +43,7 @@ import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -105,6 +107,7 @@ fun MapScreen(
     }
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
+    var downloadTick by remember { mutableStateOf(0) }
     val focusManager = LocalFocusManager.current
 
     // Back peels one layer at a time — steps → navigation → route preview →
@@ -181,6 +184,8 @@ fun MapScreen(
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
+            downloadTick = downloadTick,
+            onDownloadStatus = vm::showStatus,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -344,6 +349,16 @@ fun MapScreen(
                     .padding(16.dp),
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = "Center on my location")
+            }
+            // Download the visible area for offline use (renders later with no network).
+            SmallFloatingActionButton(
+                onClick = { downloadTick++ },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 16.dp, bottom = 84.dp),
+            ) {
+                Icon(Icons.Default.Download, contentDescription = "Download this area for offline use")
             }
         }
 

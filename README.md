@@ -65,7 +65,8 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
         ├─ ui/search/        SearchBar
         ├─ ui/place/         PlaceSheet
         ├─ ui/nav/           ManeuverBanner, NavControls, StepsSheet (step overview)
-        └─ ui/settings/      SettingsScreen (style / voice / data-source)
+        ├─ offline/          OfflineMaps — MapLibre offline region download/store
+        └─ ui/settings/      SettingsScreen (style / voice / haptics / offline)
 ```
 
 The `MapDataSource` interface is the load-bearing seam: Mock today, Google once

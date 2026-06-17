@@ -23,6 +23,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.vela.core.model.LatLng
+import app.vela.offline.OfflineMaps
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
@@ -84,6 +85,8 @@ fun VelaMapView(
     onMarkerTap: (index: Int) -> Unit,
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
+    downloadTick: Int = 0,
+    onDownloadStatus: (String) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -97,6 +100,8 @@ fun VelaMapView(
     val markerTap = rememberUpdatedState(onMarkerTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
+    val downloadStatus = rememberUpdatedState(onDownloadStatus)
+    var lastDownloadTick by remember { mutableStateOf(0) }
     val gestureMove = remember { booleanArrayOf(false) }
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
@@ -180,6 +185,18 @@ fun VelaMapView(
         val map = mapRef ?: return@AndroidView
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
+
+        // Download the visible area for offline use when the screen asks (tick++).
+        if (downloadTick != lastDownloadTick) {
+            lastDownloadTick = downloadTick
+            val bounds = map.projection.visibleRegion.latLngBounds
+            val center = map.cameraPosition.target
+            val z = map.cameraPosition.zoom
+            val minZ = (z - 1).coerceIn(0.0, 15.0)
+            val maxZ = (z + 3).coerceIn(minZ, 16.0)
+            val name = center?.let { "Area near %.2f, %.2f".format(it.latitude, it.longitude) } ?: "Saved area"
+            OfflineMaps.download(context, styleUri, bounds, minZ, maxZ, name) { downloadStatus.value(it) }
+        }
 
         val styleKey = "$styleUri|dark=$darkTheme"
         if (appliedStyleKey != styleKey) {

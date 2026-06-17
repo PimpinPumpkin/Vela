@@ -351,4 +351,6 @@ class MapViewModel @Inject constructor(
     fun recenter() = _state.update { it.copy(center = it.myLocation) }
 
     fun clearStatus() = _state.update { it.copy(status = null) }
+
+    fun showStatus(msg: String) = _state.update { it.copy(status = msg) }
 }
