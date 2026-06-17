@@ -74,10 +74,11 @@ import app.vela.ui.place.PlaceSheet
 import app.vela.ui.search.SearchBar
 import java.util.Locale
 
-// Basemap provider. Keyless OpenFreeMap (full styling control, no key) is the
-// active choice; flip to true to use MapTiler Streets (needs the MAPTILER_KEY
-// secret) — all the MapTiler plumbing stays wired either way.
-private const val USE_MAPTILER = false
+// Basemap provider. MapTiler Streets is active because OpenFreeMap's vector
+// tiles won't load on every device (only its raster does). Flip to false to use
+// the keyless bundled OpenFreeMap style — both paths stay fully wired, and our
+// custom POI markers / road recolour apply either way.
+private const val USE_MAPTILER = true
 
 @Composable
 fun MapScreen(

@@ -429,6 +429,21 @@ private fun tuneMapTiler(style: Style, dark: Boolean) {
     listOf("Highway outline", "Major road outline", "Tunnel outline", "Bridge outline").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor(casing))
     }
+    // Swap MapTiler's POI icons for our Google-style coloured markers (PoiIcons
+    // registered the `vela-poi-*` images). MapTiler groups POIs by layer, so a
+    // per-layer constant is enough — no class match needed.
+    val poiLayers = mapOf(
+        "Food" to "food", "Shopping" to "shop", "Healthcare" to "health",
+        "Park" to "park", "Transport" to "transit", "Station" to "transit",
+        "Education" to "edu", "Culture" to "culture", "Sport" to "sport",
+        "Tourism" to "lodging", "Public" to "civic",
+    )
+    poiLayers.forEach { (layer, group) ->
+        style.getLayer(layer)?.setProperties(
+            PropertyFactory.iconImage("vela-poi-$group"),
+            PropertyFactory.iconSize(0.5f),
+        )
+    }
 }
 
 private fun applyData(
