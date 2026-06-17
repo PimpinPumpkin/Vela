@@ -171,7 +171,16 @@ fun VelaMapView(
         val styleKey = "$styleUri|dark=$darkTheme"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
-            map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
+            val builder = if (styleUri.startsWith("asset://")) {
+                // Bundled style JSON (Liberty re-pointed at Roboto glyphs). Its
+                // tile/sprite/glyph URLs are absolute, so it still loads keyless.
+                val json = context.assets.open(styleUri.removePrefix("asset://"))
+                    .bufferedReader().use { it.readText() }
+                Style.Builder().fromJson(json)
+            } else {
+                Style.Builder().fromUri(styleUri)
+            }
+            map.setStyle(builder) { style ->
                 styleRef = style
                 ensureLayers(style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)

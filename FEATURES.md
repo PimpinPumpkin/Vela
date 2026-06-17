@@ -9,7 +9,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
 - ✅ **Long-press the map** → drop a pin, reverse-geocode it to an address (Nominatim/OSM, keyless), then get Directions — works even where no building is drawn
-- ✅ Keyless **OpenFreeMap** basemap (active default — full styling control, no key) with our own light/dark recolour: white/grey roads, cleaner water, richer greens, 3D buildings
+- ✅ Keyless **OpenFreeMap** basemap (active default — full styling control, no key): **Roboto font** (Google-like — bundled style re-pointed at the keyless `fonts.openmaptiles.org` glyph host), light/dark recolour, white/grey roads, cleaner water, richer greens, 3D buildings
 - 🟡 **MapTiler Streets** (Google-like look + real fonts) is wired but off (`USE_MAPTILER=false`); flip on with the `MAPTILER_KEY` secret. Roads auto-recoloured white/grey there too
 - ✅ **Dark / light map** follows the system theme (MapTiler dark style, or the keyless recolour)
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
