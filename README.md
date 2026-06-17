@@ -122,8 +122,12 @@ duration s `[3][0]`, and **live `duration_in_traffic` s `[10][0][0]`**. Steps
 arrive as `<step maneuver='TURN_LEFT' meters='120'>…</step>` markup — type and
 distance parse straight out of the attributes. The overview geometry isn't in
 the JSON at all (Google renders it from vector tiles), so the drawn line comes
-from an open router — see [`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt)
-(OSRM today; point it at self-hosted OSRM/Valhalla before release).
+from an open router — see [`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt).
+It uses the FOSSGIS community OSRM, which exposes a **separate backend per mode**
+(`routed-car` / `routed-bike` / `routed-foot`), so drive/walk/bike each get their
+own path-following line — the old `router.project-osrm.org` demo only had the car
+profile, which is why walk/bike used to draw a wrong, "all over the place" line.
+Point it at a self-hosted OSRM/Valhalla before release.
 
 **Place details** ride along in the search response — no separate RPC for the
 common fields: website `[1][7][0]`, price text `[1][4][2]`, open-status

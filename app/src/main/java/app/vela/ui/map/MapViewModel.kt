@@ -200,6 +200,15 @@ class MapViewModel @Inject constructor(
             )
         }
 
+    /** Back out of the directions preview to the place sheet: drop the route,
+     *  keep the place selected (so back peels one layer at a time). */
+    fun clearRoute() {
+        destination = null
+        _state.update {
+            it.copy(routes = emptyList(), activeRoute = null, showSteps = false, previewStepIndex = null)
+        }
+    }
+
     fun openSteps() = _state.update { it.copy(showSteps = true) }
 
     fun closeSteps() = _state.update { it.copy(showSteps = false, previewStepIndex = null) }

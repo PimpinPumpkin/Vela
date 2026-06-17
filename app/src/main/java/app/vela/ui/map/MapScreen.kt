@@ -100,11 +100,24 @@ fun MapScreen(
     var searchFocused by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
-    // Back hides the search results (so you can browse the map) before exiting.
+    // Back peels one layer at a time — steps → navigation → route preview →
+    // place sheet → results list — so it behaves like Google Maps instead of
+    // dropping straight out of the app. Only the bare map (or collapsed pins,
+    // which a back already peeled down to) lets the system handle back and exit.
     BackHandler(
-        enabled = state.results.isNotEmpty() && state.selected == null &&
-            !state.resultsCollapsed && !state.navigating,
-    ) { vm.collapseResults() }
+        enabled = state.showSteps || state.navigating ||
+            state.activeRoute != null || state.routes.isNotEmpty() ||
+            state.selected != null ||
+            (state.results.isNotEmpty() && !state.resultsCollapsed),
+    ) {
+        when {
+            state.showSteps -> vm.closeSteps()
+            state.navigating -> vm.stopNav()
+            state.activeRoute != null || state.routes.isNotEmpty() -> vm.clearRoute()
+            state.selected != null -> vm.clearSelection()
+            else -> vm.collapseResults()
+        }
+    }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),

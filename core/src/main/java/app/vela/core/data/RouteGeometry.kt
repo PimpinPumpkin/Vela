@@ -4,6 +4,7 @@ import app.vela.core.VelaConfig
 import app.vela.core.data.google.PolylineCodec
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
+import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
@@ -23,16 +24,30 @@ import okhttp3.Request
  * directly) while Google still provides the ETA, live traffic and maneuvers.
  * Same split the offline build will use, just with Valhalla as the engine.
  *
- * NOTE: [OSRM_BASE] is the public demo server — rate-limited, explicitly not for
- * production. Point it at a self-hosted OSRM/Valhalla before any real release.
+ * NOTE: [OSRM_BASE] is the FOSSGIS community server (fair-use, no key). It hosts
+ * a separate backend per travel mode — `routed-car` / `routed-bike` /
+ * `routed-foot` — which is why walk/bike get *their own* path-following line and
+ * not a car route. (The old router.project-osrm.org demo only had the car
+ * profile.) Point it at a self-hosted OSRM/Valhalla before any real release.
  */
 object RouteGeometry {
-    private const val OSRM_BASE = "https://router.project-osrm.org"
+    private const val OSRM_BASE = "https://routing.openstreetmap.de"
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Road-following polyline for origin→dest, or null on any failure. */
-    fun fetch(http: OkHttpClient, origin: LatLng, dest: LatLng): List<LatLng>? = try {
-        val url = "$OSRM_BASE/route/v1/driving/" +
+    /** The FOSSGIS OSRM backend for each mode. Transit has none → null geometry. */
+    private fun backend(mode: TravelMode): String? = when (mode) {
+        TravelMode.DRIVE -> "routed-car"
+        TravelMode.BICYCLE -> "routed-bike"
+        TravelMode.WALK -> "routed-foot"
+        TravelMode.TRANSIT -> null
+    }
+
+    /** Path-following polyline for origin→dest in [mode], or null on any failure. */
+    fun fetch(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<LatLng>? = try {
+        // The "/driving/" service keyword is fixed in OSRM's URL grammar; the real
+        // transport profile is chosen by which backend (routed-car/bike/foot) we hit.
+        val backend = backend(mode) ?: return null
+        val url = "$OSRM_BASE/$backend/route/v1/driving/" +
             "${origin.lng},${origin.lat};${dest.lng},${dest.lat}" +
             "?overview=full&geometries=polyline"
         val req = Request.Builder()

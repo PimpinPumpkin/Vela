@@ -25,6 +25,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted, shown on search focus)
 - ✅ Clear-search (X) button; dismiss the results list (swipe-up / back gesture) to browse the map — pins stay, a chip re-opens it
+- ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ⬜ Popular times + individual review text (sign-in-gated place RPC)
 - ✅ Place actions: **Call** (dialer), Website, **Share menu (Google Maps link / coordinates / address)**
 - ⬜ Place photos
@@ -39,12 +40,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Driving directions with **real traffic-aware ETA** (live `duration_in_traffic`)
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
-- ✅ Route geometry via open router (OSRM today; Valhalla later)
+- ✅ Route geometry via open router — **per-mode** FOSSGIS OSRM backends
+  (`routed-car`/`routed-bike`/`routed-foot`), so drive/walk/bike each follow the
+  correct network; Valhalla later
 - 🟡 **Live route re-check while navigating** — periodically re-query traffic and
   offer a faster route if one appears (see Navigation below)
-- ✅ Walking + cycling modes (drive/walk/bike); transit response shape is a separate TODO
+- ✅ Walking + cycling modes (drive/walk/bike) — each with its **own** path-following
+  line, not a car route reused; transit response shape is a separate TODO
 - ⬜ Departure/arrival time selection; avoid tolls/highways
-- ⬜ Self-hosted routing backend (replace OSRM demo server)
+- ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute)
