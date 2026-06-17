@@ -73,6 +73,7 @@ fun VelaMapView(
     myBearing: Float?,
     cameraTarget: LatLng?,
     routePolyline: List<LatLng>,
+    routeColor: String,
     markers: List<MapMarker>,
     frameMarkers: Boolean,
     navMode: Boolean,
@@ -197,10 +198,10 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, markers, myLocation, myBearing, previewTarget)
+                applyData(style, routePolyline, routeColor, markers, myLocation, myBearing, previewTarget)
             }
         } else {
-            styleRef?.let { applyData(it, routePolyline, markers, myLocation, myBearing, previewTarget) }
+            styleRef?.let { applyData(it, routePolyline, routeColor, markers, myLocation, myBearing, previewTarget) }
         }
 
         if (previewTarget == null) lastPreviewTarget = null
@@ -464,6 +465,7 @@ private fun tuneMapTiler(style: Style, dark: Boolean) {
 private fun applyData(
     style: Style,
     route: List<LatLng>,
+    routeColor: String,
     markers: List<MapMarker>,
     me: LatLng?,
     bearing: Float?,
@@ -477,6 +479,8 @@ private fun applyData(
         FeatureCollection.fromFeatures(emptyList<Feature>())
     }
     style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
+    // Tint the route line by congestion (amber/red when slower than typical).
+    style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(routeColor))
 
     val markersFc = FeatureCollection.fromFeatures(
         markers.mapIndexed { i, m ->
