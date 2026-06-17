@@ -133,7 +133,9 @@ name+coord array; a structurally-valid response with no matches returns empty
 Routes at `root[0][1][r]`, summary at `[0]`: distance m `[2][0]`, typical
 duration s `[3][0]`, and **live `duration_in_traffic` s `[10][0][0]`**. Steps
 arrive as `<step maneuver='TURN_LEFT' meters='120'>…</step>` markup — type and
-distance parse straight out of the attributes. The overview geometry isn't in
+distance parse straight out of the attributes, and the **lane hint** ("Use the
+right 2 lanes to …") is split off into its own field for the step list + banner.
+The overview geometry isn't in
 the JSON at all (Google renders it from vector tiles), so the drawn line comes
 from an open router — see [`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt).
 It uses the FOSSGIS community OSRM, which exposes a **separate backend per mode**

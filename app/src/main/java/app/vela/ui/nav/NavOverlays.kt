@@ -29,6 +29,7 @@ import app.vela.ui.formatDuration
 fun ManeuverBanner(
     text: String,
     distanceMeters: Double,
+    laneHint: String? = null,
     modifier: Modifier = Modifier,
 ) {
     Card(
@@ -47,6 +48,9 @@ fun ManeuverBanner(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(text.ifEmpty { "Continue" }, style = MaterialTheme.typography.bodyLarge)
+                laneHint?.let {
+                    Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                }
             }
         }
     }
