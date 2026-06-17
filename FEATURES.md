@@ -4,7 +4,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Map & rendering
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
-- ✅ Detailed open basemap (OpenFreeMap Liberty default + injected house numbers at z17; Positron/Bright/demo/Protomaps options)
+- ✅ Detailed open basemap: bundled OpenFreeMap Liberty + injected house numbers at z17; OpenMapTiles vector source pinned to OpenFreeMap's **versioned** tile path (the un-versioned path serves empty tiles — that was a blank-map bug)
 - ✅ Route line, **tappable Google-style search-result pins**, location dot as GeoJSON layers
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
