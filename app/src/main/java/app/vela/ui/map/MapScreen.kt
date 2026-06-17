@@ -170,6 +170,7 @@ fun MapScreen(
             myBearing = state.myBearing,
             cameraTarget = state.center,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
+            routeColor = routeTrafficColor(state.activeRoute),
             markers = markersOf(state),
             frameMarkers = state.results.isNotEmpty() && state.selected == null,
             navMode = state.navigating,
@@ -374,6 +375,19 @@ fun MapScreen(
         }
     }
 }
+
+/** Route line colour by congestion: blue when free-flowing, amber/red when the
+ *  live traffic-aware time runs meaningfully over the typical time. Walk/bike and
+ *  traffic-less routes stay the default blue. */
+private fun routeTrafficColor(route: app.vela.core.model.Route?): String =
+    when (val ratio = route?.trafficRatio) {
+        null -> "#1F6FEB"
+        else -> when {
+            ratio > 1.4 -> "#D93838"  // heavy
+            ratio > 1.15 -> "#E8923D" // moderate
+            else -> "#1F6FEB"          // light / free-flowing
+        }
+    }
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
     if (state.results.isNotEmpty()) {

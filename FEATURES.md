@@ -46,6 +46,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Routing & traffic
 - ✅ Driving directions with **real traffic-aware ETA** (live `duration_in_traffic`)
+- ✅ **Route-line traffic colour** — the drawn route tints blue → amber → red as the
+  live traffic-aware time runs over the typical time (overall congestion; per-segment
+  isn't reliably in the response and our line is OSRM geometry, so it's whole-route)
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
 - ✅ Route geometry via open router — **per-mode** FOSSGIS OSRM backends

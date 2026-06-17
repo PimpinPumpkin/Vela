@@ -41,4 +41,10 @@ data class Route(
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }
+
+    /** How much slower the live, traffic-aware time is than the typical time
+     *  (1.0 = no traffic; 1.4 = 40% slower). Null when no live traffic is known —
+     *  drives the route line's congestion colour. */
+    val trafficRatio: Double?
+        get() = durationInTrafficSeconds?.let { t -> if (durationSeconds > 0) t / durationSeconds else null }
 }
