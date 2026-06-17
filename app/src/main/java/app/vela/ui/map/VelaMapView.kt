@@ -33,11 +33,14 @@ import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
+import org.maplibre.android.style.layers.HillshadeLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
+import org.maplibre.android.style.sources.RasterDemSource
+import org.maplibre.android.style.sources.TileSet
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
@@ -57,6 +60,11 @@ private const val ME_ARROW_LAYER = "vela-me-arrow"
 private const val ME_ARROW_IMG = "vela-arrow"
 private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
+private const val DEM_SRC = "vela-dem"
+private const val HILLSHADE_LAYER = "vela-hillshade"
+// Keyless open elevation tiles (AWS Open Data, terrarium-encoded) — no key, and
+// no CORS to worry about on native. Gives Google-style terrain relief.
+private const val TERRARIUM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
 /** A tappable search-result pin on the map. */
 data class MapMarker(val name: String, val location: LatLng)
@@ -297,6 +305,9 @@ fun VelaMapView(
 private fun ensureLayers(style: Style) {
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
 
+    // Terrain relief — only over the OpenMapTiles basemap (the keyless path).
+    if (style.getSource("openmaptiles") != null) ensureHillshade(style)
+
     // House numbers at high zoom. OpenFreeMap's tiles carry the OpenMapTiles
     // "housenumber" source-layer; the Liberty style just doesn't draw it.
     // Guarded to the openmaptiles vector source so other styles don't error.
@@ -376,6 +387,35 @@ private fun ensureLayers(style: Style) {
 }
 
 /**
+ * Subtle terrain relief like Google Maps, from the keyless open **terrarium** DEM
+ * (AWS Open Data — no key; native fetch, so no CORS concern). Inserted just under
+ * the road layers so roads + labels stay crisp on top, and capped at z16 so it's
+ * terrain context for the overview/regional view and gone at street level. The
+ * per-theme colours/strength are set in [applyLight]/[applyDark]. Verified in a
+ * MapLibre GL JS harness before shipping (same render engine as MapLibre Native).
+ */
+private fun ensureHillshade(style: Style) {
+    if (style.getSource(DEM_SRC) == null) {
+        val tiles = TileSet("2.2.0", TERRARIUM_TILES)
+        tiles.encoding = "terrarium" // else MapLibre decodes the elevation as mapbox-RGB → garbage
+        style.addSource(RasterDemSource(DEM_SRC, tiles, 256))
+    }
+    if (style.getLayer(HILLSHADE_LAYER) == null) {
+        val hs = HillshadeLayer(HILLSHADE_LAYER, DEM_SRC).withProperties(
+            PropertyFactory.hillshadeExaggeration(0.32f),
+            PropertyFactory.hillshadeShadowColor("#6b7280"),
+            PropertyFactory.hillshadeHighlightColor("#ffffff"),
+            PropertyFactory.hillshadeAccentColor("#9aa0a6"),
+        )
+        hs.setMaxZoom(16f)
+        // Below the first road layer → above water/landuse (so terrain shades the
+        // land) but under roads + labels (which stay readable).
+        val firstRoad = style.layers.firstOrNull { it.id.startsWith("road") }?.id
+        if (firstRoad != null) style.addLayerBelow(hs, firstRoad) else style.addLayer(hs)
+    }
+}
+
+/**
  * Recolour the OpenFreeMap (OpenMapTiles) style for a cleaner look and a proper
  * dark theme that follows the system. We reload the style when the theme flips
  * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
@@ -412,6 +452,13 @@ private fun applyLight(style: Style) {
     style.getLayer("road_trunk_primary_casing")?.setProperties(PropertyFactory.lineColor("#bfc3ca"))
     style.getLayer("road_secondary_tertiary_casing")?.setProperties(PropertyFactory.lineColor("#cbced4"))
     style.getLayer("road_minor_casing")?.setProperties(PropertyFactory.lineColor("#d8dbe0"))
+    // Terrain relief: a soft warm-grey shadow, subtle so hills read as depth, not dirt.
+    style.getLayer(HILLSHADE_LAYER)?.setProperties(
+        PropertyFactory.hillshadeExaggeration(0.32f),
+        PropertyFactory.hillshadeShadowColor("#6b7280"),
+        PropertyFactory.hillshadeHighlightColor("#ffffff"),
+        PropertyFactory.hillshadeAccentColor("#9aa0a6"),
+    )
 }
 
 /** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */
@@ -451,6 +498,14 @@ private fun applyDark(style: Style) {
                 layer.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
         }
     }
+    // Terrain relief for the night palette: deep shadows + a cool blue-grey
+    // highlight so ridges catch a little moonlight (a touch stronger than light).
+    style.getLayer(HILLSHADE_LAYER)?.setProperties(
+        PropertyFactory.hillshadeExaggeration(0.45f),
+        PropertyFactory.hillshadeShadowColor("#0a1018"),
+        PropertyFactory.hillshadeHighlightColor("#3a4a68"),
+        PropertyFactory.hillshadeAccentColor("#0a1018"),
+    )
 }
 
 /**

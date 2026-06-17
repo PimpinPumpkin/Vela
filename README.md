@@ -239,6 +239,11 @@ at **runtime**, by system theme:
   a casing that lightens down the hierarchy so minor roads recede.
 - **Light / dark** — a neutral-grey-land light palette and Google's canonical
   night palette for dark.
+- **Terrain relief (hillshade)** — shaded relief from the keyless open **terrarium**
+  DEM (AWS Open Data; native fetch, no key, no CORS), added under the road layers
+  and capped at z16, tuned per theme (a soft warm-grey shadow in light, deeper
+  shadows + a cool highlight in dark). Verified in a MapLibre GL JS harness
+  against the real DEM tiles before shipping.
 
 A `MAPTILER_KEY` (CI secret) path stays wired but **off** (`USE_MAPTILER` in
 `MapScreen`): with a key it switches to **MapTiler Streets / Streets Dark**

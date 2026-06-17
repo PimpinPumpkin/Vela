@@ -14,9 +14,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - 🟡 **MapTiler Streets** path stays wired but off (`USE_MAPTILER=true` to enable, needs the key). The bundled-style **Roboto font** is parked — its vector tiles wouldn't load via `fromJson` on-device (loading Liberty by URL is what works)
 - ✅ **Dark / light map** follows the system theme (keyless recolour; or MapTiler dark if enabled). Dark mode recolours **every** landuse/landcover fill (commercial, school, retail, …), not just a hardcoded few, so no light/cream patches break the night palette (verified on-device)
 - ✅ **Google-style POI markers** — category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; in light mode the POI **label text is coloured by category too** (like Google); minor POI tiers decluttered to higher zoom
+- ✅ **Terrain relief (hillshade)** — Google-style shaded relief from the **keyless
+  open terrarium DEM** (AWS Open Data, no key, native fetch so no CORS), added at
+  runtime under the road layers (so roads + labels stay crisp) and capped at z16
+  (terrain context for the overview, gone at street level). Tuned per theme — a
+  soft warm-grey shadow in light, deeper shadows + a cool highlight in dark.
+  Verified in a MapLibre GL JS harness (same render engine as MapLibre Native)
+  against the real DEM tiles before shipping
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
-- ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, hillshade, POI icons)
-- ⬜ Satellite / terrain layers
+- ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
+- ⬜ Satellite layer (terrain relief ✅ done; aerial imagery still planned)
 - ⬜ Map rotation/tilt + heading-up mode during nav
 
 ## Search & POIs (live Google data)
