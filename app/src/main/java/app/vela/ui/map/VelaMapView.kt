@@ -350,32 +350,34 @@ private fun ensureLayers(style: Style) {
 private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     if (dark) applyDark(style) else applyLight(style)
-    PoiIcons.applyToLiberty(style)
+    PoiIcons.applyToLiberty(style, dark)
 }
 
 private fun applyLight(style: Style) {
-    // A cool light-grey land so the white roads actually read (Liberty's
-    // near-white background hid them — Google uses grey land for the same reason).
-    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#eaecef"))
-    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#a7cfeb"))
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#c8e6b9"), PropertyFactory.fillOpacity(0.85f))
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#c4e2a8"), PropertyFactory.fillOpacity(0.5f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#aedb91"), PropertyFactory.fillOpacity(0.55f))
-    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#e2ddd2"))
+    // Google-ish light palette: a neutral light-grey land so the white roads read
+    // (Liberty's near-white background hid them), light-blue water, soft green
+    // parks, and subtle warm-grey buildings.
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#e9eaec"))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#aadaf6"))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#c5e8c0"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#c5e6ac"), PropertyFactory.fillOpacity(0.5f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#b2dd9a"), PropertyFactory.fillOpacity(0.55f))
+    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#e4e2dc"))
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#e2ddd2"),
+        PropertyFactory.fillExtrusionColor("#e4e2dc"),
         PropertyFactory.fillExtrusionOpacity(0.92f),
     )
-    // White roads with a clearly-visible grey casing.
-    listOf("road_motorway", "road_trunk_primary", "road_secondary_tertiary", "road_minor").forEach {
+    // Road hierarchy like Google: gold motorways, white everything else. The
+    // casing darkens up the hierarchy (and lightens down it) so freeways/arterials
+    // stand out and minor roads recede, instead of one flat grey for all of them.
+    style.getLayer("road_motorway")?.setProperties(PropertyFactory.lineColor("#f7ce6b"))
+    style.getLayer("road_motorway_casing")?.setProperties(PropertyFactory.lineColor("#e7a92e"))
+    listOf("road_trunk_primary", "road_secondary_tertiary", "road_minor").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#ffffff"))
     }
-    listOf(
-        "road_motorway_casing", "road_trunk_primary_casing",
-        "road_secondary_tertiary_casing", "road_minor_casing",
-    ).forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#c3c7cd"))
-    }
+    style.getLayer("road_trunk_primary_casing")?.setProperties(PropertyFactory.lineColor("#bfc3ca"))
+    style.getLayer("road_secondary_tertiary_casing")?.setProperties(PropertyFactory.lineColor("#cbced4"))
+    style.getLayer("road_minor_casing")?.setProperties(PropertyFactory.lineColor("#d8dbe0"))
 }
 
 /** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */

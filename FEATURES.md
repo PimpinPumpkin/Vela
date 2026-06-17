@@ -9,10 +9,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search
 - ✅ **Long-press the map** → drop a pin, reverse-geocode it to an address (Nominatim/OSM, keyless), then get Directions — works even where no building is drawn
-- ✅ Keyless **OpenFreeMap Liberty** basemap (active, loaded by URL — the setup that renders on-device, no key): **Google-style POI markers**, white/grey roads, and light/dark recolour all applied at **runtime**
+- ✅ Keyless **OpenFreeMap Liberty** basemap (active, loaded by URL — the setup that renders on-device, no key): **Google-style POI markers + category-coloured labels**, a Google-like **road hierarchy** (gold motorways, white arterials, casing that lightens down the hierarchy so minor roads recede), and light/dark recolour all applied at **runtime**
 - 🟡 **MapTiler Streets** path stays wired but off (`USE_MAPTILER=true` to enable, needs the key). The bundled-style **Roboto font** is parked — its vector tiles wouldn't load via `fromJson` on-device (loading Liberty by URL is what works)
 - ✅ **Dark / light map** follows the system theme (keyless recolour; or MapTiler dark if enabled)
-- ✅ **Google-style POI markers** — category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; minor POI tiers decluttered to higher zoom
+- ✅ **Google-style POI markers** — small category-coloured circles with white Material Icons glyphs (food=orange, shop=blue, park=green, health=red, transit=blue, …), generated at runtime over a bundled Material Icons font; in light mode the POI **label text is coloured by category too** (like Google); minor POI tiers decluttered to higher zoom
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy, hillshade, POI icons)
 - ⬜ Satellite / terrain layers

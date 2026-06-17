@@ -167,15 +167,26 @@ decodes Google's geometry exactly and is covered by a reference-vector test.
 
 ## Map style
 
-When a `MAPTILER_KEY` is built in (CI secret), the basemap is **MapTiler
-Streets** — a Google-like look with proper fonts — and **Streets Dark** is
-selected automatically on a dark system theme. With no key the app falls back to
-the keyless **OpenFreeMap Liberty** style (full street detail; we inject
-house-number labels at z17) and applies our own light/dark recolour; Positron,
-Bright, the MapLibre demo and Protomaps are alternates in the `MapStyle` catalog.
-The keyless route has a ceiling (notably the font, which OpenFreeMap fixes to
-Noto Sans); self-hosted PMTiles is the no-key, no-quota path for later. Styles
-are plain URLs, updatable over-the-air without an app release.
+The active basemap is the keyless **OpenFreeMap Liberty** style (full street
+detail; we inject house-number labels at z17), loaded **by URL** — the only setup
+that reliably renders vector tiles on-device. Over it we apply a Google-like look
+at **runtime**, by system theme:
+
+- **POI markers** — small category-coloured circles with white Material Icons
+  glyphs (food orange, shops blue, parks green, …); in **light** mode the POI
+  label text is coloured by category too, like Google.
+- **Road hierarchy** — gold motorways with a darker casing, white arterials, and
+  a casing that lightens down the hierarchy so minor roads recede.
+- **Light / dark** — a neutral-grey-land light palette and Google's canonical
+  night palette for dark.
+
+A `MAPTILER_KEY` (CI secret) path stays wired but **off** (`USE_MAPTILER` in
+`MapScreen`): with a key it switches to **MapTiler Streets / Streets Dark**
+(proper fonts) instead of the keyless recolour. The keyless route's remaining
+ceiling is the font (OpenFreeMap fixes it to Noto Sans; a bundled-Roboto attempt
+broke on-device vector rendering and is parked); self-hosted PMTiles is the
+no-key, no-quota path for later. Styles are plain URLs, updatable over-the-air
+without an app release.
 
 ## Roadmap
 

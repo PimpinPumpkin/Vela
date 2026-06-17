@@ -67,23 +67,34 @@ object PoiIcons {
         "transit" to listOf("bus", "railway", "aerodrome", "station", "subway", "tram", "ferry_terminal", "airport"),
     )
 
-    /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our coloured markers. */
-    fun applyToLiberty(style: Style) {
+    /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our coloured markers,
+     *  and (in light mode) colour the POI label text by category, like Google. */
+    fun applyToLiberty(style: Style, dark: Boolean) {
         runCatching {
-            val sb = StringBuilder("""["match",["get","class"]""")
-            CLASS_GROUPS.forEach { (group, classes) ->
-                sb.append(',').append(classes.joinToString(",", "[", "]") { "\"$it\"" })
-                sb.append(",\"vela-poi-").append(group).append('"')
-            }
-            sb.append(",\"vela-poi-default\"]")
-            val expr = Expression.raw(sb.toString())
+            val icon = Expression.raw(match("\"vela-poi-default\"") { "\"vela-poi-$it\"" })
+            val colorByGroup = GROUPS.associate { it.first to it.third }
+            val textColor = Expression.raw(match("\"#5F6368\"") { "\"${colorByGroup[it] ?: "#5F6368"}\"" })
             listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
-                style.getLayer(id)?.setProperties(
-                    PropertyFactory.iconImage(expr),
-                    PropertyFactory.iconSize(0.5f),
+                val layer = style.getLayer(id) ?: return@forEach
+                layer.setProperties(
+                    PropertyFactory.iconImage(icon),
+                    PropertyFactory.iconSize(0.4f),
                 )
+                // Category-coloured labels (Google-style) in light mode; the dark
+                // theme keeps light-grey labels for contrast.
+                if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
             }
         }
+    }
+
+    /** Build a MapLibre `match` on the POI `class` → a value per group. */
+    private fun match(default: String, value: (String) -> String): String {
+        val sb = StringBuilder("""["match",["get","class"]""")
+        CLASS_GROUPS.forEach { (group, classes) ->
+            sb.append(',').append(classes.joinToString(",", "[", "]") { "\"$it\"" })
+            sb.append(',').append(value(group))
+        }
+        return sb.append(',').append(default).append(']').toString()
     }
 
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
