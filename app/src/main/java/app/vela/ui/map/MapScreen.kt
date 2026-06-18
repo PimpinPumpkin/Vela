@@ -13,6 +13,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -57,6 +58,7 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -93,7 +95,9 @@ import app.vela.core.model.ManeuverType
 import app.vela.core.model.Place
 import app.vela.core.model.SavedPlace
 import app.vela.ui.RatingStars
+import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
+import app.vela.ui.formatSpeed
 import app.vela.ui.formatDuration
 import app.vela.ui.nav.ArrivalSummary
 import app.vela.ui.nav.ManeuverBanner
@@ -340,6 +344,33 @@ fun MapScreen(
                     .navigationBarsPadding()
                     .padding(bottom = 104.dp),
             )
+        }
+
+        // Speedometer (Google-style) — current GPS speed, bottom-left during nav.
+        val speedMps = state.mySpeed
+        if (state.navigating && speedMps != null) {
+            val (value, unit) = formatSpeed(speedMps)
+            val dark = isAppInDarkTheme()
+            Surface(
+                shape = CircleShape,
+                color = SheetPalette.bg(dark),
+                contentColor = SheetPalette.ink(dark),
+                shadowElevation = 4.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, bottom = 104.dp)
+                    .size(60.dp),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                    modifier = Modifier.fillMaxSize(),
+                ) {
+                    Text("$value", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(unit, style = MaterialTheme.typography.labelSmall, color = SheetPalette.dim(dark))
+                }
+            }
         }
 
         if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchFocused) {

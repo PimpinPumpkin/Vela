@@ -46,6 +46,15 @@ fun formatDuration(seconds: Double): String {
     return if (m == 0) "$h h" else "$h h $m min"
 }
 
+/** Current speed as a (value, unit) pair for the speedometer, e.g. (65, "mph") —
+ *  imperial vs metric follows the [Units] preference. */
+fun formatSpeed(metersPerSecond: Float): Pair<Int, String> =
+    if (Units.imperial.value) {
+        (metersPerSecond * 2.236936).roundToInt() to "mph"
+    } else {
+        (metersPerSecond * 3.6).roundToInt() to "km/h"
+    }
+
 /** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM"
  *  (locale-aware 12/24-hour), the way Google shows ETA during navigation. */
 fun formatArrivalClock(remainingSeconds: Double): String {

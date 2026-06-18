@@ -45,6 +45,7 @@ data class MapUiState(
     val center: LatLng? = null,
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
+    val mySpeed: Float? = null, // metres/second, from GPS
     val query: String = "",
     val results: List<Place> = emptyList(),
     val suggestions: List<Place> = emptyList(),
@@ -149,8 +150,9 @@ class MapViewModel @Inject constructor(
                 val here = LatLng(loc.latitude, loc.longitude)
                 // Keep the last good bearing while stopped (GPS bearing is noise at rest).
                 val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
+                val speed = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
                 _state.update {
-                    it.copy(myLocation = here, myBearing = bearing, showPsdsTip = false, center = it.center ?: here)
+                    it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here)
                 }
             }
         }

@@ -116,6 +116,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   low-quality or download-required one), so guidance sounds natural, not robotic
 - ✅ **Mute voice during nav** — a speaker toggle in the nav bottom bar silences /
   restores spoken guidance on the fly (Google-style), independent of the haptic cues
+- ✅ **Speedometer** — a Google-style circular badge (bottom-left during nav) shows
+  your current GPS speed in mph or km/h (follows the Units setting)
 - ✅ **Pan-away + Re-center** — dragging the map during navigation **detaches the
   follow-camera** so you can look around (it stops snapping back on every GPS fix);
   a **Re-center** button appears and reattaches it, then hides once you're following
