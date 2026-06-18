@@ -1,5 +1,6 @@
 package app.vela.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -47,6 +48,8 @@ import app.vela.ui.theme.ThemeMode
 fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // System back should return to the map, not fall through and exit the app.
+    BackHandler(onBack = onBack)
     Scaffold(
         topBar = {
             TopAppBar(
