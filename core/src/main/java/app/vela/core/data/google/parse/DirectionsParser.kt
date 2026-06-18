@@ -155,30 +155,16 @@ object DirectionsParser {
         return poly.last()
     }
 
-    // --- geometry (approximate; CALIBRATE) ----------------------------------
+    // --- geometry -----------------------------------------------------------
 
-    private fun approximatePolyline(route: JsonElement, start: LatLng?, end: LatLng?): List<LatLng> {
-        if (start == null || end == null) return emptyList()
-        val minLat = min(start.lat, end.lat) - 0.25
-        val maxLat = max(start.lat, end.lat) + 0.25
-        val minLng = min(start.lng, end.lng) - 0.25
-        val maxLng = max(start.lng, end.lng) + 0.25
-        val pts = ArrayList<LatLng>()
-        fun walk(n: JsonElement) {
-            if (n is JsonArray) {
-                for (i in 0 until n.size - 1) {
-                    val a = n[i].dbl()
-                    val b = n[i + 1].dbl()
-                    if (a != null && b != null && a in minLat..maxLat && b in minLng..maxLng) {
-                        pts.add(LatLng(a, b))
-                    }
-                }
-                n.forEach(::walk)
-            }
-        }
-        walk(route)
-        val dedup = ArrayList<LatLng>()
-        for (p in pts) if (dedup.isEmpty() || dedup.last() != p) dedup.add(p)
-        return (listOf(start) + dedup + end)
-    }
+    /**
+     * Placeholder geometry: just the start→end straight segment. The real
+     * road-following line is fetched from an open router ([RouteGeometry]) at the
+     * data-source layer and repositioned over this. We deliberately DON'T try to
+     * reconstruct a shape from the response's scattered in-bounds coordinates —
+     * that produced a line that doubled back on itself; a straight segment is the
+     * honest fallback when the router is unavailable.
+     */
+    private fun approximatePolyline(route: JsonElement, start: LatLng?, end: LatLng?): List<LatLng> =
+        listOfNotNull(start, end)
 }

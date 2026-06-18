@@ -43,27 +43,42 @@ object RouteGeometry {
     }
 
     /** Path-following polyline for origin→dest in [mode], or null on any failure. */
-    fun fetch(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<LatLng>? = try {
+    fun fetch(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<LatLng>? =
+        fetchAll(http, origin, dest, mode, alternatives = false).firstOrNull()
+
+    /** Up to a few real road-following geometries (best-first) — OSRM's fastest
+     *  plus, when [alternatives] is on, its alternates. Used to give EVERY Google
+     *  route a real line (paired by order) instead of letting the non-fastest ones
+     *  fall back to a scattered-point guess that doubled back on itself. Empty on
+     *  any failure. */
+    fun fetchAll(
+        http: OkHttpClient,
+        origin: LatLng,
+        dest: LatLng,
+        mode: TravelMode,
+        alternatives: Boolean = true,
+    ): List<List<LatLng>> = try {
         // The "/driving/" service keyword is fixed in OSRM's URL grammar; the real
         // transport profile is chosen by which backend (routed-car/bike/foot) we hit.
-        val backend = backend(mode) ?: return null
+        val backend = backend(mode) ?: return emptyList()
         val url = "$OSRM_BASE/$backend/route/v1/driving/" +
             "${origin.lng},${origin.lat};${dest.lng},${dest.lat}" +
-            "?overview=full&geometries=polyline"
+            "?overview=full&geometries=polyline" + if (alternatives) "&alternatives=3" else ""
         val req = Request.Builder()
             .url(url)
             .header("User-Agent", VelaConfig.USER_AGENT)
             .build()
         http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return null
-            val encoded = json.parseToJsonElement(resp.body?.string().orEmpty())
-                .jsonObject["routes"]?.jsonArray?.getOrNull(0)
-                ?.jsonObject?.get("geometry")?.jsonPrimitive?.contentOrNull
-                ?: return null
-            PolylineCodec.decode(encoded).takeIf { it.size >= 2 }
+            if (!resp.isSuccessful) return emptyList()
+            json.parseToJsonElement(resp.body?.string().orEmpty())
+                .jsonObject["routes"]?.jsonArray
+                ?.mapNotNull { it.jsonObject["geometry"]?.jsonPrimitive?.contentOrNull }
+                ?.map { PolylineCodec.decode(it) }
+                ?.filter { it.size >= 2 }
+                ?: emptyList()
         }
     } catch (e: Exception) {
-        null
+        emptyList()
     }
 
     /** Copy of [route] drawn along [polyline], maneuvers repositioned along it

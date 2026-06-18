@@ -128,14 +128,14 @@ class GoogleMapsDataSource @Inject constructor(
         val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb)
         val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
         val routes = DirectionsParser.parse(GoogleResponse.parse(get(url)))
-        // Google's response carries no decodable line; draw it via an open router.
-        // FOSSGIS OSRM has a per-mode backend, so drive/walk/bike each get a real
-        // path-following line (transit has none → keeps the parser's approximation).
-        val geometry = RouteGeometry.fetch(http, origin, destination, mode)
-        if (geometry != null && routes.isNotEmpty()) {
-            listOf(RouteGeometry.reposition(routes.first(), geometry)) + routes.drop(1)
-        } else {
-            routes
+        // Google's response carries no decodable line; draw each route along an open
+        // router (FOSSGIS OSRM, per-mode backend). OSRM returns 1-3 real geometries
+        // (best-first); pair them to Google's routes by order so EVERY route follows
+        // real roads, and fall back to a straight origin→dest line — never the
+        // parser's scattered-point guess, which doubled back on itself.
+        val geoms = RouteGeometry.fetchAll(http, origin, destination, mode)
+        routes.mapIndexed { i, r ->
+            RouteGeometry.reposition(r, geoms.getOrNull(i) ?: listOf(origin, destination))
         }
     }
 
