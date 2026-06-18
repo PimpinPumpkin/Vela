@@ -40,6 +40,7 @@ object SearchParser {
         if (root !is JsonArray) throw CalibrationNeededException("search: response not a JSON array")
         val entries: List<JsonElement> =
             root.atPath(pathOf(paths, "results")).arr()?.takeIf { it.isNotEmpty() }
+                ?: atThisPlaceEntries(root, paths) // an address → the business AT it
                 ?: singleResultEntry(root, paths)
                 ?: findResultsArray(root)
                 ?: return SearchResult(query, emptyList())
@@ -56,6 +57,21 @@ object SearchParser {
         val node = root.atPath(pathOf(paths, "single")) ?: return null
         if (node.at(11).str() == null) return null
         return listOf(JsonArray(listOf(JsonNull, node)))
+    }
+
+    /** Searching a bare ADDRESS that is a business ("1020 Olive Dr" → In-N-Out): Google
+     *  lists the business(es) at that address under the geocoded node, at `atThisPlace`
+     *  (`[0][1][0][14][68]`). We snap to them instead of showing the bare address — each
+     *  entry's place node is at `[i][0]`, wrapped as `[null, node]` so [toPlace] (which
+     *  reads `[1]`) parses it unchanged. Empty/absent → fall through to the address. */
+    private fun atThisPlaceEntries(root: JsonElement, paths: Map<String, List<Int>>): List<JsonElement>? {
+        val list = root.atPath(pathOf(paths, "atThisPlace")).arr() ?: return null
+        val entries = list.mapNotNull { e ->
+            val node = e.at(0) ?: return@mapNotNull null
+            if (node.at(11).str() == null) return@mapNotNull null
+            JsonArray(listOf(JsonNull, node))
+        }
+        return entries.ifEmpty { null }
     }
 
     private fun toPlace(entry: JsonElement, near: LatLng?, paths: Map<String, List<Int>>): Place? {

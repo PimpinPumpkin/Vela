@@ -56,6 +56,10 @@ data class Calibration(
         val DEFAULT_PATHS: Map<String, List<Int>> = mapOf(
             "results" to listOf(64),
             "single" to listOf(0, 1, 0, 14),
+            // "At this place": the business(es) Google lists at a searched ADDRESS
+            // (a sub-field of the single geocoded node). Lets an address snap to the
+            // business there. Each entry's place node is at [i][0].
+            "atThisPlace" to listOf(0, 1, 0, 14, 68),
             "name" to listOf(1, 11),
             "lat" to listOf(1, 9, 2),
             "lng" to listOf(1, 9, 3),
