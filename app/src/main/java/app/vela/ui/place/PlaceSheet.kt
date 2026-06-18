@@ -236,13 +236,14 @@ fun PlaceSheet(
 
             Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 place.rating?.let { r ->
+                    // Google leads with a bold rating number; keep it prominent.
                     Text(
                         String.format(Locale.US, "%.1f", r),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
                         color = ink,
                     )
-                    RatingStars(r, modifier = Modifier.padding(horizontal = 4.dp))
+                    RatingStars(r, modifier = Modifier.padding(horizontal = 5.dp))
                     place.reviewCount?.let {
                         Text("($it)", style = MaterialTheme.typography.bodyMedium, color = dim)
                     }
