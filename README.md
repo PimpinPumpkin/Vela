@@ -10,16 +10,20 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 > captures and verified end-to-end on-device:
 >
 > - **Search & places** — real POIs with name, rating, **reviews**, full address,
->   category, price, website, weekly hours, distance, and a **full photo gallery**.
+>   category, price, website, weekly hours, distance, and a **full photo gallery**;
+>   **Home/Work shortcuts**, saved places, and **deep links** (Vela opens `geo:`/
+>   Google-Maps links and shares a place as a keyless `geo:` pin).
 > - **Routing** — drive / walk / bike / **public transit**, **traffic-aware ETAs**,
->   selectable **alternates** drawn along *Google's own* route geometry, a
->   **live-traffic overlay**, **search-along-route**, and depart/arrive-time planning.
+>   selectable **alternates** (drawn greyed + tappable on the map, along *Google's
+>   own* route geometry), a **reverse-trip swap**, a **live-traffic overlay**,
+>   **search-along-route**, and depart/arrive-time planning.
 > - **Navigation** — turn-by-turn with a Google-style maneuver banner (lane
 >   guidance, highway/exit shields, swipe-to-look-ahead), spoken + haptic guidance,
 >   a **speedometer**, pan-away **re-center**, faster-route re-checks, and an arrival
 >   summary.
 > - **Polish** — in-app light/dark, one consistent Google-grey UI, custom POI
->   markers, hillshade relief, and **offline** basemap + POI download.
+>   markers, hillshade relief, a **map scale bar**, and **offline** basemap + POI
+>   download.
 >
 > Every push to `main` publishes a signed, Obtainium-friendly `v0.1.<run>` release.
 > `MockMapDataSource` stays as an offline fallback; both build types are green.
