@@ -1,4 +1,6 @@
 package app.vela.ui.settings
+import android.content.Intent
+import android.net.Uri
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
@@ -11,11 +13,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -37,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.BuildConfig
+import app.vela.ui.Onboarding
 import app.vela.core.data.tiles.MapStyle
 import app.vela.ui.Units
 import app.vela.ui.map.MapViewModel
@@ -182,6 +187,21 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     "for POIs, routing and traffic-aware ETAs, AOSP TextToSpeech for voice. GPLv3. " +
                     "No Play Services required.",
             )
+            Spacer(Modifier.height(20.dp))
+            SectionTitle("Support")
+            Hint("Vela is free and ad-free. If it's become useful, a donation helps keep development going — entirely optional.")
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Onboarding.DONATE_URL)))
+                    }
+                },
+            ) {
+                Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text("Support Vela")
+            }
+
             Spacer(Modifier.height(20.dp))
             SectionTitle("Version")
             Text(

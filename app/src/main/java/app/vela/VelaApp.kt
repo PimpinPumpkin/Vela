@@ -1,6 +1,7 @@
 package app.vela
 
 import android.app.Application
+import app.vela.ui.Onboarding
 import app.vela.ui.Traffic
 import app.vela.ui.Units
 import app.vela.ui.theme.AppTheme
@@ -13,5 +14,6 @@ class VelaApp : Application() {
         Units.init(this)
         AppTheme.init(this)
         Traffic.init(this)
+        Onboarding.init(this)
     }
 }
