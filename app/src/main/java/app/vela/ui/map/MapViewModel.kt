@@ -57,6 +57,7 @@ data class MapUiState(
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
     val directionsOpen: Boolean = false,
+    val directionsReversed: Boolean = false, // route from the place back to you
     val travelMode: TravelMode = TravelMode.DRIVE,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
@@ -483,10 +484,15 @@ class MapViewModel @Inject constructor(
     }
 
     fun routeToSelected() {
-        val dest = _state.value.selected?.location ?: return
-        destination = dest
-        _state.update { it.copy(directionsOpen = true) }
-        route(dest, _state.value.travelMode)
+        if (_state.value.selected == null) return
+        _state.update { it.copy(directionsOpen = true, directionsReversed = false) }
+        route(_state.value.travelMode)
+    }
+
+    /** Swap origin and destination — route the other way (you ⇄ the place). */
+    fun swapDirections() {
+        _state.update { it.copy(directionsReversed = !it.directionsReversed) }
+        route(_state.value.travelMode)
     }
 
     /** Pick one of the alternate routes (drawn greyed on the map / listed in the
@@ -498,12 +504,18 @@ class MapViewModel @Inject constructor(
     fun setTravelMode(mode: TravelMode) {
         if (_state.value.travelMode == mode) return
         _state.update { it.copy(travelMode = mode) }
-        destination?.let { route(it, mode) }
+        route(mode)
     }
 
-    private fun route(dest: LatLng, mode: TravelMode) {
-        if (mode == TravelMode.TRANSIT) { routeTransit(dest); return }
-        val origin = _state.value.myLocation ?: return
+    private fun route(mode: TravelMode) {
+        val s = _state.value
+        val place = s.selected?.location ?: return
+        val myLoc = s.myLocation
+        // reversed → from the place back to you; else → from you to the place.
+        val origin = (if (s.directionsReversed) place else myLoc) ?: return
+        val dest = (if (s.directionsReversed) myLoc else place) ?: return
+        destination = dest
+        if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest); return }
         viewModelScope.launch {
             try {
                 val routes = dataSource.directions(origin, dest, mode)
@@ -528,8 +540,7 @@ class MapViewModel @Inject constructor(
      *  WebView ([WebDirectionsFetcher]) rather than the OkHttp data source. We
      *  clear the driving route line while it loads — transit shows a results
      *  board, not a single drawn path. */
-    private fun routeTransit(dest: LatLng) {
-        val origin = _state.value.myLocation ?: return
+    private fun routeTransit(origin: LatLng, dest: LatLng) {
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, status = null) }
         viewModelScope.launch {
             val trips = runCatching { webDirections.transit(origin, dest) }.getOrDefault(emptyList())

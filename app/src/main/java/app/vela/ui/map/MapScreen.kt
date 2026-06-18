@@ -438,7 +438,9 @@ fun MapScreen(
             // route option(s) with traffic-aware ETAs, selectable alternates, Start —
             // instead of burying it at the bottom of the place sheet.
             state.directionsOpen -> DirectionsPanel(
-                destinationName = state.selected?.name ?: "Destination",
+                originName = if (state.directionsReversed) (state.selected?.name ?: "Place") else "Your location",
+                destinationName = if (state.directionsReversed) "Your location" else (state.selected?.name ?: "Destination"),
+                onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
                 activeRoute = state.activeRoute,

@@ -63,6 +63,8 @@ import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Schedule
@@ -414,7 +416,9 @@ fun PlaceSheet(
  */
 @Composable
 fun DirectionsPanel(
+    originName: String,
     destinationName: String,
+    onSwap: () -> Unit,
     currentMode: TravelMode,
     routes: List<Route>,
     activeRoute: Route?,
@@ -439,15 +443,27 @@ fun DirectionsPanel(
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Directions to", style = MaterialTheme.typography.labelMedium, color = dim)
-                    Text(
-                        destinationName,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = ink,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.TripOrigin, contentDescription = null, tint = dim, modifier = Modifier.size(14.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(originName, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Spacer(Modifier.height(3.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            destinationName,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = ink,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                IconButton(onClick = onSwap) {
+                    Icon(Icons.Default.SwapVert, contentDescription = "Swap start and destination", tint = MaterialTheme.colorScheme.primary)
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close directions", tint = dim) }
             }
