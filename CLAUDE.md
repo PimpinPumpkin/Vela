@@ -100,9 +100,16 @@ genuinely needs no doc edit, say why in the commit.
   `body`/`url`) shown as dismissable cards on the bare map (`MapViewModel.refreshNotices`,
   dismissed ids in `vela_notices` prefs) — push "search is down, fix coming" with no
   app update. Rides the same signed channel.
-- **Phase 3 (in progress): remote parse *logic*** via `transformsJs` (a signed JS
-  bundle run in a Rhino sandbox), so a *response-shape* change — not just a moved
-  field — can also be hot-fixed; compiled Kotlin stays the fallback.
+- **Phase 3 (done): remote parse *logic*** via `transformsJs` — a signed JS bundle
+  run in a **Rhino sandbox** (`JsSandbox`, interpreted/`optimizationLevel=-1` for ART,
+  `initSafeStandardObjects` so it can't reach Java/IO; `org.mozilla:rhino-runtime`,
+  R8-keep in `core/consumer-rules.pro`). `JsTransforms` exposes two search hooks —
+  `parseSearch(rawResponse)` (full re-parse of a reshaped response) and
+  `transformPlaces(placesJson)` (post-process) — over the flat `PlaceJson` contract;
+  **compiled Kotlin is always the fallback** (no script / missing fn / any error →
+  unchanged). So a *response-shape* change can be hot-fixed too, not just a moved
+  field. Wired in `GoogleMapsDataSource.search`. Verified on-device (a pushed
+  `transformPlaces` marked the first result; cleared after).
 
 ## Degoogled constraints (hard rules)
 
