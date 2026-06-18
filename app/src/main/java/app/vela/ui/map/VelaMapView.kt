@@ -164,13 +164,26 @@ fun VelaMapView(
                         markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
                         return@addOnMapClickListener true
                     }
-                    val hit = feats.firstOrNull { it.geometry() is Point && it.hasProperty("name") }
-                    if (hit != null) {
-                        val pt = hit.geometry() as Point
-                        poiTap.value(hit.getStringProperty("name"), LatLng(pt.latitude(), pt.longitude()))
-                        true
-                    } else {
-                        false
+                    // POIs are named Points; some only carry name:latin/name:en, so
+                    // try those too — more icons become directly tappable that way.
+                    fun nameOf(f: Feature): String? = sequenceOf("name", "name:latin", "name:en")
+                        .firstOrNull { f.hasProperty(it) && !f.getStringProperty(it).isNullOrBlank() }
+                        ?.let { f.getStringProperty(it) }
+                    val hit = feats.firstOrNull { it.geometry() is Point && nameOf(it) != null }
+                    when {
+                        hit != null -> {
+                            val pt = hit.geometry() as Point
+                            poiTap.value(nameOf(hit)!!, LatLng(pt.latitude(), pt.longitude()))
+                            true
+                        }
+                        // An unnamed POI icon (has a class but no name — an apartment
+                        // gym, an unnamed park/playground, …) used to be a dead tap.
+                        // Reverse-geocode the spot to a pin + address, like a long-press.
+                        feats.any { it.geometry() is Point && it.hasProperty("class") } -> {
+                            longPress.value(LatLng(tapped.latitude, tapped.longitude))
+                            true
+                        }
+                        else -> false
                     }
                 }
                 // Only flag camera settling when the user dragged the map (not

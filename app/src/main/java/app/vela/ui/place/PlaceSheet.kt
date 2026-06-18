@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
@@ -166,7 +167,8 @@ fun PlaceSheet(
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
-        Column {
+        // Card background fills to the screen bottom; pad the content up off the nav bar.
+        Column(Modifier.navigationBarsPadding()) {
             // Drag the handle UP to expand (reviews), DOWN to shrink, down again to dismiss.
             Box(
                 Modifier

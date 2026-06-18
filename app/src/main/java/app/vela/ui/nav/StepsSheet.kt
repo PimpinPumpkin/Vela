@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,7 +67,8 @@ fun StepsSheet(
     modifier: Modifier = Modifier,
 ) {
     Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
-        Column(Modifier.padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {
+        // Fill the card to the screen bottom; pad content off the nav bar.
+        Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("Steps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)

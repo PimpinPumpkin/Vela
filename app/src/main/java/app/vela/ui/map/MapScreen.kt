@@ -328,9 +328,8 @@ fun MapScreen(
                 currentStep = if (state.navigating) state.nav.stepIndex else null,
                 onStep = vm::previewStep,
                 onClose = vm::closeSteps,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding(),
+                // Background fills to the bottom; StepsSheet pads its own content.
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
 
             state.navigating -> NavControls(
@@ -360,9 +359,10 @@ fun MapScreen(
                 onDirections = vm::routeToSelected,
                 onStartNav = onStartNav,
                 onSteps = if (state.activeRoute != null) vm::openSteps else null,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding(),
+                // No navigationBarsPadding here: the sheet's background should reach
+                // the screen bottom (no map peeking through under the nav bar); the
+                // sheet pads its own content for the nav bar instead.
+                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
 
