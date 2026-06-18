@@ -6,17 +6,35 @@ Google's public web endpoints (per-user, no backend) for the things only Google
 does well: POI quality, routing, and **traffic-aware ETAs**. Built to run on
 GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 
-> Status: **builds, runs, and pulls live Google data.** Calibrated against a
-> live capture (2026-06-15) and verified end-to-end: real POIs with **name,
-> rating, reviews, address, category, price, website and weekly hours**, real
-> **traffic-aware ETAs** (typical vs live `duration_in_traffic`), turn-by-turn
-> maneuvers, and walk/bike modes. The route line is drawn from an open router
-> (OSRM) because Google's is vector-tile-only. **Installed + verified on a Pixel 9
-> (Android 16)**; every push to `main` publishes a normal, signed `v0.1.<run>` release (Obtainium-friendly). Remaining: popular-times /
-> reviews (sign-in gated) and richer cartography. `MockMapDataSource` stays as an
-> offline fallback; both build types are green.
+> Status: **a genuinely usable day-to-day maps app.** Calibrated against live
+> captures and verified end-to-end on-device:
+>
+> - **Search & places** — real POIs with name, rating, **reviews**, full address,
+>   category, price, website, weekly hours, distance, and a **full photo gallery**.
+> - **Routing** — drive / walk / bike / **public transit**, **traffic-aware ETAs**,
+>   selectable **alternates** drawn along *Google's own* route geometry, a
+>   **live-traffic overlay**, **search-along-route**, and depart/arrive-time planning.
+> - **Navigation** — turn-by-turn with a Google-style maneuver banner (lane
+>   guidance, highway/exit shields, swipe-to-look-ahead), spoken + haptic guidance,
+>   a **speedometer**, pan-away **re-center**, faster-route re-checks, and an arrival
+>   summary.
+> - **Polish** — in-app light/dark, one consistent Google-grey UI, custom POI
+>   markers, hillshade relief, and **offline** basemap + POI download.
+>
+> Every push to `main` publishes a signed, Obtainium-friendly `v0.1.<run>` release.
+> `MockMapDataSource` stays as an offline fallback; both build types are green.
 
 ---
+
+## Screenshots
+
+| Map & search | Search results | Place details | Directions | Navigation |
+|:-:|:-:|:-:|:-:|:-:|
+| <img src="docs/screenshots/01-map.png" width="150"> | <img src="docs/screenshots/02-search.png" width="150"> | <img src="docs/screenshots/03-place.png" width="150"> | <img src="docs/screenshots/04-directions.png" width="150"> | <img src="docs/screenshots/05-navigation.png" width="150"> |
+
+*Keyless OpenFreeMap basemap with custom Google-style POI markers; live Google
+search/place data; the directions panel (alternates, depart-time, search-along-
+route); and turn-by-turn navigation with the maneuver banner + speedometer.*
 
 ## Why it's built this way
 
@@ -50,7 +68,8 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
         │   │   ├─ PbBuilder             builds Google's `pb` URL protobuf
         │   │   ├─ GoogleResponse        XSSI strip + positional-array navigator
         │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
-        │   │   └─ parse/                 SearchParser, DirectionsParser
+        │   │   └─ parse/                 Search / Directions / Transit / Photos / Reviews
+        │   ├─ RouteCorridor             "search along route" — filter results to the line
         │   ├─ OverpassPois              keyless OSM POI fetch (offline-search source)
         │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
         │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
@@ -63,12 +82,15 @@ Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
 
 :app    Jetpack Compose UI (Material 3)
         ├─ MainActivity, VelaApp
-        ├─ ui/map/           MapScreen, VelaMapView (MapLibre), MapViewModel
+        ├─ ui/map/           MapScreen, VelaMapView (MapLibre), MapViewModel, PoiIcons
         ├─ ui/search/        SearchBar
-        ├─ ui/place/         PlaceSheet
-        ├─ ui/nav/           ManeuverBanner, NavControls, StepsSheet (step overview)
+        ├─ ui/place/         PlaceSheet, DirectionsPanel, transit board, photo gallery
+        ├─ ui/nav/           ManeuverBanner (lanes/shields/swipe), NavControls, StepsSheet
+        ├─ ui/theme/         AppTheme — in-app light/dark, decoupled from the OS
+        ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
+        ├─ web/              WebPhotoFetcher, WebDirectionsFetcher — hidden-WebView scrapes
         ├─ offline/          OfflineMaps — MapLibre offline region download/store
-        └─ ui/settings/      SettingsScreen (style / voice / haptics / offline)
+        └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / offline)
 ```
 
 The `MapDataSource` interface is the load-bearing seam: Mock today, Google once
@@ -137,14 +159,16 @@ duration s `[3][0]`, and **live `duration_in_traffic` s `[10][0][0]`**. Steps
 arrive as `<step maneuver='TURN_LEFT' meters='120'>…</step>` markup — type and
 distance parse straight out of the attributes, and the **lane hint** ("Use the
 right 2 lanes to …") is split off into its own field for the step list + banner.
-The overview geometry isn't in
-the JSON at all (Google renders it from vector tiles), so the drawn line comes
-from an open router — see [`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt).
-It uses the FOSSGIS community OSRM, which exposes a **separate backend per mode**
-(`routed-car` / `routed-bike` / `routed-foot`), so drive/walk/bike each get their
-own path-following line — the old `router.project-osrm.org` demo only had the car
-profile, which is why walk/bike used to draw a wrong, "all over the place" line.
-Point it at a self-hosted OSRM/Valhalla before release.
+Each route's geometry **is** in the response after all — delta-encoded E7
+coordinate arrays at `[0][7][i]`, index-aligned with the summaries — so every
+route, **alternates included**, draws along Google's *own* roads (decoded in
+[`DirectionsParser`](core/src/main/java/app/vela/core/data/google/parse/DirectionsParser.kt);
+this replaced an earlier scattered-point guess that doubled back on itself). An
+open router ([`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt),
+FOSSGIS OSRM with a per-mode `routed-car`/`routed-bike`/`routed-foot` backend)
+stays only as a fallback for the rare route Google omits geometry for. Live
+**public transit** is a separate path — Google silently downgrades a keyless
+transit request to driving, so it goes through a hidden WebView (see below).
 
 **Place details** ride along in the search response — no separate RPC for the
 common fields: website `[1][7][0]`, price text `[1][4][2]`, open-status
@@ -283,19 +307,20 @@ without an app release.
 
 ## Roadmap
 
-- [x] Project scaffold, two-module architecture, CI-style signing
+- [x] Two-module architecture, CI signing, Obtainium-friendly releases
 - [x] MapLibre rendering, location, search UI, place sheet
-- [x] Turn-by-turn engine + spoken guidance (works on mock routes)
-- [x] Google extractor scaffolding (grammar complete)
-- [x] **Calibrate search + directions** against a live capture — live & verified
-- [x] Place details (hours / website / price / open-status) from the search response
-- [x] Route geometry via open router (OSRM) — Google's line is vector-tile-only
-- [x] Travel modes (drive / walk / bike)
-- [ ] Popular times + individual reviews (sign-in-gated place RPC)
-- [ ] Protomaps / MapTiler style + cartographic polish pass
-- [ ] Foreground navigation service (screen-off guidance + notification)
-- [ ] Offline: bundle PMTiles + embed a routing engine (Valhalla JNI) — v2
-- [ ] Traffic overlay tiles (the colored lines) — separate from ETA, later
+- [x] **Calibrate search + directions** against live captures — live & verified
+- [x] Place details — hours / website / price / open-status / **reviews** / **photo gallery**
+- [x] Travel modes — drive / walk / bike / **public transit**
+- [x] **Alternates along Google's own route geometry**, **traffic-aware ETAs**, **live-traffic overlay**
+- [x] Turn-by-turn — maneuver banner (lanes / exit shields / swipe-ahead), spoken + haptic guidance, **speedometer**, **re-center**, arrival summary
+- [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
+- [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief
+- [x] **Offline** basemap + OSM POI index; **search-along-route**; depart/arrive-time planning
+- [ ] **Predictive** (future-traffic) depart-time ETA — needs a directions-`pb` calibration
+- [ ] Popular times (sign-in-gated place RPC)
+- [ ] Embedded offline routing (Valhalla JNI) + bundled PMTiles fonts — v2
+- [ ] Street-level imagery (Mapillary / KartaView; needs a free token)
 - [ ] F-Droid submission + reproducible build
 
 ## A note on the name
