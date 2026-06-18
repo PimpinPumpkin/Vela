@@ -168,16 +168,18 @@ them); a cookieless request returns an empty envelope. It serves a **fixed top
 ~20** (the `2i` offset is ignored and `3i` count is capped); deeper pagination is
 behind an obfuscated continuation token, deliberately not chased.
 
-**Photos (full gallery)** — the search response carries only a ~10-photo preview.
-The full gallery (~40+) comes from `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX`
-(the `/MapsPhotoService.ListEntityPhotos` RPC). Body is `f.req=<[[["hspqX",<proto>,null,"generic"]]]>`;
-the proto carries the feature id at `[2][0]` and the page size at `[4][2][1]`.
-**No `at`/`SNlM0e` token is needed** — just the warmed session cookies, so it's as
-keyless as reviews (the earlier "token-gated" belief was wrong). The response is
-the chunked batchexecute envelope; the `["wrb.fr","hspqX",<payload>,…]` row's
-payload holds the photo list at `[0]`, each URL at `[i][6][0]` (the same `[6][0]`
-leaf as the search preview). Best-effort — a failure keeps the preview photos.
-([`PhotosParser`](core/src/main/java/app/vela/core/data/google/parse/PhotosParser.kt).)
+**Photos** — the search response carries a **~10-photo preview** at
+`[1][105][0][1][0][i][6][0]`, and that's what the keyless path shows. The **full
+~40+ gallery is gated behind a Google sign-in**: the `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX`
+RPC (`/MapsPhotoService.ListEntityPhotos`, feature id at proto `[2][0]`) returns
+the user gallery **only for a logged-in session**; on Vela's **anonymous** session
+it returns just **Street View thumbnails** (`streetviewpixels-pa.googleapis.com`)
+at the same `[i][6][0]` leaf. So [`PhotosParser`](core/src/main/java/app/vela/core/data/google/parse/PhotosParser.kt)
+keeps **only `googleusercontent` user-photo URLs** (Street View filtered out → empty
+on the anonymous session → the caller keeps the preview). The `hspqX` plumbing
+stays wired + remotely-calibratable, but yields nothing extra keyless. *(The
+gallery was mistakenly verified in a logged-in browser; corrected 2026-06-17 —
+don't drop the filter or non-loading Street View tiles show as "photos".)*
 
 **Remote calibration.** The brittle bits that drift — the `pb`/proto templates and
 the endpoint URLs above (search, directions, reviews, **photos**) — are not

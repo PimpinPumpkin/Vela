@@ -169,15 +169,20 @@ class PhotosParserTest {
      *  line, then the `["wrb.fr","hspqX",<payload-json-string>,…]` row. Photos live
      *  at payload[0][i][6][0]; the FIFE size suffix is normalised. */
     @Test
-    fun extractsPhotoUrlsFromBatchexecuteEnvelope() {
+    fun extractsUserPhotosAndDropsStreetView() {
+        // Real anonymous responses interleave Street View thumbnails (no Google
+        // login) at the same [6][0] leaf — those must be filtered out, or they
+        // render as non-loading placeholders.
         val payload = """[[["pid1",10,12,null,null,null,["https://lh3.googleusercontent.com/abc=w2117-h1000-k-no","",[4608,2176]]],""" +
+            """["sv",0,1,null,null,null,["https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=xyz"]],""" +
             """["pid2",10,12,null,null,null,["https://lh3.googleusercontent.com/def=w1776-h1000-k-no"]]],1]"""
         val escaped = payload.replace("\\", "\\\\").replace("\"", "\\\"")
         val body = ")]}'\n\n321\n[[\"wrb.fr\",\"hspqX\",\"$escaped\",null,null,null,\"generic\"],[\"di\",45]]\n"
         val urls = PhotosParser.parse(body)
-        assertEquals(2, urls.size)
+        assertEquals(2, urls.size) // the Street View entry is dropped
         assertEquals("https://lh3.googleusercontent.com/abc=w1024-h768", urls[0])
         assertEquals("https://lh3.googleusercontent.com/def=w1024-h768", urls[1])
+        assertTrue(urls.none { it.contains("streetviewpixels") })
     }
 
     @Test

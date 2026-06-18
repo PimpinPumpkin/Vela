@@ -14,6 +14,15 @@ import kotlinx.serialization.json.jsonArray
  * rows. The data row is `["wrb.fr","hspqX","<payload-json-string>",…]`; the payload
  * (a JSON string) holds the photo list at `[0]`, each entry's FIFE URL at `[6][0]`
  * (the same `[6][0]` leaf the search preview uses). Calibrated live 2026-06-17.
+ *
+ * IMPORTANT — the full *user-contributed* gallery is **gated behind a Google
+ * sign-in**: an anonymous (keyless) session — which is all Vela ever has — gets
+ * back only **Street View thumbnails** (`streetviewpixels-pa.googleapis.com`) at
+ * the same `[6][0]` leaf, not the `lh*.googleusercontent.com` user photos. So we
+ * keep **only `googleusercontent` URLs**; on the anonymous session that's empty,
+ * and the caller (best-effort) falls back to the search-response photo preview.
+ * (Don't "fix" this by dropping the filter — you'll show non-loading Street View
+ * tiles as photos, which was the "placeholders everywhere" regression.)
  */
 object PhotosParser {
     private val json = Json { ignoreUnknownKeys = true }
@@ -33,7 +42,7 @@ object PhotosParser {
         return photos.mapNotNull { entry ->
             val url = ((entry as? JsonArray)?.getOrNull(6) as? JsonArray)?.getOrNull(0) as? JsonPrimitive
             url?.content
-                ?.takeIf { it.startsWith("http") }
+                ?.takeIf { it.startsWith("http") && it.contains("googleusercontent") }
                 ?.replace(SIZE_SUFFIX, "=w1024-h768")
         }.distinct()
     }
