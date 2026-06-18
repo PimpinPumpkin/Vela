@@ -120,7 +120,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable) — **tuned for the
   car**: a measured speech rate (0.97) + neutral pitch, and on init it auto-selects
   the **highest-quality offline voice** for the locale (engines often default to a
-  low-quality or download-required one), so guidance sounds natural, not robotic
+  low-quality or download-required one), so guidance sounds natural, not robotic.
+  Speaks **"Head east on …"** (the initial cardinal is computed from the route's first
+  leg and injected, since Google's markup only says "Head toward …"). **Settings →
+  Voice** lists installed engines, a **Test voice** button (hear it on your hardware),
+  and a **System voice settings** shortcut to install/download a voice
+- 🐞 **Fixed: silent navigation** — on a targetSdk-30+ build, Android package
+  visibility hid every TTS engine (`getEngines()` empty, the engine couldn't be
+  bound) so guidance was silently dropped. A `<queries>` for `TTS_SERVICE` restores it;
+  picking an engine now actually re-inits TTS (it used to be ignored). *(verified
+  on-device: audio focus + frames delivered on nav start)*
 - ✅ **Mute voice during nav** — a speaker toggle in the nav bottom bar silences /
   restores spoken guidance on the fly (Google-style), independent of the haptic cues
 - ✅ **Speedometer** — a Google-style circular badge (bottom-left during nav) shows

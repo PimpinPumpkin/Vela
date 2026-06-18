@@ -29,7 +29,15 @@ class VoiceGuide @Inject constructor(
 
     private var tts: TextToSpeech? = null
     private var ready = false
+    private var currentEngine: String? = null
     private val pending = ArrayDeque<Pair<String, Boolean>>()
+
+    /** TTS health for the UI: null = initialising, true = a usable voice is ready,
+     *  false = init failed or the chosen language has no installed voice data. Lets
+     *  Settings tell the user *why* it's silent instead of failing quietly. */
+    @Volatile
+    var working: Boolean? = null
+        private set
 
     /** When true, all spoken guidance is suppressed (the in-nav mute button). */
     @Volatile
@@ -42,9 +50,15 @@ class VoiceGuide @Inject constructor(
     private val audioManager: AudioManager? = context.getSystemService()
     private var focusRequest: AudioFocusRequest? = null
 
-    /** Initialise (optionally forcing a specific engine package). Idempotent. */
+    /** Initialise, or **re-initialise** if [enginePackage] differs from the engine
+     *  currently loaded — so picking a different engine in Settings actually takes
+     *  effect (the old idempotent guard ignored later picks). */
     fun init(enginePackage: String? = null) {
-        if (tts != null) return
+        if (tts != null && enginePackage == currentEngine) return
+        if (tts != null) shutdown()
+        currentEngine = enginePackage
+        working = null
+        ready = false
         tts = if (enginePackage != null) {
             TextToSpeech(context, this, enginePackage)
         } else {
@@ -53,22 +67,35 @@ class VoiceGuide @Inject constructor(
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
             override fun onDone(utteranceId: String?) = abandonFocus()
-            @Deprecated("deprecated") override fun onError(utteranceId: String?) = abandonFocus()
+            @Deprecated("deprecated") override fun onError(utteranceId: String?) {
+                working = false // the engine accepted text but couldn't synthesise it
+                abandonFocus()
+            }
         })
     }
 
+    /** Speak a sample so the user can confirm the engine actually makes sound (the
+     *  only true test on their hardware — we can't hear it for them). */
+    fun test() = speak("Voice guidance is on. In a quarter mile, turn right.", interrupt = true)
+
     override fun onInit(status: Int) {
-        if (status != TextToSpeech.SUCCESS) return
-        val t = tts ?: return
+        val t = tts
+        if (status != TextToSpeech.SUCCESS || t == null) {
+            working = false // the engine itself failed to start
+            return
+        }
         val locale = Locale.getDefault()
         val lang = if (t.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) locale else Locale.US
-        t.language = lang
+        // setLanguage returns the same availability codes; MISSING_DATA / NOT_SUPPORTED
+        // (< LANG_AVAILABLE) means the engine has no installed voice for us → silent.
+        val langResult = t.setLanguage(lang)
         // A measured pace + neutral pitch reads more like a real nav voice than
         // the engine default (often a touch fast/robotic on stock Pico).
         t.setSpeechRate(0.97f)
         t.setPitch(1.0f)
         selectBestVoice(t, lang)
         ready = true
+        working = langResult >= TextToSpeech.LANG_AVAILABLE
         while (pending.isNotEmpty()) {
             val (text, interrupt) = pending.removeFirst()
             speakNow(text, interrupt)

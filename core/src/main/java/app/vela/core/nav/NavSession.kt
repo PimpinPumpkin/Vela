@@ -66,7 +66,9 @@ class NavSession @Inject constructor(
         voice.init(voiceEngine)
         lastRecheckMs = SystemClock.elapsedRealtime()
         tripStartMs = SystemClock.elapsedRealtime()
-        val first = route.maneuvers.firstOrNull()?.instruction.orEmpty()
+        // Google's markup gives "Head toward F St"; add the cardinal so guidance
+        // says "Head east on F St" like Google's own voice.
+        val first = Heading.withCardinal(route.maneuvers.firstOrNull()?.instruction.orEmpty(), route.polyline)
         _state.value = State(
             navigating = true,
             route = route,

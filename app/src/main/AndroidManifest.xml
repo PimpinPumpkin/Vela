@@ -21,6 +21,16 @@
         android:name="android.hardware.location.gps"
         android:required="false" />
 
+    <!-- Android 11+ package visibility: without this, TextToSpeech.getEngines()
+         returns nothing and the engine can't be bound, so spoken directions are
+         silent on a targetSdk-30+ build. Declares we need to see + use TTS engines
+         (the dialer/share/map intents resolve via startActivity, no query needed). -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:name=".VelaApp"
         android:allowBackup="true"

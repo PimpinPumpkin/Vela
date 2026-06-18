@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -119,14 +120,29 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             SectionTitle("Voice")
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
-                Hint("No TTS engine detected yet. On a degoogled ROM, install RHVoice or eSpeak NG from F-Droid for natural voices — Vela will list them here.")
-            }
-            engines.forEach { e ->
-                SelectableRow(
-                    label = e.label,
-                    selected = state.selectedEngine?.packageName == e.packageName,
-                    onClick = { vm.setVoiceEngine(e) },
-                )
+                Hint("No text-to-speech engine detected, so spoken directions are silent. Install RHVoice or eSpeak NG from F-Droid (RHVoice sounds the most natural), then pick it here.")
+            } else {
+                engines.forEach { e ->
+                    SelectableRow(
+                        label = e.label,
+                        selected = state.selectedEngine?.packageName == e.packageName,
+                        onClick = { vm.setVoiceEngine(e) },
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = { vm.testVoice() }) { Text("Test voice") }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(onClick = {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent("com.android.settings.TTS_SETTINGS")
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }) { Text("System voice settings") }
+                }
+                Hint("Tap Test voice to hear it. Silent? The engine has no voice downloaded — open System voice settings to install one (or add RHVoice from F-Droid for a more natural voice).")
             }
 
             Spacer(Modifier.height(20.dp))

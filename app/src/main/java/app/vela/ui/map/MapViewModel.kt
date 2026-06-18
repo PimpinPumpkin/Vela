@@ -712,7 +712,15 @@ class MapViewModel @Inject constructor(
 
     fun voiceEngines(): List<VoiceEngine> = voice.availableEngines()
 
-    fun setVoiceEngine(e: VoiceEngine) = _state.update { it.copy(selectedEngine = e) }
+    fun setVoiceEngine(e: VoiceEngine) {
+        voice.init(e.packageName) // re-init now so the pick applies + a test plays through it
+        _state.update { it.copy(selectedEngine = e) }
+    }
+
+    fun testVoice() = voice.test()
+
+    /** null = still initialising, true = a voice is ready, false = no usable voice. */
+    fun voiceWorking(): Boolean? = voice.working
 
     fun dismissPsdsTip() = _state.update { it.copy(showPsdsTip = false) }
 
