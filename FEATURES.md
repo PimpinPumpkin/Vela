@@ -123,6 +123,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   restores spoken guidance on the fly (Google-style), independent of the haptic cues
 - ✅ **Speedometer** — a Google-style circular badge (bottom-left during nav) shows
   your current GPS speed in mph or km/h (follows the Units setting)
+- ✅ **Scale bar** — a Google-style ⊔ bracket (bottom-left, by the attribution) sized
+  to a round distance, with the distance label above it; reads the live
+  metres-per-pixel from the map (correct for zoom **and** latitude on Mercator) and
+  follows the Units metric/imperial preference (m/km ↔ ft/mi). Updates as you zoom/pan
 - ✅ **Pan-away + Re-center** — dragging the map during navigation **detaches the
   follow-camera** so you can look around (it stops snapping back on every GPS fix);
   a **Re-center** button appears and reattaches it, then hides once you're following

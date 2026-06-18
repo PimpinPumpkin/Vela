@@ -141,6 +141,7 @@ fun MapScreen(
     }
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
+    var metersPerPixel by remember { mutableStateOf(0.0) }
     var downloadTick by remember { mutableStateOf(0) }
     val focusManager = LocalFocusManager.current
 
@@ -215,6 +216,7 @@ fun MapScreen(
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
+            onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
             trafficOn = Traffic.on.value,
@@ -505,6 +507,15 @@ fun MapScreen(
             ) {
                 Icon(Icons.Default.Traffic, contentDescription = "Toggle live traffic")
             }
+            // Scale bar, bottom-left just past the attribution ⓘ.
+            ScaleBar(
+                metersPerPixel = metersPerPixel,
+                dark = darkTheme,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 46.dp, bottom = 16.dp),
+            )
         }
 
         // --- transient surfaces --------------------------------------------

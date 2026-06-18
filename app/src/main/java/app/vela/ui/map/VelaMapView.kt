@@ -103,6 +103,7 @@ fun VelaMapView(
     navMode: Boolean,
     navFollowing: Boolean = true,
     onNavPanned: () -> Unit = {},
+    onScaleChanged: (metersPerPixel: Double) -> Unit = {},
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
@@ -128,6 +129,7 @@ fun VelaMapView(
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
     val navPanned = rememberUpdatedState(onNavPanned)
+    val scaleChanged = rememberUpdatedState(onScaleChanged)
     val navModeHolder = rememberUpdatedState(navMode)
     val downloadStatus = rememberUpdatedState(onDownloadStatus)
     val downloadArea = rememberUpdatedState(onDownloadArea)
@@ -223,6 +225,16 @@ fun VelaMapView(
                         }
                     }
                 }
+                // Feed the on-screen scale bar: metres-per-pixel at the centre
+                // latitude (varies with zoom AND latitude on a Mercator map).
+                val reportScale = {
+                    map.cameraPosition.target?.let { t ->
+                        scaleChanged.value(map.projection.getMetersPerPixelAtLatitude(t.latitude))
+                    }
+                    Unit
+                }
+                map.addOnCameraMoveListener { reportScale() }
+                reportScale()
                 // Press-and-hold anywhere → drop a pin and reverse-geocode it.
                 map.addOnMapLongClickListener { p ->
                     longPress.value(LatLng(p.latitude, p.longitude))
