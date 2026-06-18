@@ -392,7 +392,15 @@ class MapViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val full = runCatching {
-                dataSource.search(name, location).places.minByOrNull { p -> p.location.distanceTo(location) }
+                val results = dataSource.search(name, location).places
+                // A tapped POI can map to several Google listings at the same spot —
+                // e.g. a co-branded "SpeeDee Midas" has a rich "SpeeDee" listing AND a
+                // sparse "Midas" one. Among listings essentially AT the tap (~35 m),
+                // prefer the most-reviewed = the maintained, canonical one; otherwise
+                // fall back to the nearest result.
+                val atSpot = results.filter { it.location.distanceTo(location) < 35.0 }
+                atSpot.maxByOrNull { it.reviewCount ?: -1 }
+                    ?: results.minByOrNull { p -> p.location.distanceTo(location) }
             }.getOrNull()
             if (full != null && _state.value.selected?.name == name) {
                 _state.update { it.copy(selected = full) }
