@@ -3,6 +3,8 @@ package app.vela.core
 import app.vela.core.data.google.PolylineCodec
 import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.SearchParser
+import app.vela.core.data.google.parse.TransitParser
+import app.vela.core.model.TransitMode
 import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
@@ -242,5 +244,51 @@ class SearchParserHoursTest {
         assertEquals("1 Main St, SF, CA 94101", places[0].address)
         assertEquals(37.5, places[0].location.lat, 1e-6)
         assertEquals(-122.5, places[0].location.lng, 1e-6)
+    }
+}
+
+class TransitParserTest {
+
+    // Faithful to a live Davis→Sacramento `!3e3` capture (2026-06-18): trips at
+    // root[0][1], each trip is [summary, …] so the summary is trip[0]; within the
+    // summary distance [2][1], duration [3][1], depart/arrive [5][0]/[5][1] =
+    // [epochSec, tz, "h:mm AM"], agency [6][4][0][0], and line nodes ["<name>", n,
+    // "#fill", "#text"] interleaved with mode-icon facets in [14]. The Amtrak
+    // trip's badge carries a "bus2.png"/"Bus" facet → mode BUS.
+    private val itin0 = """[null,null,[null,"15.0 miles"],[null,"45 min"],null,""" +
+        """[[1781788200,"America/Los_Angeles","6:10 AM"],[1781790924,"America/Los_Angeles","6:55 AM"]],""" +
+        """[null,null,null,null,[["Amtrak Chartered Vehicle"]]],null,null,null,null,null,null,null,""" +
+        """[[4,null,[3,"bus2.png",null,"Bus"]],[5,["Amtrak Thruway Connecting Service",1,"#cae4f1","#000000"]]]]"""
+    private val itin1 = """[null,null,[null,"3.2 miles"],[null,"1 hr 8 min"],null,""" +
+        """[[1781786400,"America/Los_Angeles","5:40 AM"],[1781790480,"America/Los_Angeles","6:48 AM"]],""" +
+        """null,null,null,null,null,null,null,null,""" +
+        """[[4,null,[3,"bus2.png",null,"Bus"]],[5,["Route 42B",1,"#0b8043","#ffffff"]]]]"""
+
+    @Test
+    fun parsesTransitItineraries() {
+        // each trip wraps its summary at [0] — root[0][1] = [[summary0],[summary1]]
+        val list = TransitParser.parse(Json.parseToJsonElement("[[null,[[$itin0],[$itin1]]]]"))
+        assertEquals(2, list.size)
+        val a = list[0]
+        assertEquals("45 min", a.durationText)
+        assertEquals("15.0 miles", a.distanceText)
+        assertEquals("6:10 AM", a.departureText)
+        assertEquals("6:55 AM", a.arrivalText)
+        assertEquals(1781788200L, a.departureEpochSec)
+        assertEquals(1781790924L, a.arrivalEpochSec)
+        assertEquals("Amtrak Chartered Vehicle", a.agency)
+        assertEquals(1, a.lines.size)
+        assertEquals("Amtrak Thruway Connecting Service", a.lines[0].name)
+        assertEquals("#cae4f1", a.lines[0].colorHex)
+        assertEquals("#000000", a.lines[0].textColorHex)
+        assertEquals(TransitMode.BUS, a.lines[0].mode)
+        // second itinerary's line is read independently
+        assertEquals("Route 42B", list[1].lines[0].name)
+        assertEquals("#0b8043", list[1].lines[0].colorHex)
+    }
+
+    @Test(expected = app.vela.core.data.CalibrationNeededException::class)
+    fun throwsWhenShapeMissing() {
+        TransitParser.parse(Json.parseToJsonElement("[[1,2,3]]"))
     }
 }

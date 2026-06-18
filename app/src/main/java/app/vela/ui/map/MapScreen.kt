@@ -128,7 +128,8 @@ fun MapScreen(
             searchFocused -> focusManager.clearFocus()
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
-            state.activeRoute != null || state.routes.isNotEmpty() -> vm.clearRoute()
+            state.activeRoute != null || state.routes.isNotEmpty() ||
+                state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
             else -> vm.collapseResults()
         }
@@ -343,6 +344,8 @@ fun MapScreen(
                 route = state.activeRoute,
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 currentMode = state.travelMode,
+                transit = state.transit,
+                transitLoading = state.transitLoading,
                 reviews = state.reviews,
                 reviewsLoading = state.reviewsLoading,
                 onClose = vm::clearSelection,

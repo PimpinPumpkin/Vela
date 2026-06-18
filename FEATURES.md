@@ -39,7 +39,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
 - ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: **photos (hero, at the top) → info → hours → action row → tabs** (photos lead so they're visible at the peek height / in landscape)
-- ✅ Travel mode lives in the action row: a **Directions** button opens a Drive/Walk/Bike chooser ("how are you getting there?"), then previews the route (ETA + Start)
+- ✅ Travel mode lives in the action row: a **Directions** button opens a Drive/**Transit**/Walk/Bike chooser ("how are you getting there?"), then previews the route (ETA + Start for drive/walk/bike) or a **transit results board** (departure times + line pills)
 - ✅ Place sheet **peeks** (~56% screen) so the business info isn't immediately full-screen and the map stays visible above it; **drag the handle up to expand** (~92%, for the reviews), down to shrink, down again to dismiss. The body scrolls, so a tall place (hours + tabs) is fully reachable at either height
 - ⬜ Popular times; "hours updated N ago" (both place-RPC-only, absent from the search response); Updates/posts tab
 - ℹ️ Reviews are the **top ~20** — the `listentitiesreviews` endpoint serves a fixed page (offset ignored) and deeper paging is behind an obfuscated continuation token; not chased (fragility vs. value)
@@ -70,15 +70,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   offer a faster route if one appears (see Navigation below)
 - ✅ Walking + cycling modes (drive/walk/bike) — each with its **own** path-following
   line, not a car route reused
-- 🟡 **Public transit** directions (lines + schedules/times) — **data source pinned
-  (2026-06-17):** unlike the photos RPC, transit is **not** a clean endpoint. The
-  mode-3 (`!3e3`) directions GET returns an empty envelope; the web UI renders the
-  full transit result (route options, departure/arrival times, line names + fares,
-  "every N min") from **`APP_INITIALIZATION_STATE` embedded in the `/maps/dir/…/data=…!3e3`
-  page HTML** (~180 KB, deeply nested). So wiring it means an HTML-scrape + a deep
-  positional parse (heaviest scraper task) — deliberately **deferred until it can be
-  verified on a device**, since an unverified transit parser could show wrong times.
-  The path is now known, not a mystery.
+- ✅ **Public transit** directions — a **Transit** chip in the directions chooser
+  shows a Google-style results board: each option's **departure–arrival window**,
+  **total duration**, **distance**, **agency**, and the **coloured line pills** you
+  ride (real Google line colours + per-mode glyph: 🚆 train / 🚌 bus / 🚊 tram / …).
+  Like photos, transit is served **only to a real browser engine** (a plain GET with
+  the `!3e3` flag is silently downgraded to *driving*), so it goes through a hidden
+  **WebView** (`app/web/WebDirectionsFetcher`) that loads the `/maps/dir/…/!3e3` page
+  and reads the itinerary set out of `APP_INITIALIZATION_STATE` (the longest
+  `)]}'` payload at slot [3]); `TransitParser` (keyless) parses it. **Verified
+  on-device** Davis→Sacramento (6 options: Amtrak Thruway, Yolobus 42B/43/44, …).
+- ⬜ Transit **per-stop drill-down** (intermediate stops + the ridden polyline) —
+  present in the same payload at `trip[1]` (and a richer `sv1Drc` batchexecute);
+  the board is the first layer, this is the next.
 - ⬜ Departure/arrival time selection; avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 

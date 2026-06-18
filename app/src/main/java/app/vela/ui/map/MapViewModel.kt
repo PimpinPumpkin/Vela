@@ -24,6 +24,8 @@ import app.vela.core.nav.NavState
 import app.vela.core.voice.VoiceEngine
 import app.vela.core.voice.VoiceGuide
 import app.vela.service.NavigationService
+import app.vela.core.model.TransitItinerary
+import app.vela.web.WebDirectionsFetcher
 import app.vela.web.WebPhotoFetcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -50,6 +52,8 @@ data class MapUiState(
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
     val travelMode: TravelMode = TravelMode.DRIVE,
+    val transit: List<TransitItinerary> = emptyList(),
+    val transitLoading: Boolean = false,
     val navigating: Boolean = false,
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
@@ -90,6 +94,7 @@ class MapViewModel @Inject constructor(
     private val calibration: CalibrationStore,
     private val offlinePoiStore: OfflinePoiStore,
     private val webPhotos: WebPhotoFetcher,
+    private val webDirections: WebDirectionsFetcher,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
@@ -283,6 +288,7 @@ class MapViewModel @Inject constructor(
             it.copy(
                 selected = null, reviews = emptyList(), reviewsLoading = false,
                 routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
             )
         }
@@ -292,7 +298,11 @@ class MapViewModel @Inject constructor(
     fun clearRoute() {
         destination = null
         _state.update {
-            it.copy(routes = emptyList(), activeRoute = null, showSteps = false, previewStepIndex = null)
+            it.copy(
+                routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false,
+                showSteps = false, previewStepIndex = null,
+            )
         }
     }
 
@@ -364,6 +374,7 @@ class MapViewModel @Inject constructor(
     }
 
     private fun route(dest: LatLng, mode: TravelMode) {
+        if (mode == TravelMode.TRANSIT) { routeTransit(dest); return }
         val origin = _state.value.myLocation ?: return
         viewModelScope.launch {
             try {
@@ -372,6 +383,7 @@ class MapViewModel @Inject constructor(
                     it.copy(
                         routes = routes,
                         activeRoute = routes.firstOrNull(),
+                        transit = emptyList(), transitLoading = false,
                         status = if (routes.isEmpty()) "No ${mode.name.lowercase()} route found" else null,
                     )
                 }
@@ -379,6 +391,27 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(status = "Directions need recalibration: ${e.message}") }
             } catch (e: Exception) {
                 _state.update { it.copy(status = "Routing failed: ${e.message}") }
+            }
+        }
+    }
+
+    /** Transit can't self-route (no traffic-free open transit graph) and Google
+     *  only serves it to a real browser engine, so it goes through the hidden
+     *  WebView ([WebDirectionsFetcher]) rather than the OkHttp data source. We
+     *  clear the driving route line while it loads — transit shows a results
+     *  board, not a single drawn path. */
+    private fun routeTransit(dest: LatLng) {
+        val origin = _state.value.myLocation ?: return
+        _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, status = null) }
+        viewModelScope.launch {
+            val trips = runCatching { webDirections.transit(origin, dest) }.getOrDefault(emptyList())
+            _state.update {
+                if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
+                else it.copy(
+                    transit = trips,
+                    transitLoading = false,
+                    status = if (trips.isEmpty()) "No transit routes found" else null,
+                )
             }
         }
     }

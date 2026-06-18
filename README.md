@@ -190,6 +190,17 @@ keep the preview). Gotchas: **desktop UA** (a mobile UA makes Google redirect to
 logged-in browser **and** a bot-degraded HTTP client; a real anonymous browser
 engine gets it. Corrected 2026-06-17.)*
 
+**Public transit** rides the same WebView trick for the same reason: a `directions`
+GET with the transit flag is silently downgraded to a *driving* reply, so
+[`WebDirectionsFetcher`](app/src/main/java/app/vela/web/WebDirectionsFetcher.kt)
+navigates the `/maps/dir/…/data=!4m2!4m1!3e3` page and reads the itinerary set out
+of `APP_INITIALIZATION_STATE` (the **longest** `)]}'` payload at slot `[3]` — a tiny
+stub sits beside the real ~165 KB one), which
+[`TransitParser`](core/src/main/java/app/vela/core/data/google/parse/TransitParser.kt)
+turns into the results board (trips at `root[0][1]`, each trip's summary at
+`trip[0]`: departure/arrival times, total duration, agency, and the coloured line
+pills you ride). Keyless, best-effort, device-verified Davis→Sacramento.
+
 **Remote calibration.** The brittle bits that drift — the `pb`/proto templates and
 the endpoint URLs above (search, directions, reviews, **photos**) — are not
 hard-compiled; they live in [`calibration.json`](calibration.json) at the repo root.

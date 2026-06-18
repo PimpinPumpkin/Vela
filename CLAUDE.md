@@ -99,6 +99,18 @@ genuinely needs no doc edit, say why in the commit.
   for richer photos (lazy, best-effort, OkHttp fallback). Gotchas: **desktop UA**
   (mobile UA → Google deep-links to `intent://`), block non-http(s) redirects, and
   use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
+- **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
+  A plain `/maps/preview/directions` GET with the transit flag (`!1e3`) is silently
+  downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
+  the WebView instead navigates the `/maps/dir/<olat>,<olng>/<dlat>,<dlng>/data=!4m2!4m1!3e3`
+  page and reads the itinerary set out of `APP_INITIALIZATION_STATE`. **Gotchas:**
+  the directions payload is the **longest** `)]}'`-guarded string under slot `[3]`
+  (a ~1.7 KB stub sits alongside the ~165 KB real one — take the longest, and poll
+  for it: the SPA fills it a beat after page-finish). `TransitParser` (`:core`,
+  takes the raw string so `:app` stays out of kotlinx.serialization, like
+  `PhotosParser`) reads `root[0][1]` = trips, each trip's **summary at `trip[0]`**
+  (one level deeper than you'd guess — `trip[1]` is the per-stop leg tree, a future
+  drill-down). Calibrated + device-verified Davis→Sacramento 2026-06-18.
 
 ## Name
 

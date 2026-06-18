@@ -38,9 +38,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.DirectionsBoat
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.DirectionsSubway
+import androidx.compose.material.icons.filled.DirectionsTransit
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Train
+import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FormatQuote
@@ -77,6 +85,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -94,6 +103,9 @@ import app.vela.core.model.AboutSection
 import app.vela.core.model.Place
 import app.vela.core.model.Review
 import app.vela.core.model.Route
+import app.vela.core.model.TransitItinerary
+import app.vela.core.model.TransitLine
+import app.vela.core.model.TransitMode
 import app.vela.core.model.TravelMode
 import coil.compose.AsyncImage
 import app.vela.ui.RatingStars
@@ -118,6 +130,8 @@ fun PlaceSheet(
     route: Route?,
     isSaved: Boolean,
     currentMode: TravelMode,
+    transit: List<TransitItinerary> = emptyList(),
+    transitLoading: Boolean = false,
     reviews: List<Review> = emptyList(),
     reviewsLoading: Boolean = false,
     onClose: () -> Unit,
@@ -307,14 +321,21 @@ fun PlaceSheet(
                 ShareAction(place, dim)
             }
 
-            // Directions: pick a travel mode, then preview the route (ETA + Start).
-            if (modePromptOpen || route != null) {
+            // Directions: pick a travel mode, then preview the route (ETA + Start)
+            // for drive/walk/bike, or a transit results board for transit.
+            val transitActive = currentMode == TravelMode.TRANSIT && (transitLoading || transit.isNotEmpty())
+            if (modePromptOpen || route != null || transitActive) {
                 Spacer(Modifier.height(12.dp))
-                if (route == null) {
+                if (route == null && !transitActive) {
                     Text("How are you getting there?", style = MaterialTheme.typography.bodyMedium, color = dim, modifier = Modifier.padding(bottom = 6.dp))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(TravelMode.DRIVE to "Drive", TravelMode.WALK to "Walk", TravelMode.BICYCLE to "Bike").forEach { (mode, label) ->
+                    listOf(
+                        TravelMode.DRIVE to "Drive",
+                        TravelMode.TRANSIT to "Transit",
+                        TravelMode.WALK to "Walk",
+                        TravelMode.BICYCLE to "Bike",
+                    ).forEach { (mode, label) ->
                         FilterChip(
                             selected = currentMode == mode,
                             onClick = {
@@ -324,6 +345,9 @@ fun PlaceSheet(
                             label = { Text(label) },
                         )
                     }
+                }
+                if (currentMode == TravelMode.TRANSIT) {
+                    TransitBoard(transit, transitLoading, ink, dim, dark)
                 }
                 route?.let { r ->
                     Spacer(Modifier.height(10.dp))
@@ -359,6 +383,119 @@ fun PlaceSheet(
     galleryStart?.let { start ->
         PhotoGallery(place.photoUrls, start) { galleryStart = null }
     }
+}
+
+/** The transit results board — Google's first transit view: a list of departure
+ *  options, each a time window + total duration + the coloured line pills you
+ *  ride. Fed by the keyless WebView fetch ([app.vela.web.WebDirectionsFetcher]). */
+@Composable
+private fun TransitBoard(
+    trips: List<TransitItinerary>,
+    loading: Boolean,
+    ink: Color,
+    dim: Color,
+    dark: Boolean,
+) {
+    Spacer(Modifier.height(10.dp))
+    when {
+        loading -> Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+            Text("Finding transit routes…", style = MaterialTheme.typography.bodyMedium, color = dim)
+        }
+        trips.isEmpty() -> Text("No transit routes found", style = MaterialTheme.typography.bodyMedium, color = dim)
+        else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            trips.take(6).forEach { TransitRow(it, ink, dim, dark) }
+        }
+    }
+}
+
+@Composable
+private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (dark) Color(0xFF202124) else Color(0xFFF1F3F4))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val range = listOfNotNull(t.departureText, t.arrivalText).joinToString(" – ")
+            Text(
+                range.ifEmpty { t.durationText.orEmpty() },
+                style = MaterialTheme.typography.titleSmall,
+                color = ink,
+                modifier = Modifier.weight(1f),
+            )
+            if (range.isNotEmpty()) {
+                t.durationText?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = dim) }
+            }
+        }
+        if (t.lines.isNotEmpty()) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                t.lines.take(4).forEachIndexed { i, line ->
+                    if (i > 0) Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = dim,
+                        modifier = Modifier.size(14.dp),
+                    )
+                    LinePill(line)
+                }
+            }
+        }
+        val sub = listOfNotNull(t.distanceText, t.agency).joinToString("  ·  ")
+        if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+    }
+}
+
+/** A colour-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
+ *  transit pills; falls back to the theme primary when no colour is supplied. */
+@Composable
+private fun LinePill(line: TransitLine) {
+    val fallback = MaterialTheme.colorScheme.primary
+    val bg = parseHexColor(line.colorHex) ?: fallback
+    val fg = parseHexColor(line.textColorHex) ?: if (bg.luminance() > 0.5f) Color(0xFF202124) else Color.White
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(bg)
+            .padding(horizontal = 8.dp, vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(transitModeIcon(line.mode), contentDescription = null, tint = fg, modifier = Modifier.size(14.dp))
+        Text(line.name, style = MaterialTheme.typography.labelMedium, color = fg, maxLines = 1)
+    }
+}
+
+private fun transitModeIcon(mode: TransitMode) = when (mode) {
+    TransitMode.BUS -> Icons.Default.DirectionsBus
+    TransitMode.TRAM -> Icons.Default.Tram
+    TransitMode.SUBWAY -> Icons.Default.DirectionsSubway
+    TransitMode.TRAIN -> Icons.Default.Train
+    TransitMode.FERRY -> Icons.Default.DirectionsBoat
+    TransitMode.WALK -> Icons.Default.DirectionsWalk
+    TransitMode.GENERIC -> Icons.Default.DirectionsTransit
+}
+
+/** Parse a CSS hex colour ("#rrggbb" / "#rgb"); null if absent/malformed. */
+private fun parseHexColor(hex: String?): Color? {
+    val h = hex?.trim()?.removePrefix("#") ?: return null
+    return runCatching {
+        when (h.length) {
+            6 -> Color(("FF$h").toLong(16))
+            8 -> Color(h.toLong(16))
+            3 -> Color(("FF" + h.map { "$it$it" }.joinToString("")).toLong(16))
+            else -> null
+        }
+    }.getOrNull()
 }
 
 /** Full-screen, swipeable photo viewer (tap a photo in the strip to open). */
