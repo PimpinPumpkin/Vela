@@ -393,14 +393,26 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val full = runCatching {
                 val results = dataSource.search(name, location).places
+                val nearest = results.minByOrNull { p -> p.location.distanceTo(location) }
                 // A tapped POI can map to several Google listings at the same spot —
-                // e.g. a co-branded "SpeeDee Midas" has a rich "SpeeDee" listing AND a
-                // sparse "Midas" one. Among listings essentially AT the tap (~35 m),
-                // prefer the most-reviewed = the maintained, canonical one; otherwise
-                // fall back to the nearest result.
-                val atSpot = results.filter { it.location.distanceTo(location) < 35.0 }
-                atSpot.maxByOrNull { it.reviewCount ?: -1 }
-                    ?: results.minByOrNull { p -> p.location.distanceTo(location) }
+                // e.g. a co-branded "SpeeDee Midas" has a rich "SpeeDee" profile (543
+                // reviews) AND a sparse "Midas" one (2 reviews), both at 2000 F St.
+                // Among listings essentially AT the tap (~35 m) the most-reviewed is
+                // the maintained, canonical one. But two *genuinely distinct* shops
+                // can also share a spot (a strip mall), so only override the nearest
+                // result when the canonical listing CLEARLY dominates by review count
+                // (a true duplicate, not a close call). Results are already filtered
+                // by the POI's own name, which keeps this from wandering off-place.
+                val canonical = results
+                    .filter { it.location.distanceTo(location) < 35.0 }
+                    .maxByOrNull { it.reviewCount ?: 0 }
+                if (canonical != null && nearest != null &&
+                    (canonical.reviewCount ?: 0) >= 2 * (nearest.reviewCount ?: 0) + 5
+                ) {
+                    canonical
+                } else {
+                    nearest
+                }
             }.getOrNull()
             if (full != null && _state.value.selected?.name == name) {
                 _state.update { it.copy(selected = full) }
