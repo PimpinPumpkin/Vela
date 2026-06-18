@@ -259,6 +259,12 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Pin the currently-open place straight to Home/Work from its sheet. */
+    fun setSelectedAsShortcut(kind: ShortcutKind) {
+        val p = _state.value.selected ?: return
+        pinSavedAs(SavedPlace.of(p), kind)
+    }
+
     /** Pin an already-saved place straight to Home/Work (no assign hop needed). */
     fun pinSavedAs(sp: SavedPlace, kind: ShortcutKind) {
         shortcutStore.set(kind, sp)

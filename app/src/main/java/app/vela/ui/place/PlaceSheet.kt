@@ -46,6 +46,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsBoat
@@ -122,6 +123,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.vela.core.model.AboutSection
 import app.vela.core.model.Place
+import app.vela.core.model.ShortcutKind
 import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.TransitItinerary
@@ -160,6 +162,7 @@ fun PlaceSheet(
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
     onOpenPlace: (Place) -> Unit = {},
+    onSetShortcut: (ShortcutKind) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -269,6 +272,23 @@ fun PlaceSheet(
                     color = ink,
                     modifier = Modifier.weight(1f),
                 )
+                // Overflow: pin this place straight to Home/Work (Google-style).
+                var headerMenu by remember { mutableStateOf(false) }
+                Box {
+                    IconButton(onClick = { headerMenu = true }) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = dim)
+                    }
+                    DropdownMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Set as Home") },
+                            onClick = { headerMenu = false; onSetShortcut(ShortcutKind.HOME) },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Set as Work") },
+                            onClick = { headerMenu = false; onSetShortcut(ShortcutKind.WORK) },
+                        )
+                    }
+                }
                 IconButton(onClick = onClose) {
                     Icon(Icons.Default.Close, contentDescription = "Close", tint = dim)
                 }
