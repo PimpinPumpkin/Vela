@@ -23,14 +23,16 @@ private val DarkColors = darkColorScheme(
 )
 
 /**
- * App theme. Honours Material You dynamic colour on Android 12+ (so Vela picks
- * up the user's wallpaper palette on GrapheneOS too), falling back to the Vela
- * teal scheme otherwise.
+ * App theme. Uses Vela's explicit teal light/dark schemes rather than Material You
+ * dynamic colour: the in-app Light/Dark switch is the contract, and on some ROMs
+ * (observed on GrapheneOS) `dynamicDarkColorScheme` hands back a *light* background,
+ * which broke "Dark" for every MaterialTheme surface (Settings etc.). `dynamicColor`
+ * stays as an opt-in param but defaults off so the switch is always honoured.
  */
 @Composable
 fun VelaTheme(
     darkTheme: Boolean = isAppInDarkTheme(),
-    dynamicColor: Boolean = true,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
