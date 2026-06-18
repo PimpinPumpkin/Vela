@@ -128,8 +128,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   bottom bar. The Steps control is icon-only + the ETA column flexes so a long
   "X mi · 7:42 PM" never pushes the **End** button off-screen
 - ✅ **Swipe the banner to look ahead** — drag the maneuver banner left/right to
-  walk the upcoming steps (Google-style): it greys out, shows that step, and the
-  map's marker + camera move there; tap it to resume live guidance
+  walk the upcoming steps (Google-style): the card **tracks your finger** and, past
+  a threshold, **slides off and the next/previous step slides in** (a pager-style
+  flick, not an instant swap); it greys out, shows that step, and the map's marker +
+  camera move there; tap it to resume live guidance
 - ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map
 - 🟡 **Foreground navigation service** — guidance continues with the app
   backgrounded / screen off, persistent notification (this iteration)

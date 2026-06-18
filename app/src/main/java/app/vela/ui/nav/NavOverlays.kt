@@ -1,5 +1,6 @@
 package app.vela.ui.nav
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -30,9 +31,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -40,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import app.vela.core.model.ManeuverType
 import app.vela.ui.SheetPalette
 import app.vela.ui.formatArrivalClock
+import kotlinx.coroutines.launch
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
@@ -73,18 +78,34 @@ fun ManeuverBanner(
     else MaterialTheme.colorScheme.primaryContainer
     val content = if (previewing) MaterialTheme.colorScheme.onSurfaceVariant
     else MaterialTheme.colorScheme.onPrimaryContainer
+    // The card tracks your finger as you drag (translationX = offsetX); on release
+    // past a threshold it slides the rest of the way out, swaps to the next/prev
+    // step, then the new card slides in from the opposite edge — like flicking a
+    // pager. Below threshold it springs back.
+    val offsetX = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
     Card(
         modifier
             .fillMaxWidth()
+            .graphicsLayer { translationX = offsetX.value }
             .pointerInput(Unit) {
-                var total = 0f
                 detectHorizontalDragGestures(
-                    onDragStart = { total = 0f },
-                    onHorizontalDrag = { change, dx -> change.consume(); total += dx },
+                    onHorizontalDrag = { change, dx ->
+                        change.consume()
+                        scope.launch { offsetX.snapTo(offsetX.value + dx) }
+                    },
                     onDragEnd = {
-                        when {
-                            total < -40f -> onPreviewNext()
-                            total > 40f -> onPreviewPrev()
+                        val w = size.width.toFloat().coerceAtLeast(1f)
+                        scope.launch {
+                            when {
+                                offsetX.value <= -110f -> {
+                                    offsetX.animateTo(-w); onPreviewNext(); offsetX.snapTo(w); offsetX.animateTo(0f)
+                                }
+                                offsetX.value >= 110f -> {
+                                    offsetX.animateTo(w); onPreviewPrev(); offsetX.snapTo(-w); offsetX.animateTo(0f)
+                                }
+                                else -> offsetX.animateTo(0f)
+                            }
                         }
                     },
                 )
