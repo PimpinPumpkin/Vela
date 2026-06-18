@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vela.core.config.CalibrationStore
+import app.vela.core.config.Notice
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.MapLink
@@ -91,6 +92,7 @@ data class MapUiState(
     val home: SavedPlace? = null,
     val work: SavedPlace? = null,
     val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
+    val notices: List<Notice> = emptyList(), // pushed via the signed calibration channel
 )
 
 /**
@@ -122,6 +124,7 @@ class MapViewModel @Inject constructor(
     private var destination: LatLng? = null
     private var mapCenter: LatLng? = null
     private var locationJob: Job? = null
+    private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
         val seed = locationProvider.lastKnown()
@@ -134,8 +137,13 @@ class MapViewModel @Inject constructor(
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
             )
         }
-        // Pull the latest scraper calibration from the repo (non-blocking, once).
-        viewModelScope.launch { runCatching { calibration.refresh() } }
+        refreshNotices() // any cached notices, shown immediately
+        // Pull the latest scraper calibration from the repo (non-blocking, once),
+        // then surface any freshly-pushed notices.
+        viewModelScope.launch {
+            runCatching { calibration.refresh() }
+            refreshNotices()
+        }
 
         viewModelScope.launch {
             navSession.state.collect { ns ->
@@ -225,6 +233,18 @@ class MapViewModel @Inject constructor(
         recentStore.clear()
         recentPlaceStore.clear()
         _state.update { it.copy(recents = emptyList(), recentPlaces = emptyList()) }
+    }
+
+    /** Show notices pushed via the signed calibration channel, minus dismissed ones. */
+    private fun refreshNotices() {
+        val dismissed = noticePrefs.getStringSet(KEY_DISMISSED, emptySet()).orEmpty()
+        _state.update { st -> st.copy(notices = calibration.current().notices.filterNot { it.id in dismissed }) }
+    }
+
+    fun dismissNotice(id: String) {
+        val dismissed = noticePrefs.getStringSet(KEY_DISMISSED, emptySet()).orEmpty() + id
+        noticePrefs.edit().putStringSet(KEY_DISMISSED, dismissed).apply()
+        _state.update { st -> st.copy(notices = st.notices.filterNot { it.id == id }) }
     }
 
     /** Record an opened place so the search page can offer one-tap return to it. */
@@ -712,5 +732,9 @@ class MapViewModel @Inject constructor(
                 showStatus("Saved ${pois.size} places for offline search")
             }
         }
+    }
+
+    private companion object {
+        const val KEY_DISMISSED = "dismissed"
     }
 }

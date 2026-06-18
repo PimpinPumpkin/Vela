@@ -34,6 +34,13 @@ data class Calibration(
     // that drifted. Paths are relative to a result entry (whose place node is [1]),
     // except `results`/`single` which are relative to the response root.
     val paths: Map<String, List<Int>> = DEFAULT_PATHS,
+    // Phase 3: user-facing notices pushed through the same signed channel (alerts
+    // like "search is down, fix coming"), and an optional JavaScript bundle of
+    // parse-transform overrides ([transformsJs]) run in a sandbox when a response
+    // reshape needs new *logic*, not just a moved field — compiled Kotlin is the
+    // fallback. Both arrive only on a signature-verified bundle.
+    val notices: List<Notice> = emptyList(),
+    val transformsJs: String? = null,
 ) {
     companion object {
         const val DEFAULT_PHOTOS_ENDPOINT =

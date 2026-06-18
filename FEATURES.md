@@ -198,8 +198,18 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   `[i,j,…]` arrays). The app fetches it at launch and adopts a newer `version`
   (host-allowlisted to google.com) **without an app update** — so most Google
   drift (a moved `pb`, endpoint, or field index) is now a one-line edit + version
-  bump, not a release. Only a change needing genuinely new parsing *logic* still
-  ships as a build.
+  bump, not a release.
+- ✅ **Signed update channel** — the bundle is **ECDSA-P256/SHA-256 signed**
+  (`calibration.json.sig`); the app verifies it against a **pinned public key**
+  before adopting, so a repo/CDN compromise can't push config — or code — to
+  devices (private key kept out of the repo; `scripts/sign-calibration.sh` re-signs;
+  `BundleSignature.verify` is unit-tested). *(verified on-device)*
+- ✅ **Pushed notices** — a `notices` array in the signed bundle surfaces dismissable
+  alerts on the bare map ("search is down, fix coming") with **no app update**;
+  dismissals persist per-id. *(verified on-device end-to-end)*
+- 🚧 **Remote parse logic** (phase 3) — a signed `transformsJs` bundle run in a Rhino
+  sandbox, so a *response-shape* change can be hot-fixed too; compiled Kotlin is the
+  fallback. (In progress.)
 
 ## Known calibration debts (the NewPipe lifestyle)
 - Google request/response shapes are pinned to a 2026-06-15 capture; expect

@@ -77,7 +77,8 @@ genuinely needs no doc edit, say why in the commit.
   adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
   provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).
   **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
-  `calibration.json`, **bump `version`**, commit to `main` — users pick it up on
+  `calibration.json`, **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`),
+  commit `calibration.json` + `calibration.json.sig` to `main` — users pick it up on
   their next launch (raw.githubusercontent caches ~5 min). Keep
   `Calibration.DEFAULT` (the compiled fallback) and `calibration.json` in sync when
   you cut an actual release. **Phase 2 (done): the search parser's positional
@@ -85,7 +86,23 @@ genuinely needs no doc edit, say why in the commit.
   (`name`, `address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays,
   relative to a result entry whose place node is `[1]`; `results`/`single` are
   root-relative). So a "Google moved field X to a new index" fix is also just an
-  edit + version bump. Only a change that needs new parsing *logic* needs a build.
+  edit + version bump.
+- **Signed channel (mandatory).** The bundle is **ECDSA-P256/SHA-256 signed**
+  (`calibration.json.sig`, detached, base64) and the app verifies it against the
+  **public key pinned in `CalibrationStore.PINNED_PUBLIC_KEY`** before adopting —
+  so a repo/CDN compromise can't push config *or code* to devices. The private key
+  lives at `~/.vela-signing/vela-calibration.key` (**never commit it**; the public
+  half is safe to embed). `scripts/sign-calibration.sh` signs + self-verifies;
+  `BundleSignature.verify` (`:core`) is the unit-tested verifier. A bundle that
+  fails verification is ignored (app keeps the last-good config). An unsigned/older
+  cached copy falls back to the compiled `DEFAULT` for one launch.
+- **Notices.** `calibration.json` carries a `notices` array (`id`/`level`/`title`/
+  `body`/`url`) shown as dismissable cards on the bare map (`MapViewModel.refreshNotices`,
+  dismissed ids in `vela_notices` prefs) — push "search is down, fix coming" with no
+  app update. Rides the same signed channel.
+- **Phase 3 (in progress): remote parse *logic*** via `transformsJs` (a signed JS
+  bundle run in a Rhino sandbox), so a *response-shape* change — not just a moved
+  field — can also be hot-fixed; compiled Kotlin stays the fallback.
 
 ## Degoogled constraints (hard rules)
 

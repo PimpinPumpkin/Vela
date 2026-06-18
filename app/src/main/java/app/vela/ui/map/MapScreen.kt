@@ -1,7 +1,9 @@
 package app.vela.ui.map
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -99,6 +101,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.BuildConfig
+import app.vela.core.config.Notice
 import app.vela.core.model.LatLng
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Place
@@ -585,6 +588,21 @@ fun MapScreen(
                     .statusBarsPadding()
                     .padding(top = 96.dp, start = 12.dp, end = 12.dp),
             )
+        }
+        // Pushed notices (signed calibration channel) — on the bare map only, so they
+        // don't cover the nav banner / search / a place sheet.
+        if (!state.navigating && state.selected == null && !searchFocused && state.notices.isNotEmpty()) {
+            Column(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .statusBarsPadding()
+                    .padding(top = 84.dp, start = 12.dp, end = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                state.notices.forEach { n ->
+                    NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
+                }
+            }
         }
     }
 }
@@ -1104,6 +1122,42 @@ private fun InfoCard(
                 Text(body, style = MaterialTheme.typography.bodySmall)
             }
             TextButton(onClick = onAction) { Text(actionLabel) }
+        }
+    }
+}
+
+/** A notice pushed through the signed calibration channel — level-tinted, with an
+ *  optional "Learn more" link and a per-id Dismiss. */
+@Composable
+private fun NoticeCard(notice: Notice, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val container = when (notice.level) {
+        Notice.LEVEL_ERROR -> MaterialTheme.colorScheme.errorContainer
+        Notice.LEVEL_WARN -> MaterialTheme.colorScheme.tertiaryContainer
+        else -> MaterialTheme.colorScheme.secondaryContainer
+    }
+    val content = when (notice.level) {
+        Notice.LEVEL_ERROR -> MaterialTheme.colorScheme.onErrorContainer
+        Notice.LEVEL_WARN -> MaterialTheme.colorScheme.onTertiaryContainer
+        else -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
+            Text(notice.title, fontWeight = FontWeight.SemiBold)
+            if (notice.body.isNotBlank()) {
+                Text(notice.body, style = MaterialTheme.typography.bodySmall)
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                notice.url?.let { url ->
+                    TextButton(onClick = {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                    }) { Text("Learn more") }
+                }
+                TextButton(onClick = onDismiss) { Text("Dismiss") }
+            }
         }
     }
 }
