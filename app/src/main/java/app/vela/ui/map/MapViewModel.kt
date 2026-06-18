@@ -10,6 +10,7 @@ import app.vela.core.data.MapLink
 import app.vela.core.data.OfflinePoiStore
 import app.vela.core.data.RouteCorridor
 import app.vela.core.data.OverpassPois
+import app.vela.core.data.PlaceShortcutStore
 import app.vela.core.data.RecentSearchStore
 import app.vela.core.data.SavedPlaceStore
 import app.vela.core.data.tiles.MapStyle
@@ -19,6 +20,7 @@ import app.vela.core.model.Place
 import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.SavedPlace
+import app.vela.core.model.ShortcutKind
 import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
@@ -84,6 +86,9 @@ data class MapUiState(
     val resultsCollapsed: Boolean = false,
     val recents: List<String> = emptyList(),
     val saved: List<SavedPlace> = emptyList(),
+    val home: SavedPlace? = null,
+    val work: SavedPlace? = null,
+    val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
 )
 
 /**
@@ -100,6 +105,7 @@ class MapViewModel @Inject constructor(
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
     private val savedStore: SavedPlaceStore,
+    private val shortcutStore: PlaceShortcutStore,
     private val calibration: CalibrationStore,
     private val offlinePoiStore: OfflinePoiStore,
     private val webPhotos: WebPhotoFetcher,
@@ -118,7 +124,12 @@ class MapViewModel @Inject constructor(
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         voice.init() // warm TTS so the engine list is ready in Settings
-        _state.update { it.copy(recents = recentStore.recent(), saved = savedStore.saved()) }
+        _state.update {
+            it.copy(
+                recents = recentStore.recent(), saved = savedStore.saved(),
+                home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
+            )
+        }
         // Pull the latest scraper calibration from the repo (non-blocking, once).
         viewModelScope.launch { runCatching { calibration.refresh() } }
 
@@ -211,6 +222,43 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(recents = emptyList()) }
     }
 
+    // --- Home / Work shortcuts -------------------------------------------------
+
+    /** Arm "pick a place to pin as Home/Work"; the next selected place is consumed
+     *  by [consumeAssign] instead of opening its sheet. */
+    fun beginAssignShortcut(kind: ShortcutKind) =
+        _state.update { it.copy(assigningShortcut = kind, selected = null) }
+
+    fun cancelAssign() = _state.update { it.copy(assigningShortcut = null) }
+
+    /** If a shortcut is being assigned, store [sp] in it and return true (handled). */
+    private fun consumeAssign(sp: SavedPlace): Boolean {
+        val kind = _state.value.assigningShortcut ?: return false
+        shortcutStore.set(kind, sp)
+        _state.update {
+            it.copy(
+                assigningShortcut = null, selected = null, suggestions = emptyList(),
+                results = emptyList(), query = "",
+                home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
+                status = "${kind.label} set to ${sp.name}",
+            )
+        }
+        return true
+    }
+
+    /** Open the place pinned to [kind] (like tapping a saved place). */
+    fun openShortcut(kind: ShortcutKind) {
+        val sp = _state.value.let { if (kind == ShortcutKind.HOME) it.home else it.work } ?: return
+        selectSaved(sp)
+    }
+
+    fun clearShortcut(kind: ShortcutKind) {
+        shortcutStore.set(kind, null)
+        _state.update {
+            it.copy(home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK))
+        }
+    }
+
     fun toggleSave() {
         val p = _state.value.selected ?: return
         savedStore.toggle(SavedPlace.of(p))
@@ -218,6 +266,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun selectSaved(sp: SavedPlace) {
+        if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         _state.update { it.copy(selected = base, center = base.location, reviews = emptyList(), reviewsLoading = false) }
         // A saved place has no feature id, so it used to open with no photos/reviews.
@@ -322,6 +371,7 @@ class MapViewModel @Inject constructor(
     }
 
     fun selectPlace(p: Place) {
+        if (consumeAssign(SavedPlace.of(p))) return
         suggestJob?.cancel()
         _state.update {
             it.copy(
@@ -405,6 +455,7 @@ class MapViewModel @Inject constructor(
     /** Tapped a POI on the map: show it immediately, then enrich with full
      *  details (hours, rating, …) from a search for that name nearby. */
     fun onPoiTap(name: String, location: LatLng) {
+        if (consumeAssign(SavedPlace(id = "poi:" + name.hashCode(), name = name, lat = location.lat, lng = location.lng))) return
         _state.update {
             it.copy(
                 selected = Place(id = "poi:" + name.hashCode(), name = name, location = location),

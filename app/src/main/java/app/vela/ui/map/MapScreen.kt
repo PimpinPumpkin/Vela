@@ -21,7 +21,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -33,6 +35,9 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Work
 import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -60,6 +65,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -95,6 +102,7 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Place
 import app.vela.core.model.SavedPlace
+import app.vela.core.model.ShortcutKind
 import app.vela.ui.RatingStars
 import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
@@ -291,6 +299,9 @@ fun MapScreen(
                             suggestions = state.suggestions,
                             saved = state.saved,
                             recents = state.recents,
+                            home = state.home,
+                            work = state.work,
+                            assigning = state.assigningShortcut,
                             onPickSuggestion = {
                                 focusManager.clearFocus()
                                 vm.selectPlace(it)
@@ -304,6 +315,13 @@ fun MapScreen(
                                 vm.searchRecent(it)
                             },
                             onClearRecents = vm::clearRecents,
+                            onPickShortcut = {
+                                focusManager.clearFocus()
+                                vm.openShortcut(it)
+                            },
+                            onAssignShortcut = vm::beginAssignShortcut,
+                            onClearShortcut = vm::clearShortcut,
+                            onCancelAssign = vm::cancelAssign,
                         )
 
                         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed ->
@@ -781,17 +799,25 @@ private fun SearchEntryContent(
     suggestions: List<Place>,
     saved: List<SavedPlace>,
     recents: List<String>,
+    home: SavedPlace?,
+    work: SavedPlace?,
+    assigning: ShortcutKind?,
     onPickSuggestion: (Place) -> Unit,
     onPickSaved: (SavedPlace) -> Unit,
     onPickRecent: (String) -> Unit,
     onClearRecents: () -> Unit,
+    onPickShortcut: (ShortcutKind) -> Unit,
+    onAssignShortcut: (ShortcutKind) -> Unit,
+    onClearShortcut: (ShortcutKind) -> Unit,
+    onCancelAssign: () -> Unit,
 ) {
     // While typing, live place suggestions take over the page (Google-style);
-    // with an empty box it's the saved + recents shortlist.
+    // with an empty box it's the Home/Work + saved + recents shortlist.
     if (suggestions.isNotEmpty()) {
         Column(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp),
         ) {
+            if (assigning != null) AssignBanner(assigning, onCancelAssign)
             suggestions.forEach { p ->
                 SuggestionRow(
                     icon = Icons.Default.Search,
@@ -811,6 +837,12 @@ private fun SearchEntryContent(
             .verticalScroll(rememberScrollState())
             .padding(top = 8.dp),
     ) {
+        if (assigning != null) AssignBanner(assigning, onCancelAssign)
+        // Pinned Home / Work shortcuts (Google-style), above Saved.
+        ShortcutRow(ShortcutKind.HOME, home, onPickShortcut, onAssignShortcut, onClearShortcut)
+        Divider()
+        ShortcutRow(ShortcutKind.WORK, work, onPickShortcut, onAssignShortcut, onClearShortcut)
+        Divider()
         if (saved.isNotEmpty()) {
             SectionLabel("Saved")
             saved.forEach { sp ->
@@ -846,6 +878,86 @@ private fun SearchEntryContent(
                 modifier = Modifier.padding(16.dp),
             )
         }
+    }
+}
+
+/** A pinned Home/Work shortcut row: opens the place, or arms assign when unset;
+ *  a ⋮ menu (Change / Remove) when set. */
+@Composable
+private fun ShortcutRow(
+    kind: ShortcutKind,
+    place: SavedPlace?,
+    onPick: (ShortcutKind) -> Unit,
+    onAssign: (ShortcutKind) -> Unit,
+    onClear: (ShortcutKind) -> Unit,
+) {
+    val icon = if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { if (place != null) onPick(kind) else onAssign(kind) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            icon,
+            contentDescription = null,
+            tint = if (place != null) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text(kind.label, style = MaterialTheme.typography.bodyLarge)
+            Text(
+                place?.name ?: "Set ${kind.label.lowercase()} address",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        if (place != null) {
+            var menu by remember { mutableStateOf(false) }
+            Box {
+                IconButton(onClick = { menu = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Edit ${kind.label}")
+                }
+                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    DropdownMenuItem(
+                        text = { Text("Change") },
+                        onClick = { menu = false; onAssign(kind) },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Remove") },
+                        onClick = { menu = false; onClear(kind) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** A slim banner while picking a place to pin as Home/Work. */
+@Composable
+private fun AssignBanner(kind: ShortcutKind, onCancel: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            "Search for your ${kind.label.lowercase()} address",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onCancel) { Text("Cancel") }
     }
 }
 
