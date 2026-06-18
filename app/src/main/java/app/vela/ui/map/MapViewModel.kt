@@ -177,8 +177,24 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(saved = savedStore.saved()) }
     }
 
-    fun selectSaved(sp: SavedPlace) =
-        selectPlace(Place(id = sp.id, name = sp.name, location = sp.location))
+    fun selectSaved(sp: SavedPlace) {
+        val base = Place(id = sp.id, name = sp.name, location = sp.location)
+        _state.update { it.copy(selected = base, center = base.location, reviews = emptyList(), reviewsLoading = false) }
+        // A saved place has no feature id, so it used to open with no photos/reviews.
+        // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
+        // the star stays filled.
+        viewModelScope.launch {
+            val full = runCatching {
+                dataSource.search(sp.name, sp.location).places.minByOrNull { it.location.distanceTo(sp.location) }
+            }.getOrNull()
+            if (full != null && _state.value.selected?.id == sp.id) {
+                val enriched = full.copy(id = sp.id)
+                _state.update { it.copy(selected = enriched) }
+                fetchReviews(enriched)
+                fetchPhotos(enriched)
+            }
+        }
+    }
 
     fun search() = runSearch(_state.value.query.trim(), _state.value.myLocation)
 

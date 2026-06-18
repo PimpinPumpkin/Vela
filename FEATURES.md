@@ -35,7 +35,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Recent searches (persisted)
 - ✅ **Full-screen search page** (Google-style) — focusing the search box opens an opaque page with saved + recent searches over the map (back arrow / back gesture closes it); running a search drops back to the map with the results list + red pins
 - ✅ Clear-search (X) button; **results list opens tall (~half screen) and expands to nearly full-screen** (~94%) like Google's results page — drag the handle or tap the chevron up to expand, down to shrink, down again to hide it and browse the map (pins stay, a chip re-opens it); back gesture also hides it
-- ✅ **"Open now" filter** — a chip in the results header filters to places currently open (greys out the rest); the count updates live
+- ✅ **Result filters** — chips in the results header: **"Open now"** (places open right now) and **"4.0★"** (rating ≥ 4.0); they stack and the count updates live
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
 - ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: **photos (hero, at the top) → info → hours → action row → tabs** (photos lead so they're visible at the peek height / in landscape)
@@ -48,8 +48,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Full gallery via a hidden WebView** (`WebPhotoFetcher`) — the gallery RPC (`batchexecute` `hspqX` / `/MapsPhotoService.ListEntityPhotos`) serves the user photos **only to a real browser engine**. A plain HTTP client — even with perfect headers + consent cookies — gets a degraded **Street-View-only** reply: bot-detection at the **TLS/fingerprint** level (verified on-device — OkHttp gets a 162 KB token-less "lite" `/maps` page). So Vela runs a **hidden Android WebView** (real Chromium) that loads `maps.google.com` as an **anonymous, no-login** session — exactly like a logged-out browser, which *does* show the photos — and does a same-origin `fetch` to the RPC, handing the raw response back over a JS bridge. **Keyless** (no API key, no account). Created **lazily** (only when a place's photos are wanted), strictly best-effort (failure → keep the preview). **On-device verified 2026-06-17: 31 photos for SpeeDee-Midas, Davis.** Tradeoff: the WebView runs Google's JS (a fingerprinting step for a degoogled app — the opt-in cost of richer photos), OkHttp fallback kept. Gotchas baked in: **desktop UA** (a mobile UA makes Google deep-link to `intent://` the native app), **block non-http(s) redirects**, and **`Handler`, not `View.postDelayed`** (a headless WebView never attaches to a window, so View timers never fire).
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/…) → one-tap search
 - ✅ "Search this area" — re-search after panning the map
-- ✅ Filter: **open now** (chip in the results header); ⬜ rating, price still to add
-- ✅ Saved / favourite places (star from the place sheet)
+- ✅ Filter: **open now** + **rating ≥ 4.0** (chips in the results header, stackable); ⬜ price still to add
+- ✅ Saved / favourite places (star from the place sheet) — reopening a saved place **enriches it via search** so photos, rating and reviews load (saved places carry no feature id of their own)
 - ⬜ **Export / import saved places** (portable, user-savable bookmarks — planned)
 - ⬜ Overture/OSM POIs as a fallback source
 

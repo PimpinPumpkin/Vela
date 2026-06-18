@@ -432,6 +432,7 @@ private fun markersOf(state: MapUiState): List<MapMarker> =
 private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onCollapse: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
     var openOnly by remember { mutableStateOf(false) }
+    var topRated by remember { mutableStateOf(false) }
     val screenH = LocalConfiguration.current.screenHeightDp
     // Opens as a tall list (≈half screen) and expands to nearly full-screen, like
     // Google's results page; drag the handle / tap the chevron.
@@ -439,8 +440,10 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
         if (expanded) (screenH * 0.94f).dp else (screenH * 0.52f).dp,
         label = "resultsHeight",
     )
-    // "Open now" filter (Google-style): only places we know are currently open.
-    val shown = if (openOnly) results.filter { it.openNow == true } else results
+    // Google-style filters: currently open, and 4.0★+.
+    val shown = results
+        .let { list -> if (openOnly) list.filter { it.openNow == true } else list }
+        .let { list -> if (topRated) list.filter { (it.rating ?: 0.0) >= 4.0 } else list }
     Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
         Column {
             // Drag the handle UP to expand the list toward the top (like the place
@@ -495,6 +498,12 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         leadingIcon = if (openOnly) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
+                    )
+                    FilterChip(
+                        selected = topRated,
+                        onClick = { topRated = !topRated },
+                        label = { Text("4.0★") },
+                        modifier = Modifier.padding(start = 6.dp),
                     )
                     IconButton(onClick = { expanded = !expanded }) {
                         Icon(
