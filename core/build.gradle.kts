@@ -26,6 +26,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
+    implementation(libs.rhino.runtime)
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)

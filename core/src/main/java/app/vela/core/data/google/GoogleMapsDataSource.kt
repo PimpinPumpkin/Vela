@@ -2,6 +2,7 @@ package app.vela.core.data.google
 
 import app.vela.core.VelaConfig
 import app.vela.core.config.CalibrationStore
+import app.vela.core.config.JsTransforms
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteGeometry
@@ -43,6 +44,7 @@ class GoogleMapsDataSource @Inject constructor(
     private val http: OkHttpClient,
     private val session: GoogleSession,
     private val calibration: CalibrationStore,
+    private val jsTransforms: JsTransforms,
 ) : MapDataSource {
 
     override suspend fun search(query: String, near: LatLng?): SearchResult = io {
@@ -53,7 +55,13 @@ class GoogleMapsDataSource @Inject constructor(
         val cal = calibration.current()
         val pb = SearchPb.build(query, viewport, cal.searchPb)
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}"
-        SearchParser.parse(query, GoogleResponse.parse(get(url)), near, cal.paths)
+        val raw = get(url)
+        // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
+        // otherwise the compiled parser runs. Either way, an optional transformPlaces
+        // hook gets the last word. No hook / any error → pure compiled path.
+        val places = jsTransforms.searchOverride(raw)
+            ?: SearchParser.parse(query, GoogleResponse.parse(raw), near, cal.paths).places
+        SearchResult(query, jsTransforms.refineSearch(places))
     }
 
     override suspend fun placeDetails(id: String): Place = io {

@@ -14,3 +14,12 @@
 
 # Travel/maneuver enums are persisted in nav state + prefs by name.
 -keepnames enum app.vela.core.model.** { *; }
+
+# Rhino (runs the remote transforms.js): keep the whole engine — it resolves a lot
+# of its own classes reflectively, so R8 stripping/renaming breaks it at runtime.
+# It also references optional java.* desktop classes absent on Android; silence those
+# warnings rather than fail the build.
+-keep class org.mozilla.javascript.** { *; }
+-keep class org.mozilla.classfile.** { *; }
+-dontwarn org.mozilla.javascript.**
+-dontwarn org.mozilla.classfile.**

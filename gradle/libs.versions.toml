@@ -22,6 +22,9 @@ maplibre = "11.8.0"
 junit = "4.13.2"
 espresso = "3.6.1"
 androidxJunit = "1.2.1"
+# Rhino interpreter-only artifact (no compiler/codegen) — runs the remote
+# transforms.js in interpreted mode, the mode that works on Android/ART.
+rhino = "1.7.14"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -56,6 +59,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+rhino-runtime = { group = "org.mozilla", name = "rhino-runtime", version.ref = "rhino" }
 
 maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
 

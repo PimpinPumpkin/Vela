@@ -207,9 +207,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Pushed notices** — a `notices` array in the signed bundle surfaces dismissable
   alerts on the bare map ("search is down, fix coming") with **no app update**;
   dismissals persist per-id. *(verified on-device end-to-end)*
-- 🚧 **Remote parse logic** (phase 3) — a signed `transformsJs` bundle run in a Rhino
-  sandbox, so a *response-shape* change can be hot-fixed too; compiled Kotlin is the
-  fallback. (In progress.)
+- ✅ **Remote parse logic** (phase 3) — a signed `transformsJs` bundle runs in a **Rhino
+  sandbox** (interpreted, no Java access), so a *response-shape* change can be hot-fixed
+  too — not just a moved field. Two search hooks (`parseSearch` full re-parse /
+  `transformPlaces` post-process) over a flat place-JSON contract; **compiled Kotlin is
+  always the fallback**. *(verified on-device: a pushed transform marked the first
+  result, then cleared; engine + sandbox + contract unit-tested)*
 
 ## Known calibration debts (the NewPipe lifestyle)
 - Google request/response shapes are pinned to a 2026-06-15 capture; expect
