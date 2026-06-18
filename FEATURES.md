@@ -122,7 +122,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   inline **highway/exit shields**, a **lane-guidance** strip, and a compact
   **"then <icon> …"** preview of the maneuver after this one — + remaining
   time/distance **and the arrival clock time** ("3.4 mi · 7:42 PM") on the
-  bottom bar
+  bottom bar. The Steps control is icon-only + the ETA column flexes so a long
+  "X mi · 7:42 PM" never pushes the **End** button off-screen
+- ✅ **Swipe the banner to look ahead** — drag the maneuver banner left/right to
+  walk the upcoming steps (Google-style): it greys out, shows that step, and the
+  map's marker + camera move there; tap it to resume live guidance
 - ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map
 - 🟡 **Foreground navigation service** — guidance continues with the app
   backgrounded / screen off, persistent notification (this iteration)

@@ -343,6 +343,9 @@ class MapViewModel @Inject constructor(
     /** Tapped a step in the list → preview that maneuver's spot on the map. */
     fun previewStep(index: Int) = _state.update { it.copy(previewStepIndex = index) }
 
+    /** Leave step-preview (the banner swipe / steps list) and return to live nav. */
+    fun clearPreview() = _state.update { it.copy(previewStepIndex = null) }
+
     /** Tapped a POI on the map: show it immediately, then enrich with full
      *  details (hours, rating, …) from a search for that name nearby. */
     fun onPoiTap(name: String, location: LatLng) {

@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,7 +42,14 @@ fun SearchBar(
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(28.dp)) {
+    // Match the darker tone of the category chips (elevated chips sit on
+    // surfaceContainerLow; the default Card uses the lightest surface) so the
+    // search box and the chips read as one set.
+    Card(
+        modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+    ) {
         Row(
             Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,

@@ -1,5 +1,7 @@
 package app.vela.ui.nav
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -31,7 +33,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vela.core.model.ManeuverType
 import app.vela.ui.formatArrivalClock
@@ -54,14 +58,37 @@ fun ManeuverBanner(
     laneHint: String? = null,
     nextText: String? = null,
     nextType: ManeuverType? = null,
+    previewing: Boolean = false,
+    onPreviewNext: () -> Unit = {},
+    onPreviewPrev: () -> Unit = {},
+    onExitPreview: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
+    // Swiping the banner left/right walks the upcoming steps (Google-style): the
+    // card greys out, shows that step, and the map's preview marker + camera move
+    // there (driven by previewStepIndex). Tapping it resumes live guidance.
+    val container = if (previewing) MaterialTheme.colorScheme.surfaceVariant
+    else MaterialTheme.colorScheme.primaryContainer
+    val content = if (previewing) MaterialTheme.colorScheme.onSurfaceVariant
+    else MaterialTheme.colorScheme.onPrimaryContainer
     Card(
-        modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
+        modifier
+            .fillMaxWidth()
+            .pointerInput(Unit) {
+                var total = 0f
+                detectHorizontalDragGestures(
+                    onDragStart = { total = 0f },
+                    onHorizontalDrag = { change, dx -> change.consume(); total += dx },
+                    onDragEnd = {
+                        when {
+                            total < -40f -> onPreviewNext()
+                            total > 40f -> onPreviewPrev()
+                        }
+                    },
+                )
+            }
+            .then(if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -94,13 +121,21 @@ fun ManeuverBanner(
                     Text(
                         "then",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                        color = content.copy(alpha = 0.7f),
                     )
                     Spacer(Modifier.width(8.dp))
                     Icon(maneuverIcon(nextType), contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(nextText, style = MaterialTheme.typography.bodyMedium)
                 }
+            }
+            if (previewing) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "Preview — tap to resume",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = content.copy(alpha = 0.85f),
+                )
             }
         }
     }
@@ -203,7 +238,7 @@ fun NavControls(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column {
+            Column(Modifier.weight(1f)) {
                 Text(
                     formatDuration(remainingSeconds),
                     style = MaterialTheme.typography.headlineSmall,
@@ -215,8 +250,13 @@ fun NavControls(
                         if (offRoute) " · rerouting…" else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+            Spacer(Modifier.width(8.dp))
+            // Steps is icon-only so the row stays compact (the left ETA column can
+            // grow with a longer "X mi · 7:42 PM"); End keeps its label.
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 OutlinedIconButton(onClick = onToggleVoice) {
                     Icon(
@@ -224,13 +264,11 @@ fun NavControls(
                         contentDescription = if (voiceMuted) "Unmute voice guidance" else "Mute voice guidance",
                     )
                 }
-                OutlinedButton(onClick = onSteps) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text("Steps")
+                OutlinedIconButton(onClick = onSteps) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Steps")
                 }
                 Button(onClick = onStop) {
-                    Icon(Icons.AutoMirrored.Filled.DirectionsRun, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text("End")
+                    Text("End", maxLines = 1, softWrap = false)
                 }
             }
         }

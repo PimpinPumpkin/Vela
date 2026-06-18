@@ -217,15 +217,23 @@ fun MapScreen(
         // --- top overlay: nav banner while navigating, else search ----------
         if (state.navigating) {
             val mans = state.activeRoute?.maneuvers
-            val cur = mans?.getOrNull(state.nav.stepIndex)
-            val next = mans?.getOrNull(state.nav.stepIndex + 1)
+            val liveStep = state.nav.stepIndex
+            val previewing = state.previewStepIndex != null
+            // Show the previewed step when swiping ahead, else the live maneuver.
+            val shownIdx = (state.previewStepIndex ?: liveStep).coerceIn(0, mans?.lastIndex ?: 0)
+            val shown = mans?.getOrNull(shownIdx)
+            val next = mans?.getOrNull(shownIdx + 1)
             ManeuverBanner(
-                text = state.maneuverText,
-                distanceMeters = state.nav.distanceToNextManeuver,
-                type = cur?.type ?: ManeuverType.STRAIGHT,
-                laneHint = cur?.laneHint,
+                text = if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText,
+                distanceMeters = if (previewing) (shown?.distanceMeters ?: 0.0) else state.nav.distanceToNextManeuver,
+                type = shown?.type ?: ManeuverType.STRAIGHT,
+                laneHint = shown?.laneHint,
                 nextText = next?.instruction,
                 nextType = next?.type,
+                previewing = previewing,
+                onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
+                onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },
+                onExitPreview = vm::clearPreview,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
