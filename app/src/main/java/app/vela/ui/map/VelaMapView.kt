@@ -100,6 +100,8 @@ fun VelaMapView(
     markers: List<MapMarker>,
     frameMarkers: Boolean,
     navMode: Boolean,
+    navFollowing: Boolean = true,
+    onNavPanned: () -> Unit = {},
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
@@ -124,6 +126,8 @@ fun VelaMapView(
     val markerTap = rememberUpdatedState(onMarkerTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
+    val navPanned = rememberUpdatedState(onNavPanned)
+    val navModeHolder = rememberUpdatedState(navMode)
     val downloadStatus = rememberUpdatedState(onDownloadStatus)
     val downloadArea = rememberUpdatedState(onDownloadArea)
     var lastDownloadTick by remember { mutableStateOf(0) }
@@ -205,6 +209,9 @@ fun VelaMapView(
                 map.addOnCameraMoveStartedListener { reason ->
                     gestureMove[0] = reason ==
                         MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
+                    // While navigating, a manual pan detaches the follow-camera so
+                    // you can look around; a "Re-center" button then reattaches it.
+                    if (gestureMove[0] && navModeHolder.value) navPanned.value()
                 }
                 map.addOnCameraIdleListener {
                     if (gestureMove[0]) {
@@ -282,7 +289,7 @@ fun VelaMapView(
                 }
             }
 
-            navMode && myLocation != null -> {
+            navMode && myLocation != null && navFollowing -> {
                 map.animateCamera(
                     CameraUpdateFactory.newCameraPosition(
                         CameraPosition.Builder()

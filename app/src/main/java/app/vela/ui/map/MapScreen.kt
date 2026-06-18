@@ -53,6 +53,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.ElevatedButton
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SmallFloatingActionButton
@@ -200,6 +201,8 @@ fun MapScreen(
             markers = markersOf(state),
             frameMarkers = state.results.isNotEmpty() && state.selected == null,
             navMode = state.navigating,
+            navFollowing = !state.navCameraDetached,
+            onNavPanned = vm::onNavPanned,
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
             trafficOn = Traffic.on.value,
@@ -322,6 +325,20 @@ fun MapScreen(
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .padding(top = 96.dp, start = 12.dp, end = 12.dp),
+            )
+        }
+
+        // After panning away during nav, a Re-center button reattaches the
+        // follow-camera (Google-style); it's hidden while the camera is following.
+        if (state.navigating && state.navCameraDetached) {
+            ExtendedFloatingActionButton(
+                onClick = vm::recenterNav,
+                icon = { Icon(Icons.Default.MyLocation, contentDescription = null) },
+                text = { Text("Re-center") },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 104.dp),
             )
         }
 

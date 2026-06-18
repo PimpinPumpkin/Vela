@@ -58,6 +58,7 @@ data class MapUiState(
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val navigating: Boolean = false,
+    val navCameraDetached: Boolean = false,
     val voiceMuted: Boolean = false,
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
@@ -496,8 +497,21 @@ class MapViewModel @Inject constructor(
     fun stopNav() {
         NavigationService.stop(appContext)
         navSession.stop()
-        _state.update { it.copy(showSteps = false, previewStepIndex = null) }
+        _state.update { it.copy(showSteps = false, previewStepIndex = null, navCameraDetached = false) }
     }
+
+    /** User panned the map during navigation → detach the follow-camera so they
+     *  can look around (a "Re-center" button reattaches it). Ignored mid step-
+     *  preview, where the banner swipe already drives the camera. */
+    fun onNavPanned() {
+        val s = _state.value
+        if (s.navigating && s.previewStepIndex == null && !s.navCameraDetached) {
+            _state.update { it.copy(navCameraDetached = true) }
+        }
+    }
+
+    /** Re-center on the vehicle and resume follow (the in-nav Re-center button). */
+    fun recenterNav() = _state.update { it.copy(navCameraDetached = false) }
 
     /** Mute / unmute spoken guidance (the in-nav speaker button). */
     fun toggleVoice() {

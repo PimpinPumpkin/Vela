@@ -116,6 +116,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   low-quality or download-required one), so guidance sounds natural, not robotic
 - ✅ **Mute voice during nav** — a speaker toggle in the nav bottom bar silences /
   restores spoken guidance on the fly (Google-style), independent of the haptic cues
+- ✅ **Pan-away + Re-center** — dragging the map during navigation **detaches the
+  follow-camera** so you can look around (it stops snapping back on every GPS fix);
+  a **Re-center** button appears and reattaches it, then hides once you're following
+  again (Google-style)
 - ✅ **Haptic turn cues** — a light "get ready" tick at the pre-turn prompt, then a
   firm **direction-coded** buzz at the turn (left = two long pulses, right = three
   short, straight/other = one), so you can navigate by feel while biking/walking.
