@@ -46,6 +46,7 @@ data class MapUiState(
     val myBearing: Float? = null,
     val query: String = "",
     val results: List<Place> = emptyList(),
+    val suggestions: List<Place> = emptyList(),
     val selected: Place? = null,
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
@@ -151,14 +152,39 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun onQueryChange(q: String) = _state.update { it.copy(query = q) }
+    private var suggestJob: Job? = null
+
+    /** As the user types, fetch live place suggestions (debounced) so the search
+     *  page shows real matches — name + address — to tap, like Google's
+     *  autocomplete. Reuses the calibrated search endpoint (no separate suggest
+     *  RPC); best-effort, and a stale response is dropped if the query moved on. */
+    fun onQueryChange(q: String) {
+        _state.update { it.copy(query = q) }
+        suggestJob?.cancel()
+        val term = q.trim()
+        if (term.length < 2) {
+            _state.update { it.copy(suggestions = emptyList()) }
+            return
+        }
+        suggestJob = viewModelScope.launch {
+            delay(320) // only fire once typing pauses
+            val near = _state.value.myLocation ?: mapCenter
+            val res = runCatching { dataSource.search(term, near).places }.getOrDefault(emptyList())
+            if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
+                _state.update { it.copy(suggestions = res.take(6)) }
+            }
+        }
+    }
 
     /** The X in the search bar: wipe the query, results and selection. */
-    fun clearSearch() = _state.update {
-        it.copy(
-            query = "", results = emptyList(), selected = null,
-            resultsCollapsed = false, showSearchThisArea = false,
-        )
+    fun clearSearch() {
+        suggestJob?.cancel()
+        _state.update {
+            it.copy(
+                query = "", results = emptyList(), suggestions = emptyList(), selected = null,
+                resultsCollapsed = false, showSearchThisArea = false,
+            )
+        }
     }
 
     /** Hide the results list (swipe-up / back) to browse the map; pins stay. */
@@ -216,10 +242,11 @@ class MapViewModel @Inject constructor(
 
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
+        suggestJob?.cancel()
         recentStore.add(q)
         _state.update { it.copy(recents = recentStore.recent()) }
         viewModelScope.launch {
-            _state.update { it.copy(searching = true, showSearchThisArea = false, resultsCollapsed = false) }
+            _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false) }
             try {
                 val res = dataSource.search(q, near)
                 _state.update {
@@ -242,7 +269,8 @@ class MapViewModel @Inject constructor(
     }
 
     fun selectPlace(p: Place) {
-        _state.update { it.copy(selected = p, center = p.location, reviews = emptyList()) }
+        suggestJob?.cancel()
+        _state.update { it.copy(selected = p, center = p.location, reviews = emptyList(), suggestions = emptyList()) }
         fetchReviews(p)
         fetchPhotos(p)
     }

@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -238,8 +239,13 @@ fun MapScreen(
                     )
                     when {
                         searchFocused -> SearchEntryContent(
+                            suggestions = state.suggestions,
                             saved = state.saved,
                             recents = state.recents,
+                            onPickSuggestion = {
+                                focusManager.clearFocus()
+                                vm.selectPlace(it)
+                            },
                             onPickSaved = {
                                 focusManager.clearFocus()
                                 vm.selectSaved(it)
@@ -608,12 +614,33 @@ private fun CategoryChips(onPick: (String) -> Unit) {
  *  opaque background while the search box is focused (Google-style). */
 @Composable
 private fun SearchEntryContent(
+    suggestions: List<Place>,
     saved: List<SavedPlace>,
     recents: List<String>,
+    onPickSuggestion: (Place) -> Unit,
     onPickSaved: (SavedPlace) -> Unit,
     onPickRecent: (String) -> Unit,
     onClearRecents: () -> Unit,
 ) {
+    // While typing, live place suggestions take over the page (Google-style);
+    // with an empty box it's the saved + recents shortlist.
+    if (suggestions.isNotEmpty()) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp),
+        ) {
+            suggestions.forEach { p ->
+                SuggestionRow(
+                    icon = Icons.Default.Search,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = p.name,
+                    sublabel = p.address ?: p.category,
+                    onClick = { onPickSuggestion(p) },
+                )
+                Divider()
+            }
+        }
+        return
+    }
     Column(
         Modifier
             .fillMaxSize()
@@ -675,13 +702,33 @@ private fun SuggestionRow(
     tint: androidx.compose.ui.graphics.Color,
     label: String,
     onClick: () -> Unit,
+    sublabel: String? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
-        Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        if (sublabel == null) {
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+        } else {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    label,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    sublabel,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
     }
 }
 

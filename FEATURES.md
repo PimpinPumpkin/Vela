@@ -34,6 +34,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted)
 - ✅ **Full-screen search page** (Google-style) — focusing the search box opens an opaque page with saved + recent searches over the map (back arrow / back gesture closes it); running a search drops back to the map with the results list + red pins
+- ✅ **Autocomplete / suggestions as you type** — after a short debounce, the search page shows live **place matches** (name + address) to tap, like Google; tapping one opens its sheet directly. Reuses the calibrated search endpoint (no separate suggest RPC); a stale response is dropped if the query moved on. *(verified on-device: "starb" → Starbucks locations)*
 - ✅ Clear-search (X) button; **results list opens tall (~half screen) and expands to nearly full-screen** (~94%) like Google's results page — drag the handle or tap the chevron up to expand, down to shrink, down again to hide it and browse the map (pins stay, a chip re-opens it); back gesture also hides it
 - ✅ **Result filters** — chips in the results header: **"Open now"** (places open right now) and **"4.0★"** (rating ≥ 4.0); they stack and the count updates live
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
