@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -33,9 +32,17 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Hotel
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.LocalAtm
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalGroceryStore
+import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.Park
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Traffic
 import androidx.compose.material.icons.filled.Refresh
@@ -661,13 +668,26 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
 
 @Composable
 private fun CategoryChips(onPick: (String) -> Unit) {
-    val categories = listOf("Restaurants", "Coffee", "Gas", "Groceries", "Hotels", "Pharmacy", "ATMs", "Parks")
+    val categories = listOf(
+        "Restaurants" to Icons.Default.Restaurant,
+        "Coffee" to Icons.Default.LocalCafe,
+        "Gas" to Icons.Default.LocalGasStation,
+        "Groceries" to Icons.Default.LocalGroceryStore,
+        "Hotels" to Icons.Default.Hotel,
+        "Pharmacy" to Icons.Default.LocalPharmacy,
+        "ATMs" to Icons.Default.LocalAtm,
+        "Parks" to Icons.Default.Park,
+    )
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        categories.forEach { c ->
-            ElevatedAssistChip(onClick = { onPick(c) }, label = { Text(c) })
+        categories.forEach { (label, icon) ->
+            ElevatedAssistChip(
+                onClick = { onPick(label) },
+                label = { Text(label) },
+                leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            )
         }
     }
 }

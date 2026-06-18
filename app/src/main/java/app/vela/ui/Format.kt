@@ -45,3 +45,10 @@ fun formatDuration(seconds: Double): String {
     val m = totalMin % 60
     return if (m == 0) "$h h" else "$h h $m min"
 }
+
+/** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM"
+ *  (locale-aware 12/24-hour), the way Google shows ETA during navigation. */
+fun formatArrivalClock(remainingSeconds: Double): String {
+    val arrival = java.time.LocalTime.now().plusSeconds(remainingSeconds.toLong())
+    return arrival.format(java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT))
+}

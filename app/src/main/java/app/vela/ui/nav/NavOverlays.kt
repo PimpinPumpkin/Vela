@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.core.model.ManeuverType
+import app.vela.ui.formatArrivalClock
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 
@@ -204,7 +205,9 @@ fun NavControls(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    formatDistance(remainingDistanceMeters) + if (offRoute) " · rerouting…" else "",
+                    formatDistance(remainingDistanceMeters) +
+                        " · " + formatArrivalClock(remainingSeconds) +
+                        if (offRoute) " · rerouting…" else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

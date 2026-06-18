@@ -277,9 +277,14 @@ fun PlaceSheet(
                     }
                 }
             }
-            // Price + category on their own line so a long category ("Hamburger
-            // restaurant") doesn't wrap mid-word next to the stars; ellipsised if huge.
-            val rest = listOfNotNull(place.priceText, place.category)
+            // Distance (when the place came from a located search) + price +
+            // category on their own line so a long category ("Hamburger restaurant")
+            // doesn't wrap mid-word next to the stars; ellipsised if huge.
+            val rest = listOfNotNull(
+                place.distanceMeters?.let { formatDistance(it) },
+                place.priceText,
+                place.category,
+            )
             if (rest.isNotEmpty()) {
                 Text(
                     rest.joinToString("  ·  "),
