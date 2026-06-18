@@ -9,6 +9,7 @@ import android.graphics.Typeface
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.PropertyFactory
+import org.maplibre.android.style.layers.SymbolLayer
 
 /**
  * Google-style POI markers: a category-coloured circle with a white Material
@@ -75,7 +76,7 @@ object PoiIcons {
             val colorByGroup = GROUPS.associate { it.first to it.third }
             val textColor = Expression.raw(match("\"#5F6368\"") { "\"${colorByGroup[it] ?: "#5F6368"}\"" })
             listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
-                val layer = style.getLayer(id) ?: return@forEach
+                val layer = style.getLayer(id) as? SymbolLayer ?: return@forEach
                 layer.setProperties(
                     PropertyFactory.iconImage(icon),
                     PropertyFactory.iconSize(0.8f),
@@ -83,6 +84,10 @@ object PoiIcons {
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
                 if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
+                // Only show POIs that have a NAME — the nameless ones can't be opened
+                // (they'd just drop an address pin) and read as junk/duplicate icons.
+                // AND with the layer's existing rank filter so the rank gating stays.
+                hideNameless(layer)
             }
             // Liberty only shows rank 1-6 POIs at z15 (sparse vs Google). Pull the
             // next tier (poi_r7 = rank 7-19) down to z15 too so more businesses
@@ -91,12 +96,21 @@ object PoiIcons {
             // Transit (bus/rail/airport) is its own always-on layer in Liberty, so
             // bus stops clutter every zoom level. Push it to z16+ like Google, and
             // give it our marker + category colour for consistency.
-            style.getLayer("poi_transit")?.let { layer ->
+            (style.getLayer("poi_transit") as? SymbolLayer)?.let { layer ->
                 layer.setProperties(PropertyFactory.iconImage(icon), PropertyFactory.iconSize(0.8f))
                 if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
                 layer.setMinZoom(16f)
+                hideNameless(layer)
             }
         }
+    }
+
+    /** Restrict a POI symbol layer to features that have a `name`, preserving the
+     *  layer's existing (rank) filter by AND-ing the two. */
+    private fun hideNameless(layer: SymbolLayer) {
+        val named = Expression.has("name")
+        val existing = layer.filter
+        layer.setFilter(if (existing != null) Expression.all(existing, named) else named)
     }
 
     /** Build a MapLibre `match` on the POI `class` → a value per group. */

@@ -258,28 +258,33 @@ fun PlaceSheet(
                 }
             }
 
-            Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                place.rating?.let { r ->
+            if (place.rating != null) {
+                Row(Modifier.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     // Google leads with a bold rating number; keep it prominent.
                     Text(
-                        String.format(Locale.US, "%.1f", r),
+                        String.format(Locale.US, "%.1f", place.rating),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = ink,
                     )
-                    RatingStars(r, modifier = Modifier.padding(horizontal = 5.dp))
+                    RatingStars(place.rating!!, modifier = Modifier.padding(horizontal = 5.dp))
                     place.reviewCount?.let {
                         Text("($it)", style = MaterialTheme.typography.bodyMedium, color = dim)
                     }
                 }
-                val rest = listOfNotNull(place.priceText, place.category)
-                if (rest.isNotEmpty()) {
-                    Text(
-                        (if (place.rating != null) "   ·   " else "") + rest.joinToString("   ·   "),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = dim,
-                    )
-                }
+            }
+            // Price + category on their own line so a long category ("Hamburger
+            // restaurant") doesn't wrap mid-word next to the stars; ellipsised if huge.
+            val rest = listOfNotNull(place.priceText, place.category)
+            if (rest.isNotEmpty()) {
+                Text(
+                    rest.joinToString("  ·  "),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = dim,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
             }
             place.statusText?.let { status ->
                 // Google colours the status word (Open/Closed) and keeps the time
@@ -320,20 +325,21 @@ fun PlaceSheet(
                 Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
-            // Quick-action row — Directions (primary) + Call / Website / Save / Share.
+            // Quick-action row — Directions (primary) + Call / Website / Save / Share,
+            // spread evenly across the width so the last (Share) isn't clipped.
             Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                Modifier.fillMaxWidth().padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                SheetAction(Icons.Default.Directions, "Directions", dim, emphasized = true, onClick = onDirections)
+                SheetAction(Icons.Default.Directions, "Directions", dim, emphasized = true, modifier = Modifier.weight(1f), onClick = onDirections)
                 place.phone?.let { ph ->
-                    SheetAction(Icons.Default.Call, "Call", dim) {
+                    SheetAction(Icons.Default.Call, "Call", dim, modifier = Modifier.weight(1f)) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
                 }
                 place.website?.let { site ->
-                    SheetAction(Icons.Default.Language, "Website", dim) {
+                    SheetAction(Icons.Default.Language, "Website", dim, modifier = Modifier.weight(1f)) {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                     }
                 }
@@ -341,9 +347,10 @@ fun PlaceSheet(
                     if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
                     if (isSaved) "Saved" else "Save",
                     dim,
+                    modifier = Modifier.weight(1f),
                     onClick = onToggleSave,
                 )
-                ShareAction(place, dim)
+                ShareAction(place, dim, modifier = Modifier.weight(1f))
             }
 
             PlaceTabs(place, reviews, reviewsLoading, ink, dim)
@@ -868,11 +875,12 @@ private fun SheetAction(
     label: String,
     labelColor: Color,
     emphasized: Boolean = false,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(72.dp),
+        modifier = modifier,
     ) {
         if (emphasized) {
             FilledIconButton(onClick = onClick) {
@@ -884,14 +892,20 @@ private fun SheetAction(
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall, color = labelColor, maxLines = 1)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = labelColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
 /** Share action: opens a small menu — a Google Maps link, raw coordinates, or
  *  just the address. */
 @Composable
-private fun ShareAction(place: Place, labelColor: Color) {
+private fun ShareAction(place: Place, labelColor: Color, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
     val lat = place.location.lat
@@ -912,7 +926,7 @@ private fun ShareAction(place: Place, labelColor: Color) {
         open = false
     }
 
-    Box {
+    Box(modifier) {
         SheetAction(Icons.Default.Share, "Share", labelColor) { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(

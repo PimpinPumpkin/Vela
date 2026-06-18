@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -58,10 +59,15 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -467,16 +473,39 @@ private fun markersOf(state: MapUiState): List<MapMarker> =
 
 @Composable
 private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onCollapse: () -> Unit) {
-    var expanded by remember { mutableStateOf(false) }
+    val expandedState = remember { mutableStateOf(false) }
     var openOnly by remember { mutableStateOf(false) }
     var topRated by remember { mutableStateOf(false) }
     val screenH = LocalConfiguration.current.screenHeightDp
     // Opens as a tall list (≈half screen) and expands to nearly full-screen, like
     // Google's results page; drag the handle / tap the chevron.
     val maxH by animateDpAsState(
-        if (expanded) (screenH * 0.94f).dp else (screenH * 0.52f).dp,
+        if (expandedState.value) (screenH * 0.94f).dp else (screenH * 0.52f).dp,
         label = "resultsHeight",
     )
+    // Swipe down ANYWHERE on the list (not just the handle) to shrink then hide it:
+    // a nested-scroll handler watches the list — at the top, a downward drag first
+    // collapses an expanded list, then hides it.
+    val listState = rememberLazyListState()
+    val onCollapseUpdated = rememberUpdatedState(onCollapse)
+    val dismissConn = remember {
+        object : NestedScrollConnection {
+            private var acc = 0f
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+                if (available.y > 0f && atTop) {
+                    acc += available.y
+                    when {
+                        expandedState.value && acc > 90f -> { expandedState.value = false; acc = 0f }
+                        !expandedState.value && acc > 150f -> { acc = 0f; onCollapseUpdated.value() }
+                    }
+                    return available
+                }
+                if (available.y < 0f) acc = 0f
+                return Offset.Zero
+            }
+        }
+    }
     // Google-style filters: currently open, and 4.0★+.
     val shown = results
         .let { list -> if (openOnly) list.filter { it.openNow == true } else list }
@@ -496,8 +525,8 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                             onVerticalDrag = { change, dy -> change.consume(); total += dy },
                             onDragEnd = {
                                 when {
-                                    total < -40f -> expanded = true
-                                    total > 40f && expanded -> expanded = false
+                                    total < -40f -> expandedState.value = true
+                                    total > 40f && expandedState.value -> expandedState.value = false
                                     total > 40f -> onCollapse()
                                 }
                             },
@@ -542,17 +571,17 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         label = { Text("4.0★") },
                         modifier = Modifier.padding(start = 6.dp),
                     )
-                    IconButton(onClick = { expanded = !expanded }) {
+                    IconButton(onClick = { expandedState.value = !expandedState.value }) {
                         Icon(
-                            if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                            contentDescription = if (expanded) "Shrink list" else "Expand list",
+                            if (expandedState.value) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                            contentDescription = if (expandedState.value) "Shrink list" else "Expand list",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             }
             Divider()
-            LazyColumn(Modifier.heightIn(max = maxH)) {
+            LazyColumn(Modifier.nestedScroll(dismissConn).heightIn(max = maxH), state = listState) {
                 items(shown) { place ->
                 Column(
                     Modifier

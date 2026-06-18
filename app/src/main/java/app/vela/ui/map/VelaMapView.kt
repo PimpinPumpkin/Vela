@@ -386,14 +386,8 @@ private fun ensureLayers(style: Style) {
     }
     if (style.getSource(ME_SRC) == null) {
         style.addSource(GeoJsonSource(ME_SRC))
-        style.addLayer(
-            CircleLayer(ME_LAYER, ME_SRC).withProperties(
-                PropertyFactory.circleColor("#1F6FEB"),
-                PropertyFactory.circleRadius(8f),
-                PropertyFactory.circleStrokeColor("#FFFFFF"),
-                PropertyFactory.circleStrokeWidth(3f),
-            ),
-        )
+        // Heading beam first so it sits BENEATH the dot (Google order): the
+        // translucent cone fans out from under the dot in the facing direction.
         style.addLayer(
             SymbolLayer(ME_ARROW_LAYER, ME_SRC).withProperties(
                 PropertyFactory.iconImage(ME_ARROW_IMG),
@@ -401,6 +395,15 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconRotationAlignment(Property.ICON_ROTATION_ALIGNMENT_MAP),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
+            ),
+        )
+        // The location dot on top — Google's location blue with a white ring.
+        style.addLayer(
+            CircleLayer(ME_LAYER, ME_SRC).withProperties(
+                PropertyFactory.circleColor("#4285F4"),
+                PropertyFactory.circleRadius(7f),
+                PropertyFactory.circleStrokeColor("#FFFFFF"),
+                PropertyFactory.circleStrokeWidth(3f),
             ),
         )
     }
@@ -712,25 +715,31 @@ private fun applyData(
     style.getSourceAs<GeoJsonSource>(PREVIEW_SRC)?.setGeoJson(previewFc)
 }
 
-/** A small upward-pointing arrow (north = 0°) for the heading indicator. */
+/** Google-style heading beam: a translucent blue cone whose apex sits at the
+ *  location dot (bitmap centre) and fans out toward north (0°); rotated by the
+ *  device bearing + drawn beneath the dot, it reads like Google's "flashlight"
+ *  direction indicator rather than a hard arrow. */
 private fun arrowBitmap(): Bitmap {
-    val size = 48
+    val size = 132
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
+    val cx = size / 2f
+    val tipY = 8f
     val path = Path().apply {
-        moveTo(size / 2f, 5f)
-        lineTo(size * 0.78f, size * 0.82f)
-        lineTo(size / 2f, size * 0.64f)
-        lineTo(size * 0.22f, size * 0.82f)
+        moveTo(cx, cx)               // apex at centre (under the dot)
+        lineTo(cx - 36f, tipY)
+        quadTo(cx, tipY - 7f, cx + 36f, tipY)
         close()
     }
-    canvas.drawPath(path, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1F6FEB.toInt() })
     canvas.drawPath(
         path,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0xFFFFFFFF.toInt()
-            style = Paint.Style.STROKE
-            strokeWidth = 2.5f
+            shader = android.graphics.LinearGradient(
+                cx, cx, cx, tipY,
+                android.graphics.Color.argb(150, 66, 133, 244),
+                android.graphics.Color.argb(0, 66, 133, 244),
+                android.graphics.Shader.TileMode.CLAMP,
+            )
         },
     )
     return bmp
