@@ -154,7 +154,9 @@ fun VelaMapView(
                 // Tap a labelled POI on the map to open it.
                 map.addOnMapClickListener { tapped ->
                     val p = map.projection.toScreenLocation(tapped)
-                    val r = 22f
+                    // Generous hit radius (~16dp) so taps near a POI icon register —
+                    // a tight box made the bigger markers feel un-tappable.
+                    val r = density.density * 24f
                     val feats = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r))
                     // Our own search-result pins take priority over basemap POI labels.
                     val pin = feats.firstOrNull { it.hasProperty(MARKER_INDEX_PROP) }
@@ -425,6 +427,12 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     if (dark) applyDark(style) else applyLight(style)
     PoiIcons.applyToLiberty(style, dark)
+    // Hide Liberty clutter Google doesn't draw: the dashed footpaths/sidewalks
+    // (read as weird "walking tracks") and the dashed park outlines.
+    listOf(
+        "road_path_pedestrian", "bridge_path_pedestrian", "tunnel_path_pedestrian",
+        "park_outline",
+    ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
 }
 
 private fun applyLight(style: Style) {

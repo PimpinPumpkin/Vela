@@ -24,9 +24,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
@@ -44,6 +46,7 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -428,11 +431,16 @@ private fun markersOf(state: MapUiState): List<MapMarker> =
 @Composable
 private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onCollapse: () -> Unit) {
     var expanded by remember { mutableStateOf(false) }
+    var openOnly by remember { mutableStateOf(false) }
     val screenH = LocalConfiguration.current.screenHeightDp
+    // Opens as a tall list (≈half screen) and expands to nearly full-screen, like
+    // Google's results page; drag the handle / tap the chevron.
     val maxH by animateDpAsState(
-        if (expanded) (screenH * 0.68f).dp else 300.dp,
+        if (expanded) (screenH * 0.94f).dp else (screenH * 0.52f).dp,
         label = "resultsHeight",
     )
+    // "Open now" filter (Google-style): only places we know are currently open.
+    val shown = if (openOnly) results.filter { it.openNow == true } else results
     Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
         Column {
             // Drag the handle UP to expand the list toward the top (like the place
@@ -470,27 +478,36 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .clickable { expanded = !expanded }
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                        .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "${results.size} results",
+                        "${shown.size} result${if (shown.size == 1) "" else "s"}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
                     )
-                    Icon(
-                        if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                        contentDescription = if (expanded) "Shrink list" else "Expand list",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    FilterChip(
+                        selected = openOnly,
+                        onClick = { openOnly = !openOnly },
+                        label = { Text("Open now") },
+                        leadingIcon = if (openOnly) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null,
                     )
+                    IconButton(onClick = { expanded = !expanded }) {
+                        Icon(
+                            if (expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                            contentDescription = if (expanded) "Shrink list" else "Expand list",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             }
             Divider()
             LazyColumn(Modifier.heightIn(max = maxH)) {
-                items(results) { place ->
+                items(shown) { place ->
                 Column(
                     Modifier
                         .fillMaxWidth()
