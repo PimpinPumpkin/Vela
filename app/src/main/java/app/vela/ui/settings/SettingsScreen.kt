@@ -168,8 +168,16 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             SectionTitle("Offline maps")
             var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
             LaunchedEffect(Unit) { OfflineMaps.list(context) { regions = it } }
+            OutlinedButton(
+                onClick = {
+                    vm.downloadViewport()
+                    onBack() // back to the map so the user sees the download progress
+                },
+                enabled = vm.hasViewport(),
+            ) { Text("Download the area you're viewing") }
+            Hint("Saves the open tiles for the map area you last had on screen, so it renders later with no network. (Routing and search still need a connection.)")
             if (regions.isEmpty()) {
-                Hint("Tap the download button on the map to save the visible area for offline viewing — open tiles, no network needed to see it later. (Routing and search still need a connection; offline routing is a separate, heavier feature.)")
+                Hint("No areas saved yet.")
             } else {
                 regions.forEach { r ->
                     Row(

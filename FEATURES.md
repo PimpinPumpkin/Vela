@@ -46,7 +46,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
 - ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: **photos (hero, at the top) → info → hours → action row → tabs** (photos lead so they're visible at the peek height / in landscape)
-- ✅ **"Also at this location"** — when other Google listings sit at the same spot (a co-branded shop's duplicate profile, a different unit at the address), the place sheet lists them with rating + category, tap to open — like Google's co-located-businesses section. Drawn for free from search results already in hand (no extra request)
+- ✅ **"Also at this location"** — when other Google listings sit at the same spot (a co-branded shop's duplicate profile, a different unit at the address), the place sheet lists them with rating + category, tap to open — like Google's co-located-businesses section. Drawn for free from search results already in hand (no extra request). Matches on the **same street line** (e.g. "239 G St", suite-insensitive), not raw proximity, so a shop across the street isn't wrongly listed
 - ✅ **Directions panel** (Google-style popup, not buried in the place sheet): tapping **Directions** opens a dedicated bottom panel with a **From → To** header (origin dot + destination pin) and a **swap (⇄)** button to **reverse the route** (you ⇄ the place), **Drive / Transit / Walk / Bike** tabs, and a prominent **Start** + **Steps**. For drive/walk/bike it lists the **route options** — each with a **traffic-coloured ETA** (green free-flowing → amber → red), distance, **via-road name** and a **"Fastest"** tag; **tap an alternate to select it** (the map line switches to it). Transit shows the results board instead.
 - ✅ **Depart / arrive time** — the directions panel has **Leave now / Depart at / Arrive by** chips with a time picker; it shows the resulting **arrival** (or leave-by) time computed from the route's traffic-aware duration, labelled "current traffic" (future-traffic *prediction* would need a separate calibrated request — this is the current-conditions planning aid)
 - ✅ **Search along route** — with a trip planned, the directions panel shows **Gas / Food / Coffee / Groceries** chips; tapping one searches near the route and shows only the results **within ~3 km of the route line, ordered start → destination** (so you find stops actually on the way). The route stays drawn; tap a result to open it
@@ -175,15 +175,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 ## Location (degoogled)
 - ✅ AOSP `LocationManager` (GPS + NETWORK), no Fused/GMS
 - ✅ Last-known seeding for instant map; PSDS slow-fix tip
-- ✅ **Google-style location indicator** — a blue dot (Google's `#4285F4`) with a white ring, and a **translucent heading cone/beam** that fans out from under the dot in the facing direction (from GPS bearing; drawn beneath the dot, gradient-faded, hidden when there's no heading) instead of a hard arrow
+- ✅ **Google-style location indicator** — a blue dot (Google's `#4285F4`) with a white ring, and a **translucent heading cone/beam** that fans out from under the dot in the facing direction (from GPS bearing; drawn beneath the dot, gradient-faded, hidden when there's no heading) instead of a hard arrow. **Greys out when the fix is stale** (no GPS update for ~12 s, or before the first live fix) and turns blue again on a fresh fix, like Google *(verified on-device)*
 - ⬜ Compass heading when stationary
 - ⬜ Optional BeaconDB WiFi positioning for faster coarse fix
 
 ## Offline
-- ✅ **Offline basemap region downloads** — the download button on the map saves
-  the visible area's tiles/glyphs/sprites (via MapLibre's built-in offline store)
-  so it renders later with **no network**; manage/delete saved areas in Settings →
-  Offline maps. Open tiles, no Google, no backend.
+- ✅ **Offline basemap region downloads** — **Settings → Offline maps → "Download the
+  area you're viewing"** saves the last on-screen area's tiles/glyphs/sprites (via
+  MapLibre's built-in offline store) so it renders later with **no network**; the
+  same section manages/deletes saved areas. (Moved off the map FAB stack to declutter;
+  the viewport is captured on camera-idle.) Open tiles, no Google, no backend.
 - ✅ **Offline search** — downloading a map area also pulls its POIs from
   **OpenStreetMap/Overpass** (keyless) into an on-device SQLite index; when Google
   search can't be reached, search falls back to that index ("Offline results")

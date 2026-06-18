@@ -160,7 +160,6 @@ fun MapScreen(
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
     var metersPerPixel by remember { mutableStateOf(0.0) }
-    var downloadTick by remember { mutableStateOf(0) }
     val focusManager = LocalFocusManager.current
 
     // Back peels one layer at a time — steps → navigation → route preview →
@@ -225,6 +224,7 @@ fun MapScreen(
             styleUri = mapStyleUri,
             myLocation = state.myLocation,
             myBearing = state.myBearing,
+            locationStale = state.myLocationStale,
             cameraTarget = state.center,
             cameraBottomInsetPx = cameraBottomInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
@@ -252,9 +252,7 @@ fun MapScreen(
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
-            downloadTick = downloadTick,
-            onDownloadStatus = vm::showStatus,
-            onDownloadArea = vm::downloadOfflinePois,
+            onViewport = vm::onViewport,
             modifier = Modifier.fillMaxSize(),
         )
 
@@ -529,17 +527,8 @@ fun MapScreen(
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = "Center on my location")
             }
-            // Download the visible area for offline use (renders later with no network).
-            SmallFloatingActionButton(
-                onClick = { downloadTick++ },
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .padding(end = 16.dp, bottom = 84.dp),
-            ) {
-                Icon(Icons.Default.Download, contentDescription = "Download this area for offline use")
-            }
-            // Toggle Google's live-traffic overlay; highlighted when on.
+            // Toggle Google's live-traffic overlay; highlighted when on. (Offline
+            // download moved to Settings → Offline maps to declutter the map.)
             val trafficCtx = LocalContext.current
             SmallFloatingActionButton(
                 onClick = { Traffic.set(trafficCtx, !Traffic.on.value) },
@@ -548,7 +537,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = 16.dp, bottom = 144.dp),
+                    .padding(end = 16.dp, bottom = 84.dp),
             ) {
                 Icon(Icons.Default.Traffic, contentDescription = "Toggle live traffic")
             }

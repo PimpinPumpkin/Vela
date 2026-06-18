@@ -51,6 +51,7 @@ data class MapUiState(
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
     val mySpeed: Float? = null, // metres/second, from GPS
+    val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
     val query: String = "",
     val results: List<Place> = emptyList(),
     val suggestions: List<Place> = emptyList(),
@@ -124,6 +125,7 @@ class MapViewModel @Inject constructor(
     private var destination: LatLng? = null
     private var mapCenter: LatLng? = null
     private var locationJob: Job? = null
+    private var staleTimerJob: Job? = null
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
@@ -178,9 +180,20 @@ class MapViewModel @Inject constructor(
                 val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
                 val speed = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
                 _state.update {
-                    it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here)
+                    it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here, myLocationStale = false)
                 }
+                restartStaleTimer()
             }
+        }
+    }
+
+    /** Grey the location dot if no live fix arrives for a while (Google-style) — the
+     *  seeded last-known position starts stale and turns blue on the first real fix. */
+    private fun restartStaleTimer() {
+        staleTimerJob?.cancel()
+        staleTimerJob = viewModelScope.launch {
+            delay(STALE_LOCATION_MS)
+            _state.update { it.copy(myLocationStale = true) }
         }
     }
 
@@ -559,12 +572,36 @@ class MapViewModel @Inject constructor(
      *  e.g. a co-branded shop's duplicate profile, or a different unit at the address.
      *  Drawn from search results we already have, so it's free; empty for a place
      *  with nothing co-located. Powers the "Also here" section of the place sheet. */
-    private fun othersAt(place: Place, candidates: List<Place>): List<Place> =
-        candidates.filter { c ->
-            c.location.distanceTo(place.location) < 40.0 &&
+    /** The street line of an address ("239 G St" out of "239 G St, Davis, CA 95616"),
+     *  normalised and with any suite/unit/floor dropped, so two listings in the same
+     *  building match even if one carries "Ste A". Null when there's no usable line. */
+    private fun streetKey(addr: String?): String? {
+        val line = addr?.substringBefore(",")?.lowercase()?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        return line
+            .replace(Regex("\\s+(ste|suite|unit|apt|apartment|bldg|building|fl|floor|#).*$"), "")
+            .replace(Regex("[^a-z0-9 ]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+            .takeIf { it.isNotBlank() }
+    }
+
+    /** Other Google listings genuinely AT [place]'s address — same street line (the
+     *  common case), or, when an address is missing, the same building footprint
+     *  (tight radius). Pure proximity was too loose: a shop across the street is well
+     *  within 40 m but is NOT "also at this location". */
+    private fun othersAt(place: Place, candidates: List<Place>): List<Place> {
+        val key = streetKey(place.address)
+        return candidates.filter { c ->
+            val notSelf =
                 if (c.featureId != null && place.featureId != null) c.featureId != place.featureId
                 else c.name != place.name
+            if (!notSelf) return@filter false
+            val ck = streetKey(c.address)
+            val dist = c.location.distanceTo(place.location)
+            if (key != null && ck != null) ck == key && dist < 60.0 // same address + sanity radius
+            else dist < 15.0 // no address to compare → same footprint only
         }.take(6)
+    }
 
     /** Long-press the map (or a building) → drop a pin and reverse-geocode it
      *  to an address, like Google's press-and-hold. */
@@ -730,6 +767,32 @@ class MapViewModel @Inject constructor(
 
     fun showStatus(msg: String) = _state.update { it.copy(status = msg) }
 
+    // --- offline download (triggered from Settings, not a map FAB) -------------
+
+    // [south, west, north, east, zoom] of the last settled map view; the offline
+    // download uses this so the control can live in Settings, off the map.
+    @Volatile
+    private var viewport: DoubleArray? = null
+
+    fun onViewport(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        viewport = doubleArrayOf(south, west, north, east, zoom)
+    }
+
+    fun hasViewport(): Boolean = viewport != null
+
+    /** Download tiles + POIs for the area the map was last showing (Google-style
+     *  "download this area", but invoked from Settings → Offline maps). */
+    fun downloadViewport() {
+        val v = viewport ?: run { showStatus("Open the map and pan to an area first"); return }
+        val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])
+        val minZ = (zoom - 1).coerceIn(0.0, 15.0)
+        val maxZ = (zoom + 3).coerceIn(minZ, 16.0)
+        val bounds = org.maplibre.android.geometry.LatLngBounds.from(n, e, s, w)
+        val name = "Area near %.2f, %.2f".format((s + n) / 2, (w + e) / 2)
+        app.vela.offline.OfflineMaps.download(appContext, _state.value.styleUri, bounds, minZ, maxZ, name, ::showStatus)
+        downloadOfflinePois(s, w, n, e)
+    }
+
     /** When a map region is downloaded for offline use, also pull its POIs from
      *  OSM/Overpass into the on-device index so search works there with no signal. */
     fun downloadOfflinePois(south: Double, west: Double, north: Double, east: Double) {
@@ -744,5 +807,6 @@ class MapViewModel @Inject constructor(
 
     private companion object {
         const val KEY_DISMISSED = "dismissed"
+        const val STALE_LOCATION_MS = 12_000L // grey the dot after this long with no fix
     }
 }

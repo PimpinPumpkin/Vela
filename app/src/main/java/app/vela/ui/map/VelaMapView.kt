@@ -97,6 +97,7 @@ fun VelaMapView(
     styleUri: String,
     myLocation: LatLng?,
     myBearing: Float?,
+    locationStale: Boolean = false,
     cameraTarget: LatLng?,
     cameraBottomInsetPx: Int = 0,
     routePolyline: List<LatLng>,
@@ -118,9 +119,7 @@ fun VelaMapView(
     onMarkerTap: (index: Int) -> Unit,
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
-    downloadTick: Int = 0,
-    onDownloadStatus: (String) -> Unit = {},
-    onDownloadArea: (south: Double, west: Double, north: Double, east: Double) -> Unit = { _, _, _, _ -> },
+    onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -138,9 +137,7 @@ fun VelaMapView(
     val scaleChanged = rememberUpdatedState(onScaleChanged)
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
-    val downloadStatus = rememberUpdatedState(onDownloadStatus)
-    val downloadArea = rememberUpdatedState(onDownloadArea)
-    var lastDownloadTick by remember { mutableStateOf(0) }
+    val viewport = rememberUpdatedState(onViewport)
     val gestureMove = remember { booleanArrayOf(false) }
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
@@ -239,6 +236,13 @@ fun VelaMapView(
                             cameraIdle.value(LatLng(t.latitude, t.longitude))
                         }
                     }
+                    // Keep the VM's "area you're viewing" current so the offline
+                    // download can be triggered from Settings, not a map FAB.
+                    val b = map.projection.visibleRegion.latLngBounds
+                    viewport.value(
+                        b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast,
+                        map.cameraPosition.zoom,
+                    )
                 }
                 // Feed the on-screen scale bar: metres-per-pixel at the centre
                 // latitude (varies with zoom AND latitude on a Mercator map).
@@ -262,19 +266,6 @@ fun VelaMapView(
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
 
-        // Download the visible area for offline use when the screen asks (tick++).
-        if (downloadTick != lastDownloadTick) {
-            lastDownloadTick = downloadTick
-            val bounds = map.projection.visibleRegion.latLngBounds
-            val center = map.cameraPosition.target
-            val z = map.cameraPosition.zoom
-            val minZ = (z - 1).coerceIn(0.0, 15.0)
-            val maxZ = (z + 3).coerceIn(minZ, 16.0)
-            val name = center?.let { "Area near %.2f, %.2f".format(it.latitude, it.longitude) } ?: "Saved area"
-            OfflineMaps.download(context, styleUri, bounds, minZ, maxZ, name) { downloadStatus.value(it) }
-            downloadArea.value(bounds.latitudeSouth, bounds.longitudeWest, bounds.latitudeNorth, bounds.longitudeEast)
-        }
-
         val styleKey = "$styleUri|dark=$darkTheme"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
@@ -292,12 +283,12 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, previewTarget)
+                applyData(style, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, previewTarget)
+                applyData(it, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -737,6 +728,7 @@ private fun applyData(
     markers: List<MapMarker>,
     me: LatLng?,
     bearing: Float?,
+    meStale: Boolean,
     preview: LatLng?,
 ) {
     val routeFc = if (route.size >= 2) {
@@ -781,8 +773,11 @@ private fun applyData(
     }
     style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(meFc)
 
+    // Grey the dot when the fix is stale / not yet live (Google does this); blue once
+    // a recent GPS fix arrives. The heading cone hides while stale (its bearing is old).
+    style.getLayer(ME_LAYER)?.setProperties(PropertyFactory.circleColor(if (meStale) "#9AA0A6" else "#4285F4"))
     style.getLayer(ME_ARROW_LAYER)?.setProperties(
-        PropertyFactory.visibility(if (me != null && bearing != null) Property.VISIBLE else Property.NONE),
+        PropertyFactory.visibility(if (me != null && bearing != null && !meStale) Property.VISIBLE else Property.NONE),
     )
 
     val previewFc = if (preview != null) {
