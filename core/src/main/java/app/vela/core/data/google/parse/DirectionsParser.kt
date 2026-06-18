@@ -4,6 +4,7 @@ import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.google.arr
 import app.vela.core.data.google.at
 import app.vela.core.data.google.dbl
+import app.vela.core.data.google.long
 import app.vela.core.data.google.str
 import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
@@ -14,8 +15,6 @@ import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
-import kotlin.math.max
-import kotlin.math.min
 
 /**
  * Parses the `/maps/preview/directions` response.
@@ -42,12 +41,18 @@ object DirectionsParser {
     fun parse(root: JsonElement): List<Route> {
         val routes = root.at(0, 1).arr()
             ?: throw CalibrationNeededException("directions routes (root[0][1])")
-        val parsed = routes.mapNotNull { runCatching { parseRoute(it) }.getOrNull() }
+        // Google ships each route's real geometry as delta-encoded E7 coordinate
+        // arrays at root[0][7][i] (index-aligned with the route summaries) — so the
+        // drawn line follows the actual roads of *that* route, alternates included.
+        val geoms = root.at(0, 7).arr()
+        val parsed = routes.mapIndexedNotNull { i, r ->
+            runCatching { parseRoute(r, decodeGeometry(geoms?.getOrNull(i))) }.getOrNull()
+        }
         if (parsed.isEmpty()) throw CalibrationNeededException("directions: 0 routes parsed")
         return parsed
     }
 
-    private fun parseRoute(route: JsonElement): Route? {
+    private fun parseRoute(route: JsonElement, googleGeometry: List<LatLng>?): Route? {
         val summary = route.at(0) ?: return null
         val distance = summary.at(2, 0).dbl() ?: return null
         val typicalDur = summary.at(3, 0).dbl() ?: return null
@@ -55,7 +60,10 @@ object DirectionsParser {
 
         val start = coord(summary.at(7, 3, 2))
         val end = coord(summary.at(7, 3, 3))
-        val polyline = approximatePolyline(route, start, end)
+        // Google's own geometry when present; otherwise a straight start→end segment
+        // (the data source can still snap that to an open router). Never a guess that
+        // doubles back on itself.
+        val polyline = googleGeometry?.takeIf { it.size >= 2 } ?: listOfNotNull(start, end)
         val maneuvers = placeManeuvers(collectSteps(route), polyline)
 
         return Route(
@@ -66,6 +74,21 @@ object DirectionsParser {
             durationInTrafficSeconds = trafficDur,
             summary = summary.at(1).str(),
         )
+    }
+
+    /** Decode a route-geometry node: `[0]` = latitude deltas (E7, first element
+     *  absolute), `[1]` = longitude deltas — into a real polyline. */
+    private fun decodeGeometry(node: JsonElement?): List<LatLng>? {
+        val lat = node.at(0).arr() ?: return null
+        val lng = node.at(1).arr() ?: return null
+        if (lat.size != lng.size || lat.size < 2) return null
+        var la = 0L
+        var ln = 0L
+        return lat.indices.map { i ->
+            la += lat[i].long() ?: 0L
+            ln += lng[i].long() ?: 0L
+            LatLng(la / 1e7, ln / 1e7)
+        }
     }
 
     private fun coord(node: JsonElement?): LatLng? {
@@ -155,16 +178,4 @@ object DirectionsParser {
         return poly.last()
     }
 
-    // --- geometry -----------------------------------------------------------
-
-    /**
-     * Placeholder geometry: just the start→end straight segment. The real
-     * road-following line is fetched from an open router ([RouteGeometry]) at the
-     * data-source layer and repositioned over this. We deliberately DON'T try to
-     * reconstruct a shape from the response's scattered in-bounds coordinates —
-     * that produced a line that doubled back on itself; a straight segment is the
-     * honest fallback when the router is unavailable.
-     */
-    private fun approximatePolyline(route: JsonElement, start: LatLng?, end: LatLng?): List<LatLng> =
-        listOfNotNull(start, end)
 }
