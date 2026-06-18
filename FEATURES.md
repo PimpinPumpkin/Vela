@@ -111,6 +111,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   car**: a measured speech rate (0.97) + neutral pitch, and on init it auto-selects
   the **highest-quality offline voice** for the locale (engines often default to a
   low-quality or download-required one), so guidance sounds natural, not robotic
+- ✅ **Mute voice during nav** — a speaker toggle in the nav bottom bar silences /
+  restores spoken guidance on the fly (Google-style), independent of the haptic cues
 - ✅ **Haptic turn cues** — a light "get ready" tick at the pre-turn prompt, then a
   firm **direction-coded** buzz at the turn (left = two long pulses, right = three
   short, straight/other = one), so you can navigate by feel while biking/walking.

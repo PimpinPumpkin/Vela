@@ -362,6 +362,8 @@ fun MapScreen(
                 offRoute = state.nav.offRoute,
                 onStop = vm::stopNav,
                 onSteps = vm::openSteps,
+                voiceMuted = state.voiceMuted,
+                onToggleVoice = vm::toggleVoice,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()

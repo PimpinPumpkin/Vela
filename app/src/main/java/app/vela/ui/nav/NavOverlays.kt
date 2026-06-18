@@ -16,10 +16,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.DirectionsRun
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -190,6 +193,8 @@ fun NavControls(
     offRoute: Boolean,
     onStop: () -> Unit,
     onSteps: () -> Unit,
+    voiceMuted: Boolean = false,
+    onToggleVoice: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Card(modifier.fillMaxWidth()) {
@@ -213,6 +218,12 @@ fun NavControls(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                OutlinedIconButton(onClick = onToggleVoice) {
+                    Icon(
+                        if (voiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                        contentDescription = if (voiceMuted) "Unmute voice guidance" else "Mute voice guidance",
+                    )
+                }
                 OutlinedButton(onClick = onSteps) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                     Text("Steps")

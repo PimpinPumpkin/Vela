@@ -57,6 +57,7 @@ data class MapUiState(
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val navigating: Boolean = false,
+    val voiceMuted: Boolean = false,
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
     val maneuverText: String = "",
@@ -463,6 +464,13 @@ class MapViewModel @Inject constructor(
         NavigationService.stop(appContext)
         navSession.stop()
         _state.update { it.copy(showSteps = false, previewStepIndex = null) }
+    }
+
+    /** Mute / unmute spoken guidance (the in-nav speaker button). */
+    fun toggleVoice() {
+        val muted = !voice.muted
+        voice.muted = muted
+        _state.update { it.copy(voiceMuted = muted) }
     }
 
     /** Dismiss the arrival summary and return to a clean map (drops the finished

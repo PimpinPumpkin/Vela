@@ -31,6 +31,14 @@ class VoiceGuide @Inject constructor(
     private var ready = false
     private val pending = ArrayDeque<Pair<String, Boolean>>()
 
+    /** When true, all spoken guidance is suppressed (the in-nav mute button). */
+    @Volatile
+    var muted = false
+        set(value) {
+            field = value
+            if (value) stop()
+        }
+
     private val audioManager: AudioManager? = context.getSystemService()
     private var focusRequest: AudioFocusRequest? = null
 
@@ -88,6 +96,7 @@ class VoiceGuide @Inject constructor(
 
     /** Speak [text]; [interrupt] flushes the queue (use for the imminent turn). */
     fun speak(text: String, interrupt: Boolean = false) {
+        if (muted) return
         if (!ready) {
             pending.addLast(text to interrupt)
             return
