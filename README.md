@@ -246,10 +246,16 @@ at **runtime**, by system theme:
 - **POI markers** — small category-coloured circles with white Material Icons
   glyphs (food orange, shops blue, parks green, …); in **light** mode the POI
   label text is coloured by category too, like Google.
-- **Road hierarchy** — gold motorways with a darker casing, white arterials, and
-  a casing that lightens down the hierarchy so minor roads recede.
-- **Light / dark** — a neutral-grey-land light palette and Google's canonical
-  night palette for dark.
+- **Roads, Google-style** — white road fills on a light-grey land, with the
+  casings **faded out down the hierarchy** until the minor-road casing equals the
+  land, so streets are clean white lines with **no outline** (the outlines were
+  what made it look un-Google); soft-yellow motorways; bridges mirror their tier.
+- **Neutralised landuse** — the tan/yellow residential/commercial/school fills are
+  flattened into the land (Google keeps these untinted), so no coloured blobs.
+- **Light / dark** — a light-grey-land light palette and Google's canonical night
+  palette for dark; casings blend into the land in **both** so roads stay clean.
+  (Palette tuned live in a MapLibre GL JS harness against Google, then verified
+  on-device in light + dark.)
 - **Terrain relief (hillshade)** — shaded relief from the keyless open **terrarium**
   DEM (AWS Open Data; native fetch, no key, no CORS), added under the road layers
   and capped at z16, tuned per theme (a soft warm-grey shadow in light, deeper
