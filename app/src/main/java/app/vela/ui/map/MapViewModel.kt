@@ -52,6 +52,7 @@ data class MapUiState(
     val reviewsLoading: Boolean = false,
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
+    val directionsOpen: Boolean = false,
     val travelMode: TravelMode = TravelMode.DRIVE,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
@@ -315,7 +316,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selected = null, reviews = emptyList(), reviewsLoading = false,
-                routes = emptyList(), activeRoute = null,
+                routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
             )
@@ -327,7 +328,7 @@ class MapViewModel @Inject constructor(
         destination = null
         _state.update {
             it.copy(
-                routes = emptyList(), activeRoute = null,
+                routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
             )
@@ -392,7 +393,14 @@ class MapViewModel @Inject constructor(
     fun routeToSelected() {
         val dest = _state.value.selected?.location ?: return
         destination = dest
+        _state.update { it.copy(directionsOpen = true) }
         route(dest, _state.value.travelMode)
+    }
+
+    /** Pick one of the alternate routes (drawn greyed on the map / listed in the
+     *  directions panel) as the active one. */
+    fun selectRoute(index: Int) = _state.update {
+        it.copy(activeRoute = it.routes.getOrNull(index) ?: it.activeRoute)
     }
 
     fun setTravelMode(mode: TravelMode) {

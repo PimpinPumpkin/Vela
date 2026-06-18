@@ -84,6 +84,7 @@ import app.vela.ui.nav.ManeuverBanner
 import app.vela.ui.nav.NavControls
 import app.vela.ui.nav.StepsSheet
 import app.vela.ui.placeStatusColor
+import app.vela.ui.place.DirectionsPanel
 import app.vela.ui.place.PlaceSheet
 import app.vela.ui.search.SearchBar
 import java.util.Locale
@@ -121,7 +122,7 @@ fun MapScreen(
     // which a back already peeled down to) lets the system handle back and exit.
     BackHandler(
         enabled = searchFocused || state.showSteps || state.navigating ||
-            state.activeRoute != null || state.routes.isNotEmpty() ||
+            state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
             state.selected != null ||
             (state.results.isNotEmpty() && !state.resultsCollapsed),
     ) {
@@ -129,7 +130,7 @@ fun MapScreen(
             searchFocused -> focusManager.clearFocus()
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
-            state.activeRoute != null || state.routes.isNotEmpty() ||
+            state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
             else -> vm.collapseResults()
@@ -344,21 +345,32 @@ fun MapScreen(
                     .padding(16.dp),
             )
 
-            state.selected != null -> PlaceSheet(
-                place = state.selected!!,
-                route = state.activeRoute,
-                isSaved = state.saved.any { it.id == state.selected!!.id },
+            // Tapping "Directions" opens a dedicated panel (popup) — mode tabs, the
+            // route option(s) with traffic-aware ETAs, selectable alternates, Start —
+            // instead of burying it at the bottom of the place sheet.
+            state.directionsOpen -> DirectionsPanel(
+                destinationName = state.selected?.name ?: "Destination",
                 currentMode = state.travelMode,
+                routes = state.routes,
+                activeRoute = state.activeRoute,
                 transit = state.transit,
                 transitLoading = state.transitLoading,
+                onModeSelected = vm::setTravelMode,
+                onSelectRoute = vm::selectRoute,
+                onStartNav = onStartNav,
+                onSteps = if (state.activeRoute != null) vm::openSteps else null,
+                onClose = vm::clearRoute,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+
+            state.selected != null -> PlaceSheet(
+                place = state.selected!!,
+                isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
                 reviewsLoading = state.reviewsLoading,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
-                onModeSelected = vm::setTravelMode,
                 onDirections = vm::routeToSelected,
-                onStartNav = onStartNav,
-                onSteps = if (state.activeRoute != null) vm::openSteps else null,
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.

@@ -97,6 +97,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -130,28 +131,19 @@ private val DimLight = Color(0xFF5F6368)  // secondary text in light mode
 @Composable
 fun PlaceSheet(
     place: Place,
-    route: Route?,
     isSaved: Boolean,
-    currentMode: TravelMode,
-    transit: List<TransitItinerary> = emptyList(),
-    transitLoading: Boolean = false,
     reviews: List<Review> = emptyList(),
     reviewsLoading: Boolean = false,
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
-    onModeSelected: (TravelMode) -> Unit,
     onDirections: () -> Unit,
-    onStartNav: () -> Unit,
-    onSteps: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
-    // Tapping "Directions" reveals a travel-mode chooser; a tapped photo opens the
-    // full-screen gallery. Both reset when the sheet switches to another place.
-    var modePromptOpen by remember(place.id) { mutableStateOf(false) }
+    // A tapped photo opens the full-screen gallery; resets when the sheet switches place.
     var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
 
     // The place card PEEKS at ~half-screen (so business info isn't immediately
@@ -303,9 +295,7 @@ fun PlaceSheet(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                SheetAction(Icons.Default.Directions, "Directions", dim, emphasized = true) {
-                    modePromptOpen = true
-                }
+                SheetAction(Icons.Default.Directions, "Directions", dim, emphasized = true, onClick = onDirections)
                 place.phone?.let { ph ->
                     SheetAction(Icons.Default.Call, "Call", dim) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
@@ -326,46 +316,93 @@ fun PlaceSheet(
                 ShareAction(place, dim)
             }
 
-            // Directions: pick a travel mode, then preview the route (ETA + Start)
-            // for drive/walk/bike, or a transit results board for transit.
-            val transitActive = currentMode == TravelMode.TRANSIT && (transitLoading || transit.isNotEmpty())
-            if (modePromptOpen || route != null || transitActive) {
-                Spacer(Modifier.height(12.dp))
-                if (route == null && !transitActive) {
-                    Text("How are you getting there?", style = MaterialTheme.typography.bodyMedium, color = dim, modifier = Modifier.padding(bottom = 6.dp))
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(
-                        TravelMode.DRIVE to "Drive",
-                        TravelMode.TRANSIT to "Transit",
-                        TravelMode.WALK to "Walk",
-                        TravelMode.BICYCLE to "Bike",
-                    ).forEach { (mode, label) ->
-                        FilterChip(
-                            selected = currentMode == mode,
-                            onClick = {
-                                onModeSelected(mode)
-                                if (route == null) onDirections()
-                            },
-                            label = { Text(label) },
-                        )
-                    }
-                }
-                if (currentMode == TravelMode.TRANSIT) {
-                    TransitBoard(transit, transitLoading, ink, dim, dark)
-                }
-                route?.let { r ->
-                    Spacer(Modifier.height(10.dp))
-                    val eta = formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds)
-                    val label = "$eta  ·  ${formatDistance(r.distanceMeters)}" +
-                        if (r.hasLiveTraffic) "  ·  live traffic" else ""
+            PlaceTabs(place, reviews, reviewsLoading, ink, dim)
+            }
+        }
+    }
+
+    galleryStart?.let { start ->
+        PhotoGallery(place.photoUrls, start) { galleryStart = null }
+    }
+}
+
+/**
+ * The directions preview — a dedicated bottom panel (not buried in the place
+ * sheet) that opens when you tap "Directions": destination header, travel-mode
+ * tabs, the route option(s) with traffic-aware ETAs (alternates are selectable),
+ * and a prominent Start. Transit shows the results board instead.
+ */
+@Composable
+fun DirectionsPanel(
+    destinationName: String,
+    currentMode: TravelMode,
+    routes: List<Route>,
+    activeRoute: Route?,
+    transit: List<TransitItinerary>,
+    transitLoading: Boolean,
+    onModeSelected: (TravelMode) -> Unit,
+    onSelectRoute: (Int) -> Unit,
+    onStartNav: () -> Unit,
+    onSteps: (() -> Unit)?,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dark = isAppInDarkTheme()
+    val ink = if (dark) InkDark else InkLight
+    val dim = if (dark) DimDark else DimLight
+    Card(
+        modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
+    ) {
+        Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Directions to", style = MaterialTheme.typography.labelMedium, color = dim)
                     Text(
-                        label,
+                        destinationName,
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (r.hasLiveTraffic) MaterialTheme.colorScheme.primary else ink,
+                        fontWeight = FontWeight.Bold,
+                        color = ink,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    Spacer(Modifier.height(10.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close directions", tint = dim) }
+            }
+            Spacer(Modifier.height(10.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    TravelMode.DRIVE to "Drive",
+                    TravelMode.TRANSIT to "Transit",
+                    TravelMode.WALK to "Walk",
+                    TravelMode.BICYCLE to "Bike",
+                ).forEach { (mode, label) ->
+                    FilterChip(
+                        selected = currentMode == mode,
+                        onClick = { onModeSelected(mode) },
+                        label = { Text(label) },
+                    )
+                }
+            }
+            if (currentMode == TravelMode.TRANSIT) {
+                TransitBoard(transit, transitLoading, ink, dim, dark)
+            } else {
+                Spacer(Modifier.height(12.dp))
+                if (routes.isEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        Text("Finding the best route…", style = MaterialTheme.typography.bodyMedium, color = dim)
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        routes.forEachIndexed { i, r ->
+                            val selected = r === activeRoute || (activeRoute == null && i == 0)
+                            RouteOption(r, selected, fastest = i == 0, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
+                        }
+                    }
+                    Spacer(Modifier.height(14.dp))
+                    Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                             Text("Start")
@@ -379,14 +416,61 @@ fun PlaceSheet(
                     }
                 }
             }
-
-            PlaceTabs(place, reviews, reviewsLoading, ink, dim)
-            }
         }
     }
+}
 
-    galleryStart?.let { start ->
-        PhotoGallery(place.photoUrls, start) { galleryStart = null }
+/** One route choice in the directions panel: a traffic-coloured ETA + distance/
+ *  via, highlighted when it's the active one, with a "Fastest" tag on the first. */
+@Composable
+private fun RouteOption(r: Route, selected: Boolean, fastest: Boolean, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
+    val eta = formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds)
+    val etaColor = trafficEtaColor(r) ?: ink
+    val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+    else if (dark) Color(0xFF202124) else Color(0xFFF1F3F4)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(eta, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = etaColor)
+                if (fastest) {
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Fastest",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                }
+            }
+            val sub = listOfNotNull(
+                formatDistance(r.distanceMeters),
+                r.summary?.takeIf { it.isNotBlank() }?.let { "via $it" },
+                if (r.hasLiveTraffic) "live traffic" else null,
+            ).joinToString("  ·  ")
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+        }
+        if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+/** ETA colour by congestion when live traffic is known: green free-flowing →
+ *  amber → red. Null when there's no live-traffic signal (use the ink colour). */
+private fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
+    when {
+        it > 1.4 -> Color(0xFFD93838)
+        it > 1.15 -> Color(0xFFE8923D)
+        else -> Color(0xFF1E8E3E)
     }
 }
 
