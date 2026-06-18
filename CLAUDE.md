@@ -12,6 +12,8 @@ collaborators (human or Claude). When you change behaviour, calibration,
 features, or structure, update — in the *same* commit:
 - `README.md` — status, architecture, calibrated request/response paths
 - `FEATURES.md` — tick/retire the affected items
+- `SPEC.md` — the authoritative rebuild spec (architecture / extractor contract /
+  resilience / constraints); update when a load-bearing decision or path changes
 - `CLAUDE.md` — this file (build rules, layout, gotchas)
 - the `project-vela` memory note if a load-bearing fact changed
 

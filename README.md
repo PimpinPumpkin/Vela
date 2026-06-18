@@ -27,6 +27,9 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 >
 > Every push to `main` publishes a signed, Obtainium-friendly `v0.1.<run>` release.
 > `MockMapDataSource` stays as an offline fallback; both build types are green.
+>
+> See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
+> resilience-layer specification (the rebuild target).
 
 ---
 
