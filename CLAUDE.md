@@ -14,6 +14,8 @@ features, or structure, update — in the *same* commit:
 - `FEATURES.md` — tick/retire the affected items
 - `SPEC.md` — the authoritative rebuild spec (architecture / extractor contract /
   resilience / constraints); update when a load-bearing decision or path changes
+- `ROADMAP.md` — planned work + big bets (opt-in telemetry, Vela's own traffic layer,
+  popular times, …); add new ideas here as they come up
 - `CLAUDE.md` — this file (build rules, layout, gotchas)
 - the `project-vela` memory note if a load-bearing fact changed
 
