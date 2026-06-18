@@ -337,6 +337,8 @@ fun MapScreen(
                             onAssignShortcut = vm::beginAssignShortcut,
                             onClearShortcut = vm::clearShortcut,
                             onCancelAssign = vm::cancelAssign,
+                            onPinSavedAs = vm::pinSavedAs,
+                            onRemoveSaved = vm::removeSaved,
                         )
 
                         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed ->
@@ -825,6 +827,8 @@ private fun SearchEntryContent(
     onAssignShortcut: (ShortcutKind) -> Unit,
     onClearShortcut: (ShortcutKind) -> Unit,
     onCancelAssign: () -> Unit,
+    onPinSavedAs: (SavedPlace, ShortcutKind) -> Unit,
+    onRemoveSaved: (SavedPlace) -> Unit,
 ) {
     // While typing, live place suggestions take over the page (Google-style);
     // with an empty box it's the Home/Work + saved + recents shortlist.
@@ -861,12 +865,7 @@ private fun SearchEntryContent(
         if (saved.isNotEmpty()) {
             SectionLabel("Saved")
             saved.forEach { sp ->
-                SuggestionRow(
-                    icon = Icons.Default.Star,
-                    tint = MaterialTheme.colorScheme.primary,
-                    label = sp.name,
-                    onClick = { onPickSaved(sp) },
-                )
+                SavedRow(sp, onPickSaved, onPinSavedAs, onRemoveSaved)
                 Divider()
             }
         }
@@ -947,6 +946,47 @@ private fun ShortcutRow(
                         onClick = { menu = false; onClear(kind) },
                     )
                 }
+            }
+        }
+    }
+}
+
+/** A saved-place row: tap to open, ⋮ menu to pin it as Home/Work or remove it. */
+@Composable
+private fun SavedRow(
+    place: SavedPlace,
+    onPick: (SavedPlace) -> Unit,
+    onPinAs: (SavedPlace, ShortcutKind) -> Unit,
+    onRemove: (SavedPlace) -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clickable { onPick(place) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(16.dp))
+        Text(place.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        var menu by remember { mutableStateOf(false) }
+        Box {
+            IconButton(onClick = { menu = true }) {
+                Icon(Icons.Default.MoreVert, contentDescription = "Saved place options")
+            }
+            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenuItem(
+                    text = { Text("Set as Home") },
+                    onClick = { menu = false; onPinAs(place, ShortcutKind.HOME) },
+                )
+                DropdownMenuItem(
+                    text = { Text("Set as Work") },
+                    onClick = { menu = false; onPinAs(place, ShortcutKind.WORK) },
+                )
+                DropdownMenuItem(
+                    text = { Text("Remove") },
+                    onClick = { menu = false; onRemove(place) },
+                )
             }
         }
     }

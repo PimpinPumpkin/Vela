@@ -63,7 +63,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Category quick-chips (Restaurants/Coffee/Gas/Groceries/Hotels/Pharmacy/ATMs/Parks) → one-tap search, each with a Google-style leading icon
 - ✅ "Search this area" — re-search after panning the map
 - ✅ Filter: **open now** + **rating ≥ 4.0** (chips in the results header, stackable); ⬜ price still to add
-- ✅ Saved / favourite places (star from the place sheet) — reopening a saved place **enriches it via search** so photos, rating and reviews load (saved places carry no feature id of their own)
+- ✅ Saved / favourite places (star from the place sheet) — reopening a saved place **enriches it via search** so photos, rating and reviews load (saved places carry no feature id of their own); each saved row in the search page has a **⋮ menu** to **Set as Home / Set as Work** (promote it straight to a shortcut) or **Remove** it *(verified on-device)*
 - ⬜ **Export / import saved places** (portable, user-savable bookmarks — planned)
 - ⬜ Overture/OSM POIs as a fallback source
 

@@ -259,6 +259,23 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Pin an already-saved place straight to Home/Work (no assign hop needed). */
+    fun pinSavedAs(sp: SavedPlace, kind: ShortcutKind) {
+        shortcutStore.set(kind, sp)
+        _state.update {
+            it.copy(
+                home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
+                status = "${kind.label} set to ${sp.name}",
+            )
+        }
+    }
+
+    /** Remove a place from the saved list (toggle removes an existing entry). */
+    fun removeSaved(sp: SavedPlace) {
+        savedStore.toggle(sp)
+        _state.update { it.copy(saved = savedStore.saved()) }
+    }
+
     fun toggleSave() {
         val p = _state.value.selected ?: return
         savedStore.toggle(SavedPlace.of(p))
