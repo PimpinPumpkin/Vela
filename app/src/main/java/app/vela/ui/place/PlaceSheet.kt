@@ -455,6 +455,8 @@ fun DirectionsPanel(
                             RouteOption(r, selected, fastest = i == 0, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
                         }
                     }
+                    Spacer(Modifier.height(12.dp))
+                    DepartTimeChooser(activeRoute ?: routes.firstOrNull(), dim)
                     Spacer(Modifier.height(14.dp))
                     Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
@@ -492,6 +494,47 @@ fun DirectionsPanel(
                 }
             }
         }
+    }
+}
+
+/** "Leave now / Depart at / Arrive by" chooser. Computes the arrival (or
+ *  leave-by) time from the route's current traffic-aware duration — a planning
+ *  aid based on *current* conditions (Google's future-traffic prediction would
+ *  need a separate calibrated request). */
+@Composable
+private fun DepartTimeChooser(route: Route?, dim: Color) {
+    val context = LocalContext.current
+    var mode by remember { mutableStateOf(0) } // 0 = now, 1 = depart at, 2 = arrive by
+    var picked by remember { mutableStateOf<java.time.LocalTime?>(null) }
+    val durationSec = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
+    val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+
+    fun openPicker(target: Int) {
+        val base = picked ?: java.time.LocalTime.now()
+        android.app.TimePickerDialog(
+            context,
+            { _, h, m -> picked = java.time.LocalTime.of(h, m); mode = target },
+            base.hour, base.minute, false,
+        ).show()
+    }
+
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text("Leave now") })
+        FilterChip(selected = mode == 1, onClick = { openPicker(1) }, label = { Text("Depart at") })
+        FilterChip(selected = mode == 2, onClick = { openPicker(2) }, label = { Text("Arrive by") })
+    }
+    val summary = when (mode) {
+        1 -> picked?.let { "Depart ${it.format(fmt)}  ·  arrive ~${it.plusSeconds(durationSec.toLong()).format(fmt)}" }
+        2 -> picked?.let { "Arrive by ${it.format(fmt)}  ·  leave ~${it.minusSeconds(durationSec.toLong()).format(fmt)}" }
+        else -> "Arrive ~${java.time.LocalTime.now().plusSeconds(durationSec.toLong()).format(fmt)}"
+    }
+    summary?.let {
+        Text(
+            "$it  ·  current traffic",
+            style = MaterialTheme.typography.bodyMedium,
+            color = dim,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }
 
