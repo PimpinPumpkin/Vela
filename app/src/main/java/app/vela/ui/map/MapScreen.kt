@@ -490,9 +490,10 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
         if (expandedState.value) (screenH * 0.94f).dp else (screenH * 0.52f).dp,
         label = "resultsHeight",
     )
-    // Swipe down ANYWHERE on the list (not just the handle) to shrink then hide it:
-    // a nested-scroll handler watches the list — at the top, a downward drag first
-    // collapses an expanded list, then hides it.
+    // The panel hangs from the top (under the search bar), so it follows a
+    // top-sheet model: pull DOWN to grow, push UP to retract. A nested-scroll
+    // handler lets a down-overscroll at the top of the list expand the panel
+    // ("pull to see more"); hiding is the upward gesture on the handle below.
     val listState = rememberLazyListState()
     val onCollapseUpdated = rememberUpdatedState(onCollapse)
     val dismissConn = remember {
@@ -500,15 +501,12 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
             private var acc = 0f
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (available.y > 0f && atTop) {
+                if (available.y > 0f && atTop && !expandedState.value) {
                     acc += available.y
-                    when {
-                        expandedState.value && acc > 90f -> { expandedState.value = false; acc = 0f }
-                        !expandedState.value && acc > 150f -> { acc = 0f; onCollapseUpdated.value() }
-                    }
+                    if (acc > 120f) { expandedState.value = true; acc = 0f }
                     return available
                 }
-                if (available.y < 0f) acc = 0f
+                if (available.y <= 0f) acc = 0f
                 return Offset.Zero
             }
         }
@@ -519,9 +517,9 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
         .let { list -> if (topRated) list.filter { (it.rating ?: 0.0) >= 4.0 } else list }
     Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
         Column {
-            // Drag the handle UP to expand the list toward the top (like the place
-            // sheet); DOWN to shrink it, and down again (when already small) to hide
-            // it and browse the map.
+            // Top-sheet handle: swipe DOWN to expand the list, swipe UP to retract
+            // it — first shrinking an expanded list, then hiding it back to the
+            // "N results" pill (the panel lives at the top, so up = away).
             Column(
                 Modifier
                     .fillMaxWidth()
@@ -532,9 +530,9 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                             onVerticalDrag = { change, dy -> change.consume(); total += dy },
                             onDragEnd = {
                                 when {
-                                    total < -40f -> expandedState.value = true
-                                    total > 40f && expandedState.value -> expandedState.value = false
-                                    total > 40f -> onCollapse()
+                                    total > 40f -> expandedState.value = true
+                                    total < -40f && expandedState.value -> expandedState.value = false
+                                    total < -40f -> onCollapse()
                                 }
                             },
                         )
@@ -580,7 +578,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     )
                     IconButton(onClick = { expandedState.value = !expandedState.value }) {
                         Icon(
-                            if (expandedState.value) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                            if (expandedState.value) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                             contentDescription = if (expandedState.value) "Shrink list" else "Expand list",
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )

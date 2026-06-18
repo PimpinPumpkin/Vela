@@ -10,7 +10,10 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculatePan
+import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
@@ -92,6 +95,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -674,7 +678,12 @@ private fun PhotoGallery(urls: List<String>, start: Int, onDismiss: () -> Unit) 
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-                // Per-photo pinch-to-zoom (+ pan when zoomed) and swipe-down-to-dismiss.
+                // One gesture loop so pinch-zoom, pan-when-zoomed, swipe-down-to-
+                // dismiss, AND the pager's horizontal swipe between photos all work
+                // together: a pinch or a pan-while-zoomed consumes the pointers (so
+                // the pager stays put), a clearly-downward drag at 1× drives the
+                // dismiss, and a flat horizontal drag is left UNCONSUMED so the
+                // HorizontalPager pages. (Stacking two detectors stole both.)
                 var scale by remember { mutableStateOf(1f) }
                 var offset by remember { mutableStateOf(Offset.Zero) }
                 var dismissY by remember { mutableStateOf(0f) }
@@ -682,21 +691,33 @@ private fun PhotoGallery(urls: List<String>, start: Int, onDismiss: () -> Unit) 
                     Modifier
                         .fillMaxSize()
                         .pointerInput(Unit) {
-                            detectTransformGestures { _, pan, zoom, _ ->
-                                scale = (scale * zoom).coerceIn(1f, 5f)
-                                offset = if (scale > 1f) offset + pan else Offset.Zero
-                            }
-                        }
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragEnd = {
-                                    if (scale <= 1f && dismissY > 240f) onDismiss()
+                            awaitEachGesture {
+                                awaitFirstDown(requireUnconsumed = false)
+                                var dx = 0f
+                                var dy = 0f
+                                do {
+                                    val event = awaitPointerEvent()
+                                    val zoom = event.calculateZoom()
+                                    val pan = event.calculatePan()
+                                    dx += pan.x; dy += pan.y
+                                    when {
+                                        zoom != 1f || scale > 1f -> {
+                                            scale = (scale * zoom).coerceIn(1f, 5f)
+                                            offset = if (scale > 1f) offset + pan else Offset.Zero
+                                            dismissY = 0f
+                                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                        }
+                                        dy > 0f && dy > kotlin.math.abs(dx) -> {
+                                            dismissY = dy
+                                            event.changes.forEach { if (it.positionChanged()) it.consume() }
+                                        }
+                                    }
+                                } while (event.changes.any { it.pressed })
+                                if (scale <= 1f) {
+                                    if (dismissY > 240f) onDismiss()
                                     dismissY = 0f
-                                },
-                                onVerticalDrag = { _, dy ->
-                                    if (scale <= 1f) dismissY = (dismissY + dy).coerceAtLeast(0f)
-                                },
-                            )
+                                }
+                            }
                         },
                     contentAlignment = Alignment.Center,
                 ) {
