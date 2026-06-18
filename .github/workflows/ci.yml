@@ -30,6 +30,13 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Default installs the legacy `tools` package, which drags in the
+          # Android Emulator — a large, flaky download that failed CI at the setup
+          # step ("ZipFile unknown archive"). We only build + unit-test, so
+          # platform-tools is enough; the Android Gradle Plugin fetches the
+          # platform + build-tools it needs on its own.
+          packages: platform-tools
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
