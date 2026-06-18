@@ -44,6 +44,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
@@ -152,9 +153,11 @@ fun PlaceSheet(
     isSaved: Boolean,
     reviews: List<Review> = emptyList(),
     reviewsLoading: Boolean = false,
+    placesHere: List<Place> = emptyList(),
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
+    onOpenPlace: (Place) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -367,6 +370,30 @@ fun PlaceSheet(
                     onClick = onToggleSave,
                 )
                 ShareAction(place, dim, modifier = Modifier.weight(1f))
+            }
+
+            // Other Google listings at the same spot (a co-branded shop's duplicate
+            // profile, or a different unit at the address) — like Google's "Also at
+            // this location". Tap to open one.
+            if (placesHere.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text("Also at this location", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
+                placesHere.forEach { other ->
+                    Row(
+                        Modifier.fillMaxWidth().clickable { onOpenPlace(other) }.padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(other.name, style = MaterialTheme.typography.bodyLarge, color = ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            val sub = listOfNotNull(
+                                other.rating?.let { String.format(Locale.US, "%.1f★", it) + (other.reviewCount?.let { n -> " ($n)" } ?: "") },
+                                other.category,
+                            ).joinToString("  ·  ")
+                            if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open", tint = dim, modifier = Modifier.size(18.dp))
+                    }
+                }
             }
 
             PlaceTabs(place, reviews, reviewsLoading, ink, dim)

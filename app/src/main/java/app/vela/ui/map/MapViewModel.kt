@@ -50,6 +50,7 @@ data class MapUiState(
     val results: List<Place> = emptyList(),
     val suggestions: List<Place> = emptyList(),
     val selected: Place? = null,
+    val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
     val routes: List<Route> = emptyList(),
@@ -305,7 +306,12 @@ class MapViewModel @Inject constructor(
 
     fun selectPlace(p: Place) {
         suggestJob?.cancel()
-        _state.update { it.copy(selected = p, center = p.location, reviews = emptyList(), suggestions = emptyList()) }
+        _state.update {
+            it.copy(
+                selected = p, center = p.location, reviews = emptyList(), suggestions = emptyList(),
+                placesHere = othersAt(p, it.results),
+            )
+        }
         fetchReviews(p)
         fetchPhotos(p)
     }
@@ -391,7 +397,7 @@ class MapViewModel @Inject constructor(
             )
         }
         viewModelScope.launch {
-            val full = runCatching {
+            val resolved = runCatching {
                 val results = dataSource.search(name, location).places
                 val nearest = results.minByOrNull { p -> p.location.distanceTo(location) }
                 // A tapped POI can map to several Google listings at the same spot —
@@ -406,21 +412,34 @@ class MapViewModel @Inject constructor(
                 val canonical = results
                     .filter { it.location.distanceTo(location) < 35.0 }
                     .maxByOrNull { it.reviewCount ?: 0 }
-                if (canonical != null && nearest != null &&
+                val pick = if (canonical != null && nearest != null &&
                     (canonical.reviewCount ?: 0) >= 2 * (nearest.reviewCount ?: 0) + 5
                 ) {
                     canonical
                 } else {
                     nearest
                 }
+                pick to results
             }.getOrNull()
+            val full = resolved?.first
             if (full != null && _state.value.selected?.name == name) {
-                _state.update { it.copy(selected = full) }
+                _state.update { it.copy(selected = full, placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
                 fetchPhotos(full)
             }
         }
     }
+
+    /** Other Google listings essentially at the same spot as [place] (within ~40 m) —
+     *  e.g. a co-branded shop's duplicate profile, or a different unit at the address.
+     *  Drawn from search results we already have, so it's free; empty for a place
+     *  with nothing co-located. Powers the "Also here" section of the place sheet. */
+    private fun othersAt(place: Place, candidates: List<Place>): List<Place> =
+        candidates.filter { c ->
+            c.location.distanceTo(place.location) < 40.0 &&
+                if (c.featureId != null && place.featureId != null) c.featureId != place.featureId
+                else c.name != place.name
+        }.take(6)
 
     /** Long-press the map (or a building) → drop a pin and reverse-geocode it
      *  to an address, like Google's press-and-hold. */
