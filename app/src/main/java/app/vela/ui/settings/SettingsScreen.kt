@@ -120,7 +120,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             SectionTitle("Voice")
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
-                Hint("No text-to-speech engine detected, so spoken directions are silent. Install RHVoice or eSpeak NG from F-Droid (RHVoice sounds the most natural), then pick it here.")
+                Hint("No text-to-speech engine on this phone, so spoken directions are silent. Install an open-source one in one tap below, then pick it here.")
             } else {
                 engines.forEach { e ->
                     SelectableRow(
@@ -142,7 +142,20 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         }
                     }) { Text("System voice settings") }
                 }
-                Hint("Tap Test voice to hear it. Silent? The engine has no voice downloaded — open System voice settings to install one (or add RHVoice from F-Droid for a more natural voice).")
+                Hint("Tap Test voice to hear it. Silent? The engine has no voice downloaded — open System voice settings, or add a more natural one below.")
+            }
+            // One-tap install of an open-source engine — the fix for a ROM that ships none.
+            val installable = vm.installableEngines()
+            if (installable.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Hint(if (engines.isEmpty()) "Open-source voices (from F-Droid):" else "Add a more natural voice (from F-Droid):")
+                installable.forEach { eng ->
+                    OutlinedButton(
+                        onClick = { vm.installVoiceEngine(eng) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Install ${eng.label}") }
+                    Hint(eng.note)
+                }
             }
 
             Spacer(Modifier.height(20.dp))

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- The downloaded voice-engine APK lives in filesDir/engines/. -->
+    <files-path name="engines" path="engines/" />
+</paths>

@@ -130,6 +130,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   bound) so guidance was silently dropped. A `<queries>` for `TTS_SERVICE` restores it;
   picking an engine now actually re-inits TTS (it used to be ignored). *(verified
   on-device: audio focus + frames delivered on nav start)*
+- ✅ **One-tap voice on a ROM with no TTS** — many degoogled ROMs ship no engine at
+  all, so **Settings → Voice → Install eSpeak NG / Install RHVoice** downloads the
+  latest open-source engine from **F-Droid** (resolved via its API) and hands it to
+  the system installer; once installed it's a normal engine Vela already drives — no
+  heavy synth bundled into the app, works on any ROM. A nav-start hint points there if
+  you have none. *(verified end-to-end on-device: download → install → eSpeak appears
+  as a Vela engine → speaks)*
 - ✅ **Mute voice during nav** — a speaker toggle in the nav bottom bar silences /
   restores spoken guidance on the fly (Google-style), independent of the haptic cues
 - ✅ **Speedometer** — a Google-style circular badge (bottom-left during nav) shows

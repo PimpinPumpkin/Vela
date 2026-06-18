@@ -16,6 +16,11 @@
     <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- So a phone with NO text-to-speech engine (common on degoogled ROMs) can be
+         offered a one-tap install of an open-source voice (eSpeak NG / RHVoice from
+         F-Droid). The user still confirms each install in the system dialog. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- GPS strongly preferred but don't hard-exclude tablets/AAOS units. -->
     <uses-feature
         android:name="android.hardware.location.gps"
@@ -38,6 +43,18 @@
         android:label="@string/app_name"
         android:supportsRtl="true"
         android:theme="@style/Theme.Vela">
+
+        <!-- Hands the downloaded voice-engine APK to the system installer via a
+             content:// URI (file:// is blocked for installs on modern Android). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
 
         <activity
             android:name=".MainActivity"

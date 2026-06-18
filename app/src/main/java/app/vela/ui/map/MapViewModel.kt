@@ -29,6 +29,7 @@ import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
 import app.vela.core.voice.VoiceEngine
 import app.vela.core.voice.VoiceGuide
+import app.vela.voice.VoiceInstaller
 import app.vela.service.NavigationService
 import app.vela.core.model.TransitItinerary
 import app.vela.web.WebDirectionsFetcher
@@ -107,6 +108,7 @@ class MapViewModel @Inject constructor(
     private val dataSource: MapDataSource,
     private val locationProvider: LocationProvider,
     private val voice: VoiceGuide,
+    private val voiceInstaller: VoiceInstaller,
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
     private val recentPlaceStore: RecentPlaceStore,
@@ -705,6 +707,10 @@ class MapViewModel @Inject constructor(
         val dest = destination ?: route.polyline.lastOrNull() ?: return
         navSession.start(route, dest, _state.value.selected?.name.orEmpty(), _state.value.selectedEngine?.packageName)
         NavigationService.start(appContext)
+        // If the phone has no voice engine, say so once instead of going silent.
+        if (voice.availableEngines().isEmpty()) {
+            showStatus("No voice engine installed — add one in Settings → Voice for spoken directions")
+        }
     }
 
     fun stopNav() {
@@ -758,6 +764,17 @@ class MapViewModel @Inject constructor(
 
     /** null = still initialising, true = a voice is ready, false = no usable voice. */
     fun voiceWorking(): Boolean? = voice.working
+
+    /** Open-source engines a phone with none can install in one tap (off F-Droid). */
+    fun installableEngines(): List<VoiceInstaller.Engine> =
+        voiceInstaller.engines.filterNot { voiceInstaller.isInstalled(it.pkg) }
+
+    fun installVoiceEngine(engine: VoiceInstaller.Engine) {
+        showStatus("Downloading ${engine.label}…")
+        viewModelScope.launch {
+            voiceInstaller.installFromFDroid(engine.pkg)?.let { showStatus(it) }
+        }
+    }
 
     fun dismissPsdsTip() = _state.update { it.copy(showPsdsTip = false) }
 
