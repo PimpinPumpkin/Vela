@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.TurnSlightLeft
 import androidx.compose.material.icons.filled.TurnSlightRight
 import androidx.compose.material.icons.filled.UTurnLeft
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -46,10 +47,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
+import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
+import app.vela.ui.theme.isAppInDarkTheme
 
 /**
  * The full turn-by-turn step list — shown both while previewing a route and
@@ -70,20 +74,27 @@ fun StepsSheet(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier.fillMaxWidth(), shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)) {
+    val dark = isAppInDarkTheme()
+    val ink = SheetPalette.ink(dark)
+    val dim = SheetPalette.dim(dark)
+    Card(
+        modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = ink),
+    ) {
         // Fill the card to the screen bottom; pad content off the nav bar.
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Steps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Steps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
                     Text(
                         formatDuration(etaSeconds) + "  ·  " + formatDistance(distanceMeters) +
                             if (hasLiveTraffic) "  ·  live traffic" else "",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = if (hasLiveTraffic) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
                     )
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close steps") }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close steps", tint = dim) }
             }
             LazyColumn(Modifier.heightIn(max = 360.dp)) {
                 itemsIndexed(maneuvers) { i, m ->
@@ -93,8 +104,8 @@ fun StepsSheet(
                         Modifier
                             .fillMaxWidth()
                             .background(
-                                if (highlighted) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.55f)
-                                else androidx.compose.ui.graphics.Color.Transparent,
+                                if (highlighted || active) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+                                else Color.Transparent,
                             )
                             .clickable { onStep(i) }
                             .padding(vertical = 12.dp, horizontal = 4.dp),
@@ -103,7 +114,7 @@ fun StepsSheet(
                         Icon(
                             maneuverIcon(m.type),
                             contentDescription = null,
-                            tint = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                            tint = if (active) MaterialTheme.colorScheme.primary else ink,
                             modifier = Modifier.size(24.dp).padding(end = 16.dp),
                         )
                         Column(Modifier.weight(1f)) {
@@ -111,6 +122,7 @@ fun StepsSheet(
                                 m.instruction.ifEmpty { "Continue" },
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                                color = ink,
                             )
                             val signs = roadSigns(m.instruction)
                             if (signs.isNotEmpty()) {
@@ -121,7 +133,7 @@ fun StepsSheet(
                                 ) { signs.forEach { SignChip(it) } }
                             }
                             m.road?.let {
-                                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
                             }
                             m.laneHint?.let {
                                 Text(
@@ -136,7 +148,7 @@ fun StepsSheet(
                             Text(
                                 formatDistance(m.distanceMeters),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = dim,
                                 modifier = Modifier.padding(start = 8.dp, end = 8.dp),
                             )
                         }

@@ -392,6 +392,7 @@ fun MapScreen(
                 onSelectRoute = vm::selectRoute,
                 onStartNav = onStartNav,
                 onSteps = if (state.activeRoute != null) vm::openSteps else null,
+                onSearchAlongRoute = vm::searchAlongRoute,
                 onClose = vm::clearRoute,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )

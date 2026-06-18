@@ -58,7 +58,11 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.Navigation
+import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
@@ -124,6 +128,7 @@ import app.vela.core.model.TransitStep
 import app.vela.core.model.TravelMode
 import coil.compose.AsyncImage
 import app.vela.ui.RatingStars
+import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.placeStatusColor
@@ -132,12 +137,14 @@ import java.util.Locale
 // Google-like, fixed sheet palette — independent of the Material You wallpaper
 // tint so the name/time/address always read crisp (white-on-dark / black-on-white)
 // like Google Maps, instead of a washed-out dynamic tone.
-private val SheetDark = Color(0xFF1F1F1F)
-private val SheetLight = Color(0xFFFFFFFF)
-private val InkDark = Color(0xFFE8EAED)   // primary text in dark mode
-private val InkLight = Color(0xFF202124)  // primary text in light mode
-private val DimDark = Color(0xFF9AA0A6)   // secondary text in dark mode
-private val DimLight = Color(0xFF5F6368)  // secondary text in light mode
+// The sheet palette is shared app-wide (see ui/SheetPalette) so the place sheet,
+// directions panel, route chooser and steps list all match.
+private val SheetDark = SheetPalette.Dark
+private val SheetLight = SheetPalette.Light
+private val InkDark = SheetPalette.InkDark
+private val InkLight = SheetPalette.InkLight
+private val DimDark = SheetPalette.DimDark
+private val DimLight = SheetPalette.DimLight
 
 @Composable
 fun PlaceSheet(
@@ -390,6 +397,7 @@ fun DirectionsPanel(
     onSelectRoute: (Int) -> Unit,
     onStartNav: () -> Unit,
     onSteps: (() -> Unit)?,
+    onSearchAlongRoute: (String) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -460,6 +468,27 @@ fun DirectionsPanel(
                             }
                         }
                     }
+                    Spacer(Modifier.height(14.dp))
+                    Text("Search along route", style = MaterialTheme.typography.labelMedium, color = dim)
+                    Spacer(Modifier.height(6.dp))
+                    Row(
+                        Modifier.horizontalScroll(rememberScrollState()).padding(end = 12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        listOf(
+                            "Gas" to Icons.Default.LocalGasStation,
+                            "Food" to Icons.Default.Restaurant,
+                            "Coffee" to Icons.Default.LocalCafe,
+                            "Groceries" to Icons.Default.LocalGroceryStore,
+                        ).forEach { (label, icon) ->
+                            FilterChip(
+                                selected = false,
+                                onClick = { onSearchAlongRoute(label) },
+                                label = { Text(label) },
+                                leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -473,7 +502,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastest: Boolean, dark: Boo
     val eta = formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds)
     val etaColor = trafficEtaColor(r) ?: ink
     val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
-    else if (dark) Color(0xFF202124) else Color(0xFFF1F3F4)
+    else SheetPalette.row(dark)
     Row(
         Modifier
             .fillMaxWidth()
@@ -514,9 +543,9 @@ private fun RouteOption(r: Route, selected: Boolean, fastest: Boolean, dark: Boo
  *  amber → red. Null when there's no live-traffic signal (use the ink colour). */
 private fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
     when {
-        it > 1.4 -> Color(0xFFD93838)
-        it > 1.15 -> Color(0xFFE8923D)
-        else -> Color(0xFF1E8E3E)
+        it > 1.4 -> SheetPalette.TrafficRed
+        it > 1.15 -> SheetPalette.TrafficAmber
+        else -> SheetPalette.TrafficGreen
     }
 }
 
@@ -555,7 +584,7 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(if (dark) Color(0xFF202124) else Color(0xFFF1F3F4))
+            .background(SheetPalette.row(dark))
             .then(if (canExpand) Modifier.clickable { expanded = !expanded } else Modifier)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),

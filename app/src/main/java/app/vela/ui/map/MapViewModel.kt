@@ -7,6 +7,7 @@ import app.vela.core.config.CalibrationStore
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.OfflinePoiStore
+import app.vela.core.data.RouteCorridor
 import app.vela.core.data.OverpassPois
 import app.vela.core.data.RecentSearchStore
 import app.vela.core.data.SavedPlaceStore
@@ -266,6 +267,35 @@ class MapViewModel @Inject constructor(
                 } else {
                     _state.update { it.copy(status = "Search failed: ${e.message}", searching = false) }
                 }
+            }
+        }
+    }
+
+    /** "Search along route": search [query] biased to the route's midpoint, then
+     *  keep only results near the route line (ordered start→destination). Closes
+     *  the directions panel to reveal the pins, but keeps the route drawn. */
+    fun searchAlongRoute(query: String) {
+        val route = _state.value.activeRoute?.polyline
+        if (route == null || route.size < 2) { runSearch(query, _state.value.myLocation); return }
+        suggestJob?.cancel()
+        recentStore.add(query)
+        viewModelScope.launch {
+            _state.update {
+                it.copy(query = query, searching = true, directionsOpen = false, suggestions = emptyList(), resultsCollapsed = false, recents = recentStore.recent())
+            }
+            try {
+                val res = dataSource.search(query, route[route.size / 2])
+                val along = RouteCorridor.alongRoute(res.places, route)
+                _state.update {
+                    it.copy(
+                        results = along,
+                        selected = null,
+                        searching = false,
+                        status = if (along.isEmpty()) "No \"$query\" found along your route" else null,
+                    )
+                }
+            } catch (e: Exception) {
+                _state.update { it.copy(searching = false, status = "Search failed") }
             }
         }
     }

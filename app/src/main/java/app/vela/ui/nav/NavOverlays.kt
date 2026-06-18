@@ -38,9 +38,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.vela.core.model.ManeuverType
+import app.vela.ui.SheetPalette
 import app.vela.ui.formatArrivalClock
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
+import app.vela.ui.theme.isAppInDarkTheme
 
 /**
  * Top banner during navigation, styled like Google's: a large directional turn
@@ -232,7 +234,14 @@ fun NavControls(
     onToggleVoice: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier.fillMaxWidth()) {
+    val dark = isAppInDarkTheme()
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = SheetPalette.bg(dark),
+            contentColor = SheetPalette.ink(dark),
+        ),
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -249,7 +258,7 @@ fun NavControls(
                         " · " + formatArrivalClock(remainingSeconds) +
                         if (offRoute) " · rerouting…" else "",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = SheetPalette.dim(dark),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
