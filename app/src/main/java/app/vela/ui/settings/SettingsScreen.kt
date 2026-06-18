@@ -197,12 +197,24 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Data source")
+            SectionTitle("Data source & privacy")
             Hint(
                 "Vela talks to Google's public web endpoints directly from this device — no " +
-                    "Vela backend, no Google account, no API key. Each device behaves like a " +
-                    "single browser, falling back to built-in mock data if the shapes drift.",
+                    "Vela backend, no Google account, no API key, no telemetry. Each device behaves " +
+                    "like a logged-out browser; Google sees your IP, query and map area but not an " +
+                    "account. Saved places and history never leave the phone.",
             )
+            Spacer(Modifier.height(4.dp))
+            OutlinedButton(onClick = {
+                runCatching {
+                    context.startActivity(
+                        android.content.Intent(
+                            android.content.Intent.ACTION_VIEW,
+                            android.net.Uri.parse("https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md"),
+                        ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                }
+            }) { Text("What data Google receives") }
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("About")

@@ -49,6 +49,15 @@ panel (alternates, depart-time, search-along-route); turn-by-turn navigation wit
 the maneuver banner + speedometer; and the in-app **light/dark** themes (decoupled
 from the OS).*
 
+## Privacy
+
+There is **no Vela backend, no account, and no telemetry**. Vela fetches from Google
+directly from your phone like a logged-out browser — Google sees your IP, query, and
+map area, but **not a Google account or any app key**, much like using
+`google.com/maps` in an incognito window. Your saved places, history, and settings
+never leave the device. **[Read the full breakdown of exactly what each service
+receives → `PRIVACY.md`](PRIVACY.md).**
+
 ## Why it's built this way
 
 Two decisions from the planning phase shape everything:
