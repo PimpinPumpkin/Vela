@@ -1,6 +1,7 @@
 package app.vela
 
 import android.app.Application
+import app.vela.ui.Traffic
 import app.vela.ui.Units
 import app.vela.ui.theme.AppTheme
 import dagger.hilt.android.HiltAndroidApp
@@ -11,5 +12,6 @@ class VelaApp : Application() {
         super.onCreate()
         Units.init(this)
         AppTheme.init(this)
+        Traffic.init(this)
     }
 }

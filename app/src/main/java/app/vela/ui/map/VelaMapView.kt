@@ -38,8 +38,10 @@ import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
+import org.maplibre.android.style.layers.RasterLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.android.style.sources.RasterDemSource
+import org.maplibre.android.style.sources.RasterSource
 import org.maplibre.android.style.sources.TileSet
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -66,6 +68,17 @@ private const val HILLSHADE_LAYER = "vela-hillshade"
 // no CORS to worry about on native. Gives Google-style terrain relief.
 private const val TERRARIUM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
+private const val TRAFFIC_SRC = "vela-traffic-src"
+private const val TRAFFIC_LAYER = "vela-traffic"
+// Google's LIVE traffic, as a raster overlay (congestion-coloured roads +
+// incidents) — the web map's own `/maps/vt` tile, which is a public, keyless PNG
+// on www.google.com (the same host we already scrape). The trimmed `pb` (no map
+// version epoch, so it doesn't rot): `!2straffic` = the traffic layer, `!1e2` =
+// overlay. Standard XYZ tile coords (`!1i{z}!2i{x}!3i{y}`).
+private const val TRAFFIC_TILES =
+    "https://www.google.com/maps/vt/pb=!1m4!1m3!1i{z}!2i{x}!3i{y}!2m9!1e2!2straffic!3i999999" +
+        "!4m2!1sincidents!2s1!4m2!1sincidents_text!2s1!3m8!2sen!3sus!5e1105!12m4!1e68!2m2!1sset!2sRoadmap!4e0!5m1!1e0"
+
 /** A tappable search-result pin on the map. */
 data class MapMarker(val name: String, val location: LatLng)
 
@@ -89,6 +102,7 @@ fun VelaMapView(
     navMode: Boolean,
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
+    trafficOn: Boolean,
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
@@ -243,9 +257,13 @@ fun VelaMapView(
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 applyData(style, routePolyline, routeColor, markers, myLocation, myBearing, previewTarget)
+                ensureTraffic(style, trafficOn)
             }
         } else {
-            styleRef?.let { applyData(it, routePolyline, routeColor, markers, myLocation, myBearing, previewTarget) }
+            styleRef?.let {
+                applyData(it, routePolyline, routeColor, markers, myLocation, myBearing, previewTarget)
+                ensureTraffic(it, trafficOn)
+            }
         }
 
         if (previewTarget == null) lastPreviewTarget = null
@@ -427,6 +445,24 @@ private fun ensureHillshade(style: Style) {
         // land) but under roads + labels (which stay readable).
         val firstRoad = style.layers.firstOrNull { it.id.startsWith("road") }?.id
         if (firstRoad != null) style.addLayerBelow(hs, firstRoad) else style.addLayer(hs)
+    }
+}
+
+/** Toggle Google's live-traffic raster overlay. Inserted below the route line +
+ *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
+private fun ensureTraffic(style: Style, on: Boolean) {
+    val present = style.getLayer(TRAFFIC_LAYER) != null
+    if (on && !present) {
+        if (style.getSource(TRAFFIC_SRC) == null) {
+            style.addSource(RasterSource(TRAFFIC_SRC, TileSet("2.2.0", TRAFFIC_TILES), 256))
+        }
+        val layer = RasterLayer(TRAFFIC_LAYER, TRAFFIC_SRC)
+        val anchor = ROUTE_LAYER.takeIf { style.getLayer(it) != null }
+            ?: style.layers.firstOrNull { it is SymbolLayer }?.id
+        if (anchor != null) style.addLayerBelow(layer, anchor) else style.addLayer(layer)
+    } else if (!on && present) {
+        style.removeLayer(TRAFFIC_LAYER)
+        style.getSource(TRAFFIC_SRC)?.let { runCatching { style.removeSource(it) } }
     }
 }
 

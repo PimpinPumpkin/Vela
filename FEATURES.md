@@ -58,6 +58,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Routing & traffic
 - ✅ Driving directions with **real traffic-aware ETA** (live `duration_in_traffic`)
+- ✅ **Live traffic overlay** — Google's actual congestion-coloured roads + incident markers, as a **keyless raster layer** (the web map's own public `/maps/vt?…!2straffic` PNG tiles on www.google.com — no API key). Toggle with the traffic-light button on the map; off by default. So you see true **per-segment** traffic (red on the jam, green where clear) on every road, including your route — what the route-line's whole-route tint can't show on its own
 - ✅ **Route-line traffic colour** — the drawn route tints blue → amber → red as the
   live traffic-aware time runs over the typical time (overall congestion; per-segment
   isn't reliably in the response and our line is OSRM geometry, so it's whole-route)

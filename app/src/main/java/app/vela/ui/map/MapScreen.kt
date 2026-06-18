@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Traffic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -84,6 +85,7 @@ import app.vela.ui.nav.ManeuverBanner
 import app.vela.ui.nav.NavControls
 import app.vela.ui.nav.StepsSheet
 import app.vela.ui.placeStatusColor
+import app.vela.ui.Traffic
 import app.vela.ui.place.DirectionsPanel
 import app.vela.ui.place.PlaceSheet
 import app.vela.ui.search.SearchBar
@@ -186,6 +188,7 @@ fun MapScreen(
             navMode = state.navigating,
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
+            trafficOn = Traffic.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
@@ -397,6 +400,19 @@ fun MapScreen(
                     .padding(end = 16.dp, bottom = 84.dp),
             ) {
                 Icon(Icons.Default.Download, contentDescription = "Download this area for offline use")
+            }
+            // Toggle Google's live-traffic overlay; highlighted when on.
+            val trafficCtx = LocalContext.current
+            SmallFloatingActionButton(
+                onClick = { Traffic.set(trafficCtx, !Traffic.on.value) },
+                containerColor = if (Traffic.on.value) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.primaryContainer,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 16.dp, bottom = 144.dp),
+            ) {
+                Icon(Icons.Default.Traffic, contentDescription = "Toggle live traffic")
             }
         }
 
