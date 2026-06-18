@@ -456,6 +456,16 @@ private fun applyLight(style: Style) {
             layer.setProperties(PropertyFactory.fillColor(land))
         }
     }
+    // Liberty fills wetlands with a fern-hatch pattern and pedestrian plazas with a
+    // dotted one — Google shows both flat. Clear the pattern so the flat fill shows.
+    style.getLayer("landcover_wetland")?.setProperties(
+        PropertyFactory.fillColor("#d6e8d0"),
+        PropertyFactory.fillPattern(Expression.literal("")),
+    )
+    style.getLayer("road_area_pattern")?.setProperties(
+        PropertyFactory.fillColor("#ededed"),
+        PropertyFactory.fillPattern(Expression.literal("")),
+    )
     // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
     // roads. Bridges mirror their road tier so overpasses match.
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
@@ -530,6 +540,15 @@ private fun applyDark(style: Style) {
                 layer.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
         }
     }
+    // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
+    style.getLayer("landcover_wetland")?.setProperties(
+        PropertyFactory.fillColor("#1c3326"),
+        PropertyFactory.fillPattern(Expression.literal("")),
+    )
+    style.getLayer("road_area_pattern")?.setProperties(
+        PropertyFactory.fillColor("#2a3546"),
+        PropertyFactory.fillPattern(Expression.literal("")),
+    )
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
