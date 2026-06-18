@@ -428,30 +428,52 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
 }
 
 private fun applyLight(style: Style) {
-    // Google-ish light palette: a neutral light-grey land so the white roads read
-    // (Liberty's near-white background hid them), light-blue water, soft green
-    // parks, and subtle warm-grey buildings.
-    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#e9eaec"))
-    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#aadaf6"))
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#c5e8c0"), PropertyFactory.fillOpacity(0.9f))
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#c5e6ac"), PropertyFactory.fillOpacity(0.5f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#b2dd9a"), PropertyFactory.fillOpacity(0.55f))
-    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#e4e2dc"))
+    // Google-Maps light palette: clean white road fills on a light-grey land, with
+    // every casing faded DOWN the hierarchy until minor-road casing == the land, so
+    // streets are crisp white lines with NO outline (the outlines were exactly what
+    // made it look un-Google). Soft-yellow motorways, neutralised landuse (no tan
+    // residential/commercial blobs), subtle buildings. Tuned live in a MapLibre GL
+    // JS harness against Google for reference.
+    val land = "#e8eaed"
+    val white = "#ffffff"
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#a9d3f0"))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c4e6bf"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#e2e3e6"))
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#e4e2dc"),
-        PropertyFactory.fillExtrusionOpacity(0.92f),
+        PropertyFactory.fillExtrusionColor("#e2e3e6"),
+        PropertyFactory.fillExtrusionOpacity(0.9f),
     )
-    // Road hierarchy like Google: gold motorways, white everything else. The
-    // casing darkens up the hierarchy (and lightens down it) so freeways/arterials
-    // stand out and minor roads recede, instead of one flat grey for all of them.
-    style.getLayer("road_motorway")?.setProperties(PropertyFactory.lineColor("#f7ce6b"))
-    style.getLayer("road_motorway_casing")?.setProperties(PropertyFactory.lineColor("#e7a92e"))
-    listOf("road_trunk_primary", "road_secondary_tertiary", "road_minor").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#ffffff"))
+    // Neutralise the tan/yellow landuse fills (residential/commercial/school/…) into
+    // the land — Google keeps these flat, not coloured blobs.
+    val greens = setOf("park", "landcover_grass", "landcover_wood")
+    style.layers.forEach { layer ->
+        if (layer is FillLayer && layer.id !in greens &&
+            (layer.id.startsWith("landuse") || layer.id.startsWith("landcover"))
+        ) {
+            layer.setProperties(PropertyFactory.fillColor(land))
+        }
     }
-    style.getLayer("road_trunk_primary_casing")?.setProperties(PropertyFactory.lineColor("#bfc3ca"))
-    style.getLayer("road_secondary_tertiary_casing")?.setProperties(PropertyFactory.lineColor("#cbced4"))
-    style.getLayer("road_minor_casing")?.setProperties(PropertyFactory.lineColor("#d8dbe0"))
+    // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
+    // roads. Bridges mirror their road tier so overpasses match.
+    listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f9d27a"))
+    }
+    listOf("road_motorway_casing", "road_motorway_link_casing", "bridge_motorway_casing", "bridge_motorway_link_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f0b85a"))
+    }
+    listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
+    listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#dadde2")) }
+    listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
+    listOf("road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#e4e6ea")) }
+    listOf("road_minor", "road_link", "road_service_track", "bridge_street", "bridge_link", "bridge_service_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white))
+    }
+    listOf("road_minor_casing", "road_link_casing", "road_service_track_casing", "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(land))
+    }
     // Terrain relief: a soft warm-grey shadow, subtle so hills read as depth, not dirt.
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
         PropertyFactory.hillshadeExaggeration(0.32f),
@@ -469,13 +491,23 @@ private fun applyDark(style: Style) {
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.7f))
     style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.5f))
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#1a3023"), PropertyFactory.fillOpacity(0.6f))
-    listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track").forEach {
+    listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
+        "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#49536a"))
     }
-    style.getLayer("road_trunk_primary")?.setProperties(PropertyFactory.lineColor("#5e6a85"))
-    style.getLayer("road_motorway")?.setProperties(PropertyFactory.lineColor("#6f7a96"))
-    listOf("road_motorway_casing", "road_trunk_primary_casing", "road_secondary_tertiary_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#1b212c"))
+    listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#5e6a85"))
+    }
+    listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6f7a96"))
+    }
+    // Casings blend into the night land so roads are clean (no hard outline), like
+    // Google dark — the lighter road fills still read against the dark land.
+    listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
+        "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
+        "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
+        "bridge_street_casing", "bridge_link_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#242f3e"))
     }
     style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#2b3647"))
     style.getLayer("building-3d")?.setProperties(
