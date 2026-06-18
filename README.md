@@ -29,7 +29,8 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 > `MockMapDataSource` stays as an offline fallback; both build types are green.
 >
 > See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
-> resilience-layer specification (the rebuild target).
+> resilience-layer specification (the rebuild target), and **[`ROADMAP.md`](ROADMAP.md)**
+> for what's planned (opt-in telemetry, a Vela-own traffic layer, popular times, …).
 
 ---
 
