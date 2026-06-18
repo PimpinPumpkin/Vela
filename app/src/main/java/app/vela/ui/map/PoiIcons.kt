@@ -78,11 +78,23 @@ object PoiIcons {
                 val layer = style.getLayer(id) ?: return@forEach
                 layer.setProperties(
                     PropertyFactory.iconImage(icon),
-                    PropertyFactory.iconSize(0.55f),
+                    PropertyFactory.iconSize(0.8f),
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
                 if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
+            }
+            // Liberty only shows rank 1-6 POIs at z15 (sparse vs Google). Pull the
+            // next tier (poi_r7 = rank 7-19) down to z15 too so more businesses
+            // show; MapLibre's label collision keeps it from cluttering.
+            style.getLayer("poi_r7")?.setMinZoom(15f)
+            // Transit (bus/rail/airport) is its own always-on layer in Liberty, so
+            // bus stops clutter every zoom level. Push it to z16+ like Google, and
+            // give it our marker + category colour for consistency.
+            style.getLayer("poi_transit")?.let { layer ->
+                layer.setProperties(PropertyFactory.iconImage(icon), PropertyFactory.iconSize(0.8f))
+                if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
+                layer.setMinZoom(16f)
             }
         }
     }
