@@ -81,6 +81,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.BuildConfig
 import app.vela.core.model.LatLng
+import app.vela.core.model.ManeuverType
 import app.vela.core.model.Place
 import app.vela.core.model.SavedPlace
 import app.vela.ui.RatingStars
@@ -208,10 +209,16 @@ fun MapScreen(
 
         // --- top overlay: nav banner while navigating, else search ----------
         if (state.navigating) {
+            val mans = state.activeRoute?.maneuvers
+            val cur = mans?.getOrNull(state.nav.stepIndex)
+            val next = mans?.getOrNull(state.nav.stepIndex + 1)
             ManeuverBanner(
                 text = state.maneuverText,
                 distanceMeters = state.nav.distanceToNextManeuver,
-                laneHint = state.activeRoute?.maneuvers?.getOrNull(state.nav.stepIndex)?.laneHint,
+                type = cur?.type ?: ManeuverType.STRAIGHT,
+                laneHint = cur?.laneHint,
+                nextText = next?.instruction,
+                nextType = next?.type,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()

@@ -66,8 +66,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
 - ✅ **Lane guidance** — Google's lane hints ("Use the right 2 lanes to turn") are
-  pulled out of the step markup into their own field, shown highlighted in the step
-  list and the nav banner (the main instruction stays clean: "Turn right onto …")
+  pulled out of the step markup into their own field; the nav banner renders them as
+  a **strip of turn-direction arrows** (one per indicated lane) + the hint text, and
+  the step list shows them highlighted (the main instruction stays clean: "Turn right
+  onto …")
+- ✅ **Highway/exit signage** — route refs ("I-80 E", "US-50 E") and exit numbers
+  ("Exit 4A") are parsed out of each instruction and rendered as Google-style badges:
+  a **green exit tab** + a **bordered route shield**, in both the nav banner and the
+  step list
 - ✅ Route geometry via open router — **per-mode** FOSSGIS OSRM backends
   (`routed-car`/`routed-bike`/`routed-foot`), so drive/walk/bike each follow the
   correct network; Valhalla later
@@ -101,19 +107,26 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute) —
   pure/Android-free, **unit-tested** (arrival-requires-final-maneuver, reroute
   fires once per off-route transition not per fix, off-route clears on return)
-- ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable)
+- ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable) — **tuned for the
+  car**: a measured speech rate (0.97) + neutral pitch, and on init it auto-selects
+  the **highest-quality offline voice** for the locale (engines often default to a
+  low-quality or download-required one), so guidance sounds natural, not robotic
 - ✅ **Haptic turn cues** — a light "get ready" tick at the pre-turn prompt, then a
   firm **direction-coded** buzz at the turn (left = two long pulses, right = three
   short, straight/other = one), so you can navigate by feel while biking/walking.
   Toggle in Settings → Navigation ("Vibrate on turns", default on)
-- ✅ Maneuver banner + remaining time/distance
+- ✅ **Google-style maneuver banner** — a large **directional turn arrow** (the
+  maneuver-type glyph, not a generic icon), the distance, the instruction with
+  inline **highway/exit shields**, a **lane-guidance** strip, and a compact
+  **"then <icon> …"** preview of the maneuver after this one — + remaining
+  time/distance on the bottom bar
 - ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map
 - 🟡 **Foreground navigation service** — guidance continues with the app
   backgrounded / screen off, persistent notification (this iteration)
 - 🟡 **Periodic live re-routing** — every ~2 min while underway, re-check
   traffic; if a meaningfully faster route exists, announce it and offer to
   switch (this iteration)
-- ⬜ Lane guidance / speed limits / speed-camera + hazard alerts
+- ⬜ Speed limits / speed-camera + hazard alerts (lane guidance ✅ done above)
 - ⬜ Android Auto (needs GMS — likely out of scope)
 - ✅ **Arrival / trip summary** — on reaching the destination, a "You've arrived"
   card replaces the nav controls with the trip's total time and distance (and the
