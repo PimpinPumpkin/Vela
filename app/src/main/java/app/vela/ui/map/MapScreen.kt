@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Work
@@ -314,6 +315,7 @@ fun MapScreen(
                             suggestions = state.suggestions,
                             saved = state.saved,
                             recents = state.recents,
+                            recentPlaces = state.recentPlaces,
                             home = state.home,
                             work = state.work,
                             assigning = state.assigningShortcut,
@@ -328,6 +330,10 @@ fun MapScreen(
                             onPickRecent = {
                                 focusManager.clearFocus()
                                 vm.searchRecent(it)
+                            },
+                            onPickRecentPlace = {
+                                focusManager.clearFocus()
+                                vm.selectSaved(it)
                             },
                             onClearRecents = vm::clearRecents,
                             onPickShortcut = {
@@ -817,12 +823,14 @@ private fun SearchEntryContent(
     suggestions: List<Place>,
     saved: List<SavedPlace>,
     recents: List<String>,
+    recentPlaces: List<SavedPlace>,
     home: SavedPlace?,
     work: SavedPlace?,
     assigning: ShortcutKind?,
     onPickSuggestion: (Place) -> Unit,
     onPickSaved: (SavedPlace) -> Unit,
     onPickRecent: (String) -> Unit,
+    onPickRecentPlace: (SavedPlace) -> Unit,
     onClearRecents: () -> Unit,
     onPickShortcut: (ShortcutKind) -> Unit,
     onAssignShortcut: (ShortcutKind) -> Unit,
@@ -870,8 +878,21 @@ private fun SearchEntryContent(
                 Divider()
             }
         }
-        if (recents.isNotEmpty()) {
+        // Recently-opened places (pin icon) — one tap back to a place you just viewed.
+        if (recentPlaces.isNotEmpty()) {
             SectionLabel("Recent")
+            recentPlaces.forEach { rp ->
+                SuggestionRow(
+                    icon = Icons.Default.Place,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    label = rp.name,
+                    onClick = { onPickRecentPlace(rp) },
+                )
+                Divider()
+            }
+        }
+        if (recents.isNotEmpty()) {
+            SectionLabel("Recent searches")
             recents.forEach { q ->
                 SuggestionRow(
                     icon = Icons.Default.History,
@@ -885,7 +906,7 @@ private fun SearchEntryContent(
                 Text("Clear recent searches")
             }
         }
-        if (saved.isEmpty() && recents.isEmpty()) {
+        if (saved.isEmpty() && recents.isEmpty() && recentPlaces.isEmpty()) {
             Text(
                 "Search for places, addresses and categories.",
                 style = MaterialTheme.typography.bodyMedium,

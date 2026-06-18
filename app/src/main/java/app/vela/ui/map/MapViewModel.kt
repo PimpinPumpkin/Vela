@@ -11,6 +11,7 @@ import app.vela.core.data.OfflinePoiStore
 import app.vela.core.data.RouteCorridor
 import app.vela.core.data.OverpassPois
 import app.vela.core.data.PlaceShortcutStore
+import app.vela.core.data.RecentPlaceStore
 import app.vela.core.data.RecentSearchStore
 import app.vela.core.data.SavedPlaceStore
 import app.vela.core.data.tiles.MapStyle
@@ -85,6 +86,7 @@ data class MapUiState(
     val searching: Boolean = false,
     val resultsCollapsed: Boolean = false,
     val recents: List<String> = emptyList(),
+    val recentPlaces: List<SavedPlace> = emptyList(),
     val saved: List<SavedPlace> = emptyList(),
     val home: SavedPlace? = null,
     val work: SavedPlace? = null,
@@ -104,6 +106,7 @@ class MapViewModel @Inject constructor(
     private val voice: VoiceGuide,
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
+    private val recentPlaceStore: RecentPlaceStore,
     private val savedStore: SavedPlaceStore,
     private val shortcutStore: PlaceShortcutStore,
     private val calibration: CalibrationStore,
@@ -127,6 +130,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 recents = recentStore.recent(), saved = savedStore.saved(),
+                recentPlaces = recentPlaceStore.recent(),
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
             )
         }
@@ -219,7 +223,14 @@ class MapViewModel @Inject constructor(
 
     fun clearRecents() {
         recentStore.clear()
-        _state.update { it.copy(recents = emptyList()) }
+        recentPlaceStore.clear()
+        _state.update { it.copy(recents = emptyList(), recentPlaces = emptyList()) }
+    }
+
+    /** Record an opened place so the search page can offer one-tap return to it. */
+    private fun rememberRecentPlace(sp: SavedPlace) {
+        recentPlaceStore.add(sp)
+        _state.update { it.copy(recentPlaces = recentPlaceStore.recent()) }
     }
 
     // --- Home / Work shortcuts -------------------------------------------------
@@ -292,6 +303,7 @@ class MapViewModel @Inject constructor(
         if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         _state.update { it.copy(selected = base, center = base.location, reviews = emptyList(), reviewsLoading = false) }
+        rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
         // the star stays filled.
@@ -404,6 +416,7 @@ class MapViewModel @Inject constructor(
         }
         fetchReviews(p)
         fetchPhotos(p)
+        rememberRecentPlace(SavedPlace.of(p))
     }
 
     /** Pull the full photo gallery (~40+) by feature id and swap it in for the
@@ -517,6 +530,7 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(selected = full, placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
                 fetchPhotos(full)
+                rememberRecentPlace(SavedPlace.of(full))
             }
         }
     }
