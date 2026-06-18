@@ -48,6 +48,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Consistent sheet styling** — the place sheet, directions panel, route chooser, **steps list** and nav bar now all share one Google-grey palette (`ui/SheetPalette`: `#1F1F1F`/`#FFF` surface, fixed ink/dim text, teal accent, green/amber/red traffic) instead of three differently-coloured cards
 - ✅ **Alternate routes** — Google's 2-3 driving alternates are surfaced + selectable in the directions panel (e.g. "20 min · via I-80 E" / "21 min · via Co Hwy E6"); each draws along **Google's OWN route geometry** (delta-encoded in the response at `[0][7][i]`, decoded directly) so the line matches the via-label exactly, alternates included — **no more lines that double back on themselves or cut straight across** (the old scattered-point guess is gone; an open router is now only a fallback for routes Google omits geometry for)
 - ✅ Place sheet **peeks** (~56% screen) so the business info isn't immediately full-screen and the map stays visible above it; **drag the handle up to expand** (~92%, for the reviews), down to shrink, down again to dismiss. The body scrolls, so a tall place (hours + tabs) is fully reachable at either height
+- ✅ **Pin stays visible above the sheet** — opening a place pushes the map's optical centre up by the sheet height (MapLibre bottom padding) and zooms in, so the pin sits in the visible strip above the card instead of being hidden behind it (Google-style)
 - ⬜ Popular times; "hours updated N ago" (both place-RPC-only, absent from the search response); Updates/posts tab
 - ℹ️ Reviews are the **top ~20** — the `listentitiesreviews` endpoint serves a fixed page (offset ignored) and deeper paging is behind an obfuscated continuation token; not chased (fragility vs. value)
 - ✅ Place actions in a **Google-style quick-action row** (circular icon + label): **Call** (dialer), Website, Save, **Share menu (Google Maps link / coordinates / address)** — the actions are **evenly weighted across the full width** so all five fit on one row without the trailing Share icon clipping off the edge
@@ -138,7 +139,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   a threshold, **slides off and the next/previous step slides in** (a pager-style
   flick, not an instant swap); it greys out, shows that step, and the map's marker +
   camera move there; tap it to resume live guidance
-- ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map
+- ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map — placed at its **true cumulative distance** along the route line (matching the polyline's own length, not the summed step distances), so the previewed spot lands on the actual turn
 - 🟡 **Foreground navigation service** — guidance continues with the app
   backgrounded / screen off, persistent notification (this iteration)
 - 🟡 **Periodic live re-routing** — every ~2 min while underway, re-check

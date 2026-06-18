@@ -85,7 +85,12 @@ object RouteGeometry {
      *  by cumulative step distance. Google's distances/durations are kept. */
     fun reposition(route: Route, polyline: List<LatLng>): Route {
         if (polyline.size < 2) return route
-        val total = route.maneuvers.sumOf { it.distanceMeters }.coerceAtLeast(1.0)
+        // Use the polyline's own length (not the summed step distances) as the
+        // denominator so each turn lands at its true cumulative distance — see the
+        // note in DirectionsParser.placeManeuvers.
+        val total = (0 until polyline.size - 1)
+            .sumOf { polyline[it].distanceTo(polyline[it + 1]) }
+            .coerceAtLeast(1.0)
         var cum = 0.0
         val placed = route.maneuvers.map { m ->
             cum += m.distanceMeters

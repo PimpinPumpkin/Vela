@@ -80,6 +80,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
@@ -123,6 +124,12 @@ fun MapScreen(
     val state by vm.state.collectAsStateWithLifecycle()
     val darkTheme = isAppInDarkTheme()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
+    // When the place sheet is the active bottom UI it covers ~the bottom 56% of the
+    // screen, so push the map's optical centre up by that much to keep the focused
+    // pin visible above it.
+    val screenHeightPx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
+    val placeSheetUp = state.selected != null && !state.directionsOpen && !state.navigating
+    val cameraBottomInset = if (placeSheetUp) (screenHeightPx * 0.56f).toInt() else 0
     // MapTiler (when a key is built in) gives the Google-like look + its own
     // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
     // with our own dark/light recolour.
@@ -200,6 +207,7 @@ fun MapScreen(
             myLocation = state.myLocation,
             myBearing = state.myBearing,
             cameraTarget = state.center,
+            cameraBottomInsetPx = cameraBottomInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             routeColor = routeTrafficColor(state.activeRoute),
             markers = markersOf(state),

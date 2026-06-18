@@ -95,6 +95,7 @@ fun VelaMapView(
     myLocation: LatLng?,
     myBearing: Float?,
     cameraTarget: LatLng?,
+    cameraBottomInsetPx: Int = 0,
     routePolyline: List<LatLng>,
     routeColor: String,
     markers: List<MapMarker>,
@@ -139,6 +140,7 @@ fun VelaMapView(
     var styleRef by remember { mutableStateOf<Style?>(null) }
     var appliedStyleKey by remember { mutableStateOf<String?>(null) }
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
+    var lastInsetPx by remember { mutableStateOf(-1) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
@@ -274,6 +276,15 @@ fun VelaMapView(
         }
 
         if (previewTarget == null) lastPreviewTarget = null
+        // Shift the map's optical centre up by the bottom-sheet height so the
+        // focused pin sits in the *visible* strip above the place sheet instead of
+        // being hidden behind it. Padding is the map's single source of truth, so
+        // every camera move below respects it. Reset to 0 when no sheet is up.
+        if (cameraBottomInsetPx != lastInsetPx) {
+            lastInsetPx = cameraBottomInsetPx
+            map.setPadding(0, 0, 0, cameraBottomInsetPx)
+            lastCameraTarget = null // re-frame the current target against the new inset
+        }
         when {
             // Previewing a step takes over the camera (and holds, suppressing
             // nav-follow) so you can look ahead at where you'd turn.
@@ -333,8 +344,11 @@ fun VelaMapView(
                 val target = cameraTarget ?: myLocation
                 if (target != null && target != lastCameraTarget) {
                     lastCameraTarget = target
+                    // Zoom in closer when a place sheet is up (focusing a single pin),
+                    // looser for a plain recenter.
+                    val zoom = if (cameraBottomInsetPx > 0) 16.5 else 14.5
                     map.animateCamera(
-                        CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), 14.5),
+                        CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom),
                     )
                 }
             }

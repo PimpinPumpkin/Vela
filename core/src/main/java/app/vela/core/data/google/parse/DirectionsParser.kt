@@ -152,14 +152,21 @@ object DirectionsParser {
         else -> if (s?.contains("ROUNDABOUT") == true) ManeuverType.ROUNDABOUT else ManeuverType.UNKNOWN
     }
 
-    /** Position each maneuver along the polyline by its cumulative step distance. */
+    /** Position each maneuver at its *actual* cumulative step distance along the
+     *  route line. Using the polyline's own length as the denominator (not the
+     *  summed step distances) matters: Google's step `meters` and its geometry
+     *  length differ by a few percent, and dividing by the step-sum stretched every
+     *  mid-route turn off its real spot — so tapping a step landed near, but not on,
+     *  the actual turn. Matching the polyline length pins each turn where it is. */
     private fun placeManeuvers(maneuvers: List<Maneuver>, polyline: List<LatLng>): List<Maneuver> {
         if (maneuvers.isEmpty() || polyline.size < 2) return maneuvers
-        val total = maneuvers.sumOf { it.distanceMeters }.coerceAtLeast(1.0)
+        val polyLength = (0 until polyline.size - 1)
+            .sumOf { polyline[it].distanceTo(polyline[it + 1]) }
+            .coerceAtLeast(1.0)
         var cum = 0.0
         return maneuvers.map { m ->
             cum += m.distanceMeters
-            m.copy(location = pointAlong(polyline, (cum / total).coerceIn(0.0, 1.0)))
+            m.copy(location = pointAlong(polyline, (cum / polyLength).coerceIn(0.0, 1.0)))
         }
     }
 
