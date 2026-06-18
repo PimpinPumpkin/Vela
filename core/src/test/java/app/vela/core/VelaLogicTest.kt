@@ -291,4 +291,35 @@ class TransitParserTest {
     fun throwsWhenShapeMissing() {
         TransitParser.parse(Json.parseToJsonElement("[[1,2,3]]"))
     }
+
+    // Drill-down legs live at trip[1][0][1] in the same payload: each leg's
+    // summary is leg[0] (dur [3][1], dist [2][1], mode/line badge [14]); board/
+    // alight times are the first/last "h:mm AM" strings anywhere in the leg.
+    private val walkLeg = """[[null,null,[null,"0.3 mi"],[null,"7 min"],null,null,null,null,null,null,null,null,null,null,""" +
+        """[[4,null,[3,"walk.png",null,"Walk"]]]]]"""
+    private val busLeg = """[[null,null,null,[null,"53 min"],null,null,null,null,null,null,null,null,null,null,""" +
+        """[[4,null,[3,"bus2.png",null,"Bus"]],[5,["42B",1,"#008751","#ffffff"]]]],""" +
+        """null,null,null,null,[["Fifth St & G St","5:48 AM"],["W. Capitol","6:41 AM"]]]"""
+
+    @Test
+    fun parsesTransitStepsFromSamePayload() {
+        val legs = "[[null,[$walkLeg,$busLeg]]]" // = trip[1]; trip[1][0][1] is the leg list
+        val list = TransitParser.parse(Json.parseToJsonElement("[[null,[[$itin0,$legs]]]]"))
+        assertEquals(1, list.size)
+        val steps = list[0].steps
+        assertEquals(2, steps.size)
+        // leg 0 — a walk: no line, no board/alight time, but a duration + distance
+        assertEquals(TransitMode.WALK, steps[0].mode)
+        assertEquals("7 min", steps[0].durationText)
+        assertEquals("0.3 mi", steps[0].distanceText)
+        assertEquals(null, steps[0].line)
+        assertEquals(null, steps[0].departText)
+        // leg 1 — the ride: line, colour, board + alight times
+        assertEquals(TransitMode.BUS, steps[1].mode)
+        assertEquals("53 min", steps[1].durationText)
+        assertEquals("42B", steps[1].line?.name)
+        assertEquals("#008751", steps[1].line?.colorHex)
+        assertEquals("5:48 AM", steps[1].departText)
+        assertEquals("6:41 AM", steps[1].arriveText)
+    }
 }

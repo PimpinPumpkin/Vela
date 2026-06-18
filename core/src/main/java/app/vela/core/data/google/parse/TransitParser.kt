@@ -9,6 +9,7 @@ import app.vela.core.data.google.str
 import app.vela.core.model.TransitItinerary
 import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
+import app.vela.core.model.TransitStep
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 
@@ -65,7 +66,49 @@ object TransitParser {
             distanceText = t.at(2, 1).str(),
             agency = t.at(6, 4, 0, 0).str(),
             lines = parseLines(t.at(14)),
+            steps = parseSteps(trip.at(1, 0, 1)),
         )
+    }
+
+    /** The ordered legs (walk/ride) for the drill-down — they live at
+     *  `trip[1][0][1]` in the SAME payload (no extra RPC). Each leg's summary is
+     *  `leg[0]` (duration `[3][1]`, distance `[2][1]`, mode/line badge `[14]`);
+     *  board/alight times are the first/last "h:mm AM" strings in the leg.
+     *  (Intermediate stop names sit in the leg's stop array too, but that index
+     *  is pinned from a single capture, so it's deferred until device-verified.) */
+    private fun parseSteps(legs: JsonElement?): List<TransitStep> {
+        val arr = legs.arr() ?: return emptyList()
+        return arr.mapNotNull { runCatching { parseStep(it) }.getOrNull() }
+            .filter { it.durationText != null || it.line != null }
+    }
+
+    private fun parseStep(leg: JsonElement): TransitStep {
+        val sum = leg.at(0) ?: leg
+        val line = parseLines(sum.at(14)).firstOrNull()
+        val times = collectTimes(leg)
+        return TransitStep(
+            mode = line?.mode ?: TransitMode.WALK,
+            durationText = sum.at(3, 1).str(),
+            distanceText = sum.at(2, 1).str(),
+            line = line,
+            departText = if (line != null) times.firstOrNull() else null,
+            arriveText = if (line != null) times.lastOrNull() else null,
+        )
+    }
+
+    private val TIME = Regex("""^\d{1,2}:\d{2}\s?[AP]M$""")
+
+    /** Every "h:mm AM/PM" in a leg, in document order — board time first, alight last. */
+    private fun collectTimes(leg: JsonElement): List<String> {
+        val out = ArrayList<String>()
+        fun walk(n: JsonElement) {
+            when (n) {
+                is JsonArray -> n.forEach(::walk)
+                else -> n.str()?.let { if (TIME.matches(it)) out.add(it) }
+            }
+        }
+        walk(leg)
+        return out
     }
 
     /** Walk the badge subtree for transit-line nodes — `["<name>", <int>,

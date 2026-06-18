@@ -63,6 +63,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilledIconButton
@@ -106,6 +107,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.TransitItinerary
 import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
+import app.vela.core.model.TransitStep
 import app.vela.core.model.TravelMode
 import coil.compose.AsyncImage
 import app.vela.ui.RatingStars
@@ -414,11 +416,14 @@ private fun TransitBoard(
 
 @Composable
 private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean) {
+    var expanded by remember { mutableStateOf(false) }
+    val canExpand = t.steps.isNotEmpty()
     Column(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(if (dark) Color(0xFF202124) else Color(0xFFF1F3F4))
+            .then(if (canExpand) Modifier.clickable { expanded = !expanded } else Modifier)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -432,6 +437,14 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
             )
             if (range.isNotEmpty()) {
                 t.durationText?.let { Text(it, style = MaterialTheme.typography.titleSmall, color = dim) }
+            }
+            if (canExpand) {
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "Hide steps" else "Show steps",
+                    tint = dim,
+                    modifier = Modifier.padding(start = 4.dp).size(20.dp),
+                )
             }
         }
         if (t.lines.isNotEmpty()) {
@@ -452,6 +465,37 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
         }
         val sub = listOfNotNull(t.distanceText, t.agency).joinToString("  ·  ")
         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+        if (expanded) {
+            HorizontalDivider(color = dim.copy(alpha = 0.25f))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                t.steps.forEach { TransitStepRow(it, ink, dim) }
+            }
+        }
+    }
+}
+
+/** One leg in the expanded drill-down: a mode glyph + the line/"Walk" title and a
+ *  times·duration·distance subtitle ("Bus 42B / 5:48 AM – 6:41 AM · 53 min"). */
+@Composable
+private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color) {
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+        Icon(
+            transitModeIcon(s.mode),
+            contentDescription = null,
+            tint = s.line?.colorHex?.let { parseHexColor(it) } ?: dim,
+            modifier = Modifier.padding(top = 2.dp).size(18.dp),
+        )
+        Column {
+            Text(s.line?.name ?: "Walk", style = MaterialTheme.typography.bodyMedium, color = ink)
+            val parts = listOfNotNull(
+                if (s.departText != null && s.arriveText != null) "${s.departText} – ${s.arriveText}" else null,
+                s.durationText,
+                s.distanceText,
+            )
+            if (parts.isNotEmpty()) {
+                Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.bodySmall, color = dim)
+            }
+        }
     }
 }
 
