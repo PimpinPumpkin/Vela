@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import app.vela.core.config.CalibrationStore
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
+import app.vela.core.data.MapLink
 import app.vela.core.data.OfflinePoiStore
 import app.vela.core.data.RouteCorridor
 import app.vela.core.data.OverpassPois
@@ -301,6 +302,21 @@ class MapViewModel @Inject constructor(
             } catch (e: Exception) {
                 _state.update { it.copy(searching = false, status = "Search failed") }
             }
+        }
+    }
+
+    /** Handle an external `geo:` / Google-Maps link (Vela as the system maps
+     *  handler): a query runs a search biased to any coordinates in the link; a
+     *  bare point drops a reverse-geocoded pin there. */
+    fun openDeepLink(link: MapLink) {
+        val near = link.lat?.let { la -> link.lng?.let { ln -> LatLng(la, ln) } }
+        val q = link.query
+        when {
+            !q.isNullOrBlank() -> {
+                _state.update { it.copy(query = q, center = near ?: it.center) }
+                runSearch(q, near ?: _state.value.myLocation ?: _state.value.center)
+            }
+            near != null -> onMapLongPress(near)
         }
     }
 

@@ -1,28 +1,51 @@
 package app.vela
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import app.vela.core.data.MapLinkParser
 import app.vela.ui.VelaRoot
+import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.VelaTheme
 import app.vela.ui.theme.isAppInDarkTheme
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    // Same instance the Compose tree gets (both resolve to this activity's store),
+    // so a deep link handled here shows up in the UI.
+    private val vm: MapViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        handleIntent(intent)
         setContent {
             // Read the theme at the call site (a recomposing scope) and pass it in
             // — reading it inside VelaTheme's default arg didn't reliably invalidate
             // VelaTheme, so MaterialTheme never flipped when the user changed it.
             VelaTheme(darkTheme = isAppInDarkTheme()) {
-                VelaRoot()
+                VelaRoot(vm = vm)
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    /** Vela registers for `geo:` URIs and Google-Maps web links so it can be the
+     *  system maps handler; turn whichever we got into a search or a dropped pin. */
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val data = intent.data?.toString() ?: return
+        MapLinkParser.parse(data)?.let { vm.openDeepLink(it) }
     }
 }
