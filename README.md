@@ -169,17 +169,26 @@ them); a cookieless request returns an empty envelope. It serves a **fixed top
 behind an obfuscated continuation token, deliberately not chased.
 
 **Photos** — the search response carries a **~10-photo preview** at
-`[1][105][0][1][0][i][6][0]`, and that's what the keyless path shows. The **full
-~40+ gallery is gated behind a Google sign-in**: the `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX`
-RPC (`/MapsPhotoService.ListEntityPhotos`, feature id at proto `[2][0]`) returns
-the user gallery **only for a logged-in session**; on Vela's **anonymous** session
-it returns just **Street View thumbnails** (`streetviewpixels-pa.googleapis.com`)
-at the same `[i][6][0]` leaf. So [`PhotosParser`](core/src/main/java/app/vela/core/data/google/parse/PhotosParser.kt)
-keeps **only `googleusercontent` user-photo URLs** (Street View filtered out → empty
-on the anonymous session → the caller keeps the preview). The `hspqX` plumbing
-stays wired + remotely-calibratable, but yields nothing extra keyless. *(The
-gallery was mistakenly verified in a logged-in browser; corrected 2026-06-17 —
-don't drop the filter or non-loading Street View tiles show as "photos".)*
+`[1][105][0][1][0][i][6][0]` (the immediate hero). The **full gallery (~30–40)**
+comes from the `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` RPC
+(`/MapsPhotoService.ListEntityPhotos`, feature id at proto `[2][0]`), and it's the
+one endpoint that **only a real browser engine** can reach: a plain HTTP client —
+even with perfect headers + consent cookies — gets a degraded **Street-View-only**
+reply (`streetviewpixels-pa.googleapis.com`), because the bot-detection is at the
+**TLS/fingerprint** level (on-device, OkHttp gets a 162 KB token-less "lite" page).
+So [`WebPhotoFetcher`](app/src/main/java/app/vela/web/WebPhotoFetcher.kt) runs a
+**hidden WebView** (real Chromium): it loads `maps.google.com` as an **anonymous,
+no-login** session — exactly like a logged-out browser, which *does* show the
+photos — then runs a same-origin `fetch` to the RPC and returns the raw response
+over a JS bridge, which [`PhotosParser`](core/src/main/java/app/vela/core/data/google/parse/PhotosParser.kt)
+turns into `googleusercontent` URLs (`[i][6][0]`; Street View filtered as a
+belt-and-braces). **Keyless** (no key, no account); lazy + best-effort (failure →
+keep the preview). Gotchas: **desktop UA** (a mobile UA makes Google redirect to
+`intent://` the native app), **block non-http(s) redirects**, and a `Handler` not
+`View.postDelayed` (a headless WebView never attaches, so View timers never fire).
+*(Earlier I wrongly called the gallery sign-in-gated — that was from testing in a
+logged-in browser **and** a bot-degraded HTTP client; a real anonymous browser
+engine gets it. Corrected 2026-06-17.)*
 
 **Remote calibration.** The brittle bits that drift — the `pb`/proto templates and
 the endpoint URLs above (search, directions, reviews, **photos**) — are not

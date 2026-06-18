@@ -24,6 +24,7 @@ import app.vela.core.nav.NavState
 import app.vela.core.voice.VoiceEngine
 import app.vela.core.voice.VoiceGuide
 import app.vela.service.NavigationService
+import app.vela.web.WebPhotoFetcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -88,6 +89,7 @@ class MapViewModel @Inject constructor(
     private val savedStore: SavedPlaceStore,
     private val calibration: CalibrationStore,
     private val offlinePoiStore: OfflinePoiStore,
+    private val webPhotos: WebPhotoFetcher,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
@@ -225,13 +227,15 @@ class MapViewModel @Inject constructor(
     }
 
     /** Pull the full photo gallery (~40+) by feature id and swap it in for the
-     *  search response's ~10-photo preview. Best-effort: an empty/failed fetch
-     *  leaves the preview untouched (no regression). */
+     *  search response's ~10-photo preview. Goes through [WebPhotoFetcher] — a real
+     *  browser session is the only thing Google serves the gallery to (the OkHttp
+     *  path just gets Street View). Best-effort: an empty/failed fetch leaves the
+     *  preview untouched (no regression). */
     private fun fetchPhotos(p: Place) {
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         viewModelScope.launch {
-            val full = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+            val full = runCatching { webPhotos.fetch(fid) }.getOrDefault(emptyList())
             if (full.isNotEmpty()) {
                 _state.update { st ->
                     val sel = st.selected

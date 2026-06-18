@@ -91,6 +91,14 @@ genuinely needs no doc edit, say why in the commit.
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
+- **Photos use a hidden WebView** (`app/web/WebPhotoFetcher`). The full gallery RPC
+  (`hspqX`) serves real photos only to a real browser engine — OkHttp gets a
+  bot-degraded Street-View-only reply (TLS-fingerprint detection, not headers).
+  The WebView loads `maps.google.com` **anonymously (no login)** and same-origin-
+  fetches the RPC. This is the one place we run Google's JS — an accepted tradeoff
+  for richer photos (lazy, best-effort, OkHttp fallback). Gotchas: **desktop UA**
+  (mobile UA → Google deep-links to `intent://`), block non-http(s) redirects, and
+  use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
 
 ## Name
 
