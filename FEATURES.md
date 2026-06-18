@@ -80,9 +80,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   and reads the itinerary set out of `APP_INITIALIZATION_STATE` (the longest
   `)]}'` payload at slot [3]); `TransitParser` (keyless) parses it. **Verified
   on-device** Davis→Sacramento (6 options: Amtrak Thruway, Yolobus 42B/43/44, …).
-- ⬜ Transit **per-stop drill-down** (intermediate stops + the ridden polyline) —
-  present in the same payload at `trip[1]` (and a richer `sv1Drc` batchexecute);
-  the board is the first layer, this is the next.
+- ✅ Transit **leg drill-down** — tap an itinerary to expand its ordered legs
+  ("Walk 7 min → Bus 42B 5:48–6:41 AM (53 min) → Walk 7 min"): each leg shows its
+  mode glyph, the ridden line (name + colour) or "Walk", and board/alight times +
+  duration/distance. Parsed (unit-tested) from `trip[1]` in the **same** keyless
+  fetch — no extra RPC. *(UI built; on-device visual check pending — phone was off
+  ADB when it shipped.)*
+- ⬜ Transit drill-down **stop names + ridden polyline** — the intermediate stops
+  (board/alight stop names) sit in the leg's stop array and the shape in the same
+  payload; deferred until the index can be device-verified (pinned from one capture).
 - ⬜ Departure/arrival time selection; avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
