@@ -52,6 +52,9 @@ import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
 private const val ROUTE_SRC = "vela-route-src"
 private const val ROUTE_LAYER = "vela-route"
+private const val ALT_ROUTE_SRC = "vela-alt-route-src"
+private const val ALT_ROUTE_LAYER = "vela-alt-route"
+private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 private const val PIN_IMG = "vela-pin"
@@ -98,6 +101,9 @@ fun VelaMapView(
     cameraBottomInsetPx: Int = 0,
     routePolyline: List<LatLng>,
     routeColor: String,
+    alternates: List<Pair<Int, List<LatLng>>> = emptyList(),
+    altColor: String = "#9AA0A6",
+    onSelectAlternate: (Int) -> Unit = {},
     markers: List<MapMarker>,
     frameMarkers: Boolean,
     navMode: Boolean,
@@ -130,6 +136,7 @@ fun VelaMapView(
     val longPress = rememberUpdatedState(onMapLongPress)
     val navPanned = rememberUpdatedState(onNavPanned)
     val scaleChanged = rememberUpdatedState(onScaleChanged)
+    val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
     val downloadStatus = rememberUpdatedState(onDownloadStatus)
     val downloadArea = rememberUpdatedState(onDownloadArea)
@@ -184,6 +191,14 @@ fun VelaMapView(
                     val pin = feats.firstOrNull { it.hasProperty(MARKER_INDEX_PROP) }
                     if (pin != null) {
                         markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
+                        return@addOnMapClickListener true
+                    }
+                    // Tap a greyed alternate route line to switch to it (Google-style).
+                    val altHit = map.queryRenderedFeatures(
+                        RectF(p.x - r, p.y - r, p.x + r, p.y + r), ALT_ROUTE_LAYER,
+                    ).firstOrNull { it.hasProperty(ALT_INDEX_PROP) }
+                    if (altHit != null) {
+                        selectAlt.value(altHit.getNumberProperty(ALT_INDEX_PROP).toInt())
                         return@addOnMapClickListener true
                     }
                     // POIs are named Points; some only carry name:latin/name:en, so
@@ -277,12 +292,12 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, markers, myLocation, myBearing, previewTarget)
+                applyData(style, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, previewTarget)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, markers, myLocation, myBearing, previewTarget)
+                applyData(it, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, previewTarget)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -330,8 +345,14 @@ fun VelaMapView(
                 lastFittedRouteKey = routePolyline.hashCode()
                 val builder = MLLatLngBounds.Builder()
                 routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
+                // Reserve room at the bottom for the directions panel so the whole route
+                // (and its greyed alternates) frames ABOVE it, not behind it (Google-style).
+                val pad = 140
+                val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
                 runCatching {
-                    map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 140), 800)
+                    map.animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), pad, pad, pad, bottom), 800,
+                    )
                 }
             }
 
@@ -404,6 +425,18 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             ),
         )
+    }
+    // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
+    if (style.getSource(ALT_ROUTE_SRC) == null) {
+        style.addSource(GeoJsonSource(ALT_ROUTE_SRC))
+        val alt = LineLayer(ALT_ROUTE_LAYER, ALT_ROUTE_SRC).withProperties(
+            PropertyFactory.lineColor("#9AA0A6"),
+            PropertyFactory.lineWidth(5f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+        )
+        if (style.getLayer(ROUTE_LAYER) != null) style.addLayerBelow(alt, ROUTE_LAYER)
+        else style.addLayer(alt)
     }
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
@@ -699,6 +732,8 @@ private fun applyData(
     style: Style,
     route: List<LatLng>,
     routeColor: String,
+    alternates: List<Pair<Int, List<LatLng>>>,
+    altColor: String,
     markers: List<MapMarker>,
     me: LatLng?,
     bearing: Float?,
@@ -714,6 +749,16 @@ private fun applyData(
     style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
     // Tint the route line by congestion (amber/red when slower than typical).
     style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(routeColor))
+
+    val altFc = FeatureCollection.fromFeatures(
+        alternates.filter { it.second.size >= 2 }.map { (idx, line) ->
+            Feature.fromGeometry(
+                LineString.fromLngLats(line.map { Point.fromLngLat(it.lng, it.lat) }),
+            ).apply { addNumberProperty(ALT_INDEX_PROP, idx) }
+        },
+    )
+    style.getSourceAs<GeoJsonSource>(ALT_ROUTE_SRC)?.setGeoJson(altFc)
+    style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(altColor))
 
     val markersFc = FeatureCollection.fromFeatures(
         markers.mapIndexed { i, m ->

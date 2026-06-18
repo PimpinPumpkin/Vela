@@ -137,7 +137,13 @@ fun MapScreen(
     // pin visible above it.
     val screenHeightPx = with(LocalDensity.current) { LocalConfiguration.current.screenHeightDp.dp.toPx() }
     val placeSheetUp = state.selected != null && !state.directionsOpen && !state.navigating
-    val cameraBottomInset = if (placeSheetUp) (screenHeightPx * 0.56f).toInt() else 0
+    // Push the optical centre up so the place sheet / directions panel doesn't sit on
+    // top of the pin or the route (the directions panel is tall — fit the route above it).
+    val cameraBottomInset = when {
+        placeSheetUp -> (screenHeightPx * 0.56f).toInt()
+        state.directionsOpen && !state.navigating -> (screenHeightPx * 0.58f).toInt()
+        else -> 0
+    }
     // MapTiler (when a key is built in) gives the Google-like look + its own
     // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
     // with our own dark/light recolour.
@@ -219,6 +225,15 @@ fun MapScreen(
             cameraBottomInsetPx = cameraBottomInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             routeColor = routeTrafficColor(state.activeRoute),
+            // Greyed, tappable alternates (Google-style) — only off-nav, with a chooser up.
+            alternates = if (state.navigating) emptyList() else run {
+                val activeIdx = state.routes.indexOf(state.activeRoute)
+                state.routes.mapIndexedNotNull { i, r ->
+                    if (i != activeIdx && r.polyline.size >= 2) i to r.polyline else null
+                }
+            },
+            altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
+            onSelectAlternate = vm::selectRoute,
             markers = markersOf(state),
             frameMarkers = state.results.isNotEmpty() && state.selected == null,
             navMode = state.navigating,
