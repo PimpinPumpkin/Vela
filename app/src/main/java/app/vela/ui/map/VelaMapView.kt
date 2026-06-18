@@ -427,11 +427,16 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     if (dark) applyDark(style) else applyLight(style)
     PoiIcons.applyToLiberty(style, dark)
-    // Hide Liberty clutter Google doesn't draw: the dashed footpaths/sidewalks
-    // (read as weird "walking tracks") and the dashed park outlines.
+    // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
+    // park outlines, the stepped admin/city/county BOUNDARY lines, and the railroad
+    // cross-tie hatching (the solid rail line stays). All read as weird stray dashes.
     listOf(
-        "road_path_pedestrian", "bridge_path_pedestrian", "tunnel_path_pedestrian",
+        "road_path_pedestrian", "bridge_path_pedestrian", "bridge_path_pedestrian_casing", "tunnel_path_pedestrian",
         "park_outline",
+        "boundary_2", "boundary_3", "boundary_disputed",
+        "road_major_rail_hatching", "road_transit_rail_hatching",
+        "bridge_major_rail_hatching", "bridge_transit_rail_hatching",
+        "tunnel_major_rail_hatching", "tunnel_transit_rail_hatching",
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
 }
 
