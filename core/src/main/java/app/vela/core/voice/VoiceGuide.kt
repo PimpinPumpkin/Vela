@@ -53,11 +53,33 @@ class VoiceGuide @Inject constructor(
         if (status != TextToSpeech.SUCCESS) return
         val t = tts ?: return
         val locale = Locale.getDefault()
-        t.language = if (t.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) locale else Locale.US
+        val lang = if (t.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) locale else Locale.US
+        t.language = lang
+        // A measured pace + neutral pitch reads more like a real nav voice than
+        // the engine default (often a touch fast/robotic on stock Pico).
+        t.setSpeechRate(0.97f)
+        t.setPitch(1.0f)
+        selectBestVoice(t, lang)
         ready = true
         while (pending.isNotEmpty()) {
             val (text, interrupt) = pending.removeFirst()
             speakNow(text, interrupt)
+        }
+    }
+
+    /** Pick the highest-quality voice for [lang] that works offline — engines
+     *  often default to a low-quality or download-required voice; this lifts
+     *  guidance to the best installed one so it sounds natural in the car. */
+    private fun selectBestVoice(t: TextToSpeech, lang: Locale) {
+        runCatching {
+            val best = t.voices.orEmpty()
+                .filter {
+                    it.locale.language == lang.language &&
+                        !it.isNetworkConnectionRequired &&
+                        it.features?.contains(TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED) != true
+                }
+                .maxByOrNull { it.quality }
+            if (best != null) t.voice = best
         }
     }
 

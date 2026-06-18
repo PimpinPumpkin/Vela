@@ -2,7 +2,10 @@ package app.vela.ui.nav
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -54,6 +57,7 @@ import app.vela.ui.formatDuration
  * can see where you'd turn ([onStep]); [currentStep] is highlighted while
  * navigating, [previewIndex] while previewing.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun StepsSheet(
     maneuvers: List<Maneuver>,
@@ -108,6 +112,14 @@ fun StepsSheet(
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                             )
+                            val signs = roadSigns(m.instruction)
+                            if (signs.isNotEmpty()) {
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                    modifier = Modifier.padding(top = 3.dp),
+                                ) { signs.forEach { SignChip(it) } }
+                            }
                             m.road?.let {
                                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
