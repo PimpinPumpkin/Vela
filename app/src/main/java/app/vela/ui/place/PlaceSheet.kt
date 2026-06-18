@@ -1043,8 +1043,8 @@ private fun SheetAction(
     }
 }
 
-/** Share action: opens a small menu — a Google Maps link, raw coordinates, or
- *  just the address. */
+/** Share action: opens a small menu — a Google Maps link, a keyless geo: pin
+ *  (opens in any maps app, incl. Vela), raw coordinates, or just the address. */
 @Composable
 private fun ShareAction(place: Place, labelColor: Color, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -1073,6 +1073,12 @@ private fun ShareAction(place: Place, labelColor: Color, modifier: Modifier = Mo
             DropdownMenuItem(
                 text = { Text("Google Maps link") },
                 onClick = { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") },
+            )
+            // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
+            // degoogled-friendly way to send a pin.
+            DropdownMenuItem(
+                text = { Text("Map pin (geo:)") },
+                onClick = { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") },
             )
             DropdownMenuItem(
                 text = { Text("Coordinates") },
