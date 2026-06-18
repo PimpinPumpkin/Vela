@@ -39,6 +39,8 @@ import app.vela.BuildConfig
 import app.vela.core.data.tiles.MapStyle
 import app.vela.ui.Units
 import app.vela.ui.map.MapViewModel
+import app.vela.ui.theme.AppTheme
+import app.vela.ui.theme.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +65,25 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
+            SectionTitle("Appearance")
+            SelectableRow(
+                label = "Follow system",
+                selected = AppTheme.mode.value == ThemeMode.SYSTEM,
+                onClick = { AppTheme.set(context, ThemeMode.SYSTEM) },
+            )
+            SelectableRow(
+                label = "Light",
+                selected = AppTheme.mode.value == ThemeMode.LIGHT,
+                onClick = { AppTheme.set(context, ThemeMode.LIGHT) },
+            )
+            SelectableRow(
+                label = "Dark",
+                selected = AppTheme.mode.value == ThemeMode.DARK,
+                onClick = { AppTheme.set(context, ThemeMode.DARK) },
+            )
+            Hint("Light/Dark applies to Vela only — it won't touch your phone's system theme.")
+
+            Spacer(Modifier.height(20.dp))
             SectionTitle("Map style")
             MapStyle.values().forEach { style ->
                 SelectableRow(

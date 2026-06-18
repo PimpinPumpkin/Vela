@@ -12,7 +12,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
+import app.vela.ui.theme.isAppInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -143,7 +143,7 @@ fun PlaceSheet(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val dark = isSystemInDarkTheme()
+    val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
     // Tapping "Directions" reveals a travel-mode chooser; a tapped photo opens the

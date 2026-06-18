@@ -11,7 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.isSystemInDarkTheme
+import app.vela.ui.theme.isAppInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -98,7 +98,7 @@ fun MapScreen(
     onOpenSettings: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    val darkTheme = isSystemInDarkTheme()
+    val darkTheme = isAppInDarkTheme()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // MapTiler (when a key is built in) gives the Google-like look + its own
     // light/dark styles; otherwise fall back to the keyless OpenFreeMap basemap
@@ -524,24 +524,27 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     Modifier
                         .fillMaxWidth()
                         .clickable { onPick(place) }
-                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
                 ) {
-                    Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyLarge)
+                    // Bigger, more legible rows (the address/category line read too
+                    // small before): name at titleMedium, the secondary lines bumped
+                    // from bodySmall→bodyMedium with a touch more breathing room.
+                    Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
                     place.rating?.let { r ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.padding(top = 2.dp),
+                            modifier = Modifier.padding(top = 3.dp),
                         ) {
                             Text(
                                 String.format(Locale.US, "%.1f", r),
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
-                            RatingStars(r, starSize = 12.dp, modifier = Modifier.padding(horizontal = 4.dp))
+                            RatingStars(r, starSize = 14.dp, modifier = Modifier.padding(horizontal = 4.dp))
                             place.reviewCount?.let {
                                 Text(
                                     "($it)",
-                                    style = MaterialTheme.typography.bodySmall,
+                                    style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
                             }
@@ -552,26 +555,32 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         place.distanceMeters?.let { formatDistance(it) },
                     ).joinToString(" · ")
                     if (sub.isNotEmpty()) {
-                        Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            sub,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 1.dp),
+                        )
                     }
                     // Full address (city/state/zip) to disambiguate similar names
                     // and identical-looking residential addresses.
                     place.address?.let { addr ->
                         Text(
                             addr,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.padding(top = 1.dp),
                         )
                     }
                     place.statusText?.let { status ->
                         Text(
                             status,
-                            style = MaterialTheme.typography.bodySmall,
+                            style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = placeStatusColor(status),
-                            modifier = Modifier.padding(top = 2.dp),
+                            modifier = Modifier.padding(top = 3.dp),
                         )
                     }
                 }

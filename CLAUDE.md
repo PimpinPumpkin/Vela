@@ -50,6 +50,13 @@ genuinely needs no doc edit, say why in the commit.
 - The one seam is `core/data/MapDataSource`. `MockMapDataSource` is the default
   and keeps the entire app usable offline; `google/GoogleMapsDataSource` is the
   real scraper.
+- **Light/dark is `AppTheme` (`ui/theme/AppTheme.kt`), not the OS.** Read the
+  in-app theme with the composable **`isAppInDarkTheme()`** — never call
+  `isSystemInDarkTheme()` directly in app UI (it ignores the user's Light/Dark/
+  System choice in Settings → Appearance). `AppTheme.mode` is a process-wide
+  reactive `mutableStateOf` (same shape as `ui/Units`), persisted to
+  `vela_settings`, `init()`-ed in `VelaApp`; flipping it recomposes the theme and
+  reloads the map style (`VelaMapView`'s styleKey carries `dark=`).
 
 ## Working on the scraper
 
