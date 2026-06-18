@@ -10,6 +10,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
@@ -82,6 +83,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -97,6 +99,11 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -148,12 +155,34 @@ fun PlaceSheet(
 
     // The place card PEEKS at ~half-screen (so business info isn't immediately
     // full-screen); drag the handle up to expand for the reviews.
-    var sheetExpanded by remember(place.id) { mutableStateOf(false) }
+    val expandedState = remember(place.id) { mutableStateOf(false) }
     val screenH = LocalConfiguration.current.screenHeightDp
     val maxSheetHeight by animateDpAsState(
-        if (sheetExpanded) (screenH * 0.92f).dp else (screenH * 0.56f).dp,
+        if (expandedState.value) (screenH * 0.92f).dp else (screenH * 0.56f).dp,
         label = "placeSheetHeight",
     )
+    // Swipe down ANYWHERE on the sheet to dismiss (not just the handle): a nested-
+    // scroll handler watches the body — when it's at the top, a downward drag first
+    // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
+    val bodyScroll = rememberScrollState()
+    val onCloseUpdated = rememberUpdatedState(onClose)
+    val dismissConn = remember(place.id) {
+        object : NestedScrollConnection {
+            private var acc = 0f
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && bodyScroll.value == 0) {
+                    acc += available.y
+                    when {
+                        expandedState.value && acc > 90f -> { expandedState.value = false; acc = 0f }
+                        !expandedState.value && acc > 150f -> { acc = 0f; onCloseUpdated.value() }
+                    }
+                    return available
+                }
+                if (available.y < 0f) acc = 0f
+                return Offset.Zero
+            }
+        }
+    }
     Card(
         modifier.fillMaxWidth().heightIn(max = maxSheetHeight),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -172,8 +201,8 @@ fun PlaceSheet(
                             onVerticalDrag = { change, dy -> change.consume(); total += dy },
                             onDragEnd = {
                                 when {
-                                    total < -40f -> sheetExpanded = true
-                                    total > 40f && sheetExpanded -> sheetExpanded = false
+                                    total < -40f -> expandedState.value = true
+                                    total > 40f && expandedState.value -> expandedState.value = false
                                     total > 40f -> onClose()
                                 }
                             },
@@ -191,7 +220,8 @@ fun PlaceSheet(
             }
             Column(
                 Modifier
-                    .verticalScroll(rememberScrollState())
+                    .nestedScroll(dismissConn)
+                    .verticalScroll(bodyScroll)
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
             // Photo hero at the top (Google-style) — always visible, even at the
@@ -637,12 +667,47 @@ private fun PhotoGallery(urls: List<String>, start: Int, onDismiss: () -> Unit) 
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-                AsyncImage(
-                    model = urls[page].atWidth(1280),
-                    contentDescription = null,
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize(),
-                )
+                // Per-photo pinch-to-zoom (+ pan when zoomed) and swipe-down-to-dismiss.
+                var scale by remember { mutableStateOf(1f) }
+                var offset by remember { mutableStateOf(Offset.Zero) }
+                var dismissY by remember { mutableStateOf(0f) }
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .pointerInput(Unit) {
+                            detectTransformGestures { _, pan, zoom, _ ->
+                                scale = (scale * zoom).coerceIn(1f, 5f)
+                                offset = if (scale > 1f) offset + pan else Offset.Zero
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragEnd = {
+                                    if (scale <= 1f && dismissY > 240f) onDismiss()
+                                    dismissY = 0f
+                                },
+                                onVerticalDrag = { _, dy ->
+                                    if (scale <= 1f) dismissY = (dismissY + dy).coerceAtLeast(0f)
+                                },
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    AsyncImage(
+                        model = urls[page].atWidth(1280),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer(
+                                scaleX = scale,
+                                scaleY = scale,
+                                translationX = offset.x,
+                                translationY = offset.y + dismissY,
+                                alpha = (1f - dismissY / 1000f).coerceIn(0.4f, 1f),
+                            ),
+                    )
+                }
             }
             Text(
                 "${pager.currentPage + 1} / ${urls.size}",

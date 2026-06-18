@@ -457,9 +457,15 @@ private fun ensureTraffic(style: Style, on: Boolean) {
             style.addSource(RasterSource(TRAFFIC_SRC, TileSet("2.2.0", TRAFFIC_TILES), 256))
         }
         val layer = RasterLayer(TRAFFIC_LAYER, TRAFFIC_SRC)
-        val anchor = ROUTE_LAYER.takeIf { style.getLayer(it) != null }
-            ?: style.layers.firstOrNull { it is SymbolLayer }?.id
-        if (anchor != null) style.addLayerBelow(layer, anchor) else style.addLayer(layer)
+        // Above the route line so the route's blue doesn't cover the traffic colours
+        // (you want to see the congestion on your route); still below the labels.
+        when {
+            style.getLayer(ROUTE_LAYER) != null -> style.addLayerAbove(layer, ROUTE_LAYER)
+            else -> {
+                val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
+                if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+            }
+        }
     } else if (!on && present) {
         style.removeLayer(TRAFFIC_LAYER)
         style.getSource(TRAFFIC_SRC)?.let { runCatching { style.removeSource(it) } }

@@ -31,7 +31,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list — fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
 - ✅ Search-result rows show **5-star rating**, colour-coded open/closed status, and the **full address (city/state/ZIP)** to disambiguate similar names / lookalike residential addresses — **sized for legibility** (name at titleMedium, the rating/category/address lines bumped up from the cramped small text)
-- ✅ Place sheet (**Google-styled**): high-contrast white-on-dark / black-on-white name + status time (fixed palette, not washed-out by Material You), **5-star rating visual**, **swipe-down to dismiss**, status with the **word colour-coded** (Open green / Closed red) and the time in plain ink, price, **full address with a copy button**, **collapsible weekly hours** (today first, expand for the week)
+- ✅ Place sheet (**Google-styled**): high-contrast white-on-dark / black-on-white name + status time (fixed palette, not washed-out by Material You), **5-star rating visual**, **swipe-down to dismiss from anywhere on the sheet** (a nested-scroll handler: at the top of the body a downward drag collapses then dismisses; mid-list it scrolls), status with the **word colour-coded** (Open green / Closed red) and the time in plain ink, price, **full address with a copy button**, **collapsible weekly hours** (today first, expand for the week)
+- ✅ Full-screen photo viewer: **pinch-to-zoom** (+ pan when zoomed) and **swipe-down-to-dismiss**, swipe sideways between photos
 - ✅ Viewport-biased "near me" search
 - ✅ Recent searches (persisted)
 - ✅ **Full-screen search page** (Google-style) — focusing the search box opens an opaque page with saved + recent searches over the map (back arrow / back gesture closes it); running a search drops back to the map with the results list + red pins
@@ -58,7 +59,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Routing & traffic
 - ✅ Driving directions with **real traffic-aware ETA** (live `duration_in_traffic`)
-- ✅ **Live traffic overlay** — Google's actual congestion-coloured roads + incident markers, as a **keyless raster layer** (the web map's own public `/maps/vt?…!2straffic` PNG tiles on www.google.com — no API key). Toggle with the traffic-light button on the map; off by default. So you see true **per-segment** traffic (red on the jam, green where clear) on every road, including your route — what the route-line's whole-route tint can't show on its own
+- ✅ **Live traffic overlay** — Google's actual congestion-coloured roads + incident markers, as a **keyless raster layer** (the web map's own public `/maps/vt?…!2straffic` PNG tiles on www.google.com — no API key). Toggle with the traffic-light button on the map; off by default. Drawn **above** the route line so the route's blue doesn't hide the traffic colours. So you see true **per-segment** traffic (red on the jam, green where clear) on every road, including your route — what the route-line's whole-route tint can't show on its own
 - ✅ **Route-line traffic colour** — the drawn route tints blue → amber → red as the
   live traffic-aware time runs over the typical time (overall congestion; per-segment
   isn't reliably in the response and our line is OSRM geometry, so it's whole-route)
