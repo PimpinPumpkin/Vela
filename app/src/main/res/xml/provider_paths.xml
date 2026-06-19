@@ -4,4 +4,6 @@
     <files-path name="engines" path="engines/" />
     <!-- Exported diagnostics bundle (cacheDir/diag/) shared via the system sheet. -->
     <cache-path name="diag" path="diag/" />
+    <!-- Persisted crash reports (filesDir/diag/crash/) shared via the system sheet. -->
+    <files-path name="crash" path="diag/crash/" />
 </paths>

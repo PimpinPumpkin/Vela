@@ -208,6 +208,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Public GitHub repo + local mirror + offline bundle
 - ✅ CI (GitHub Actions): every push to main builds + tests + signs the APK and publishes a **normal versioned release** (`v0.1.<run>`), kept as a revision history — Obtainium tracks the latest with zero config
 - ✅ **Opt-in diagnostics / debug export** (Settings → Diagnostics, **off by default**) — a local-only event log (searches, computed routes, parser "drift", nav start/reroute/arrival) that the user can **Export debug session** to a JSON bundle and hand to a developer via the system share sheet. **Never auto-uploaded** — user-initiated and user-routed; turning it off wipes the log; in-memory only (capped at 300 events). The no-backend half of the telemetry plan; `core/diag/DiagLog` + `app/diag/DiagExporter`, consent dialog on enable, `PRIVACY.md` updated
+- ✅ **Crash capture** — an uncaught-exception handler (`app/diag/CrashCatcher`, installed in `VelaApp`) **persists the stack trace + breadcrumbs + app/device versions to disk**, surviving the restart, so after a crash the user can **Export crash report** from Settings → Diagnostics (the fix for "nav crashed but the phone wasn't tethered, no logcat"). Captured even with diagnostics off (a stack trace is benign + local); never auto-sent; chains to the system handler so normal crash behaviour is unchanged
 - ✅ Settings shows the installed app version (name + build code)
 - ⬜ F-Droid submission + reproducible build
 - ⬜ UnifiedPush for delay alerts (no FCM)

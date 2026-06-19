@@ -263,6 +263,20 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     ).show()
                 }) { Text("Export debug session") }
             }
+            var crashReports by remember { mutableStateOf(app.vela.diag.CrashCatcher.pending(context)) }
+            if (crashReports.isNotEmpty()) {
+                Spacer(Modifier.height(8.dp))
+                Hint("Vela closed unexpectedly recently. Sending the crash report (stack trace) helps fix it — it's a plain text file, no personal data.")
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = {
+                        app.vela.diag.CrashCatcher.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
+                    }) { Text("Export crash report") }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = {
+                        app.vela.diag.CrashCatcher.clear(context); crashReports = emptyList()
+                    }) { Text("Discard") }
+                }
+            }
             if (showDiagConsent) {
                 AlertDialog(
                     onDismissRequest = { showDiagConsent = false },
