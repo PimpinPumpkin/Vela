@@ -329,7 +329,19 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
-            place.statusText?.let { status ->
+            if (place.permanentlyClosed) {
+                // Dead POI — call it out clearly (Google-style red) even when Google
+                // sent no hours/status string at all (which is what "no hours" looked
+                // like before we parsed this).
+                Text(
+                    "Permanently closed",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFD93838),
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            place.statusText?.takeIf { !place.permanentlyClosed }?.let { status ->
                 // Google colours the status word (Open/Closed) and keeps the time
                 // in the normal ink colour: "**Open** · Closes 9 PM".
                 val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)

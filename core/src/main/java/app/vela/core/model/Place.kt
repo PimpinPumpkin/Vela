@@ -19,6 +19,8 @@ data class Place(
     val website: String? = null,
     val openNow: Boolean? = null,
     val statusText: String? = null, // Google's own status, e.g. "Open · Closes 9 PM"
+    val permanentlyClosed: Boolean = false, // dead POI — still searchable, hidden from the map
+
     val hours: List<String> = emptyList(),
     val photoUrls: List<String> = emptyList(),
     val featuredReview: String? = null, // Google's single highlighted review snippet

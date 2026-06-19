@@ -102,6 +102,9 @@ object SearchParser {
             statusText = field("status118").str()
                 ?: field("statusRich").str()
                 ?: field("openStatus").str(),
+            permanentlyClosed = isPermanentlyClosed(
+                field("status118").str(), field("statusRich").str(), field("openStatus").str(),
+            ),
             hours = parseHours(entry, paths),
             photoUrls = parsePhotos(entry, paths),
             featuredReview = field("featuredReview").str()
@@ -158,6 +161,11 @@ object SearchParser {
             photo.at(6, 0).str()?.replace(Regex("=w\\d+-h\\d+.*$"), "=w500-h350")
         }
     }
+
+    /** "Permanently closed" (and the rarer "Permanently closed" rich-status variant)
+     *  → a dead POI. Kept in search results but hidden from the map and labelled. */
+    private fun isPermanentlyClosed(vararg status: String?): Boolean =
+        status.any { it != null && it.contains("Permanently", ignoreCase = true) }
 
     /** Live status text → open/closed. "Closes 6 PM" means open now; "Closed
      *  · Opens 7 AM" means closed. */
