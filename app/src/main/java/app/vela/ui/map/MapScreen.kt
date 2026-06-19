@@ -247,7 +247,7 @@ fun MapScreen(
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
-            trafficOn = Traffic.on.value,
+            trafficOn = Traffic.on.value || state.navigating,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
@@ -391,15 +391,14 @@ fun MapScreen(
         // After panning away during nav, a Re-center button reattaches the
         // follow-camera (Google-style); it's hidden while the camera is following.
         if (state.navigating && state.navCameraDetached) {
-            ExtendedFloatingActionButton(
+            // Icon-only, tucked to the right and lifted clear of the bottom bar.
+            FloatingActionButton(
                 onClick = vm::recenterNav,
-                icon = { Icon(Icons.Default.MyLocation, contentDescription = null) },
-                text = { Text("Re-center") },
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
+                    .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(bottom = 104.dp),
-            )
+                    .padding(end = 16.dp, bottom = 132.dp),
+            ) { Icon(Icons.Default.MyLocation, contentDescription = "Re-center") }
         }
 
         // Speedometer (Google-style) — current GPS speed, bottom-left during nav.
@@ -415,7 +414,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = 104.dp)
+                    .padding(start = 16.dp, bottom = 132.dp)
                     .size(60.dp),
             ) {
                 Column(
