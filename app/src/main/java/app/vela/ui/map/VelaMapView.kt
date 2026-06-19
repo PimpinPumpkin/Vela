@@ -23,6 +23,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.vela.core.model.LatLng
+import app.vela.core.model.distanceTo
 import app.vela.offline.OfflineMaps
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
@@ -150,6 +151,10 @@ fun VelaMapView(
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
+    // The last fix we actually re-pointed the nav camera at, so we can skip the
+    // redundant re-animations that make the follow shimmer/lag (see the nav branch).
+    var lastNavTarget by remember { mutableStateOf<LatLng?>(null) }
+    var lastNavBearing by remember { mutableStateOf<Float?>(null) }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -307,6 +312,7 @@ fun VelaMapView(
             // Previewing a step takes over the camera (and holds, suppressing
             // nav-follow) so you can look ahead at where you'd turn.
             previewTarget != null -> {
+                lastNavTarget = null // so nav-follow re-centres cleanly when the preview ends
                 if (previewTarget != lastPreviewTarget) {
                     lastPreviewTarget = previewTarget
                     map.animateCamera(
@@ -319,17 +325,30 @@ fun VelaMapView(
             }
 
             navMode && myLocation != null && navFollowing -> {
-                map.animateCamera(
-                    CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.Builder()
-                            .target(MLLatLng(myLocation.lat, myLocation.lng))
-                            .zoom(17.0)
-                            .tilt(55.0)
-                            .bearing((myBearing ?: 0f).toDouble())
-                            .build(),
-                    ),
-                    900,
-                )
+                // This `update` block re-runs on *every* recomposition (several a
+                // second during nav), and each animateCamera restarts a fresh ease —
+                // stacking them is what made the follow lag and feel "wacky". Only
+                // re-point when the fix actually moved (>4 m) or turned (>2°); GPS
+                // jitter at a standstill is otherwise an endless shimmer. A snappier
+                // ease (550 ms) then keeps the dot under the camera instead of trailing.
+                val brg = myBearing ?: lastNavBearing ?: 0f
+                val moved = lastNavTarget?.let { it.distanceTo(myLocation) > 4.0 } ?: true
+                val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
+                if (moved || turned) {
+                    lastNavTarget = myLocation
+                    lastNavBearing = brg
+                    map.animateCamera(
+                        CameraUpdateFactory.newCameraPosition(
+                            CameraPosition.Builder()
+                                .target(MLLatLng(myLocation.lat, myLocation.lng))
+                                .zoom(17.0)
+                                .tilt(55.0)
+                                .bearing(brg.toDouble())
+                                .build(),
+                        ),
+                        550,
+                    )
+                }
             }
 
             routePolyline.size >= 2 && routePolyline.hashCode() != lastFittedRouteKey -> {

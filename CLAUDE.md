@@ -154,6 +154,5 @@ genuinely needs no doc edit, say why in the commit.
 
 ## Name
 
-Vela Maps (`app.vela`). Renamed from "Carto" on 2026-06-15 (Carto collided with
-CARTO, carto.com); "Vela" was clearance-checked and is free of maps-app and
+Vela Maps (`app.vela`). "Vela" was clearance-checked and is free of maps-app and
 trademark collisions.

@@ -291,7 +291,10 @@ fun MapScreen(
                     .align(Alignment.TopCenter)
                     .then(
                         if (searchFocused) {
-                            Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)
+                            // Same fixed sheet grey as the place sheet / results rows,
+                            // not the wallpaper-tinted Material surface (which read as a
+                            // slightly different shade).
+                            Modifier.fillMaxSize().background(SheetPalette.bg(darkTheme))
                         } else {
                             Modifier.fillMaxWidth()
                         },
@@ -611,7 +614,10 @@ private fun routeTrafficColor(route: app.vela.core.model.Route?): String =
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
     if (state.results.isNotEmpty()) {
-        state.results.map { MapMarker(it.name, it.location) }
+        // Dead POIs stay in the results list but are dropped from the map pins
+        // (Google-style) — a permanently-closed place shouldn't clutter the map.
+        // A place the user explicitly opened still gets its pin (the else branch).
+        state.results.filterNot { it.permanentlyClosed }.map { MapMarker(it.name, it.location) }
     } else {
         state.selected?.let { listOf(MapMarker(it.name, it.location)) } ?: emptyList()
     }
@@ -653,7 +659,12 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
     val shown = results
         .let { list -> if (openOnly) list.filter { it.openNow == true } else list }
         .let { list -> if (topRated) list.filter { (it.rating ?: 0.0) >= 4.0 } else list }
-    Card(Modifier.fillMaxWidth().padding(top = 8.dp)) {
+    // Same fixed sheet grey as the place sheet, not the wallpaper-tinted Material card.
+    val dark = isAppInDarkTheme()
+    Card(
+        Modifier.fillMaxWidth().padding(top = 8.dp),
+        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark)),
+    ) {
         Column {
             // Top-sheet handle: swipe DOWN to expand the list, swipe UP to retract
             // it — first shrinking an expanded list, then hiding it back to the
@@ -780,7 +791,15 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                             modifier = Modifier.padding(top = 1.dp),
                         )
                     }
-                    place.statusText?.let { status ->
+                    if (place.permanentlyClosed) {
+                        Text(
+                            "Permanently closed",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium,
+                            color = SheetPalette.TrafficRed,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    } else place.statusText?.let { status ->
                         Text(
                             status,
                             style = MaterialTheme.typography.bodyMedium,
@@ -1100,15 +1119,21 @@ private fun InfoCard(
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Card(modifier.fillMaxWidth()) {
+    // Fixed sheet palette so this banner reads as the same grey as the place sheet
+    // and results list, not a wallpaper-tinted Material card.
+    val dark = isAppInDarkTheme()
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark)),
+    ) {
         Row(
             Modifier.fillMaxWidth().padding(16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(title, fontWeight = FontWeight.SemiBold)
-                Text(body, style = MaterialTheme.typography.bodySmall)
+                Text(title, fontWeight = FontWeight.SemiBold, color = SheetPalette.ink(dark))
+                Text(body, style = MaterialTheme.typography.bodySmall, color = SheetPalette.dim(dark))
             }
             TextButton(onClick = onAction) { Text(actionLabel) }
         }

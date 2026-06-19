@@ -349,9 +349,8 @@ without an app release.
 ## A note on the name
 
 **Vela Maps** (`app.vela`) — the navigator's constellation "the Sails", and
-"sail" in several languages. Renamed from "Carto" (which collided with CARTO,
-the geospatial company); "Vela" was vetted clear of maps-app and trademark
-collisions before the switch.
+"sail" in several languages. The name was vetted clear of maps-app and
+trademark collisions.
 
 ## License
 
