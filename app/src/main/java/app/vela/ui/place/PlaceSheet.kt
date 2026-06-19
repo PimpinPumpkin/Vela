@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -112,6 +113,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -365,6 +367,7 @@ fun PlaceSheet(
             } else if (place.category != null) {
                 Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
+            place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
 
             // Quick-action row — Directions (primary) + Call / Website / Save / Share,
             // spread evenly across the width so the last (Share) isn't clipped.
@@ -1114,8 +1117,82 @@ private fun ShareAction(place: Place, labelColor: Color, modifier: Modifier = Mo
     }
 }
 
-/** Collapsible weekly hours. Collapsed shows today's range; expanded lists the
- *  week with today in bold. [hours] entries are "Day: range" starting today. */
+/** Google-style "popular times": day chips + an hourly busyness bar chart, today's
+ *  current hour highlighted. */
+@Composable
+private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color, dim: Color) {
+    val accent = MaterialTheme.colorScheme.primary
+    val today = remember { java.time.LocalDate.now().dayOfWeek.value } // 1=Mon..7=Sun
+    val currentHour = remember { java.time.LocalTime.now().hour }
+    var selectedDow by remember {
+        mutableStateOf(if (pt.days.any { it.dayOfWeek == today }) today else pt.days.first().dayOfWeek)
+    }
+    val day = pt.days.firstOrNull { it.dayOfWeek == selectedDow } ?: return
+    val isToday = selectedDow == today
+    val nowOcc = if (isToday) day.hours.firstOrNull { it.hour == currentHour }?.occupancy else null
+
+    Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
+        Text("Popular times", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = ink)
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            pt.days.forEach { d ->
+                val sel = d.dayOfWeek == selectedDow
+                Text(
+                    java.time.DayOfWeek.of(d.dayOfWeek)
+                        .getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (sel) accent else dim,
+                    fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.clip(CircleShape).clickable { selectedDow = d.dayOfWeek }
+                        .padding(horizontal = 10.dp, vertical = 4.dp),
+                )
+            }
+        }
+        if (nowOcc != null) {
+            Text("${busynessLabel(nowOcc)} right now", style = MaterialTheme.typography.bodySmall, color = dim)
+        }
+        Canvas(Modifier.fillMaxWidth().height(64.dp).padding(top = 6.dp)) {
+            val hrs = day.hours
+            if (hrs.isEmpty()) return@Canvas
+            val bw = size.width / hrs.size
+            hrs.forEachIndexed { i, h ->
+                val bh = (h.occupancy / 100f).coerceIn(0.03f, 1f) * size.height
+                val now = isToday && h.hour == currentHour
+                drawRect(
+                    color = if (now) accent else dim.copy(alpha = 0.3f),
+                    topLeft = Offset(i * bw + bw * 0.12f, size.height - bh),
+                    size = Size(bw * 0.76f, bh),
+                )
+            }
+        }
+        val hrs = day.hours
+        if (hrs.size >= 3) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                listOf(hrs.first(), hrs[hrs.size / 2], hrs.last()).forEach {
+                    Text(hourLabel(it.hour), style = MaterialTheme.typography.labelSmall, color = dim)
+                }
+            }
+        }
+    }
+}
+
+private fun busynessLabel(occ: Int): String = when {
+    occ < 20 -> "Not busy"
+    occ < 40 -> "Not too busy"
+    occ < 60 -> "A little busy"
+    occ < 85 -> "Usually busy"
+    else -> "Very busy"
+}
+
+private fun hourLabel(h: Int): String = when {
+    h == 0 -> "12a"
+    h < 12 -> "${h}a"
+    h == 12 -> "12p"
+    else -> "${h - 12}p"
+}
+
 @Composable
 private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
     var expanded by remember { mutableStateOf(false) }

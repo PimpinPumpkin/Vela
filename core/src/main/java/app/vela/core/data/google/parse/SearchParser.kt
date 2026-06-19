@@ -8,8 +8,11 @@ import app.vela.core.data.google.dbl
 import app.vela.core.data.google.int
 import app.vela.core.data.google.str
 import app.vela.core.model.AboutSection
+import app.vela.core.model.DayBusyness
+import app.vela.core.model.HourBusyness
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
+import app.vela.core.model.PopularTimes
 import app.vela.core.model.SearchResult
 import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.JsonArray
@@ -106,8 +109,34 @@ object SearchParser {
             featureId = field("featureId").str(),  // "0x..:0x.." → reviews RPC
             placeId = field("placeId").str(),      // "ChIJ.." → deep links
             about = parseAbout(entry, paths),
+            popularTimes = parsePopularTimes(entry, paths),
             distanceMeters = near?.distanceTo(loc),
         )
+    }
+
+    /** Popular-times histogram: `popularTimes` (`[1][84]`) → `[0]` is 7 days, each
+     *  `[d][0]`=day-of-week (1=Mon…7=Sun), `[d][1]`=hourly `[hour, occupancy%, …]`.
+     *
+     *  DORMANT (2026-06-18): Google **strips `[84]` from the keyless search
+     *  response** — it ships only to a full/logged-in session (confirmed on-device
+     *  + via a no-credentials capture). Unlike photos/transit (which a logged-OUT
+     *  browser receives), popular times also doesn't render in the anonymous
+     *  headless WebView — the place panel needs a token-gated `/maps/preview/place`
+     *  RPC the SPA never completes there. So this populates only IF a keyless
+     *  response ever carries `[84]`; until then it's a no-op and the UI section
+     *  ([PlaceSheet]'s PopularTimesSection) simply doesn't show. See SPEC.md. */
+    private fun parsePopularTimes(entry: JsonElement, paths: Map<String, List<Int>>): PopularTimes? {
+        val days = entry.atPath(pathOf(paths, "popularTimes")).at(0).arr() ?: return null
+        val parsed = days.mapNotNull { d ->
+            val dow = d.at(0).int() ?: return@mapNotNull null
+            val hours = d.at(1).arr().orEmpty().mapNotNull { h ->
+                val hour = h.at(0).int() ?: return@mapNotNull null
+                val occ = h.at(1).int() ?: return@mapNotNull null
+                HourBusyness(hour, occ)
+            }
+            if (hours.isEmpty()) null else DayBusyness(dow, hours)
+        }
+        return if (parsed.isEmpty()) null else PopularTimes(parsed)
     }
 
     /** "About" sections: `about` → a list, each with title `[s][1]` + items

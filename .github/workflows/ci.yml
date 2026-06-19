@@ -59,11 +59,17 @@ jobs:
 
       - name: Derive build version
         id: ver
-        # versionName is plain semver (0.1.<run>) so Obtainium can compare it;
-        # versionCode is 1000+run — monotonic and safely above earlier builds.
+        # versionName is plain semver (0.2.<run>) so Obtainium can compare it;
+        # versionCode is 2000+run — monotonic and safely above earlier builds.
+        # NOTE: bumped from 0.1.<run> / 1000+run on 2026-06-18 — local dev builds
+        # had been hand-set with -PappVersionCode in the 1000s (up to 1117) and got
+        # installed on a test phone, leaving it *ahead* of the release line so
+        # Obtainium would reject the next release as a downgrade. 0.2 + 2000-base
+        # steps the release line decisively over that pollution. Keep local dev
+        # builds BELOW 1000 (e.g. -PappVersionCode=1) so this can't recur.
         run: |
-          echo "name=0.1.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
-          echo "code=$(( 1000 + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
+          echo "name=0.2.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          echo "code=$(( 2000 + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
 
       - name: Build release APK
         env:
@@ -90,7 +96,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          VER="0.1.${{ github.run_number }}"
+          VER="0.2.${{ github.run_number }}"
           cp app/build/outputs/apk/release/app-release.apk "vela-maps-v${VER}.apk"
           gh release create "v${VER}" \
             --title "Vela $VER" \

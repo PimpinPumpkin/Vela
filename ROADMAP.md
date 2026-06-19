@@ -15,9 +15,6 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 
 ## Near-term (next up)
 
-- **Busy / popular times** — a "busy now / usually busy at…" indicator on the place
-  sheet (Google-style bar chart). Reachable keyless if the histogram is in the
-  search/place response (investigating); else via the hidden WebView like photos/transit.
 - **Higher-res README/store screenshots** refreshed to the current UI.
 - **Stability pass** — smoke-test the core flows; fix the *Start → launcher* quirk
   (nav keeps running in the foreground service but the activity backgrounds).
@@ -57,6 +54,22 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
 
 ## Known-hard / blocked
 
+- **Busy / popular times** — *session-gated, not reachable keyless* (investigated in
+  depth 2026-06-18). The histogram lives at place node `[84]` but Google **strips it
+  from the keyless `/search?tbm=map` response** — it ships only to a full/logged-in
+  session (proven: a logged-in browser capture has `[84]`; the same request with
+  `credentials:'omit'` and the real on-device keyless session both lack it). The
+  photos/transit WebView trick **doesn't rescue it either**: the anonymous headless
+  WebView's maps SPA never renders the place panel (state stays a 31 KB shell, DOM
+  223 chars), and the place-detail RPC it would use (`/maps/preview/place`) needs a
+  per-page-load session token and returns a 1.2 KB stub without it (even logged-in).
+  Unlike photos/transit — which a *logged-out* browser genuinely receives — popular
+  times needs a real signed-in session. The model + parser + UI are **built and
+  dormant** (`Place.popularTimes`, `SearchParser.parsePopularTimes`, PlaceSheet's
+  `PopularTimesSection`): they auto-light-up if `[84]` ever appears in a keyless
+  response, but won't today. **Unblock path:** an *opt-in Google login* (a deliberate
+  departure from the keyless principle — would also unlock other gated data); decide
+  before building. See SPEC §"Gated / not keyless".
 - **Predictive depart-time ETA** + **avoid tolls/highways** — need a manual devtools
   capture of the directions `pb`'s departure-time field; the live web no longer fires
   the `/maps/preview/directions` GET on changes, so Chrome automation can't capture it

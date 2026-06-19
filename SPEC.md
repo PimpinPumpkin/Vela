@@ -35,6 +35,13 @@ Services** (GrapheneOS / no-GMS ROMs), distributed via F-Droid/Obtainium, GPLv3.
 - Street View (panorama tiles are key-gated), popular times & photo-author/date
   (sign-in-gated), turn-by-turn *offline* routing (heavy native engine), account
   sync. See `FEATURES.md` "Known debts."
+- **Popular/busy times — confirmed session-gated (2026-06-18).** Histogram is place
+  node `[84]`; Google strips it from the keyless search response (only full/logged-in
+  sessions get it), and unlike photos/transit it is *not* served to the anonymous
+  headless WebView (the place panel never renders there; `/maps/preview/place` is
+  token-gated). Model + parser + UI are built but **dormant** — they activate only if
+  `[84]` appears in a keyless response. The lone unblock path is an **opt-in Google
+  login** (a deliberate break from the keyless principle). See ROADMAP "Known-hard".
 
 ---
 

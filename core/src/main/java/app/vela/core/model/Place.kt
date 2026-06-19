@@ -25,8 +25,18 @@ data class Place(
     val featureId: String? = null,      // Google feature id "0x..:0x.." → reviews RPC
     val placeId: String? = null,        // "ChIJ..." place id (for deep links)
     val about: List<AboutSection> = emptyList(),
+    val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
     val distanceMeters: Double? = null, // filled when searched relative to a point
 )
+
+/** Google's "popular times": a typical-busyness histogram per day of the week. */
+data class PopularTimes(val days: List<DayBusyness>)
+
+/** One day: [dayOfWeek] is 1=Mon … 7=Sun; [hours] are the open-hour buckets. */
+data class DayBusyness(val dayOfWeek: Int, val hours: List<HourBusyness>)
+
+/** [hour] is 0..23; [occupancy] is the typical busyness 0..100. */
+data class HourBusyness(val hour: Int, val occupancy: Int)
 
 /** One section of Google's "About" panel, e.g. title="Service options",
  *  items=["Outdoor seating","Takeout","Dine-in"]. */

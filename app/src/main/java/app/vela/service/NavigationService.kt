@@ -10,42 +10,46 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import app.vela.MainActivity
 import app.vela.R
-import app.vela.core.location.LocationProvider
-import app.vela.core.model.LatLng
 import app.vela.core.nav.NavSession
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
  * Keeps navigation alive while the app is backgrounded or the screen is off: a
- * foreground service that streams location into the shared [NavSession] and
- * mirrors its state into an ongoing notification. The nav loop, voice, and live
- * re-routing all live in [NavSession]; this class is just the Android lifecycle
- * + notification shell around it.
+ * foreground service that mirrors the shared [NavSession]'s state into an ongoing
+ * notification and holds the process up so the nav loop keeps running with the
+ * screen off.
+ *
+ * **Location is fed by the ViewModel, not here** — deliberately. Promoting to a
+ * `location`-typed foreground service can *throw* on Android 14+ (the runtime
+ * location grant has to be in the exact state the type demands; GrapheneOS is
+ * especially strict), and an uncaught throw in `onStartCommand` crashes the whole
+ * app. So this start is wrapped and, if it fails, the app simply falls back to
+ * in-app (foreground) navigation — the [app.vela.ui.map.MapViewModel] drives
+ * `NavSession.onLocation` from its own location collector independently of this
+ * service. The service is best-effort polish (background continuation +
+ * notification), never a hard dependency of navigation.
  */
 @AndroidEntryPoint
 class NavigationService : Service() {
 
-    @Inject lateinit var locationProvider: LocationProvider
     @Inject lateinit var navSession: NavSession
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private var locationJob: Job? = null
     private var observing = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -57,7 +61,17 @@ class NavigationService : Service() {
             return START_NOT_STICKY
         }
 
-        startForegroundCompat(buildNotification())
+        // Foreground promotion can throw on Android 14+ (e.g. ForegroundServiceStart-
+        // NotAllowed, or a SecurityException when the location grant isn't in the state
+        // the FGS-location type requires). Never let that crash the app — nav keeps
+        // working in the foreground because the ViewModel feeds NavSession itself.
+        try {
+            startForegroundCompat(buildNotification())
+        } catch (t: Throwable) {
+            Log.w(TAG, "foreground start failed; continuing without the nav service", t)
+            stopSelf()
+            return START_NOT_STICKY
+        }
 
         if (!observing) {
             observing = true
@@ -66,17 +80,10 @@ class NavigationService : Service() {
                     if (!s.navigating && !s.arrived) {
                         teardown()
                     } else {
-                        notificationManager().notify(NOTIF_ID, buildNotification())
+                        runCatching { notificationManager().notify(NOTIF_ID, buildNotification()) }
                     }
                 }
                 .launchIn(scope)
-        }
-        if (locationJob == null) {
-            locationJob = scope.launch {
-                locationProvider.updates().collect { loc ->
-                    navSession.onLocation(LatLng(loc.latitude, loc.longitude))
-                }
-            }
         }
         return START_STICKY
     }
@@ -121,9 +128,7 @@ class NavigationService : Service() {
     }
 
     private fun teardown() {
-        locationJob?.cancel()
-        locationJob = null
-        stopForeground(STOP_FOREGROUND_REMOVE)
+        runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
         stopSelf()
     }
 
@@ -143,18 +148,26 @@ class NavigationService : Service() {
     }
 
     companion object {
+        private const val TAG = "VelaNavService"
         private const val ACTION_STOP = "app.vela.service.NAV_STOP"
         private const val CHANNEL_ID = "vela_nav"
         private const val NOTIF_ID = 42
 
+        /** Best-effort: start the background nav service. A failure here (background
+         *  start not allowed, OEM restriction) is swallowed — foreground nav, driven
+         *  by the ViewModel, does not depend on it. */
         fun start(context: Context) {
-            ContextCompat.startForegroundService(context, Intent(context, NavigationService::class.java))
+            runCatching {
+                ContextCompat.startForegroundService(context, Intent(context, NavigationService::class.java))
+            }.onFailure { Log.w(TAG, "could not start nav service", it) }
         }
 
         fun stop(context: Context) {
-            context.startService(
-                Intent(context, NavigationService::class.java).setAction(ACTION_STOP),
-            )
+            runCatching {
+                context.startService(
+                    Intent(context, NavigationService::class.java).setAction(ACTION_STOP),
+                )
+            }
         }
     }
 }

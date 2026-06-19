@@ -81,6 +81,9 @@ data class Calibration(
             "status118" to listOf(1, 118, 0, 3, 1, 4, 0),
             "hours203" to listOf(1, 203, 0),
             "hours118" to listOf(1, 118, 0, 3, 0),
+            // Popular-times histogram: [84][0] = 7 days, each [d][0]=day-of-week,
+            // [d][1]=hourly [hour, occupancy%, …]. Relative to the place node [1].
+            "popularTimes" to listOf(1, 84),
         )
 
         val DEFAULT = Calibration(

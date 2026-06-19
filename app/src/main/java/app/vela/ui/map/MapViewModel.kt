@@ -185,6 +185,10 @@ class MapViewModel @Inject constructor(
                     it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here, myLocationStale = false)
                 }
                 restartStaleTimer()
+                // Drive turn-by-turn from here so navigation works even if the
+                // foreground NavigationService can't start (Android-14 FGS-location
+                // restrictions / GrapheneOS). No-op unless a session is active.
+                navSession.onLocation(here)
             }
         }
     }
@@ -705,6 +709,7 @@ class MapViewModel @Inject constructor(
     fun startNav() {
         val route = _state.value.activeRoute ?: return
         val dest = destination ?: route.polyline.lastOrNull() ?: return
+        startLocation() // make sure live fixes are flowing — they drive the nav loop
         navSession.start(route, dest, _state.value.selected?.name.orEmpty(), _state.value.selectedEngine?.packageName)
         NavigationService.start(appContext)
         // If the phone has no voice engine, say so once instead of going silent.
