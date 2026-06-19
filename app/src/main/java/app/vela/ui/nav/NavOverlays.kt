@@ -32,6 +32,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,6 +86,12 @@ fun ManeuverBanner(
     // pager. Below threshold it springs back.
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    // `pointerInput(Unit)` builds the gesture detector ONCE, capturing these lambdas
+    // as they were at first composition — which closed over the *first* step index.
+    // Without this, every swipe re-ran previewStep(liveStep+1) → the same card forever.
+    // rememberUpdatedState keeps the captured refs pointing at the latest lambdas.
+    val latestNext by rememberUpdatedState(onPreviewNext)
+    val latestPrev by rememberUpdatedState(onPreviewPrev)
     Card(
         modifier
             .fillMaxWidth()
@@ -99,10 +107,10 @@ fun ManeuverBanner(
                         scope.launch {
                             when {
                                 offsetX.value <= -110f -> {
-                                    offsetX.animateTo(-w); onPreviewNext(); offsetX.snapTo(w); offsetX.animateTo(0f)
+                                    offsetX.animateTo(-w); latestNext(); offsetX.snapTo(w); offsetX.animateTo(0f)
                                 }
                                 offsetX.value >= 110f -> {
-                                    offsetX.animateTo(w); onPreviewPrev(); offsetX.snapTo(-w); offsetX.animateTo(0f)
+                                    offsetX.animateTo(w); latestPrev(); offsetX.snapTo(-w); offsetX.animateTo(0f)
                                 }
                                 else -> offsetX.animateTo(0f)
                             }

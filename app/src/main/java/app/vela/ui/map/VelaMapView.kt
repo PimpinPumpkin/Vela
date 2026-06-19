@@ -40,6 +40,7 @@ import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.layers.RasterLayer
+import org.maplibre.android.style.sources.GeoJsonOptions
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.android.style.sources.RasterDemSource
 import org.maplibre.android.style.sources.RasterSource
@@ -272,6 +273,11 @@ fun VelaMapView(
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
 
+        // Fraction of the route already driven (for the traversed-grey gradient) —
+        // 0 unless we're navigating and on the line.
+        val routeProgress =
+            if (navMode && myLocation != null && routePolyline.size >= 2) progressAlong(routePolyline, myLocation)
+            else 0f
         val styleKey = "$styleUri|dark=$darkTheme"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
@@ -289,12 +295,12 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget)
+                applyData(style, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget)
+                applyData(it, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -436,7 +442,9 @@ private fun ensureLayers(style: Style) {
     }
 
     if (style.getSource(ROUTE_SRC) == null) {
-        style.addSource(GeoJsonSource(ROUTE_SRC))
+        // lineMetrics → line-progress works, so we can grey the *traversed* part of the
+        // route behind the vehicle (Google-style) with a line-gradient.
+        style.addSource(GeoJsonSource(ROUTE_SRC, GeoJsonOptions().withLineMetrics(true)))
         style.addLayer(
             LineLayer(ROUTE_LAYER, ROUTE_SRC).withProperties(
                 PropertyFactory.lineColor("#1F6FEB"),
@@ -759,6 +767,39 @@ private fun tuneMapTiler(style: Style, dark: Boolean) {
     }
 }
 
+/** Fraction (0..1) of [polyline]'s length already passed: project [me] onto the
+ *  nearest segment, then measure cumulative length to that projection. */
+private fun progressAlong(polyline: List<LatLng>, me: LatLng): Float {
+    if (polyline.size < 2) return 0f
+    val cum = DoubleArray(polyline.size)
+    for (i in 1 until polyline.size) cum[i] = cum[i - 1] + polyline[i - 1].distanceTo(polyline[i])
+    val total = cum.last()
+    if (total <= 0.0) return 0f
+    var bestD = Double.MAX_VALUE
+    var bestLen = 0.0
+    for (i in 1 until polyline.size) {
+        val a = polyline[i - 1]
+        val b = polyline[i]
+        val (proj, t) = projectOnSegment(me, a, b)
+        val d = me.distanceTo(proj)
+        if (d < bestD) { bestD = d; bestLen = cum[i - 1] + t * a.distanceTo(b) }
+    }
+    return (bestLen / total).toFloat().coerceIn(0f, 1f)
+}
+
+/** Closest point on segment a→b to p (equirectangular planar approx — fine over a
+ *  nav-step's distances), plus the parametric position t∈[0,1] along the segment. */
+private fun projectOnSegment(p: LatLng, a: LatLng, b: LatLng): Pair<LatLng, Double> {
+    val k = Math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
+    val ax = a.lng * k; val ay = a.lat
+    val bx = b.lng * k; val by = b.lat
+    val px = p.lng * k; val py = p.lat
+    val dx = bx - ax; val dy = by - ay
+    val len2 = dx * dx + dy * dy
+    val t = if (len2 == 0.0) 0.0 else (((px - ax) * dx + (py - ay) * dy) / len2).coerceIn(0.0, 1.0)
+    return LatLng(ay + t * dy, (ax + t * dx) / k) to t
+}
+
 private fun applyData(
     style: Style,
     route: List<LatLng>,
@@ -770,6 +811,7 @@ private fun applyData(
     bearing: Float?,
     meStale: Boolean,
     preview: LatLng?,
+    routeProgress: Float,
 ) {
     val routeFc = if (route.size >= 2) {
         FeatureCollection.fromFeature(
@@ -779,8 +821,25 @@ private fun applyData(
         FeatureCollection.fromFeatures(emptyList<Feature>())
     }
     style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
-    // Tint the route line by congestion (amber/red when slower than typical).
-    style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(routeColor))
+    // Route line: the part AHEAD is congestion-tinted (amber/red when slower than
+    // typical); the part already DRIVEN greys out behind the vehicle, Google-style,
+    // via a line-progress gradient (routeProgress = fraction travelled, 0 when not
+    // navigating → all one colour).
+    val routeInt = runCatching { android.graphics.Color.parseColor(routeColor) }
+        .getOrDefault(android.graphics.Color.parseColor("#1F6FEB"))
+    val drivenInt = android.graphics.Color.parseColor("#9AA0A6")
+    val p = routeProgress.coerceIn(0.001f, 0.998f)
+    style.getLayer(ROUTE_LAYER)?.setProperties(
+        PropertyFactory.lineGradient(
+            Expression.interpolate(
+                Expression.linear(), Expression.lineProgress(),
+                Expression.stop(0f, Expression.color(drivenInt)),
+                Expression.stop(p, Expression.color(drivenInt)),
+                Expression.stop((p + 0.002f).coerceAtMost(1f), Expression.color(routeInt)),
+                Expression.stop(1f, Expression.color(routeInt)),
+            ),
+        ),
+    )
 
     val altFc = FeatureCollection.fromFeatures(
         alternates.filter { it.second.size >= 2 }.map { (idx, line) ->
