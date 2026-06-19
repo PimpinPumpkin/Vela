@@ -588,10 +588,16 @@ private fun applyLight(style: Style) {
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(1f))
     style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(0.7f))
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c4e6bf"), PropertyFactory.fillOpacity(0.7f))
-    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#e2e3e6"))
+    // Buildings (OSM footprints, already in the Liberty tiles — no key/data needed).
+    // The old #e2e3e6 was a hair off the #e8eaed land, so they were ~invisible; give
+    // them a touch more grey + a subtle outline so they read like Google's at z15+.
+    style.getLayer("building")?.setProperties(
+        PropertyFactory.fillColor("#dde1e7"),
+        PropertyFactory.fillOutlineColor("#c4c9d1"),
+    )
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#e2e3e6"),
-        PropertyFactory.fillExtrusionOpacity(0.9f),
+        PropertyFactory.fillExtrusionColor("#dde1e7"),
+        PropertyFactory.fillExtrusionOpacity(0.95f),
     )
     // Neutralise the tan/yellow landuse fills (residential/commercial/school/…) into
     // the land — Google keeps these flat, not coloured blobs.
@@ -666,10 +672,15 @@ private fun applyDark(style: Style) {
         "bridge_street_casing", "bridge_link_casing").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#242f3e"))
     }
-    style.getLayer("building")?.setProperties(PropertyFactory.fillColor("#2b3647"))
+    // Buildings a touch lighter than the #242f3e land + a lit edge, so they read in
+    // dark mode instead of melting into the ground (same reasoning as the light path).
+    style.getLayer("building")?.setProperties(
+        PropertyFactory.fillColor("#323f54"),
+        PropertyFactory.fillOutlineColor("#3f4e66"),
+    )
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#2b3647"),
-        PropertyFactory.fillExtrusionOpacity(0.9f),
+        PropertyFactory.fillExtrusionColor("#323f54"),
+        PropertyFactory.fillExtrusionOpacity(0.95f),
     )
     // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
     // retail, industrial, sand, …) must go dark too, or it stays a jarring cream

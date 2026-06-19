@@ -18,45 +18,21 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 - **Higher-res README/store screenshots** refreshed to the current UI.
 - **Stability pass** — smoke-test the core flows; fix the *Start → launcher* quirk
   (nav keeps running in the foreground service but the activity backgrounds).
-- **Buildings on the map** — the quick win toward the "real buildings" goal below:
-  the OpenMapTiles vector tiles Vela already renders **carry a `building` layer**.
-  Style it (2-D fill now; 3-D extrusion via `building:height` at high zoom later)
-  for Google-like massing with **no new data or infra** — keyless, open, ours to
-  theme. Do this before the parcel bet.
 
 ## Big bets
 
-### Buildings & parcels — Vela's own footprint/parcel layer  *(serious; discuss)*
+### Buildings  *(done — keyless, no key, no infra)*
 
-The ambition: real building footprints everywhere, and eventually US **parcels**
-(lot boundaries) — "the level of control would be huge." Two very different data
-problems, so split them:
-
-- **Building footprints — already a solved, open problem.** Don't scrape assessors
-  for these. Coverage exists, openly licensed, in formats we already consume:
-  **OSM buildings** (in our OpenMapTiles `building` layer today), **Microsoft US
-  Building Footprints** (~130 M, open), and **Overture Maps** buildings (LF/Meta/
-  MS/AWS, permissive — Vela already names Overture as a source). Near-term: style
-  the layer we have. Later: bake an MS/Overture footprint set into our own vector
-  tiles for gaps. Keyless, fits the open-data ethos, no legal heterogeneity.
-- **Parcels — the genuinely hard, infra-shaped bet (the assessor-GIS idea).**
-  Parcels ≠ footprints: they're the legal lot + assessment data, held per county.
-  ~3,000+ US counties across a long tail of GIS vendors (Esri ArcGIS, Tyler,
-  Patriot, Schneider…). The saving grace: a large share expose **public ArcGIS
-  REST `FeatureServer`/`MapServer` query endpoints** returning GeoJSON, so a
-  *per-county adapter + JIT scrape → cache on Vela infra* hybrid is technically
-  viable (bulk-grab the easy 60–70 %, JIT the rest, store normalized parcels we
-  control). Costs to weigh before committing:
-  - **The first real Vela backend** (tiles/parcel store + collector) — same infra
-    question as the traffic layer below; do them together, pick something
-    self-hostable.
-  - **Legal heterogeneity** — parcel licensing varies by county (open ↔ records-
-    request-only ↔ commercial); a national set isn't uniformly redistributable.
-    Commercial aggregators (Regrid, ReportAll) exist but cost and constrain.
-  - **Maintenance is the real tax** — hundreds of endpoints that drift; this is a
-    standing scraping commitment, like the Google extractor but ×3,000.
-  Recommendation: ship **buildings** now (open footprints), treat **parcels** as a
-  later phase gated on the backend decision — high control, high ongoing cost.
+Real building footprints render now. They were **already in our tiles** — the
+OpenMapTiles `building` + `building-3d` layers (OSM data, much of it imported from
+Microsoft's footprints) — Vela just coloured them a hair off the land so they were
+~invisible; bumped the contrast + added an outline (2026-06-19). No key, no new
+data. If coverage ever needs filling, **Microsoft US Building Footprints** (~130 M,
+ODbL, **free + keyless**) and **Overture** buildings are the open sources — but
+they're bulk files you'd tile + host yourself (that's infra), so only worth it for
+gaps. 3-D massing at high zoom is already on via `building-3d`. **Parcels: not
+pursuing** (lot/assessment data — a per-county scraping + backend commitment with
+licensing heterogeneity; out of scope by decision 2026-06-19).
 
 ### Opt-in telemetry  *(planned — deliberate, careful)*
 
