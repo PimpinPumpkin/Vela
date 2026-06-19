@@ -2,7 +2,9 @@ package app.vela.diag
 
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import androidx.core.content.FileProvider
+import app.vela.BuildConfig
 import app.vela.core.diag.DiagLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
@@ -29,6 +31,8 @@ class DiagExporter @Inject constructor(
 
         val json = buildString {
             append("{\"app\":\"Vela\",\"schema\":1,\"exportedAt\":").append(System.currentTimeMillis())
+            append(",\"version\":").append(quote("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"))
+            append(",\"android\":").append(quote("API ${Build.VERSION.SDK_INT} — ${Build.MANUFACTURER} ${Build.MODEL}"))
             append(",\"count\":").append(events.size).append(",\"events\":[")
             events.forEachIndexed { i, e ->
                 if (i > 0) append(',')
