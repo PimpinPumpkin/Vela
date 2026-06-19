@@ -35,6 +35,7 @@ class NavSession @Inject constructor(
     private val dataSource: MapDataSource,
     private val voice: VoiceGuide,
     private val haptics: Haptics,
+    private val diag: app.vela.core.diag.DiagLog,
 ) {
     data class State(
         val navigating: Boolean = false,
@@ -79,6 +80,12 @@ class NavSession @Inject constructor(
             tripDistanceMeters = route.distanceMeters,
         )
         voice.speak("Starting navigation. $first")
+        diag.record(
+            "nav",
+            "start → ${destinationLabel.ifBlank { "destination" }} " +
+                "(${route.distanceMeters?.toInt()} m, ${route.maneuvers.size} steps, " +
+                "ETA ${route.durationInTrafficSeconds ?: route.durationSeconds}s)",
+        )
     }
 
     fun stop() {
@@ -107,14 +114,20 @@ class NavSession @Inject constructor(
             when (ev) {
                 is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
                 is NavEvent.Haptic -> haptics.cue(ev.type, ev.approaching)
-                NavEvent.Arrived -> _state.update {
-                    it.copy(
-                        navigating = false,
-                        arrived = true,
-                        tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
-                    )
+                NavEvent.Arrived -> {
+                    diag.record("nav", "arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
+                    _state.update {
+                        it.copy(
+                            navigating = false,
+                            arrived = true,
+                            tripElapsedSeconds = (SystemClock.elapsedRealtime() - tripStartMs) / 1000.0,
+                        )
+                    }
                 }
-                NavEvent.RerouteNeeded -> reroute(loc)
+                NavEvent.RerouteNeeded -> {
+                    diag.record("nav", "off-route → rerouting from ${loc.lat},${loc.lng}")
+                    reroute(loc)
+                }
             }
         }
         maybeRecheck(loc, next)

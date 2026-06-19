@@ -3,6 +3,7 @@ package app.vela.core.data.google
 import app.vela.core.VelaConfig
 import app.vela.core.config.CalibrationStore
 import app.vela.core.config.JsTransforms
+import app.vela.core.diag.DiagLog
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteGeometry
@@ -45,6 +46,7 @@ class GoogleMapsDataSource @Inject constructor(
     private val session: GoogleSession,
     private val calibration: CalibrationStore,
     private val jsTransforms: JsTransforms,
+    private val diag: DiagLog,
 ) : MapDataSource {
 
     override suspend fun search(query: String, near: LatLng?): SearchResult = io {
@@ -59,8 +61,16 @@ class GoogleMapsDataSource @Inject constructor(
         // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
         // otherwise the compiled parser runs. Either way, an optional transformPlaces
         // hook gets the last word. No hook / any error → pure compiled path.
-        val places = jsTransforms.searchOverride(raw)
-            ?: SearchParser.parse(query, GoogleResponse.parse(raw), near, cal.paths).places
+        val places = try {
+            jsTransforms.searchOverride(raw)
+                ?: SearchParser.parse(query, GoogleResponse.parse(raw), near, cal.paths).places
+        } catch (e: CalibrationNeededException) {
+            // Capture the exact request that drifted so an opted-in user can hand it
+            // to a dev (no-op unless diagnostics are on).
+            diag.record("drift", "search parse drift: ${e.message}", url)
+            throw e
+        }
+        diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results")
         SearchResult(query, jsTransforms.refineSearch(places))
     }
 
@@ -135,7 +145,17 @@ class GoogleMapsDataSource @Inject constructor(
         val cal = calibration.current()
         val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb)
         val url = "${cal.directionsEndpoint}&pb=${pb.enc()}"
-        val routes = DirectionsParser.parse(GoogleResponse.parse(get(url)))
+        val routes = try {
+            DirectionsParser.parse(GoogleResponse.parse(get(url)))
+        } catch (e: CalibrationNeededException) {
+            diag.record("drift", "directions parse drift: ${e.message}", url)
+            throw e
+        }
+        diag.record(
+            "directions",
+            "$mode ${origin.lat},${origin.lng} → ${destination.lat},${destination.lng} → " +
+                "${routes.size} routes, top ETA ${routes.firstOrNull()?.durationInTrafficSeconds ?: routes.firstOrNull()?.durationSeconds}s",
+        )
         // Each route now carries Google's OWN geometry (delta-encoded in the
         // response) — real roads, matching the via-label, alternates included. Only
         // fall back to an open router (FOSSGIS OSRM, per-mode backend) for a route

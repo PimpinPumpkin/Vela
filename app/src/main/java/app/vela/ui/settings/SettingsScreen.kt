@@ -24,7 +24,9 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Switch
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -213,7 +215,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             SectionTitle("Data source & privacy")
             Hint(
                 "Vela talks to Google's public web endpoints directly from this device — no " +
-                    "Vela backend, no Google account, no API key, no telemetry. Each device behaves " +
+                    "Vela backend, no Google account, no API key, and no telemetry unless you turn " +
+                    "on Diagnostics below (off by default, local-only). Each device behaves " +
                     "like a logged-out browser; Google sees your IP, query and map area but not an " +
                     "account. Saved places and history never leave the phone.",
             )
@@ -228,6 +231,53 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     )
                 }
             }) { Text("What data Google receives") }
+
+            Spacer(Modifier.height(20.dp))
+            SectionTitle("Diagnostics")
+            LaunchedEffect(Unit) { vm.refreshDiagnostics() }
+            Hint(
+                "Off by default. When on, Vela keeps a short local log of what it did — your " +
+                    "searches, routes, and any “needs recalibration” hiccups — so if something " +
+                    "misbehaves you can export it and hand it to a developer. It stays on this phone and " +
+                    "is never uploaded; you pick where the export goes. Turning it off wipes the log.",
+            )
+            var showDiagConsent by remember { mutableStateOf(false) }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Share diagnostics", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = state.diagnosticsEnabled,
+                    onCheckedChange = { on -> if (on) showDiagConsent = true else vm.setDiagnostics(false) },
+                )
+            }
+            if (state.diagnosticsEnabled) {
+                OutlinedButton(onClick = {
+                    val intent = vm.diagShareIntent()
+                    if (intent != null) runCatching { context.startActivity(intent) }
+                    else android.widget.Toast.makeText(
+                        context,
+                        "Nothing recorded yet — use the app, then export.",
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }) { Text("Export debug session") }
+            }
+            if (showDiagConsent) {
+                AlertDialog(
+                    onDismissRequest = { showDiagConsent = false },
+                    title = { Text("Turn on diagnostics?") },
+                    text = {
+                        Text(
+                            "Vela will keep a short local log of your searches, routes and any errors. " +
+                                "It never leaves the phone unless you tap Export and choose where to send " +
+                                "it. Turn it off any time to wipe the log.",
+                        )
+                    },
+                    confirmButton = { TextButton(onClick = { vm.setDiagnostics(true); showDiagConsent = false }) { Text("Turn on") } },
+                    dismissButton = { TextButton(onClick = { showDiagConsent = false }) { Text("Cancel") } },
+                )
+            }
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("About")

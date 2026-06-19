@@ -82,10 +82,29 @@ There is no cloud sync. Uninstalling the app removes all of it.
 
 ## No tracking
 
-Vela contains **no analytics, no telemetry, no advertising, no crash reporting, and no
-Firebase/Play Services**. The app makes network requests only to the services in the
-table above, only when a feature needs them. It's GPLv3 — you can read every request
-the code makes in [`core/data/google`](core/src/main/java/app/vela/core/data/google)
-and [`SPEC.md`](SPEC.md).
+Vela contains **no analytics, no advertising, no crash reporting, and no
+Firebase/Play Services**, and **no telemetry that runs without you turning it on**. The
+app makes network requests only to the services in the table above, only when a feature
+needs them. It's GPLv3 — you can read every request the code makes in
+[`core/data/google`](core/src/main/java/app/vela/core/data/google) and [`SPEC.md`](SPEC.md).
+
+## Diagnostics (opt-in, off by default)
+
+Settings → **Diagnostics** has one switch, **off by default**. When you turn it on, Vela
+keeps a short **local** log of what it did — your searches, the routes it computed, and
+any "needs recalibration" hiccups — so that if something misbehaves you can **export it
+and hand it to a developer** to debug. Specifics:
+
+- **Nothing is uploaded by Vela.** The log lives only in memory on your phone. The only
+  way it leaves is if *you* tap **Export debug session** and then choose where to send it
+  (email, a chat app, Files…). You see it's a file; you pick the destination.
+- **It contains** the breadcrumbs above — which can include your search terms and the
+  start/end coordinates of routes you asked for (that's the point: it's for debugging a
+  bad route or result). No account, no contacts, no continuous location trail.
+- **Turning it off wipes the log**, and it clears when the app closes anyway.
+
+A future, **separately-announced** opt-in may aggregate anonymized speed traces to build
+Vela's own traffic layer — that one needs a server and a fresh consent screen, and this
+file will change the day it ships. It does not exist today.
 
 *Questions or something inaccurate here? Open an issue.*

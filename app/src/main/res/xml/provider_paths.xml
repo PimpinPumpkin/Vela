@@ -2,4 +2,6 @@
 <paths>
     <!-- The downloaded voice-engine APK lives in filesDir/engines/. -->
     <files-path name="engines" path="engines/" />
+    <!-- Exported diagnostics bundle (cacheDir/diag/) shared via the system sheet. -->
+    <cache-path name="diag" path="diag/" />
 </paths>

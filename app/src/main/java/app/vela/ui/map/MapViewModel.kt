@@ -70,6 +70,7 @@ data class MapUiState(
     val navigating: Boolean = false,
     val navCameraDetached: Boolean = false,
     val voiceMuted: Boolean = false,
+    val diagnosticsEnabled: Boolean = false,
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
     val maneuverText: String = "",
@@ -118,6 +119,8 @@ class MapViewModel @Inject constructor(
     private val offlinePoiStore: OfflinePoiStore,
     private val webPhotos: WebPhotoFetcher,
     private val webDirections: WebDirectionsFetcher,
+    private val diag: app.vela.core.diag.DiagLog,
+    private val diagExporter: app.vela.diag.DiagExporter,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
@@ -743,6 +746,19 @@ class MapViewModel @Inject constructor(
         voice.muted = muted
         _state.update { it.copy(voiceMuted = muted) }
     }
+
+    /** Reflect the persisted opt-in diagnostics flag into UI state (Settings reads it). */
+    fun refreshDiagnostics() = _state.update { it.copy(diagnosticsEnabled = diag.isEnabled()) }
+
+    /** Opt in/out of the local diagnostics log. Off clears anything collected. */
+    fun setDiagnostics(on: Boolean) {
+        diag.setEnabled(on)
+        _state.update { it.copy(diagnosticsEnabled = on) }
+    }
+
+    /** A share intent for the recorded debug session, or null if nothing's logged
+     *  yet (Settings then shows a "nothing recorded" hint). */
+    fun diagShareIntent(): android.content.Intent? = diagExporter.buildShareIntent()
 
     /** Dismiss the arrival summary and return to a clean map (drops the finished
      *  route + selection). */

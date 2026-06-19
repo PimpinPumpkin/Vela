@@ -51,7 +51,10 @@ Two Gradle modules, strict boundary:
 
 - **`:core`** — the UI-agnostic *extractor* (NewPipeExtractor pattern). Models, the
   `MapDataSource` seam, the Google scraper, parsers, pb builders, polyline codec, the
-  pure nav engine, location/voice/haptics abstractions, and the remote-config layer.
+  pure nav engine, location/voice/haptics abstractions, the remote-config layer, and the
+  opt-in **diagnostics** ring (`core/diag/DiagLog` — off by default; the scraper + nav
+  record breadcrumbs only when enabled; `app/diag/DiagExporter` shares them as a JSON
+  bundle, user-initiated, never auto-uploaded — the no-backend half of the telemetry plan).
   **No MapLibre or Android-UI types may leak in** (convert `LatLng` at the view edge).
 - **`:app`** — the Compose UI + MapLibre Native 11.8.0 + the foreground nav service +
   the two hidden WebViews. Root package `app.vela`, app class `VelaApp`, config

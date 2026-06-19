@@ -40,10 +40,12 @@ licensing heterogeneity; out of scope by decision 2026-06-19).
 
 Two goals, **strictly opt-in**, off by default:
 
-1. **Developer diagnostics (now-useful).** When a user hits a bug — a wrong route, a
-   bad ETA, a parse failure — let them **share that session** (the route, the request
-   that drifted, logs) so it's debuggable without guesswork. Think "attach a trace to
-   a bug report," not always-on tracking.
+1. **Developer diagnostics — ✅ SHIPPED (2026-06-19, local-only).** Settings →
+   Diagnostics (off by default) keeps an in-memory breadcrumb log (searches, routes,
+   parser drift, nav start/reroute/arrival) the user can **Export debug session** and
+   hand to a dev via the share sheet. **No backend, no auto-upload** — user-initiated +
+   user-routed (`core/diag/DiagLog`, `app/diag/DiagExporter`). The remaining piece here
+   is optional: a one-tap upload sink (needs the backend below) instead of manual share.
 2. **Vela's own traffic data (the long game).** Crowd-source anonymized speed/route
    traces from opted-in users to build a **Vela traffic layer**, blended with Google's
    and eventually replacing it where coverage is good — the first real step off Google.
