@@ -98,6 +98,7 @@ fun VelaMapView(
     styleUri: String,
     myLocation: LatLng?,
     myBearing: Float?,
+    mySpeed: Float? = null,
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
     cameraBottomInsetPx: Int = 0,
@@ -337,11 +338,20 @@ fun VelaMapView(
                 if (moved || turned) {
                     lastNavTarget = myLocation
                     lastNavBearing = brg
+                    // Speed-adaptive zoom (Google-style): pull back on the highway to
+                    // see further ahead, tighten up on slow city streets.
+                    val speed = mySpeed ?: 0f // m/s
+                    val zoom = when {
+                        speed > 25f -> 15.0  // ~56+ mph — freeway
+                        speed > 12f -> 16.0  // ~27+ mph — arterial
+                        speed > 4f -> 16.8   // city street
+                        else -> 17.3         // crawling / stopped
+                    }
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
                                 .target(MLLatLng(myLocation.lat, myLocation.lng))
-                                .zoom(17.0)
+                                .zoom(zoom)
                                 .tilt(55.0)
                                 .bearing(brg.toDouble())
                                 .build(),

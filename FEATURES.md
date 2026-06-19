@@ -6,7 +6,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
 - ✅ Detailed open basemap: bundled OpenFreeMap Liberty + injected house numbers at z17; OpenMapTiles vector source pinned to OpenFreeMap's **versioned** tile path (the un-versioned path serves empty tiles — that was a blank-map bug)
 - ✅ Route line, **tappable Google-style search-result pins**, location dot as GeoJSON layers
-- ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB
+- ✅ Heading-up, tilted navigation camera; fit-route-to-screen on preview; recenter FAB. **De-jittered 2026-06-19** (was re-animating every recomposition → lag/shimmer; now only re-points on real movement >4 m / turn >2°, snappier 550 ms ease) with **speed-adaptive zoom** (Google-style: pulls back on the freeway to see ahead, tightens on city streets)
 - ✅ Compass kept clear of the status bar (inset-aware margins)
 - ✅ Tap a labelled POI **or a search-result pin** to open it; camera frames all results after a search. Tapping a POI also reads `name:latin`/`name:en` (not just `name`), and an **unnamed** POI icon (an apartment gym, an unnamed park/playground) **reverse-geocodes to a pin + address** instead of being a dead tap. When several Google listings share the same spot (e.g. a co-branded "SpeeDee Midas" with a sparse **Midas** *and* a rich **SpeeDee** profile), the tap now opens the **most-reviewed = canonical** one rather than whichever happens to be a few feet nearer
 - ✅ Bottom sheets (place sheet, steps) **fill to the screen edge** — content is padded off the gesture/nav bar, but the sheet background no longer stops short and lets the map peek through at the very bottom

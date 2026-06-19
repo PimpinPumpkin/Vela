@@ -70,7 +70,8 @@ class GoogleMapsDataSource @Inject constructor(
             diag.record("drift", "search parse drift: ${e.message}", url)
             throw e
         }
-        diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results")
+        // detail = the exact request URL so an opted-in user's export is replayable.
+        diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results", url)
         SearchResult(query, jsTransforms.refineSearch(places))
     }
 
@@ -155,6 +156,7 @@ class GoogleMapsDataSource @Inject constructor(
             "directions",
             "$mode ${origin.lat},${origin.lng} → ${destination.lat},${destination.lng} → " +
                 "${routes.size} routes, top ETA ${routes.firstOrNull()?.durationInTrafficSeconds ?: routes.firstOrNull()?.durationSeconds}s",
+            url, // exact request URL → the route is replayable from an export
         )
         // Each route now carries Google's OWN geometry (delta-encoded in the
         // response) — real roads, matching the via-label, alternates included. Only

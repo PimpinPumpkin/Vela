@@ -224,6 +224,7 @@ fun MapScreen(
             styleUri = mapStyleUri,
             myLocation = state.myLocation,
             myBearing = state.myBearing,
+            mySpeed = state.mySpeed,
             locationStale = state.myLocationStale,
             cameraTarget = state.center,
             cameraBottomInsetPx = cameraBottomInset,
