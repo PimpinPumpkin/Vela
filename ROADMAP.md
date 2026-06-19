@@ -87,15 +87,34 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   response, but won't today. **Unblock path:** an *opt-in Google login* (a deliberate
   departure from the keyless principle — would also unlock other gated data); decide
   before building. See SPEC §"Gated / not keyless".
-- **Predictive depart-time ETA** + **avoid tolls/highways** — need a manual devtools
-  capture of the directions `pb`'s departure-time field; the live web no longer fires
-  the `/maps/preview/directions` GET on changes, so Chrome automation can't capture it
-  (see memory). Needs a one-off manual capture.
+- **Predictive depart-time ETA** + **avoid tolls/highways** — need the directions
+  `pb`'s departure-time field, and it resists discovery (re-confirmed 2026-06-19, 5th
+  attempt). What's known now:
+  - The keyless `/maps/preview/directions` endpoint **is traffic-aware for *now*** —
+    a live probe gave typical 1408 s vs traffic 1267 s for Davis→Sac — so only the
+    *future-departure* field is missing.
+  - **It's a nested field, not a top-level append.** Probing 6 candidate top-level
+    fields (`!8j`/`!7j`/`!9j`/`!19j`/`!8i`/`!8m2…` with a Monday-rush timestamp) left
+    the traffic ETA *unchanged* — they were parsed-and-ignored, so the field lives
+    inside a specific sub-message we can't guess blind.
+  - The web client **never fires the endpoint on a depart-time change** (embeds the
+    route in `APP_INITIALIZATION_STATE`; only `gen_204` telemetry fires), and the
+    "Leave now ▾" control ignores synthetic clicks — so Chrome automation can't capture it.
+  - **Unblock (≈2 min, manual):** capture ONE real request that carries a future
+    departure. Easiest path that still fires the GET is **mitmproxy on the Android
+    Google Maps app** (set Depart-at, grab the `/maps/preview/directions?pb=` request),
+    or any session where devtools shows that GET. Hand me the `pb`; I diff it against
+    `DirectionsPb.DEFAULT_TEMPLATE` to find the field, then plumb `departureTime` through
+    `MapDataSource.directions` + a depart-at picker re-fetch.
 - **Offline routing** — a heavy native engine (Valhalla/GraphHopper). Multi-session.
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
-- **Gallery videos** — feasible but low-value (uncalibrated, expiring stream URLs, a
-  player dependency); parked.
+- **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
+  gallery for a busy place (In-N-Out, 50 photos) carried **zero video entries** (no
+  `googlevideo.com`/`.mp4`/`m3u8`), so videos are rare in the first place; supporting
+  them would need finding a separate (likely gated) video source + a player dependency
+  (ExoPlayer/media3) + handling expiring stream URLs — high effort for a feature most
+  places don't have. Skip unless a specific place with videos motivates it.
 - **Roboto font** — no keyless glyph host serves it; Noto Sans stays.
 
 ## Resilience (built — extend as needed)
