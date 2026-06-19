@@ -663,7 +663,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
     val dark = isAppInDarkTheme()
     Card(
         Modifier.fillMaxWidth().padding(top = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark)),
+        colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = SheetPalette.ink(dark)),
     ) {
         Column {
             // Top-sheet handle: swipe DOWN to expand the list, swipe UP to retract
@@ -695,7 +695,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         Modifier
                             .size(width = 36.dp, height = 4.dp)
                             .clip(RoundedCornerShape(2.dp))
-                            .background(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)),
+                            .background(SheetPalette.dim(dark).copy(alpha = 0.4f)),
                     )
                 }
                 Row(
@@ -708,7 +708,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         "${shown.size} result${if (shown.size == 1) "" else "s"}",
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = SheetPalette.dim(dark),
                         modifier = Modifier.weight(1f),
                     )
                     FilterChip(
@@ -729,7 +729,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         Icon(
                             if (expandedState.value) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                             contentDescription = if (expandedState.value) "Shrink list" else "Expand list",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            tint = SheetPalette.dim(dark),
                         )
                     }
                 }
@@ -746,7 +746,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     // Bigger, more legible rows (the address/category line read too
                     // small before): name at titleMedium, the secondary lines bumped
                     // from bodySmall→bodyMedium with a touch more breathing room.
-                    Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium)
+                    Text(place.name, fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.titleMedium, color = SheetPalette.ink(dark))
                     place.rating?.let { r ->
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
@@ -755,14 +755,14 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                             Text(
                                 String.format(Locale.US, "%.1f", r),
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = SheetPalette.dim(dark),
                             )
                             RatingStars(r, starSize = 14.dp, modifier = Modifier.padding(horizontal = 4.dp))
                             place.reviewCount?.let {
                                 Text(
                                     "($it)",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = SheetPalette.dim(dark),
                                 )
                             }
                         }
@@ -775,7 +775,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         Text(
                             sub,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = SheetPalette.dim(dark),
                             modifier = Modifier.padding(top = 1.dp),
                         )
                     }
@@ -785,7 +785,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         Text(
                             addr,
                             style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = SheetPalette.dim(dark),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 1.dp),
@@ -954,6 +954,9 @@ private fun ShortcutRow(
     onClear: (ShortcutKind) -> Unit,
 ) {
     val icon = if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work
+    // Fixed sheet palette (not the theme's on-surface, which renders dark/black on our
+    // fixed grey under some Material-You themes / light mode).
+    val dark = isAppInDarkTheme()
     Row(
         Modifier
             .fillMaxWidth()
@@ -964,16 +967,15 @@ private fun ShortcutRow(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (place != null) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (place != null) MaterialTheme.colorScheme.primary else SheetPalette.dim(dark),
         )
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(kind.label, style = MaterialTheme.typography.bodyLarge)
+            Text(kind.label, style = MaterialTheme.typography.bodyLarge, color = SheetPalette.ink(dark))
             Text(
                 place?.name ?: "Set ${kind.label.lowercase()} address",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = SheetPalette.dim(dark),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

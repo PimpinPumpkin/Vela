@@ -81,6 +81,10 @@ data class Calibration(
             "status118" to listOf(1, 118, 0, 3, 1, 4, 0),
             "hours203" to listOf(1, 203, 0),
             "hours118" to listOf(1, 118, 0, 3, 0),
+            // Permanently-closed flag: place node `[23]` == 1 (null on an open place).
+            // It's how Google marks dead POIs that carry no open/closed status text,
+            // and — unlike popular times — it survives the keyless degraded response.
+            "closedFlag" to listOf(1, 23),
             // Popular-times histogram: [84][0] = 7 days, each [d][0]=day-of-week,
             // [d][1]=hourly [hour, occupancy%, …]. Relative to the place node [1].
             "popularTimes" to listOf(1, 84),

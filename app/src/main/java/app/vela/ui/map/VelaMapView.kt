@@ -184,6 +184,9 @@ fun VelaMapView(
         if (mapRef == null) {
             mv.getMapAsync { map ->
                 map.uiSettings.isLogoEnabled = false
+                // Hide the bottom-left attribution "ⓘ" — open-tile attribution lives
+                // in Settings → About instead, so the map stays clean (Google-style).
+                map.uiSettings.isAttributionEnabled = false
                 // Tap a labelled POI on the map to open it.
                 map.addOnMapClickListener { tapped ->
                     val p = map.projection.toScreenLocation(tapped)

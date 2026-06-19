@@ -121,6 +121,7 @@ class MapViewModel @Inject constructor(
     private val webDirections: WebDirectionsFetcher,
     private val diag: app.vela.core.diag.DiagLog,
     private val diagExporter: app.vela.diag.DiagExporter,
+    private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
@@ -458,7 +459,22 @@ class MapViewModel @Inject constructor(
         }
         fetchReviews(p)
         fetchPhotos(p)
+        fetchPopularTimes(p)
         rememberRecentPlace(SavedPlace.of(p))
+    }
+
+    /** Pull the popular-times histogram via a hidden WebView (the keyless OkHttp
+     *  search is bot-degraded and strips it; a real browser engine isn't — see
+     *  [WebPopularTimesFetcher]). Best-effort, applied only if it's still selected. */
+    private fun fetchPopularTimes(p: Place) {
+        if (p.popularTimes != null || p.name.isBlank()) return
+        viewModelScope.launch {
+            val pt = runCatching { webPopularTimes.fetch(p) }.getOrNull() ?: return@launch
+            _state.update { st ->
+                val sel = st.selected
+                if (sel?.id == p.id) st.copy(selected = sel.copy(popularTimes = pt)) else st
+            }
+        }
     }
 
     /** Pull the full photo gallery (~40+) by feature id and swap it in for the

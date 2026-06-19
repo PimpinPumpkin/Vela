@@ -71,26 +71,16 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
 
 ## Known-hard / blocked
 
-- **Busy / popular times** — *session-gated, not reachable keyless* (investigated in
-  depth 2026-06-18). The histogram lives at place node `[84]` but Google **strips it
-  from the keyless `/search?tbm=map` response** — it ships only to a full/logged-in
-  session (proven: a logged-in browser capture has `[84]`; the same request with
-  `credentials:'omit'` and the real on-device keyless session both lack it). The
-  photos/transit WebView trick **doesn't rescue it either**: the anonymous headless
-  WebView's maps SPA never renders the place panel (state stays a 31 KB shell, DOM
-  223 chars), and the place-detail RPC it would use (`/maps/preview/place`) needs a
-  per-page-load session token and returns a 1.2 KB stub without it (even logged-in).
-  Unlike photos/transit — which a *logged-out* browser genuinely receives — popular
-  times needs a real signed-in session. The model + parser + UI are **built and
-  dormant** (`Place.popularTimes`, `SearchParser.parsePopularTimes`, PlaceSheet's
-  `PopularTimesSection`): they auto-light-up if `[84]` ever appears in a keyless
-  response, but won't today. **Unblock path:** an *opt-in Google login* (a deliberate
-  departure from the keyless principle — would also unlock other gated data); decide
-  before building. See SPEC §"Gated / not keyless". **PROVEN on-device 2026-06-19**
-  (not just inferred): an in-WebView `fetch`/XHR hook captured the anonymous place-
-  detail batchexecute RPCs (`T4jwAf`, `r4skrb`) — both return **~200-byte stubs, no
-  histogram**. Google serves the detail only to a logged-in session; the keyless/
-  WebView avenue is exhausted, don't re-investigate.
+- ~~Busy / popular times~~ — **DONE keyless 2026-06-19** (the 2026-06-18 "login-gated"
+  conclusion was *wrong*). The histogram is place node `[84]`; the keyless **OkHttp**
+  `/search` is bot-degraded (TLS-fingerprint, like photos/transit) and strips it, which
+  fooled me. A real browser engine isn't degraded: a **warmed hidden WebView's
+  same-origin search returns the full ~240 KB response WITH `[84]`** for an anonymous
+  session (proven on-device — an in-WebView fetch hook caught the `/search` response
+  carrying the markers). `WebPopularTimesFetcher` warms google.com→maps (an established
+  NID matters) then same-origin-fetches the search URL the app already builds; parsed
+  by `PopularTimesParser`. Lesson: when "needs login" comes from the OkHttp response
+  only, try a WebView — same trick as photos/transit.
 - **Predictive depart-time ETA** + **avoid tolls/highways** — need the directions
   `pb`'s departure-time field, and it resists discovery (re-confirmed 2026-06-19, 5th
   attempt). What's known now:

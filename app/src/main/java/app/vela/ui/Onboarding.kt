@@ -21,6 +21,11 @@ object Onboarding {
     /** True for the single session where the one-time donate prompt should show. */
     val showDonatePrompt = mutableStateOf(false)
 
+    /** True for the single session where the one-time "turn on diagnostics?" prompt
+     *  should show — Vela wants opted-in diagnostics, so it asks once (after the user
+     *  has settled in), clearly, off otherwise. Never shown if it's already on. */
+    val showDiagPrompt = mutableStateOf(false)
+
     // Replace with your own funding page (Liberapay / Ko-fi / GitHub Sponsors).
     const val DONATE_URL = "https://github.com/sponsors/PimpinPumpkin"
 
@@ -38,6 +43,22 @@ object Onboarding {
         val donatePromptDone = p.getBoolean("donate_prompt_done", false)
         showDonatePrompt.value = welcomeDone.value && !donatePromptDone &&
             (System.currentTimeMillis() - firstMs) >= WEEK_MS
+
+        // Diagnostics prompt: ask once, from the 2nd launch on (let the user settle in
+        // first), unless they've already turned it on or been asked.
+        val launches = p.getInt("launches", 0) + 1
+        p.edit().putInt("launches", launches).apply()
+        val diagPromptDone = p.getBoolean("diag_prompt_done", false)
+        val diagAlreadyOn = context.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+            .getBoolean("diag_enabled", false)
+        showDiagPrompt.value = welcomeDone.value && !diagPromptDone && !diagAlreadyOn && launches >= 2
+    }
+
+    /** Mark the diagnostics prompt as handled so it never shows again. */
+    fun dismissDiagPrompt(context: Context) {
+        showDiagPrompt.value = false
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean("diag_prompt_done", true).apply()
     }
 
     fun completeWelcome(context: Context) {

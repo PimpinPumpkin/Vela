@@ -102,7 +102,10 @@ object SearchParser {
             statusText = field("status118").str()
                 ?: field("statusRich").str()
                 ?: field("openStatus").str(),
-            permanentlyClosed = isPermanentlyClosed(
+            // Dead POI: the `[23]==1` flag is the reliable signal (Caffé Italia has no
+            // status text at all, so the text check alone missed it); keep the text
+            // check as a belt-and-suspenders for places that DO spell it out.
+            permanentlyClosed = field("closedFlag").int() == 1 || isPermanentlyClosed(
                 field("status118").str(), field("statusRich").str(), field("openStatus").str(),
             ),
             hours = parseHours(entry, paths),

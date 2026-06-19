@@ -3,6 +3,9 @@ package app.vela.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,7 +49,31 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                     },
                     onDismiss = { Onboarding.dismissDonatePrompt(context) },
                 )
+            } else if (Onboarding.showDiagPrompt.value) {
+                DiagPrompt(
+                    onEnable = { vm.setDiagnostics(true); Onboarding.dismissDiagPrompt(context) },
+                    onDismiss = { Onboarding.dismissDiagPrompt(context) },
+                )
             }
         }
     }
+}
+
+/** One-time, opt-in nudge to enable on-device diagnostics (Vela wants the data, but
+ *  asks plainly and honours "Not now"). */
+@Composable
+private fun DiagPrompt(onEnable: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Help improve Vela?") },
+        text = {
+            Text(
+                "Vela can keep a short, on-device log of what it does — searches, routes, and " +
+                    "errors — so problems are debuggable. It stays on your phone; nothing is sent " +
+                    "unless you export it yourself. Turn it off any time in Settings → Diagnostics.",
+            )
+        },
+        confirmButton = { TextButton(onClick = onEnable) { Text("Turn on") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
+    )
 }
