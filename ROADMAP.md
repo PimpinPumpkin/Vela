@@ -86,7 +86,11 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   `PopularTimesSection`): they auto-light-up if `[84]` ever appears in a keyless
   response, but won't today. **Unblock path:** an *opt-in Google login* (a deliberate
   departure from the keyless principle — would also unlock other gated data); decide
-  before building. See SPEC §"Gated / not keyless".
+  before building. See SPEC §"Gated / not keyless". **PROVEN on-device 2026-06-19**
+  (not just inferred): an in-WebView `fetch`/XHR hook captured the anonymous place-
+  detail batchexecute RPCs (`T4jwAf`, `r4skrb`) — both return **~200-byte stubs, no
+  histogram**. Google serves the detail only to a logged-in session; the keyless/
+  WebView avenue is exhausted, don't re-investigate.
 - **Predictive depart-time ETA** + **avoid tolls/highways** — need the directions
   `pb`'s departure-time field, and it resists discovery (re-confirmed 2026-06-19, 5th
   attempt). What's known now:

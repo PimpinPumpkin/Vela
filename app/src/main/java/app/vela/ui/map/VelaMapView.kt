@@ -613,6 +613,9 @@ private fun applyLight(style: Style) {
         PropertyFactory.fillColor("#dde1e7"),
         PropertyFactory.fillOutlineColor("#c4c9d1"),
     )
+    // Show footprints from neighbourhood zoom (Liberty hid them until ~z16-17, so
+    // residential houses only appeared when zoomed way in; Google shows them earlier).
+    style.getLayer("building")?.setMinZoom(14f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#dde1e7"),
         PropertyFactory.fillExtrusionOpacity(0.95f),
@@ -696,6 +699,7 @@ private fun applyDark(style: Style) {
         PropertyFactory.fillColor("#323f54"),
         PropertyFactory.fillOutlineColor("#3f4e66"),
     )
+    style.getLayer("building")?.setMinZoom(14f) // houses from neighbourhood zoom (see light path)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#323f54"),
         PropertyFactory.fillExtrusionOpacity(0.95f),
