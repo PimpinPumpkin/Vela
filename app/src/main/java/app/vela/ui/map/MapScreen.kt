@@ -230,6 +230,7 @@ fun MapScreen(
             cameraBottomInsetPx = cameraBottomInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             routeColor = routeTrafficColor(state.activeRoute),
+            routeTrafficSpans = routeTrafficSpans(state.activeRoute),
             // Greyed, tappable alternates (Google-style) — only off-nav, with a chooser up.
             alternates = if (state.navigating) emptyList() else run {
                 val activeIdx = state.routes.indexOf(state.activeRoute)
@@ -617,6 +618,19 @@ private fun routeTrafficColor(route: app.vela.core.model.Route?): String =
             else -> "#1F6FEB"          // light / free-flowing
         }
     }
+
+/** Per-segment live traffic as (startFraction, endFraction, level) along the route,
+ *  converting Google's metre offsets to fractions of the route length — drives the
+ *  route line's per-segment colour (Google-style). Empty when there's no live data. */
+private fun routeTrafficSpans(route: app.vela.core.model.Route?): List<Triple<Float, Float, Int>> {
+    val dist = route?.distanceMeters ?: return emptyList()
+    if (dist <= 0.0) return emptyList()
+    return route.trafficSpans.map { sp ->
+        val s = (sp.startMeters / dist).toFloat().coerceIn(0f, 1f)
+        val e = ((sp.startMeters + sp.lengthMeters) / dist).toFloat().coerceIn(0f, 1f)
+        Triple(s, e, sp.level)
+    }
+}
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
     if (state.results.isNotEmpty()) {

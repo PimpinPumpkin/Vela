@@ -119,8 +119,11 @@ distance m `[2][0]` · typical dur s `[3][0]` · **traffic dur s `[10][0][0]`** 
 overall traffic level `[10][2]` · **per-route geometry** = delta-encoded E7 arrays at
 `[0][7][i]` (lat deltas `[i][0]`, lng deltas `[i][1]`, first element absolute E7;
 `[i][4]` is elevation, NOT traffic) — index-aligned with summaries, so alternates draw
-real roads. Steps are `<step maneuver=… meters=…>` markup; lane hints ("Use the right
-2 lanes…") split into `Maneuver.laneHint`.
+real roads. **Per-segment live traffic** at `route[3][5][0]` (note: hangs off the route
+node, NOT the `[0]` summary) = `[level, startMeters, lengthMeters]` spans, only the
+non-free-flow stretches → `Route.trafficSpans` → the route line's colour bands. Steps
+are `<step maneuver=… meters=…>` markup; lane hints ("Use the right 2 lanes…") split
+into `Maneuver.laneHint`.
 **Predictive depart-time field: NOT yet calibrated** (the one open extractor debt for
 ETA-if-leaving-at-X; see `FEATURES.md`).
 
@@ -150,10 +153,14 @@ listings within 35 m, picks the most-reviewed **only when it clearly dominates**
 wrongly merged; "Also at this location" lists the others.
 
 ### Traffic overlay
-Live traffic is **raster `/maps/vt` PNG tiles** on `www.google.com` (public, keyless,
-not bot-gated). The `incidents` params carry the data (NOT the map-version epoch);
-`VelaMapView.ensureTraffic` adds a `RasterLayer` above the route line. Per-segment
-traffic only exists as these tiles, not in the directions JSON.
+Two layers. **(1) Whole-map raster** — `/maps/vt` PNG tiles on `www.google.com`
+(public, keyless, not bot-gated; the `incidents` params carry the data, NOT the
+map-version epoch); `VelaMapView.ensureTraffic` adds a `RasterLayer`. A manual toggle on
+the bare map; **off during navigation** (it washed every road). **(2) Per-segment route
+line** — the directions JSON *does* carry per-segment congestion after all
+(`route[3][5][0]`, see above); `VelaMapView.routeGradientStops` paints it onto the route
+line as Google-style colour bands over the driven-grey gradient. So during nav the route
+itself shows the traffic, not the whole map.
 
 ---
 

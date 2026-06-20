@@ -4,6 +4,7 @@ import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.google.arr
 import app.vela.core.data.google.at
 import app.vela.core.data.google.dbl
+import app.vela.core.data.google.int
 import app.vela.core.data.google.long
 import app.vela.core.data.google.str
 import app.vela.core.model.LatLng
@@ -11,6 +12,7 @@ import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
+import app.vela.core.model.TrafficSpan
 import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -73,7 +75,23 @@ object DirectionsParser {
             durationSeconds = typicalDur,
             durationInTrafficSeconds = trafficDur,
             summary = summary.at(1).str(),
+            trafficSpans = parseTrafficSpans(route),
         )
+    }
+
+    /** Per-segment live traffic: `route[3][5][0]` is a list of `[level, startMeters,
+     *  lengthMeters]` — only the congested stretches (free-flow gaps are omitted).
+     *  Note this hangs off the route node itself, NOT the `[0]` summary. Calibrated
+     *  2026-06-19 against Davis→Sac + Berkeley→SF (levels 1=moderate, 2=heavy seen;
+     *  span starts+lengths chain contiguously through each jam, sum < route length). */
+    private fun parseTrafficSpans(route: JsonElement): List<TrafficSpan> {
+        val arr = route.at(3, 5, 0).arr() ?: return emptyList()
+        return arr.mapNotNull { s ->
+            val level = s.at(0).int() ?: return@mapNotNull null
+            val start = s.at(1).dbl() ?: return@mapNotNull null
+            val len = s.at(2).dbl() ?: return@mapNotNull null
+            if (len <= 0.0) null else TrafficSpan(level, start, len)
+        }
     }
 
     /** Decode a route-geometry node: `[0]` = latitude deltas (E7, first element

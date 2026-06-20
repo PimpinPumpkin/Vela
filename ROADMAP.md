@@ -104,16 +104,16 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     or any session where devtools shows that GET. Hand me the `pb`; I diff it against
     `DirectionsPb.DEFAULT_TEMPLATE` to find the field, then plumb `departureTime` through
     `MapDataSource.directions` + a depart-at picker re-fetch.
-- **Per-segment route traffic during nav (Google-parity).** As of 2026-06-19 the
-  whole-map `/maps/vt` raster no longer auto-shows while navigating (it washed every
-  road; the ask was traffic on *just* your route) — the route line tints by *overall*
-  congestion instead (`routeTrafficColor` from `Route.trafficRatio`). Google instead
-  colours the route line **per segment** (green/amber/red along your path). To match it
-  we need per-segment speed/congestion out of the `/maps/preview/directions` response
-  (not currently parsed — `Route` only carries the overall `durationInTrafficSeconds`),
-  then render it as a multi-stop `lineGradient` (the driven-grey gradient already proves
-  the mechanism — just add congestion colour stops keyed to along-route fraction).
-  Needs a live directions capture to locate the per-segment array, then on-device verify.
+- ~~Per-segment route traffic during nav (Google-parity)~~ — **DONE 2026-06-19.** The
+  congestion data was hiding in plain sight in the directions response: `route[3][5][0]`
+  is a list of `[level, startMeters, lengthMeters]` spans (only the non-free-flowing
+  stretches; gaps are free-flow). `DirectionsParser` reads it into `Route.trafficSpans`;
+  `MapScreen` converts metre offsets → fractions; `VelaMapView.routeGradientStops` paints
+  the route line per segment over the driven-grey gradient (free-flow blue base, amber =
+  level 1, red = level 2, dark red = 3+). Calibrated against Davis→Sac + Berkeley→SF
+  (Bay-Bridge approach = one long level-2 span). The whole-map raster stays off during
+  nav — the route now carries the traffic, like Google. *(Level→colour mapping is the
+  best read of the 1/2 grades seen; trivially flipped if a heavy drive shows otherwise.)*
 - **Offline routing** — a heavy native engine (Valhalla/GraphHopper). Multi-session.
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.

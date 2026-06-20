@@ -105,6 +105,9 @@ fun VelaMapView(
     cameraBottomInsetPx: Int = 0,
     routePolyline: List<LatLng>,
     routeColor: String,
+    // Per-segment live traffic as (startFraction, endFraction, level) along the route
+    // — colours the route line like Google (free-flow elsewhere). Empty = no live data.
+    routeTrafficSpans: List<Triple<Float, Float, Int>> = emptyList(),
     alternates: List<Pair<Int, List<LatLng>>> = emptyList(),
     altColor: String = "#9AA0A6",
     onSelectAlternate: (Int) -> Unit = {},
@@ -298,12 +301,12 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
+                applyData(style, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
+                applyData(it, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -807,10 +810,53 @@ private fun projectOnSegment(p: LatLng, a: LatLng, b: LatLng): Pair<LatLng, Doub
     return LatLng(ay + t * dy, (ax + t * dx) / k) to t
 }
 
+private val ROUTE_FREEFLOW = android.graphics.Color.parseColor("#1F6FEB")
+private val ROUTE_DRIVEN = android.graphics.Color.parseColor("#9AA0A6")
+private val TRAFFIC_MODERATE = android.graphics.Color.parseColor("#E8923D") // amber
+private val TRAFFIC_HEAVY = android.graphics.Color.parseColor("#D93838")    // red
+private val TRAFFIC_SEVERE = android.graphics.Color.parseColor("#A11D1D")   // dark red
+
+private fun trafficLevelColor(level: Int): Int = when {
+    level <= 1 -> TRAFFIC_MODERATE
+    level == 2 -> TRAFFIC_HEAVY
+    else -> TRAFFIC_SEVERE
+}
+
+/** Route line-gradient stops over lineProgress (0..1 by length): grey for the driven
+ *  part (< [p]); ahead, per-segment live traffic from [spans] (startFrac, endFrac,
+ *  level) over a free-flow base — or the overall [routeInt] tint when there are no
+ *  spans (walk/bike, or no live data). Sampled into flat colour bands (~0.8%
+ *  transitions): a handful of crisp stops rather than a smeared interpolation. */
+private fun routeGradientStops(
+    p: Float,
+    routeInt: Int,
+    spans: List<Triple<Float, Float, Int>>,
+): Array<Expression.Stop> {
+    val freeflow = if (spans.isEmpty()) routeInt else ROUTE_FREEFLOW
+    fun colorAt(f: Float): Int {
+        if (f <= p) return ROUTE_DRIVEN
+        for ((s, e, lvl) in spans) if (f >= s && f < e) return trafficLevelColor(lvl)
+        return freeflow
+    }
+    val n = 128
+    val stops = ArrayList<Expression.Stop>(8)
+    var i = 0
+    while (i <= n) {
+        val c = colorAt(i / n.toFloat())
+        var j = i
+        while (j + 1 <= n && colorAt((j + 1) / n.toFloat()) == c) j++
+        stops.add(Expression.stop(i / n.toFloat(), Expression.color(c)))
+        if (j > i) stops.add(Expression.stop(j / n.toFloat(), Expression.color(c)))
+        i = j + 1
+    }
+    return stops.toTypedArray()
+}
+
 private fun applyData(
     style: Style,
     route: List<LatLng>,
     routeColor: String,
+    trafficSpans: List<Triple<Float, Float, Int>>,
     alternates: List<Pair<Int, List<LatLng>>>,
     altColor: String,
     markers: List<MapMarker>,
@@ -828,22 +874,19 @@ private fun applyData(
         FeatureCollection.fromFeatures(emptyList<Feature>())
     }
     style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
-    // Route line: the part AHEAD is congestion-tinted (amber/red when slower than
-    // typical); the part already DRIVEN greys out behind the vehicle, Google-style,
-    // via a line-progress gradient (routeProgress = fraction travelled, 0 when not
-    // navigating → all one colour).
+    // Route line, Google-style: the part already DRIVEN greys out behind the vehicle;
+    // the part AHEAD shows live traffic PER SEGMENT — a free-flow base with amber/red
+    // bands over the congested stretches (from [trafficSpans]) — or, with no live
+    // data, a single congestion tint. A line-progress gradient (routeProgress =
+    // fraction travelled, 0 when not navigating → nothing greyed).
     val routeInt = runCatching { android.graphics.Color.parseColor(routeColor) }
-        .getOrDefault(android.graphics.Color.parseColor("#1F6FEB"))
-    val drivenInt = android.graphics.Color.parseColor("#9AA0A6")
+        .getOrDefault(ROUTE_FREEFLOW)
     val p = routeProgress.coerceIn(0.001f, 0.998f)
     style.getLayer(ROUTE_LAYER)?.setProperties(
         PropertyFactory.lineGradient(
             Expression.interpolate(
                 Expression.linear(), Expression.lineProgress(),
-                Expression.stop(0f, Expression.color(drivenInt)),
-                Expression.stop(p, Expression.color(drivenInt)),
-                Expression.stop((p + 0.002f).coerceAtMost(1f), Expression.color(routeInt)),
-                Expression.stop(1f, Expression.color(routeInt)),
+                *routeGradientStops(p, routeInt, trafficSpans),
             ),
         ),
     )

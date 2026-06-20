@@ -27,6 +27,17 @@ data class RouteLeg(
     val maneuvers: List<Maneuver>,
 )
 
+/** One live-traffic congestion span along the route. [level] is Google's
+ *  congestion grade (1 = moderate, 2 = heavy, 3+ = severe); free-flowing stretches
+ *  are NOT listed (they're the gaps). [startMeters]..[startMeters]+[lengthMeters]
+ *  locates it by distance from the route start — divide by the route distance for a
+ *  fraction-along-route, which drives the per-segment colour of the route line. */
+data class TrafficSpan(
+    val level: Int,
+    val startMeters: Double,
+    val lengthMeters: Double,
+)
+
 /**
  * A full route. When [durationInTrafficSeconds] is non-null it came straight
  * out of Google's directions response — i.e. the traffic is already baked in,
@@ -39,6 +50,7 @@ data class Route(
     val durationSeconds: Double,
     val durationInTrafficSeconds: Double?,
     val summary: String? = null,
+    val trafficSpans: List<TrafficSpan> = emptyList(),
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }

@@ -186,7 +186,12 @@ Each route's geometry **is** in the response after all — delta-encoded E7
 coordinate arrays at `[0][7][i]`, index-aligned with the summaries — so every
 route, **alternates included**, draws along Google's *own* roads (decoded in
 [`DirectionsParser`](core/src/main/java/app/vela/core/data/google/parse/DirectionsParser.kt);
-this replaced an earlier scattered-point guess that doubled back on itself). An
+this replaced an earlier scattered-point guess that doubled back on itself).
+**Per-segment live traffic** rides along at `route[3][5][0]` — a list of
+`[level, startMeters, lengthMeters]` congestion spans (only the non-free-flow
+stretches; gaps are free-flow), parsed into `Route.trafficSpans` and painted as
+the route line's Google-style colour bands (free-flow blue → amber → red →
+dark-red). An
 open router ([`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt),
 FOSSGIS OSRM with a per-mode `routed-car`/`routed-bike`/`routed-foot` backend)
 stays only as a fallback for the rare route Google omits geometry for. Live
