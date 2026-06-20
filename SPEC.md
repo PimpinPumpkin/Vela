@@ -105,7 +105,9 @@ build `pb` (`SearchPb`) + `GET` → **optional JS override** (`JsTransforms`, §
 ### Search response (`root[64][i]`, each entry rooted at `[1]`)
 name `[1][11]` · full address `[1][39]` (fallback: join components `[1][2]`) · rating
 `[1][4][7]` · reviews `[1][4][8]` · lat `[1][9][2]` · lng `[1][9][3]` · category
-`[1][13][0]` · website `[1][7][0]` · phone `[1][178][0][0]` · price `[1][4][2]` ·
+`[1][13][0]` · website `[1][7][0]` · phone `[1][178][0][0]` · price `[1][4][2]` (a
+dollar *range* "$10–20", not a 1–4 level — the tier flag lives in the `[1][4][9]`
+bucket tree; `SearchParser.priceLevelOf` derives a 1–4 from the label for the filter) ·
 open-status `[1][203][1][8][0]` · rich status `[1][203][1][4][0]` · **feature id**
 `[1][10]` (`0x..:0x..` → reviews) · place id `[1][78]` · photos
 `[1][105][0][1][0][i][6][0]` (FIFE URLs, re-size `=w500-h350`) · featured review
