@@ -56,9 +56,9 @@ object ReviewsParser {
         return urls.toList().take(10)
     }
 
-    /** Force a sane thumbnail size onto a FIFE URL (the trailing `=w…-h…` / `=s…`). */
-    private fun resize(u: String): String {
-        val sized = u.replace(Regex("=[swh]\\d[\\w-]*$"), "=w400-h400")
-        return if (sized.contains("=w400-h400")) sized else "$sized=w400-h400"
-    }
+    /** Force a sane thumbnail size onto a FIFE URL: strip any trailing size directive
+     *  (`=s…`, `=w…-h…-k-no`, …) and pin our own — strip-then-append so a URL that
+     *  already carries a size can never end up double-sized. */
+    private fun resize(u: String): String =
+        u.replace(Regex("=[swh]\\d[\\w-]*$"), "") + "=w400-h400"
 }

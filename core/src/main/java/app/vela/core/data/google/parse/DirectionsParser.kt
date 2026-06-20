@@ -90,8 +90,10 @@ object DirectionsParser {
             val level = s.at(0).int() ?: return@mapNotNull null
             val start = s.at(1).dbl() ?: return@mapNotNull null
             val len = s.at(2).dbl() ?: return@mapNotNull null
-            if (len <= 0.0) null else TrafficSpan(level, start, len)
-        }
+            // Only congested spans are listed; drop a zero-length or stray non-graded
+            // (level < 1) entry so the route gradient never paints a free-flow stretch.
+            if (len <= 0.0 || level < 1) null else TrafficSpan(level, start, len)
+        }.sortedBy { it.startMeters } // gradient stops must walk start→end in order
     }
 
     /** Decode a route-geometry node: `[0]` = latitude deltas (E7, first element

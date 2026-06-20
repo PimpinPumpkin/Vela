@@ -252,10 +252,10 @@ fun MapScreen(
             applyKeylessTheme = !hasMapTiler,
             // Off-nav: the whole-map raster when the user toggles it on. During nav we
             // DON'T wash the whole map — the user asked for traffic on "just the road
-            // we're on, not all of it", so the route line carries congestion (its
-            // colour via routeTrafficColor) and the overlay stays off unless they
-            // explicitly turn it on. (True per-segment route colouring is the parity
-            // follow-up — needs directions traffic-speeds, see ROADMAP.)
+            // we're on, not all of it", so the route line itself is coloured per-segment
+            // from the directions traffic spans (VelaMapView.routeGradientStops /
+            // DirectionsParser.parseTrafficSpans); the whole-map overlay stays off unless
+            // the user explicitly enables it in Settings → Map.
             trafficOn = Traffic.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
@@ -440,7 +440,7 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchFocused) {
+        if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen) {
             ElevatedButton(
                 onClick = vm::searchThisArea,
                 modifier = Modifier
@@ -541,7 +541,22 @@ fun MapScreen(
             )
         }
 
-        if (!state.navigating && state.selected == null && !searchFocused) {
+        // Replaying a recorded trip drives the dot + camera like a live drive; give the
+        // user an explicit way out (its tap stops the replay and resumes live GPS).
+        if (state.replaying) {
+            ElevatedButton(
+                onClick = vm::stopReplay,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 24.dp),
+            ) {
+                Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                Text("Stop replay")
+            }
+        }
+
+        if (!state.navigating && state.selected == null && !searchOpen) {
             FloatingActionButton(
                 onClick = vm::recenter,
                 modifier = Modifier
@@ -593,7 +608,7 @@ fun MapScreen(
         }
         // Pushed notices (signed calibration channel) — on the bare map only, so they
         // don't cover the nav banner / search / a place sheet.
-        if (!state.navigating && state.selected == null && !searchFocused && state.notices.isNotEmpty()) {
+        if (!state.navigating && state.selected == null && !searchOpen && state.notices.isNotEmpty()) {
             Column(
                 Modifier
                     .align(Alignment.TopCenter)

@@ -295,6 +295,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             LaunchedEffect(Unit) { vm.refreshTripRecording() }
             var showTripConsent by remember { mutableStateOf(false) }
             var trips by remember { mutableStateOf(vm.recordedTrips()) }
+            // Re-read on entry so a trip recorded since the app launched shows up without
+            // a restart (the list was otherwise only refreshed after a delete).
+            LaunchedEffect(Unit) { trips = vm.recordedTrips() }
             Spacer(Modifier.height(8.dp))
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -317,7 +320,11 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     ) {
                         Column(Modifier.weight(1f)) {
                             Text(t.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-                            Hint("${t.fixCount} points")
+                            val recordedAt = if (t.startedAt > 0L)
+                                java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                                    .format(java.util.Date(t.startedAt))
+                            else null
+                            Hint(listOfNotNull(recordedAt, "${t.fixCount} points").joinToString(" · "))
                         }
                         TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text("Replay") }
                         IconButton(onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
@@ -325,6 +332,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         }
                     }
                 }
+            } else if (state.tripRecordingEnabled) {
+                Spacer(Modifier.height(4.dp))
+                Hint("No trips recorded yet — navigate somewhere with this on and it'll show up here to replay.")
             }
             if (showTripConsent) {
                 AlertDialog(

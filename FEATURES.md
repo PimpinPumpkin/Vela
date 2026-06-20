@@ -80,9 +80,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Per-segment route-line traffic** — the drawn route is coloured Google-style
   **along its length**: free-flow blue with amber/red/dark-red bands over the congested
   stretches, from the directions response's own congestion spans (`route[3][5][0]` =
-  `[level, startMeters, lengthMeters]`, only the non-free-flow runs). Combined with the
-  driven-grey gradient so the part behind the vehicle still greys out. (Walk/bike and
-  no-live-traffic routes fall back to a single overall blue→amber→red tint.)
+  `[level, startMeters, lengthMeters]`, only the non-free-flow runs — parsed sorted by
+  start so the gradient bands walk the line start→end in order). Combined with the
+  driven-grey gradient so the part behind the vehicle still greys out — but only while
+  actually navigating: a pre-nav route **preview** draws clean with no grey nub at the
+  start. (Walk/bike and no-live-traffic routes fall back to a single overall
+  blue→amber→red tint.)
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
 - ✅ **Lane guidance** — Google's lane hints ("Use the right 2 lanes to turn") are
@@ -230,7 +233,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ CI (GitHub Actions): every push to main builds + tests + signs the APK and publishes a **normal versioned release** (`v0.1.<run>`), kept as a revision history — Obtainium tracks the latest with zero config
 - ✅ **Opt-in diagnostics / debug export** (Settings → Diagnostics, **off by default**) — a local-only event log (searches, computed routes, parser "drift", nav start/reroute/arrival) that the user can **Export debug session** to a JSON bundle and hand to a developer via the system share sheet. **Never auto-uploaded** — user-initiated and user-routed; turning it off wipes the log; in-memory only (capped at 300 events). The no-backend half of the telemetry plan; `core/diag/DiagLog` + `app/diag/DiagExporter`, consent dialog on enable, `PRIVACY.md` updated
 - ✅ **Crash capture** — an uncaught-exception handler (`app/diag/CrashCatcher`, installed in `VelaApp`) **persists the stack trace + breadcrumbs + app/device versions to disk**, surviving the restart, so after a crash the user can **Export crash report** from Settings → Diagnostics (the fix for "nav crashed but the phone wasn't tethered, no logcat"). Captured even with diagnostics off (a stack trace is benign + local); never auto-sent; chains to the system handler so normal crash behaviour is unchanged
-- ✅ **Trip recording + replay** (Settings → "Save my trips", **off by default, separate opt-in** — more invasive than diagnostics since it's your exact routes; never uploaded) — records each navigation's GPS trace to a local file (`app/replay/TripStore`), so a drive can be **replayed on the map at 3×** to test turn-by-turn **without driving it again** (`LocationProvider.replay` feeds the recorded fixes through the same nav/camera/dot pipeline). Recorded trips are listed in Settings with **Replay / Delete**. The **first-run prompt now offers the two opt-ins separately** (diagnostics default-on, trip-saving default-off). *(Auto-routing to the trip's destination on replay — so turn-by-turn runs without manually starting nav first — is the follow-up; recording + position replay land now, pending on-device verification)*
+- ✅ **Trip recording + replay** (Settings → "Save my trips", **off by default, separate opt-in** — more invasive than diagnostics since it's your exact routes; never uploaded) — records each navigation's GPS trace to a local file (`app/replay/TripStore`), so a drive can be **replayed on the map at 3×** to test turn-by-turn **without driving it again** (`LocationProvider.replay` feeds the recorded fixes through the same nav/camera/dot pipeline). A replay shows a **"Stop replay"** button on the map and, when it finishes (or is stopped), **live GPS resumes automatically** — earlier the live feed never came back until the app was restarted. The trip is **saved the instant you arrive**, not only when you tap "Done", so it survives if you leave the arrival card. Recorded trips are listed in Settings (newest first) with their **recorded date + point count** and **Replay / Delete**; the list refreshes on entry and shows an empty-state hint while recording is on but nothing's captured yet. The **first-run prompt offers the two opt-ins separately** (diagnostics default-on, trip-saving default-off). *(Auto-routing to the trip's destination on replay — so turn-by-turn runs without manually starting nav first — is the follow-up; recording + position replay land now, pending on-device verification)*
 - ✅ Settings shows the installed app version (name + build code)
 - ⬜ F-Droid submission + reproducible build
 - ⬜ UnifiedPush for delay alerts (no FCM)

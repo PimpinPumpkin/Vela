@@ -492,7 +492,9 @@ fun DirectionsPanel(
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
-    val collapsed = remember { mutableStateOf(false) }
+    // Keyed to the destination so opening directions for a different place starts
+    // expanded again instead of inheriting the previous session's collapsed state.
+    val collapsed = remember(destinationName) { mutableStateOf(false) }
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -1100,7 +1102,11 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color) {
                         model = url,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        modifier = Modifier.size(104.dp).clip(RoundedCornerShape(10.dp)),
+                        // Subtle fill so the slot isn't a transparent gap while the
+                        // thumbnail loads (or if it fails).
+                        modifier = Modifier.size(104.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(dim.copy(alpha = 0.12f)),
                     )
                 }
             }
@@ -1238,8 +1244,14 @@ private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color
     val accent = MaterialTheme.colorScheme.primary
     val today = remember { java.time.LocalDate.now().dayOfWeek.value } // 1=Mon..7=Sun
     val currentHour = remember { java.time.LocalTime.now().hour }
-    var selectedDow by remember {
-        mutableStateOf(if (pt.days.any { it.dayOfWeek == today }) today else pt.days.first().dayOfWeek)
+    // Keyed to pt so a different place's histogram resets the selected day (instead of
+    // carrying over the day tapped on the previous place). firstOrNull guards an empty
+    // days list — the `day` lookup below also returns early if nothing matches.
+    var selectedDow by remember(pt) {
+        mutableStateOf(
+            if (pt.days.any { it.dayOfWeek == today }) today
+            else pt.days.firstOrNull()?.dayOfWeek ?: today,
+        )
     }
     val day = pt.days.firstOrNull { it.dayOfWeek == selectedDow } ?: return
     val isToday = selectedDow == today

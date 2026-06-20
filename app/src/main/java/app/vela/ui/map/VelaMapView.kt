@@ -836,7 +836,9 @@ private fun routeGradientStops(
 ): Array<Expression.Stop> {
     val freeflow = if (spans.isEmpty()) routeInt else ROUTE_FREEFLOW
     fun colorAt(f: Float): Int {
-        if (f <= p) return ROUTE_DRIVEN
+        // Only grey the driven part once actually moving (p > 0); a static preview
+        // (p == 0) must not paint a grey nub at the very start of the line.
+        if (p > 0f && f <= p) return ROUTE_DRIVEN
         for ((s, e, lvl) in spans) if (f >= s && f < e) return trafficLevelColor(lvl)
         return freeflow
     }
@@ -883,7 +885,8 @@ private fun applyData(
     // fraction travelled, 0 when not navigating → nothing greyed).
     val routeInt = runCatching { android.graphics.Color.parseColor(routeColor) }
         .getOrDefault(ROUTE_FREEFLOW)
-    val p = routeProgress.coerceIn(0.001f, 0.998f)
+    // 0 when not navigating (no driven-grey); only floor to a visible sliver once moving.
+    val p = if (routeProgress <= 0f) 0f else routeProgress.coerceIn(0.001f, 0.998f)
     style.getLayer(ROUTE_LAYER)?.setProperties(
         PropertyFactory.lineGradient(
             Expression.interpolate(

@@ -139,6 +139,7 @@ class MapViewModel @Inject constructor(
     private var mapCenter: LatLng? = null
     private var locationJob: Job? = null
     private var staleTimerJob: Job? = null
+    private var replayJob: Job? = null
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
@@ -162,6 +163,10 @@ class MapViewModel @Inject constructor(
 
         viewModelScope.launch {
             navSession.state.collect { ns ->
+                // Persist the recorded trip the instant we arrive, so it survives even if
+                // the user never taps "Done" on the arrival card. finishTrip is idempotent,
+                // so the later Done → stopNav → finishTrip is a harmless no-op.
+                val justArrived = ns.arrived && !_state.value.arrived
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -176,6 +181,7 @@ class MapViewModel @Inject constructor(
                         arrivedSeconds = ns.tripElapsedSeconds,
                     )
                 }
+                if (justArrived) tripStore.finishTrip()
             }
         }
     }
@@ -355,7 +361,7 @@ class MapViewModel @Inject constructor(
         if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
-        _state.update { it.copy(selected = base, center = base.location, reviews = emptyList(), reviewsLoading = false, loadingDetails = false) }
+        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, loadingDetails = false) }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
@@ -545,7 +551,7 @@ class MapViewModel @Inject constructor(
     fun clearSelection() =
         _state.update {
             it.copy(
-                selected = null, reviews = emptyList(), reviewsLoading = false, loadingDetails = false,
+                selected = null, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, loadingDetails = false,
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
@@ -585,8 +591,10 @@ class MapViewModel @Inject constructor(
                 selected = Place(id = "poi:" + name.hashCode(), name = name, location = location),
                 results = emptyList(),
                 center = location,
+                placesHere = emptyList(),
                 reviews = emptyList(),
                 loadingDetails = false,
+                pickingOrigin = false,
             )
         }
         viewModelScope.launch {
@@ -669,7 +677,9 @@ class MapViewModel @Inject constructor(
                 results = emptyList(),
                 resultsCollapsed = false,
                 showSearchThisArea = false,
+                placesHere = emptyList(),
                 reviews = emptyList(),
+                pickingOrigin = false,
             )
         }
         viewModelScope.launch {
@@ -687,7 +697,9 @@ class MapViewModel @Inject constructor(
 
     fun routeToSelected() {
         if (_state.value.selected == null) return
-        _state.update { it.copy(directionsOpen = true, directionsReversed = false) }
+        // Start each directions session clean — don't inherit a custom origin or
+        // pick-mode left over from a previous place's directions.
+        _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false) }
         route(_state.value.travelMode)
     }
 
@@ -857,10 +869,11 @@ class MapViewModel @Inject constructor(
     fun replayTrip(meta: app.vela.replay.TripMeta) {
         val fixes = tripStore.load(meta.id)
         if (fixes.size < 2) { flashStatus("That trip has no track to replay"); return }
-        locationJob?.cancel()
+        replayJob?.cancel()
+        locationJob?.cancel(); locationJob = null // pause live GPS while the trace plays
         _state.update { it.copy(replaying = true, navCameraDetached = false) }
         flashStatus("Replaying ${meta.label} (3×)…", 3000L)
-        locationJob = viewModelScope.launch {
+        val job = viewModelScope.launch {
             try {
                 val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
                 locationProvider.replay(pts, speedup = 3f).collect { loc ->
@@ -871,18 +884,22 @@ class MapViewModel @Inject constructor(
                     navSession.onLocation(here)
                 }
             } finally {
-                _state.update { it.copy(replaying = false) }
+                // Only the current replay tears down: a second Replay tapped mid-playback
+                // supersedes this one and owns the restart, so this stale finally no-ops.
+                if (replayJob === coroutineContext[Job]) {
+                    replayJob = null
+                    _state.update { it.copy(replaying = false) }
+                    startLocation() // resume live GPS
+                }
             }
         }
+        replayJob = job
     }
 
-    /** Stop a running replay and return to live GPS. */
+    /** Stop a running replay; its finally clears the flag and resumes live GPS. */
     fun stopReplay() {
         if (!_state.value.replaying) return
-        locationJob?.cancel()
-        locationJob = null
-        _state.update { it.copy(replaying = false) }
-        startLocation()
+        replayJob?.cancel()
     }
 
     /** A share intent for the recorded debug session, or null if nothing's logged
