@@ -132,9 +132,10 @@ ETA-if-leaving-at-X; see `FEATURES.md`).
 
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: `HIGH`/`LOW` are the two halves of the feature id as unsigned-64
-  decimals. Reviews at `root[2]`: author `[0][1]`, photo `[0][2]`, rel-time `[1]`,
-  text `[3]`, rating `[4]`. **Fixed top ~20** (offset `2i` ignored; deeper paging is a
-  token, not chased).
+  decimals. Reviews at `root[2]`: author `[0][1]`, author photo `[0][2]`, rel-time `[1]`,
+  text `[3]`, rating `[4]`, **user-attached photos under `[12]`** (nests differently for
+  1 vs N — collect every image URL in that subtree; the author photo at `[0][2]` is
+  outside it). **Fixed top ~20** (offset `2i` ignored; deeper paging is a token, not chased).
 - **Photos**: the `hspqX` gallery RPC serves the real gallery **only to a real browser
   engine** (OkHttp gets a bot-degraded Street-View-only reply — TLS fingerprint, not
   headers). So `app/web/WebPhotoFetcher` loads `maps.google.com` in a **hidden,

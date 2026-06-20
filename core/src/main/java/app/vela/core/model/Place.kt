@@ -57,13 +57,15 @@ data class HourBusyness(val hour: Int, val occupancy: Int)
  *  items=["Outdoor seating","Takeout","Dine-in"]. */
 data class AboutSection(val title: String, val items: List<String>)
 
-/** A single user review. [rating] is 1..5; [text] is null for rating-only reviews. */
+/** A single user review. [rating] is 1..5; [text] is null for rating-only reviews;
+ *  [photos] are user-attached photo URLs (thumbnail-sized), empty when none. */
 data class Review(
     val author: String,
     val authorPhoto: String?,
     val rating: Int,
     val relativeTime: String?,
     val text: String?,
+    val photos: List<String> = emptyList(),
 )
 
 data class SearchResult(

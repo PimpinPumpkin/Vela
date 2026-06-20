@@ -1089,6 +1089,22 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color) {
         review.text?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
         }
+        // User-attached review photos (Google-style thumbnail strip).
+        if (review.photos.isNotEmpty()) {
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                review.photos.forEach { url ->
+                    AsyncImage(
+                        model = url,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.size(104.dp).clip(RoundedCornerShape(10.dp)),
+                    )
+                }
+            }
+        }
     }
 }
 
