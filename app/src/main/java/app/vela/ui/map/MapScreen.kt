@@ -333,6 +333,8 @@ fun MapScreen(
                             home = state.home,
                             work = state.work,
                             assigning = state.assigningShortcut,
+                            pickingOrigin = state.pickingOrigin,
+                            onUseMyLocation = vm::useMyLocationAsOrigin,
                             onPickSuggestion = {
                                 focusManager.clearFocus()
                                 vm.selectPlace(it)
@@ -874,6 +876,8 @@ private fun SearchEntryContent(
     home: SavedPlace?,
     work: SavedPlace?,
     assigning: ShortcutKind?,
+    pickingOrigin: Boolean = false,
+    onUseMyLocation: () -> Unit = {},
     onPickSuggestion: (Place) -> Unit,
     onPickSaved: (SavedPlace) -> Unit,
     onPickRecent: (String) -> Unit,
@@ -913,6 +917,17 @@ private fun SearchEntryContent(
             .padding(top = 8.dp),
     ) {
         if (assigning != null) AssignBanner(assigning, onCancelAssign)
+        // When picking a directions origin, offer "Your location" at the very top to
+        // reset back to live GPS (Google-style From picker).
+        if (pickingOrigin) {
+            SuggestionRow(
+                icon = Icons.Default.MyLocation,
+                tint = MaterialTheme.colorScheme.primary,
+                label = "Your location",
+                onClick = onUseMyLocation,
+            )
+            Divider()
+        }
         // Pinned Home / Work shortcuts (Google-style), above Saved.
         ShortcutRow(ShortcutKind.HOME, home, onPickShortcut, onAssignShortcut, onClearShortcut)
         Divider()

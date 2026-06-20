@@ -27,8 +27,9 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   focusing the field — so `clearFocus()` (every close path) was a no-op and the overlay
   got stuck (no feedback on tap, couldn't back out). Now the overlay is driven by
   `searchOpen = searchFocused || pickingOrigin` and pick-mode is reset explicitly.
-  Verified: pick reroutes (In-N-Out→Sac = 19 min), back cancels cleanly. **Follow-ups:**
-  a "use your location" reset row in the picker; editable origin while *reversed*.
+  Verified: pick reroutes (In-N-Out→Sac = 19 min), back cancels cleanly. A **"Your
+  location" reset row** sits at the top of the picker to drop a custom origin back to
+  live GPS (added 0.2.133). **Follow-up:** editable origin while *reversed*.
 - **Explore (nearby things to do)** — a Google-Maps-Explore-style surface: nearby
   restaurants / things to do / events, as cards on a bottom sheet from the bare map.
   Data: our keyless POI search already returns categorised places (reuse the

@@ -708,9 +708,10 @@ class MapViewModel @Inject constructor(
         route(_state.value.travelMode)
     }
 
-    /** Drop a custom origin → route from your live location again. */
+    /** Drop a custom origin → route from your live location again. Also exits
+     *  pick-mode (it's offered as the top row of the origin picker). */
     fun useMyLocationAsOrigin() {
-        _state.update { it.copy(directionsOrigin = null) }
+        _state.update { it.copy(directionsOrigin = null, pickingOrigin = false) }
         route(_state.value.travelMode)
     }
 
