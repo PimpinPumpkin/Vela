@@ -104,7 +104,12 @@ class NavigationService : Service() {
             ""
         } else {
             "${formatDuration(s.remainingDuration)} · ${formatDistance(s.remainingDistance)}" +
-                if (s.fasterRoute != null) " · faster route available" else ""
+                when {
+                    s.fasterRoute != null && s.fasterSavingSeconds > 0 ->
+                        " · ${formatDuration(s.fasterSavingSeconds)} faster available"
+                    s.fasterRoute != null -> " · faster route available"
+                    else -> ""
+                }
         }
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java),

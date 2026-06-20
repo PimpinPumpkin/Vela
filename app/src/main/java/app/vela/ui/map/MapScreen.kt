@@ -826,6 +826,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         }
                     }
                     val sub = listOfNotNull(
+                        place.priceText,
                         place.category,
                         place.distanceMeters?.let { formatDistance(it) },
                     ).joinToString(" · ")
