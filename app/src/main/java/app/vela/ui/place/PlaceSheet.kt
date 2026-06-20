@@ -160,6 +160,7 @@ fun PlaceSheet(
     isSaved: Boolean,
     reviews: List<Review> = emptyList(),
     reviewsLoading: Boolean = false,
+    detailsLoading: Boolean = false,
     placesHere: List<Place> = emptyList(),
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
@@ -414,6 +415,19 @@ fun PlaceSheet(
             // Popular times sit BELOW the action buttons (Google's order). Lazily
             // filled by the WebView detail fetch, so it pops in a beat after open.
             place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
+            // While the (slow, ~10–20 s) detail fetch is in flight and popular times
+            // haven't landed yet, show a subtle indicator so it reads as "loading", not
+            // "missing" — it clears to the chart, or to nothing if this place has none.
+            if (place.popularTimes == null && detailsLoading) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = dim)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Loading popular times & details…", style = MaterialTheme.typography.bodySmall, color = dim)
+                }
+            }
             // (The editorial summary + "From the owner" blurb live in the About tab.)
 
             // Other Google listings at the same spot (a co-branded shop's duplicate

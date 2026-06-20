@@ -60,6 +60,7 @@ data class MapUiState(
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
+    val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
     val directionsOpen: Boolean = false,
@@ -354,7 +355,7 @@ class MapViewModel @Inject constructor(
         if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
-        _state.update { it.copy(selected = base, center = base.location, reviews = emptyList(), reviewsLoading = false) }
+        _state.update { it.copy(selected = base, center = base.location, reviews = emptyList(), reviewsLoading = false, loadingDetails = false) }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
@@ -468,7 +469,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selected = p, center = p.location, reviews = emptyList(), suggestions = emptyList(),
-                placesHere = othersAt(p, it.results),
+                placesHere = othersAt(p, it.results), loadingDetails = false,
             )
         }
         fetchReviews(p)
@@ -485,12 +486,14 @@ class MapViewModel @Inject constructor(
     private fun fetchPlaceDetails(p: Place) {
         if (p.name.isBlank()) return
         if (p.popularTimes != null && p.editorialSummary != null && p.ownerDescription != null) return
+        _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
-            val d = runCatching { webPopularTimes.fetch(p) }.getOrNull() ?: return@launch
+            val d = runCatching { webPopularTimes.fetch(p) }.getOrNull()
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.id != p.id) st else st.copy(
-                    selected = sel.copy(
+                    loadingDetails = false,
+                    selected = if (d == null) sel else sel.copy(
                         popularTimes = sel.popularTimes ?: d.popularTimes,
                         editorialSummary = sel.editorialSummary ?: d.editorialSummary,
                         ownerDescription = sel.ownerDescription ?: d.ownerDescription,
@@ -539,7 +542,7 @@ class MapViewModel @Inject constructor(
     fun clearSelection() =
         _state.update {
             it.copy(
-                selected = null, reviews = emptyList(), reviewsLoading = false,
+                selected = null, reviews = emptyList(), reviewsLoading = false, loadingDetails = false,
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
@@ -580,6 +583,7 @@ class MapViewModel @Inject constructor(
                 results = emptyList(),
                 center = location,
                 reviews = emptyList(),
+                loadingDetails = false,
             )
         }
         viewModelScope.launch {

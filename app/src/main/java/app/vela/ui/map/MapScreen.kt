@@ -525,6 +525,7 @@ fun MapScreen(
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
                 reviewsLoading = state.reviewsLoading,
+                detailsLoading = state.loadingDetails,
                 placesHere = state.placesHere,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
