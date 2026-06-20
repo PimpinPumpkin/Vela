@@ -368,6 +368,10 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(selected = enriched) }
                 fetchReviews(enriched)
                 fetchPhotos(enriched)
+                // The enriched place now has an address, so the WebView detail fetch can
+                // do its specific name+address query — without this, popular times +
+                // editorial/owner never loaded for saved/recent places (only via search).
+                fetchPlaceDetails(enriched)
             }
         }
     }
@@ -608,6 +612,7 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(selected = full, placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
                 fetchPhotos(full)
+                fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
                 rememberRecentPlace(SavedPlace.of(full))
             }
         }
