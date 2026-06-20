@@ -395,6 +395,9 @@ class MapViewModel @Inject constructor(
         suggestJob?.cancel()
         recentStore.add(q)
         _state.update { it.copy(recents = recentStore.recent()) }
+        // A search strongly predicts opening a place — warm the detail WebView now so
+        // popular times etc. land faster when the user taps a result (idempotent).
+        viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
         viewModelScope.launch {
             _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false) }
             try {

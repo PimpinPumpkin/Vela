@@ -94,6 +94,13 @@ class WebPopularTimesFetcher @Inject constructor(
     /** Warm google.com → maps once. The two-step establishes a real NID; a freshly
      *  consent-seeded session still gets a degraded (histogram-less) search. */
     @SuppressLint("SetJavaScriptEnabled")
+    /** Warm the session ahead of the first real fetch (e.g. on search), so popular
+     *  times + the other details land faster once a place is opened. Fire-and-forget;
+     *  idempotent (a warm already in progress is awaited, not restarted). */
+    suspend fun prewarm() {
+        runCatching { withTimeoutOrNull(MAX_WARM_MS + 2_000L) { ensureWarm() } }
+    }
+
     private suspend fun ensureWarm() = withContext(Dispatchers.Main) {
         warm?.let { it.await(); return@withContext }
         val w = CompletableDeferred<Unit>()
