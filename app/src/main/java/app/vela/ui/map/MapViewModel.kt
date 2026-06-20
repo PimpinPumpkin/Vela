@@ -876,7 +876,22 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(replaying = true, navCameraDetached = false) }
         flashStatus("Replaying ${meta.label} (3×)…", 3000L)
         val job = viewModelScope.launch {
+            var autoNav = false
             try {
+                // Auto-route to the trip's destination so turn-by-turn runs during the
+                // replay without manually starting nav first — best-effort (the replay
+                // still plays if routing fails), and skipped if nav is already active.
+                val dest = meta.dest
+                if (dest != null && !navSession.state.value.navigating) {
+                    val from = LatLng(fixes.first().lat, fixes.first().lng)
+                    val route = runCatching { dataSource.directions(from, dest, TravelMode.DRIVE) }
+                        .getOrNull()?.firstOrNull()
+                    if (route != null) {
+                        destination = dest
+                        navSession.start(route, dest, meta.label, null)
+                        autoNav = true
+                    }
+                }
                 val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
                 locationProvider.replay(pts, speedup = 3f).collect { loc ->
                     val here = LatLng(loc.latitude, loc.longitude)
@@ -890,6 +905,7 @@ class MapViewModel @Inject constructor(
                 // supersedes this one and owns the restart, so this stale finally no-ops.
                 if (replayJob === coroutineContext[Job]) {
                     replayJob = null
+                    if (autoNav) navSession.stop() // drop the nav session we auto-started
                     _state.update { it.copy(replaying = false) }
                     startLocation() // resume live GPS
                 }
