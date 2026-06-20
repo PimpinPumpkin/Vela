@@ -157,10 +157,10 @@ fun MapScreen(
     }
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
-    // If the origin-pick search is dismissed without choosing a place, leave pick mode
-    // so a later normal search isn't hijacked as the origin. (On a real pick the place
-    // handler clears pickingOrigin synchronously before this runs, so it's a no-op.)
-    LaunchedEffect(searchFocused) { if (!searchFocused && state.pickingOrigin) vm.cancelPickOrigin() }
+    // The search overlay is open when the field is focused OR we're picking a custom
+    // directions origin (which opens the same overlay WITHOUT focusing the field — so
+    // we can't rely on clearFocus() to close it; pick-mode is reset explicitly instead).
+    val searchOpen = searchFocused || state.pickingOrigin
     var metersPerPixel by remember { mutableStateOf(0.0) }
     val focusManager = LocalFocusManager.current
 
@@ -169,13 +169,13 @@ fun MapScreen(
     // dropping straight out of the app. Only the bare map (or collapsed pins,
     // which a back already peeled down to) lets the system handle back and exit.
     BackHandler(
-        enabled = searchFocused || state.showSteps || state.navigating ||
+        enabled = searchOpen || state.showSteps || state.navigating ||
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
             state.selected != null ||
             (state.results.isNotEmpty() && !state.resultsCollapsed),
     ) {
         when {
-            searchFocused -> focusManager.clearFocus()
+            searchOpen -> { focusManager.clearFocus(); vm.cancelPickOrigin() }
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
@@ -300,7 +300,7 @@ fun MapScreen(
                 Modifier
                     .align(Alignment.TopCenter)
                     .then(
-                        if (searchFocused) {
+                        if (searchOpen) {
                             // Same fixed sheet grey as the place sheet / results rows,
                             // not the wallpaper-tinted Material surface (which read as a
                             // slightly different shade).
@@ -322,10 +322,10 @@ fun MapScreen(
                         onOpenSettings = onOpenSettings,
                         onClear = vm::clearSearch,
                         onFocusChange = { searchFocused = it },
-                        onBack = if (searchFocused) ({ focusManager.clearFocus() }) else null,
+                        onBack = if (searchOpen) ({ focusManager.clearFocus(); vm.cancelPickOrigin() }) else null,
                     )
                     when {
-                        searchFocused -> SearchEntryContent(
+                        searchOpen -> SearchEntryContent(
                             suggestions = state.suggestions,
                             saved = state.saved,
                             recents = state.recents,
@@ -497,14 +497,14 @@ fun MapScreen(
             // instead of burying it at the bottom of the place sheet.
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
-            state.directionsOpen && !searchFocused -> DirectionsPanel(
+            state.directionsOpen && !searchOpen -> DirectionsPanel(
                 originName = if (state.directionsReversed) (state.selected?.name ?: "Place")
                 else (state.directionsOrigin?.name ?: "Your location"),
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: "Your location")
                 else (state.selected?.name ?: "Destination"),
                 // Tap "From" to route from somewhere other than your location (not while
                 // reversed — swap back first). Opens the search to pick a place.
-                onEditOrigin = if (state.directionsReversed) null else ({ vm.beginPickOrigin(); searchFocused = true }),
+                onEditOrigin = if (state.directionsReversed) null else vm::beginPickOrigin,
                 onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
@@ -520,7 +520,7 @@ fun MapScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
-            state.selected != null && !searchFocused -> PlaceSheet(
+            state.selected != null && !searchOpen -> PlaceSheet(
                 place = state.selected!!,
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,

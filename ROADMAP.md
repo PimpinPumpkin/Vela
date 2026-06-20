@@ -18,13 +18,17 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 - **Higher-res README/store screenshots** refreshed to the current UI.
 - **Stability pass** — smoke-test the core flows; fix the *Start → launcher* quirk
   (nav keeps running in the foreground service but the activity backgrounds).
-- ~~Custom directions origin~~ — **DONE 2026-06-19 (in-panel editable From).** The
-  directions panel's **From** row is tappable → opens search → the pick becomes the
-  origin (`directionsOrigin: Place?`, route falls back to live location when null).
-  Chose the in-panel treatment over Google's top-bar From/To (less churn, coherent
-  with our ⇄ swap). **Follow-ups:** a "use your location" reset in the pick overlay,
-  editable origin while *reversed*, and (later) the top-bar treatment if we revisit
-  the whole directions surface. Pending on-device verification.
+- ~~Custom directions origin~~ — **DONE + device-verified 2026-06-20 (in-panel
+  editable From).** The directions panel's **From** row is tappable → opens search →
+  the pick becomes the origin (`directionsOrigin: Place?`, route falls back to live
+  location when null). Chose the in-panel treatment over Google's top-bar From/To.
+  **Bug found + fixed on first device test (0.2.132):** the picker overlay was driven
+  by `searchFocused` (tied to the text field's focus), but it was opened *without*
+  focusing the field — so `clearFocus()` (every close path) was a no-op and the overlay
+  got stuck (no feedback on tap, couldn't back out). Now the overlay is driven by
+  `searchOpen = searchFocused || pickingOrigin` and pick-mode is reset explicitly.
+  Verified: pick reroutes (In-N-Out→Sac = 19 min), back cancels cleanly. **Follow-ups:**
+  a "use your location" reset row in the picker; editable origin while *reversed*.
 - **Explore (nearby things to do)** — a Google-Maps-Explore-style surface: nearby
   restaurants / things to do / events, as cards on a bottom sheet from the bare map.
   Data: our keyless POI search already returns categorised places (reuse the
