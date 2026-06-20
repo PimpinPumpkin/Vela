@@ -908,6 +908,40 @@ class MapViewModel @Inject constructor(
      *  yet (Settings then shows a "nothing recorded" hint). */
     fun diagShareIntent(): android.content.Intent? = diagExporter.buildShareIntent()
 
+    /** A share/save intent for the saved-places list as a portable JSON file (via the
+     *  same FileProvider as the diag export), or null when nothing is saved. */
+    fun exportSavedIntent(): android.content.Intent? {
+        val places = savedStore.saved()
+        if (places.isEmpty()) return null
+        return runCatching {
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            val file = java.io.File(dir, "vela-saved-places.json")
+            file.writeText(savedStore.exportJson())
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", file,
+            )
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                putExtra(android.content.Intent.EXTRA_SUBJECT, "Vela saved places (${places.size})")
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            android.content.Intent.createChooser(send, "Export saved places")
+                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }.getOrNull()
+    }
+
+    /** Import saved places from a picked file [uri]; returns how many were newly added
+     *  (refreshes the saved list in state). 0 on a read/parse failure or nothing new. */
+    fun importSavedFromUri(uri: android.net.Uri): Int {
+        val json = runCatching {
+            appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+        }.getOrNull() ?: return 0
+        val added = savedStore.importMerge(json)
+        if (added > 0) _state.update { it.copy(saved = savedStore.saved()) }
+        return added
+    }
+
     /** Dismiss the arrival summary and return to a clean map (drops the finished
      *  route + selection). */
     fun finishNav() {

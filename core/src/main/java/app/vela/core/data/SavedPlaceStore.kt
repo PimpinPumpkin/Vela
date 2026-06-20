@@ -31,6 +31,22 @@ class SavedPlaceStore @Inject constructor(
 
     fun isSaved(id: String): Boolean = saved().any { it.id == id }
 
+    /** The saved list as a portable JSON document (for export / backup). */
+    fun exportJson(): String = Json.encodeToString(saved())
+
+    /** Merge a previously-exported [json] list into the saved set, de-duped by id
+     *  (existing entries kept, new ones appended). Returns how many were newly added;
+     *  0 on a parse failure or nothing new. */
+    fun importMerge(json: String): Int {
+        val incoming = runCatching { Json.decodeFromString<List<SavedPlace>>(json) }.getOrNull() ?: return 0
+        val current = saved()
+        val existing = current.mapTo(HashSet()) { it.id }
+        val added = incoming.filterNot { it.id in existing }
+        if (added.isEmpty()) return 0
+        prefs.edit().putString(KEY, Json.encodeToString(current + added)).apply()
+        return added.size
+    }
+
     private companion object {
         const val KEY = "places"
     }
