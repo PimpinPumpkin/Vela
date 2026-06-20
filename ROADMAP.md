@@ -116,25 +116,37 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   established NID matters), builds that specific query into both the `pb` and `q=`, then
   same-origin-fetches it; `PopularTimesParser` reads `[84]`. Lesson: when "needs login"
   comes from the OkHttp response only, try a WebView — and check the *query shape* too.
-- **Predictive depart-time ETA** + **avoid tolls/highways** — need the directions
-  `pb`'s departure-time field, and it resists discovery (re-confirmed 2026-06-19, 5th
-  attempt). What's known now:
-  - The keyless `/maps/preview/directions` endpoint **is traffic-aware for *now*** —
-    a live probe gave typical 1408 s vs traffic 1267 s for Davis→Sac — so only the
-    *future-departure* field is missing.
-  - **It's a nested field, not a top-level append.** Probing 6 candidate top-level
-    fields (`!8j`/`!7j`/`!9j`/`!19j`/`!8i`/`!8m2…` with a Monday-rush timestamp) left
-    the traffic ETA *unchanged* — they were parsed-and-ignored, so the field lives
-    inside a specific sub-message we can't guess blind.
-  - The web client **never fires the endpoint on a depart-time change** (embeds the
-    route in `APP_INITIALIZATION_STATE`; only `gen_204` telemetry fires), and the
-    "Leave now ▾" control ignores synthetic clicks — so Chrome automation can't capture it.
-  - **Unblock (≈2 min, manual):** capture ONE real request that carries a future
-    departure. Easiest path that still fires the GET is **mitmproxy on the Android
-    Google Maps app** (set Depart-at, grab the `/maps/preview/directions?pb=` request),
-    or any session where devtools shows that GET. Hand me the `pb`; I diff it against
-    `DirectionsPb.DEFAULT_TEMPLATE` to find the field, then plumb `departureTime` through
-    `MapDataSource.directions` + a depart-at picker re-fetch.
+- **Predictive per-departure ETA** — still needs the directions `pb`'s departure-time
+  field; re-confirmed unreachable keyless **2026-06-20 (6th attempt, deepest yet)** with a
+  real-browser fetch loop + the live web client as oracle. Findings, now thorough enough
+  to stop guessing blind:
+  - **Read side is dead.** The 810 KB keyless response carries route geometry + the
+    current/typical durations but **no embedded time-of-day duration curve** — so the web
+    UI is *not* computing future ETAs from pre-shipped data.
+  - **Our `pb` template is byte-identical to Google's live web client** (115 tokens,
+    diffed against the page's own fired request) — there's no hidden time field we're
+    merely omitting; the client sends none for "now".
+  - **Direct injection is ignored or 400s.** Re-tested `!8j`/`!8m1`/`!8m3`/`!21m1`
+    (accepted but ETA unchanged for a Monday-8am stamp) and `!8m2…`/`!9m2…`/`!7m2…`
+    (HTTP 400). Nested-field guessing stays a dead end.
+  - **The web "Leave now ▾" control is genuinely un-automatable** — neither CDP-level
+    clicks nor keyboard activation open its menu (`aria-expanded` never flips), so even a
+    real browser can't be driven to emit a depart-time request. Confirms the old "ignores
+    synthetic clicks" note. **Conclusion: predictive per-departure is login/Android-app-
+    only**; transit (already fetched via the WebView) is the only keyless mode honouring a
+    chosen time.
+  - **Shipped instead (2026-06-20): the typical best→worst spread.** Google's own planning
+    hint lives at directions `summary[10][4] = [lowSeconds, highSeconds, label]` ("usually
+    1 hr 8 min to 1 hr 27 min"); parsed into `Route.typicalRangeSeconds`, shown in the
+    depart-time chooser as an honest arrival/leave **window** for a future "Depart at" /
+    "Arrive by" plus an always-on "usually X–Y" line. Not per-minute predictive, but real
+    keyless data instead of false precision.
+  - **Only true-predictive unblock (≈2 min, manual):** capture ONE real request carrying a
+    future departure — **mitmproxy on the Android Google Maps app** (set Depart-at, grab
+    the `/maps/preview/directions?pb=` GET). Hand me the `pb`; I diff it against
+    `DirectionsPb.DEFAULT_TEMPLATE`, find the field, plumb `departureTime` through
+    `MapDataSource.directions` + a re-fetch.
+- **Avoid tolls/highways** — same family (a directions `pb` options field); deferred.
 - ~~Per-segment route traffic during nav (Google-parity)~~ — **DONE 2026-06-19.** The
   congestion data was hiding in plain sight in the directions response: `route[3][5][0]`
   is a list of `[level, startMeters, lengthMeters]` spans (only the non-free-flowing

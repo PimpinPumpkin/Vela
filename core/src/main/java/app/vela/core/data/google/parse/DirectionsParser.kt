@@ -59,6 +59,11 @@ object DirectionsParser {
         val distance = summary.at(2, 0).dbl() ?: return null
         val typicalDur = summary.at(3, 0).dbl() ?: return null
         val trafficDur = summary.at(10, 0, 0).dbl() // null when no live traffic (e.g. off-peak)
+        // Typical best→worst spread: summary[10][4] = [lowSeconds, highSeconds, "label"].
+        // Google's own depart-time planning hint ("usually 1 hr 8 min to 1 hr 27 min"),
+        // present on longer trips; absent (null) on short/no-traffic ones.
+        val typicalLow = summary.at(10, 4, 0).dbl()
+        val typicalHigh = summary.at(10, 4, 1).dbl()
 
         val start = coord(summary.at(7, 3, 2))
         val end = coord(summary.at(7, 3, 3))
@@ -76,6 +81,8 @@ object DirectionsParser {
             durationInTrafficSeconds = trafficDur,
             summary = summary.at(1).str(),
             trafficSpans = parseTrafficSpans(route),
+            typicalLowSeconds = typicalLow,
+            typicalHighSeconds = typicalHigh,
         )
     }
 

@@ -119,7 +119,9 @@ response → fetched lazily via the WebView (`WebPopularTimesFetcher` → `Place
 
 ### Directions response (`root[0][1][r]`, summary `[0]`)
 distance m `[2][0]` · typical dur s `[3][0]` · **traffic dur s `[10][0][0]`** ·
-overall traffic level `[10][2]` · **per-route geometry** = delta-encoded E7 arrays at
+overall traffic level `[10][2]` · **typical spread `[10][4]` = `[lowSec, highSec, label]`**
+(Google's own depart-time hint, "usually 1 hr 8 min to 1 hr 27 min" → `Route.typicalRangeSeconds`) ·
+**per-route geometry** = delta-encoded E7 arrays at
 `[0][7][i]` (lat deltas `[i][0]`, lng deltas `[i][1]`, first element absolute E7;
 `[i][4]` is elevation, NOT traffic) — index-aligned with summaries, so alternates draw
 real roads. **Per-segment live traffic** at `route[3][5][0]` (note: hangs off the route
@@ -127,8 +129,12 @@ node, NOT the `[0]` summary) = `[level, startMeters, lengthMeters]` spans, only 
 non-free-flow stretches → `Route.trafficSpans` → the route line's colour bands. Steps
 are `<step maneuver=… meters=…>` markup; lane hints ("Use the right 2 lanes…") split
 into `Maneuver.laneHint`.
-**Predictive depart-time field: NOT yet calibrated** (the one open extractor debt for
-ETA-if-leaving-at-X; see `FEATURES.md`).
+**Predictive per-departure field: confirmed unreachable keyless** (2026-06-20, 6th probe):
+the response has no time-of-day curve, our `pb` is byte-identical to Google's live web
+client, injected time fields are ignored/400, and the web depart-time control is
+un-automatable → it's login/Android-app-only. We surface the typical spread (`[10][4]`,
+above) as the honest keyless stand-in; a true per-minute ETA needs one captured real
+depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
 
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: `HIGH`/`LOW` are the two halves of the feature id as unsigned-64

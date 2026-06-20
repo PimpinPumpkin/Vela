@@ -648,16 +648,22 @@ fun DirectionsPanel(
     }
 }
 
-/** "Leave now / Depart at / Arrive by" chooser. Computes the arrival (or
- *  leave-by) time from the route's current traffic-aware duration — a planning
- *  aid based on *current* conditions (Google's future-traffic prediction would
- *  need a separate calibrated request). */
+/** "Leave now / Depart at / Arrive by" chooser. "Leave now" uses the live
+ *  traffic-aware duration; a future "Depart at" / "Arrive by" uses Google's own
+ *  *typical* best→worst spread (`Route.typicalRangeSeconds`, from summary[10][4])
+ *  to show an honest arrival/leave **window** rather than a false-precision single
+ *  time — Google's per-departure prediction needs a login/app-only request field
+ *  we can't reach keyless, so we surface the range Google itself plans with. Falls
+ *  back to a single ~estimate when no range is shipped (short trips, walk/bike). */
 @Composable
 private fun DepartTimeChooser(route: Route?, dim: Color) {
     val context = LocalContext.current
-    var mode by remember { mutableStateOf(0) } // 0 = now, 1 = depart at, 2 = arrive by
-    var picked by remember { mutableStateOf<java.time.LocalTime?>(null) }
-    val durationSec = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
+    // Keyed to the route so switching places/alternates resets the picked time
+    // instead of carrying it over.
+    var mode by remember(route?.summary) { mutableStateOf(0) } // 0 = now, 1 = depart at, 2 = arrive by
+    var picked by remember(route?.summary) { mutableStateOf<java.time.LocalTime?>(null) }
+    val nowDur = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
+    val range = route?.typicalRangeSeconds
     val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
 
     fun openPicker(target: Int) {
@@ -674,18 +680,36 @@ private fun DepartTimeChooser(route: Route?, dim: Color) {
         FilterChip(selected = mode == 1, onClick = { openPicker(1) }, label = { Text("Depart at") })
         FilterChip(selected = mode == 2, onClick = { openPicker(2) }, label = { Text("Arrive by") })
     }
-    val summary = when (mode) {
-        1 -> picked?.let { "Depart ${it.format(fmt)}  ·  arrive ~${it.plusSeconds(durationSec.toLong()).format(fmt)}" }
-        2 -> picked?.let { "Arrive by ${it.format(fmt)}  ·  leave ~${it.minusSeconds(durationSec.toLong()).format(fmt)}" }
-        else -> "Arrive ~${java.time.LocalTime.now().plusSeconds(durationSec.toLong()).format(fmt)}"
+
+    // A clock window [base+loOffset .. base+hiOffset] when we have a typical spread,
+    // else a single ~point from the current duration (sign chosen by the caller).
+    fun window(base: java.time.LocalTime, lo: Double, hi: Double, sign: Int): String =
+        if (range != null)
+            "${base.plusSeconds((sign * lo).toLong()).format(fmt)}–${base.plusSeconds((sign * hi).toLong()).format(fmt)}"
+        else "~${base.plusSeconds((sign * nowDur).toLong()).format(fmt)}"
+
+    val lo = range?.first ?: nowDur
+    val hi = range?.second ?: nowDur
+    val (summary, note) = when (mode) {
+        1 -> picked?.let { p ->
+            "Depart ${p.format(fmt)}  ·  arrive ${window(p, lo, hi, +1)}" to
+                (if (range != null) "in typical traffic" else "based on current traffic")
+        } ?: (null to null)
+        2 -> picked?.let { p ->
+            // Arrive by p → leave between p−hi and p−lo (earlier end first).
+            "Arrive by ${p.format(fmt)}  ·  leave ${window(p, hi, lo, -1)}" to
+                (if (range != null) "in typical traffic" else "based on current traffic")
+        } ?: (null to null)
+        else -> {
+            val arrive = "Arrive ~${java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt)}"
+            arrive to (range?.let { "Usually ${formatDuration(it.first)} – ${formatDuration(it.second)}" } ?: "current traffic")
+        }
     }
     summary?.let {
-        Text(
-            "$it  ·  current traffic",
-            style = MaterialTheme.typography.bodyMedium,
-            color = dim,
-            modifier = Modifier.padding(top = 6.dp),
-        )
+        Column(Modifier.padding(top = 6.dp)) {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = dim)
+            note?.let { n -> Text(n, style = MaterialTheme.typography.bodySmall, color = dim) }
+        }
     }
 }
 

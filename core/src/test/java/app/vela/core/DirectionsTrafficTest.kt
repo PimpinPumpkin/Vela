@@ -52,4 +52,38 @@ class DirectionsTrafficTest {
         assertEquals(1, routes.size)
         assertEquals(0, routes[0].trafficSpans.size)
     }
+
+    /** Typical best→worst spread: summary[10][4] = [lowSeconds, highSeconds, label].
+     *  Google's own depart-time planning hint; also confirms the live-traffic duration
+     *  reads from summary[10][0][0]. Calibrated 2026-06-20 (Davis→SF). */
+    @Test fun parsesTypicalRangeFromSummary10() {
+        val traffic = arr(5, 0 to "[4290,\"now\"]", 4 to "[4096,5239,\"1 hr 8 min to 1 hr 27 min\"]")
+        val summary = arr(11, 2 to "[10000]", 3 to "[4670]", 10 to traffic)
+        val route = arr(8, 0 to summary)
+        val node0 = arr(2, 1 to "[$route]")
+        val routes = DirectionsParser.parse(Json.parseToJsonElement("[$node0]"))
+        assertEquals(1, routes.size)
+        assertEquals(4290.0, routes[0].durationInTrafficSeconds!!, 1e-9)
+        assertEquals(4096.0, routes[0].typicalLowSeconds!!, 1e-9)
+        assertEquals(5239.0, routes[0].typicalHighSeconds!!, 1e-9)
+        val range = routes[0].typicalRangeSeconds!!
+        assertEquals(4096.0, range.first, 1e-9)
+        assertEquals(5239.0, range.second, 1e-9)
+    }
+
+    @Test fun typicalRangeAbsentWhenNoNode() {
+        val r = DirectionsParser.parse(Json.parseToJsonElement(root(null)))[0]
+        assertEquals(null, r.typicalLowSeconds)
+        assertEquals(null, r.typicalRangeSeconds)
+    }
+
+    /** A degenerate (zero-width) range collapses to null so the UI doesn't show
+     *  "usually 1 hr 10 min – 1 hr 10 min". */
+    @Test fun degenerateRangeIsNull() {
+        val traffic = arr(5, 0 to "[4200,\"now\"]", 4 to "[4200,4200,\"x\"]")
+        val summary = arr(11, 2 to "[10000]", 3 to "[4200]", 10 to traffic)
+        val route = arr(8, 0 to summary)
+        val r = DirectionsParser.parse(Json.parseToJsonElement("[${arr(2, 1 to "[$route]")}]"))[0]
+        assertEquals(null, r.typicalRangeSeconds)
+    }
 }

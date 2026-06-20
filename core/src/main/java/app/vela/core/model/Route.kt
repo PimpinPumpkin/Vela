@@ -51,9 +51,26 @@ data class Route(
     val durationInTrafficSeconds: Double?,
     val summary: String? = null,
     val trafficSpans: List<TrafficSpan> = emptyList(),
+    // Google's *typical* best-case→worst-case spread for this trip ("usually 1 hr 8 min
+    // to 1 hr 27 min"), independent of the current moment — its own depart-time planning
+    // hint, from the response's summary[10][4]. Null when Google ships no range (short
+    // trips, walk/bike). This is the keyless stand-in for a per-departure prediction:
+    // the future-departure request field is login/app-only (see DirectionsPb), so we
+    // surface the range Google itself shows rather than a false-precision single ETA.
+    val typicalLowSeconds: Double? = null,
+    val typicalHighSeconds: Double? = null,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }
+
+    /** Google's typical low→high spread, when present (and actually a spread, not a
+     *  degenerate point) — drives the depart-time chooser's "usually X–Y" hint. */
+    val typicalRangeSeconds: Pair<Double, Double>?
+        get() {
+            val lo = typicalLowSeconds ?: return null
+            val hi = typicalHighSeconds ?: return null
+            return if (hi - lo >= 30.0) lo to hi else null
+        }
 
     /** How much slower the live, traffic-aware time is than the typical time
      *  (1.0 = no traffic; 1.4 = 40% slower). Null when no live traffic is known —
