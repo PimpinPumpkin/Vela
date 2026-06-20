@@ -29,7 +29,9 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   `searchOpen = searchFocused || pickingOrigin` and pick-mode is reset explicitly.
   Verified: pick reroutes (In-N-Out→Sac = 19 min), back cancels cleanly. A **"Your
   location" reset row** sits at the top of the picker to drop a custom origin back to
-  live GPS (added 0.2.133). **Follow-up:** editable origin while *reversed*.
+  live GPS (added 0.2.133). ~~Follow-up: editable origin while *reversed*~~ — **DONE
+  2026-06-20**: the edit pencil moves to the "To" row when reversed (where the custom
+  endpoint then sits), via a parallel `onEditDestination` on the directions panel.
 - **Explore (nearby things to do)** — a Google-Maps-Explore-style surface: nearby
   restaurants / things to do / events, as cards on a bottom sheet from the bare map.
   Data: our keyless POI search already returns categorised places (reuse the

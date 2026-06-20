@@ -475,6 +475,7 @@ fun DirectionsPanel(
     originName: String,
     destinationName: String,
     onEditOrigin: (() -> Unit)? = null,
+    onEditDestination: (() -> Unit)? = null,
     onSwap: () -> Unit,
     currentMode: TravelMode,
     routes: List<Route>,
@@ -543,7 +544,14 @@ fun DirectionsPanel(
                         }
                     }
                     Spacer(Modifier.height(3.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // The "To" row — editable in the same way as "From", used when the
+                    // route is *reversed* (then the custom endpoint is the destination).
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = if (onEditDestination != null) {
+                            Modifier.clip(RoundedCornerShape(6.dp)).clickable { onEditDestination() }.padding(vertical = 2.dp)
+                        } else Modifier,
+                    ) {
                         Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(
@@ -553,7 +561,12 @@ fun DirectionsPanel(
                             color = ink,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
                         )
+                        if (onEditDestination != null) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(Icons.Default.Edit, contentDescription = "Change destination", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                        }
                     }
                 }
                 IconButton(onClick = onSwap) {

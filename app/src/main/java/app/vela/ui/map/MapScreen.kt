@@ -504,9 +504,11 @@ fun MapScreen(
                 else (state.directionsOrigin?.name ?: "Your location"),
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: "Your location")
                 else (state.selected?.name ?: "Destination"),
-                // Tap "From" to route from somewhere other than your location (not while
-                // reversed — swap back first). Opens the search to pick a place.
+                // Tap the custom endpoint to route to/from somewhere other than your
+                // location — the "From" row normally, or the "To" row when reversed (that's
+                // where the editable endpoint sits). Both open the search to pick a place.
                 onEditOrigin = if (state.directionsReversed) null else vm::beginPickOrigin,
+                onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else null,
                 onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
