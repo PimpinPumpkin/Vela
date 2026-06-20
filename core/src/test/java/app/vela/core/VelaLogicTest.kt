@@ -243,6 +243,20 @@ class SearchParserHoursTest {
         assertEquals(emptyList<String>(), SearchParser.readHours(json("[[1,2,3],[4,5,6]]")))
     }
 
+    /** Price level derived from Google's dollar-range / symbol label (the response
+     *  never ships the classic 1–4), powering the price filter. */
+    @Test
+    fun derivesPriceLevelFromLabel() {
+        assertEquals(1, SearchParser.priceLevelOf("$1–10"))
+        assertEquals(2, SearchParser.priceLevelOf("$10–20"))
+        assertEquals(3, SearchParser.priceLevelOf("$20–30"))
+        assertEquals(4, SearchParser.priceLevelOf("$50+"))
+        assertEquals(2, SearchParser.priceLevelOf("$$"))   // symbol style
+        assertEquals(4, SearchParser.priceLevelOf("$$$$"))
+        assertEquals(null, SearchParser.priceLevelOf(null))
+        assertEquals(null, SearchParser.priceLevelOf(""))
+    }
+
     /** Phase-2: the parser reads every field from the *provided* path map, so a
      *  remote calibration can relocate an index without an app update. Fixture
      *  uses low indices (results at root[0]; name/coords/address shallow) — proving

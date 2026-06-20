@@ -96,6 +96,11 @@ object SearchParser {
             rating = field("rating").dbl(),
             reviewCount = field("reviewCount").int(),
             priceText = field("priceText").str(),
+            // Google's search response carries price as a dollar *range* ("$10–20" at
+            // [1][4][2]), not the classic 1–4 level, so derive a comparable 1–4 from the
+            // label (its lower bound, or the count of '$' for the "$$" symbol style) — the
+            // price filter has nothing to compare against otherwise.
+            priceLevel = priceLevelOf(field("priceText").str()),
             website = field("website").str(),
             phone = field("phone").str(),
             openNow = parseOpenNow(field("openStatus").str()),
@@ -120,6 +125,23 @@ object SearchParser {
             popularTimes = parsePopularTimes(entry, paths),
             distanceMeters = near?.distanceTo(loc),
         )
+    }
+
+    /** A 1–4 price level from Google's price label: its lower dollar bound, bucketed
+     *  ("$1–10"→1, "$10–20"→2, "$20–30"→3, "$35+"→4), or the count of '$' for the
+     *  symbol style ("$$"→2). Null when there's no price. Powers the price filter,
+     *  since the response only ships a dollar *range*, never the classic 1–4 level. */
+    internal fun priceLevelOf(text: String?): Int? {
+        if (text.isNullOrBlank()) return null
+        Regex("\\d+").find(text)?.value?.toIntOrNull()?.let { low ->
+            return when {
+                low < 10 -> 1
+                low < 20 -> 2
+                low < 35 -> 3
+                else -> 4
+            }
+        }
+        return text.count { it == '$' }.takeIf { it in 1..4 }
     }
 
     /** Popular-times histogram: `popularTimes` (`[1][84]`) → `[0]` is 7 days, each
