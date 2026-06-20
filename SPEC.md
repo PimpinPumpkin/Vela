@@ -153,7 +153,10 @@ depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
   headers). So `app/web/WebPhotoFetcher` loads `maps.google.com` in a **hidden,
   anonymous WebView** and same-origin-`fetch`es the RPC. Gotchas: desktop UA (mobile →
   `intent://`), block non-http(s) redirects, use a `Handler` not `View.postDelayed`
-  (headless WebView never attaches).
+  (headless WebView never attaches). Per-photo: URL `entry[6][0]`, **posted date
+  `entry[21][6][8]` = `[year, month, day, hour]`** (→ "May 2026"), upload-source tag
+  `[21][6][5][2]`. **No contributor name** in this response — only date + source — so
+  `Photo` carries url + date, not author (the name needs a separate per-id lookup).
 - **Transit**: a plain keyless transit request is silently downgraded to *driving*, so
   `app/web/WebDirectionsFetcher` navigates the `/maps/dir/…/data=…!3e3` page and reads
   `window.APP_INITIALIZATION_STATE`. The payload is the **longest** `)]}'`-guarded

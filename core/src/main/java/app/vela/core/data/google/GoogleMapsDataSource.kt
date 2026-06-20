@@ -134,7 +134,7 @@ class GoogleMapsDataSource @Inject constructor(
         val inner = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", PHOTO_COUNT.toString())
         // JsonPrimitive(...).toString() = the proto as a properly-escaped JSON string literal.
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
-        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
+        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")).map { it.url } }.getOrDefault(emptyList())
     }
 
     override suspend fun directions(

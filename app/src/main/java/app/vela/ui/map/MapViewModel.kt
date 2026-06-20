@@ -525,7 +525,9 @@ class MapViewModel @Inject constructor(
             if (full.isNotEmpty()) {
                 _state.update { st ->
                     val sel = st.selected
-                    if (sel?.featureId == fid) st.copy(selected = sel.copy(photoUrls = full)) else st
+                    if (sel?.featureId == fid) st.copy(
+                        selected = sel.copy(photoUrls = full.map { it.url }, photoDates = full.map { it.postedText }),
+                    ) else st
                 }
             }
         }

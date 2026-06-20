@@ -460,7 +460,7 @@ fun PlaceSheet(
     }
 
     galleryStart?.let { start ->
-        PhotoGallery(place.photoUrls, start) { galleryStart = null }
+        PhotoGallery(place.photoUrls, place.photoDates, start) { galleryStart = null }
     }
 }
 
@@ -924,7 +924,7 @@ private fun parseHexColor(hex: String?): Color? {
 
 /** Full-screen, swipeable photo viewer (tap a photo in the strip to open). */
 @Composable
-private fun PhotoGallery(urls: List<String>, start: Int, onDismiss: () -> Unit) {
+private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) {
     if (urls.isEmpty()) return
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
@@ -995,6 +995,15 @@ private fun PhotoGallery(urls: List<String>, start: Int, onDismiss: () -> Unit) 
                 color = Color.White,
                 modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(12.dp),
             )
+            // "Photo · May 2026" when the gallery RPC gave a posted date (Google-style).
+            dates.getOrNull(pager.currentPage)?.let { posted ->
+                Text(
+                    "Photo · $posted",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.White.copy(alpha = 0.85f),
+                    modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+                )
+            }
             IconButton(
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(4.dp),

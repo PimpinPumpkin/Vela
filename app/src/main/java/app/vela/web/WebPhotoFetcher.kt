@@ -11,6 +11,7 @@ import android.webkit.WebViewClient
 import app.vela.core.VelaConfig
 import app.vela.core.config.CalibrationStore
 import app.vela.core.data.google.parse.PhotosParser
+import app.vela.core.model.Photo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -60,8 +61,9 @@ class WebPhotoFetcher @Inject constructor(
         }
     }
 
-    /** The full gallery for [featureId] (`0x..:0x..`), or empty on any failure. */
-    suspend fun fetch(featureId: String, count: Int = 50): List<String> {
+    /** The full gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL plus
+     *  a "posted" date when present — or empty on any failure. */
+    suspend fun fetch(featureId: String, count: Int = 50): List<Photo> {
         if (!featureId.contains(":")) return emptyList()
         val id = "p" + seq.incrementAndGet()
         val deferred = CompletableDeferred<String>()

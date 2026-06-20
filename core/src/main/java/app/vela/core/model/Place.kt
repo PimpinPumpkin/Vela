@@ -23,6 +23,10 @@ data class Place(
 
     val hours: List<String> = emptyList(),
     val photoUrls: List<String> = emptyList(),
+    // "Posted" label per gallery photo ("May 2026"), index-aligned with [photoUrls].
+    // Empty for the search-response preview; the WebView gallery fills it in (the dates
+    // live in the gallery RPC, not the search response). Read by the full-screen viewer.
+    val photoDates: List<String?> = emptyList(),
     val featuredReview: String? = null, // Google's single highlighted review snippet
     val featureId: String? = null,      // Google feature id "0x..:0x.." → reviews RPC
     val placeId: String? = null,        // "ChIJ..." place id (for deep links)
@@ -32,6 +36,11 @@ data class Place(
     val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
     val distanceMeters: Double? = null, // filled when searched relative to a point
 )
+
+/** One gallery photo: its FIFE image [url] and, when known, a human "posted" label
+ *  ("May 2026"). The contributor's *name* isn't in the keyless gallery RPC (only a
+ *  date + source), so there's no author field here. */
+data class Photo(val url: String, val postedText: String? = null)
 
 /** Google's "popular times": a typical-busyness histogram per day of the week. */
 data class PopularTimes(val days: List<DayBusyness>)

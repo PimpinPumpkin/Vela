@@ -4,6 +4,7 @@ import app.vela.core.data.google.PolylineCodec
 import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.data.google.parse.TransitParser
+import app.vela.core.model.Photo
 import app.vela.core.model.TransitMode
 import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
@@ -180,17 +181,37 @@ class PhotosParserTest {
             """["pid2",10,12,null,null,null,["https://lh3.googleusercontent.com/def=w1776-h1000-k-no"]]],1]"""
         val escaped = payload.replace("\\", "\\\\").replace("\"", "\\\"")
         val body = ")]}'\n\n321\n[[\"wrb.fr\",\"hspqX\",\"$escaped\",null,null,null,\"generic\"],[\"di\",45]]\n"
-        val urls = PhotosParser.parse(body)
-        assertEquals(2, urls.size) // the Street View entry is dropped
-        assertEquals("https://lh3.googleusercontent.com/abc=w1024-h768", urls[0])
-        assertEquals("https://lh3.googleusercontent.com/def=w1024-h768", urls[1])
-        assertTrue(urls.none { it.contains("streetviewpixels") })
+        val photos = PhotosParser.parse(body)
+        assertEquals(2, photos.size) // the Street View entry is dropped
+        assertEquals("https://lh3.googleusercontent.com/abc=w1024-h768", photos[0].url)
+        assertEquals("https://lh3.googleusercontent.com/def=w1024-h768", photos[1].url)
+        assertTrue(photos.none { it.url.contains("streetviewpixels") })
+        assertEquals(null, photos[0].postedText) // no [21][6][8] in this payload
+    }
+
+    /** Posted date from `entry[21][6][8]` = `[year, month, day, hour]` → "May 2026". */
+    @Test
+    fun readsPostedDate() {
+        val entry = (0..21).joinToString(",", "[", "]") { i ->
+            when (i) {
+                0 -> "\"pid\""
+                6 -> "[\"https://lh3.googleusercontent.com/xyz=w800-h600-k-no\"]"
+                21 -> "[null,null,null,null,null,null,[null,null,null,null,null,null,null,null,[2026,5,25,14]]]"
+                else -> "null"
+            }
+        }
+        val payload = "[[$entry],1]"
+        val escaped = payload.replace("\\", "\\\\").replace("\"", "\\\"")
+        val body = ")]}'\n\n9\n[[\"wrb.fr\",\"hspqX\",\"$escaped\",null,null,null,\"generic\"]]\n"
+        val photos = PhotosParser.parse(body)
+        assertEquals(1, photos.size)
+        assertEquals("May 2026", photos[0].postedText)
     }
 
     @Test
     fun returnsEmptyOnGarbage() {
-        assertEquals(emptyList<String>(), PhotosParser.parse(""))
-        assertEquals(emptyList<String>(), PhotosParser.parse(")]}'\n\n5\n[[\"er\",null]]"))
+        assertEquals(emptyList<Photo>(), PhotosParser.parse(""))
+        assertEquals(emptyList<Photo>(), PhotosParser.parse(")]}'\n\n5\n[[\"er\",null]]"))
     }
 }
 

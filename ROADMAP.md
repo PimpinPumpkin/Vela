@@ -158,6 +158,14 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   (the photos on the place overview are embedded from the initial place load). Likely a
   different RPC (`listugcposts`?) or a media flag — needs one captured real request, same
   as depart-time. `ReviewsParser` already accepts UGC the moment it appears.
+- **Photo contributor name** — the gallery `hspqX` RPC gives each photo's URL + **posted
+  date** (`[21][6][8]`, now shown as "Photo · May 2026") + an upload-source tag, but **not
+  the contributor's name**: verified 2026-06-20 (every string field on a user photo is the
+  url / photo-id / feature-id / source tag — no name anywhere). Google's viewer resolves
+  "Photo by Kevin" via a **separate per-contributor profile lookup** keyed by an id we'd
+  have to fish out and request per photo — N extra round-trips for a name. Deferred as
+  low-value; the date covers the useful half. `Photo(url, postedText)` has room for an
+  `author` field if it's ever worth the lookup.
 - ~~Per-segment route traffic during nav (Google-parity)~~ — **DONE 2026-06-19.** The
   congestion data was hiding in plain sight in the directions response: `route[3][5][0]`
   is a list of `[level, startMeters, lengthMeters]` spans (only the non-free-flowing
