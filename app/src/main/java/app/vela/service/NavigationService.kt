@@ -91,7 +91,15 @@ class NavigationService : Service() {
     private fun buildNotification(): Notification {
         ensureChannel()
         val s = navSession.state.value
-        val title = if (s.arrived) "Arrived" else s.maneuverText.ifEmpty { "Navigating" }
+        // Google-style: lead with the distance to the next turn ("In 500 ft · Turn right
+        // onto Main St") when we have it, so the collapsed notification reads at a glance.
+        val title = when {
+            s.arrived -> "Arrived"
+            s.maneuverText.isEmpty() -> "Navigating"
+            s.nav.distanceToNextManeuver > 0.0 ->
+                "In ${formatDistance(s.nav.distanceToNextManeuver)} · ${s.maneuverText}"
+            else -> s.maneuverText
+        }
         val text = if (s.arrived) {
             ""
         } else {
@@ -107,7 +115,7 @@ class NavigationService : Service() {
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.ic_nav)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)

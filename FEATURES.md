@@ -192,7 +192,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   or tap to bring it back; a compact **Start** stays reachable while minimised
 - ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map — placed at its **true cumulative distance** along the route line (matching the polyline's own length, not the summed step distances), so the previewed spot lands on the actual turn
 - 🟡 **Foreground navigation service** — guidance continues with the app
-  backgrounded / screen off, persistent notification (this iteration)
+  backgrounded / screen off via an **ongoing notification** (`NavigationService`, a
+  `location`-typed FGS; `POST_NOTIFICATIONS` requested on Start). Google-style content:
+  the next turn led by distance ("In 500 ft · Turn right onto Main St"), ETA · distance
+  remaining, "faster route available" when one is, a dedicated **nav status-bar icon**
+  (`ic_nav`, not the launcher logo), an **End** action, and tap-to-reopen. Updates live
+  off `NavSession`; best-effort (a blocked FGS start on Android 14/GrapheneOS falls back
+  to in-app nav, no crash). **Open quirk:** Start can drop the activity to the launcher
+  while the service keeps running — needs on-device repro (ROM/timing-specific)
 - 🟡 **Periodic live re-routing** — every ~2 min while underway, re-check
   traffic; if a meaningfully faster route exists, announce it and offer to
   switch (this iteration)
