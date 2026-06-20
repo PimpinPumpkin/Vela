@@ -104,6 +104,16 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     or any session where devtools shows that GET. Hand me the `pb`; I diff it against
     `DirectionsPb.DEFAULT_TEMPLATE` to find the field, then plumb `departureTime` through
     `MapDataSource.directions` + a depart-at picker re-fetch.
+- **Per-segment route traffic during nav (Google-parity).** As of 2026-06-19 the
+  whole-map `/maps/vt` raster no longer auto-shows while navigating (it washed every
+  road; the ask was traffic on *just* your route) — the route line tints by *overall*
+  congestion instead (`routeTrafficColor` from `Route.trafficRatio`). Google instead
+  colours the route line **per segment** (green/amber/red along your path). To match it
+  we need per-segment speed/congestion out of the `/maps/preview/directions` response
+  (not currently parsed — `Route` only carries the overall `durationInTrafficSeconds`),
+  then render it as a multi-stop `lineGradient` (the driven-grey gradient already proves
+  the mechanism — just add congestion colour stops keyed to along-route fraction).
+  Needs a live directions capture to locate the per-segment array, then on-device verify.
 - **Offline routing** — a heavy native engine (Valhalla/GraphHopper). Multi-session.
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.

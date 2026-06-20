@@ -247,7 +247,13 @@ fun MapScreen(
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
-            trafficOn = Traffic.on.value || state.navigating,
+            // Off-nav: the whole-map raster when the user toggles it on. During nav we
+            // DON'T wash the whole map — the user asked for traffic on "just the road
+            // we're on, not all of it", so the route line carries congestion (its
+            // colour via routeTrafficColor) and the overlay stays off unless they
+            // explicitly turn it on. (True per-segment route colouring is the parity
+            // follow-up — needs directions traffic-speeds, see ROADMAP.)
+            trafficOn = Traffic.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },

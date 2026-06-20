@@ -374,9 +374,11 @@ fun PlaceSheet(
             }
 
             // Hours sit above the action buttons (Directions/Call/…), per request.
+            // A permanently-closed POI already says so in red above — don't also
+            // nag "Hours not listed" beneath it (the dead-POI hours are moot).
             if (place.hours.isNotEmpty()) {
                 HoursSection(place.hours, ink, dim)
-            } else if (place.category != null) {
+            } else if (place.category != null && !place.permanentlyClosed) {
                 Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
             place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
