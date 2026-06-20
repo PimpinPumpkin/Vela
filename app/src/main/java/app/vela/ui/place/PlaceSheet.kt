@@ -53,6 +53,7 @@ import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsSubway
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.DirectionsTransit
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Train
@@ -477,6 +478,7 @@ fun PlaceSheet(
 fun DirectionsPanel(
     originName: String,
     destinationName: String,
+    onEditOrigin: (() -> Unit)? = null,
     onSwap: () -> Unit,
     currentMode: TravelMode,
     routes: List<Route>,
@@ -519,10 +521,28 @@ fun DirectionsPanel(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // The "From" row — tappable to route from a different place (Google
+                    // shows an edit affordance; here a pencil + accent text when editable).
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = if (onEditOrigin != null) {
+                            Modifier.clip(RoundedCornerShape(6.dp)).clickable { onEditOrigin() }.padding(vertical = 2.dp)
+                        } else Modifier,
+                    ) {
                         Icon(Icons.Default.TripOrigin, contentDescription = null, tint = dim, modifier = Modifier.size(14.dp))
                         Spacer(Modifier.width(8.dp))
-                        Text(originName, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(
+                            originName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = if (onEditOrigin != null) MaterialTheme.colorScheme.primary else dim,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (onEditOrigin != null) {
+                            Spacer(Modifier.width(6.dp))
+                            Icon(Icons.Default.Edit, contentDescription = "Change starting point", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                        }
                     }
                     Spacer(Modifier.height(3.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {

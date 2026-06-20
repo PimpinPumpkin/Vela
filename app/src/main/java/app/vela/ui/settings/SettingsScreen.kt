@@ -192,6 +192,20 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             Hint("Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel while biking or walking, without looking at the screen.")
 
             Spacer(Modifier.height(20.dp))
+            SectionTitle("Map")
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Live traffic overlay", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.Traffic.on.value,
+                    onCheckedChange = { app.vela.ui.Traffic.set(context, it) },
+                )
+            }
+            Hint("Shades roads by congestion while browsing the map (Google's keyless traffic tiles). Off by default — navigation already colours your route by traffic, so this is just for scanning the wider area. It's a raster overlay, so it's a touch grainy.")
+
+            Spacer(Modifier.height(20.dp))
             SectionTitle("Offline maps")
             var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
             LaunchedEffect(Unit) { OfflineMaps.list(context) { regions = it } }

@@ -53,7 +53,6 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Traffic
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -65,7 +64,6 @@ import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.SmallFloatingActionButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.DropdownMenu
@@ -159,6 +157,10 @@ fun MapScreen(
     }
     val context = LocalContext.current
     var searchFocused by remember { mutableStateOf(false) }
+    // If the origin-pick search is dismissed without choosing a place, leave pick mode
+    // so a later normal search isn't hijacked as the origin. (On a real pick the place
+    // handler clears pickingOrigin synchronously before this runs, so it's a no-op.)
+    LaunchedEffect(searchFocused) { if (!searchFocused && state.pickingOrigin) vm.cancelPickOrigin() }
     var metersPerPixel by remember { mutableStateOf(0.0) }
     val focusManager = LocalFocusManager.current
 
@@ -493,9 +495,16 @@ fun MapScreen(
             // Tapping "Directions" opens a dedicated panel (popup) — mode tabs, the
             // route option(s) with traffic-aware ETAs, selectable alternates, Start —
             // instead of burying it at the bottom of the place sheet.
-            state.directionsOpen -> DirectionsPanel(
-                originName = if (state.directionsReversed) (state.selected?.name ?: "Place") else "Your location",
-                destinationName = if (state.directionsReversed) "Your location" else (state.selected?.name ?: "Destination"),
+            // Hidden while the search overlay is up (e.g. picking a custom origin) so
+            // the panel doesn't render over it.
+            state.directionsOpen && !searchFocused -> DirectionsPanel(
+                originName = if (state.directionsReversed) (state.selected?.name ?: "Place")
+                else (state.directionsOrigin?.name ?: "Your location"),
+                destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: "Your location")
+                else (state.selected?.name ?: "Destination"),
+                // Tap "From" to route from somewhere other than your location (not while
+                // reversed — swap back first). Opens the search to pick a place.
+                onEditOrigin = if (state.directionsReversed) null else ({ vm.beginPickOrigin(); searchFocused = true }),
                 onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
@@ -511,7 +520,7 @@ fun MapScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
-            state.selected != null -> PlaceSheet(
+            state.selected != null && !searchFocused -> PlaceSheet(
                 place = state.selected!!,
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
@@ -539,20 +548,9 @@ fun MapScreen(
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = "Center on my location")
             }
-            // Toggle Google's live-traffic overlay; highlighted when on. (Offline
-            // download moved to Settings → Offline maps to declutter the map.)
-            val trafficCtx = LocalContext.current
-            SmallFloatingActionButton(
-                onClick = { Traffic.set(trafficCtx, !Traffic.on.value) },
-                containerColor = if (Traffic.on.value) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.primaryContainer,
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .navigationBarsPadding()
-                    .padding(end = 16.dp, bottom = 84.dp),
-            ) {
-                Icon(Icons.Default.Traffic, contentDescription = "Toggle live traffic")
-            }
+            // (The live-traffic overlay toggle moved to Settings → Map — it's a
+            // niche browse-only layer, and nav now shows per-segment route traffic,
+            // so it no longer earns a spot on the map.)
             // Scale bar, bottom-left just past the attribution ⓘ.
             ScaleBar(
                 metersPerPixel = metersPerPixel,

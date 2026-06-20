@@ -64,6 +64,8 @@ data class MapUiState(
     val activeRoute: Route? = null,
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
+    val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
+    val pickingOrigin: Boolean = false,      // the next search pick sets the origin, not a destination
     val travelMode: TravelMode = TravelMode.DRIVE,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
@@ -351,6 +353,7 @@ class MapViewModel @Inject constructor(
     fun selectSaved(sp: SavedPlace) {
         if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
+        if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
         _state.update { it.copy(selected = base, center = base.location, reviews = emptyList(), reviewsLoading = false) }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
@@ -456,6 +459,7 @@ class MapViewModel @Inject constructor(
 
     fun selectPlace(p: Place) {
         if (consumeAssign(SavedPlace.of(p))) return
+        if (_state.value.pickingOrigin) { setDirectionsOrigin(p); return }
         suggestJob?.cancel()
         _state.update {
             it.copy(
@@ -547,6 +551,7 @@ class MapViewModel @Inject constructor(
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
+                directionsOrigin = null, pickingOrigin = false, directionsReversed = false,
             )
         }
     }
@@ -680,6 +685,26 @@ class MapViewModel @Inject constructor(
         route(_state.value.travelMode)
     }
 
+    /** Tapped the directions "From" row → the next search pick becomes the origin
+     *  (not a destination). The UI opens the search overlay; [setDirectionsOrigin] or
+     *  [cancelPickOrigin] ends the mode. */
+    fun beginPickOrigin() = _state.update { it.copy(pickingOrigin = true, query = "", suggestions = emptyList()) }
+
+    fun cancelPickOrigin() = _state.update { it.copy(pickingOrigin = false) }
+
+    /** Set a custom directions origin (a place other than your live location) and
+     *  re-route. Clears with [clearRoute]. */
+    fun setDirectionsOrigin(p: Place) {
+        _state.update { it.copy(directionsOrigin = p, pickingOrigin = false) }
+        route(_state.value.travelMode)
+    }
+
+    /** Drop a custom origin → route from your live location again. */
+    fun useMyLocationAsOrigin() {
+        _state.update { it.copy(directionsOrigin = null) }
+        route(_state.value.travelMode)
+    }
+
     /** Pick one of the alternate routes (drawn greyed on the map / listed in the
      *  directions panel) as the active one. */
     fun selectRoute(index: Int) = _state.update {
@@ -695,10 +720,11 @@ class MapViewModel @Inject constructor(
     private fun route(mode: TravelMode) {
         val s = _state.value
         val place = s.selected?.location ?: return
-        val myLoc = s.myLocation
-        // reversed → from the place back to you; else → from you to the place.
-        val origin = (if (s.directionsReversed) place else myLoc) ?: return
-        val dest = (if (s.directionsReversed) myLoc else place) ?: return
+        // The "from" endpoint: a custom origin if set, else your live location.
+        val fromPoint = s.directionsOrigin?.location ?: s.myLocation
+        // reversed → from the place back to the from-point; else → from-point to the place.
+        val origin = (if (s.directionsReversed) place else fromPoint) ?: return
+        val dest = (if (s.directionsReversed) fromPoint else place) ?: return
         destination = dest
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest); return }
         viewModelScope.launch {

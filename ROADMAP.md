@@ -18,15 +18,13 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 - **Higher-res README/store screenshots** refreshed to the current UI.
 - **Stability pass** — smoke-test the core flows; fix the *Start → launcher* quirk
   (nav keeps running in the foreground service but the activity backgrounds).
-- **Custom directions origin** (route from somewhere other than your location).
-  *Recommendation:* make the directions panel's **From** row tappable to open the
-  existing search and pick a place as origin (mirrors the To row + the ⇄ swap we
-  already have) — coherent with our in-panel model and low-churn. Google instead
-  promotes From/To into the **top search bar** during directions; that's more screens
-  to rework. **Suggest: in-panel editable From now; revisit the top-bar treatment
-  once the rest of the directions UX settles.** State needs a `directionsOrigin: Place?`
-  (route falls back to live location when null); the search result tap sets it when
-  we're in "pick origin" mode. Needs device iteration on the pick flow.
+- ~~Custom directions origin~~ — **DONE 2026-06-19 (in-panel editable From).** The
+  directions panel's **From** row is tappable → opens search → the pick becomes the
+  origin (`directionsOrigin: Place?`, route falls back to live location when null).
+  Chose the in-panel treatment over Google's top-bar From/To (less churn, coherent
+  with our ⇄ swap). **Follow-ups:** a "use your location" reset in the pick overlay,
+  editable origin while *reversed*, and (later) the top-bar treatment if we revisit
+  the whole directions surface. Pending on-device verification.
 - **Explore (nearby things to do)** — a Google-Maps-Explore-style surface: nearby
   restaurants / things to do / events, as cards on a bottom sheet from the bare map.
   Data: our keyless POI search already returns categorised places (reuse the
@@ -34,13 +32,12 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   harder, sparser part (no keyless Google events feed — likely OSM/OpenStreetMap +
   a public events source later, or skip v1). **Plan, not now** (per request). Start
   as "Nearby" (categories + top-rated around you); grow toward Explore.
-- **Traffic browse-overlay — keep, drop, or rebuild?** (UX call). The whole-map
-  raster paints free-flow green everywhere and re-rasterises on zoom (Google's baked
-  tiles; we can't strip green). It's now subdued (below POIs, 0.6 opacity) but still
-  inherently noisy. Options: (a) keep as a subtle optional toggle [current], (b) drop
-  it — nav already shows per-segment route traffic, so browse-traffic may not earn its
-  noise, (c) rebuild from a vector congestion source we don't have keylessly. **Leaning
-  (b) or (a); needs your call** — see the queued HCI question.
+- ~~Traffic browse-overlay — keep, drop, or rebuild?~~ — **RESOLVED 2026-06-19:
+  hidden in Settings.** Decision (yours): keep it but **move the toggle off the map
+  into Settings → Map** so it doesn't clutter — nav's per-segment route colouring is
+  the primary traffic view; the whole-map raster is now an opt-in browse aid in
+  Settings, subdued (below POIs, 0.6 opacity). Not dropped entirely (still useful for
+  scanning a wider area), not rebuilt (no keyless vector congestion source).
 
 ## Big bets
 
