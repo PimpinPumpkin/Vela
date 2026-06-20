@@ -18,6 +18,29 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 - **Higher-res README/store screenshots** refreshed to the current UI.
 - **Stability pass** — smoke-test the core flows; fix the *Start → launcher* quirk
   (nav keeps running in the foreground service but the activity backgrounds).
+- **Custom directions origin** (route from somewhere other than your location).
+  *Recommendation:* make the directions panel's **From** row tappable to open the
+  existing search and pick a place as origin (mirrors the To row + the ⇄ swap we
+  already have) — coherent with our in-panel model and low-churn. Google instead
+  promotes From/To into the **top search bar** during directions; that's more screens
+  to rework. **Suggest: in-panel editable From now; revisit the top-bar treatment
+  once the rest of the directions UX settles.** State needs a `directionsOrigin: Place?`
+  (route falls back to live location when null); the search result tap sets it when
+  we're in "pick origin" mode. Needs device iteration on the pick flow.
+- **Explore (nearby things to do)** — a Google-Maps-Explore-style surface: nearby
+  restaurants / things to do / events, as cards on a bottom sheet from the bare map.
+  Data: our keyless POI search already returns categorised places (reuse the
+  category chips + `/search?tbm=map`), ranked by distance + rating; "events" is the
+  harder, sparser part (no keyless Google events feed — likely OSM/OpenStreetMap +
+  a public events source later, or skip v1). **Plan, not now** (per request). Start
+  as "Nearby" (categories + top-rated around you); grow toward Explore.
+- **Traffic browse-overlay — keep, drop, or rebuild?** (UX call). The whole-map
+  raster paints free-flow green everywhere and re-rasterises on zoom (Google's baked
+  tiles; we can't strip green). It's now subdued (below POIs, 0.6 opacity) but still
+  inherently noisy. Options: (a) keep as a subtle optional toggle [current], (b) drop
+  it — nav already shows per-segment route traffic, so browse-traffic may not earn its
+  noise, (c) rebuild from a vector congestion source we don't have keylessly. **Leaning
+  (b) or (a); needs your call** — see the queued HCI question.
 
 ## Big bets
 
@@ -36,9 +59,7 @@ licensing heterogeneity; out of scope by decision 2026-06-19).
 
 ### Opt-in telemetry  *(planned — deliberate, careful)*
 
-### Opt-in telemetry  *(planned — deliberate, careful)*
-
-Two goals, **strictly opt-in**, off by default:
+Goals, **strictly opt-in**, off by default:
 
 1. **Developer diagnostics — ✅ SHIPPED (2026-06-19, local-only).** Settings →
    Diagnostics (off by default) keeps an in-memory breadcrumb log (searches, routes,
@@ -46,9 +67,17 @@ Two goals, **strictly opt-in**, off by default:
    hand to a dev via the share sheet. **No backend, no auto-upload** — user-initiated +
    user-routed (`core/diag/DiagLog`, `app/diag/DiagExporter`). The remaining piece here
    is optional: a one-tap upload sink (needs the backend below) instead of manual share.
-2. **Vela's own traffic data (the long game).** Crowd-source anonymized speed/route
+2. **Trip recording + replay — ✅ SHIPPED (2026-06-19, local-only).** Settings → "Save
+   my trips" (a **separate, more-invasive** opt-in — it's your exact routes) records
+   each navigation's GPS trace to a file (`app/replay/TripStore`); a trip replays on
+   the map at 3× (`LocationProvider.replay`) to test turn-by-turn without driving.
+   First-run prompt offers it separately from diagnostics. **Follow-up:** auto-route
+   to the trip's destination on replay so turns run without manually starting nav, and
+   a Stop-replay control on the map (currently auto-completes).
+3. **Vela's own traffic data (the long game).** Crowd-source anonymized speed/route
    traces from opted-in users to build a **Vela traffic layer**, blended with Google's
    and eventually replacing it where coverage is good — the first real step off Google.
+   The trip recorder above is the on-device half of the trace capture this would need.
 
 **This is a departure from today's "no telemetry, no backend" stance**, so it must be
 done so it *earns* trust rather than spends it:

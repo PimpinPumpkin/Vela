@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -152,10 +154,20 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 Spacer(Modifier.height(8.dp))
                 Hint(if (engines.isEmpty()) "Open-source voices (from F-Droid):" else "Add a more natural voice (from F-Droid):")
                 installable.forEach { eng ->
+                    val installing = state.installingEngine == eng.pkg
                     OutlinedButton(
                         onClick = { vm.installVoiceEngine(eng) },
+                        enabled = state.installingEngine == null,
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Install ${eng.label}") }
+                    ) {
+                        if (installing) {
+                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Downloading ${eng.label}…")
+                        } else {
+                            Text("Install ${eng.label}")
+                        }
+                    }
                     Hint(eng.note)
                 }
             }
@@ -262,6 +274,59 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                 }) { Text("Export debug session") }
+            }
+
+            // Trip recording — more invasive than diagnostics (it's your exact routes),
+            // so it's a separate opt-in. Records nav GPS traces for replay testing.
+            LaunchedEffect(Unit) { vm.refreshTripRecording() }
+            var showTripConsent by remember { mutableStateOf(false) }
+            var trips by remember { mutableStateOf(vm.recordedTrips()) }
+            Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Save my trips (for replay)", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = state.tripRecordingEnabled,
+                    onCheckedChange = { on -> if (on) showTripConsent = true else vm.setTripRecording(false) },
+                )
+            }
+            Hint("Records each navigation's GPS trace on this phone so a drive can be replayed later to test turn-by-turn without driving it again. More revealing than diagnostics — it's your exact routes — and never leaves the phone.")
+            if (trips.isNotEmpty()) {
+                Spacer(Modifier.height(4.dp))
+                Hint("Recorded trips — tap Replay to play one back on the map (3×):")
+                trips.forEach { t ->
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(t.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                            Hint("${t.fixCount} points")
+                        }
+                        TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text("Replay") }
+                        IconButton(onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
+                            Icon(Icons.Default.Delete, contentDescription = "Delete trip")
+                        }
+                    }
+                }
+            }
+            if (showTripConsent) {
+                AlertDialog(
+                    onDismissRequest = { showTripConsent = false },
+                    title = { Text("Save your trips?") },
+                    text = {
+                        Text(
+                            "Vela will record the GPS trace of each navigation on this phone, so a drive " +
+                                "can be replayed for testing without driving it again. This is more revealing " +
+                                "than diagnostics — it captures your exact routes — but it stays on the phone " +
+                                "and is never uploaded. Turn it off any time.",
+                        )
+                    },
+                    confirmButton = { TextButton(onClick = { vm.setTripRecording(true); showTripConsent = false }) { Text("Turn on") } },
+                    dismissButton = { TextButton(onClick = { showTripConsent = false }) { Text("Cancel") } },
+                )
             }
             var crashReports by remember { mutableStateOf(app.vela.diag.CrashCatcher.pending(context)) }
             if (crashReports.isNotEmpty()) {

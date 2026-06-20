@@ -11,10 +11,15 @@ import androidx.core.content.getSystemService
 import app.vela.core.model.LatLng
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.flow
 import javax.inject.Inject
 import javax.inject.Singleton
+
+/** One point of a recorded trip, replayed as a synthetic [Location]. */
+data class ReplayFix(val lat: Double, val lng: Double, val t: Long, val bearing: Float, val speed: Float)
 
 /**
  * Location, the degoogled way.
@@ -77,6 +82,27 @@ class LocationProvider @Inject constructor(
             }
             awaitClose { mgr.removeUpdates(listener) }
         }
+
+    /** Replay a recorded trip as a synthetic fix stream — same shape as [updates], so
+     *  the nav loop, camera and dot run exactly as if driving. Gaps between fixes are
+     *  honoured (divided by [speedup], capped at 2 s so a long stop doesn't stall). */
+    fun replay(fixes: List<ReplayFix>, speedup: Float = 1f): Flow<Location> = flow {
+        var prevT: Long? = null
+        for (fix in fixes) {
+            val gap = prevT?.let { ((fix.t - it) / speedup).toLong().coerceIn(0L, 2_000L) } ?: 0L
+            if (gap > 0) delay(gap)
+            prevT = fix.t
+            emit(
+                Location("replay").apply {
+                    latitude = fix.lat
+                    longitude = fix.lng
+                    bearing = fix.bearing
+                    speed = fix.speed
+                    accuracy = 5f
+                },
+            )
+        }
+    }
 
     private fun cache(loc: Location) {
         prefs.edit()

@@ -41,23 +41,36 @@ class VoiceInstaller @Inject constructor(
         runCatching { context.packageManager.getPackageInfo(pkg, 0); true }.getOrDefault(false)
 
     /** Download [pkg]'s latest F-Droid build and launch the system installer. Returns
-     *  null on success, or a short error message. */
+     *  null on success (installer launched), or a short status/error message. Falls
+     *  back to opening the F-Droid **package page** when the direct APK URL can't be
+     *  built/fetched — e.g. eSpeak ships **per-ABI split APKs**, so the single
+     *  `${pkg}_$vc.apk` path 404s and the one-tap download silently failed before. */
     suspend fun installFromFDroid(pkg: String): String? = withContext(Dispatchers.IO) {
-        val vc = latestVersionCode(pkg) ?: return@withContext "Couldn't reach F-Droid"
-        val url = "https://f-droid.org/repo/${pkg}_$vc.apk"
-        val dir = File(context.filesDir, "engines").apply { mkdirs() }
-        val apk = File(dir, "$pkg.apk")
-        val ok = runCatching {
-            http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
-                val body = resp.body ?: return@use false
+        val vc = latestVersionCode(pkg)
+        val downloaded = vc != null && runCatching {
+            val url = "https://f-droid.org/repo/${pkg}_$vc.apk"
+            val dir = File(context.filesDir, "engines").apply { mkdirs() }
+            val apk = File(dir, "$pkg.apk")
+            val ok = http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
                 if (!resp.isSuccessful) return@use false
+                val body = resp.body ?: return@use false
                 apk.outputStream().use { out -> body.byteStream().copyTo(out) }
                 true
             }
+            if (ok && apk.length() >= 10_000L) { launchInstaller(apk); true } else false
         }.getOrDefault(false)
-        if (!ok || apk.length() < 10_000L) return@withContext "Download failed"
-        launchInstaller(apk)
-        null
+        if (downloaded) return@withContext null
+        // Fallback: hand off to F-Droid's page so the user can grab the right split.
+        openWeb("https://f-droid.org/packages/$pkg/")
+        "Opened F-Droid — tap Download/Install there"
+    }
+
+    private fun openWeb(url: String) {
+        runCatching {
+            context.startActivity(
+                Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
     }
 
     // Just one field out of the F-Droid index — a regex avoids pulling a JSON parser

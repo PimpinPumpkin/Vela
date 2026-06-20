@@ -103,6 +103,20 @@ and hand it to a developer** to debug. Specifics:
   bad route or result). No account, no contacts, no continuous location trail.
 - **Turning it off wipes the log**, and it clears when the app closes anyway.
 
+## Trip recording (separate opt-in, off by default)
+
+Settings → **"Save my trips"** is a **second, distinct switch**, also **off by default**
+and **more revealing** than diagnostics — so it's deliberately separate, and the first-run
+prompt asks for it on its own line.
+
+- When on, Vela records the **GPS trace of each navigation** (the points along your drive
+  + the destination) to a **file on your phone**, so a trip can be **replayed** later to
+  test turn-by-turn without driving it again.
+- This is your **exact routes and movement** — the most sensitive thing the app stores.
+  It is **local only and never uploaded**; there is no network code path for it at all.
+- Manage it in Settings → recorded trips have **Replay** and **Delete**; turning the
+  switch off stops new recording. Off by default; you choose to enable it.
+
 A future, **separately-announced** opt-in may aggregate anonymized speed traces to build
 Vela's own traffic layer — that one needs a server and a fresh consent screen, and this
 file will change the day it ships. It does not exist today.

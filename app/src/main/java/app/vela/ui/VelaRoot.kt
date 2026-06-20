@@ -3,15 +3,26 @@ package app.vela.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.vela.ui.map.MapScreen
 import app.vela.ui.map.MapViewModel
@@ -51,7 +62,11 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                 )
             } else if (Onboarding.showDiagPrompt.value) {
                 DiagPrompt(
-                    onEnable = { vm.setDiagnostics(true); Onboarding.dismissDiagPrompt(context) },
+                    onChoose = { diag, trips ->
+                        if (diag) vm.setDiagnostics(true)
+                        if (trips) vm.setTripRecording(true)
+                        Onboarding.dismissDiagPrompt(context)
+                    },
                     onDismiss = { Onboarding.dismissDiagPrompt(context) },
                 )
             }
@@ -59,21 +74,50 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     }
 }
 
-/** One-time, opt-in nudge to enable on-device diagnostics (Vela wants the data, but
- *  asks plainly and honours "Not now"). */
+/** One-time, opt-in nudge with TWO separate choices — basic diagnostics (default on)
+ *  and the more-invasive trip recording (default off, since it captures your exact
+ *  routes). Both stay on-device; "Not now" enables neither. */
 @Composable
-private fun DiagPrompt(onEnable: () -> Unit, onDismiss: () -> Unit) {
+private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit, onDismiss: () -> Unit) {
+    var diag by remember { mutableStateOf(true) }
+    var trips by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Help improve Vela?") },
         text = {
-            Text(
-                "Vela can keep a short, on-device log of what it does — searches, routes, and " +
-                    "errors — so problems are debuggable. It stays on your phone; nothing is sent " +
-                    "unless you export it yourself. Turn it off any time in Settings → Diagnostics.",
-            )
+            Column {
+                Text(
+                    "Both stay on your phone — nothing is sent unless you export it. Change either " +
+                        "any time in Settings.",
+                )
+                Spacer(Modifier.height(12.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = diag, onCheckedChange = { diag = it })
+                    Column(Modifier.padding(start = 4.dp)) {
+                        Text("Share diagnostics", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "A short local log of searches, routes & errors.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked = trips, onCheckedChange = { trips = it })
+                    Column(Modifier.padding(start = 4.dp)) {
+                        Text("Save my trips", style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            "Records your nav GPS traces so drives can be replayed for testing. More " +
+                                "revealing — your exact routes.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
         },
-        confirmButton = { TextButton(onClick = onEnable) { Text("Turn on") } },
+        confirmButton = { TextButton(onClick = { onChoose(diag, trips) }) { Text("Save choices") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
     )
 }

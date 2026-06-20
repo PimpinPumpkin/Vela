@@ -71,6 +71,8 @@ data class MapUiState(
     val navCameraDetached: Boolean = false,
     val voiceMuted: Boolean = false,
     val diagnosticsEnabled: Boolean = false,
+    val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
+    val replaying: Boolean = false,            // a recorded trip is currently being replayed
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
     val maneuverText: String = "",
@@ -80,6 +82,7 @@ data class MapUiState(
     val arrivedDistanceMeters: Double = 0.0,
     val arrivedSeconds: Double = 0.0,
     val status: String? = null,
+    val installingEngine: String? = null, // pkg of the voice engine currently downloading
     val showPsdsTip: Boolean = false,
     val showSearchThisArea: Boolean = false,
     val showSteps: Boolean = false,
@@ -122,6 +125,7 @@ class MapViewModel @Inject constructor(
     private val diag: app.vela.core.diag.DiagLog,
     private val diagExporter: app.vela.diag.DiagExporter,
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
+    private val tripStore: app.vela.replay.TripStore,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
@@ -189,6 +193,8 @@ class MapViewModel @Inject constructor(
                     it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here, myLocationStale = false)
                 }
                 restartStaleTimer()
+                // Save the fix to the active trip (no-op unless one is recording).
+                tripStore.record(loc)
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
                 // restrictions / GrapheneOS). No-op unless a session is active.
@@ -740,6 +746,11 @@ class MapViewModel @Inject constructor(
         startLocation() // make sure live fixes are flowing — they drive the nav loop
         navSession.start(route, dest, _state.value.selected?.name.orEmpty(), _state.value.selectedEngine?.packageName)
         NavigationService.start(appContext)
+        // Record this trip's GPS trace for later replay, if the user opted in. Read
+        // the pref directly so it works even before Settings has been opened.
+        if (settingsPrefs.getBoolean("trip_recording_on", false)) {
+            tripStore.startTrip(_state.value.selected?.name ?: "Trip", dest, System.currentTimeMillis())
+        }
         // If the phone has no voice engine, say so once instead of going silent.
         if (voice.availableEngines().isEmpty()) {
             showStatus("No voice engine installed — add one in Settings → Voice for spoken directions")
@@ -749,6 +760,7 @@ class MapViewModel @Inject constructor(
     fun stopNav() {
         NavigationService.stop(appContext)
         navSession.stop()
+        tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
         _state.update { it.copy(showSteps = false, previewStepIndex = null, navCameraDetached = false) }
     }
 
@@ -781,6 +793,57 @@ class MapViewModel @Inject constructor(
     fun setDiagnostics(on: Boolean) {
         diag.setEnabled(on)
         _state.update { it.copy(diagnosticsEnabled = on) }
+    }
+
+    private val settingsPrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+
+    /** Reflect the persisted "save my trips" flag into UI state. */
+    fun refreshTripRecording() =
+        _state.update { it.copy(tripRecordingEnabled = settingsPrefs.getBoolean("trip_recording_on", false)) }
+
+    /** Opt in/out of recording nav trips (GPS traces) for replay — strictly local,
+     *  more invasive than diagnostics, so it's its own toggle. */
+    fun setTripRecording(on: Boolean) {
+        settingsPrefs.edit().putBoolean("trip_recording_on", on).apply()
+        _state.update { it.copy(tripRecordingEnabled = on) }
+    }
+
+    fun recordedTrips(): List<app.vela.replay.TripMeta> = tripStore.list()
+    fun deleteTrip(id: String) = tripStore.delete(id)
+
+    /** Replay a recorded trip's GPS trace through the live pipeline (camera + dot +
+     *  nav loop), at 3× so it's quick. If a navigation session is active it drives
+     *  turn-by-turn exactly as a real drive would. (Auto-routing to the trip's
+     *  destination on replay is a follow-up; for now start nav first to test turns.) */
+    fun replayTrip(meta: app.vela.replay.TripMeta) {
+        val fixes = tripStore.load(meta.id)
+        if (fixes.size < 2) { flashStatus("That trip has no track to replay"); return }
+        locationJob?.cancel()
+        _state.update { it.copy(replaying = true, navCameraDetached = false) }
+        flashStatus("Replaying ${meta.label} (3×)…", 3000L)
+        locationJob = viewModelScope.launch {
+            try {
+                val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
+                locationProvider.replay(pts, speedup = 3f).collect { loc ->
+                    val here = LatLng(loc.latitude, loc.longitude)
+                    val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
+                    val speed = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
+                    _state.update { it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, center = here, myLocationStale = false) }
+                    navSession.onLocation(here)
+                }
+            } finally {
+                _state.update { it.copy(replaying = false) }
+            }
+        }
+    }
+
+    /** Stop a running replay and return to live GPS. */
+    fun stopReplay() {
+        if (!_state.value.replaying) return
+        locationJob?.cancel()
+        locationJob = null
+        _state.update { it.copy(replaying = false) }
+        startLocation()
     }
 
     /** A share intent for the recorded debug session, or null if nothing's logged
@@ -818,9 +881,26 @@ class MapViewModel @Inject constructor(
         voiceInstaller.engines.filterNot { voiceInstaller.isInstalled(it.pkg) }
 
     fun installVoiceEngine(engine: VoiceInstaller.Engine) {
-        showStatus("Downloading ${engine.label}…")
+        if (_state.value.installingEngine != null) return // one at a time
+        _state.update { it.copy(installingEngine = engine.pkg) }
         viewModelScope.launch {
-            voiceInstaller.installFromFDroid(engine.pkg)?.let { showStatus(it) }
+            val result = voiceInstaller.installFromFDroid(engine.pkg)
+            _state.update { it.copy(installingEngine = null) }
+            // result == null → the system installer launched; else a status/error line.
+            flashStatus(result ?: "Opening installer for ${engine.label}…")
+        }
+    }
+
+    private var statusJob: Job? = null
+
+    /** A status banner that **auto-clears** after a few seconds (unlike [showStatus],
+     *  which stays until dismissed) — for transient feedback like a finished download. */
+    fun flashStatus(msg: String, millis: Long = 4500L) {
+        statusJob?.cancel()
+        _state.update { it.copy(status = msg) }
+        statusJob = viewModelScope.launch {
+            delay(millis)
+            _state.update { if (it.status == msg) it.copy(status = null) else it }
         }
     }
 

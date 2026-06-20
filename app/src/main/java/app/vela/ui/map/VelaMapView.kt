@@ -559,16 +559,18 @@ private fun ensureTraffic(style: Style, on: Boolean) {
         if (style.getSource(TRAFFIC_SRC) == null) {
             style.addSource(RasterSource(TRAFFIC_SRC, TileSet("2.2.0", TRAFFIC_TILES), 256))
         }
-        val layer = RasterLayer(TRAFFIC_LAYER, TRAFFIC_SRC)
-        // Above the route line so the route's blue doesn't cover the traffic colours
-        // (you want to see the congestion on your route); still below the labels.
-        when {
-            style.getLayer(ROUTE_LAYER) != null -> style.addLayerAbove(layer, ROUTE_LAYER)
-            else -> {
-                val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-                if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
-            }
-        }
+        val layer = RasterLayer(TRAFFIC_LAYER, TRAFFIC_SRC).withProperties(
+            // Subdue it: it's a browse-only overlay now (nav uses the per-segment route
+            // line), and Google's baked tiles paint free-flow green everywhere — at
+            // full opacity that buries the basemap and reads as noise. ~0.6 keeps the
+            // red/amber congestion legible while the green recedes.
+            PropertyFactory.rasterOpacity(0.6f),
+        )
+        // ALWAYS below the first symbol layer, so POI icons + labels stay on top and
+        // the traffic tiles never render over them (the earlier "above the route line"
+        // placement pushed it over POIs).
+        val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
+        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
     } else if (!on && present) {
         style.removeLayer(TRAFFIC_LAYER)
         style.getSource(TRAFFIC_SRC)?.let { runCatching { style.removeSource(it) } }

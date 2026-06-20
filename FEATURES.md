@@ -75,7 +75,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 ## Routing & traffic
 - ✅ Driving directions with **real traffic-aware ETA** (live `duration_in_traffic`)
-- ✅ **Live traffic overlay** — Google's actual congestion-coloured roads + incident markers, as a **keyless raster layer** (the web map's own public `/maps/vt?…!2straffic` PNG tiles on www.google.com — no API key). Toggle with the traffic-light button on the map; off by default. Drawn **above** the route line so the route's blue doesn't hide the traffic colours. So you see true **per-segment** traffic (red on the jam, green where clear) on every road, including your route — what the route-line's whole-route tint can't show on its own
+- ✅ **Live traffic overlay** (browse mode) — Google's congestion-coloured roads, a **keyless raster layer** (the web map's own public `/maps/vt?…!2straffic` PNG tiles on www.google.com — no API key). Toggle with the traffic-light button; off by default. **Drawn below the POI/label layers and at ~0.6 opacity** (2026-06-19) so it no longer renders over POIs or buries the basemap — it's a subtle hint while browsing, since **navigation now uses the cleaner per-segment route-line colouring** instead of this whole-map wash. *(Inherent caveat: it's Google's pre-baked raster, so it paints free-flow green everywhere and re-rasterises on zoom; "only paint congestion" would mean dropping the browse overlay entirely — a UX call, see ROADMAP.)*
 - ✅ **Per-segment route-line traffic** — the drawn route is coloured Google-style
   **along its length**: free-flow blue with amber/red/dark-red bands over the congested
   stretches, from the directions response's own congestion spans (`route[3][5][0]` =
@@ -144,8 +144,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   latest open-source engine from **F-Droid** (resolved via its API) and hands it to
   the system installer; once installed it's a normal engine Vela already drives — no
   heavy synth bundled into the app, works on any ROM. A nav-start hint points there if
-  you have none. *(verified end-to-end on-device: download → install → eSpeak appears
-  as a Vela engine → speaks)*
+  you have none. **Pipeline polished 2026-06-19:** the install button now shows an
+  inline **spinner while downloading** (not just a persistent map banner), the status
+  **auto-dismisses**, and when the direct APK URL 404s — **eSpeak ships per-ABI split
+  APKs**, so the single-file path failed silently — it now **falls back to opening the
+  F-Droid page** so the install still completes. *(verified end-to-end on-device:
+  download → install → eSpeak appears as a Vela engine → speaks)*
 - ✅ **Mute voice during nav** — a speaker toggle in the nav bottom bar silences /
   restores spoken guidance on the fly (Google-style), independent of the haptic cues
 - ✅ **Speedometer** — a Google-style circular badge (bottom-left during nav) shows
@@ -225,6 +229,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ CI (GitHub Actions): every push to main builds + tests + signs the APK and publishes a **normal versioned release** (`v0.1.<run>`), kept as a revision history — Obtainium tracks the latest with zero config
 - ✅ **Opt-in diagnostics / debug export** (Settings → Diagnostics, **off by default**) — a local-only event log (searches, computed routes, parser "drift", nav start/reroute/arrival) that the user can **Export debug session** to a JSON bundle and hand to a developer via the system share sheet. **Never auto-uploaded** — user-initiated and user-routed; turning it off wipes the log; in-memory only (capped at 300 events). The no-backend half of the telemetry plan; `core/diag/DiagLog` + `app/diag/DiagExporter`, consent dialog on enable, `PRIVACY.md` updated
 - ✅ **Crash capture** — an uncaught-exception handler (`app/diag/CrashCatcher`, installed in `VelaApp`) **persists the stack trace + breadcrumbs + app/device versions to disk**, surviving the restart, so after a crash the user can **Export crash report** from Settings → Diagnostics (the fix for "nav crashed but the phone wasn't tethered, no logcat"). Captured even with diagnostics off (a stack trace is benign + local); never auto-sent; chains to the system handler so normal crash behaviour is unchanged
+- ✅ **Trip recording + replay** (Settings → "Save my trips", **off by default, separate opt-in** — more invasive than diagnostics since it's your exact routes; never uploaded) — records each navigation's GPS trace to a local file (`app/replay/TripStore`), so a drive can be **replayed on the map at 3×** to test turn-by-turn **without driving it again** (`LocationProvider.replay` feeds the recorded fixes through the same nav/camera/dot pipeline). Recorded trips are listed in Settings with **Replay / Delete**. The **first-run prompt now offers the two opt-ins separately** (diagnostics default-on, trip-saving default-off). *(Auto-routing to the trip's destination on replay — so turn-by-turn runs without manually starting nav first — is the follow-up; recording + position replay land now, pending on-device verification)*
 - ✅ Settings shows the installed app version (name + build code)
 - ⬜ F-Droid submission + reproducible build
 - ⬜ UnifiedPush for delay alerts (no FCM)
