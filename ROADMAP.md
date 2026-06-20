@@ -147,6 +147,17 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     `DirectionsPb.DEFAULT_TEMPLATE`, find the field, plumb `departureTime` through
     `MapDataSource.directions` + a re-fetch.
 - **Avoid tolls/highways** — same family (a directions `pb` options field); deferred.
+- **Per-review uploaded photos** — the `listentitiesreviews` RPC (our reviews source)
+  returns **only the reviewer's avatar**, never their uploaded photos (verified 2026-06-20
+  against Tartine + Bottega Louie: 60 image URLs, all `/a/…ACg8oc` / `/a-/…ALV-`, zero
+  `/gps-cs`·`/geougc`·`/p/AF1Qip`). The old parser swept the avatar at `[12][1][3]` into
+  the photo strip — now fixed to collect UGC-by-URL-shape only, so it shows nothing here
+  rather than a face. To actually show review photos we need the **media source**: 6
+  pb-flag guesses (`!4m1!1b1`, `!6m1!1b1`, `!8b1`, `!2m3…!4e1`, sort `3e1`/`3e2`) all came
+  back avatars-only, and the web client never fired a readable reviews-with-photos request
+  (the photos on the place overview are embedded from the initial place load). Likely a
+  different RPC (`listugcposts`?) or a media flag — needs one captured real request, same
+  as depart-time. `ReviewsParser` already accepts UGC the moment it appears.
 - ~~Per-segment route traffic during nav (Google-parity)~~ — **DONE 2026-06-19.** The
   congestion data was hiding in plain sight in the directions response: `route[3][5][0]`
   is a list of `[level, startMeters, lengthMeters]` spans (only the non-free-flowing

@@ -139,9 +139,15 @@ depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: `HIGH`/`LOW` are the two halves of the feature id as unsigned-64
   decimals. Reviews at `root[2]`: author `[0][1]`, author photo `[0][2]`, rel-time `[1]`,
-  text `[3]`, rating `[4]`, **user-attached photos under `[12]`** (nests differently for
-  1 vs N — collect every image URL in that subtree; the author photo at `[0][2]` is
-  outside it). **Fixed top ~20** (offset `2i` ignored; deeper paging is a token, not chased).
+  text `[3]`, rating `[4]`. **Photos by URL shape, not index** (recalibrated 2026-06-20):
+  this RPC carries **only the reviewer's avatar** (at `[0][2]`, `[12][1][3]`, `[60][2]` —
+  `/a/…ACg8oc`, `/a-/…ALV-`), **never uploaded photos**. The old "`[12]` = user photos"
+  was wrong — it's an avatar copy, and the parser was showing the reviewer's face. So
+  `ReviewsParser` now collects only FIFE UGC URLs (`/gps-cs`, `/geougc`, `/p/AF1Qip`) and
+  rejects avatars; the strip shows nothing here (this RPC has no uploads). **Sourcing real
+  per-review uploaded photos needs a different RPC/flag** (6 pb-flag guesses + the page's
+  own request all yielded avatars-only — see `ROADMAP.md`). **Fixed top ~20** (offset `2i`
+  ignored; deeper paging is a token, not chased).
 - **Photos**: the `hspqX` gallery RPC serves the real gallery **only to a real browser
   engine** (OkHttp gets a bot-degraded Street-View-only reply — TLS fingerprint, not
   headers). So `app/web/WebPhotoFetcher` loads `maps.google.com` in a **hidden,
