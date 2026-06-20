@@ -395,9 +395,10 @@ fun MapScreen(
             )
         }
 
-        // After panning away during nav, a Re-center button reattaches the
-        // follow-camera (Google-style); it's hidden while the camera is following.
-        if (state.navigating && state.navCameraDetached) {
+        // After panning away during nav — or swiping the banner ahead to preview a
+        // later step — a Re-center button reattaches the follow-camera AND snaps the
+        // banner back to the current step (Google-style); hidden while following live.
+        if (state.navigating && (state.navCameraDetached || state.previewStepIndex != null)) {
             // Icon-only, tucked to the right and lifted clear of the bottom bar.
             FloatingActionButton(
                 onClick = vm::recenterNav,
@@ -482,6 +483,7 @@ fun MapScreen(
                 onSteps = vm::openSteps,
                 voiceMuted = state.voiceMuted,
                 onToggleVoice = vm::toggleVoice,
+                trafficRatio = state.activeRoute?.trafficRatio,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()

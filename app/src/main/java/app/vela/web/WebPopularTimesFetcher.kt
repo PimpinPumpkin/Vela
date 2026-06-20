@@ -14,7 +14,7 @@ import app.vela.core.config.CalibrationStore
 import app.vela.core.data.google.SearchPb
 import app.vela.core.data.google.parse.PopularTimesParser
 import app.vela.core.model.Place
-import app.vela.core.model.PopularTimes
+import app.vela.core.model.PlaceDetails
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
@@ -56,8 +56,9 @@ class WebPopularTimesFetcher @Inject constructor(
         @JavascriptInterface fun onResult(id: String, payload: String) { pending.remove(id)?.complete(payload) }
     }
 
-    /** The histogram for [place], or null on any failure / no popular-times for it. */
-    suspend fun fetch(place: Place): PopularTimes? {
+    /** Rich details for [place] (popular times + editorial/owner descriptions), or
+     *  null on any failure / nothing extra for it. */
+    suspend fun fetch(place: Place): PlaceDetails? {
         if (place.name.isBlank()) return null
         val cal = calibration.current()
         // A *specific* query (name + address) is essential — a bare-name search comes

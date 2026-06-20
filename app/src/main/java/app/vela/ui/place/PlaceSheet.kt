@@ -329,6 +329,17 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
+            // Google's editorial one-liner ("Welcoming coffeehouse with handcrafted
+            // coffee…") — sits right under the category, like Google. Lazily filled by
+            // the WebView detail fetch, so it appears a beat after the sheet opens.
+            place.editorialSummary?.let { summary ->
+                Text(
+                    summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ink,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
             if (place.permanentlyClosed) {
                 // Dead POI — call it out clearly (Google-style red) even when Google
                 // sent no hours/status string at all (which is what "no hours" looked
@@ -381,7 +392,6 @@ fun PlaceSheet(
             } else if (place.category != null && !place.permanentlyClosed) {
                 Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
-            place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
 
             // Quick-action row — Directions (primary) + Call / Website / Save / Share,
             // spread evenly across the width so the last (Share) isn't clipped.
@@ -409,6 +419,18 @@ fun PlaceSheet(
                     onClick = onToggleSave,
                 )
                 ShareAction(place, dim, modifier = Modifier.weight(1f))
+            }
+
+            // Popular times sit BELOW the action buttons (Google's order). Lazily
+            // filled by the WebView detail fetch, so it pops in a beat after open.
+            place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
+
+            // "From the owner" — the business's own blurb (lazy, same fetch). A
+            // labelled section like Google's, shown in full.
+            place.ownerDescription?.let { desc ->
+                Spacer(Modifier.height(16.dp))
+                Text("From the owner", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = ink)
+                Text(desc, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
             }
 
             // Other Google listings at the same spot (a co-branded shop's duplicate
@@ -472,12 +494,29 @@ fun DirectionsPanel(
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
+    val collapsed = remember { mutableStateOf(false) }
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
-        Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 16.dp)) {
+        Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
+            // Drag handle — swipe down to minimise the chooser (peek the route on the
+            // map before you Start), swipe up or tap to bring it back.
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectVerticalDragGestures { _, dy ->
+                            if (dy > 6f) collapsed.value = true else if (dy < -6f) collapsed.value = false
+                        }
+                    }
+                    .clickable { collapsed.value = !collapsed.value }
+                    .padding(vertical = 6.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(dim.copy(alpha = 0.4f)))
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -504,6 +543,8 @@ fun DirectionsPanel(
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close directions", tint = dim) }
             }
+            AnimatedVisibility(visible = !collapsed.value) {
+              Column {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
@@ -571,6 +612,18 @@ fun DirectionsPanel(
                             )
                         }
                     }
+                }
+            }
+              }
+            }
+            // Minimised: keep a Start button reachable without expanding.
+            if (collapsed.value) {
+                Button(
+                    onClick = onStartNav,
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
+                ) {
+                    Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                    Text("Start")
                 }
             }
         }

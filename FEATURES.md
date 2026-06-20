@@ -48,7 +48,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Result filters** — chips in the results header: **"Open now"** (places open right now) and **"4.0★"** (rating ≥ 4.0); they stack and the count updates live
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews** — the place sheet's **Reviews tab** lists real reviews (author + photo, star rating, relative date, text) pulled from Google's keyless `listentitiesreviews` endpoint by feature id
-- ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: **photos (hero, at the top) → info → hours → action row → tabs** (photos lead so they're visible at the peek height / in landscape)
+- ✅ **Tabbed place sheet** (Google-style): **Reviews** (rating summary + featured highlight + full list) and **About** (Service options, Highlights, Accessibility, … from Google's attributes). Layout order: **photos (hero) → info → hours → action row → popular times → From the owner → tabs** (photos lead so they're visible at the peek height; popular times sit **below** the action buttons, like Google)
+- ✅ **Editorial summary + "From the owner"** — Google's one-line description ("Welcoming coffeehouse with handcrafted coffee…", node `[32][1][1]`) shows right under the category, and the business's own **"From the owner"** blurb (`[154][0][0]`) gets its own labelled section. Both are trimmed from the keyless/list response, so they ride the same lazy WebView detail fetch as popular times (one fetch now returns all three via `PlaceDetails`)
 - ✅ **"Also at this location"** — when other Google listings sit at the same spot (a co-branded shop's duplicate profile, a different unit at the address), the place sheet lists them with rating + category, tap to open — like Google's co-located-businesses section. Drawn for free from search results already in hand (no extra request). Matches on the **same street line** (e.g. "239 G St", suite-insensitive), not raw proximity, so a shop across the street isn't wrongly listed
 - ✅ **Directions panel** (Google-style popup, not buried in the place sheet): tapping **Directions** opens a dedicated bottom panel with a **From → To** header (origin dot + destination pin) and a **swap (⇄)** button to **reverse the route** (you ⇄ the place), **Drive / Transit / Walk / Bike** tabs, and a prominent **Start** + **Steps**. For drive/walk/bike it lists the **route options** — each with a **traffic-coloured ETA** (green free-flowing → amber → red), distance, **via-road name** and a **"Fastest"** tag; **tap an alternate to select it** (the map line switches to it). Transit shows the results board instead.
 - ✅ **Depart / arrive time** — the directions panel has **Leave now / Depart at / Arrive by** chips with a time picker; it shows the resulting **arrival** (or leave-by) time computed from the route's traffic-aware duration, labelled "current traffic" (future-traffic *prediction* would need a separate calibrated request — this is the current-conditions planning aid)
@@ -172,7 +173,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   walk the upcoming steps (Google-style): the card **tracks your finger** and, past
   a threshold, **slides off and the next/previous step slides in** (a pager-style
   flick, not an instant swap); it greys out, shows that step, and the map's marker +
-  camera move there; tap it to resume live guidance
+  camera move there; tap it to resume live guidance. The **re-center button also
+  appears while previewing a step** and **snaps you back to the current step** (not
+  just the camera) — previously it left you parked on a previewed turn
+- ✅ **Traffic-coloured nav ETA** — the big remaining-time readout in the nav bar is
+  tinted by live traffic (green free-flowing → amber → red), or the normal ink colour
+  when there's no live data (offline / a traffic-less route)
+- ✅ **Minimisable route chooser** — a drag handle on the directions panel: **swipe
+  it down to minimise** (peek the whole route on the map before you commit), swipe up
+  or tap to bring it back; a compact **Start** stays reachable while minimised
 - ✅ **Directions step list / overview** (before *and* during nav); tap a step to preview that turn on the map — placed at its **true cumulative distance** along the route line (matching the polyline's own length, not the summed step distances), so the previewed spot lands on the actual turn
 - 🟡 **Foreground navigation service** — guidance continues with the app
   backgrounded / screen off, persistent notification (this iteration)
@@ -202,7 +211,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the viewport is captured on camera-idle.) Open tiles, no Google, no backend.
 - ✅ **Offline search** — downloading a map area also pulls its POIs from
   **OpenStreetMap/Overpass** (keyless) into an on-device SQLite index; when Google
-  search can't be reached, search falls back to that index ("Offline results")
+  search can't be reached, search falls back to that index ("Offline results"). The
+  index now **keeps the POI detail** OSM carries — **address, phone, website and
+  opening hours** (from the `addr:*` / `phone` / `website` / `opening_hours` tags) —
+  so an offline place sheet isn't just a name on a pin (sparser than Google, but real)
 - ⬜ Offline routing (embedded Valhalla / routing graph) — the heavy native lift
 - ⬜ Region downloads as portable PMTiles + historical traffic
 

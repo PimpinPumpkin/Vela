@@ -459,20 +459,29 @@ class MapViewModel @Inject constructor(
         }
         fetchReviews(p)
         fetchPhotos(p)
-        fetchPopularTimes(p)
+        fetchPlaceDetails(p)
         rememberRecentPlace(SavedPlace.of(p))
     }
 
-    /** Pull the popular-times histogram via a hidden WebView (the keyless OkHttp
-     *  search is bot-degraded and strips it; a real browser engine isn't — see
-     *  [WebPopularTimesFetcher]). Best-effort, applied only if it's still selected. */
-    private fun fetchPopularTimes(p: Place) {
-        if (p.popularTimes != null || p.name.isBlank()) return
+    /** Pull the rich details the keyless/list search trims — popular times, the
+     *  editorial one-liner, and the owner's "From the owner" blurb — via a hidden
+     *  WebView (the keyless OkHttp search is bot-degraded and strips them; a real
+     *  browser engine isn't — see [WebPopularTimesFetcher]). Best-effort, applied
+     *  only to fields we don't already have and only if it's still selected. */
+    private fun fetchPlaceDetails(p: Place) {
+        if (p.name.isBlank()) return
+        if (p.popularTimes != null && p.editorialSummary != null && p.ownerDescription != null) return
         viewModelScope.launch {
-            val pt = runCatching { webPopularTimes.fetch(p) }.getOrNull() ?: return@launch
+            val d = runCatching { webPopularTimes.fetch(p) }.getOrNull() ?: return@launch
             _state.update { st ->
                 val sel = st.selected
-                if (sel?.id == p.id) st.copy(selected = sel.copy(popularTimes = pt)) else st
+                if (sel?.id != p.id) st else st.copy(
+                    selected = sel.copy(
+                        popularTimes = sel.popularTimes ?: d.popularTimes,
+                        editorialSummary = sel.editorialSummary ?: d.editorialSummary,
+                        ownerDescription = sel.ownerDescription ?: d.ownerDescription,
+                    ),
+                )
             }
         }
     }
@@ -754,7 +763,9 @@ class MapViewModel @Inject constructor(
     }
 
     /** Re-center on the vehicle and resume follow (the in-nav Re-center button). */
-    fun recenterNav() = _state.update { it.copy(navCameraDetached = false) }
+    /** Re-attach the follow-camera AND snap the maneuver banner back to the current
+     *  step — so recenter undoes both a manual pan and a swipe-ahead step preview. */
+    fun recenterNav() = _state.update { it.copy(navCameraDetached = false, previewStepIndex = null) }
 
     /** Mute / unmute spoken guidance (the in-nav speaker button). */
     fun toggleVoice() {

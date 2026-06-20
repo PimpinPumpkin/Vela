@@ -76,6 +76,11 @@ data class Calibration(
             "photos" to listOf(1, 105, 0, 1, 0),
             "featuredReview" to listOf(1, 142, 1, 0, 1, 0, 0),
             "about" to listOf(1, 100, 1),
+            // Editorial one-liner ([32][1][1] = the fuller "Classic burger chain
+            // serving…"; [32][0][1] is the shorter category subtitle) and the
+            // owner-written "From the owner" blurb ([154][0][0]).
+            "editorialSummary" to listOf(1, 32, 1, 1),
+            "ownerDescription" to listOf(1, 154, 0, 0),
             "openStatus" to listOf(1, 203, 1, 8, 0),
             "statusRich" to listOf(1, 203, 1, 4, 0),
             "status118" to listOf(1, 118, 0, 3, 1, 4, 0),

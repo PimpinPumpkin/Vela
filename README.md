@@ -204,7 +204,11 @@ common fields: website `[1][7][0]`, price text `[1][4][2]`, open-status
 ("Open · Closes 9 PM"), and **weekly hours `[1][203][0]`** for most places —
 falling back to `[1][118][0][3][0]`. Both are 7-entry arrays starting with
 today: day name `[0]` + hours text `[3][0][0]`. (Re-calibrated 2026-06-16;
-reading only `[118]` had missed hours for the majority of businesses.) The
+reading only `[118]` had missed hours for the majority of businesses.) Google's
+**editorial one-liner** ("Welcoming coffeehouse…") sits at `[1][32][1][1]` and the
+business's own **"From the owner"** blurb at `[1][154][0][0]` — both shown in the
+sheet (the keyless/list response trims them, so they ride the same lazy WebView detail
+fetch as popular times). The
 **About** panel rides along too at `[1][100][1]` — a list of sections, each with
 a title `[s][1]` and items `[s][2][j][1]` (Service options, Highlights,
 Accessibility, …). **Popular times** (`[1][84]`) ride a hidden WebView with a

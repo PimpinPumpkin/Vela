@@ -261,9 +261,18 @@ fun NavControls(
     onSteps: () -> Unit,
     voiceMuted: Boolean = false,
     onToggleVoice: () -> Unit = {},
+    trafficRatio: Double? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
+    // Colour the ETA by live traffic (Google-style): green free-flowing → amber →
+    // red. Default ink when there's no live data (offline / traffic-less route).
+    val etaColor = when {
+        trafficRatio == null -> SheetPalette.ink(dark)
+        trafficRatio > 1.4 -> SheetPalette.TrafficRed
+        trafficRatio > 1.15 -> SheetPalette.TrafficAmber
+        else -> SheetPalette.TrafficGreen
+    }
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -281,6 +290,7 @@ fun NavControls(
                     formatDuration(remainingSeconds),
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
+                    color = etaColor,
                 )
                 Text(
                     formatDistance(remainingDistanceMeters) +

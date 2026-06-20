@@ -56,11 +56,25 @@ object OverpassPois {
         val lng = (el["lon"] as? JsonPrimitive)?.doubleOrNull ?: return null
         fun tag(k: String) = (tags[k] as? JsonPrimitive)?.contentOrNull
         val category = tag("amenity") ?: tag("shop") ?: tag("tourism") ?: tag("leisure") ?: tag("public_transport")
+        // Keep the useful OSM detail tags too, so offline POIs aren't just a name on a
+        // pin — address (addr:*), phone, website and opening_hours where mapped.
+        val street = listOfNotNull(tag("addr:housenumber"), tag("addr:street")).joinToString(" ").ifBlank { null }
+        val address = listOfNotNull(
+            street,
+            tag("addr:city"),
+            listOfNotNull(tag("addr:state"), tag("addr:postcode")).joinToString(" ").ifBlank { null },
+        ).joinToString(", ").ifBlank { null }
         return Place(
             id = "osm:${el["id"]?.let { (it as? JsonPrimitive)?.content } ?: name.hashCode()}",
             name = name,
             location = LatLng(lat, lng),
             category = category?.replace('_', ' ')?.replaceFirstChar { it.uppercase() },
+            address = address,
+            phone = tag("phone") ?: tag("contact:phone"),
+            website = tag("website") ?: tag("contact:website"),
+            // OSM's compact opening_hours syntax ("Mo-Fr 08:00-20:00; Sa 09:00-17:00")
+            // as a single line — better than nothing offline.
+            hours = (tag("opening_hours"))?.let { listOf(it) } ?: emptyList(),
         )
     }
 }

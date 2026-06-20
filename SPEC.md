@@ -110,9 +110,12 @@ open-status `[1][203][1][8][0]` · rich status `[1][203][1][4][0]` · **feature 
 `[1][10]` (`0x..:0x..` → reviews) · place id `[1][78]` · photos
 `[1][105][0][1][0][i][6][0]` (FIFE URLs, re-size `=w500-h350`) · featured review
 `[1][142][1][0][1][0][0]` · About sections `[1][100][1]` (title `[s][1]`, items
-`[s][2][j][1]`) · weekly hours `[1][203][0]` (fallback `[1][118][0][3][0]`; 7 entries
-from today, name `[0]` + text `[3][0][0]`). A **far/specific address** is a single
-geocoded result at `[0][1][0][14]` (same schema), not a `[64]` list.
+`[s][2][j][1]`) · **editorial one-liner** `[1][32][1][1]` · **owner "From the owner"
+blurb** `[1][154][0][0]` · weekly hours `[1][203][0]` (fallback `[1][118][0][3][0]`; 7
+entries from today, name `[0]` + text `[3][0][0]`). A **far/specific address** is a
+single geocoded result at `[0][1][0][14]` (same schema), not a `[64]` list. The
+`[84]` histogram **and** `[32]`/`[154]` descriptions are trimmed from the keyless/list
+response → fetched lazily via the WebView (`WebPopularTimesFetcher` → `PlaceDetails`).
 
 ### Directions response (`root[0][1][r]`, summary `[0]`)
 distance m `[2][0]` · typical dur s `[3][0]` · **traffic dur s `[10][0][0]`** ·
@@ -275,5 +278,6 @@ handed — no filesystem, network, or device access.
 See **[`FEATURES.md`](FEATURES.md)** for the exhaustive, ticked list (search/places,
 reviews, photo gallery, directions + alternates + swap + depart-time +
 search-along-route, drive/walk/bike/transit, turn-by-turn with shields/lanes/voice/
-haptics/speedometer, traffic overlay, offline basemap + POI, Home/Work shortcuts,
+haptics/speedometer, traffic overlay, offline basemap + POI (the offline SQLite POI
+index keeps OSM address/phone/website/opening_hours, not just name+category), Home/Work shortcuts,
 saved/recent places, deep links, scale bar, in-app theme, the resilience layer above).

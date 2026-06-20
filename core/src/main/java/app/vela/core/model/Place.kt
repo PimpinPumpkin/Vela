@@ -27,12 +27,25 @@ data class Place(
     val featureId: String? = null,      // Google feature id "0x..:0x.." → reviews RPC
     val placeId: String? = null,        // "ChIJ..." place id (for deep links)
     val about: List<AboutSection> = emptyList(),
+    val editorialSummary: String? = null,   // Google's one-line description ("Classic burger chain serving…")
+    val ownerDescription: String? = null,   // "From the owner" — the business's own longer blurb
     val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
     val distanceMeters: Double? = null, // filled when searched relative to a point
 )
 
 /** Google's "popular times": a typical-busyness histogram per day of the week. */
 data class PopularTimes(val days: List<DayBusyness>)
+
+/** The rich fields the keyless/list search trims out, fetched lazily through the
+ *  hidden WebView (see app `WebPopularTimesFetcher`): popular times plus the
+ *  editorial one-liner and the owner's "From the owner" blurb. */
+data class PlaceDetails(
+    val popularTimes: PopularTimes? = null,
+    val editorialSummary: String? = null,
+    val ownerDescription: String? = null,
+) {
+    val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null
+}
 
 /** One day: [dayOfWeek] is 1=Mon … 7=Sun; [hours] are the open-hour buckets. */
 data class DayBusyness(val dayOfWeek: Int, val hours: List<HourBusyness>)

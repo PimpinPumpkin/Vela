@@ -115,6 +115,8 @@ object SearchParser {
             featureId = field("featureId").str(),  // "0x..:0x.." → reviews RPC
             placeId = field("placeId").str(),      // "ChIJ.." → deep links
             about = parseAbout(entry, paths),
+            editorialSummary = field("editorialSummary").str()?.trim()?.ifBlank { null },
+            ownerDescription = field("ownerDescription").str()?.trim()?.ifBlank { null },
             popularTimes = parsePopularTimes(entry, paths),
             distanceMeters = near?.distanceTo(loc),
         )
