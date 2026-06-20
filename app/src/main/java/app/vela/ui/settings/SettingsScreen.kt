@@ -3,6 +3,8 @@ import android.content.Intent
 import android.net.Uri
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -238,6 +240,33 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
 
             Spacer(Modifier.height(20.dp))
+            SectionTitle("Saved places")
+            Hint("Back up your starred places to a file, or restore them on another device. Import merges into what you already have — it never overwrites or removes anything.")
+            val importLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri != null) {
+                    val n = vm.importSavedFromUri(uri)
+                    android.widget.Toast.makeText(
+                        context,
+                        if (n > 0) "Imported $n place${if (n == 1) "" else "s"}" else "Nothing new to import",
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                OutlinedButton(onClick = {
+                    val intent = vm.exportSavedIntent()
+                    if (intent != null) runCatching { context.startActivity(intent) }
+                    else android.widget.Toast.makeText(context, "No saved places yet", android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text("Export") }
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(onClick = {
+                    runCatching { importLauncher.launch(arrayOf("application/json", "*/*")) }
+                }) { Text("Import") }
+            }
+            Spacer(Modifier.height(8.dp))
+
             SectionTitle("Data source & privacy")
             Hint(
                 "Vela talks to Google's public web endpoints directly from this device — no " +

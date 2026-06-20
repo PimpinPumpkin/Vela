@@ -71,7 +71,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ "Search this area" — re-search after panning the map
 - ✅ Filter: **open now**, **rating ≥ 4.0**, and **price** (tap the Price chip to cycle ≤$ → ≤$$ → ≤$$$ → ≤$$$$ → off, filtering on `priceLevel`) — chips sit on their own horizontally-scrollable row in the results header, stackable
 - ✅ Saved / favourite places (star from the place sheet) — reopening a saved place **enriches it via search** so photos, rating and reviews load (saved places carry no feature id of their own); each saved row in the search page has a **⋮ menu** to **Set as Home / Set as Work** (promote it straight to a shortcut) or **Remove** it *(verified on-device)*
-- ⬜ **Export / import saved places** (portable, user-savable bookmarks — planned)
+- ✅ **Export / import saved places** (Settings → Saved places) — **Export** writes the starred list to a portable JSON file shared via the system sheet (same FileProvider as the diag export); **Import** picks a file and **merges** it (de-duped by id, never overwrites/removes), with a toast of how many were added. Keyless, local, portable between devices.
 - ⬜ Overture/OSM POIs as a fallback source
 
 ## Routing & traffic
