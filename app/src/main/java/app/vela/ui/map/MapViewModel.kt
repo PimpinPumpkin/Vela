@@ -140,6 +140,7 @@ class MapViewModel @Inject constructor(
     private var locationJob: Job? = null
     private var staleTimerJob: Job? = null
     private var replayJob: Job? = null
+    private var replayOwnsNav = false // a replay auto-started the nav session → tear it down on end/supersede
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
@@ -865,18 +866,20 @@ class MapViewModel @Inject constructor(
     fun deleteTrip(id: String) = tripStore.delete(id)
 
     /** Replay a recorded trip's GPS trace through the live pipeline (camera + dot +
-     *  nav loop), at 3× so it's quick. If a navigation session is active it drives
-     *  turn-by-turn exactly as a real drive would. (Auto-routing to the trip's
-     *  destination on replay is a follow-up; for now start nav first to test turns.) */
+     *  nav loop), at 3× so it's quick. Auto-routes to the trip's destination and starts
+     *  turn-by-turn so the drive replays exactly as it did (best-effort; the trace still
+     *  plays if routing fails), tearing that nav back down when the replay ends. */
     fun replayTrip(meta: app.vela.replay.TripMeta) {
         val fixes = tripStore.load(meta.id)
         if (fixes.size < 2) { flashStatus("That trip has no track to replay"); return }
         replayJob?.cancel()
+        // A superseded replay's stale finally no-ops (the job guard fails below), so tear
+        // down any nav IT auto-started here, before this new replay starts its own.
+        if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
         locationJob?.cancel(); locationJob = null // pause live GPS while the trace plays
         _state.update { it.copy(replaying = true, navCameraDetached = false) }
         flashStatus("Replaying ${meta.label} (3×)…", 3000L)
         val job = viewModelScope.launch {
-            var autoNav = false
             try {
                 // Auto-route to the trip's destination so turn-by-turn runs during the
                 // replay without manually starting nav first — best-effort (the replay
@@ -889,7 +892,7 @@ class MapViewModel @Inject constructor(
                     if (route != null) {
                         destination = dest
                         navSession.start(route, dest, meta.label, null)
-                        autoNav = true
+                        replayOwnsNav = true
                     }
                 }
                 val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
@@ -901,11 +904,11 @@ class MapViewModel @Inject constructor(
                     navSession.onLocation(here)
                 }
             } finally {
-                // Only the current replay tears down: a second Replay tapped mid-playback
-                // supersedes this one and owns the restart, so this stale finally no-ops.
+                // Only the current replay tears down: a superseded one was already stopped
+                // above, so this stale finally (job guard false) no-ops.
                 if (replayJob === coroutineContext[Job]) {
                     replayJob = null
-                    if (autoNav) navSession.stop() // drop the nav session we auto-started
+                    if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
                     _state.update { it.copy(replaying = false) }
                     startLocation() // resume live GPS
                 }

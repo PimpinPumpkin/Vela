@@ -455,7 +455,7 @@ fun MapScreen(
 
         // --- bottom overlay: arrival summary / nav controls / place sheet ---
         when {
-            state.arrived -> ArrivalSummary(
+            state.arrived && !state.replaying -> ArrivalSummary(
                 destinationLabel = state.arrivedLabel,
                 tripSeconds = state.arrivedSeconds,
                 tripDistanceMeters = state.arrivedDistanceMeters,
