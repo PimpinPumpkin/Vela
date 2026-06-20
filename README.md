@@ -202,7 +202,8 @@ today: day name `[0]` + hours text `[3][0][0]`. (Re-calibrated 2026-06-16;
 reading only `[118]` had missed hours for the majority of businesses.) The
 **About** panel rides along too at `[1][100][1]` — a list of sections, each with
 a title `[s][1]` and items `[s][2][j][1]` (Service options, Highlights,
-Accessibility, …). Popular times remain the sign-in-gated exception.
+Accessibility, …). **Popular times** (`[1][84]`) ride a hidden WebView with a
+*specific* query — see below.
 
 **Reviews** — `GET /maps/preview/review/listentitiesreviews?pb=…` is a keyless
 endpoint (no token: the `!5m2!1s<session>` block accepts any string). The pb is
@@ -247,6 +248,19 @@ stub sits beside the real ~165 KB one), which
 turns into the results board (trips at `root[0][1]`, each trip's summary at
 `trip[0]`: departure/arrival times, total duration, agency, and the coloured line
 pills you ride). Keyless, best-effort, device-verified Davis→Sacramento.
+
+**Popular / busy times** ride the same WebView for the same TLS-fingerprint reason —
+but with one extra catch: the histogram (`[1][84]`) is stripped not just from the
+keyless OkHttp reply but also from a **bare-name** WebView search, which comes back
+as a 20-result `[64]` list trimmed of `[84]`. The fix is the *query*:
+[`WebPopularTimesFetcher`](app/src/main/java/app/vela/web/WebPopularTimesFetcher.kt)
+searches **name + address** (e.g. `In-N-Out Burger 1020 Olive Dr Davis CA`), which
+resolves to a *single focused result* whose place node at `[0][1][0][14]` keeps
+`[84]`. [`PopularTimesParser`](core/src/main/java/app/vela/core/data/google/parse/PopularTimesParser.kt)
+reads it (via `SearchParser`'s single-result snap, or straight off the focused node)
+into the day-chip + "busy right now" histogram in the place sheet. Keyless,
+best-effort, lazy on place-select like photos. *(Earlier called sign-in-gated — that
+too was bot-degradation, not a login wall. Corrected 2026-06-19.)*
 
 **Remote calibration.** The brittle bits that drift — the `pb`/proto templates and
 the endpoint URLs above (search, directions, reviews, **photos**) — are not
@@ -340,8 +354,8 @@ without an app release.
 - [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief
 - [x] **Offline** basemap + OSM POI index; **search-along-route**; depart/arrive-time planning
+- [x] **Popular / busy times** — keyless via a hidden WebView + a *specific* (name + address) search
 - [ ] **Predictive** (future-traffic) depart-time ETA — needs a directions-`pb` calibration
-- [ ] Popular times (sign-in-gated place RPC)
 - [ ] Embedded offline routing (Valhalla JNI) + bundled PMTiles fonts — v2
 - [ ] Street-level imagery (Mapillary / KartaView; needs a free token)
 - [ ] F-Droid submission + reproducible build

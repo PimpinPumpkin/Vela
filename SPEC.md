@@ -39,7 +39,10 @@ Services** (GrapheneOS / no-GMS ROMs), distributed via F-Droid/Obtainium, GPLv3.
   ruled it sign-in-gated: the histogram (`[84]`) is stripped from the keyless **OkHttp**
   search (bot-degraded, like photos/transit), but a **warmed hidden WebView's same-origin
   search returns the full response with `[84]`** (`WebPopularTimesFetcher` + `Popular-
-  TimesParser`, same trick as photos). Lesson: a "needs login" call from the OkHttp
+  TimesParser`, same trick as photos). **Load-bearing nuance:** the WebView query must be
+  **specific (name + address)** — a bare-name search still comes back as a 20-result
+  `[64]` list trimmed of `[84]`, whereas name+address resolves to the single focused
+  result (`[0][1][0][14]`) that keeps it. Lesson: a "needs login" call from the OkHttp
   response alone should be re-checked through a real WebView engine.
 
 ---

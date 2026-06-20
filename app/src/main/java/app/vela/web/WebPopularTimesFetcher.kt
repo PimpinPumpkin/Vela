@@ -60,8 +60,13 @@ class WebPopularTimesFetcher @Inject constructor(
     suspend fun fetch(place: Place): PopularTimes? {
         if (place.name.isBlank()) return null
         val cal = calibration.current()
-        val pb = SearchPb.build(place.name, place.location, cal.searchPb)
-        val url = "${cal.searchEndpoint}&q=${enc(place.name)}&pb=${enc(pb)}"
+        // A *specific* query (name + address) is essential — a bare-name search comes
+        // back as a 20-result [64] list trimmed of [84], while name+address resolves to
+        // the single focused result that keeps the histogram. Thread it through BOTH the
+        // pb's !1s query block and the q= param so they agree.
+        val query = specificQuery(place)
+        val pb = SearchPb.build(query, place.location, cal.searchPb)
+        val url = "${cal.searchEndpoint}&q=${enc(query)}&pb=${enc(pb)}"
         val id = "pt" + seq.incrementAndGet()
         val deferred = CompletableDeferred<String>()
         pending[id] = deferred
@@ -72,7 +77,17 @@ class WebPopularTimesFetcher @Inject constructor(
                 deferred.await()
             }
         } finally { pending.remove(id) }
-        return if (raw.isNullOrEmpty()) null else runCatching { PopularTimesParser.parse(raw, place.featureId) }.getOrNull()
+        return if (raw.isNullOrEmpty()) null
+        else runCatching { PopularTimesParser.parse(raw, place.featureId) }.getOrNull()
+    }
+
+    /** name + address (commas dropped — the geocoder resolves the flat form most
+     *  reliably), or name alone if we have no address. The address pins the query to
+     *  the one place so Google returns a single focused result with `[84]`, not the
+     *  histogram-less 20-result list a bare name yields. */
+    private fun specificQuery(place: Place): String {
+        val addr = place.address?.replace(',', ' ')?.replace(Regex("\\s+"), " ")?.trim()
+        return if (addr.isNullOrBlank()) place.name else "${place.name} $addr"
     }
 
     /** Warm google.com → maps once. The two-step establishes a real NID; a freshly

@@ -123,15 +123,15 @@ object SearchParser {
     /** Popular-times histogram: `popularTimes` (`[1][84]`) → `[0]` is 7 days, each
      *  `[d][0]`=day-of-week (1=Mon…7=Sun), `[d][1]`=hourly `[hour, occupancy%, …]`.
      *
-     *  DORMANT (2026-06-18): Google **strips `[84]` from the keyless search
-     *  response** — it ships only to a full/logged-in session (confirmed on-device
-     *  + via a no-credentials capture). Unlike photos/transit (which a logged-OUT
-     *  browser receives), popular times also doesn't render in the anonymous
-     *  headless WebView — the place panel needs a token-gated `/maps/preview/place`
-     *  RPC the SPA never completes there. So this populates only IF a keyless
-     *  response ever carries `[84]`; until then it's a no-op and the UI section
-     *  ([PlaceSheet]'s PopularTimesSection) simply doesn't show. See SPEC.md. */
-    private fun parsePopularTimes(entry: JsonElement, paths: Map<String, List<Int>>): PopularTimes? {
+     *  The keyless OkHttp search **strips `[84]`** (bot-degraded, TLS-fingerprint),
+     *  and a bare-name search returns a 20-result list trimmed of it too — so this
+     *  stays null on a plain keyless response and the UI section just doesn't show.
+     *  It's populated by fetching through a real Chromium WebView with a *specific*
+     *  query (name + address), which comes back as the single focused result that
+     *  keeps `[84]` (corrected 2026-06-19 — the earlier "login-gated" read was wrong;
+     *  it's the same bot-degradation as photos/transit). See
+     *  [app.vela.web.WebPopularTimesFetcher] and [PopularTimesParser]. */
+    internal fun parsePopularTimes(entry: JsonElement, paths: Map<String, List<Int>>): PopularTimes? {
         val days = entry.atPath(pathOf(paths, "popularTimes")).at(0).arr() ?: return null
         val parsed = days.mapNotNull { d ->
             val dow = d.at(0).int() ?: return@mapNotNull null

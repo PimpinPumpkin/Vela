@@ -74,13 +74,17 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
 - ~~Busy / popular times~~ — **DONE keyless 2026-06-19** (the 2026-06-18 "login-gated"
   conclusion was *wrong*). The histogram is place node `[84]`; the keyless **OkHttp**
   `/search` is bot-degraded (TLS-fingerprint, like photos/transit) and strips it, which
-  fooled me. A real browser engine isn't degraded: a **warmed hidden WebView's
-  same-origin search returns the full ~240 KB response WITH `[84]`** for an anonymous
-  session (proven on-device — an in-WebView fetch hook caught the `/search` response
-  carrying the markers). `WebPopularTimesFetcher` warms google.com→maps (an established
-  NID matters) then same-origin-fetches the search URL the app already builds; parsed
-  by `PopularTimesParser`. Lesson: when "needs login" comes from the OkHttp response
-  only, try a WebView — same trick as photos/transit.
+  fooled me. A real browser engine isn't degraded — **but** there was a second catch
+  that nearly fooled me twice: even in the WebView, a **bare-name** search returns a
+  20-result `[64]` list that's *also* trimmed of `[84]` (the "Usually"/"No wait" markers
+  I first saw were a false positive — review text, not a histogram). The real fix is the
+  **query**: a **specific name + address** search (e.g. `In-N-Out Burger 1020 Olive Dr
+  Davis CA`) resolves to a *single focused result* whose `[0][1][0][14]` node keeps
+  `[84]` (confirmed via live Chrome capture: bare name → 20 results, no histogram;
+  name+address → one result with it). `WebPopularTimesFetcher` warms google.com→maps (an
+  established NID matters), builds that specific query into both the `pb` and `q=`, then
+  same-origin-fetches it; `PopularTimesParser` reads `[84]`. Lesson: when "needs login"
+  comes from the OkHttp response only, try a WebView — and check the *query shape* too.
 - **Predictive depart-time ETA** + **avoid tolls/highways** — need the directions
   `pb`'s departure-time field, and it resists discovery (re-confirmed 2026-06-19, 5th
   attempt). What's known now:

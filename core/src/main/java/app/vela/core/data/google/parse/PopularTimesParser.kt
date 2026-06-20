@@ -1,31 +1,40 @@
 package app.vela.core.data.google.parse
 
+import app.vela.core.config.Calibration
 import app.vela.core.data.google.GoogleResponse
+import app.vela.core.data.google.at
 import app.vela.core.model.PopularTimes
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 
 /**
  * Extracts a place's popular-times histogram from a **WebView** `/search?tbm=map`
- * response.
+ * response (see [app.vela.web.WebPopularTimesFetcher] for why a WebView and why a
+ * *specific* query).
  *
- * The catch that fooled us for a while: the *OkHttp* keyless search is silently
- * **bot-degraded** (TLS-fingerprint detection, same as photos/transit) and comes
- * back WITHOUT the `[84]` histogram — so we wrongly concluded popular times was
- * login-gated. A real browser engine isn't degraded: a warmed hidden WebView's
- * same-origin search returns the full ~240 KB response *with* `[84]` (proven
- * on-device 2026-06-19). [app.vela.web.WebPopularTimesFetcher] does that fetch and
- * hands the raw string here; we run it through the normal [SearchParser] (which
- * already reads `[84]` into `Place.popularTimes`) and pick the matching place.
+ * A specific query (name + address) resolves to a single focused result whose place
+ * node at `[0][1][0][14]` keeps the `[84]` histogram. [SearchParser] already snaps
+ * to that node (via `singleResultEntry`) and reads `[84]` into [Place.popularTimes],
+ * so path 1 normally finds it; path 2 reads `[84]` straight off the focused node as
+ * a fallback in case SearchParser snapped to a different entry.
  */
 object PopularTimesParser {
 
-    /** Parse a raw `/search?tbm=map` body and return the histogram for the place
-     *  matching [featureId] (falling back to the first result that has one), or null. */
     fun parse(body: String, featureId: String? = null): PopularTimes? {
-        val result = runCatching {
-            SearchParser.parse("", GoogleResponse.parse(body))
-        }.getOrNull() ?: return null
-        val places = result.places
-        return places.firstOrNull { featureId != null && it.featureId == featureId && it.popularTimes != null }?.popularTimes
-            ?: places.firstOrNull { it.popularTimes != null }?.popularTimes
+        val root = runCatching { GoogleResponse.parse(body) }.getOrNull() ?: return null
+        val places = runCatching { SearchParser.parse("", root).places }.getOrDefault(emptyList())
+
+        // 1. the focused single result (or, rarely, a [64] entry that kept the
+        //    histogram) — SearchParser already read [84] into Place.popularTimes.
+        (places.firstOrNull { featureId != null && it.featureId == featureId && it.popularTimes != null }?.popularTimes
+            ?: places.firstOrNull { it.popularTimes != null }?.popularTimes)?.let { return it }
+
+        // 2. fallback: read [84] straight off the focused node [0][1][0][14], even if
+        //    SearchParser snapped elsewhere (e.g. an "at this place" list). Wrap as a
+        //    [null, node] entry so parsePopularTimes (which reads [1][84]) parses it.
+        val node = root.at(0, 1, 0, 14) ?: return null
+        return runCatching {
+            SearchParser.parsePopularTimes(JsonArray(listOf(JsonNull, node)), Calibration.DEFAULT_PATHS)
+        }.getOrNull()
     }
 }
