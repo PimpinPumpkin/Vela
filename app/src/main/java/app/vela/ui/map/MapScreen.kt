@@ -665,6 +665,8 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
     val expandedState = remember { mutableStateOf(false) }
     var openOnly by remember { mutableStateOf(false) }
     var topRated by remember { mutableStateOf(false) }
+    // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
+    var priceMax by remember { mutableStateOf(0) }
     val screenH = LocalConfiguration.current.screenHeightDp
     // Opens as a tall list (≈half screen) and expands to nearly full-screen, like
     // Google's results page; drag the handle / tap the chevron.
@@ -693,10 +695,11 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
             }
         }
     }
-    // Google-style filters: currently open, and 4.0★+.
+    // Google-style filters: currently open, 4.0★+, and price (≤ the chosen level).
     val shown = results
         .let { list -> if (openOnly) list.filter { it.openNow == true } else list }
         .let { list -> if (topRated) list.filter { (it.rating ?: 0.0) >= 4.0 } else list }
+        .let { list -> if (priceMax > 0) list.filter { (it.priceLevel ?: Int.MAX_VALUE) <= priceMax } else list }
     // Same fixed sheet grey as the place sheet, not the wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
     Card(
@@ -739,7 +742,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                        .padding(start = 16.dp, end = 4.dp, top = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
@@ -749,6 +752,23 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         color = SheetPalette.dim(dark),
                         modifier = Modifier.weight(1f),
                     )
+                    IconButton(onClick = { expandedState.value = !expandedState.value }) {
+                        Icon(
+                            if (expandedState.value) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                            contentDescription = if (expandedState.value) "Shrink list" else "Expand list",
+                            tint = SheetPalette.dim(dark),
+                        )
+                    }
+                }
+                // Filter chips on their own horizontally-scrollable row, so a third (or
+                // future) chip never crowds the header or clips on a narrow screen.
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(start = 16.dp, end = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
                     FilterChip(
                         selected = openOnly,
                         onClick = { openOnly = !openOnly },
@@ -761,15 +781,13 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         selected = topRated,
                         onClick = { topRated = !topRated },
                         label = { Text("4.0★") },
-                        modifier = Modifier.padding(start = 6.dp),
                     )
-                    IconButton(onClick = { expandedState.value = !expandedState.value }) {
-                        Icon(
-                            if (expandedState.value) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = if (expandedState.value) "Shrink list" else "Expand list",
-                            tint = SheetPalette.dim(dark),
-                        )
-                    }
+                    // Price: tap to cycle off → ≤$ → ≤$$ → ≤$$$ → ≤$$$$ → off.
+                    FilterChip(
+                        selected = priceMax > 0,
+                        onClick = { priceMax = (priceMax + 1) % 5 },
+                        label = { Text(if (priceMax == 0) "Price" else "≤ " + "$".repeat(priceMax)) },
+                    )
                 }
             }
             Divider()
