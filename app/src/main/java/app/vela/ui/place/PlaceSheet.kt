@@ -330,17 +330,6 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
-            // Google's editorial one-liner ("Welcoming coffeehouse with handcrafted
-            // coffee…") — sits right under the category, like Google. Lazily filled by
-            // the WebView detail fetch, so it appears a beat after the sheet opens.
-            place.editorialSummary?.let { summary ->
-                Text(
-                    summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = ink,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
             if (place.permanentlyClosed) {
                 // Dead POI — call it out clearly (Google-style red) even when Google
                 // sent no hours/status string at all (which is what "no hours" looked
@@ -425,14 +414,7 @@ fun PlaceSheet(
             // Popular times sit BELOW the action buttons (Google's order). Lazily
             // filled by the WebView detail fetch, so it pops in a beat after open.
             place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
-
-            // "From the owner" — the business's own blurb (lazy, same fetch). A
-            // labelled section like Google's, shown in full.
-            place.ownerDescription?.let { desc ->
-                Spacer(Modifier.height(16.dp))
-                Text("From the owner", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = ink)
-                Text(desc, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
-            }
+            // (The editorial summary + "From the owner" blurb live in the About tab.)
 
             // Other Google listings at the same spot (a co-branded shop's duplicate
             // profile, or a different unit at the address) — like Google's "Also at
@@ -997,7 +979,7 @@ private fun PlaceTabs(
     dim: Color,
 ) {
     val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null
-    val hasAbout = place.about.isNotEmpty()
+    val hasAbout = place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null
     val tabs = buildList {
         if (hasReviews) add("Reviews")
         if (hasAbout) add("About")
@@ -1019,7 +1001,7 @@ private fun PlaceTabs(
         Column(Modifier.padding(top = 10.dp)) {
             when (tabs[selected]) {
                 "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, ink, dim)
-                "About" -> AboutTab(place.about, ink, dim)
+                "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
             }
         }
     }
@@ -1097,8 +1079,23 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color) {
 }
 
 @Composable
-private fun AboutTab(sections: List<AboutSection>, ink: Color, dim: Color) {
+private fun AboutTab(
+    sections: List<AboutSection>,
+    editorialSummary: String?,
+    ownerDescription: String?,
+    ink: Color,
+    dim: Color,
+) {
     Column {
+        // Google's editorial one-liner first, then the owner's "From the owner" blurb,
+        // then the attribute sections — the description before the rest, per request.
+        editorialSummary?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(bottom = 4.dp))
+        }
+        ownerDescription?.let {
+            Text("From the owner", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = dim, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(bottom = 4.dp))
+        }
         sections.forEach { sec ->
             Text(
                 sec.title,
