@@ -83,4 +83,20 @@ class SearchSnapTest {
         assertEquals("123 Main St, Davis, CA", d.address)
         assertEquals(4.5, d.rating!!, 1e-9)
     }
+
+    /** Action link (Book/Reserve/Order): label at [1][75][0][0][5][0], URL at
+     *  [1][75][0][0][5][1][2][0]. (Structure verified against a real "Book online" node.) */
+    @Test fun parsesActionLink() {
+        val urlNode = arr(3, 2 to "[\"https://book.example.com/x\"]")  // action[1]: [_,_,["url"]]
+        val action = arr(2, 0 to "\"Book online\"", 1 to urlNode)      // [0]=label, [1]=urlNode
+        val n75 = "[[${arr(6, 5 to action)}]]"                         // [75] → [0][0][5]=action
+        val place = arr(76, 9 to "[null,null,38.5,-121.7]", 11 to "\"Booky Spa\"", 75 to n75)
+        val z = arr(15, 14 to place)
+        val x = arr(2, 1 to "[$z]")
+
+        val result = SearchParser.parse("booky spa", Json.parseToJsonElement("[$x]"))
+        assertEquals(1, result.places.size)
+        assertEquals("Book online", result.places[0].actionLabel)
+        assertEquals("https://book.example.com/x", result.places[0].actionUrl)
+    }
 }
