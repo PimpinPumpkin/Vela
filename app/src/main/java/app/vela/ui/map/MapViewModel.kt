@@ -168,6 +168,7 @@ class MapViewModel @Inject constructor(
                 // the user never taps "Done" on the arrival card. finishTrip is idempotent,
                 // so the later Done → stopNav → finishTrip is a harmless no-op.
                 val justArrived = ns.arrived && !_state.value.arrived
+                val navStarted = ns.navigating && !_state.value.navigating
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -182,7 +183,22 @@ class MapViewModel @Inject constructor(
                         arrivedSeconds = ns.tripElapsedSeconds,
                     )
                 }
-                if (justArrived) tripStore.finishTrip()
+                // Local-only nav breadcrumbs (no-op unless Diagnostics is opted in): a
+                // start/arrival trail + per-drive distance & time, so an exported session shows
+                // what the nav engine did — the tuning signal that pairs with the raw GPS trip
+                // trace. Rides the existing opt-in; never uploaded.
+                if (navStarted) diag.record("nav", "start → ${ns.destinationLabel.ifBlank { "destination" }}")
+                if (justArrived) {
+                    tripStore.finishTrip()
+                    diag.record(
+                        "nav",
+                        "arrived → ${ns.destinationLabel.ifBlank { "destination" }}",
+                        String.format(
+                            java.util.Locale.US, "drove %.2f mi in %.0f min",
+                            ns.tripDistanceMeters / 1609.34, ns.tripElapsedSeconds / 60.0,
+                        ),
+                    )
+                }
             }
         }
     }
@@ -200,6 +216,16 @@ class MapViewModel @Inject constructor(
                 val prev = _state.value.myLocation
                 val movedM = prev?.distanceTo(here) ?: 0.0
                 val dt = if (lastFixTime > 0L) (loc.time - lastFixTime) / 1000.0 else -1.0
+                // A long inter-fix gap while navigating is where the dead-reckon (capped 2 s)
+                // carries the puck — log it (opt-in, no-op otherwise) so a tuning trace shows
+                // where GPS dropped and for how long.
+                if (dt > 3.0 && _state.value.navigating) {
+                    diag.record(
+                        "gps",
+                        String.format(java.util.Locale.US, "fix gap %.1fs while navigating", dt),
+                        String.format(java.util.Locale.US, "puck dead-reckons (<=2s) at %.0f m/s", _state.value.mySpeed ?: 0f),
+                    )
+                }
                 // Prefer the fix's own bearing/speed; otherwise DERIVE them from movement.
                 // Some fixes omit bearing/speed (cold start, just-started-moving, certain
                 // chipsets/ROMs/mock providers) — without a heading the nav puck can't point
