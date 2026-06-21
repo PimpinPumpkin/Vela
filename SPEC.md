@@ -299,12 +299,12 @@ handed — no filesystem, network, or device access.
 
 ## 7. Build, release, signing
 
-- Toolchain mirrors Arcana/Callguard: **AGP 8.7.3, Kotlin 2.1.0, Gradle 8.11.1,
+- Toolchain: **AGP 8.7.3, Kotlin 2.1.0, Gradle 8.11.1,
   compileSdk 35, minSdk 26, Java 17**, Compose + Hilt + version catalog. **R8 in the
   `release` buildType** — always build release for on-device (debug lags the map).
 - **CI** (`.github/workflows/ci.yml`): every push to `main` builds + tests + signs the
-  APK and publishes a normal versioned GitHub release **`v0.1.<run>`** (versionName
-  `0.1.<run>`, versionCode `1000+run`). Obtainium tracks the latest.
+  APK and publishes a normal versioned GitHub release **`v0.2.<run>`** (versionName
+  `0.2.<run>`, versionCode `2000+run`). Obtainium tracks the latest.
 - **APK signing**: release keystore `~/.vela-signing/vela-release.jks` (alias `vela`,
   password in `credentials.txt`); CI secrets `VELA_KEYSTORE_BASE64` /
   `_PASSWORD` / `VELA_KEY_ALIAS`. **`CN=Vela Maps`**. **Keystore lives outside the repo
