@@ -153,9 +153,11 @@ fun VelaMapView(
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
     val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
     val navUserZoom = remember { doubleArrayOf(Double.NaN) }  // manual nav zoom override (NaN = auto)
-    // Recenter (the follow-FAB reattaching) resumes auto-zoom: clear any pinch override so a
-    // recenter is a full reset to the default nav view. (No-op at nav start / while panning.)
-    LaunchedEffect(navFollowing) { if (navFollowing) navUserZoom[0] = Double.NaN }
+    // A manual pinch sets a zoom override (navUserZoom) that we keep following at; it's cleared
+    // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
+    // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
+    // otherwise nuke a just-set pinch zoom, snapping it back to auto a beat later.
+    LaunchedEffect(navMode) { if (!navMode) navUserZoom[0] = Double.NaN }
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
 
@@ -311,14 +313,24 @@ fun VelaMapView(
                 // so it can't fight your fingers; on release we adopt your zoom as the override.
                 map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                     override fun onMoveBegin(detector: MoveGestureDetector) {
-                        if (navModeHolder.value) navPanned.value()
+                        // A genuine PAN (not a pinch) detaches follow AND drops any pinch-zoom
+                        // override, so a later Re-center returns to auto-zoom. Gated on !scaling
+                        // so a pinch that also registers a tiny translation isn't read as a pan.
+                        if (navModeHolder.value && !scaling[0]) {
+                            navPanned.value()
+                            navUserZoom[0] = Double.NaN
+                        }
                     }
                     override fun onMove(detector: MoveGestureDetector) {}
                     override fun onMoveEnd(detector: MoveGestureDetector) {}
                 })
                 map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
                     override fun onScaleBegin(detector: StandardScaleGestureDetector) { scaling[0] = true }
-                    override fun onScale(detector: StandardScaleGestureDetector) {}
+                    // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even
+                    // if the end callback is missed; we keep FOLLOWING at it and never detach.
+                    override fun onScale(detector: StandardScaleGestureDetector) {
+                        if (navModeHolder.value) navUserZoom[0] = map.cameraPosition.zoom
+                    }
                     override fun onScaleEnd(detector: StandardScaleGestureDetector) {
                         if (navModeHolder.value) navUserZoom[0] = map.cameraPosition.zoom
                         scaling[0] = false
@@ -364,12 +376,12 @@ fun VelaMapView(
         // Fraction of the route already driven (for the traversed-grey gradient) —
         // 0 unless we're navigating and on the line.
         val routeProgress = when {
-            // While snapped, derive the traversed-grey split from the puck's own monotonic
-            // progress (the same value the puck rides) rather than a fresh global progressAlong,
-            // so the grey/colour boundary can't jump to the wrong leg near self-approaching
-            // geometry (what looked like a misplaced "gradient").
+            // Split the traversed-grey at the puck's DRAWN position (progressM — exactly where
+            // the arrow is rendered), not the target it's easing toward (targetM). Using targetM
+            // left the grey/colour boundary a few metres off the arrow, so the transition peeked
+            // out instead of sitting under the puck ("gradient not completely under the arrow").
             navMode && navPuck.engaged && routeCum.isNotEmpty() && routeCum.last() > 0.0 ->
-                (navPuck.targetM / routeCum.last()).toFloat().coerceIn(0f, 1f)
+                (navPuck.progressM / routeCum.last()).toFloat().coerceIn(0f, 1f)
             navMode && myLocation != null && routePolyline.size >= 2 -> progressAlong(routePolyline, myLocation)
             else -> 0f
         }
