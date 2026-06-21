@@ -238,11 +238,15 @@ class MapViewModel @Inject constructor(
                     prev != null && movedM > 3.0 && dt >= 0.3 -> bearingBetween(prev, here)
                     else -> _state.value.myBearing
                 }
-                val speed = when {
+                val rawSpeed = when {
                     loc.hasSpeed() -> loc.speed
                     prev != null && movedM > 1.0 && dt in 0.3..10.0 -> (movedM / dt).toFloat().coerceIn(0f, 70f)
                     else -> _state.value.mySpeed
                 }
+                // Reject a single-fix speed SPIKE (a GPS glitch — "going 35, hops to 157"): no
+                // car gains >15 m/s (~33 mph) between fixes, so keep the prior speed on a jump.
+                val lastSp = _state.value.mySpeed
+                val speed = if (rawSpeed != null && lastSp != null && rawSpeed > lastSp + 15f) lastSp else rawSpeed
                 lastFixTime = loc.time
                 _state.update {
                     it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here, myLocationStale = false)
@@ -1013,7 +1017,11 @@ class MapViewModel @Inject constructor(
                 locationProvider.replay(pts, speedup = 3f).collect { loc ->
                     val here = LatLng(loc.latitude, loc.longitude)
                     val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
-                    val speed = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
+                    // Same single-fix spike reject as live GPS — recorded traces carry the raw
+                    // glitches, so a 35→157 mph hop in the trace doesn't show on replay either.
+                    val rawSp = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
+                    val lastSp = _state.value.mySpeed
+                    val speed = if (rawSp != null && lastSp != null && rawSp > lastSp + 15f) lastSp else rawSp
                     _state.update { it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, center = here, myLocationStale = false) }
                     navSession.onLocation(here)
                 }

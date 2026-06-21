@@ -176,15 +176,15 @@ fun VelaMapView(
     val navPuck = remember { NavPuck() }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
 
-    // Declutter POIs during turn-by-turn (Google-style): the dense lower-rank POI tiers
-    // re-run symbol collision on every nav camera rotate/zoom, so their labels pop in and
-    // out as the view turns. Hide them while navigating — keep the top-rank poi_r1 for the
-    // major landmarks — and restore on exit. Keyed on styleRef so it re-applies after a
-    // style (re)load (dark/light flip), which recreates the layers at default visibility.
+    // Declutter POIs during turn-by-turn (Google-style): POI labels re-run symbol collision on
+    // every nav camera rotate/zoom and pop in and out at zoom thresholds. Hide ALL POI tiers
+    // while navigating (keeping even the top rank still left labels flickering at the threshold)
+    // for a clean nav map, and restore on exit. Keyed on styleRef so it re-applies after a style
+    // (re)load (dark/light flip), which recreates the layers at default visibility.
     LaunchedEffect(navMode, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         val vis = if (navMode) Property.NONE else Property.VISIBLE
-        listOf("poi_r7", "poi_r20", "poi_transit").forEach { id ->
+        listOf("poi_r1", "poi_r7", "poi_r20", "poi_transit").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis))
         }
     }
@@ -509,7 +509,10 @@ fun VelaMapView(
                 val puckPt = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
                 val loc = if (navPuck.engaged && routePolyline.size >= 2) {
                     val ahead = (navZoomSpeed[0] * 2.0).coerceIn(25.0, 90.0) // ~25 m crawling → 90 m freeway
-                    pointAtMeters(routePolyline, routeCum, navPuck.targetM + ahead).first
+                    // Look ahead from the puck's SMOOTH drawn progress (progressM, eased per
+                    // frame), NOT the per-fix targetM — targetM jumps once per GPS fix, which made
+                    // the camera inch forward in steps instead of gliding.
+                    pointAtMeters(routePolyline, routeCum, navPuck.progressM + ahead).first
                 } else puckPt
                 // Off-route, hold the last route-aligned heading instead of snapping the
                 // camera to the raw GPS bearing (it jitters and can point backwards on a brief
