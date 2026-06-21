@@ -114,7 +114,7 @@ R8 release builds):
         ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
         ├─ web/              WebPhotoFetcher, WebDirectionsFetcher — hidden-WebView scrapes
         ├─ offline/          OfflineMaps — MapLibre offline region download/store
-        └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / offline)
+        └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / keep-screen-on / offline)
 ```
 
 The `MapDataSource` interface is the load-bearing seam: Mock today, Google once

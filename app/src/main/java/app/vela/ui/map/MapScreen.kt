@@ -1,10 +1,13 @@
 package app.vela.ui.map
 
 import android.Manifest
+import android.app.Activity
+import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -73,6 +76,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -156,6 +160,31 @@ fun MapScreen(
         state.styleUri
     }
     val context = LocalContext.current
+
+    // Keep the display awake during turn-by-turn so a driver glancing at the next
+    // turn never has to tap to wake it. Gated by the "Keep screen on while
+    // navigating" toggle (Settings → Navigation, default on); the flag is cleared
+    // the instant nav ends, the setting is turned off, or this screen leaves
+    // composition, so the screen sleeps normally again everywhere else.
+    val keepAwakeOn = remember(state.navigating) {
+        state.navigating &&
+            context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+                .getBoolean("keep_screen_on_nav", true)
+    }
+    val activityWindow = remember(context) {
+        var c: android.content.Context? = context
+        while (c is ContextWrapper && c !is Activity) c = c.baseContext
+        (c as? Activity)?.window
+    }
+    DisposableEffect(keepAwakeOn, activityWindow) {
+        if (keepAwakeOn) {
+            activityWindow?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activityWindow?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose { activityWindow?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) }
+    }
+
     var searchFocused by remember { mutableStateOf(false) }
     // The search overlay is open when the field is focused OR we're picking a custom
     // directions origin (which opens the same overlay WITHOUT focusing the field — so
