@@ -628,6 +628,14 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** User tapped "retry" on the reviews tab after a transient empty fetch — re-run it for
+     *  the open place. (The reviews RPC flakes intermittently; the auto-retry covers a quick
+     *  blip, this covers one that's stuck for longer than the place sheet's first try.) */
+    fun retryReviews() {
+        val p = _state.value.selected ?: return
+        fetchReviews(p)
+    }
+
     fun clearSelection() =
         _state.update {
             it.copy(
