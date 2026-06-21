@@ -348,20 +348,24 @@ fun VelaMapView(
             navMode && myLocation != null && routePolyline.size >= 2 -> progressAlong(routePolyline, myLocation)
             else -> 0f
         }
-        // Smooth the nav puck (test-drive feedback: "the dot was jumping all over"): snap
-        // it onto the route so lateral GPS jitter can't throw it off the road, and face it
-        // down the road (steadier than raw GPS bearing). Off-route / not navigating → raw.
+        // Nav puck map-matching, OsmAnd-style (modelled on its RoutingHelper): snap the fix
+        // onto the route for a steady on-road puck + heading, but once engaged ONLY ever search
+        // a bounded look-ahead FORWARD of our current progress — never behind, never the whole
+        // route — so the camera can't be yanked onto a parallel or earlier leg where the route
+        // runs near itself (the "pans to a random spot along the route" bug). Off-route / not
+        // navigating → raw.
         val snap = if (navMode && myLocation != null && routePolyline.size >= 2) {
-            // Search a WINDOW around our current along-route progress first, so a route that
-            // passes near itself can't pull the puck onto a parallel/earlier leg (the global
-            // nearest-point did — "snapping all over / going backwards", seen while driving a
-            // normal road). Fall back to a global search only when nothing in the window is
-            // close enough (a GPS gap or genuinely off-route), so it never does worse.
-            val center = if (navPuck.engaged) navPuck.targetM else Double.NaN
-            (if (!center.isNaN())
-                snapToRouteWindowed(myLocation, myBearing, routePolyline, routeCum, center - 120.0, center + 500.0)
-            else null)
-                ?: snapToRouteWindowed(myLocation, myBearing, routePolyline, routeCum, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)
+            if (navPuck.engaged) {
+                // Bounded forward look-ahead, scaled with speed so a multi-second GPS gap still
+                // catches up; a small back-tolerance absorbs standstill jitter. Strictly ahead,
+                // so a self-approaching route can't pull us onto the other pass.
+                val ahead = (navPuck.speed * 8.0).coerceIn(150.0, 600.0)
+                snapToRouteWindowed(myLocation, myBearing, routePolyline, routeCum, navPuck.targetM - 25.0, navPuck.targetM + ahead)
+            } else {
+                // Not yet engaged (nav start, or the ticker just re-keyed on a reroute): one
+                // global acquisition to find where we are on this route, then forward-only.
+                snapToRouteWindowed(myLocation, myBearing, routePolyline, routeCum, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)
+            }
         } else null
         val displayLoc = snap?.first ?: myLocation
         val displayBearing = snap?.second ?: myBearing
@@ -369,22 +373,29 @@ fun VelaMapView(
         if (navMode && snap != null) {
             val m = snap.third
             val now = android.os.SystemClock.elapsedRealtime()
-            if (!navPuck.engaged || m < navPuck.targetM - 200.0) {
-                // First on-route fix, or a big jump *back* (a reroute / new route) — re-anchor.
+            if (!navPuck.engaged) {
                 navPuck.progressM = m; navPuck.targetM = m; navPuck.engaged = true
             } else {
-                // Only advance the target by a *plausible* amount, so a route that passes
-                // near itself (switchback / cloverleaf / parallel return leg) can't teleport
-                // the puck — and the camera that follows it — onto the far leg. Generous:
-                // speed × elapsed × 2.5 + 60 m, so a real GPS gap (large elapsed) still
-                // catches up, but a 1-second nearest-point that lands a kilometre ahead is
-                // rejected and dead reckoning carries the puck until a sane fix arrives.
+                // Monotonic forward only: ease in a plausible advance (speed × elapsed × 2.5 +
+                // 60 m absorbs a real GPS gap), reject anything else and let dead reckoning hold.
                 val dtFix = ((now - navPuck.targetAtMs) / 1000.0).coerceIn(0.0, 10.0)
                 val maxStep = navPuck.speed.coerceAtLeast(1.0) * dtFix * 2.5 + 60.0
                 if (m - navPuck.targetM in 0.0..maxStep) navPuck.targetM = m
             }
+            navPuck.missCount = 0
             navPuck.targetAtMs = now // anchor for dead reckoning
             navPuck.speed = (mySpeed ?: 0f).toDouble().coerceAtLeast(0.0)
+        } else if (navMode && navPuck.engaged) {
+            // Nothing ahead on the route within tolerance: a GPS spike, or we've drifted off it.
+            // HOLD — stay engaged so the ticker keeps dead-reckoning forward along the route —
+            // rather than the old global re-snap that teleported the camera onto a random leg.
+            // Leave targetM / targetAtMs untouched so the dead-reckoning clock keeps running from
+            // the last good fix. Only a sustained run of misses disengages, to re-acquire;
+            // NavEngine's off-route detection drives the actual reroute in the meantime.
+            navPuck.missCount += 1
+            if (navPuck.missCount >= 6) navPuck.engaged = false
+            navPuck.raw = myLocation
+            navPuck.rawBearing = myBearing
         } else {
             navPuck.engaged = false
             navPuck.raw = myLocation
@@ -989,6 +1000,8 @@ private class NavPuck {
     var drawn: LatLng? = null     // last point actually drawn — the camera follows THIS, not the raw fix
     var raw: LatLng? = null       // off-route fallback position
     var rawBearing: Float? = null
+    var missCount = 0             // consecutive forward-look-ahead misses (GPS spike / off-route);
+                                  // HOLD + dead-reckon through a few, then disengage to re-acquire
 }
 
 /** Cumulative along-route distance (m) at each polyline vertex (cum[0] = 0). */
