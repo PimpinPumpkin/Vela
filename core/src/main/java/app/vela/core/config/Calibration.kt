@@ -74,6 +74,11 @@ data class Calibration(
             "reviewCount" to listOf(1, 4, 8),
             "priceText" to listOf(1, 4, 2),
             "website" to listOf(1, 7, 0),
+            // Action link (Google's "Book online" / "Reserve a table" / "Order online"
+            // button): the primary action node at [1][75][0][0][5] — label [0], URL [1][2][0].
+            // The label adapts per business type (booking salon, reservations restaurant, …).
+            "actionLabel" to listOf(1, 75, 0, 0, 5, 0),
+            "actionUrl" to listOf(1, 75, 0, 0, 5, 1, 2, 0),
             "phone" to listOf(1, 178, 0, 0),
             "featureId" to listOf(1, 10),
             "placeId" to listOf(1, 78),
