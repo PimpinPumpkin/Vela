@@ -1,6 +1,7 @@
 package app.vela.core
 
 import app.vela.core.config.Calibration
+import app.vela.core.data.google.parse.PopularTimesParser
 import app.vela.core.data.google.parse.SearchParser
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
@@ -63,5 +64,23 @@ class SearchSnapTest {
         assertEquals(1, result.places.size)
         assertEquals(1, result.places[0].similarPlaces.size)
         assertEquals("Other Salon", result.places[0].similarPlaces[0].name)
+    }
+
+    /** The summary-node enrichment: PopularTimesParser lifts review count / address / rating
+     *  off the FULL focused node (feature-id-matched) into PlaceDetails, so a sparse snapped
+     *  place can be backfilled. Regression for "Bellagio showed 4.4 with no count". */
+    @Test fun enrichmentLiftsCountAddressRatingFromFocusedNode() {
+        val rating = arr(9, 7 to "4.5", 8 to "305")                 // [4][7]=rating, [4][8]=count
+        val geo = arr(4, 2 to "47.95", 3 to "-122.21")             // [9][2]/[9][3]=lat/lng
+        val place = arr(40, 4 to rating, 9 to geo, 10 to "\"0xAAA:0xBBB\"",
+            11 to "\"Test Spa\"", 39 to "\"123 Main St, Everett, WA\"")
+        val z = arr(15, 14 to place)                                // single result at [0][1][0][14]
+        val x = arr(2, 1 to "[$z]")
+        val body = ")]}'\n[$x]"
+
+        val d = PopularTimesParser.parse(body, "0xAAA:0xBBB")
+        assertEquals(305, d!!.reviewCount)
+        assertEquals("123 Main St, Everett, WA", d.address)
+        assertEquals(4.5, d.rating!!, 1e-9)
     }
 }
