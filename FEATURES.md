@@ -142,6 +142,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute) —
   pure/Android-free, **unit-tested** (arrival-requires-final-maneuver, reroute
   fires once per off-route transition not per fix, off-route clears on return)
+- ✅ **Screen stays awake while navigating** (2026-06-21) — turn-by-turn holds
+  `FLAG_KEEP_SCREEN_ON` on the activity window so the next turn is always visible on
+  a windscreen mount without tapping to wake the phone. Gated by **Settings →
+  Navigation → "Keep screen on while navigating"** (default **on**); the flag is
+  cleared the instant nav ends, the toggle is turned off, or the map screen leaves
+  composition, so the display sleeps normally everywhere else (no battery drain when
+  you're not driving)
 - ✅ Spoken guidance via AOSP TextToSpeech (engine-selectable) — **tuned for the
   car**: a measured speech rate (0.97) + neutral pitch, and on init it auto-selects
   the **highest-quality offline voice** for the locale (engines often default to a

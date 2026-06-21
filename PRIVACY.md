@@ -74,7 +74,7 @@ photo gallery or transit directions, that WebView never loads.
 Stored locally only (SharedPreferences / SQLite / MapLibre's offline store), never
 transmitted:
 - Saved places, Home/Work shortcuts, recently-viewed places, recent searches
-- Settings (theme, units, voice engine, traffic toggle)
+- Settings (theme, units, voice engine, traffic toggle, keep-screen-on-while-navigating)
 - Downloaded offline map areas + their offline POIs
 - Dismissed-notice ids
 
