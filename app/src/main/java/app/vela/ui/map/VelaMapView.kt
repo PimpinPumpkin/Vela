@@ -325,19 +325,36 @@ fun VelaMapView(
 
         // Fraction of the route already driven (for the traversed-grey gradient) —
         // 0 unless we're navigating and on the line.
-        val routeProgress =
-            if (navMode && myLocation != null && routePolyline.size >= 2) progressAlong(routePolyline, myLocation)
-            else 0f
+        val routeProgress = when {
+            // While snapped, derive the traversed-grey split from the puck's own monotonic
+            // progress (the same value the puck rides) rather than a fresh global progressAlong,
+            // so the grey/colour boundary can't jump to the wrong leg near self-approaching
+            // geometry (what looked like a misplaced "gradient").
+            navMode && navPuck.engaged && routeCum.isNotEmpty() && routeCum.last() > 0.0 ->
+                (navPuck.targetM / routeCum.last()).toFloat().coerceIn(0f, 1f)
+            navMode && myLocation != null && routePolyline.size >= 2 -> progressAlong(routePolyline, myLocation)
+            else -> 0f
+        }
         // Smooth the nav puck (test-drive feedback: "the dot was jumping all over"): snap
         // it onto the route so lateral GPS jitter can't throw it off the road, and face it
         // down the road (steadier than raw GPS bearing). Off-route / not navigating → raw.
-        val snap = if (navMode && myLocation != null && routePolyline.size >= 2)
-            snapToRoute(myLocation, myBearing, routePolyline) else null
+        val snap = if (navMode && myLocation != null && routePolyline.size >= 2) {
+            // Search a WINDOW around our current along-route progress first, so a route that
+            // passes near itself can't pull the puck onto a parallel/earlier leg (the global
+            // nearest-point did — "snapping all over / going backwards", seen while driving a
+            // normal road). Fall back to a global search only when nothing in the window is
+            // close enough (a GPS gap or genuinely off-route), so it never does worse.
+            val center = if (navPuck.engaged) navPuck.targetM else Double.NaN
+            (if (!center.isNaN())
+                snapToRouteWindowed(myLocation, myBearing, routePolyline, routeCum, center - 120.0, center + 500.0)
+            else null)
+                ?: snapToRouteWindowed(myLocation, myBearing, routePolyline, routeCum, Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY)
+        } else null
         val displayLoc = snap?.first ?: myLocation
         val displayBearing = snap?.second ?: myBearing
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
         if (navMode && snap != null) {
-            val m = nearestMeters(routePolyline, routeCum, snap.first)
+            val m = snap.third
             val now = android.os.SystemClock.elapsedRealtime()
             if (!navPuck.engaged || m < navPuck.targetM - 200.0) {
                 // First on-route fix, or a big jump *back* (a reroute / new route) — re-anchor.
@@ -424,8 +441,12 @@ fun VelaMapView(
                 // not the raw snapped fix — so the camera and puck move as one and the map
                 // can't lurch to a far spot when nearest-point is briefly ambiguous.
                 val loc = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
+                // Off-route, hold the last route-aligned heading instead of snapping the
+                // camera to the raw GPS bearing (it jitters and can point backwards on a brief
+                // off-route blip — the "map rotated and the arrow pointed the wrong way"). The
+                // smoothed puck bearing takes over again the instant we re-snap to the route.
                 val brg = (if (navPuck.engaged && !navPuck.displayBearing.isNaN()) navPuck.displayBearing else null)
-                    ?: displayBearing ?: lastNavBearing ?: 0f
+                    ?: lastNavBearing ?: displayBearing ?: 0f
                 val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
                 val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
                 if (moved || turned) {
@@ -883,25 +904,43 @@ private fun progressAlong(polyline: List<LatLng>, me: LatLng): Float {
     return (bestLen / total).toFloat().coerceIn(0f, 1f)
 }
 
-/** Snap [me] onto the nearest point of the nav route for display — the snapped point plus
- *  that segment's heading — so the puck rides the road instead of wobbling with raw GPS.
- *  Returns null (→ show the RAW fix) when we're not genuinely following the route, so a
- *  missed exit / off-road shows reality rather than gluing the arrow to where it "should"
- *  be: either the nearest point is farther than [maxM] (≈ one road width + GPS error), OR
- *  the device heading doesn't match the road's (you've turned off it). No GPS heading
- *  (e.g. stopped) falls back to distance only. */
-private fun snapToRoute(me: LatLng, gpsBearing: Float?, polyline: List<LatLng>, maxM: Double = 22.0): Pair<LatLng, Float>? {
-    if (polyline.size < 2) return null
+/** Snap [me] onto the nearest point of the nav route for display — the snapped point, that
+ *  segment's heading, and the metres-along of the projection — so the puck rides the road
+ *  instead of wobbling with raw GPS. Only segments whose along-route range overlaps the window
+ *  [[loM]‥[hiM]] are considered, so wherever the route passes near itself (a parallel return
+ *  leg, switchback, cloverleaf, a doubled-back street) the global nearest-point can't yank the
+ *  puck onto the wrong leg — which reads as the puck "snapping all over / going backwards",
+ *  even on a normal road. Pass an infinite window (±∞) for the old global search — the graceful
+ *  fallback when nothing in the window is close enough. Returns null (→ show the RAW fix) when
+ *  we're not genuinely following the route, so a missed exit / off-road shows reality rather
+ *  than gluing the arrow to where it "should" be: either the nearest point is farther than
+ *  [maxM] (≈ one road width + GPS error), OR the device heading doesn't match the road's
+ *  (you've turned off it). No GPS heading (e.g. stopped) falls back to distance only. */
+private fun snapToRouteWindowed(
+    me: LatLng,
+    gpsBearing: Float?,
+    polyline: List<LatLng>,
+    cum: DoubleArray,
+    loM: Double,
+    hiM: Double,
+    maxM: Double = 22.0,
+): Triple<LatLng, Float, Double>? {
+    if (polyline.size < 2 || cum.size < polyline.size) return null
     var bestD = Double.MAX_VALUE
     var bestPoint: LatLng? = null
     var bestA = polyline[0]
     var bestB = polyline[1]
+    var bestM = 0.0
     for (i in 1 until polyline.size) {
+        if (cum[i] < loM || cum[i - 1] > hiM) continue // segment entirely outside the window
         val a = polyline[i - 1]
         val b = polyline[i]
-        val (proj, _) = projectOnSegment(me, a, b)
+        val (proj, t) = projectOnSegment(me, a, b)
         val d = me.distanceTo(proj)
-        if (d < bestD) { bestD = d; bestPoint = proj; bestA = a; bestB = b }
+        if (d < bestD) {
+            bestD = d; bestPoint = proj; bestA = a; bestB = b
+            bestM = cum[i - 1] + t * a.distanceTo(b)
+        }
     }
     val pt = bestPoint ?: return null
     if (bestD > maxM) return null
@@ -909,7 +948,7 @@ private fun snapToRoute(me: LatLng, gpsBearing: Float?, polyline: List<LatLng>, 
     // Heading gate: if the device is clearly NOT going the road's way, don't snap — let
     // the real position show (then the off-route reroute kicks in), Google-style.
     if (gpsBearing != null && angleDelta(gpsBearing, routeBearing) > 55f) return null
-    return pt to routeBearing
+    return Triple(pt, routeBearing, bestM)
 }
 
 /** Smallest absolute difference between two compass bearings (deg), 0..180. */
@@ -926,7 +965,7 @@ private fun smoothBearing(cur: Float, target: Float, dt: Float, tau: Float): Flo
  *  smoothed, **monotonic-forward** progress along the route that the frame ticker glides
  *  toward the latest fix, **dead-reckoned** forward at the known speed between fixes, so the
  *  puck rides forward without the per-fix teleport or the forward/backward jitter of raw
- *  "nearest point". Off-route it falls back to [raw] (honesty — see [snapToRoute]). */
+ *  "nearest point". Off-route it falls back to [raw] (honesty — see [snapToRouteWindowed]). */
 private class NavPuck {
     var engaged = false           // currently following the route (snapped)
     var progressM = 0.0           // displayed metres along the route (what's drawn)
@@ -944,21 +983,6 @@ private fun cumLengths(poly: List<LatLng>): DoubleArray {
     val cum = DoubleArray(poly.size)
     for (i in 1 until poly.size) cum[i] = cum[i - 1] + poly[i - 1].distanceTo(poly[i])
     return cum
-}
-
-/** Metres along the route to the nearest projection of [p]. */
-private fun nearestMeters(poly: List<LatLng>, cum: DoubleArray, p: LatLng): Double {
-    if (poly.size < 2) return 0.0
-    var bestD = Double.MAX_VALUE
-    var bestM = 0.0
-    for (i in 1 until poly.size) {
-        val a = poly[i - 1]
-        val b = poly[i]
-        val (proj, t) = projectOnSegment(p, a, b)
-        val d = p.distanceTo(proj)
-        if (d < bestD) { bestD = d; bestM = cum[i - 1] + t * a.distanceTo(b) }
-    }
-    return bestM
 }
 
 /** Point + heading at [meters] along the route. */
