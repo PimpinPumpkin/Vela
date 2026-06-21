@@ -533,14 +533,16 @@ private fun ensureLayers(style: Style) {
         // lineMetrics → line-progress works, so we can grey the *traversed* part of the
         // route behind the vehicle (Google-style) with a line-gradient.
         style.addSource(GeoJsonSource(ROUTE_SRC, GeoJsonOptions().withLineMetrics(true)))
-        style.addLayer(
-            LineLayer(ROUTE_LAYER, ROUTE_SRC).withProperties(
-                PropertyFactory.lineColor("#1F6FEB"),
-                PropertyFactory.lineWidth(6f),
-                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-            ),
+        // Insert the route line BELOW the basemap's first label layer (Google-style) so road
+        // names and POI text stay legible *on top* of it, instead of being painted over.
+        val routeLine = LineLayer(ROUTE_LAYER, ROUTE_SRC).withProperties(
+            PropertyFactory.lineColor("#1F6FEB"),
+            PropertyFactory.lineWidth(6f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
+        val firstLabel = style.layers.firstOrNull { it is SymbolLayer }?.id
+        if (firstLabel != null) style.addLayerBelow(routeLine, firstLabel) else style.addLayer(routeLine)
     }
     // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
