@@ -194,11 +194,30 @@ class MapViewModel @Inject constructor(
                 delay(8_000)
                 if (_state.value.myLocation == null) _state.update { it.copy(showPsdsTip = true) }
             }
+            var lastFixTime = 0L
             locationProvider.updates().collect { loc ->
                 val here = LatLng(loc.latitude, loc.longitude)
-                // Keep the last good bearing while stopped (GPS bearing is noise at rest).
-                val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
-                val speed = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
+                val prev = _state.value.myLocation
+                val movedM = prev?.distanceTo(here) ?: 0.0
+                // Prefer the fix's own bearing/speed; otherwise DERIVE them from movement.
+                // Some fixes omit bearing/speed (cold start, just-started-moving, certain
+                // chipsets/ROMs/mock providers) — without a heading the nav puck can't point
+                // and dead-reckoning can't run. Only derive on real movement, so a standstill's
+                // GPS jitter doesn't spin the marker. Keep the last good bearing while stopped.
+                val bearing = when {
+                    loc.hasBearing() && loc.speed > 0.5f -> loc.bearing
+                    prev != null && movedM > 3.0 -> bearingBetween(prev, here)
+                    else -> _state.value.myBearing
+                }
+                val speed = when {
+                    loc.hasSpeed() -> loc.speed
+                    prev != null && movedM > 1.0 && lastFixTime > 0L -> {
+                        val dt = (loc.time - lastFixTime) / 1000.0
+                        if (dt in 0.05..10.0) (movedM / dt).toFloat() else _state.value.mySpeed
+                    }
+                    else -> _state.value.mySpeed
+                }
+                lastFixTime = loc.time
                 _state.update {
                     it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here, myLocationStale = false)
                 }
@@ -211,6 +230,17 @@ class MapViewModel @Inject constructor(
                 navSession.onLocation(here)
             }
         }
+    }
+
+    /** Great-circle bearing (deg, 0 = N) from [a] to [b] — used to synthesise a heading
+     *  when a GPS fix doesn't carry one. */
+    private fun bearingBetween(a: LatLng, b: LatLng): Float {
+        val dLng = Math.toRadians(b.lng - a.lng)
+        val la1 = Math.toRadians(a.lat)
+        val la2 = Math.toRadians(b.lat)
+        val y = Math.sin(dLng) * Math.cos(la2)
+        val x = Math.cos(la1) * Math.sin(la2) - Math.sin(la1) * Math.cos(la2) * Math.cos(dLng)
+        return ((Math.toDegrees(Math.atan2(y, x)) + 360.0) % 360.0).toFloat()
     }
 
     /** Grey the location dot if no live fix arrives for a while (Google-style) — the

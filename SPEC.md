@@ -225,7 +225,10 @@ itself shows the traffic, not the whole map.
   clamped** (`speed·Δt·2.5 + 60 m`) so a self-approaching route can't teleport the puck to
   a far leg. The **follow-camera targets the puck's smoothed point** (`NavPuck.drawn`), not
   the raw fix, so map + puck move as one. The ticker owns `ME_SRC` while navigating;
-  `applyData` only drives it in browse / off-route.
+  `applyData` only drives it in browse / off-route. **Heading/speed are derived from
+  consecutive fixes** (`MapViewModel`, `bearingBetween`) when a `Location` lacks them — gated
+  on real movement — so the puck still points and dead-reckons on bearing-less fixes. (Whole
+  nav stack verified on-device 2026-06-21 via a mock-GPS drive of a real Davis→Sacramento route.)
 - **Deep links**: `MainActivity` is `singleTop` with intent-filters for `geo:` and
   Google-Maps web links; `MapLinkParser` (`:core`, pure-Kotlin, unit-tested) →
   `openDeepLink`. Sharing a place emits a keyless `geo:` pin too.
