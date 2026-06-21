@@ -30,6 +30,8 @@ import app.vela.offline.OfflineMaps
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.gestures.MoveGestureDetector
+import org.maplibre.android.gestures.StandardScaleGestureDetector
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -149,6 +151,11 @@ fun VelaMapView(
     val viewport = rememberUpdatedState(onViewport)
     val gestureMove = remember { booleanArrayOf(false) }
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
+    val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
+    val navUserZoom = remember { doubleArrayOf(Double.NaN) }  // manual nav zoom override (NaN = auto)
+    // Recenter (the follow-FAB reattaching) resumes auto-zoom: clear any pinch override so a
+    // recenter is a full reset to the default nav view. (No-op at nav start / while panning.)
+    LaunchedEffect(navFollowing) { if (navFollowing) navUserZoom[0] = Double.NaN }
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
 
@@ -296,10 +303,27 @@ fun VelaMapView(
                 map.addOnCameraMoveStartedListener { reason ->
                     gestureMove[0] = reason ==
                         MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
-                    // While navigating, a manual pan detaches the follow-camera so
-                    // you can look around; a "Re-center" button then reattaches it.
-                    if (gestureMove[0] && navModeHolder.value) navPanned.value()
                 }
+                // Tell a PAN from a PINCH during nav (the move-started reason can't): a pan
+                // detaches the follow-camera so you can look around (the Re-center button
+                // reattaches it), but a PINCH keeps following — it just changes the zoom you're
+                // followed at. While actively pinching, `scaling` suppresses the follow animation
+                // so it can't fight your fingers; on release we adopt your zoom as the override.
+                map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
+                    override fun onMoveBegin(detector: MoveGestureDetector) {
+                        if (navModeHolder.value) navPanned.value()
+                    }
+                    override fun onMove(detector: MoveGestureDetector) {}
+                    override fun onMoveEnd(detector: MoveGestureDetector) {}
+                })
+                map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
+                    override fun onScaleBegin(detector: StandardScaleGestureDetector) { scaling[0] = true }
+                    override fun onScale(detector: StandardScaleGestureDetector) {}
+                    override fun onScaleEnd(detector: StandardScaleGestureDetector) {
+                        if (navModeHolder.value) navUserZoom[0] = map.cameraPosition.zoom
+                        scaling[0] = false
+                    }
+                })
                 map.addOnCameraIdleListener {
                     if (gestureMove[0]) {
                         gestureMove[0] = false
@@ -474,7 +498,9 @@ fun VelaMapView(
                     ?: lastNavBearing ?: displayBearing ?: 0f
                 val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
                 val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
-                if (moved || turned) {
+                // Don't re-point the camera while the user is actively pinch-zooming — let their
+                // fingers win; we resume following (at their chosen zoom) the moment they lift.
+                if ((moved || turned) && !scaling[0]) {
                     lastNavTarget = loc
                     lastNavBearing = brg
                     // Speed-adaptive zoom (Google-style): pull back on the highway to see
@@ -482,10 +508,13 @@ fun VelaMapView(
                     // not hard bands — the old stepped thresholds made the zoom ping-pong
                     // ("zooms in and back") whenever speed hovered near a boundary (stop-and-go),
                     // since a 12→13→12 m/s wobble flipped it a whole level. A smoothly
-                    // interpolated zoom over a damped speed just glides instead.
+                    // interpolated zoom over a damped speed just glides instead. A manual pinch
+                    // (navUserZoom) overrides it and we keep following at the zoom you chose,
+                    // until you Re-center (which clears the override back to auto).
                     val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f) // m/s, capped at ~freeway
                     navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
-                    val zoom = 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0) // 17.3 stopped → 15.0 freeway
+                    val autoZoom = 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0) // 17.3 stopped → 15.0 freeway
+                    val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0] else autoZoom
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
