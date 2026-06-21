@@ -193,6 +193,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
             Hint("Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel while biking or walking, without looking at the screen.")
 
+            var keepAwake by remember { mutableStateOf(prefs.getBoolean("keep_screen_on_nav", true)) }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Keep screen on while navigating", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = keepAwake,
+                    onCheckedChange = {
+                        keepAwake = it
+                        prefs.edit().putBoolean("keep_screen_on_nav", it).apply()
+                    },
+                )
+            }
+            Hint("Stops the display from dimming or sleeping while turn-by-turn is running, so the next turn is always visible without tapping to wake it. On by default; the screen sleeps normally again the moment you arrive or leave navigation.")
+
             Spacer(Modifier.height(20.dp))
             SectionTitle("Map")
             Row(
