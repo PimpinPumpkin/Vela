@@ -566,6 +566,7 @@ fun MapScreen(
                 onOpenPlace = vm::selectPlace,
                 onOpenSimilar = vm::openSimilar,
                 onSetShortcut = vm::setSelectedAsShortcut,
+                onRetryReviews = vm::retryReviews,
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
