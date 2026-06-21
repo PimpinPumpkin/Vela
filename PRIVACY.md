@@ -98,9 +98,12 @@ and hand it to a developer** to debug. Specifics:
 - **Nothing is uploaded by Vela.** The log lives only in memory on your phone. The only
   way it leaves is if *you* tap **Export debug session** and then choose where to send it
   (email, a chat app, Files…). You see it's a file; you pick the destination.
-- **It contains** the breadcrumbs above — which can include your search terms and the
-  start/end coordinates of routes you asked for (that's the point: it's for debugging a
-  bad route or result). No account, no contacts, no continuous location trail.
+- **It contains** the breadcrumbs above — which can include your search terms, the
+  start/end coordinates of routes you asked for, and **navigation breadcrumbs** (a
+  start/arrival line with the destination name and the drive's distance + time, plus
+  "GPS gap" markers noting where the signal dropped and for how long — for debugging a
+  bad route or *tuning the turn-by-turn*). No account, no contacts, no continuous
+  location trail.
 - **Turning it off wipes the log**, and it clears when the app closes anyway.
 
 ## Trip recording (separate opt-in, off by default)
