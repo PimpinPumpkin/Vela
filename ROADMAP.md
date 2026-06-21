@@ -39,6 +39,25 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   harder, sparser part (no keyless Google events feed — likely OSM/OpenStreetMap +
   a public events source later, or skip v1). **Plan, not now** (per request). Start
   as "Nearby" (categories + top-rated around you); grow toward Explore.
+- **Place-page parity gaps** (vs Google Maps; 2026-06-21 audit). The new
+  summary-node enrichment (review count / full hours / address / phone / price /
+  attributes, backfilled from the focused re-fetch) closed the worst gaps. Remaining,
+  by cost:
+  - *Cheap — already in the focused node we now fetch, just lift + render:*
+    **"People also search for"** (similar places), **menu link**, **reserve-a-table /
+    order-online action links**, **richer attribute groups** (service options,
+    amenities, accessibility — partly shown in About today; surface the rest as chips).
+  - *Medium — a separate keyless RPC:* **Q&A** (questions & answers),
+    **"mentioned in reviews" topic chips** / review keyword summary, **photo
+    categories** (menu / food / vibe tabs in the gallery).
+  - *App-level:* **multi-stop directions** (waypoints), **avoid tolls/highways**
+    (a directions-`pb` options field — see Known-hard), **explicit lists/labels** for
+    saved places.
+  - *Not feasible keyless / out of scope:* Street View (key-gated — see Known-hard),
+    satellite imagery (no open keyless source), account features (your contributions,
+    timeline, writing reviews — degoogled by design), flights/hotels booking tabs.
+  Recommended order: the *cheap* group first (one parser+UI pass, reuses the
+  enrichment plumbing), then Q&A, then review-topic chips.
 - ~~Traffic browse-overlay — keep, drop, or rebuild?~~ — **RESOLVED 2026-06-19:
   hidden in Settings.** Decision (yours): keep it but **move the toggle off the map
   into Settings → Map** so it doesn't clutter — nav's per-segment route colouring is
