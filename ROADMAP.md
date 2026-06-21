@@ -45,9 +45,10 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   by cost:
   - *Cheap — already in the focused node we now fetch, just lift + render:*
     ~~**"People also search for"**~~ — **DONE 2026-06-21** (`root[2][11][0]`, focused
-    searches; tappable cards, device-verified). Remaining: **menu link**, **reserve-a-table /
-    order-online action links**, **richer attribute groups** (service options,
-    amenities, accessibility — partly shown in About today; surface the rest as chips).
+    searches; tappable cards, device-verified). ~~**richer attribute groups**~~ — **DONE
+    2026-06-21** (`attributeHighlights` → overview chip row, reuses parsed About). Remaining:
+    **menu link**, **reserve-a-table / order-online action links** (need a restaurant capture
+    to map the URL fields).
     Coverage follow-up: similar-places only rides *focused* searches today — to show it on
     address-snap / list-tap opens too, do a focused name lookup on open (the OkHttp focused
     search carries `[2][11][0]`; the WebView enrichment response does not).

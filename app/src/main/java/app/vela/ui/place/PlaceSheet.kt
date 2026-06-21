@@ -413,6 +413,30 @@ fun PlaceSheet(
                 ShareAction(place, dim, modifier = Modifier.weight(1f))
             }
 
+            // Attribute highlights (Google-style chips) — the most useful items from About
+            // (service options, offerings, accessibility…), surfaced on the overview for
+            // quick scanning instead of being buried in the tab. Filled by the detail fetch.
+            val highlights = remember(place.about) { attributeHighlights(place.about) }
+            if (highlights.isNotEmpty()) {
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    highlights.forEach { h ->
+                        Text(
+                            h,
+                            style = MaterialTheme.typography.labelLarge,
+                            color = ink,
+                            maxLines = 1,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(50))
+                                .background(dim.copy(alpha = 0.12f))
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
+            }
+
             // Popular times sit BELOW the action buttons (Google's order). Lazily
             // filled by the WebView detail fetch, so it pops in a beat after open.
             place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
@@ -1390,6 +1414,23 @@ private fun hourLabel(h: Int): String = when {
     h < 12 -> "${h}a"
     h == 12 -> "12p"
     else -> "${h - 12}p"
+}
+
+/** The handful of attribute items worth showing as overview chips — the categories users
+ *  scan for first, a few items each, deduped and capped. (Full set stays in the About tab.) */
+private fun attributeHighlights(about: List<AboutSection>): List<String> {
+    if (about.isEmpty()) return emptyList()
+    val priority = listOf(
+        "Service options", "Dining options", "Offerings", "Highlights",
+        "Popular for", "Amenities", "Accessibility", "Atmosphere", "Planning",
+    )
+    return about
+        .sortedBy { s -> priority.indexOf(s.title).let { if (it < 0) priority.size else it } }
+        .flatMap { it.items }
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .distinct()
+        .take(6)
 }
 
 @Composable
