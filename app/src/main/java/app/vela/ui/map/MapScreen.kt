@@ -535,6 +535,7 @@ fun MapScreen(
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
                 onOpenPlace = vm::selectPlace,
+                onOpenSimilar = vm::openSimilar,
                 onSetShortcut = vm::setSelectedAsShortcut,
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
