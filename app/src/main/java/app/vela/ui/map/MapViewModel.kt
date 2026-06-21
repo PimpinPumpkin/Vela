@@ -961,6 +961,29 @@ class MapViewModel @Inject constructor(
         return added
     }
 
+    /** A share intent for a recorded trip's raw CSV trace (via the same FileProvider),
+     *  so a drive can be pulled off a *release* build — handed to a dev for replay/debug,
+     *  or kept as a backup. Null if the trip file is gone. User-initiated, user-routed. */
+    fun exportTripIntent(meta: app.vela.replay.TripMeta): android.content.Intent? {
+        val csv = tripStore.rawCsv(meta.id) ?: return null
+        return runCatching {
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            val file = java.io.File(dir, "vela-trip-${meta.id}.csv")
+            file.writeText(csv)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", file,
+            )
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                putExtra(android.content.Intent.EXTRA_SUBJECT, "Vela trip: ${meta.label} (${meta.fixCount} points)")
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            android.content.Intent.createChooser(send, "Share trip")
+                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }.getOrNull()
+    }
+
     /** Dismiss the arrival summary and return to a clean map (drops the finished
      *  route + selection). */
     fun finishNav() {

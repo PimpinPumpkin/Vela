@@ -289,7 +289,7 @@ fun VelaMapView(
         // it onto the route so lateral GPS jitter can't throw it off the road, and face it
         // down the road (steadier than raw GPS bearing). Off-route / not navigating → raw.
         val snap = if (navMode && myLocation != null && routePolyline.size >= 2)
-            snapToRoute(myLocation, routePolyline) else null
+            snapToRoute(myLocation, myBearing, routePolyline) else null
         val displayLoc = snap?.first ?: myLocation
         val displayBearing = snap?.second ?: myBearing
         val styleKey = "$styleUri|dark=$darkTheme"
@@ -809,11 +809,14 @@ private fun progressAlong(polyline: List<LatLng>, me: LatLng): Float {
     return (bestLen / total).toFloat().coerceIn(0f, 1f)
 }
 
-/** Snap [me] onto the nearest point of the nav route for display: the snapped point plus
- *  the heading (deg) of that segment, so the puck rides the road and faces down it rather
- *  than wobbling with raw GPS. Null when the nearest point is farther than [maxM] (treat
- *  as genuinely off-route → show the raw fix so the divergence is visible). */
-private fun snapToRoute(me: LatLng, polyline: List<LatLng>, maxM: Double = 40.0): Pair<LatLng, Float>? {
+/** Snap [me] onto the nearest point of the nav route for display — the snapped point plus
+ *  that segment's heading — so the puck rides the road instead of wobbling with raw GPS.
+ *  Returns null (→ show the RAW fix) when we're not genuinely following the route, so a
+ *  missed exit / off-road shows reality rather than gluing the arrow to where it "should"
+ *  be: either the nearest point is farther than [maxM] (≈ one road width + GPS error), OR
+ *  the device heading doesn't match the road's (you've turned off it). No GPS heading
+ *  (e.g. stopped) falls back to distance only. */
+private fun snapToRoute(me: LatLng, gpsBearing: Float?, polyline: List<LatLng>, maxM: Double = 22.0): Pair<LatLng, Float>? {
     if (polyline.size < 2) return null
     var bestD = Double.MAX_VALUE
     var bestPoint: LatLng? = null
@@ -827,8 +830,16 @@ private fun snapToRoute(me: LatLng, polyline: List<LatLng>, maxM: Double = 40.0)
         if (d < bestD) { bestD = d; bestPoint = proj; bestA = a; bestB = b }
     }
     val pt = bestPoint ?: return null
-    return if (bestD <= maxM) pt to bearingDeg(bestA, bestB) else null
+    if (bestD > maxM) return null
+    val routeBearing = bearingDeg(bestA, bestB)
+    // Heading gate: if the device is clearly NOT going the road's way, don't snap — let
+    // the real position show (then the off-route reroute kicks in), Google-style.
+    if (gpsBearing != null && angleDelta(gpsBearing, routeBearing) > 55f) return null
+    return pt to routeBearing
 }
+
+/** Smallest absolute difference between two compass bearings (deg), 0..180. */
+private fun angleDelta(a: Float, b: Float): Float = kotlin.math.abs((a - b + 540f) % 360f - 180f)
 
 /** Compass bearing (deg, 0 = N) from [a] to [b]. */
 private fun bearingDeg(a: LatLng, b: LatLng): Float {

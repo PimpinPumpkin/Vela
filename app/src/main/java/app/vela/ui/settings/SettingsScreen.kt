@@ -356,6 +356,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                             Hint(listOfNotNull(recordedAt, "${t.fixCount} points").joinToString(" · "))
                         }
                         TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text("Replay") }
+                        // Share the raw trace off-device — works on release builds, so a
+                        // drive can be handed over for replay/debug without a dev build.
+                        TextButton(onClick = {
+                            val intent = vm.exportTripIntent(t)
+                            if (intent != null) runCatching { context.startActivity(intent) }
+                            else android.widget.Toast.makeText(context, "Couldn't read that trip", android.widget.Toast.LENGTH_SHORT).show()
+                        }) { Text("Share") }
                         IconButton(onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete trip")
                         }
