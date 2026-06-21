@@ -70,6 +70,7 @@ import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
@@ -168,6 +169,7 @@ fun PlaceSheet(
     onOpenPlace: (Place) -> Unit = {},
     onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
     onSetShortcut: (ShortcutKind) -> Unit = {},
+    onRetryReviews: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -535,7 +537,7 @@ fun PlaceSheet(
                 }
             }
 
-            PlaceTabs(place, reviews, reviewsLoading, ink, dim)
+            PlaceTabs(place, reviews, reviewsLoading, onRetryReviews, ink, dim)
             }
         }
     }
@@ -1118,6 +1120,7 @@ private fun PlaceTabs(
     place: Place,
     reviews: List<Review>,
     reviewsLoading: Boolean,
+    onRetryReviews: () -> Unit,
     ink: Color,
     dim: Color,
 ) {
@@ -1143,7 +1146,7 @@ private fun PlaceTabs(
         }
         Column(Modifier.padding(top = 10.dp)) {
             when (tabs[selected]) {
-                "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, ink, dim)
+                "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, onRetryReviews, ink, dim)
                 "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
             }
         }
@@ -1151,7 +1154,7 @@ private fun PlaceTabs(
 }
 
 @Composable
-private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, ink: Color, dim: Color) {
+private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, onRetry: () -> Unit, ink: Color, dim: Color) {
     Column {
         place.rating?.let { r ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
@@ -1179,6 +1182,17 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, in
                 CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 Spacer(Modifier.width(10.dp))
                 Text("Loading reviews…", style = MaterialTheme.typography.bodyMedium, color = dim)
+            }
+            // The count says this place HAS reviews but we have none — the RPC flaked (it's
+            // intermittent), so this is a load FAILURE, not a review-less place. Say so and
+            // let the user retry instead of lying with "No reviews available."
+            reviews.isEmpty() && (place.reviewCount ?: 0) > 0 -> Row(
+                Modifier.fillMaxWidth().clickable { onRetry() }.padding(vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.Refresh, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("Couldn't load reviews. Tap to retry.", style = MaterialTheme.typography.bodyMedium, color = dim)
             }
             reviews.isEmpty() -> Text("No reviews available.", style = MaterialTheme.typography.bodyMedium, color = dim)
             else -> reviews.forEach { ReviewRow(it, ink, dim) }
