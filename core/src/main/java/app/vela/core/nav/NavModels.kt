@@ -12,6 +12,7 @@ data class NavState(
     val offRouteHits: Int = 0,
     val arrived: Boolean = false,
     val spoken: Set<Int> = emptySet(), // prompt thresholds already spoken this step
+    val traveledM: Double = 0.0,       // monotonic metres travelled along the route (forward-progress anchor)
 )
 
 /** Side-effects the engine asks the UI layer to perform. */

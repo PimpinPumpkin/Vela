@@ -164,6 +164,62 @@ class NavEngineTest {
         assertTrue("the final maneuver arrives", s3.arrived)
         assertTrue(e3.any { it is NavEvent.Arrived })
     }
+
+    /** A route that passes near itself: up the west line, a tiny hop east, back down a
+     *  parallel east line ~5 m away (an out-and-back / switchback). A naïve global-nearest
+     *  "remaining" matches the return leg and collapses to almost-arrived while you're still
+     *  on the way out. Forward progress must keep it honest. Regression for the test-drive's
+     *  "51 mi to turn · 0.3 mi remaining". */
+    private fun hairpinRoute(): Route {
+        val a = LatLng(37.0000, -122.00000)
+        val t = LatLng(37.0100, -122.00000)   // top of the outbound (west) leg
+        val t2 = LatLng(37.0100, -121.99994)  // hop ~5 m east
+        val m2 = LatLng(37.0050, -121.99994)  // mid inbound (east) leg — ~5 m from the outbound midpoint
+        val b = LatLng(37.0000, -121.99994)   // end, beside the start
+        return Route(
+            polyline = listOf(a, t, t2, m2, b),
+            legs = listOf(
+                RouteLeg(
+                    distanceMeters = 2232.0,
+                    durationSeconds = 200.0,
+                    durationInTrafficSeconds = null,
+                    maneuvers = listOf(
+                        Maneuver(ManeuverType.DEPART, "Head north", a, 0.0, 0.0),
+                        Maneuver(ManeuverType.UTURN, "Make a U-turn", t, 1113.0, 100.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive", b, 1119.0, 100.0),
+                    ),
+                ),
+            ),
+            distanceMeters = 2232.0,
+            durationSeconds = 200.0,
+            durationInTrafficSeconds = null,
+        )
+    }
+
+    @Test
+    fun remainingStaysHonestWhenRoutePassesNearItself() {
+        val route = hairpinRoute()
+        // Drive up the outbound (west) leg: start, ~quarter, ~halfway.
+        var state = NavEngine.update(route, NavState(), LatLng(37.0000, -122.0000)).first
+        state = NavEngine.update(route, state, LatLng(37.0030, -122.0000)).first
+        val remAtQuarter = state.remainingDistance
+        state = NavEngine.update(route, state, LatLng(37.0050, -122.0000)).first // ~5 m from the inbound leg
+
+        // Global-nearest would snap onto the return leg here and report ~560 m (almost
+        // arrived). Forward progress keeps it honest: ~556 m covered of ~2232 m → ~1675 left.
+        assertTrue(
+            "remaining must not collapse onto the nearby return leg (was ${state.remainingDistance})",
+            state.remainingDistance > 1400.0,
+        )
+        // The contradiction the user saw — next turn farther than the whole trip — must not happen.
+        assertTrue(
+            "next-turn (${state.distanceToNextManeuver}) can't exceed remaining (${state.remainingDistance})",
+            state.distanceToNextManeuver <= state.remainingDistance + 1.0,
+        )
+        // Progress is monotonic and advancing.
+        assertTrue("remaining should shrink as we drive", state.remainingDistance < remAtQuarter)
+        assertTrue("traveled progress should advance", state.traveledM in 450.0..700.0)
+    }
 }
 
 class PhotosParserTest {

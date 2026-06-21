@@ -212,6 +212,10 @@ itself shows the traffic, not the whole map.
   (survives backgrounding/screen-off, persistent notification, ~2-min faster-route
   re-check, arrival summary). Spoken `VoiceGuide` (AOSP TTS, best offline voice) +
   direction-coded `Haptics`. Heading-up tilted camera, blue-dot + heading cone.
+  `NavEngine` (pure, unit-tested) tracks **monotonic forward progress** (`NavState.traveledM`,
+  windowed projection in `projectAlong` — not global-nearest) so "remaining" and "distance to
+  next turn" stay **along-route** and honest on routes that pass near themselves
+  (switchback / cloverleaf / out-and-back); off-route it holds rather than snapping to a far leg.
 - **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
   nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
   **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),

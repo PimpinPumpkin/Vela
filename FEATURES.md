@@ -89,6 +89,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (Walk/bike and no-live-traffic routes fall back to a single overall blue→amber→red tint.)
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
+- ✅ **Honest remaining-distance / next-turn on routes that pass near themselves**
+  (switchbacks, cloverleaves, out-and-backs) — `NavEngine` now tracks **monotonic
+  forward progress** along the route (windowed projection around how far you've already
+  driven) instead of a *global*-nearest point, and measures both "remaining" and "distance
+  to next turn" **along the road** rather than crow-flies. Before, a return leg passing a
+  few metres from the outbound leg made the global-nearest collapse "remaining" to almost-
+  arrived while the next turn read crow-flies-huge — the test-drive's "51 mi to turn · 0.3
+  mi remaining". *(2026-06-21; unit-tested with a hairpin route — `remainingStaysHonest…`.)*
 - ✅ **Lane guidance** — Google's lane hints ("Use the right 2 lanes to turn") are
   pulled out of the step markup into their own field; the nav banner renders them as
   a **strip of turn-direction arrows** (one per indicated lane) + the hint text, and
