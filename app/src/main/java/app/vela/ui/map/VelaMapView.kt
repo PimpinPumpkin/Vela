@@ -148,6 +148,7 @@ fun VelaMapView(
     val navModeHolder = rememberUpdatedState(navMode)
     val viewport = rememberUpdatedState(onViewport)
     val gestureMove = remember { booleanArrayOf(false) }
+    val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
     remember { MapLibre.getInstance(context) }
     val mapView = remember { MapView(context).apply { onCreate(null) } }
 
@@ -476,15 +477,15 @@ fun VelaMapView(
                 if (moved || turned) {
                     lastNavTarget = loc
                     lastNavBearing = brg
-                    // Speed-adaptive zoom (Google-style): pull back on the highway to
-                    // see further ahead, tighten up on slow city streets.
-                    val speed = mySpeed ?: 0f // m/s
-                    val zoom = when {
-                        speed > 25f -> 15.0  // ~56+ mph — freeway
-                        speed > 12f -> 16.0  // ~27+ mph — arterial
-                        speed > 4f -> 16.8   // city street
-                        else -> 17.3         // crawling / stopped
-                    }
+                    // Speed-adaptive zoom (Google-style): pull back on the highway to see
+                    // further ahead, tighten up on slow city streets. CONTINUOUS + low-passed,
+                    // not hard bands — the old stepped thresholds made the zoom ping-pong
+                    // ("zooms in and back") whenever speed hovered near a boundary (stop-and-go),
+                    // since a 12→13→12 m/s wobble flipped it a whole level. A smoothly
+                    // interpolated zoom over a damped speed just glides instead.
+                    val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f) // m/s, capped at ~freeway
+                    navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
+                    val zoom = 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0) // 17.3 stopped → 15.0 freeway
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
