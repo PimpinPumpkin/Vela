@@ -89,6 +89,9 @@ class TripStore @Inject constructor(
         }
     }.getOrDefault(emptyList())
 
+    /** The raw CSV for a saved trip, for export/share (or null if missing). */
+    fun rawCsv(id: String): String? = runCatching { File(dir, "$id.csv").readText() }.getOrNull()
+
     fun delete(id: String) {
         runCatching { File(dir, "$id.csv").delete() }
         if (active?.name == "$id.csv") active = null
