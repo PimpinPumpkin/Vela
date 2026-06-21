@@ -81,11 +81,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **along its length**: free-flow blue with amber/red/dark-red bands over the congested
   stretches, from the directions response's own congestion spans (`route[3][5][0]` =
   `[level, startMeters, lengthMeters]`, only the non-free-flow runs — parsed sorted by
-  start so the gradient bands walk the line start→end in order). Combined with the
-  driven-grey gradient so the part behind the vehicle still greys out — but only while
-  actually navigating: a pre-nav route **preview** draws clean with no grey nub at the
-  start. (Walk/bike and no-live-traffic routes fall back to a single overall
-  blue→amber→red tint.)
+  start so the bands walk the line start→end in order). Rendered as **solid colour bands**
+  (a MapLibre `step` expression, not an interpolated gradient — the driven/ahead boundary
+  and span edges are crisp, per test-drive feedback "should be solid"). Combined with the
+  driven-grey split so the part behind the vehicle greys out — but only while actually
+  navigating: a pre-nav route **preview** draws clean with no grey nub at the start.
+  (Walk/bike and no-live-traffic routes fall back to a single overall blue→amber→red tint.)
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
 - ✅ **Lane guidance** — Google's lane hints ("Use the right 2 lanes to turn") are
@@ -207,14 +208,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Android Auto (needs GMS — likely out of scope)
 - ✅ **Arrival / trip summary** — on reaching the destination, a "You've arrived"
   card replaces the nav controls with the trip's total time and distance (and the
-  destination name), and a Done button returns to a clean map. (Real-drive
-  hardening of the foreground service + live re-route is still pending an
-  on-device test run.)
+  destination name), and a Done button returns to a clean map. **Fixed 2026-06-20
+  (test-drive bug): nav was declaring "arrived" up to tens of km early** — Google's
+  step distances total a few % short of the route geometry, so `placeManeuvers` placed
+  the ARRIVE maneuver at `sum(stepMeters)/polyLength < 1.0` (observed ~15 km short of a
+  134 km route's end) and the 25 m arrival trigger fired there. The final maneuver is now
+  pinned to the route end; diagnosed + verified on-device by replaying the recorded trip
+  (`arriveLoc` now equals the destination). Unit-tested. (Foreground-service + live
+  re-route hardening still pending a full on-device drive.)
 
 ## Location (degoogled)
 - ✅ AOSP `LocationManager` (GPS + NETWORK), no Fused/GMS
 - ✅ Last-known seeding for instant map; PSDS slow-fix tip
-- ✅ **Google-style location indicator** — a blue dot (Google's `#4285F4`) with a white ring, and a **translucent heading cone/beam** that fans out from under the dot in the facing direction (from GPS bearing; drawn beneath the dot, gradient-faded, hidden when there's no heading) instead of a hard arrow. **Greys out when the fix is stale** (no GPS update for ~12 s, or before the first live fix) and turns blue again on a fresh fix, like Google *(verified on-device)*
+- ✅ **Google-style location indicator** — two modes. **Browse:** a blue dot (Google's `#4285F4`) with a white ring + a translucent heading cone/beam (from GPS bearing, beneath the dot, hidden when there's no heading); **greys out when the fix is stale** (~12 s, or before the first live fix) and blue again on a fresh fix. **Nav:** a **solid blue arrow puck** (the dot is hidden) that **snaps onto the route line** and faces down the road — so lateral GPS jitter no longer makes the marker jump off the road, and the heading comes from the route segment (steadier than raw GPS bearing) *(arrow puck + snap-to-route added 2026-06-20 from test-drive feedback — "we need an arrow" + "the dot was jumping all over"; verified on-device via trip replay)*
 - ⬜ Compass heading when stationary
 - ⬜ Optional BeaconDB WiFi positioning for faster coarse fix
 

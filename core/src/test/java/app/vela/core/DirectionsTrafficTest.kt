@@ -1,6 +1,9 @@
 package app.vela.core
 
 import app.vela.core.data.google.parse.DirectionsParser
+import app.vela.core.model.LatLng
+import app.vela.core.model.Maneuver
+import app.vela.core.model.ManeuverType
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -79,6 +82,22 @@ class DirectionsTrafficTest {
 
     /** A degenerate (zero-width) range collapses to null so the UI doesn't show
      *  "usually 1 hr 10 min – 1 hr 10 min". */
+    /** The ARRIVE maneuver MUST sit at the route's end (the destination). Google's step
+     *  distances can total well short of the geometry length, so the cumulative fraction
+     *  undershoots — which once placed "arrive" ~15 km early and fired the arrival trigger
+     *  there (a real test-drive bug). The last maneuver is pinned to the end. */
+    @Test fun arriveManeuverPinnedToRouteEnd() {
+        val poly = listOf(LatLng(0.0, 0.0), LatLng(0.0, 1.0)) // ~111 km
+        val mans = listOf(
+            Maneuver(ManeuverType.DEPART, "Start", LatLng(0.0, 0.0), 0.0, 0.0),
+            Maneuver(ManeuverType.STRAIGHT, "Continue", LatLng(0.0, 0.0), 10_000.0, 0.0), // 10 km of steps
+            Maneuver(ManeuverType.ARRIVE, "Arrive", LatLng(0.0, 0.0), 0.0, 0.0),
+        )
+        val placed = DirectionsParser.placeManeuvers(mans, poly)
+        assertEquals(0.0, placed.last().location.lat, 1e-6)
+        assertEquals(1.0, placed.last().location.lng, 1e-6) // route end, not ~0.09 along
+    }
+
     @Test fun degenerateRangeIsNull() {
         val traffic = arr(5, 0 to "[4200,\"now\"]", 4 to "[4200,4200,\"x\"]")
         val summary = arr(11, 2 to "[10000]", 3 to "[4200]", 10 to traffic)

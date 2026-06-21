@@ -65,6 +65,7 @@ private const val ME_SRC = "vela-me-src"
 private const val ME_LAYER = "vela-me"
 private const val ME_ARROW_LAYER = "vela-me-arrow"
 private const val ME_ARROW_IMG = "vela-arrow"
+private const val NAV_PUCK_IMG = "vela-nav-puck"
 private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
 private const val DEM_SRC = "vela-dem"
@@ -284,6 +285,13 @@ fun VelaMapView(
         val routeProgress =
             if (navMode && myLocation != null && routePolyline.size >= 2) progressAlong(routePolyline, myLocation)
             else 0f
+        // Smooth the nav puck (test-drive feedback: "the dot was jumping all over"): snap
+        // it onto the route so lateral GPS jitter can't throw it off the road, and face it
+        // down the road (steadier than raw GPS bearing). Off-route / not navigating → raw.
+        val snap = if (navMode && myLocation != null && routePolyline.size >= 2)
+            snapToRoute(myLocation, routePolyline) else null
+        val displayLoc = snap?.first ?: myLocation
+        val displayBearing = snap?.second ?: myBearing
         val styleKey = "$styleUri|dark=$darkTheme"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
@@ -301,12 +309,12 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
+                applyData(style, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, myLocation, myBearing, locationStale, previewTarget, routeProgress)
+                applyData(it, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -344,11 +352,12 @@ fun VelaMapView(
                 // re-point when the fix actually moved (>4 m) or turned (>2°); GPS
                 // jitter at a standstill is otherwise an endless shimmer. A snappier
                 // ease (550 ms) then keeps the dot under the camera instead of trailing.
-                val brg = myBearing ?: lastNavBearing ?: 0f
-                val moved = lastNavTarget?.let { it.distanceTo(myLocation) > 4.0 } ?: true
+                val loc = displayLoc ?: myLocation
+                val brg = displayBearing ?: lastNavBearing ?: 0f
+                val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
                 val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
                 if (moved || turned) {
-                    lastNavTarget = myLocation
+                    lastNavTarget = loc
                     lastNavBearing = brg
                     // Speed-adaptive zoom (Google-style): pull back on the highway to
                     // see further ahead, tighten up on slow city streets.
@@ -362,7 +371,7 @@ fun VelaMapView(
                     map.animateCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
-                                .target(MLLatLng(myLocation.lat, myLocation.lng))
+                                .target(MLLatLng(loc.lat, loc.lng))
                                 .zoom(zoom)
                                 .tilt(55.0)
                                 .bearing(brg.toDouble())
@@ -423,6 +432,7 @@ fun VelaMapView(
 
 private fun ensureLayers(style: Style) {
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
+    if (style.getImage(NAV_PUCK_IMG) == null) style.addImage(NAV_PUCK_IMG, navPuckBitmap())
 
     // Terrain relief — only over the OpenMapTiles basemap (the keyless path).
     if (style.getSource("openmaptiles") != null) ensureHillshade(style)
@@ -799,6 +809,37 @@ private fun progressAlong(polyline: List<LatLng>, me: LatLng): Float {
     return (bestLen / total).toFloat().coerceIn(0f, 1f)
 }
 
+/** Snap [me] onto the nearest point of the nav route for display: the snapped point plus
+ *  the heading (deg) of that segment, so the puck rides the road and faces down it rather
+ *  than wobbling with raw GPS. Null when the nearest point is farther than [maxM] (treat
+ *  as genuinely off-route → show the raw fix so the divergence is visible). */
+private fun snapToRoute(me: LatLng, polyline: List<LatLng>, maxM: Double = 40.0): Pair<LatLng, Float>? {
+    if (polyline.size < 2) return null
+    var bestD = Double.MAX_VALUE
+    var bestPoint: LatLng? = null
+    var bestA = polyline[0]
+    var bestB = polyline[1]
+    for (i in 1 until polyline.size) {
+        val a = polyline[i - 1]
+        val b = polyline[i]
+        val (proj, _) = projectOnSegment(me, a, b)
+        val d = me.distanceTo(proj)
+        if (d < bestD) { bestD = d; bestPoint = proj; bestA = a; bestB = b }
+    }
+    val pt = bestPoint ?: return null
+    return if (bestD <= maxM) pt to bearingDeg(bestA, bestB) else null
+}
+
+/** Compass bearing (deg, 0 = N) from [a] to [b]. */
+private fun bearingDeg(a: LatLng, b: LatLng): Float {
+    val dLng = Math.toRadians(b.lng - a.lng)
+    val la = Math.toRadians(a.lat)
+    val lb = Math.toRadians(b.lat)
+    val y = Math.sin(dLng) * Math.cos(lb)
+    val x = Math.cos(la) * Math.sin(lb) - Math.sin(la) * Math.cos(lb) * Math.cos(dLng)
+    return ((Math.toDegrees(Math.atan2(y, x)) + 360.0) % 360.0).toFloat()
+}
+
 /** Closest point on segment a→b to p (equirectangular planar approx — fine over a
  *  nav-step's distances), plus the parametric position t∈[0,1] along the segment. */
 private fun projectOnSegment(p: LatLng, a: LatLng, b: LatLng): Pair<LatLng, Double> {
@@ -824,16 +865,16 @@ private fun trafficLevelColor(level: Int): Int = when {
     else -> TRAFFIC_SEVERE
 }
 
-/** Route line-gradient stops over lineProgress (0..1 by length): grey for the driven
- *  part (< [p]); ahead, per-segment live traffic from [spans] (startFrac, endFrac,
- *  level) over a free-flow base — or the overall [routeInt] tint when there are no
- *  spans (walk/bike, or no live data). Sampled into flat colour bands (~0.8%
- *  transitions): a handful of crisp stops rather than a smeared interpolation. */
-private fun routeGradientStops(
+/** Route line as **solid** colour bands over lineProgress (0..1 by length): grey for the
+ *  driven part (< [p]); ahead, per-segment live traffic from [spans] (startFrac, endFrac,
+ *  level) over a free-flow base — or the overall [routeInt] tint when there are no spans
+ *  (walk/bike, or no live data). A `step` expression, so the driven/ahead boundary and
+ *  the span edges are HARD — no gradient fade between colours (test-drive feedback). */
+private fun routeGradient(
     p: Float,
     routeInt: Int,
     spans: List<Triple<Float, Float, Int>>,
-): Array<Expression.Stop> {
+): Expression {
     val freeflow = if (spans.isEmpty()) routeInt else ROUTE_FREEFLOW
     fun colorAt(f: Float): Int {
         // Only grey the driven part once actually moving (p > 0); a static preview
@@ -842,18 +883,16 @@ private fun routeGradientStops(
         for ((s, e, lvl) in spans) if (f >= s && f < e) return trafficLevelColor(lvl)
         return freeflow
     }
-    val n = 128
-    val stops = ArrayList<Expression.Stop>(8)
-    var i = 0
-    while (i <= n) {
-        val c = colorAt(i / n.toFloat())
-        var j = i
-        while (j + 1 <= n && colorAt((j + 1) / n.toFloat()) == c) j++
-        stops.add(Expression.stop(i / n.toFloat(), Expression.color(c)))
-        if (j > i) stops.add(Expression.stop(j / n.toFloat(), Expression.color(c)))
-        i = j + 1
+    val n = 256 // fine sampling; a stop is emitted only where the colour actually changes
+    val base = colorAt(0f)
+    val stops = ArrayList<Expression.Stop>()
+    var prev = base
+    for (i in 1..n) {
+        val f = i / n.toFloat()
+        val c = colorAt(f)
+        if (c != prev) { stops.add(Expression.stop(f, Expression.color(c))); prev = c }
     }
-    return stops.toTypedArray()
+    return Expression.step(Expression.lineProgress(), Expression.color(base), *stops.toTypedArray())
 }
 
 private fun applyData(
@@ -869,6 +908,7 @@ private fun applyData(
     meStale: Boolean,
     preview: LatLng?,
     routeProgress: Float,
+    navMode: Boolean,
 ) {
     val routeFc = if (route.size >= 2) {
         FeatureCollection.fromFeature(
@@ -888,12 +928,7 @@ private fun applyData(
     // 0 when not navigating (no driven-grey); only floor to a visible sliver once moving.
     val p = if (routeProgress <= 0f) 0f else routeProgress.coerceIn(0.001f, 0.998f)
     style.getLayer(ROUTE_LAYER)?.setProperties(
-        PropertyFactory.lineGradient(
-            Expression.interpolate(
-                Expression.linear(), Expression.lineProgress(),
-                *routeGradientStops(p, routeInt, trafficSpans),
-            ),
-        ),
+        PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
     )
 
     val altFc = FeatureCollection.fromFeatures(
@@ -927,10 +962,17 @@ private fun applyData(
     }
     style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(meFc)
 
-    // Grey the dot when the fix is stale / not yet live (Google does this); blue once
-    // a recent GPS fix arrives. The heading cone hides while stale (its bearing is old).
-    style.getLayer(ME_LAYER)?.setProperties(PropertyFactory.circleColor(if (meStale) "#9AA0A6" else "#4285F4"))
+    // Two modes, Google-style. NAV: the puck IS the position — a solid blue arrow — so
+    // hide the dot and swap the heading layer's icon to the arrow. BROWSE: the blue dot
+    // (grey when the fix is stale) + a faint heading cone. The cone/puck both hide while
+    // stale (old bearing).
+    val showPuck = navMode && me != null && bearing != null && !meStale
+    style.getLayer(ME_LAYER)?.setProperties(
+        PropertyFactory.circleColor(if (meStale) "#9AA0A6" else "#4285F4"),
+        PropertyFactory.visibility(if (showPuck) Property.NONE else Property.VISIBLE),
+    )
     style.getLayer(ME_ARROW_LAYER)?.setProperties(
+        PropertyFactory.iconImage(if (navMode) NAV_PUCK_IMG else ME_ARROW_IMG),
         PropertyFactory.visibility(if (me != null && bearing != null && !meStale) Property.VISIBLE else Property.NONE),
     )
 
@@ -967,6 +1009,40 @@ private fun arrowBitmap(): Bitmap {
                 android.graphics.Color.argb(0, 66, 133, 244),
                 android.graphics.Shader.TileMode.CLAMP,
             )
+        },
+    )
+    return bmp
+}
+
+/** Google-style navigation puck: a solid blue chevron/arrowhead with a white outline,
+ *  centred on the position and pointing up (north) so `iconRotate(bearing)` aims it down
+ *  the heading. Replaces the dot during nav (test-drive feedback: "we need an arrow"). */
+private fun navPuckBitmap(): Bitmap {
+    val size = 96
+    val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val cx = size / 2f
+    val path = Path().apply {
+        moveTo(cx, 12f)                 // tip (top / north)
+        lineTo(cx + 27f, size - 16f)    // bottom-right
+        lineTo(cx, size - 30f)          // chevron notch
+        lineTo(cx - 27f, size - 16f)    // bottom-left
+        close()
+    }
+    canvas.drawPath(
+        path,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.WHITE
+            style = Paint.Style.STROKE
+            strokeWidth = 9f
+            strokeJoin = Paint.Join.ROUND
+        },
+    )
+    canvas.drawPath(
+        path,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.parseColor("#4285F4")
+            style = Paint.Style.FILL
         },
     )
     return bmp

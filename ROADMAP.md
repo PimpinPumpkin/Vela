@@ -18,6 +18,12 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 - **Higher-res README/store screenshots** refreshed to the current UI.
 - **Stability pass** — smoke-test the core flows; fix the *Start → launcher* quirk
   (nav keeps running in the foreground service but the activity backgrounds).
+- **Geocoding: prefer the local match for a bare address** — *to investigate* (spotted
+  2026-06-20 while debugging trip replay): a recorded "1107 S 12th St" trip from CA had
+  its destination geocoded to a **1107 S 12th St in Missouri** (~2,240 km away), giving a
+  cross-country route. Either search isn't biasing a bare-address query to the user's
+  viewport, or there's no nearby match and it fell through to a far one. Confirm whether a
+  local match exists, then bias address queries to `near`/viewport like POI search does.
 - ~~Custom directions origin~~ — **DONE + device-verified 2026-06-20 (in-panel
   editable From).** The directions panel's **From** row is tappable → opens search →
   the pick becomes the origin (`directionsOrigin: Place?`, route falls back to live

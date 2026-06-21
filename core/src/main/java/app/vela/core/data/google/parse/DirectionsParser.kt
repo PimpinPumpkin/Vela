@@ -185,15 +185,22 @@ object DirectionsParser {
      *  length differ by a few percent, and dividing by the step-sum stretched every
      *  mid-route turn off its real spot — so tapping a step landed near, but not on,
      *  the actual turn. Matching the polyline length pins each turn where it is. */
-    private fun placeManeuvers(maneuvers: List<Maneuver>, polyline: List<LatLng>): List<Maneuver> {
+    internal fun placeManeuvers(maneuvers: List<Maneuver>, polyline: List<LatLng>): List<Maneuver> {
         if (maneuvers.isEmpty() || polyline.size < 2) return maneuvers
         val polyLength = (0 until polyline.size - 1)
             .sumOf { polyline[it].distanceTo(polyline[it + 1]) }
             .coerceAtLeast(1.0)
         var cum = 0.0
-        return maneuvers.map { m ->
+        val lastIdx = maneuvers.lastIndex
+        return maneuvers.mapIndexed { i, m ->
             cum += m.distanceMeters
-            m.copy(location = pointAlong(polyline, (cum / polyLength).coerceIn(0.0, 1.0)))
+            // The final maneuver (ARRIVE) MUST sit at the route's end (the destination).
+            // Google's step distances can total a few % short of the geometry length (a
+            // missing/zero-metre final step), so cum/polyLength undershoots — which placed
+            // "arrive" up to tens of km early and fired the 25 m arrival trigger there
+            // (observed: arrive ~15 km before a 134 km route's end). Pin the last to 1.0.
+            val frac = if (i == lastIdx) 1.0 else (cum / polyLength).coerceIn(0.0, 1.0)
+            m.copy(location = pointAlong(polyline, frac))
         }
     }
 

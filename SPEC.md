@@ -130,7 +130,11 @@ real roads. **Per-segment live traffic** at `route[3][5][0]` (note: hangs off th
 node, NOT the `[0]` summary) = `[level, startMeters, lengthMeters]` spans, only the
 non-free-flow stretches → `Route.trafficSpans` → the route line's colour bands. Steps
 are `<step maneuver=… meters=…>` markup; lane hints ("Use the right 2 lanes…") split
-into `Maneuver.laneHint`.
+into `Maneuver.laneHint`. Each maneuver is placed at `cumulativeStepMeters/polyLength`
+along the geometry — **except the final (ARRIVE), which is pinned to the route end**:
+step distances total a few % short of the geometry, so the cumulative undershoots and
+once placed "arrive" ~15 km before a 134 km route's end (firing the 25 m arrival trigger
+there — a real test-drive bug, fixed 2026-06-20).
 **Predictive per-departure field: confirmed unreachable keyless** (2026-06-20, 6th probe):
 the response has no time-of-day curve, our `pb` is byte-identical to Google's live web
 client, injected time fields are ignored/400, and the web depart-time control is
