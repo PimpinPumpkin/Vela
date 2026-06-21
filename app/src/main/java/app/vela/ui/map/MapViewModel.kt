@@ -199,22 +199,22 @@ class MapViewModel @Inject constructor(
                 val here = LatLng(loc.latitude, loc.longitude)
                 val prev = _state.value.myLocation
                 val movedM = prev?.distanceTo(here) ?: 0.0
+                val dt = if (lastFixTime > 0L) (loc.time - lastFixTime) / 1000.0 else -1.0
                 // Prefer the fix's own bearing/speed; otherwise DERIVE them from movement.
                 // Some fixes omit bearing/speed (cold start, just-started-moving, certain
                 // chipsets/ROMs/mock providers) — without a heading the nav puck can't point
                 // and dead-reckoning can't run. Only derive on real movement, so a standstill's
-                // GPS jitter doesn't spin the marker. Keep the last good bearing while stopped.
+                // GPS jitter doesn't spin the marker; and require a sane inter-fix gap (>=0.3 s)
+                // so a GPS+NETWORK burst arriving ~together can't divide by a near-zero dt into
+                // an absurd speed. Keep the last good value otherwise.
                 val bearing = when {
                     loc.hasBearing() && loc.speed > 0.5f -> loc.bearing
-                    prev != null && movedM > 3.0 -> bearingBetween(prev, here)
+                    prev != null && movedM > 3.0 && dt >= 0.3 -> bearingBetween(prev, here)
                     else -> _state.value.myBearing
                 }
                 val speed = when {
                     loc.hasSpeed() -> loc.speed
-                    prev != null && movedM > 1.0 && lastFixTime > 0L -> {
-                        val dt = (loc.time - lastFixTime) / 1000.0
-                        if (dt in 0.05..10.0) (movedM / dt).toFloat() else _state.value.mySpeed
-                    }
+                    prev != null && movedM > 1.0 && dt in 0.3..10.0 -> (movedM / dt).toFloat().coerceIn(0f, 70f)
                     else -> _state.value.mySpeed
                 }
                 lastFixTime = loc.time
