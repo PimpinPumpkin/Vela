@@ -607,7 +607,21 @@ class MapViewModel @Inject constructor(
         }
         _state.update { it.copy(reviewsLoading = true) }
         viewModelScope.launch {
-            val revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
+            // The reviews RPC intermittently comes back empty (a bot-degraded reply / rate
+            // blip), which used to show "no reviews" permanently until you reopened the place.
+            // When the place's OWN count says it HAS reviews but the fetch returned none, treat
+            // that mismatch as a transient miss and retry a couple times with backoff. A place
+            // that genuinely has no reviews (count 0/unknown) stops after the first try, so we
+            // never hammer the endpoint for places with nothing to fetch.
+            val expected = p.reviewCount ?: 0
+            var revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
+            var attempt = 1
+            while (revs.isEmpty() && expected > 0 && attempt < 3) {
+                delay(400L * attempt) // 400ms, then 800ms
+                if (_state.value.selected?.featureId != fid) return@launch // user moved on
+                revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
+                attempt++
+            }
             if (_state.value.selected?.featureId == fid) {
                 _state.update { it.copy(reviews = revs, reviewsLoading = false) }
             }
