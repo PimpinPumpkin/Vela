@@ -518,6 +518,21 @@ class MapViewModel @Inject constructor(
         rememberRecentPlace(SavedPlace.of(p))
     }
 
+    /** Open a "People also search for" card: build a minimal Place from it and select it —
+     *  reviews / photos / the full detail re-fetch then fill the rest in (we have its
+     *  feature id + location, so the same enrichment that backfills any place applies). */
+    fun openSimilar(s: app.vela.core.model.SimilarPlace) {
+        selectPlace(
+            Place(
+                id = "g:" + s.name.hashCode() + ":" + (s.location.lat * 1e4).toInt(),
+                name = s.name,
+                location = s.location,
+                rating = s.rating,
+                featureId = s.featureId,
+            ),
+        )
+    }
+
     /** Pull the rich details the keyless/list search trims — popular times, the
      *  editorial one-liner, and the owner's "From the owner" blurb — via a hidden
      *  WebView (the keyless OkHttp search is bot-degraded and strips them; a real

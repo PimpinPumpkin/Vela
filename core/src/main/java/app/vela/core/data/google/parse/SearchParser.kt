@@ -14,6 +14,7 @@ import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.PopularTimes
 import app.vela.core.model.SearchResult
+import app.vela.core.model.SimilarPlace
 import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -49,7 +50,13 @@ object SearchParser {
                 ?: return SearchResult(query, emptyList())
 
         val places = entries.mapNotNull { entry -> toPlace(entry, near, paths) }
-        return SearchResult(query, places.sortedBy { it.distanceMeters ?: Double.MAX_VALUE })
+        // "People also search for" is a sibling of a FOCUSED result (root [2][11][0]) — absent
+        // from multi-result lists. When present, attach it to the primary (first) place so its
+        // sheet can show the related-places row.
+        val similar = runCatching { parseSimilarPlaces(root, paths) }.getOrDefault(emptyList())
+        val withSimilar = if (similar.isNotEmpty() && places.isNotEmpty())
+            places.mapIndexed { i, p -> if (i == 0) p.copy(similarPlaces = similar) else p } else places
+        return SearchResult(query, withSimilar.sortedBy { it.distanceMeters ?: Double.MAX_VALUE })
     }
 
     /** A specific/far address resolves to a *single* geocoded result rather than
@@ -210,6 +217,19 @@ object SearchParser {
     private fun parseHours(entry: JsonElement, paths: Map<String, List<Int>>): List<String> =
         readHours(entry.atPath(pathOf(paths, "hours203")))
             .ifEmpty { readHours(entry.atPath(pathOf(paths, "hours118"))) }
+
+    /** "People also search for": the root-level similar-places list (`similar` = `[2][11][0]`,
+     *  present when a search focuses on one result). Each entry is
+     *  `[featureId, name, [[_,_,lat,lng], …, rating@6]]`. Best-effort; skips malformed rows. */
+    internal fun parseSimilarPlaces(root: JsonElement, paths: Map<String, List<Int>>): List<SimilarPlace> {
+        val list = root.atPath(pathOf(paths, "similar")).arr() ?: return emptyList()
+        return list.mapNotNull { e ->
+            val name = e.at(1).str()?.ifBlank { null } ?: return@mapNotNull null
+            val lat = e.at(2, 0, 2).dbl() ?: return@mapNotNull null
+            val lng = e.at(2, 0, 3).dbl() ?: return@mapNotNull null
+            SimilarPlace(name, LatLng(lat, lng), e.at(2, 6).dbl(), e.at(0).str())
+        }
+    }
 
     internal fun readHours(days: JsonElement?): List<String> {
         val arr = days.arr() ?: return emptyList()

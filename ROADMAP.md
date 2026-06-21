@@ -44,9 +44,13 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   attributes, backfilled from the focused re-fetch) closed the worst gaps. Remaining,
   by cost:
   - *Cheap — already in the focused node we now fetch, just lift + render:*
-    **"People also search for"** (similar places), **menu link**, **reserve-a-table /
+    ~~**"People also search for"**~~ — **DONE 2026-06-21** (`root[2][11][0]`, focused
+    searches; tappable cards, device-verified). Remaining: **menu link**, **reserve-a-table /
     order-online action links**, **richer attribute groups** (service options,
     amenities, accessibility — partly shown in About today; surface the rest as chips).
+    Coverage follow-up: similar-places only rides *focused* searches today — to show it on
+    address-snap / list-tap opens too, do a focused name lookup on open (the OkHttp focused
+    search carries `[2][11][0]`; the WebView enrichment response does not).
   - *Medium — a separate keyless RPC:* **Q&A** (questions & answers),
     **"mentioned in reviews" topic chips** / review keyword summary, **photo
     categories** (menu / food / vibe tabs in the gallery).
