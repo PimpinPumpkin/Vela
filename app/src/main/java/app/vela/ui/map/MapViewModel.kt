@@ -616,8 +616,11 @@ class MapViewModel @Inject constructor(
             val expected = p.reviewCount ?: 0
             var revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
             var attempt = 1
-            while (revs.isEmpty() && expected > 0 && attempt < 3) {
-                delay(400L * attempt) // 400ms, then 800ms
+            // A fresh fetch clears the flake within a few seconds (confirmed: a manual tap-to-
+            // retry succeeds), so auto-retry across a ~3 s window before falling back to the
+            // manual retry — most flakes self-heal without the user touching anything.
+            while (revs.isEmpty() && expected > 0 && attempt <= 3) {
+                delay(500L * attempt) // 0.5s, 1s, 1.5s
                 if (_state.value.selected?.featureId != fid) return@launch // user moved on
                 revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
                 attempt++
