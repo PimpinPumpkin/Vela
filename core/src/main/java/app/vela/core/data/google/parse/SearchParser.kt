@@ -109,6 +109,10 @@ object SearchParser {
             // price filter has nothing to compare against otherwise.
             priceLevel = priceLevelOf(field("priceText").str()),
             website = field("website").str(),
+            // Action link (Book/Reserve/Order) — only when there's a real http(s) URL, so a
+            // shape change can never render a button that opens garbage.
+            actionUrl = field("actionUrl").str()?.takeIf { it.startsWith("http", ignoreCase = true) },
+            actionLabel = field("actionLabel").str()?.trim()?.ifBlank { null }?.takeIf { it.length <= 30 },
             phone = field("phone").str(),
             openNow = parseOpenNow(field("openStatus").str()),
             statusText = field("status118").str()
