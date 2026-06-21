@@ -10,9 +10,10 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 > captures and verified end-to-end on-device:
 >
 > - **Search & places** — real POIs with name, rating, **reviews**, full address,
->   category, price, website, weekly hours, distance, and a **full photo gallery**;
->   **Home/Work shortcuts**, saved places, and **deep links** (Vela opens `geo:`/
->   Google-Maps links and shares a place as a keyless `geo:` pin).
+>   category, price, website, weekly hours, distance, a **full photo gallery**,
+>   **popular times**, and **"people also search for"**; **Home/Work shortcuts**,
+>   saved places, and **deep links** (Vela opens `geo:`/Google-Maps links and
+>   shares a place as a keyless `geo:` pin).
 > - **Routing** — drive / walk / bike / **public transit**, **traffic-aware ETAs**,
 >   selectable **alternates** (drawn greyed + tappable on the map, along *Google's
 >   own* route geometry), a **reverse-trip swap**, a **live-traffic overlay**,
@@ -25,7 +26,7 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 >   markers, hillshade relief, a **map scale bar**, and **offline** basemap + POI
 >   download.
 >
-> Every push to `main` publishes a signed, Obtainium-friendly `v0.1.<run>` release.
+> Every push to `main` publishes a signed, Obtainium-friendly `v0.2.<run>` release.
 > `MockMapDataSource` stays as an offline fallback; both build types are green.
 >
 > See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
@@ -76,8 +77,8 @@ Two decisions from the planning phase shape everything:
 
 ## Architecture
 
-Two Gradle modules, mirroring the Arcana/Callguard house style (AGP 8.7.3,
-Kotlin 2.1, Compose, Hilt, version catalog, R8 release builds):
+Two Gradle modules (AGP 8.7.3, Kotlin 2.1, Compose, Hilt, version catalog,
+R8 release builds):
 
 ```
 :core   the "extractor" — no UI dependency, the NewPipeExtractor pattern
@@ -122,13 +123,13 @@ calibrated, and a future Overture/OSM source or self-hostable backend (the
 
 ## Build & run
 
-Standard Android toolchain (the repo already mirrors Arcana's Gradle setup):
+Standard Android toolchain:
 
 ```bash
 # debug build (compile check / local install)
 ./gradlew :app:assembleDebug
 
-# the real distribution build — R8 + resource shrinking, like Arcana.
+# the real distribution build — R8 + resource shrinking.
 # Always ship release: debug builds visibly lag during map scroll/nav.
 ./gradlew :app:assembleRelease
 
@@ -142,7 +143,7 @@ debug keystore so `adb install` still works.
 
 **CI** (`.github/workflows/`): every push to `main` builds + tests the APK,
 uploads it as an artifact, and publishes a **normal versioned release**
-(`v0.1.<run>`, versionCode `1000+run`) — kept as a revision history, so Obtainium
+(`v0.2.<run>`, versionCode `2000+run`) — kept as a revision history, so Obtainium
 tracks the latest with zero configuration and no pre-release toggle. The release APK is signed with the keystore from repo secrets
 `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (without them
 it's debug-signed — installable, but not update-compatible across builds). An
