@@ -46,9 +46,11 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   - *Cheap — already in the focused node we now fetch, just lift + render:*
     ~~**"People also search for"**~~ — **DONE 2026-06-21** (`root[2][11][0]`, focused
     searches; tappable cards, device-verified). ~~**richer attribute groups**~~ — **DONE
-    2026-06-21** (`attributeHighlights` → overview chip row, reuses parsed About). Remaining:
-    **menu link**, **reserve-a-table / order-online action links** (need a restaurant capture
-    to map the URL fields).
+    2026-06-21** (`attributeHighlights` → overview chip row, reuses parsed About).
+    ~~**reserve / order / book action links**~~ — **DONE 2026-06-21** (`actionLabel`/`actionUrl`
+    at `[1][75][0][0][5]` → prominent button; verified against a "Book online" node + unit-tested;
+    a restaurant capture would confirm reserve/order land in the same slot). Remaining: **menu
+    link** (a Google-hosted menu URL — likely the same `[75]` actions node, different slot).
     Coverage follow-up: similar-places only rides *focused* searches today — to show it on
     address-snap / list-tap opens too, do a focused name lookup on open (the OkHttp focused
     search carries `[2][11][0]`; the WebView enrichment response does not).

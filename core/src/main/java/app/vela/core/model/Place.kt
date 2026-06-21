@@ -17,6 +17,8 @@ data class Place(
     val priceText: String? = null, // Google's own label, e.g. "$1–10" / "$$"
     val phone: String? = null,
     val website: String? = null,
+    val actionLabel: String? = null,  // Google's action button text ("Book online", "Reserve a table", "Order online")
+    val actionUrl: String? = null,    // the link that button opens
     val openNow: Boolean? = null,
     val statusText: String? = null, // Google's own status, e.g. "Open · Closes 9 PM"
     val permanentlyClosed: Boolean = false, // dead POI — still searchable, hidden from the map

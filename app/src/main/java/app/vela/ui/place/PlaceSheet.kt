@@ -413,6 +413,36 @@ fun PlaceSheet(
                 ShareAction(place, dim, modifier = Modifier.weight(1f))
             }
 
+            // Action link (Book online / Reserve a table / Order online) — Google shows this
+            // as a prominent button. Rendered only when the parse found a real URL + label.
+            if (place.actionUrl != null && !place.actionLabel.isNullOrBlank()) {
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 10.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+                        .clickable {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(place.actionUrl))) }
+                        }
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        place.actionLabel!!,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.AutoMirrored.Filled.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+
             // Attribute highlights (Google-style chips) — the most useful items from About
             // (service options, offerings, accessibility…), surfaced on the overview for
             // quick scanning instead of being buried in the tab. Filled by the detail fetch.
