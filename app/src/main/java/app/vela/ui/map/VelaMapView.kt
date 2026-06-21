@@ -166,6 +166,19 @@ fun VelaMapView(
     val navPuck = remember { NavPuck() }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
 
+    // Declutter POIs during turn-by-turn (Google-style): the dense lower-rank POI tiers
+    // re-run symbol collision on every nav camera rotate/zoom, so their labels pop in and
+    // out as the view turns. Hide them while navigating — keep the top-rank poi_r1 for the
+    // major landmarks — and restore on exit. Keyed on styleRef so it re-applies after a
+    // style (re)load (dark/light flip), which recreates the layers at default visibility.
+    LaunchedEffect(navMode, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        val vis = if (navMode) Property.NONE else Property.VISIBLE
+        listOf("poi_r7", "poi_r20", "poi_transit").forEach { id ->
+            style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis))
+        }
+    }
+
     // Nav puck motion model (Google-style): a per-frame ticker glides the displayed
     // position forward along the route. Two pieces, both copied from how Google's puck
     // behaves: (1) **dead reckoning** — between the ~1 Hz GPS fixes, the goal keeps
