@@ -489,7 +489,16 @@ fun VelaMapView(
                 // Follow the SAME smoothed point the puck is drawn at (monotonic + eased),
                 // not the raw snapped fix — so the camera and puck move as one and the map
                 // can't lurch to a far spot when nearest-point is briefly ambiguous.
-                val loc = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
+                // Predictive framing (Google-style): aim the camera a little AHEAD of the puck
+                // along the route — scaled with the damped speed, clamped modest — so you see
+                // INTO the upcoming turn and the puck rides lower in the view instead of dead-
+                // centre. As you near a bend the look-ahead point rounds it, so the camera leads
+                // you in. Falls back to the puck itself off-route / in browse.
+                val puckPt = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
+                val loc = if (navPuck.engaged && routePolyline.size >= 2) {
+                    val ahead = (navZoomSpeed[0] * 2.0).coerceIn(25.0, 90.0) // ~25 m crawling → 90 m freeway
+                    pointAtMeters(routePolyline, routeCum, navPuck.targetM + ahead).first
+                } else puckPt
                 // Off-route, hold the last route-aligned heading instead of snapping the
                 // camera to the raw GPS bearing (it jitters and can point backwards on a brief
                 // off-route blip — the "map rotated and the arrow pointed the wrong way"). The
