@@ -4,7 +4,7 @@
 > [`SPEC.md`](SPEC.md) is **how it's built**; this file is **what's planned** and the
 > bigger bets. Keep it current — add ideas here the moment they come up.
 
-Last updated: 2026-06-18.
+Last updated: 2026-06-21.
 
 ## North star
 
@@ -15,8 +15,10 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
 
 ## Near-term (next up)
 
-- **Higher-res README/store screenshots** refreshed to the current UI.
-- **Stability pass** — smoke-test the core flows; fix the *Start → launcher* quirk
+- ~~Higher-res README screenshots~~ — **DONE 2026-06-21** (all 9 recaptured at
+  1080×2400 on-device, current UI). Store screenshots when there's a store listing.
+- **Stability pass** — core flows smoke-tested on-device 2026-06-21 (fresh install →
+  search → route → transit → nav, no crashes). Still open: the *Start → launcher* quirk
   (nav keeps running in the foreground service but the activity backgrounds).
 - ~~Custom directions origin~~ — **DONE + device-verified 2026-06-20 (in-panel
   editable From).** The directions panel's **From** row is tappable → opens search →
@@ -101,9 +103,12 @@ Goals, **strictly opt-in**, off by default:
    my trips" (a **separate, more-invasive** opt-in — it's your exact routes) records
    each navigation's GPS trace to a file (`app/replay/TripStore`); a trip replays on
    the map at 3× (`LocationProvider.replay`) to test turn-by-turn without driving.
-   First-run prompt offers it separately from diagnostics. **Follow-up:** auto-route
-   to the trip's destination on replay so turns run without manually starting nav, and
-   a Stop-replay control on the map (currently auto-completes).
+   First-run prompt offers it separately from diagnostics. ~~Follow-up: auto-route +
+   Stop-replay control~~ — **DONE 2026-06-20**: replay auto-routes to the trip's
+   destination and runs real turn-by-turn (torn down when it ends), with a **Stop replay**
+   control on the map. Trips also have a **Share** button (FileProvider, like the diag
+   export) so a drive can be pulled off a *release* build for debugging — still
+   user-initiated, never auto-uploaded.
 3. **Vela's own traffic data (the long game).** Crowd-source anonymized speed/route
    traces from opted-in users to build a **Vela traffic layer**, blended with Google's
    and eventually replacing it where coverage is good — the first real step off Google.

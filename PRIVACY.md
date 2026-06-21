@@ -113,9 +113,12 @@ prompt asks for it on its own line.
   + the destination) to a **file on your phone**, so a trip can be **replayed** later to
   test turn-by-turn without driving it again.
 - This is your **exact routes and movement** — the most sensitive thing the app stores.
-  It is **local only and never uploaded**; there is no network code path for it at all.
-- Manage it in Settings → recorded trips have **Replay** and **Delete**; turning the
-  switch off stops new recording. Off by default; you choose to enable it.
+  **Vela never uploads it** — there is no auto-upload code path. The only way a trace
+  leaves the phone is if *you* tap **Share** on a trip and choose where to send it (the
+  same user-initiated FileProvider export as the diagnostics log) — useful for handing a
+  drive to a developer to debug a bad route.
+- Manage it in Settings → recorded trips have **Replay**, **Share**, and **Delete**;
+  turning the switch off stops new recording. Off by default; you choose to enable it.
 
 A future, **separately-announced** opt-in may aggregate anonymized speed traces to build
 Vela's own traffic layer — that one needs a server and a fresh consent screen, and this
