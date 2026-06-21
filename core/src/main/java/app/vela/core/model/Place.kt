@@ -52,8 +52,27 @@ data class PlaceDetails(
     val popularTimes: PopularTimes? = null,
     val editorialSummary: String? = null,
     val ownerDescription: String? = null,
+    // Backfill fields. The address→business snap (a suite/multi-tenant address) returns a
+    // lightweight *summary* node that omits the review count, the full weekly hours, the
+    // address, etc. The focused name+address re-fetch (this same WebView call) carries the
+    // FULL node, so lift these off too and merge into any field the summary left blank.
+    val rating: Double? = null,
+    val reviewCount: Int? = null,
+    val hours: List<String> = emptyList(),
+    val address: String? = null,
+    val phone: String? = null,
+    val website: String? = null,
+    val statusText: String? = null,
+    val openNow: Boolean? = null,
+    val priceText: String? = null,
+    val priceLevel: Int? = null,
+    val about: List<AboutSection> = emptyList(),
+    val featuredReview: String? = null,
 ) {
-    val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null
+    val isEmpty: Boolean get() = popularTimes == null && editorialSummary == null && ownerDescription == null &&
+        rating == null && reviewCount == null && hours.isEmpty() && address == null && phone == null &&
+        website == null && statusText == null && openNow == null && priceText == null && priceLevel == null &&
+        about.isEmpty() && featuredReview == null
 }
 
 /** One day: [dayOfWeek] is 1=Mon … 7=Sun; [hours] are the open-hour buckets. */
