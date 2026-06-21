@@ -140,7 +140,7 @@ genuinely needs no doc edit, say why in the commit.
   (mobile UA → Google deep-links to `intent://`), block non-http(s) redirects, and
   use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
-  A plain `/maps/preview/directions` GET with the transit flag (`!1e3`) is silently
+  A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
   the WebView instead navigates the `/maps/dir/<olat>,<olng>/<dlat>,<dlng>/data=!4m2!4m1!3e3`
   page and reads the itinerary set out of `APP_INITIALIZATION_STATE`. **Gotchas:**

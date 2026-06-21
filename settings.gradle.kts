@@ -28,7 +28,7 @@ rootProject.name = "Vela"
 // Two modules, deliberately. `:core` is the "extractor" — all Google interop,
 // routing, location and voice live here with no UI dependency, the same way
 // NewPipe keeps NewPipeExtractor as a standalone library. `:app` is the
-// Compose UI shell on top. Split further (core:model / core:data / …) à la
-// Arcana once the surface grows.
+// Compose UI shell on top. Split further (core:model / core:data / …)
+// once the surface grows.
 include(":app")
 include(":core")
