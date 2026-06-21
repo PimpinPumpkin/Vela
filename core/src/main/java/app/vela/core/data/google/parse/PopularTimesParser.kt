@@ -31,6 +31,12 @@ object PopularTimesParser {
             ?: places.firstOrNull { hasDetail(it) }
             ?: places.firstOrNull()
 
+        // Trust the FULL backfill (rating / review count / hours / address …) only from a
+        // feature-id MATCH — so a focused query that happened to return a neighbour can't graft
+        // its rating or hours onto this place. No id / no match → the sensitive fields stay
+        // blank (no wrong data); the id-agnostic rich fields still come from `place` as before.
+        val matched = if (featureId != null) places.firstOrNull { it.featureId == featureId } else null
+
         // Popular times fallback: read [84] straight off the focused node [0][1][0][14]
         // even if SearchParser snapped elsewhere (e.g. an "at this place" list).
         val popularTimes = place?.popularTimes ?: run {
@@ -40,10 +46,30 @@ object PopularTimesParser {
             }.getOrNull()
         }
 
-        val details = PlaceDetails(popularTimes, place?.editorialSummary, place?.ownerDescription)
+        val details = PlaceDetails(
+            popularTimes = popularTimes,
+            editorialSummary = place?.editorialSummary,
+            ownerDescription = place?.ownerDescription,
+            // Backfill the fields a summary node drops (review count, full hours, address, …) —
+            // the focused result is a FULL place node, so SearchParser already read them.
+            // Sourced from the feature-id-matched result only (see `matched` above).
+            rating = matched?.rating,
+            reviewCount = matched?.reviewCount,
+            hours = matched?.hours.orEmpty(),
+            address = matched?.address,
+            phone = matched?.phone,
+            website = matched?.website,
+            statusText = matched?.statusText,
+            openNow = matched?.openNow,
+            priceText = matched?.priceText,
+            priceLevel = matched?.priceLevel,
+            about = matched?.about.orEmpty(),
+            featuredReview = matched?.featuredReview,
+        )
         return if (details.isEmpty) null else details
     }
 
     private fun hasDetail(p: app.vela.core.model.Place): Boolean =
-        p.popularTimes != null || p.editorialSummary != null || p.ownerDescription != null
+        p.popularTimes != null || p.editorialSummary != null || p.ownerDescription != null ||
+            p.reviewCount != null || p.hours.size >= 2 || p.about.isNotEmpty()
 }
