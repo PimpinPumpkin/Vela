@@ -118,6 +118,11 @@ entries from today, name `[0]` + text `[3][0][0]`). A **far/specific address** i
 single geocoded result at `[0][1][0][14]` (same schema), not a `[64]` list. The
 `[84]` histogram **and** `[32]`/`[154]` descriptions are trimmed from the keyless/list
 response → fetched lazily via the WebView (`WebPopularTimesFetcher` → `PlaceDetails`).
+The same focused re-fetch **backfills the fields a *summary* node drops** — a suite/
+multi-tenant address snaps to a light node missing review count / full hours / address /
+phone / price / attributes; the focused result is a full node, so `PopularTimesParser`
+lifts them into `PlaceDetails` (**feature-id-gated**) and `MapViewModel.fetchPlaceDetails`
+merges them into any blank field (additive; no match → unchanged).
 
 ### Directions response (`root[0][1][r]`, summary `[0]`)
 distance m `[2][0]` · typical dur s `[3][0]` · **traffic dur s `[10][0][0]`** ·

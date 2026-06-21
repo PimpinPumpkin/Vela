@@ -525,7 +525,12 @@ class MapViewModel @Inject constructor(
      *  only to fields we don't already have and only if it's still selected. */
     private fun fetchPlaceDetails(p: Place) {
         if (p.name.isBlank()) return
-        if (p.popularTimes != null && p.editorialSummary != null && p.ownerDescription != null) return
+        // Fetch unless the place already looks complete. Beyond the three rich fields, a
+        // missing review count / full weekly hours / address means this is a sparse summary
+        // node (a suite/multi-tenant address snap) worth enriching from the focused re-fetch.
+        val complete = p.popularTimes != null && p.editorialSummary != null && p.ownerDescription != null &&
+            p.reviewCount != null && !p.address.isNullOrBlank() && p.hours.size >= 2
+        if (complete) return
         _state.update { if (it.selected?.id == p.id) it.copy(loadingDetails = true) else it }
         viewModelScope.launch {
             val d = runCatching { webPopularTimes.fetch(p) }.getOrNull()
@@ -537,6 +542,19 @@ class MapViewModel @Inject constructor(
                         popularTimes = sel.popularTimes ?: d.popularTimes,
                         editorialSummary = sel.editorialSummary ?: d.editorialSummary,
                         ownerDescription = sel.ownerDescription ?: d.ownerDescription,
+                        // Backfill only what the summary left blank; take the fuller hours list.
+                        rating = sel.rating ?: d.rating,
+                        reviewCount = sel.reviewCount ?: d.reviewCount,
+                        hours = if (d.hours.size > sel.hours.size) d.hours else sel.hours,
+                        address = sel.address?.ifBlank { null } ?: d.address,
+                        phone = sel.phone ?: d.phone,
+                        website = sel.website ?: d.website,
+                        statusText = sel.statusText ?: d.statusText,
+                        openNow = sel.openNow ?: d.openNow,
+                        priceText = sel.priceText ?: d.priceText,
+                        priceLevel = sel.priceLevel ?: d.priceLevel,
+                        about = sel.about.ifEmpty { d.about },
+                        featuredReview = sel.featuredReview ?: d.featuredReview,
                     ),
                 )
             }
