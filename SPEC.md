@@ -212,6 +212,16 @@ itself shows the traffic, not the whole map.
   (survives backgrounding/screen-off, persistent notification, ~2-min faster-route
   re-check, arrival summary). Spoken `VoiceGuide` (AOSP TTS, best offline voice) +
   direction-coded `Haptics`. Heading-up tilted camera, blue-dot + heading cone.
+- **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
+  nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
+  **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),
+  **dead-reckoned** (`predicted = targetM + speed·elapsedSinceFix`, capped 2 s) and
+  **eased** (τ≈0.25 s), with **heading smoothed** (`smoothBearing`, τ≈0.2 s). Each fix is
+  snapped (`snapToRoute`, §honest-snap) then its metres-along advance is **plausibility-
+  clamped** (`speed·Δt·2.5 + 60 m`) so a self-approaching route can't teleport the puck to
+  a far leg. The **follow-camera targets the puck's smoothed point** (`NavPuck.drawn`), not
+  the raw fix, so map + puck move as one. The ticker owns `ME_SRC` while navigating;
+  `applyData` only drives it in browse / off-route.
 - **Deep links**: `MainActivity` is `singleTop` with intent-filters for `geo:` and
   Google-Maps web links; `MapLinkParser` (`:core`, pure-Kotlin, unit-tested) →
   `openDeepLink`. Sharing a place emits a keyless `geo:` pin too.

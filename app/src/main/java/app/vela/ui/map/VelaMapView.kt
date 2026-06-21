@@ -7,6 +7,8 @@ import android.graphics.Path
 import android.graphics.RectF
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -161,6 +163,47 @@ fun VelaMapView(
     // redundant re-animations that make the follow shimmer/lag (see the nav branch).
     var lastNavTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastNavBearing by remember { mutableStateOf<Float?>(null) }
+    val navPuck = remember { NavPuck() }
+    val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
+
+    // Nav puck motion model (Google-style): a per-frame ticker glides the displayed
+    // position forward along the route. Two pieces, both copied from how Google's puck
+    // behaves: (1) **dead reckoning** — between the ~1 Hz GPS fixes, the goal keeps
+    // advancing at the last known speed (predicted = lastFix + speed·timeSinceFix), so the
+    // puck never stalls mid-second; a fresh fix simply re-anchors it. (2) **eased,
+    // monotonic** along-route progress + **smoothed heading**, so it rides forward without
+    // the per-fix teleport, never jitters backward, and rotates smoothly through bends
+    // instead of snapping at every vertex. It owns the location source while navigating;
+    // off-route or in browse, applyData drives the source from the raw fix instead.
+    // Re-keyed on routePolyline too: a mid-nav reroute swaps the route geometry, so the
+    // ticker relaunches with the fresh route + cum and re-acquires the puck onto it at the
+    // next fix (engaged=false) instead of gliding along stale geometry.
+    LaunchedEffect(navMode, routePolyline) {
+        if (!navMode) return@LaunchedEffect
+        navPuck.engaged = false
+        var lastNanos = 0L
+        while (true) {
+            val now = withFrameNanos { it }
+            val dt = if (lastNanos == 0L) 0f else ((now - lastNanos) / 1e9f).coerceIn(0f, 0.1f)
+            lastNanos = now
+            val style = styleRef ?: continue
+            if (navPuck.engaged && routePolyline.size >= 2) {
+                // Dead-reckon the goal forward from the last fix at the known speed (capped
+                // at 2 s so a dropped GPS signal can't run the puck away down the route).
+                val sinceFix = ((android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0).coerceIn(0.0, 2.0)
+                val predicted = navPuck.targetM + navPuck.speed * sinceFix
+                val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dt / 0.25f))
+                navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
+                val (pt, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
+                navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) segBrg
+                    else smoothBearing(navPuck.displayBearing, segBrg, dt, 0.2f)
+                navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
+                setMeSource(style, pt, navPuck.displayBearing)
+            } else {
+                navPuck.raw?.let { setMeSource(style, it, navPuck.rawBearing ?: 0f) }
+            }
+        }
+    }
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -292,6 +335,31 @@ fun VelaMapView(
             snapToRoute(myLocation, myBearing, routePolyline) else null
         val displayLoc = snap?.first ?: myLocation
         val displayBearing = snap?.second ?: myBearing
+        // Feed this fix to the puck motion model (the frame ticker above does the gliding).
+        if (navMode && snap != null) {
+            val m = nearestMeters(routePolyline, routeCum, snap.first)
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (!navPuck.engaged || m < navPuck.targetM - 200.0) {
+                // First on-route fix, or a big jump *back* (a reroute / new route) — re-anchor.
+                navPuck.progressM = m; navPuck.targetM = m; navPuck.engaged = true
+            } else {
+                // Only advance the target by a *plausible* amount, so a route that passes
+                // near itself (switchback / cloverleaf / parallel return leg) can't teleport
+                // the puck — and the camera that follows it — onto the far leg. Generous:
+                // speed × elapsed × 2.5 + 60 m, so a real GPS gap (large elapsed) still
+                // catches up, but a 1-second nearest-point that lands a kilometre ahead is
+                // rejected and dead reckoning carries the puck until a sane fix arrives.
+                val dtFix = ((now - navPuck.targetAtMs) / 1000.0).coerceIn(0.0, 10.0)
+                val maxStep = navPuck.speed.coerceAtLeast(1.0) * dtFix * 2.5 + 60.0
+                if (m - navPuck.targetM in 0.0..maxStep) navPuck.targetM = m
+            }
+            navPuck.targetAtMs = now // anchor for dead reckoning
+            navPuck.speed = (mySpeed ?: 0f).toDouble().coerceAtLeast(0.0)
+        } else {
+            navPuck.engaged = false
+            navPuck.raw = myLocation
+            navPuck.rawBearing = myBearing
+        }
         val styleKey = "$styleUri|dark=$darkTheme"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
@@ -352,8 +420,12 @@ fun VelaMapView(
                 // re-point when the fix actually moved (>4 m) or turned (>2°); GPS
                 // jitter at a standstill is otherwise an endless shimmer. A snappier
                 // ease (550 ms) then keeps the dot under the camera instead of trailing.
-                val loc = displayLoc ?: myLocation
-                val brg = displayBearing ?: lastNavBearing ?: 0f
+                // Follow the SAME smoothed point the puck is drawn at (monotonic + eased),
+                // not the raw snapped fix — so the camera and puck move as one and the map
+                // can't lurch to a far spot when nearest-point is briefly ambiguous.
+                val loc = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
+                val brg = (if (navPuck.engaged && !navPuck.displayBearing.isNaN()) navPuck.displayBearing else null)
+                    ?: displayBearing ?: lastNavBearing ?: 0f
                 val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
                 val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
                 if (moved || turned) {
@@ -841,6 +913,73 @@ private fun snapToRoute(me: LatLng, gpsBearing: Float?, polyline: List<LatLng>, 
 /** Smallest absolute difference between two compass bearings (deg), 0..180. */
 private fun angleDelta(a: Float, b: Float): Float = kotlin.math.abs((a - b + 540f) % 360f - 180f)
 
+/** Exponentially ease compass bearing [cur] toward [target] taking the short way around
+ *  (so 350°→10° rotates +20°, not −340°). [tau] is the smoothing time-constant (s). */
+private fun smoothBearing(cur: Float, target: Float, dt: Float, tau: Float): Float {
+    val delta = ((target - cur + 540f) % 360f) - 180f // shortest signed turn, −180..180
+    return ((cur + delta * (1f - kotlin.math.exp(-dt / tau))) % 360f + 360f) % 360f
+}
+
+/** Motion-model state for the nav puck (Google-style): the displayed position is a
+ *  smoothed, **monotonic-forward** progress along the route that the frame ticker glides
+ *  toward the latest fix, **dead-reckoned** forward at the known speed between fixes, so the
+ *  puck rides forward without the per-fix teleport or the forward/backward jitter of raw
+ *  "nearest point". Off-route it falls back to [raw] (honesty — see [snapToRoute]). */
+private class NavPuck {
+    var engaged = false           // currently following the route (snapped)
+    var progressM = 0.0           // displayed metres along the route (what's drawn)
+    var targetM = 0.0             // latest fix's metres along the route (where we're heading)
+    var targetAtMs = 0L           // elapsedRealtime() the target was set — for dead reckoning
+    var speed = 0.0               // m/s, for the inter-fix dead reckoning
+    var displayBearing = Float.NaN // smoothed heading actually drawn (NaN = not yet seeded)
+    var drawn: LatLng? = null     // last point actually drawn — the camera follows THIS, not the raw fix
+    var raw: LatLng? = null       // off-route fallback position
+    var rawBearing: Float? = null
+}
+
+/** Cumulative along-route distance (m) at each polyline vertex (cum[0] = 0). */
+private fun cumLengths(poly: List<LatLng>): DoubleArray {
+    val cum = DoubleArray(poly.size)
+    for (i in 1 until poly.size) cum[i] = cum[i - 1] + poly[i - 1].distanceTo(poly[i])
+    return cum
+}
+
+/** Metres along the route to the nearest projection of [p]. */
+private fun nearestMeters(poly: List<LatLng>, cum: DoubleArray, p: LatLng): Double {
+    if (poly.size < 2) return 0.0
+    var bestD = Double.MAX_VALUE
+    var bestM = 0.0
+    for (i in 1 until poly.size) {
+        val a = poly[i - 1]
+        val b = poly[i]
+        val (proj, t) = projectOnSegment(p, a, b)
+        val d = p.distanceTo(proj)
+        if (d < bestD) { bestD = d; bestM = cum[i - 1] + t * a.distanceTo(b) }
+    }
+    return bestM
+}
+
+/** Point + heading at [meters] along the route. */
+private fun pointAtMeters(poly: List<LatLng>, cum: DoubleArray, meters: Double): Pair<LatLng, Float> {
+    if (poly.size < 2) return (poly.firstOrNull() ?: LatLng(0.0, 0.0)) to 0f
+    val total = cum.last()
+    val m = meters.coerceIn(0.0, total)
+    var i = 1
+    while (i < poly.size - 1 && cum[i] < m) i++
+    val a = poly[i - 1]
+    val b = poly[i]
+    val segLen = cum[i] - cum[i - 1]
+    val t = if (segLen <= 0.0) 0.0 else ((m - cum[i - 1]) / segLen).coerceIn(0.0, 1.0)
+    return LatLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t) to bearingDeg(a, b)
+}
+
+/** Push a single point + heading into the location source (the puck/dot reads `bearing`). */
+private fun setMeSource(style: Style, p: LatLng, bearing: Float) {
+    style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(
+        Feature.fromGeometry(Point.fromLngLat(p.lng, p.lat)).apply { addNumberProperty("bearing", bearing) },
+    )
+}
+
 /** Compass bearing (deg, 0 = N) from [a] to [b]. */
 private fun bearingDeg(a: LatLng, b: LatLng): Float {
     val dLng = Math.toRadians(b.lng - a.lng)
@@ -962,16 +1101,21 @@ private fun applyData(
     )
     style.getSourceAs<GeoJsonSource>(MARKERS_SRC)?.setGeoJson(markersFc)
 
-    val meFc = if (me != null) {
-        FeatureCollection.fromFeature(
-            Feature.fromGeometry(Point.fromLngLat(me.lng, me.lat)).apply {
-                addNumberProperty("bearing", bearing ?: 0f)
-            },
-        )
-    } else {
-        FeatureCollection.fromFeatures(emptyList<Feature>())
+    // The location source: in browse mode applyData owns it (set it from the fix here);
+    // in NAV the per-frame motion-model ticker owns it (smooth glide), so don't fight it —
+    // except to CLEAR it when there's no fix.
+    if (!navMode || me == null) {
+        val meFc = if (me != null) {
+            FeatureCollection.fromFeature(
+                Feature.fromGeometry(Point.fromLngLat(me.lng, me.lat)).apply {
+                    addNumberProperty("bearing", bearing ?: 0f)
+                },
+            )
+        } else {
+            FeatureCollection.fromFeatures(emptyList<Feature>())
+        }
+        style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(meFc)
     }
-    style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(meFc)
 
     // Two modes, Google-style. NAV: the puck IS the position — a solid blue arrow — so
     // hide the dot and swap the heading layer's icon to the arrow. BROWSE: the blue dot
