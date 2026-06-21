@@ -34,7 +34,16 @@ data class Place(
     val editorialSummary: String? = null,   // Google's one-line description ("Classic burger chain serving…")
     val ownerDescription: String? = null,   // "From the owner" — the business's own longer blurb
     val popularTimes: PopularTimes? = null, // Google's "popular times" histogram
+    val similarPlaces: List<SimilarPlace> = emptyList(), // "People also search for"
     val distanceMeters: Double? = null, // filled when searched relative to a point
+)
+
+/** A "People also search for" entry — a related place, enough to show a card and open it. */
+data class SimilarPlace(
+    val name: String,
+    val location: LatLng,
+    val rating: Double? = null,
+    val featureId: String? = null,
 )
 
 /** One gallery photo: its FIFE image [url] and, when known, a human "posted" label

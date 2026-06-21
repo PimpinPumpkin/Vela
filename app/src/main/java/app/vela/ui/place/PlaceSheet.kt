@@ -166,6 +166,7 @@ fun PlaceSheet(
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
     onOpenPlace: (Place) -> Unit = {},
+    onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
     onSetShortcut: (ShortcutKind) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -450,6 +451,32 @@ fun PlaceSheet(
                             if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open", tint = dim, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // "People also search for" — related places (Google-style). Filled by the
+            // detail re-fetch (root [2][11][0]); a horizontal row of tappable cards.
+            if (place.similarPlaces.isNotEmpty()) {
+                Spacer(Modifier.height(16.dp))
+                Text("People also search for", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    place.similarPlaces.forEach { s ->
+                        Column(
+                            Modifier.width(150.dp).clip(RoundedCornerShape(12.dp))
+                                .background(dim.copy(alpha = 0.10f))
+                                .clickable { onOpenSimilar(s) }
+                                .padding(12.dp),
+                        ) {
+                            Text(s.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = ink, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            s.rating?.let {
+                                Spacer(Modifier.height(4.dp))
+                                Text(String.format(Locale.US, "%.1f★", it), style = MaterialTheme.typography.bodySmall, color = dim)
+                            }
+                        }
                     }
                 }
             }

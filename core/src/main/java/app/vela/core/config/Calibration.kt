@@ -60,6 +60,10 @@ data class Calibration(
             // (a sub-field of the single geocoded node). Lets an address snap to the
             // business there. Each entry's place node is at [i][0].
             "atThisPlace" to listOf(0, 1, 0, 14, 68),
+            // "People also search for": a root-level list of similar places shown when a
+            // search focuses on one result. Each entry is [featureId, name, [[_,_,lat,lng],
+            // …, rating@6]] — see SearchParser.parseSimilarPlaces.
+            "similar" to listOf(2, 11, 0),
             "name" to listOf(1, 11),
             "lat" to listOf(1, 9, 2),
             "lng" to listOf(1, 9, 3),
