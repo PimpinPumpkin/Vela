@@ -16,10 +16,10 @@ android {
         applicationId = "app.vela"
         minSdk = 26
         targetSdk = 35
-        // Overridable from CI: -PappVersionCode / -PappVersionName (release.yml
-        // derives them from the git tag). Defaults are for local/dev builds.
+        // Overridable from CI: -PappVersionCode / -PappVersionName (ci.yml derives
+        // them from the run number → 0.2.<run> / 2000+run). Defaults are local/dev only.
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = (project.findProperty("appVersionName") as String?) ?: "0.1.0"
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.2.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -34,8 +34,8 @@ android {
         )
     }
 
-    // Mirrors Arcana/Callguard: real release signing comes from CI env vars;
-    // local dev falls back to the debug keystore so `adb install` still works.
+    // Real release signing comes from CI env vars; local dev falls back to the
+    // debug keystore so `adb install` still works.
     //   VELA_KEYSTORE_PATH / VELA_KEYSTORE_PASSWORD / VELA_KEY_ALIAS (=vela)
     signingConfigs {
         create("releaseFromEnv") {
@@ -52,7 +52,7 @@ android {
     buildTypes {
         release {
             // Always ship release: R8 here is what keeps map scroll/nav smooth
-            // (debug builds visibly lag — same lesson as Arcana).
+            // (debug builds visibly lag).
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
