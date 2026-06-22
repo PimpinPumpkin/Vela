@@ -155,6 +155,9 @@ fun VelaMapView(
     val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
     val navUserZoom = remember { doubleArrayOf(Double.NaN) }  // manual nav zoom override (NaN = auto)
     val camState = remember { doubleArrayOf(Double.NaN, 0.0, 0.0, 0.0) } // eased follow-camera [lat,lng,bearing,zoom]; lat NaN = needs re-seed
+    val routeColorHolder = rememberUpdatedState(routeColor)
+    val routeSpansHolder = rememberUpdatedState(routeTrafficSpans)
+    val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route gradient was last set at
     // A manual pinch sets a zoom override (navUserZoom) that we keep following at; it's cleared
     // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
     // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
@@ -261,6 +264,21 @@ fun VelaMapView(
                     )
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
+                }
+                // Keep the traversed-grey cut UNDER the arrow: update the route gradient HERE
+                // (throttled to ~3 m of progress) so it tracks the per-frame puck instead of
+                // lagging at the slower recomposition rate — that lag left a sliver of coloured
+                // route just behind the arrow ("not solid"). Idle → no advance → no update.
+                if (routeCum.isNotEmpty() && routeCum.last() > 0.0 &&
+                    kotlin.math.abs(navPuck.progressM - lastGradM[0]) > 3.0
+                ) {
+                    lastGradM[0] = navPuck.progressM
+                    val gp = (navPuck.progressM / routeCum.last()).toFloat().coerceIn(0.001f, 0.998f)
+                    val gInt = runCatching { android.graphics.Color.parseColor(routeColorHolder.value) }
+                        .getOrDefault(ROUTE_FREEFLOW)
+                    style.getLayer(ROUTE_LAYER)?.setProperties(
+                        PropertyFactory.lineGradient(routeGradient(gp, gInt, routeSpansHolder.value)),
+                    )
                 }
             } else {
                 navPuck.raw?.let { setMeSource(style, it, navPuck.rawBearing ?: 0f) }

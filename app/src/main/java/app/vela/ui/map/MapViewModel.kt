@@ -215,9 +215,6 @@ class MapViewModel @Inject constructor(
         if (prev == null || dt < 0.0) { outlierStreak[0] = 0; return here }
         val moved = prev.distanceTo(here)
         val sp = lastSpeed ?: 0f
-        // Standstill: stopped and barely moved → hold (kills parked-dot jitter). Not counted as
-        // an outlier, so a genuinely parked car stays put and never gets "unstuck".
-        if (sp < 0.6f && moved < 12.0) return prev
         // Outlier: farther than (last speed + accel headroom) × elapsed + GPS slack is implausible
         // for one step → a NETWORK/multipath leap; keep the prior position. BUT if the leap
         // PERSISTS a couple of fixes it's the new reality (a real teleport), so accept + re-anchor
@@ -229,7 +226,12 @@ class MapViewModel @Inject constructor(
             return prev
         }
         outlierStreak[0] = 0
-        return here
+        // Speed-adaptive LOW-PASS on the position: heavy smoothing at low speed (so parked/idle
+        // GPS jitter barely nudges the dot — Google smooths this, OsmAnd doesn't), easing to a 1:1
+        // follow by ~10 m/s where real movement dominates the noise. Replaces a binary standstill
+        // hold whose hard speed cliff the GPS speed-noise kept tripping (the "still jumps at idle").
+        val k = (sp / 10f).coerceIn(0.12f, 1f).toDouble()
+        return LatLng(prev.lat + (here.lat - prev.lat) * k, prev.lng + (here.lng - prev.lng) * k)
     }
 
     fun startLocation() {
