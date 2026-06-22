@@ -203,6 +203,23 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Decide the displayed position from a new fix. Rejects GPS OUTLIERS — a coarse NETWORK /
+     *  multipath fix that leaps hundreds of metres (the "every ~8 s the dot + distance + mph jump
+     *  to a crazy number" jitter) — by capping the move to what's physically plausible for the
+     *  elapsed time, and HOLDS the dot at a standstill so a parked car's GPS noise doesn't make it
+     *  hop (Google keeps it still). Reused by the live collector and the replay collector. */
+    private fun sanePosition(here: LatLng, prev: LatLng?, lastSpeed: Float?, dt: Double): LatLng {
+        if (prev == null) return here
+        val moved = prev.distanceTo(here)
+        val sp = lastSpeed ?: 0f
+        // Standstill: stopped and barely moved → hold (kills parked-dot jitter).
+        if (sp < 0.6f && moved < 12.0) return prev
+        // Outlier: farther than (last speed + accel headroom) × elapsed + GPS slack is implausible
+        // for one step → a NETWORK/multipath leap; keep the prior position rather than jumping.
+        val plausible = (sp + 12f) * (if (dt > 0.0) dt else 1.0) + 35.0
+        return if (moved > plausible) prev else here
+    }
+
     fun startLocation() {
         if (locationJob != null) return
         locationJob = viewModelScope.launch {
@@ -212,10 +229,12 @@ class MapViewModel @Inject constructor(
             }
             var lastFixTime = 0L
             locationProvider.updates().collect { loc ->
-                val here = LatLng(loc.latitude, loc.longitude)
+                val rawHere = LatLng(loc.latitude, loc.longitude)
                 val prev = _state.value.myLocation
-                val movedM = prev?.distanceTo(here) ?: 0.0
                 val dt = if (lastFixTime > 0L) (loc.time - lastFixTime) / 1000.0 else -1.0
+                // Drop outlier leaps + hold the dot when parked (see sanePosition).
+                val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt)
+                val movedM = prev?.distanceTo(here) ?: 0.0
                 // A long inter-fix gap while navigating is where the dead-reckon (capped 2 s)
                 // carries the puck — log it (opt-in, no-op otherwise) so a tuning trace shows
                 // where GPS dropped and for how long.
@@ -1014,8 +1033,15 @@ class MapViewModel @Inject constructor(
                     }
                 }
                 val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
+                var lastReplayT = 0L
                 locationProvider.replay(pts, speedup = 3f).collect { loc ->
-                    val here = LatLng(loc.latitude, loc.longitude)
+                    val rawHere = LatLng(loc.latitude, loc.longitude)
+                    val prev = _state.value.myLocation
+                    val dt = if (lastReplayT > 0L) (loc.time - lastReplayT) / 1000.0 else -1.0
+                    lastReplayT = loc.time
+                    // Same outlier-reject + standstill-hold as live, so a recorded NETWORK leap
+                    // doesn't jump the dot / distance / mph on replay either.
+                    val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt)
                     val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
                     // Same single-fix spike reject as live GPS — recorded traces carry the raw
                     // glitches, so a 35→157 mph hop in the trace doesn't show on replay either.

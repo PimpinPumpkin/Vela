@@ -99,6 +99,7 @@ class LocationProvider @Inject constructor(
                     bearing = fix.bearing
                     speed = fix.speed
                     accuracy = 5f
+                    time = fix.t // recorded fix time, so consumers can compute the real inter-fix dt
                 },
             )
         }
