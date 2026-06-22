@@ -148,11 +148,13 @@ fun VelaMapView(
     val scaleChanged = rememberUpdatedState(onScaleChanged)
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
+    val navFollowingHolder = rememberUpdatedState(navFollowing)
     val viewport = rememberUpdatedState(onViewport)
     val gestureMove = remember { booleanArrayOf(false) }
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
     val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
     val navUserZoom = remember { doubleArrayOf(Double.NaN) }  // manual nav zoom override (NaN = auto)
+    val camState = remember { doubleArrayOf(Double.NaN, 0.0, 0.0, 0.0) } // eased follow-camera [lat,lng,bearing,zoom]; lat NaN = needs re-seed
     // A manual pinch sets a zoom override (navUserZoom) that we keep following at; it's cleared
     // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
     // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
@@ -222,6 +224,44 @@ fun VelaMapView(
                     else smoothBearing(navPuck.displayBearing, segBrg, dt, 0.2f)
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
                 setMeSource(style, pt, navPuck.displayBearing)
+                // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
+                // of the recomposition-driven block below (which re-pointed only ~1-3×/s in
+                // throttled 550 ms eases — the "stiff" feel). Ease the camera toward the smooth
+                // puck each frame (~0.12 s) so it glides; seed from the live camera on (re)attach
+                // for a smooth hand-off from the pre-engage framing / a Re-center. Skipped while
+                // panning (detached) or pinching (the user's fingers win).
+                val cam = mapRef
+                if (cam != null && navFollowingHolder.value && !scaling[0]) {
+                    val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
+                    navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dt / 0.6f))
+                    val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
+                        else 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0)
+                    if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
+                        val cp = cam.cameraPosition
+                        camState[0] = cp.target?.latitude ?: pt.lat
+                        camState[1] = cp.target?.longitude ?: pt.lng
+                        camState[2] = cp.bearing
+                        camState[3] = if (cp.zoom > 1.0) cp.zoom else tgtZoom
+                    }
+                    val k = (1f - kotlin.math.exp(-dt / 0.12f)).toDouble()
+                    camState[0] += (pt.lat - camState[0]) * k
+                    camState[1] += (pt.lng - camState[1]) * k
+                    val db = ((navPuck.displayBearing.toDouble() - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
+                    camState[2] = (camState[2] + db * k + 360.0) % 360.0
+                    camState[3] += (tgtZoom - camState[3]) * k
+                    cam.moveCamera(
+                        CameraUpdateFactory.newCameraPosition(
+                            CameraPosition.Builder()
+                                .target(MLLatLng(camState[0], camState[1]))
+                                .bearing(camState[2])
+                                .zoom(camState[3])
+                                .tilt(55.0)
+                                .build(),
+                        ),
+                    )
+                } else {
+                    camState[0] = Double.NaN // reset → re-attach eases in from the live camera
+                }
             } else {
                 navPuck.raw?.let { setMeSource(style, it, navPuck.rawBearing ?: 0f) }
             }
@@ -494,57 +534,33 @@ fun VelaMapView(
             }
 
             navMode && myLocation != null && navFollowing -> {
-                // This `update` block re-runs on *every* recomposition (several a
-                // second during nav), and each animateCamera restarts a fresh ease —
-                // stacking them is what made the follow lag and feel "wacky". Only
-                // re-point when the fix actually moved (>4 m) or turned (>2°); GPS
-                // jitter at a standstill is otherwise an endless shimmer. A snappier
-                // ease (550 ms) then keeps the dot under the camera instead of trailing.
-                // Follow the SAME smoothed point the puck is drawn at (monotonic + eased),
-                // not the raw snapped fix — so the camera and puck move as one and the map
-                // can't lurch to a far spot when nearest-point is briefly ambiguous.
-                // Follow the puck's own SMOOTH drawn point (navPuck.drawn — the eased, per-frame
-                // motion-model position). A predictive "aim ahead of the puck" framing was tried
-                // (2026-06-21) but it inched/stuttered on real GPS; the plain smooth puck-follow is
-                // what felt right, so keep it. (See-into-turns can come back later via in-frame
-                // padding that lowers the puck WITHOUT swinging the camera target around.)
-                val loc = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
-                // Off-route, hold the last route-aligned heading instead of snapping the
-                // camera to the raw GPS bearing (it jitters and can point backwards on a brief
-                // off-route blip — the "map rotated and the arrow pointed the wrong way"). The
-                // smoothed puck bearing takes over again the instant we re-snap to the route.
-                val brg = (if (navPuck.engaged && !navPuck.displayBearing.isNaN()) navPuck.displayBearing else null)
-                    ?: lastNavBearing ?: displayBearing ?: 0f
-                val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
-                val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
-                // Don't re-point the camera while the user is actively pinch-zooming — let their
-                // fingers win; we resume following (at their chosen zoom) the moment they lift.
-                if ((moved || turned) && !scaling[0]) {
-                    lastNavTarget = loc
-                    lastNavBearing = brg
-                    // Speed-adaptive zoom (Google-style): pull back on the highway to see
-                    // further ahead, tighten up on slow city streets. CONTINUOUS + low-passed,
-                    // not hard bands — the old stepped thresholds made the zoom ping-pong
-                    // ("zooms in and back") whenever speed hovered near a boundary (stop-and-go),
-                    // since a 12→13→12 m/s wobble flipped it a whole level. A smoothly
-                    // interpolated zoom over a damped speed just glides instead. A manual pinch
-                    // (navUserZoom) overrides it and we keep following at the zoom you chose,
-                    // until you Re-center (which clears the override back to auto).
-                    val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f) // m/s, capped at ~freeway
-                    navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
-                    val autoZoom = 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0) // 17.3 stopped → 15.0 freeway
-                    val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0] else autoZoom
-                    map.animateCamera(
-                        CameraUpdateFactory.newCameraPosition(
-                            CameraPosition.Builder()
-                                .target(MLLatLng(loc.lat, loc.lng))
-                                .zoom(zoom)
-                                .tilt(55.0)
-                                .bearing(brg.toDouble())
-                                .build(),
-                        ),
-                        550,
-                    )
+                // The per-frame follow-camera now runs in the motion ticker above (continuous
+                // glide — that's what fixes the "stiff" throttled-ease feel). Here we only handle
+                // the PRE-ENGAGE / off-route case (puck not snapped to the route yet): a throttled
+                // eased re-point to the raw fix until the ticker takes over. Keeping this case
+                // matched even when engaged stops a mid-nav reroute from falling through to the
+                // fit-route case and zooming the whole route out.
+                if (!navPuck.engaged) {
+                    val loc = displayLoc ?: myLocation
+                    val brg = lastNavBearing ?: displayBearing ?: 0f
+                    val moved = lastNavTarget?.let { it.distanceTo(loc) > 4.0 } ?: true
+                    val turned = lastNavBearing?.let { kotlin.math.abs(((brg - it + 540f) % 360f) - 180f) > 2f } ?: true
+                    if ((moved || turned) && !scaling[0]) {
+                        lastNavTarget = loc
+                        lastNavBearing = brg
+                        val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f)
+                        navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
+                        val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
+                            else 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0)
+                        map.animateCamera(
+                            CameraUpdateFactory.newCameraPosition(
+                                CameraPosition.Builder()
+                                    .target(MLLatLng(loc.lat, loc.lng))
+                                    .zoom(zoom).tilt(55.0).bearing(brg.toDouble()).build(),
+                            ),
+                            550,
+                        )
+                    }
                 }
             }
 
