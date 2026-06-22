@@ -208,16 +208,28 @@ class MapViewModel @Inject constructor(
      *  to a crazy number" jitter) — by capping the move to what's physically plausible for the
      *  elapsed time, and HOLDS the dot at a standstill so a parked car's GPS noise doesn't make it
      *  hop (Google keeps it still). Reused by the live collector and the replay collector. */
-    private fun sanePosition(here: LatLng, prev: LatLng?, lastSpeed: Float?, dt: Double): LatLng {
-        if (prev == null) return here
+    private fun sanePosition(here: LatLng, prev: LatLng?, lastSpeed: Float?, dt: Double, outlierStreak: IntArray): LatLng {
+        // No baseline, or the FIRST fix of a session (dt < 0) → anchor here. Without this, a
+        // replay that starts away from your live position rejected EVERY fix as an "outlier" vs
+        // the stale start point, so the dot never moved ("replay thinks I'm stationary").
+        if (prev == null || dt < 0.0) { outlierStreak[0] = 0; return here }
         val moved = prev.distanceTo(here)
         val sp = lastSpeed ?: 0f
-        // Standstill: stopped and barely moved → hold (kills parked-dot jitter).
+        // Standstill: stopped and barely moved → hold (kills parked-dot jitter). Not counted as
+        // an outlier, so a genuinely parked car stays put and never gets "unstuck".
         if (sp < 0.6f && moved < 12.0) return prev
         // Outlier: farther than (last speed + accel headroom) × elapsed + GPS slack is implausible
-        // for one step → a NETWORK/multipath leap; keep the prior position rather than jumping.
-        val plausible = (sp + 12f) * (if (dt > 0.0) dt else 1.0) + 35.0
-        return if (moved > plausible) prev else here
+        // for one step → a NETWORK/multipath leap; keep the prior position. BUT if the leap
+        // PERSISTS a couple of fixes it's the new reality (a real teleport), so accept + re-anchor
+        // instead of getting stuck rejecting forever against a stale point.
+        val plausible = (sp + 12f) * dt + 35.0
+        if (moved > plausible) {
+            if (outlierStreak[0] >= 2) { outlierStreak[0] = 0; return here }
+            outlierStreak[0]++
+            return prev
+        }
+        outlierStreak[0] = 0
+        return here
     }
 
     fun startLocation() {
@@ -228,12 +240,13 @@ class MapViewModel @Inject constructor(
                 if (_state.value.myLocation == null) _state.update { it.copy(showPsdsTip = true) }
             }
             var lastFixTime = 0L
+            val posOutlierStreak = intArrayOf(0)
             locationProvider.updates().collect { loc ->
                 val rawHere = LatLng(loc.latitude, loc.longitude)
                 val prev = _state.value.myLocation
                 val dt = if (lastFixTime > 0L) (loc.time - lastFixTime) / 1000.0 else -1.0
                 // Drop outlier leaps + hold the dot when parked (see sanePosition).
-                val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt)
+                val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
                 val movedM = prev?.distanceTo(here) ?: 0.0
                 // A long inter-fix gap while navigating is where the dead-reckon (capped 2 s)
                 // carries the puck — log it (opt-in, no-op otherwise) so a tuning trace shows
@@ -1034,6 +1047,7 @@ class MapViewModel @Inject constructor(
                 }
                 val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
                 var lastReplayT = 0L
+                val posOutlierStreak = intArrayOf(0)
                 locationProvider.replay(pts, speedup = 3f).collect { loc ->
                     val rawHere = LatLng(loc.latitude, loc.longitude)
                     val prev = _state.value.myLocation
@@ -1041,7 +1055,7 @@ class MapViewModel @Inject constructor(
                     lastReplayT = loc.time
                     // Same outlier-reject + standstill-hold as live, so a recorded NETWORK leap
                     // doesn't jump the dot / distance / mph on replay either.
-                    val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt)
+                    val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
                     val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
                     // Same single-fix spike reject as live GPS — recorded traces carry the raw
                     // glitches, so a 35→157 mph hop in the trace doesn't show on replay either.
