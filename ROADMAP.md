@@ -34,6 +34,17 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   live GPS (added 0.2.133). ~~Follow-up: editable origin while *reversed*~~ — **DONE
   2026-06-20**: the edit pencil moves to the "To" row when reversed (where the custom
   endpoint then sits), via a parallel `onEditDestination` on the directions panel.
+- **Real highway shields in the nav banner** (per request 2026-06-21) — render the actual
+  route-marker *shapes* (US interstate / US route / state route, then Canada provincial +
+  others) instead of today's generic bordered box. We already extract the ref text ("I-80 E",
+  "Exit 71") in `roadSigns()` ([NavOverlays.kt](app/src/main/java/app/vela/ui/nav/NavOverlays.kt));
+  the missing piece is the shield *network*, which Google has proprietary but we'll **infer from
+  the ref prefix + the user's country** (agreed — OSM-lookup is overkill): `I-`→interstate,
+  `US-`→US route, two-letter state/province prefixes → state/provincial, generic box as the
+  fallback. Shield *artwork* rides the open **OpenStreetMap Americana** design set
+  ([ZeLonewolf/openstreetmap-americana](https://github.com/ZeLonewolf/openstreetmap-americana),
+  which already covers US states + Canada + many countries). Start US + Canada, expand on the
+  Americana set. **Plan, not now** — slotted after the nav-feel pass lands.
 - **Explore (nearby things to do)** — a Google-Maps-Explore-style surface: nearby
   restaurants / things to do / events, as cards on a bottom sheet from the bare map.
   Data: our keyless POI search already returns categorised places (reuse the
