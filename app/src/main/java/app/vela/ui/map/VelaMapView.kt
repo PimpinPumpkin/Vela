@@ -312,16 +312,18 @@ fun VelaMapView(
                 // followed at. While actively pinching, `scaling` suppresses the follow animation
                 // so it can't fight your fingers; on release we adopt your zoom as the override.
                 map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
-                    override fun onMoveBegin(detector: MoveGestureDetector) {
-                        // A genuine PAN (not a pinch) detaches follow AND drops any pinch-zoom
-                        // override, so a later Re-center returns to auto-zoom. Gated on !scaling
-                        // so a pinch that also registers a tiny translation isn't read as a pan.
+                    override fun onMoveBegin(detector: MoveGestureDetector) {}
+                    // Detach on a genuine PAN — decided in onMove, NOT onMoveBegin: by the time
+                    // onMove fires, onScaleBegin has already set `scaling` for a pinch, so a pinch's
+                    // incidental translation isn't mistaken for a pan (that misread is what made the
+                    // camera detach + stop tracking the instant you zoomed). A pan drops the pinch
+                    // zoom too, so a later Re-center returns to auto-zoom. navPanned is idempotent.
+                    override fun onMove(detector: MoveGestureDetector) {
                         if (navModeHolder.value && !scaling[0]) {
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
                         }
                     }
-                    override fun onMove(detector: MoveGestureDetector) {}
                     override fun onMoveEnd(detector: MoveGestureDetector) {}
                 })
                 map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
@@ -501,19 +503,12 @@ fun VelaMapView(
                 // Follow the SAME smoothed point the puck is drawn at (monotonic + eased),
                 // not the raw snapped fix — so the camera and puck move as one and the map
                 // can't lurch to a far spot when nearest-point is briefly ambiguous.
-                // Predictive framing (Google-style): aim the camera a little AHEAD of the puck
-                // along the route — scaled with the damped speed, clamped modest — so you see
-                // INTO the upcoming turn and the puck rides lower in the view instead of dead-
-                // centre. As you near a bend the look-ahead point rounds it, so the camera leads
-                // you in. Falls back to the puck itself off-route / in browse.
-                val puckPt = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
-                val loc = if (navPuck.engaged && routePolyline.size >= 2) {
-                    val ahead = (navZoomSpeed[0] * 2.0).coerceIn(25.0, 90.0) // ~25 m crawling → 90 m freeway
-                    // Look ahead from the puck's SMOOTH drawn progress (progressM, eased per
-                    // frame), NOT the per-fix targetM — targetM jumps once per GPS fix, which made
-                    // the camera inch forward in steps instead of gliding.
-                    pointAtMeters(routePolyline, routeCum, navPuck.progressM + ahead).first
-                } else puckPt
+                // Follow the puck's own SMOOTH drawn point (navPuck.drawn — the eased, per-frame
+                // motion-model position). A predictive "aim ahead of the puck" framing was tried
+                // (2026-06-21) but it inched/stuttered on real GPS; the plain smooth puck-follow is
+                // what felt right, so keep it. (See-into-turns can come back later via in-frame
+                // padding that lowers the puck WITHOUT swinging the camera target around.)
+                val loc = (if (navPuck.engaged) navPuck.drawn else null) ?: displayLoc ?: myLocation
                 // Off-route, hold the last route-aligned heading instead of snapping the
                 // camera to the raw GPS bearing (it jitters and can point backwards on a brief
                 // off-route blip — the "map rotated and the arrow pointed the wrong way"). The
@@ -1132,21 +1127,29 @@ private fun routeGradient(
     spans: List<Triple<Float, Float, Int>>,
 ): Expression {
     val freeflow = if (spans.isEmpty()) routeInt else ROUTE_FREEFLOW
+    // Colour AT fraction f (half-open: a stop at b colours [b, next)). Driven part is grey
+    // STRICTLY BEFORE p (p == 0 preview paints no grey nub), so the cut lands exactly at p.
     fun colorAt(f: Float): Int {
-        // Only grey the driven part once actually moving (p > 0); a static preview
-        // (p == 0) must not paint a grey nub at the very start of the line.
-        if (p > 0f && f <= p) return ROUTE_DRIVEN
+        if (p > 0f && f < p) return ROUTE_DRIVEN
         for ((s, e, lvl) in spans) if (f >= s && f < e) return trafficLevelColor(lvl)
         return freeflow
     }
-    val n = 256 // fine sampling; a stop is emitted only where the colour actually changes
+    // EXACT breakpoints, not 256-sample slop: the driven/ahead cut at p precisely (so the
+    // grey/colour boundary sits DEAD under the arrow — the old sampling put it up to
+    // route-length/256 m off, which read as a soft "gradient" ahead of the arrow), plus every
+    // traffic-span edge. A hard `step` at each — no fade. "We either drove it or we didn't."
+    val breaks = sortedSetOf<Float>()
+    if (p > 0f) breaks.add(p.coerceIn(0.0001f, 0.9999f))
+    for ((s, e, _) in spans) {
+        if (s in 0.0001f..0.9999f) breaks.add(s)
+        if (e in 0.0001f..0.9999f) breaks.add(e)
+    }
     val base = colorAt(0f)
     val stops = ArrayList<Expression.Stop>()
     var prev = base
-    for (i in 1..n) {
-        val f = i / n.toFloat()
-        val c = colorAt(f)
-        if (c != prev) { stops.add(Expression.stop(f, Expression.color(c))); prev = c }
+    for (b in breaks) {
+        val c = colorAt(b)
+        if (c != prev) { stops.add(Expression.stop(b, Expression.color(c))); prev = c }
     }
     return Expression.step(Expression.lineProgress(), Expression.color(base), *stops.toTypedArray())
 }
