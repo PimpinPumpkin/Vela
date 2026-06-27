@@ -307,7 +307,7 @@ class MapViewModel @Inject constructor(
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
                 // restrictions / GrapheneOS). No-op unless a session is active.
-                navSession.onLocation(here)
+                navSession.onLocation(here, app.vela.ui.Units.imperial.value)
             }
         }
     }
@@ -1081,7 +1081,7 @@ class MapViewModel @Inject constructor(
                     val lastSp = _state.value.mySpeed
                     val speed = if (rawSp != null && lastSp != null && rawSp > lastSp + 15f) lastSp else rawSp
                     _state.update { it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, center = here, myLocationStale = false) }
-                    navSession.onLocation(here)
+                    navSession.onLocation(here, app.vela.ui.Units.imperial.value)
                 }
             } finally {
                 // Only the current replay tears down: a superseded one was already stopped
