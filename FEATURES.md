@@ -105,10 +105,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   a **strip of turn-direction arrows** (one per indicated lane) + the hint text, and
   the step list shows them highlighted (the main instruction stays clean: "Turn right
   onto …")
-- ✅ **Highway/exit signage** — route refs ("I-80 E", "US-50 E") and exit numbers
-  ("Exit 4A") are parsed out of each instruction and rendered as Google-style badges:
-  a **green exit tab** + a **bordered route shield**, in both the nav banner and the
-  step list
+- ✅ **Highway/exit signage with real shield shapes** — route refs ("I-80 E", "US-50 E",
+  "CA-99", "ON-401") and exit numbers ("Exit 4A") are parsed out of each instruction and
+  rendered as Google-style badges: a **green exit tab** plus the **actual route-shield
+  shapes** (2026-06-27) — a red-top/blue interstate shield, a white US-route shield (both
+  drawn as Compose `Canvas` paths, real-signage colours, light/dark-independent), and a
+  neutral white marker for state/provincial routes. The network is **inferred from the ref
+  prefix + a state/province set** (`parseRouteRef`, unit-tested) — `I` → interstate, `US` →
+  US route, a 2-letter state/province code → state — with **no OSM lookup**, per the design
+  call. Anything unrecognised falls back to the plain bordered chip. *(v1 draws one neutral
+  marker for all states/provinces; per-state shapes — a California spade vs Ontario's crown —
+  ride OSM Americana's set as the follow-up. Shown in both the nav banner and the step list.)*
 - ✅ Route geometry via open router — **per-mode** FOSSGIS OSRM backends
   (`routed-car`/`routed-bike`/`routed-foot`), so drive/walk/bike each follow the
   correct network; Valhalla later
