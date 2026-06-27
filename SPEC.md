@@ -240,6 +240,15 @@ itself shows the traffic, not the whole map.
 - **Deep links**: `MainActivity` is `singleTop` with intent-filters for `geo:` and
   Google-Maps web links; `MapLinkParser` (`:core`, pure-Kotlin, unit-tested) →
   `openDeepLink`. Sharing a place emits a keyless `geo:` pin too.
+- **Trip recording + offline nav audit**: opt-in trip recording writes each drive to a local
+  CSV (`:app/replay/TripStore` does the IO); the **format is canonical in `:core`**
+  (`replay/TripLog`: `META` header, the navigated route as `RP`/`RD`/`M` lines, then
+  `lat,lng,t,bearing,speed` fixes). Saving the route means a replay drives the **exact route
+  the user navigated** (not a re-route), and `nav/NavReplay` can replay the fixes back through
+  the real `NavEngine` to **diff cards/voice against the maneuver positions** — per-maneuver
+  announce-distance / turn-now / worst card-error / nearest-approach, flagging silent turns,
+  too-early announcements and lying distances. `TripLog.audit(csv)` is the one-call entry;
+  unit-tested clean-drive + flag-logic + CSV round-trip. (Pure `:core`, Android-free.)
 
 ---
 

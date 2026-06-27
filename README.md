@@ -101,7 +101,8 @@ R8 release builds):
         ├─ voice/            VoiceGuide — AOSP TextToSpeech, engine-selectable
         ├─ feedback/         Haptics — direction-coded vibration turn cues
         ├─ config/           Calibration + CalibrationStore (remote pb/paths)
-        ├─ nav/              NavEngine — pure turn-by-turn logic (unit-tested)
+        ├─ nav/              NavEngine — pure turn-by-turn logic + NavReplay auditor (unit-tested)
+        ├─ replay/           TripLog — trip CSV format + offline route audit
         └─ di/               Hilt wiring; picks Mock vs Google off VelaConfig
 
 :app    Jetpack Compose UI (Material 3)

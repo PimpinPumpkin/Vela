@@ -149,7 +149,7 @@ object NavEngine {
     }
 
     /** Cumulative geometric length (m) of [path] at each vertex (cum[0] = 0). */
-    private fun cumulative(path: List<LatLng>): DoubleArray {
+    internal fun cumulative(path: List<LatLng>): DoubleArray {
         val cum = DoubleArray(path.size)
         for (i in 1 until path.size) cum[i] = cum[i - 1] + path[i - 1].distanceTo(path[i])
         return cum
@@ -160,7 +160,7 @@ object NavEngine {
      *  Windowing is what stops a route that passes near itself from matching a far leg; a
      *  caller passes the window around the last known progress. Returns the clamped window
      *  start with a huge distance if no segment falls in the window. */
-    private fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double): Pair<Double, Double> {
+    internal fun projectAlong(path: List<LatLng>, cum: DoubleArray, p: LatLng, loM: Double, hiM: Double): Pair<Double, Double> {
         val total = cum.lastOrNull() ?: 0.0
         var bestD = Double.MAX_VALUE
         var bestAlong = loM.coerceIn(0.0, total)

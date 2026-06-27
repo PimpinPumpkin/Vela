@@ -117,7 +117,19 @@ Goals, **strictly opt-in**, off by default:
    destination and runs real turn-by-turn (torn down when it ends), with a **Stop replay**
    control on the map. Trips also have a **Share** button (FileProvider, like the diag
    export) so a drive can be pulled off a *release* build for debugging — still
-   user-initiated, never auto-uploaded.
+   user-initiated, never auto-uploaded. **The navigated route is now saved INTO the
+   trip** (`RP`/`RD`/`M` lines, `core/replay/TripLog`), so a replay drives the exact
+   blue line the user saw (not a fresh re-route), and the trip can be **audited offline**.
+   ✅ **Offline nav auditor — SHIPPED (2026-06-27).** `core/nav/NavReplay` replays a
+   trip's GPS fixes back through the real `NavEngine` and **diffs what the cards + voice
+   said against where the maneuvers actually are on the route** — per-maneuver: announced
+   how far out, turn-now fired?, worst card-distance error, nearest approach; flags
+   silent/missed turns, miles-too-early announcements ("exit in 6 mi that didn't exist"),
+   and lying card distances. So a shipped travel log can be analysed **without the user
+   remembering where it broke** — one call: `TripLog.audit(csv).summary()`, or the
+   on-demand test harness `:core:testDebugUnitTest --tests '*auditSharedTripLog'
+   -DvelaTrip=<csv>`. Unit-tested end-to-end (clean-drive measurements + the flag logic +
+   a full CSV round-trip).
 3. **Vela's own traffic data (the long game).** Crowd-source anonymized speed/route
    traces from opted-in users to build a **Vela traffic layer**, blended with Google's
    and eventually replacing it where coverage is good — the first real step off Google.

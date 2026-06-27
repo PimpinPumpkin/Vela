@@ -972,6 +972,7 @@ class MapViewModel @Inject constructor(
         // the pref directly so it works even before Settings has been opened.
         if (settingsPrefs.getBoolean("trip_recording_on", false)) {
             tripStore.startTrip(_state.value.selected?.name ?: "Trip", dest, System.currentTimeMillis())
+            tripStore.saveRoute(route) // save the blue line + maneuvers so a replay drives THIS route
         }
         // If the phone has no voice engine, say so once instead of going silent.
         if (voice.availableEngines().isEmpty()) {
@@ -1049,15 +1050,19 @@ class MapViewModel @Inject constructor(
         flashStatus("Replaying ${meta.label} (3×)…", 3000L)
         val job = viewModelScope.launch {
             try {
-                // Auto-route to the trip's destination so turn-by-turn runs during the
-                // replay without manually starting nav first — best-effort (the replay
-                // still plays if routing fails), and skipped if nav is already active.
-                val dest = meta.dest
-                if (dest != null && !navSession.state.value.navigating) {
-                    val from = LatLng(fixes.first().lat, fixes.first().lng)
-                    val route = runCatching { dataSource.directions(from, dest, TravelMode.DRIVE) }
-                        .getOrNull()?.firstOrNull()
-                    if (route != null) {
+                // Drive turn-by-turn during the replay without manually starting nav first.
+                // Prefer the route SAVED with the trip (the exact blue line the user drove) so the
+                // cards/voice replay identically and any divergence is real, not a re-route
+                // artifact; fall back to a fresh route for older trips that predate route-saving.
+                // Best-effort (the replay still plays if both fail), skipped if nav's already active.
+                if (!navSession.state.value.navigating) {
+                    val saved = tripStore.loadRoute(meta.id)
+                    val route = saved ?: meta.dest?.let { d ->
+                        val from = LatLng(fixes.first().lat, fixes.first().lng)
+                        runCatching { dataSource.directions(from, d, TravelMode.DRIVE) }.getOrNull()?.firstOrNull()
+                    }
+                    val dest = meta.dest ?: route?.polyline?.lastOrNull()
+                    if (route != null && dest != null) {
                         destination = dest
                         navSession.start(route, dest, meta.label, null)
                         replayOwnsNav = true
