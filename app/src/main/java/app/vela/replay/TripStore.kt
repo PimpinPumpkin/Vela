@@ -3,6 +3,8 @@ package app.vela.replay
 import android.content.Context
 import android.location.Location
 import app.vela.core.model.LatLng
+import app.vela.core.model.Route
+import app.vela.core.replay.TripLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.File
 import javax.inject.Inject
@@ -27,6 +29,13 @@ data class TripMeta(
  *
  * Plain CSV (no JSON dep in `:app`): line 1 = `META,<label>,<startedAt>,<destLat>,<destLng>`,
  * then one `lat,lng,t,bearing,speed` per fix.
+ *
+ * Optionally the navigated **route** is saved too (right after META), so a replay drives the
+ * *same* blue line the user actually saw — not a fresh re-route — and an offline analysis can
+ * regenerate exactly what the cards/voice said at each fix and diff it against the route's real
+ * maneuver positions. Those lines are `RP,<encoded-polyline>`, `RD,<distM>,<durS>,<trafficS?>`,
+ * and one `M,<type>,<lat>,<lng>,<distM>,<instruction>` per maneuver; [load] skips them (their
+ * first field never parses as a latitude).
  */
 @Singleton
 class TripStore @Inject constructor(
@@ -59,6 +68,19 @@ class TripStore @Inject constructor(
         Unit
     }
 
+    /**
+     * Persist the navigated [route] (blue line + maneuvers) into the active trip. Written once,
+     * right after [startTrip], so a later replay drives the exact same route and an analysis can
+     * diff the spoken/printed directions against where the turns really are. No-op if no trip is
+     * recording or the route is too short to be meaningful.
+     */
+    fun saveRoute(route: Route) = synchronized(lock) {
+        val f = active ?: return
+        if (route.polyline.size < 2) return
+        runCatching { f.appendText(TripLog.encodeRoute(route)) }
+        Unit
+    }
+
     /** Close the active trip. Deletes it if it captured too few fixes to be useful. */
     fun finishTrip() = synchronized(lock) {
         val f = active ?: return
@@ -88,6 +110,15 @@ class TripStore @Inject constructor(
             )
         }
     }.getOrDefault(emptyList())
+
+    /**
+     * Re-read the route saved alongside a trip (the same blue line the user drove), or null if it
+     * wasn't recorded — e.g. an older trip from before route-saving, in which case the caller
+     * re-routes. Reconstructs a [Route] with a single leg holding all the maneuvers; enough for
+     * [app.vela.core.nav.NavEngine] to replay turn-by-turn identically.
+     */
+    fun loadRoute(id: String): Route? =
+        runCatching { TripLog.parseRoute(File(dir, "$id.csv").readLines()) }.getOrNull()
 
     /** The raw CSV for a saved trip, for export/share (or null if missing). */
     fun rawCsv(id: String): String? = runCatching { File(dir, "$id.csv").readText() }.getOrNull()
