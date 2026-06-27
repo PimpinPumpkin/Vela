@@ -173,7 +173,10 @@ fun ManeuverBanner(
 }
 
 private val EXIT_RE = Regex("""\bexit\s+(\w[\w-]*)""", RegexOption.IGNORE_CASE)
-private val ROUTE_RE = Regex("""\b(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+(?:\s?[NSEW]\b)?""", RegexOption.IGNORE_CASE)
+// I / US / SR / Hwy (space or dash), plus any 2-letter-DASH-number for state/provincial routes
+// (TX-35, ON-401, CA-99) — the dash keeps it route-like so it doesn't grab random "to 5" text;
+// parseRouteRef's state set then filters an unknown 2-letter prefix back to a plain chip.
+private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|[A-Za-z]{2}-\d+)(?:\s?[NSEW]\b)?""", RegexOption.IGNORE_CASE)
 
 /** A highway shield or exit tab extracted from an instruction. */
 internal data class Sign(val isExit: Boolean, val label: String)
@@ -207,18 +210,13 @@ internal fun SignChip(sign: Sign) {
             )
         }
     } else {
-        Surface(
-            color = Color.Transparent,
-            shape = RoundedCornerShape(4.dp),
-            border = androidx.compose.foundation.BorderStroke(1.5.dp, MaterialTheme.colorScheme.onPrimaryContainer),
-        ) {
-            Text(
-                sign.label,
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            )
-        }
+        // Real highway-shield shapes (interstate / US-route / state marker), inferred from the
+        // ref; falls back to the plain bordered chip for anything unrecognised.
+        RouteShield(
+            sign.label,
+            ink = MaterialTheme.colorScheme.onPrimaryContainer,
+            dim = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+        )
     }
 }
 
