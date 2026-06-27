@@ -161,6 +161,20 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   can't come back: a curved route where crow-flies ≠ along-route (must not skip a
   loop-back turn that's metres away as the crow flies but km along the road), a long
   highway step (the turn lands at the step's start), and imperial vs metric phrasing
+- ✅ **Offline nav auditor — the cards/voice-vs-blue-line diff** (2026-06-27, from the
+  same highway drive, so this class of bug can be *seen* from a log instead of recalled).
+  The navigated **route is now saved into the recorded trip** (`RP`/`RD`/`M` lines via
+  `core/replay/TripLog`, one format shared by the writer in `:app` and the reader in
+  `:core`), so a replay drives the **exact blue line the user saw**, not a fresh re-route.
+  `core/nav/NavReplay` then replays a trip's GPS fixes back through the **real `NavEngine`**
+  and diffs what the banner + voice claimed against where the maneuvers truly sit on the
+  route: per turn — announced how far out, turn-now fired?, worst card-distance error,
+  nearest approach — and **flags** silent/missed turns, miles-too-early announcements, and
+  lying card distances. One-call `TripLog.audit(csv)` on a shared travel log, or the
+  on-demand harness `:core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=<csv>`
+  (prints the per-maneuver report + the spoken-line-vs-route timeline). **Unit-tested**
+  end-to-end: clean-drive measurements (turns announced ~400 m out, track passes through
+  each), the flag heuristics, and a full save→parse→audit CSV round-trip
 - ✅ **Screen stays awake while navigating** (2026-06-21) — turn-by-turn holds
   `FLAG_KEEP_SCREEN_ON` on the activity window so the next turn is always visible on
   a windscreen mount without tapping to wake the phone. Gated by **Settings →
