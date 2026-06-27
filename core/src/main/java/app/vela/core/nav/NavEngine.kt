@@ -6,6 +6,7 @@ import app.vela.core.model.Route
 import app.vela.core.model.distanceTo
 import kotlin.math.cos
 import kotlin.math.hypot
+import kotlin.math.roundToInt
 
 /**
  * Pure turn-by-turn logic: given a [Route], the previous [NavState] and a fresh
@@ -20,20 +21,43 @@ object NavEngine {
     private const val ON_ROUTE_M = 60.0       // within this of the windowed route → keep tracking progress
     private val PROMPT_DISTANCES = listOf(400, 150) // metres before a maneuver
 
-    fun update(route: Route, state: NavState, loc: LatLng): Pair<NavState, List<NavEvent>> {
+    fun update(route: Route, state: NavState, loc: LatLng, imperial: Boolean = false): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
         if (maneuvers.isEmpty() || state.arrived) return state to events
 
         val idx = state.stepIndex.coerceIn(0, maneuvers.lastIndex)
         val target = maneuvers[idx]
-        val dtn = loc.distanceTo(target.location)
-
         // Off-route: distance to the route line, debounced over several fixes.
         val distToPath = minDistanceToPath(loc, route.polyline)
         val offHits = if (distToPath > OFF_ROUTE_M) state.offRouteHits + 1 else 0
         val offRoute = offHits >= OFF_ROUTE_HITS
         if (offRoute && !state.offRoute) events += NavEvent.RerouteNeeded
+
+        // Forward progress along the route (monotonic). Project the fix onto the polyline
+        // within a window around how far we'd already travelled — NOT globally — so a route
+        // that passes near itself (switchback / cloverleaf / parallel return leg) can't make
+        // "remaining" collapse by matching a far leg. Only re-acquire globally when we've
+        // clearly left the window (a reroute or a big GPS gap); when genuinely off-route we
+        // hold the last progress rather than snapping it to a wrong leg.
+        val cum = cumulative(route.polyline)
+        val total = cum.lastOrNull() ?: 0.0
+        val traveled = if (route.polyline.size < 2) 0.0 else {
+            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0)
+            if (wD <= ON_ROUTE_M && state.traveledM <= total) maxOf(state.traveledM, wM)
+            else {
+                val (gM, gD) = projectAlong(route.polyline, cum, loc, 0.0, total)
+                if (gD <= ON_ROUTE_M) gM else state.traveledM.coerceIn(0.0, total)
+            }
+        }
+
+        // Distance to the CURRENT maneuver measured ALONG the route, not crow-flies. Crow-flies
+        // fired the prompt + advanced the step whenever the maneuver was geographically near,
+        // even if miles ahead along the road — a highway curving back near an exit announced
+        // "take the exit" miles early, then skipped the real one. The maneuver sits ON the line,
+        // so project it onto the whole route and subtract how far we've travelled.
+        val dtn = if (route.polyline.size < 2) loc.distanceTo(target.location)
+            else (projectAlong(route.polyline, cum, target.location, 0.0, total).first - traveled).coerceAtLeast(0.0)
 
         var stepIndex = idx
         var spoken = state.spoken
@@ -42,7 +66,7 @@ object NavEngine {
             for (p in PROMPT_DISTANCES) {
                 if (dtn <= p && p !in spoken) {
                     spoken = spoken + p
-                    events += NavEvent.Speak("In $p meters, ${target.instruction}")
+                    events += NavEvent.Speak("In ${spokenDistance(p.toDouble(), imperial)}, ${target.instruction}")
                     // A light "get ready" tick at the closest pre-turn prompt, so
                     // bikers/walkers feel the turn coming without looking or hearing.
                     if (p == PROMPT_DISTANCES.last()) events += NavEvent.Haptic(target.type, approaching = true)
@@ -65,23 +89,6 @@ object NavEngine {
                     remainingDistance = 0.0,
                     remainingDuration = 0.0,
                 ) to events
-            }
-        }
-
-        // Forward progress along the route (monotonic). Project the fix onto the polyline
-        // within a window around how far we'd already travelled — NOT globally — so a route
-        // that passes near itself (switchback / cloverleaf / parallel return leg) can't make
-        // "remaining" collapse by matching a far leg. Only re-acquire globally when we've
-        // clearly left the window (a reroute or a big GPS gap); when genuinely off-route we
-        // hold the last progress rather than snapping it to a wrong leg.
-        val cum = cumulative(route.polyline)
-        val total = cum.lastOrNull() ?: 0.0
-        val traveled = if (route.polyline.size < 2) 0.0 else {
-            val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0)
-            if (wD <= ON_ROUTE_M && state.traveledM <= total) maxOf(state.traveledM, wM)
-            else {
-                val (gM, gD) = projectAlong(route.polyline, cum, loc, 0.0, total)
-                if (gD <= ON_ROUTE_M) gM else state.traveledM.coerceIn(0.0, total)
             }
         }
         val remaining = (total - traveled).coerceAtLeast(0.0)
@@ -108,6 +115,24 @@ object NavEngine {
     }
 
     /** Average speed implied by the route — prefers the traffic-aware duration. */
+    /** A distance phrased for SPEECH, honouring the imperial/metric preference (the TTS used to
+     *  always say metres regardless of the Units setting). Feet under ~0.15 mi, else miles;
+     *  metres under ~1 km, else kilometres. */
+    private fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(feet / 50).roundToInt() * 50} feet"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 mile" else "$miles miles"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} meters"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 kilometer" else "$km kilometers"
+        }
+    }
+
     private fun avgSpeed(route: Route): Double {
         val dur = route.durationInTrafficSeconds ?: route.durationSeconds
         return if (dur > 0) (route.distanceMeters / dur).coerceAtLeast(1.0) else 13.4
