@@ -15,7 +15,9 @@ import app.vela.core.model.Route
 import app.vela.core.model.RouteLeg
 import app.vela.core.nav.NavEngine
 import app.vela.core.nav.NavEvent
+import app.vela.core.nav.NavReplay
 import app.vela.core.nav.NavState
+import app.vela.core.replay.TripLog
 import app.vela.core.nav.ShieldType
 import app.vela.core.nav.parseRouteRef
 import org.junit.Assert.assertEquals
@@ -288,6 +290,160 @@ class NavEngineTest {
         val (_, events) = NavEngine.update(straightRoute(), NavState(), straightRoute().polyline.first(), imperial = false)
         val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
         assertTrue("a prompt should use metres, got $spoken", spoken.any { it.contains("meter") })
+    }
+}
+
+/** The offline nav auditor ([NavReplay]) — replays a GPS track through the real engine and diffs
+ *  the cards/voice against the plotted route's actual maneuver positions. These are the automation
+ *  that lets a saved trip be checked without remembering where it went wrong. */
+class NavReplayTest {
+
+    /** Walk [poly] into evenly-spaced fixes (~[stepM] apart) that follow it exactly — a clean drive. */
+    private fun densify(poly: List<LatLng>, stepM: Double = 15.0): List<LatLng> {
+        val out = ArrayList<LatLng>()
+        for (i in 0 until poly.size - 1) {
+            val a = poly[i]; val b = poly[i + 1]
+            val steps = maxOf(1, (a.distanceTo(b) / stepM).toInt())
+            for (s in 0 until steps) {
+                val t = s.toDouble() / steps
+                out += LatLng(a.lat + (b.lat - a.lat) * t, a.lng + (b.lng - a.lng) * t)
+            }
+        }
+        out += poly.last()
+        return out
+    }
+
+    /** North, then east, then north again — two real turns plus depart/arrive. */
+    private fun lRoute(): Route {
+        val a = LatLng(37.0000, -122.0000)
+        val c1 = LatLng(37.0100, -122.0000)  // ~1.11 km north — turn right
+        val c2 = LatLng(37.0100, -121.9900)  // ~0.89 km east — turn left
+        val end = LatLng(37.0200, -121.9900) // ~1.11 km north — arrive
+        return Route(
+            polyline = listOf(a, c1, c2, end),
+            legs = listOf(
+                RouteLeg(
+                    distanceMeters = 3100.0, durationSeconds = 240.0, durationInTrafficSeconds = null,
+                    maneuvers = listOf(
+                        Maneuver(ManeuverType.DEPART, "Head north", a, 1113.0, 86.0),
+                        Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto B Street", c1, 888.0, 70.0),
+                        Maneuver(ManeuverType.TURN_LEFT, "Turn left onto C Avenue", c2, 1113.0, 84.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive at destination", end, 0.0, 0.0),
+                    ),
+                ),
+            ),
+            distanceMeters = 3100.0, durationSeconds = 240.0, durationInTrafficSeconds = null,
+        )
+    }
+
+    @Test
+    fun auditsACleanDriveWithNoSuspects() {
+        val route = lRoute()
+        val report = NavReplay.analyze(route, densify(route.polyline), imperial = true)
+
+        assertTrue("should produce per-fix cards", report.cards.isNotEmpty())
+        // Every real turn (not the arrival) gets a spoken pre-turn prompt and a turn-now cue.
+        val realTurns = report.maneuvers.filter { it.type != ManeuverType.ARRIVE }
+        assertTrue("every turn announced: ${report.summary()}", realTurns.all { it.announced })
+        assertTrue("every turn got a turn-now cue", report.maneuvers.dropLast(1).all { it.turnNowFired })
+        assertTrue("arrival should fire", report.maneuvers.last().turnNowFired)
+        // The card distance tracks reality closely on a clean drive, and nothing is flagged.
+        assertTrue("card error should stay small, was ${report.worstCardErrorM}", report.worstCardErrorM < 150.0)
+        assertTrue("a clean drive must flag nothing:\n${report.summary()}", report.suspects.isEmpty())
+        // The analyzer's MEASUREMENTS must be right — that's what makes it trustworthy on real
+        // logs: turns announced ~400 m out (the prompt distance), and the track passing through
+        // each turn (nearest ≈ 0). These are the numbers I'll read off a shipped travel log.
+        realTurns.filter { it.type != ManeuverType.DEPART }.forEach {
+            val ahead = it.firstAnnounceAheadM ?: -1.0
+            assertTrue("turn ${it.index} announced $ahead out — expected ~400 m lead", ahead in 250.0..450.0)
+            assertTrue("track should pass through turn ${it.index} (nearest ${it.nearestApproachM})", it.nearestApproachM < 20.0)
+        }
+    }
+
+    /** The diff/flagging logic itself — the heuristics that turn raw measurements into "this turn's
+     *  guidance disagreed with the blue line". Tested directly (the robust engine won't emit these
+     *  on a synthetic clean route, but a real Google-data glitch can). */
+    @Test
+    fun flagsTheGuidanceBugsButNotACleanTurn() {
+        fun diff(
+            type: ManeuverType, announced: Boolean, turnNow: Boolean,
+            firstAhead: Double?, cardErr: Double, nearest: Double,
+        ) = NavReplay.ManeuverDiff(1, type, "x", 1000.0, announced, turnNow, firstAhead, cardErr, nearest)
+
+        // A normal turn: announced ~400 m out, turn-now fired, card accurate, drove through it.
+        val clean = diff(ManeuverType.TURN_RIGHT, announced = true, turnNow = true, firstAhead = 390.0, cardErr = 30.0, nearest = 4.0)
+        assertTrue("a clean turn must not be flagged", !clean.suspect)
+        assertTrue(clean.flags.isEmpty())
+
+        // Silent exit: drove right past a turn that was never announced (the field "went quiet" bug).
+        val silent = diff(ManeuverType.RAMP_RIGHT, announced = false, turnNow = false, firstAhead = null, cardErr = 20.0, nearest = 25.0)
+        assertTrue("a silent missed turn must be flagged", silent.suspect)
+        assertTrue("…and labelled silent: ${silent.flags}", silent.flags.any { it.contains("SILENT") })
+
+        // Announced miles too early (the "exit in 6 miles that didn't exist yet" bug).
+        val early = diff(ManeuverType.RAMP_RIGHT, announced = true, turnNow = true, firstAhead = 9000.0, cardErr = 50.0, nearest = 5.0)
+        assertTrue("a too-early announcement must be flagged", early.suspect)
+        assertTrue("…and labelled early: ${early.flags}", early.flags.any { it.contains("early") })
+
+        // Card lying about the distance to the next turn.
+        val liar = diff(ManeuverType.CONTINUE, announced = true, turnNow = true, firstAhead = 300.0, cardErr = 5000.0, nearest = 5.0)
+        assertTrue("a wildly wrong card distance must be flagged", liar.suspect)
+        assertTrue("…and labelled as a card error: ${liar.flags}", liar.flags.any { it.contains("card off") })
+
+        // A genuinely missing arrival/depart shouldn't trip the turn-only heuristics.
+        val arrive = diff(ManeuverType.ARRIVE, announced = false, turnNow = false, firstAhead = null, cardErr = 40.0, nearest = 10.0)
+        assertTrue("ARRIVE/DEPART are exempt from the silent-turn rule", !arrive.suspect)
+    }
+
+    /** The whole shipped-log pipeline: encode a route + fixes in the exact on-device CSV format,
+     *  parse it back, and audit it — so a real travel log can be dropped in and analysed in one
+     *  call. Guards the TripStore ↔ TripLog format contract too. */
+    @Test
+    fun roundTripsAndAuditsASavedTripCsv() {
+        val route = lRoute()
+        val fixes = densify(route.polyline)
+        val csv = buildString {
+            val dst = route.polyline.last()
+            append("META,Test Drive,1700000000000,${dst.lat},${dst.lng}\n")
+            append(TripLog.encodeRoute(route)) // the same block TripStore.saveRoute writes
+            for (f in fixes) append("${f.lat},${f.lng},0,0.0,12.0\n")
+        }
+
+        val parsed = TripLog.parse(csv)
+        assertEquals("label round-trips", "Test Drive", parsed.label)
+        assertEquals("polyline round-trips", route.polyline.size, parsed.route?.polyline?.size)
+        assertEquals("maneuvers round-trip", route.maneuvers.size, parsed.route?.maneuvers?.size)
+        assertEquals("every GPS fix parsed (route lines skipped)", fixes.size, parsed.points.size)
+
+        val report = TripLog.audit(csv)
+            ?: throw AssertionError("audit returned null — the saved route didn't parse")
+        assertTrue("end-to-end audit of a clean saved trip flags nothing:\n${report.summary()}", report.suspects.isEmpty())
+    }
+
+    /**
+     * On-demand harness for a REAL shared travel log. Point it at a trip CSV exported from the
+     * phone and it prints the per-maneuver audit plus the spoken-line timeline (where along the
+     * route each voice cue fired) — the concrete "how the cards/voice differ from the blue line".
+     *
+     *   ./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=/abs/path/trip.csv --info
+     *
+     * Skipped (not failed) when `-DvelaTrip` is unset, so normal/CI runs ignore it.
+     */
+    @Test
+    fun auditSharedTripLog() {
+        val path = System.getProperty("velaTrip")
+        org.junit.Assume.assumeTrue("set -DvelaTrip=<csv> to audit a real travel log", !path.isNullOrBlank())
+        val csv = java.io.File(path!!).readText()
+        val report = TripLog.audit(csv)
+        if (report == null) {
+            println("[NavReplay] $path has no saved route — replay re-routes; nothing to diff against")
+            return
+        }
+        println("[NavReplay] auditing $path\n${report.summary()}")
+        println("[NavReplay] spoken-line timeline (fix @ metres-along-route):")
+        report.cards.filter { it.spoke.isNotEmpty() }.forEach { c ->
+            println("  @${c.fixIndex} (${c.alongM.toInt()} m): ${c.spoke.joinToString(" | ")}")
+        }
     }
 }
 
