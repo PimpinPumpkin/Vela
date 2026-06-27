@@ -193,13 +193,14 @@ object DirectionsParser {
         var cum = 0.0
         val lastIdx = maneuvers.lastIndex
         return maneuvers.mapIndexed { i, m ->
-            cum += m.distanceMeters
-            // The final maneuver (ARRIVE) MUST sit at the route's end (the destination).
-            // Google's step distances can total a few % short of the geometry length (a
-            // missing/zero-metre final step), so cum/polyLength undershoots — which placed
-            // "arrive" up to tens of km early and fired the 25 m arrival trigger there
-            // (observed: arrive ~15 km before a 134 km route's end). Pin the last to 1.0.
+            // Place each turn at the START of its step — the cumulative distance of the steps
+            // BEFORE it — then add this step's length. The old code added FIRST, putting every
+            // turn a whole step too far: invisible on short city steps (why Davis→Sac looked
+            // fine), but a multi-mile highway step landed the turn miles past where it is.
+            // The final maneuver (ARRIVE) is still pinned to the route end (1.0): Google's step
+            // metres can total a few % short of the geometry, which would otherwise undershoot it.
             val frac = if (i == lastIdx) 1.0 else (cum / polyLength).coerceIn(0.0, 1.0)
+            cum += m.distanceMeters
             m.copy(location = pointAlong(polyline, frac))
         }
     }
