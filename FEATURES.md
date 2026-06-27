@@ -141,7 +141,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 ## Navigation
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute) —
   pure/Android-free, **unit-tested** (arrival-requires-final-maneuver, reroute
-  fires once per off-route transition not per fix, off-route clears on return)
+  fires once per off-route transition not per fix, off-route clears on return).
+  **Maneuver-sync fixes (2026-06-27, from a real highway drive where the line was
+  right but the spoken/announced turns were ~6 mi out):** (1) the prompts + step
+  advancement now measure distance to the maneuver **ALONG the route**, not
+  crow-flies — crow-flies fired "take the exit" miles early wherever the highway
+  curved back near the exit, then skipped the real one; (2) `placeManeuvers` now
+  pins each turn to the **START** of its step, not the end (it added the step length
+  *before* placing, so every turn sat a whole step too far — invisible on short city
+  steps, miles off on a long highway step). The blue route line was always correct;
+  these were both in the maneuver layer on top of it
 - ✅ **Screen stays awake while navigating** (2026-06-21) — turn-by-turn holds
   `FLAG_KEEP_SCREEN_ON` on the activity window so the next turn is always visible on
   a windscreen mount without tapping to wake the phone. Gated by **Settings →
@@ -156,7 +165,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Speaks **"Head east on …"** (the initial cardinal is computed from the route's first
   leg and injected, since Google's markup only says "Head toward …"). **Settings →
   Voice** lists installed engines, a **Test voice** button (hear it on your hardware),
-  and a **System voice settings** shortcut to install/download a voice
+  and a **System voice settings** shortcut to install/download a voice. **Spoken
+  distances now follow the Units setting (2026-06-27):** the prompt distance was
+  hard-coded "In N metres" regardless of Imperial/Metric — now `NavEngine` phrases it
+  per the preference ("In 500 feet" / "In 0.2 miles" vs "In 150 metres"), with the
+  `imperial` flag threaded from `Units.imperial` through `NavSession.onLocation`
 - 🐞 **Fixed: silent navigation** — on a targetSdk-30+ build, Android package
   visibility hid every TTS engine (`getEngines()` empty, the engine couldn't be
   bound) so guidance was silently dropped. A `<queries>` for `TTS_SERVICE` restores it;

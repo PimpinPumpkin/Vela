@@ -95,12 +95,12 @@ class NavSession @Inject constructor(
         _state.value = State()
     }
 
-    fun onLocation(loc: LatLng) {
+    fun onLocation(loc: LatLng, imperial: Boolean = false) {
         val s = _state.value
         val route = s.route ?: return
         if (!s.navigating || s.arrived) return
 
-        val (next, events) = NavEngine.update(route, s.nav, loc)
+        val (next, events) = NavEngine.update(route, s.nav, loc, imperial)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         _state.update {
             it.copy(
