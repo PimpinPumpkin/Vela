@@ -150,7 +150,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   pins each turn to the **START** of its step, not the end (it added the step length
   *before* placing, so every turn sat a whole step too far — invisible on short city
   steps, miles off on a long highway step). The blue route line was always correct;
-  these were both in the maneuver layer on top of it
+  these were both in the maneuver layer on top of it. **Regression-tested** so they
+  can't come back: a curved route where crow-flies ≠ along-route (must not skip a
+  loop-back turn that's metres away as the crow flies but km along the road), a long
+  highway step (the turn lands at the step's start), and imperial vs metric phrasing
 - ✅ **Screen stays awake while navigating** (2026-06-21) — turn-by-turn holds
   `FLAG_KEEP_SCREEN_ON` on the activity window so the next turn is always visible on
   a windscreen mount without tapping to wake the phone. Gated by **Settings →
@@ -169,7 +172,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   distances now follow the Units setting (2026-06-27):** the prompt distance was
   hard-coded "In N metres" regardless of Imperial/Metric — now `NavEngine` phrases it
   per the preference ("In 500 feet" / "In 0.2 miles" vs "In 150 metres"), with the
-  `imperial` flag threaded from `Units.imperial` through `NavSession.onLocation`
+  `imperial` flag threaded from `Units.imperial` through `NavSession.onLocation`.
+  **Road abbreviations are expanded for speech (2026-06-27):** the engine spelled out
+  "Pkwy"/"St"/"Ave"/"N" letter-by-letter; `VoiceGuide` now expands them whole-word for
+  the spoken text only ("Parkway", "Street", "Avenue", "North", "I-80" → "Interstate
+  80"), while the on-screen banner keeps Google's compact forms
 - 🐞 **Fixed: silent navigation** — on a targetSdk-30+ build, Android package
   visibility hid every TTS engine (`getEngines()` empty, the engine couldn't be
   bound) so guidance was silently dropped. A `<queries>` for `TTS_SERVICE` restores it;
