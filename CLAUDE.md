@@ -28,6 +28,13 @@ genuinely needs no doc edit, say why in the commit.
   during map scroll/nav. R8 lives in the `release`
   buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
+- **Auditing a real drive.** A saved trip stores the navigated route too (`core/replay/TripLog`
+  format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
+  cards/voice said against the plotted route from a shared trip CSV, call `TripLog.audit(csv)`
+  (→ `NavReplay.Report.summary()`) or run the on-demand harness:
+  `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=<abs.csv> --info`
+  (skipped when `-DvelaTrip` is unset). It flags silent/missed turns, too-early announcements,
+  and lying card distances — built so a travel log can be analysed without knowing where it broke.
 - CI in `.github/workflows/ci.yml` (single workflow): every push to `main`
   builds + tests the APK (uploaded as an artifact) and publishes a **normal
   versioned GitHub release** `v0.2.<run>` (versionName `0.2.<run>`, versionCode
