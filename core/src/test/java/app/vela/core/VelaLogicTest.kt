@@ -1,12 +1,14 @@
 package app.vela.core
 
 import app.vela.core.data.google.PolylineCodec
+import app.vela.core.data.google.parse.DirectionsParser
 import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.data.google.parse.TransitParser
 import app.vela.core.model.Photo
 import app.vela.core.model.TransitMode
 import app.vela.core.model.LatLng
+import app.vela.core.model.distanceTo
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
@@ -219,6 +221,71 @@ class NavEngineTest {
         // Progress is monotonic and advancing.
         assertTrue("remaining should shrink as we drive", state.remainingDistance < remAtQuarter)
         assertTrue("traveled progress should advance", state.traveledM in 450.0..700.0)
+    }
+
+    // --- regression tests for the 2026-06-27 highway-drive bugs (turns 6 mi out of sync) ----
+
+    /** A turn must sit at the START of its step, not the end. The off-by-one (adding the step
+     *  length BEFORE placing) put every turn a whole step too far — a 9 km highway step landed
+     *  the exit 9 km past where it actually is. */
+    @Test
+    fun maneuverSitsAtStartOfItsStepNotEnd() {
+        val a = LatLng(37.0000, -122.0000)
+        val b = LatLng(37.0900, -122.0000) // ~10 km straight north
+        val maneuvers = listOf(
+            Maneuver(ManeuverType.DEPART, "Head north", LatLng(0.0, 0.0), 1000.0, 0.0),
+            Maneuver(ManeuverType.RAMP_RIGHT, "Take the exit", LatLng(0.0, 0.0), 9000.0, 0.0),
+            Maneuver(ManeuverType.ARRIVE, "Arrive", LatLng(0.0, 0.0), 0.0, 0.0),
+        )
+        val exit = DirectionsParser.placeManeuvers(maneuvers, listOf(a, b))[1].location
+        // The exit opens its 9 km step → ~1 km from the start, NOT ~10 km (parked at the end).
+        assertTrue("exit must be ~1 km from start, was ${exit.distanceTo(a)} m", exit.distanceTo(a) < 2000.0)
+        assertTrue("exit must NOT be parked at the route end", exit.distanceTo(b) > 5000.0)
+    }
+
+    /** A maneuver that's geographically NEAR an early point but FAR along the route (a highway
+     *  curving back near an exit) must not be announced/advanced early — prompts + advancement
+     *  measure ALONG the route, not crow-flies. */
+    @Test
+    fun doesNotSkipAManeuverNearByCrowFliesButFarAlongTheRoute() {
+        val a = LatLng(37.0000, -122.0000)
+        val far = LatLng(37.0500, -122.0000)   // ~5.5 km north
+        val back = LatLng(37.0000, -122.0001)  // ~9 m WEST of A, but ~11 km along the route
+        val end = LatLng(37.0000, -122.0050)
+        val route = Route(
+            polyline = listOf(a, far, back, end),
+            legs = listOf(
+                RouteLeg(
+                    distanceMeters = 11000.0, durationSeconds = 600.0, durationInTrafficSeconds = null,
+                    maneuvers = listOf(
+                        Maneuver(ManeuverType.DEPART, "Head north", a, 11000.0, 600.0),
+                        Maneuver(ManeuverType.TURN_RIGHT, "Turn right", back, 400.0, 30.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive", end, 0.0, 0.0),
+                    ),
+                ),
+            ),
+            distanceMeters = 11000.0, durationSeconds = 600.0, durationInTrafficSeconds = null,
+        )
+        val (s1, _) = NavEngine.update(route, NavState(), a)  // consume DEPART
+        assertEquals("should be targeting the turn", 1, s1.stepIndex)
+        val (s2, _) = NavEngine.update(route, s1, a)          // still at the start
+        assertEquals("must NOT skip the loop-back turn that's only ~9 m away crow-flies", 1, s2.stepIndex)
+    }
+
+    /** Spoken prompt distances follow the Imperial setting (TTS used to always say metres). */
+    @Test
+    fun spokenPromptsUseImperialWhenImperial() {
+        val (_, events) = NavEngine.update(straightRoute(), NavState(), straightRoute().polyline.first(), imperial = true)
+        val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
+        assertTrue("a prompt should use feet/miles, got $spoken", spoken.any { it.contains("feet") || it.contains("mile") })
+        assertTrue("must not say metres in imperial mode, got $spoken", spoken.none { it.contains("meter") })
+    }
+
+    @Test
+    fun spokenPromptsUseMetresWhenMetric() {
+        val (_, events) = NavEngine.update(straightRoute(), NavState(), straightRoute().polyline.first(), imperial = false)
+        val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
+        assertTrue("a prompt should use metres, got $spoken", spoken.any { it.contains("meter") })
     }
 }
 
