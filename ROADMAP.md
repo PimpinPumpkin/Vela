@@ -34,17 +34,15 @@ opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
   live GPS (added 0.2.133). ~~Follow-up: editable origin while *reversed*~~ — **DONE
   2026-06-20**: the edit pencil moves to the "To" row when reversed (where the custom
   endpoint then sits), via a parallel `onEditDestination` on the directions panel.
-- **Real highway shields in the nav banner** (per request 2026-06-21) — render the actual
-  route-marker *shapes* (US interstate / US route / state route, then Canada provincial +
-  others) instead of today's generic bordered box. We already extract the ref text ("I-80 E",
-  "Exit 71") in `roadSigns()` ([NavOverlays.kt](app/src/main/java/app/vela/ui/nav/NavOverlays.kt));
-  the missing piece is the shield *network*, which Google has proprietary but we'll **infer from
-  the ref prefix + the user's country** (agreed — OSM-lookup is overkill): `I-`→interstate,
-  `US-`→US route, two-letter state/province prefixes → state/provincial, generic box as the
-  fallback. Shield *artwork* rides the open **OpenStreetMap Americana** design set
-  ([ZeLonewolf/openstreetmap-americana](https://github.com/ZeLonewolf/openstreetmap-americana),
-  which already covers US states + Canada + many countries). Start US + Canada, expand on the
-  Americana set. **Plan, not now** — slotted after the nav-feel pass lands.
+- ~~**Real highway shields in the nav banner**~~ — **v1 SHIPPED 2026-06-27.** Interstate
+  (red-top/blue) + US-route (white) shield silhouettes drawn as Compose `Canvas` paths, a
+  neutral white marker for state/provincial routes, network **inferred from the ref prefix +
+  a state/province set** (`parseRouteRef`, unit-tested; `I`→interstate, `US`→US route, a
+  2-letter state/province code → state, else the plain bordered chip) — no OSM lookup, as
+  agreed. `ROUTE_RE` broadened to capture `XX-NN` state/province refs. **Remaining:**
+  per-state/province *shapes* (a California spade vs Ontario's crown) from the **OpenStreetMap
+  Americana** set ([ZeLonewolf/openstreetmap-americana](https://github.com/ZeLonewolf/openstreetmap-americana)),
+  and broadening the ref capture once the **travel logs** show the real ref formats Google emits.
 - **Explore (nearby things to do)** — a Google-Maps-Explore-style surface: nearby
   restaurants / things to do / events, as cards on a bottom sheet from the bare map.
   Data: our keyless POI search already returns categorised places (reuse the
