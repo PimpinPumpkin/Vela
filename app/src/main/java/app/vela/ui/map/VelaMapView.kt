@@ -105,6 +105,7 @@ fun VelaMapView(
     myLocation: LatLng?,
     myBearing: Float?,
     mySpeed: Float? = null,
+    compassHeading: Float? = null, // device facing (sensor); points the browse cone when stopped
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
     cameraBottomInsetPx: Int = 0,
@@ -465,7 +466,10 @@ fun VelaMapView(
             }
         } else null
         val displayLoc = snap?.first ?: myLocation
-        val displayBearing = snap?.second ?: myBearing
+        // Browse cone points the device-facing compass (sensor) when we have it — a stopped
+        // phone has no GPS course, so this is the only honest "which way am I facing". Nav is
+        // unaffected: there `snap.second` (the road heading) wins, and off-route falls to myBearing.
+        val displayBearing = snap?.second ?: (if (!navMode) compassHeading else null) ?: myBearing
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
         if (navMode && snap != null) {
             val m = snap.third
