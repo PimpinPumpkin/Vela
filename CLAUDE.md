@@ -123,6 +123,11 @@ genuinely needs no doc edit, say why in the commit.
 ## Degoogled constraints (hard rules)
 
 - Location: AOSP `LocationManager` only — never `FusedLocationProviderClient`.
+- Heading (browse-cone facing direction when stopped, where GPS course is noise): raw
+  `SensorManager` `TYPE_ROTATION_VECTOR` (`core/location/HeadingProvider`) — a plain
+  Android sensor, not GMS. **Navigation never uses it** (the nav heading comes from the
+  matched road); it's pushed to state only in browse + only on a real change, so it can't
+  spam recomposition during nav.
 - Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS.
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
   (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.

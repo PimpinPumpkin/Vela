@@ -52,6 +52,7 @@ data class MapUiState(
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
     val mySpeed: Float? = null, // metres/second, from GPS
+    val compassHeading: Float? = null, // device facing (rotation-vector sensor) — browse cone when stopped
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
     val query: String = "",
     val results: List<Place> = emptyList(),
@@ -114,6 +115,7 @@ class MapViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,
     private val dataSource: MapDataSource,
     private val locationProvider: LocationProvider,
+    private val headingProvider: app.vela.core.location.HeadingProvider,
     private val voice: VoiceGuide,
     private val voiceInstaller: VoiceInstaller,
     private val navSession: NavSession,
@@ -240,6 +242,20 @@ class MapViewModel @Inject constructor(
             launch {
                 delay(8_000)
                 if (_state.value.myLocation == null) _state.update { it.copy(showPsdsTip = true) }
+            }
+            // Device-facing compass for the browse-mode heading cone (GPS bearing is junk at a
+            // standstill). Pushed to state ONLY in browse and ONLY on a real change (>=2°), so it
+            // can't spam recomposition during nav — there the heading comes from the matched road.
+            launch {
+                var last = Float.NaN
+                headingProvider.headings().collect { az ->
+                    if (_state.value.navigating) return@collect
+                    val moved = if (last.isNaN()) 999f else kotlin.math.abs(((az - last + 540f) % 360f) - 180f)
+                    if (moved >= 2f) {
+                        last = az
+                        _state.update { it.copy(compassHeading = az) }
+                    }
+                }
             }
             var lastFixTime = 0L
             val posOutlierStreak = intArrayOf(0)
