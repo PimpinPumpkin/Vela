@@ -16,6 +16,8 @@ import app.vela.core.model.RouteLeg
 import app.vela.core.nav.NavEngine
 import app.vela.core.nav.NavEvent
 import app.vela.core.nav.NavState
+import app.vela.core.nav.ShieldType
+import app.vela.core.nav.parseRouteRef
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -479,5 +481,21 @@ class TransitParserTest {
         assertEquals("#008751", steps[1].line?.colorHex)
         assertEquals("5:48 AM", steps[1].departText)
         assertEquals("6:41 AM", steps[1].arriveText)
+    }
+}
+
+class RouteRefTest {
+    @Test
+    fun classifiesRouteRefsByPrefix() {
+        val i = parseRouteRef("I-80 E")
+        assertEquals(ShieldType.INTERSTATE, i.type)
+        assertEquals("80", i.number)
+        assertEquals("E", i.direction)
+        assertEquals(ShieldType.US_ROUTE, parseRouteRef("US 50").type)
+        assertEquals(ShieldType.US_ROUTE, parseRouteRef("US-101 N").type)
+        assertEquals(ShieldType.STATE, parseRouteRef("CA-99").type)
+        assertEquals(ShieldType.STATE, parseRouteRef("ON-401").type) // Canada province
+        assertEquals(ShieldType.STATE, parseRouteRef("SR 1").type)
+        assertEquals(ShieldType.GENERIC, parseRouteRef("ZZ-9").type) // unknown 2-letter → plain chip
     }
 }
