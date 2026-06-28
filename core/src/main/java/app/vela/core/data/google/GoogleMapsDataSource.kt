@@ -12,9 +12,6 @@ import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.ReviewsParser
 import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.model.LatLng
-import app.vela.core.model.Maneuver
-import app.vela.core.model.ManeuverType
-import app.vela.core.model.distanceTo
 import app.vela.core.model.Place
 import app.vela.core.model.Review
 import app.vela.core.model.Route
@@ -181,6 +178,44 @@ class GoogleMapsDataSource @Inject constructor(
         destination: LatLng,
         mode: TravelMode,
     ): List<Route> = io {
+        coroutineScope {
+            // PRIMARY: the open router (OSRM) — complete, street-named turn-by-turn + real geometry.
+            // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
+            // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
+            // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
+            val openD = async { RouteGeometry.route(http, origin, destination, mode) }
+            val googleD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
+            val open = openD.await()
+            val google = googleD.await()
+            diag.record(
+                "directions",
+                "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
+                    "google ${google.size} (traffic=${google.firstOrNull()?.durationInTrafficSeconds != null})",
+                "",
+            )
+            if (open.isNotEmpty()) open.map { applyTraffic(it, google.firstOrNull()) }
+            else google // OSRM unreachable → Google's abbreviated route beats nothing
+        }
+    }
+
+    /** Overlay Google's live-traffic ETA + congestion onto an open-router [route] (best-effort):
+     *  scale the route's free-flow duration by Google's in-traffic/typical ratio, and map its
+     *  congestion spans onto the open geometry by fraction. No Google traffic → keep free-flow. */
+    private fun applyTraffic(route: Route, g: Route?): Route {
+        val typical = g?.durationSeconds?.takeIf { it > 0 } ?: return route
+        val inTraffic = g.durationInTrafficSeconds ?: return route
+        val factor = (inTraffic / typical).coerceIn(0.5, 4.0)
+        val scale = if (g.distanceMeters > 0) route.distanceMeters / g.distanceMeters else 1.0
+        return route.copy(
+            durationInTrafficSeconds = route.durationSeconds * factor,
+            trafficSpans = g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) },
+        )
+    }
+
+    /** Google's keyless directions — now the FALLBACK router (OSRM unreachable) and the
+     *  live-traffic source (ETA / duration-in-traffic / congestion spans). Its step list is
+     *  abbreviated for long routes, which is exactly why OSRM is primary. */
+    private suspend fun googleDirections(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
         session.ensure()
         val cal = calibration.current()
         val pb = DirectionsPb.build(origin, destination, mode, cal.directionsPb)
@@ -191,91 +226,15 @@ class GoogleMapsDataSource @Inject constructor(
             diag.record("drift", "directions parse drift: ${e.message}", url)
             throw e
         }
-        diag.record(
-            "directions",
-            "$mode ${origin.lat},${origin.lng} → ${destination.lat},${destination.lng} → " +
-                "${routes.size} routes, top ETA ${routes.firstOrNull()?.durationInTrafficSeconds ?: routes.firstOrNull()?.durationSeconds}s",
-            url, // exact request URL → the route is replayable from an export
-        )
-        // Each route now carries Google's OWN geometry (delta-encoded in the
-        // response) — real roads, matching the via-label, alternates included. Only
-        // fall back to an open router (FOSSGIS OSRM, per-mode backend) for a route
-        // that came back without it (a straight start→end line); never a guess that
-        // doubles back on itself.
-        val withGeom = if (routes.all { it.polyline.size > 2 }) {
-            routes
-        } else {
+        return if (routes.all { it.polyline.size > 2 }) routes
+        else {
             val geoms = RouteGeometry.fetchAll(http, origin, destination, mode)
             routes.mapIndexed { i, r ->
                 if (r.polyline.size > 2) r
                 else RouteGeometry.reposition(r, geoms.getOrNull(i) ?: listOf(origin, destination))
             }
         }
-        fillTurnRoads(withGeom)
     }
-
-    private val TURN_TYPES = setOf(
-        ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
-        ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
-        ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT,
-    )
-
-    /** A turn Google's keyless feed left WITHOUT a road ("Turn left", no "onto X"). */
-    private fun isBareTurn(m: Maneuver): Boolean =
-        m.type in TURN_TYPES && m.road.isNullOrBlank() &&
-            !m.instruction.contains(" onto ", ignoreCase = true) &&
-            !m.instruction.contains(" on ", ignoreCase = true)
-
-    /** A point [meters] from [a] toward [b] — used to sample the road just PAST a turn. */
-    private fun pointPast(a: LatLng, b: LatLng, meters: Double): LatLng {
-        val d = a.distanceTo(b)
-        if (d < 1.0) return b
-        val f = (meters / d).coerceIn(0.0, 1.0)
-        return LatLng(a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f)
-    }
-
-    /** Google's keyless directions omit the road on some turns ("Turn left", no street). Fill them
-     *  by reverse-geocoding (Nominatim, keyless/on-ethos — same source as long-press) a point just
-     *  PAST the turn = the road being entered → "Turn left onto Elm St". Best-effort + capped (a
-     *  miss leaves the bare turn); de-duped across routes since alternates share turns. */
-    private suspend fun fillTurnRoads(routes: List<Route>): List<Route> = coroutineScope {
-        fun key(l: LatLng) = "${(l.lat * 1e5).toInt()},${(l.lng * 1e5).toInt()}"
-        val pts = LinkedHashMap<String, LatLng>()
-        routes.forEach { r ->
-            r.legs.forEach { leg ->
-                val ms = leg.maneuvers
-                ms.forEachIndexed { i, m ->
-                    if (isBareTurn(m) && i + 1 < ms.size) {
-                        val p = pointPast(m.location, ms[i + 1].location, 28.0)
-                        pts.getOrPut(key(p)) { p }
-                    }
-                }
-            }
-        }
-        if (pts.isEmpty()) return@coroutineScope routes
-        // Nominatim's usage policy forbids bulk/parallel (it rate-limits or blocks the IP, which
-        // would also break long-press geocoding) — so look up only a FEW turns, SEQUENTIALLY.
-        val roads = pts.entries.take(6).associate { (k, p) -> k to roadAt(p) }
-        routes.map { r ->
-            r.copy(legs = r.legs.map { leg ->
-                val ms = leg.maneuvers
-                leg.copy(maneuvers = ms.mapIndexed { i, m ->
-                    val road = if (isBareTurn(m) && i + 1 < ms.size)
-                        roads[key(pointPast(m.location, ms[i + 1].location, 28.0))] else null
-                    if (!road.isNullOrBlank()) m.copy(instruction = "${m.instruction} onto $road", road = road) else m
-                })
-            })
-        }
-    }
-
-    /** The street name at [loc] from Nominatim reverse-geocode (road / footway / cycleway), or null. */
-    private suspend fun roadAt(loc: LatLng): String? = runCatching {
-        val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=17" +
-            "&lat=${loc.lat}&lon=${loc.lng}"
-        val addr = Json.parseToJsonElement(getNominatim(url)).jsonObject["address"]?.jsonObject ?: return@runCatching null
-        fun s(k: String) = (addr[k] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content?.ifBlank { null }
-        s("road") ?: s("pedestrian") ?: s("footway") ?: s("cycleway") ?: s("path")
-    }.getOrNull()
 
     // --- plumbing -----------------------------------------------------------
 
