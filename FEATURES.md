@@ -26,6 +26,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   soft warm-grey shadow in light, deeper shadows + a cool highlight in dark.
   Verified in a MapLibre GL JS harness (same render engine as MapLibre Native)
   against the real DEM tiles before shipping
+- ✅ **Two-finger tilt to 3D** (2026-06-27) — drag two fingers vertically to pitch the map
+  between flat and a near-horizon 3D view (Google-style). Tilt gestures are now enabled
+  explicitly and the max pitch is lifted to 70°; browse-camera moves use `newLatLngZoom`
+  which preserves the pitch you set, so the tilt sticks until you change it
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
 - ⬜ Satellite layer (terrain relief ✅ done; aerial imagery still planned)
