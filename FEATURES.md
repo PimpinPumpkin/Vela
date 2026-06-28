@@ -207,6 +207,21 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Regression-tested (`spokenPromptNamesTheRoad`). *(When Google's own step text has no
   road name — some ramps/roundabout exits — Vela, like Google, says just "turn right";
   synthesising a name from the next road is a possible follow-up.)*
+- 🐞 **Fixed: every turn drew a generic forward arrow (2026-06-27, on-device diagnosis).**
+  The keyless feed tags maneuvers with a GENERIC token — `maneuver='TURN'` / `'ON_RAMP'` /
+  `'ROUNDABOUT_ENTER_AND_EXIT'` — and carries the left/right + slight/sharp in a child
+  `<turn side='LEFT' type='SLIGHT'>`. `mapType` only knew the explicit `TURN_LEFT`-style
+  tokens, so **every plain turn and ramp fell through to `UNKNOWN`** → a straight-ahead
+  arrow in the banner + the wrong direction-coded haptic, even though the text said "Turn
+  left onto …". Now the parser reads `<turn side/type>` → correct TURN/SLIGHT/SHARP/RAMP/
+  ROUNDABOUT arrows + haptics. (Road names on regular turns were always in the text and
+  unaffected; **roundabout steps carry no road name keyless** — Google omits "onto X" there,
+  a known keyless gap.) Pinned to the real captured markup (`DirectionsManeuverTest`).
+- 🐞 **Fixed: route line gradient spamming MapLibre errors (2026-06-27).** `routeGradient`
+  built a stops-less `step(line-progress, base)` whenever the line had no driven-grey and no
+  traffic spans (any directions preview, and early nav) — which MapLibre rejects ("line-gradient
+  Expected at least 4 arguments, but found only 2"), leaving the line unstyled and logging the
+  error on every refresh. Now it always seeds a valid base-colour stop.
 - 🐞 **Fixed: silent navigation** — on a targetSdk-30+ build, Android package
   visibility hid every TTS engine (`getEngines()` empty, the engine couldn't be
   bound) so guidance was silently dropped. A `<queries>` for `TTS_SERVICE` restores it;
