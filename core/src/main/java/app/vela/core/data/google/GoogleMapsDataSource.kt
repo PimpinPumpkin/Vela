@@ -90,7 +90,7 @@ class GoogleMapsDataSource @Inject constructor(
         // FAN OUT across category terms + merge: one "places" query is biased to prominent food/
         // shops, so it misses whole tiers (a strip mall's plumber, nail salon, IT shop). A handful
         // of category queries roughly DOUBLES local coverage (live: 22→52 unique within 600 m).
-        val terms = listOf("places", "restaurants", "coffee", "stores", "services", "beauty salon")
+        val terms = listOf("places", "restaurants", "coffee", "stores", "shopping", "services", "beauty salon", "fast food")
         val all = coroutineScope {
             terms.map { term ->
                 async {

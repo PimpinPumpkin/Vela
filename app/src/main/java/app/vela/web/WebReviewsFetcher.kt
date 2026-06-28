@@ -120,43 +120,60 @@ class WebReviewsFetcher @Inject constructor(
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, last=-1, tries=0;
+              var ID=$idj, last=-1, stable=0, tries=0;
               function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
+              function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
                 var all=[].slice.call(document.querySelectorAll('div'));
                 var cards=all.filter(function(d){
                   var st=d.querySelectorAll('[role="img"][aria-label*="star" i], span[aria-label*=" star" i]');
                   var len=d.textContent?d.textContent.length:0;
-                  return st.length===1 && d.querySelector('button[aria-label]') && len>40 && len<2500;
+                  return st.length===1 && len>30 && len<3000;
                 });
                 var revs=cards.filter(function(c){ return !cards.some(function(o){ return o!==c && c.contains(o); }); });
                 return revs.map(function(c){
                   var star=c.querySelector('[role="img"][aria-label*="star" i], span[aria-label*=" star" i]');
-                  var ab=[].slice.call(c.querySelectorAll('button[aria-label]')).filter(function(b){ return /[A-Za-z]/.test(b.getAttribute('aria-label')||''); })[0];
-                  var spans=[].slice.call(c.querySelectorAll('span'));
-                  var date=''; for(var i=0;i<spans.length;i++){ var t=spans[i].textContent||''; if(t.length<22 && (/\bago\b/.test(t)||/^\s*20\d\d\s*$/.test(t))){ date=t.trim(); break; } }
-                  var text='', best=0; for(var j=0;j<spans.length;j++){ var tt=spans[j].textContent||''; if(tt.length>best && !/star/i.test(tt) && tt.indexOf(String.fromCharCode(10))<0){ best=tt.length; text=tt; } }
+                  // author: Google's review name class, else pull the NAME out of a button aria — the
+                  // name is always right before "'s review" (after a "Share "/"Photo N on " prefix) or
+                  // after "Photo of ". (Class names rotate; the aria phrasing is stable + semantic.)
+                  var author=t1(c,'.d4r55')||t1(c,'.Vpc5Fe')||t1(c,'.TSUbDb');
+                  if(!author){ var bs=[].slice.call(c.querySelectorAll('button[aria-label],a[aria-label]'));
+                    var strip=/^(?:Share|Like|Response from|Photo of|Photo\s*\d*\s*on|\+?\s*\d*\s*(?:more\s*)?photos?\s*on|\d+\s*photos?\s*on)\s+/i;
+                    for(var i=0;i<bs.length;i++){ var a=bs[i].getAttribute('aria-label')||'';
+                      var m=a.match(/^(.+?)'s review\b/); var cand=m?m[1]:(a.match(/^Photo of (.+)${'$'}/)||[])[1];
+                      if(cand){ var nm=cand.replace(strip,'').trim(); if(nm){ author=nm; break; } } } }
+                  // review text: the wiI7pd body, else the longest leaf span that isn't chrome.
+                  var text=t1(c,'.wiI7pd');
+                  if(!text){ var best=0; [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(s.childElementCount===0){ var tt=(s.textContent||'').trim(); if(tt.length>best && tt.length>12 && !/^(see more|more|like|share|response from|local guide)/i.test(tt) && !/\bstar/i.test(tt)){ best=tt.length; text=tt; } } }); }
+                  // relative date.
+                  var date=t1(c,'.rsqaWe');
+                  if(!date){ [].slice.call(c.querySelectorAll('span')).forEach(function(s){ var tt=(s.textContent||'').trim(); if(!date && tt.length<22 && (/\bago\b/.test(tt)||/^20\d\d${'$'}/.test(tt))) date=tt; }); }
                   var avatar=''; var ai=c.querySelector('img'); if(ai && /googleusercontent/.test(ai.src||'')) avatar=ai.src;
                   var photos=[];
                   [].slice.call(c.querySelectorAll('button')).forEach(function(b){
                     var bg=''; try{ bg=getComputedStyle(b).backgroundImage||''; }catch(e){}
                     var mm=bg.match(/url\(["']?(https:\/\/[^"')]+googleusercontent[^"')]+)/);
-                    if(mm && !/\/a[\/-]|ACg8oc|ALV-/.test(mm[1])) photos.push(mm[1]);
+                    if(mm && !/\/a[\/-]|ACg8oc|ALV-/.test(mm[1]) && photos.indexOf(mm[1])<0) photos.push(mm[1]);
                   });
-                  return { r:num(star&&star.getAttribute('aria-label')), a:(ab?ab.getAttribute('aria-label'):'').slice(0,80), d:date, t:text, av:avatar, p:photos.slice(0,8) };
+                  return { r:num(star&&star.getAttribute('aria-label')), a:author.slice(0,80), d:date, t:text, av:avatar, p:photos.slice(0,10) };
                 }).filter(function(x){ return x.a; });
               }
+              function expand(){ [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } }); }
               function scrollPanels(){ try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){ if(d.scrollHeight>d.clientHeight+200 && d.clientHeight>250 && d.getBoundingClientRect().left<640){ d.scrollTop=d.scrollHeight; } }); }catch(e){} }
               function tick(){
                 tries++;
+                expand();
                 scrollPanels();
                 var revs=extract();
-                if( (revs.length>=8 && revs.length===last) || tries>16 ){
-                  try{ VelaBridge.onResult(ID, JSON.stringify(revs)); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
+                // Stop once the count holds steady (handles few-review places fast), or we have plenty, or we time out.
+                if(revs.length===last && revs.length>0) stable++; else stable=0;
+                last=revs.length;
+                if( (stable>=2 && tries>=3) || revs.length>=24 || tries>14 ){
+                  expand(); var fin=extract();
+                  try{ VelaBridge.onResult(ID, JSON.stringify(fin.length?fin:revs)); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
                   return;
                 }
-                last=revs.length;
-                setTimeout(tick, 700);
+                setTimeout(tick, 600);
               }
               tick();
             })();
@@ -164,8 +181,8 @@ class WebReviewsFetcher @Inject constructor(
     }
 
     private companion object {
-        const val TOTAL_TIMEOUT_MS = 22_000L
-        const val SETTLE_MS = 1_400L
-        const val MAX_LOAD_MS = 8_000L
+        const val TOTAL_TIMEOUT_MS = 20_000L
+        const val SETTLE_MS = 800L
+        const val MAX_LOAD_MS = 7_000L
     }
 }
