@@ -130,6 +130,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (Walk/bike and no-live-traffic routes fall back to a single overall blue→amber→red tint.)
 - ✅ Alternative routes returned
 - ✅ Turn-by-turn maneuver list (type + distance from Google's step markup)
+- ✅ **Turn instructions keep the road name** ("Turn right **onto 5th St**", spoken + on the banner) — `DirectionsParser` tag-strips the `<step>` markup so the `<road>` rides along in the instruction, which both `NavSession.maneuverText` (banner) and `NavEngine` (voice) use verbatim. **Mock-nav regression test** `NavRoadNameTest` parses VERBATIM captured keyless markup and *drives* the route through `NavEngine`, asserting "onto Ave C" / "onto 5th St" are announced. **Known keyless gap:** Google's feed omits `<road>` on *some* turns (≈3 of 11 on a Woodland roundabout route) — those legitimately stay a bare "Turn left" (no street name exists in the data to say).
+- ✅ **Walking / biking routes draw DASHED** (Google-style) — a second line layer on the route source (`vela-route-dash`, round-capped short on/off pattern) toggled by visibility, because MapLibre's `line-dasharray` disables `line-gradient` (so the solid traffic-gradient driving line and the dashed foot/bike line can't be one layer). Drive stays solid + traffic-coloured; Walk/Bike show the dashes.
 - ✅ **Honest remaining-distance / next-turn on routes that pass near themselves**
   (switchbacks, cloverleaves, out-and-backs) — `NavEngine` now tracks **monotonic
   forward progress** along the route (windowed projection around how far you've already
