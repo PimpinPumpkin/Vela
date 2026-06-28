@@ -82,7 +82,10 @@ data class Calibration(
             "phone" to listOf(1, 178, 0, 0),
             "featureId" to listOf(1, 10),
             "placeId" to listOf(1, 78),
-            "photos" to listOf(1, 105, 0, 1, 0),
+            // Preview photos. Google MOVED this block [105]→[72] (drift caught 2026-06-27:
+            // every place lost its hero strip); the photo array is now [1][72][0], each
+            // photo's FIFE URL still at [6][0]. Verified live (Taco Bell / Starbucks / Bellagio).
+            "photos" to listOf(1, 72, 0),
             "featuredReview" to listOf(1, 142, 1, 0, 1, 0, 0),
             "about" to listOf(1, 100, 1),
             // Editorial one-liner ([32][1][1] = the fuller "Classic burger chain
