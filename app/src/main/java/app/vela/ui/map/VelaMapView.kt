@@ -746,8 +746,14 @@ private fun ensureLayers(style: Style) {
             SymbolLayer(AMBIENT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
                 PropertyFactory.iconSize(0.62f),
-                PropertyFactory.iconAllowOverlap(true),
-                PropertyFactory.iconIgnorePlacement(true),
+                // DECLUTTER like Google: let the dots collide (hide when they'd overlap) instead of
+                // stacking. allowOverlap+ignorePlacement were TRUE, so every ambient POI drew on top
+                // of its neighbours — a pile at tight zooms. Collision + padding spaces them; more
+                // appear as you zoom in. (Sorted by rank so the prominent ones win the slot.)
+                PropertyFactory.iconAllowOverlap(false),
+                PropertyFactory.iconIgnorePlacement(false),
+                PropertyFactory.iconPadding(3f),
+                PropertyFactory.symbolSortKey(Expression.get("sort")),
                 PropertyFactory.textField(Expression.get("name")),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(11f),
@@ -1344,6 +1350,9 @@ private fun applyData(
                 addStringProperty("name", m.name)
                 addStringProperty("icon", "vela-poi-${PoiIcons.groupForCategory(m.category)}")
                 addNumberProperty(AMBIENT_INDEX_PROP, i)
+                // Collision priority: the data source returns the most prominent places first, so a
+                // lower index wins its slot (MapLibre places lower symbol-sort-key first).
+                addNumberProperty("sort", i)
             }
         },
     )
