@@ -42,7 +42,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   OSM POIs come back when ambient is off (zoomed out / offline / nav / search). **Tightly gated** so
   scraping stays modest: zoom ≥ 14, bare map only (no results / open place / nav / replay),
   debounced 500 ms, skipped for pans under 250 m. On-device-verified (the test city: Applebee's, Subway,
-  Safeway Fuel Station as category dots, tap → place sheet). *(An on/off toggle is the next option.)*
+  Safeway Fuel Station as category dots, tap → place sheet). **Coverage + zoom behaviour (2026-06-27):**
+  the query **viewport tracks the map zoom** (`nearbyPlaces(center, span)` — span ≈ 9 km at z14
+  down to 3.5 km zoomed in, with the `!1d`/`!4f`/`!7i40` pb tightened to match) so zooming into a
+  strip mall fills it with ITS businesses — **~11–25 local hits within 500 m vs 1** with the old
+  wide search (calibrated live). Re-queries on a real pan **or** zoom change, capped at 30, and the
+  dots **clear when you zoom out past z14** (and the OSM POIs come back). *(An on/off toggle is the
+  next option.)*
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
 - ⬜ Satellite layer (terrain relief ✅ done; aerial imagery still planned)
