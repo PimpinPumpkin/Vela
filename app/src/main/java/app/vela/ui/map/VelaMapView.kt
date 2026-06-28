@@ -58,6 +58,10 @@ import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
 private const val ROUTE_SRC = "vela-route-src"
 private const val ROUTE_LAYER = "vela-route"
+// A second line on the SAME route source, drawn dashed (Google-style for walking/biking).
+// Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
+// so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
+private const val ROUTE_DASH_LAYER = "vela-route-dash"
 private const val ALT_ROUTE_SRC = "vela-alt-route-src"
 private const val ALT_ROUTE_LAYER = "vela-alt-route"
 private const val ALT_INDEX_PROP = "vela-alt-index"
@@ -116,6 +120,8 @@ fun VelaMapView(
     cameraBottomInsetPx: Int = 0,
     routePolyline: List<LatLng>,
     routeColor: String,
+    routeDashed: Boolean = false, // draw the route dashed (walking / biking), Google-style
+
     // Per-segment live traffic as (startFraction, endFraction, level) along the route
     // — colours the route line like Google (free-flow elsewhere). Empty = no live data.
     routeTrafficSpans: List<Triple<Float, Float, Int>> = emptyList(),
@@ -539,12 +545,12 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -695,6 +701,17 @@ private fun ensureLayers(style: Style) {
         )
         val firstLabel = style.layers.firstOrNull { it is SymbolLayer }?.id
         if (firstLabel != null) style.addLayerBelow(routeLine, firstLabel) else style.addLayer(routeLine)
+        // The dashed foot/bike variant (hidden until a walk/bike route is shown). Round caps +
+        // a short on/off pattern read as Google's walking dots.
+        val routeDash = LineLayer(ROUTE_DASH_LAYER, ROUTE_SRC).withProperties(
+            PropertyFactory.lineColor("#1F6FEB"),
+            PropertyFactory.lineWidth(6f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.lineDasharray(arrayOf(0.4f, 1.8f)),
+            PropertyFactory.visibility(Property.NONE),
+        )
+        if (firstLabel != null) style.addLayerBelow(routeDash, firstLabel) else style.addLayer(routeDash)
     }
     // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
@@ -1253,6 +1270,7 @@ private fun applyData(
     style: Style,
     route: List<LatLng>,
     routeColor: String,
+    routeDashed: Boolean,
     trafficSpans: List<Triple<Float, Float, Int>>,
     alternates: List<Pair<Int, List<LatLng>>>,
     altColor: String,
@@ -1282,9 +1300,22 @@ private fun applyData(
         .getOrDefault(ROUTE_FREEFLOW)
     // 0 when not navigating (no driven-grey); only floor to a visible sliver once moving.
     val p = if (routeProgress <= 0f) 0f else routeProgress.coerceIn(0.001f, 0.998f)
-    style.getLayer(ROUTE_LAYER)?.setProperties(
-        PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
-    )
+    if (routeDashed) {
+        // Walking / biking: show the dashed line (solid colour, no traffic gradient — there
+        // isn't any for foot/bike), hide the solid one.
+        style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(
+            PropertyFactory.visibility(Property.VISIBLE),
+            PropertyFactory.lineColor(routeInt),
+        )
+    } else {
+        // Driving: the solid, traffic-coloured + traversed-grey gradient line.
+        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        style.getLayer(ROUTE_LAYER)?.setProperties(
+            PropertyFactory.visibility(Property.VISIBLE),
+            PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
+        )
+    }
 
     val altFc = FeatureCollection.fromFeatures(
         alternates.filter { it.second.size >= 2 }.map { (idx, line) ->
