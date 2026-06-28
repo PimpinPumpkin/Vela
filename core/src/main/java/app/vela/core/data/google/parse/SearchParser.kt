@@ -191,13 +191,22 @@ object SearchParser {
         }
     }
 
-    /** Business photos: `photos` → an array of photo objects, URL at `[6][0]`
-     *  (leaf stable). Re-size the FIFE URL up for the sheet's photo strip. */
+    /** Business photos. Google **gutted the keyless preview** (2026-06: the old ~10-photo
+     *  `[105]` block is gone). An ordinary business now exposes a SINGLE hero photo at the
+     *  calibrated `photos` block (`[1][72][0]`, URL leaf `[6][0]`) — and serves it
+     *  **duplicated**, so we de-dup. Big/landmark places additionally carry a small
+     *  "gallery preview" at `[1][204][0]` (URL leaf `[1][2][0][0]`); we fold those in where
+     *  present. The full gallery (~30+) is **login-gated** now (see [PhotosParser]) — this is
+     *  the most photos available keyless. De-dup by the re-sized URL so the hero never repeats. */
     private fun parsePhotos(entry: JsonElement, paths: Map<String, List<Int>>): List<String> {
-        val arr = entry.atPath(pathOf(paths, "photos")).arr() ?: return emptyList()
-        return arr.take(12).mapNotNull { photo ->
-            photo.at(6, 0).str()?.replace(Regex("=w\\d+-h\\d+.*$"), "=w500-h350")
+        val urls = LinkedHashSet<String>()
+        fun add(u: String?) {
+            if (u != null && u.contains("googleusercontent"))
+                urls += u.replace(Regex("=w\\d+-h\\d+.*$"), "=w500-h350")
         }
+        entry.atPath(pathOf(paths, "photos")).arr()?.forEach { add(it.at(6, 0).str()) }
+        entry.at(1, 204, 0).arr()?.forEach { add(it.at(1, 2, 0, 0).str()) }
+        return urls.take(12)
     }
 
     /** "Permanently closed" (and the rarer "Permanently closed" rich-status variant)
