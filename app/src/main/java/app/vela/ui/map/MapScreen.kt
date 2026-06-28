@@ -921,6 +921,24 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                 Divider()
             }
         }
+            // The panel hangs from the TOP, so the natural "close" is a bar at its BOTTOM edge —
+            // clearer than the top handle alone (which reads backwards). Tap to retract to the
+            // "N results" pill; the back gesture still works too.
+            Divider()
+            Row(
+                Modifier.fillMaxWidth().clickable { onCollapse() }.padding(vertical = 13.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = SheetPalette.dim(dark))
+                Text(
+                    "Hide results",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    color = SheetPalette.dim(dark),
+                    modifier = Modifier.padding(start = 6.dp),
+                )
+            }
         }
     }
 }
