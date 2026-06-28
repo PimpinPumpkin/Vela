@@ -15,6 +15,7 @@ import app.vela.core.model.Photo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
@@ -62,22 +63,39 @@ class WebPhotoFetcher @Inject constructor(
     }
 
     /** The full gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL plus
-     *  a "posted" date when present — or empty on any failure. */
+     *  a "posted" date when present — or empty on any failure.
+     *
+     *  **RETRIED.** Google's anonymous session intermittently answers the `hspqX` RPC with a
+     *  degraded (Street-View-only → filtered-empty) reply and then the *real* user gallery on
+     *  a later try — observed live: a place that first showed only its preview populated its
+     *  full gallery a few seconds later. A single shot therefore misses the gallery most of the
+     *  time. So we re-issue the same-origin fetch up to [MAX_TRIES] times and take the first
+     *  non-empty set (same flake, same cure as the reviews fetcher). Still best-effort: all
+     *  tries empty → caller keeps the search-preview photo. */
     suspend fun fetch(featureId: String, count: Int = 50): List<Photo> {
         if (!featureId.contains(":")) return emptyList()
+        val cal = calibration.current()
+        val proto = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", count.toString())
+        return (withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
+            ensureWarm()
+            var photos = emptyList<Photo>()
+            for (attempt in 0 until MAX_TRIES) {
+                photos = runOnce(cal.photosEndpoint, proto)
+                if (photos.isNotEmpty()) break
+                delay(RETRY_DELAY_MS)
+            }
+            photos
+        }) ?: emptyList()
+    }
+
+    /** One same-origin POST to the photos RPC inside the warmed page, parsed to [Photo]s. */
+    private suspend fun runOnce(endpoint: String, proto: String): List<Photo> {
         val id = "p" + seq.incrementAndGet()
         val deferred = CompletableDeferred<String>()
         pending[id] = deferred
         val raw = try {
-            withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
-                ensureWarm()
-                val cal = calibration.current()
-                val proto = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", count.toString())
-                withContext(Dispatchers.Main) {
-                    webView?.evaluateJavascript(script(id, cal.photosEndpoint, proto), null)
-                }
-                deferred.await()
-            }
+            withContext(Dispatchers.Main) { webView?.evaluateJavascript(script(id, endpoint, proto), null) }
+            withTimeoutOrNull(PER_TRY_TIMEOUT_MS) { deferred.await() }
         } finally {
             pending.remove(id)
         }
@@ -143,7 +161,10 @@ class WebPhotoFetcher @Inject constructor(
     }
 
     private companion object {
-        const val TOTAL_TIMEOUT_MS = 25_000L
+        const val TOTAL_TIMEOUT_MS = 30_000L
+        const val PER_TRY_TIMEOUT_MS = 6_000L
+        const val MAX_TRIES = 4
+        const val RETRY_DELAY_MS = 1_500L
         const val SETTLE_MS = 1_400L
         const val MAX_WARM_MS = 7_000L
     }
