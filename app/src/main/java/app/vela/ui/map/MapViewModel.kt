@@ -762,6 +762,13 @@ class MapViewModel @Inject constructor(
      *  details (hours, rating, …) from a search for that name nearby. */
     fun onPoiTap(name: String, location: LatLng) {
         if (consumeAssign(SavedPlace(id = "poi:" + name.hashCode(), name = name, lat = location.lat, lng = location.lng))) return
+        // Picking the route origin by tapping the map → adopt this POI as the origin, don't open it.
+        if (_state.value.pickingOrigin) {
+            setDirectionsOrigin(Place(id = "poi:" + name.hashCode(), name = name, location = location))
+            return
+        }
+        // Tapping a POI brings it to the FRONT — close the directions chooser so the place sheet
+        // isn't loaded invisibly underneath it (it's gated on !directionsOpen). Google does the same.
         _state.update {
             it.copy(
                 selected = Place(id = "poi:" + name.hashCode(), name = name, location = location),
@@ -772,6 +779,7 @@ class MapViewModel @Inject constructor(
                 loadingDetails = false,
                 photosLoading = false,
                 pickingOrigin = false,
+                directionsOpen = false,
             )
         }
         viewModelScope.launch {
