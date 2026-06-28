@@ -39,6 +39,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlin.math.abs
+import kotlin.math.pow
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1246,27 +1248,44 @@ class MapViewModel @Inject constructor(
 
     private var ambientJob: Job? = null
     private var lastAmbientCenter: LatLng? = null
+    private var lastAmbientZoom = 0.0
 
     /**
-     * Ambient Google POIs: on a bare, zoomed-in browse map, fetch the prominent places Google
-     * knows for the visible area and show them as map pins — so Google-only spots (not in the OSM
-     * basemap) appear without searching. Tightly gated to keep the scraping modest: only zoomed in
-     * (neighbourhood level), only on the bare map (no search results / open place / nav / replay),
-     * debounced, and skipped for small pans. One keyless "places" query (~20 mixed-category hits).
+     * Ambient Google POIs: on a bare, zoomed-in browse map, fetch the prominent Google places for
+     * the visible area and show them as category dots — so Google-only spots (not in the OSM
+     * basemap) appear without searching. The query viewport TRACKS the map zoom (zoom in → tighter
+     * box → denser, more local results, like Google), and the dots are CLEARED when you zoom out
+     * past neighbourhood level (they'd be sparse + cluttered over a huge area). Tightly gated:
+     * bare map only (no results / open place / nav / replay), debounced, re-queried on a real pan
+     * OR zoom change.
      */
     private fun maybeLoadAmbientPois(center: LatLng, zoom: Double) {
         val s = _state.value
-        if (zoom < 14.0 || s.navigating || s.replaying || s.results.isNotEmpty() || s.selected != null) return
-        lastAmbientCenter?.let { if (it.distanceTo(center) < 250.0 && s.ambientPois.isNotEmpty()) return }
+        if (s.navigating || s.replaying || s.results.isNotEmpty() || s.selected != null) return
+        // Zoomed out past neighbourhood level → drop the dots (and let the OSM POIs come back).
+        if (zoom < 14.0) {
+            ambientJob?.cancel()
+            lastAmbientCenter = null
+            if (s.ambientPois.isNotEmpty()) _state.update { it.copy(ambientPois = emptyList()) }
+            return
+        }
+        // Re-query only on a real pan or a real zoom change (not every settle).
+        val moved = lastAmbientCenter?.let { it.distanceTo(center) >= 250.0 } ?: true
+        val zoomed = abs(zoom - lastAmbientZoom) >= 0.8
+        if (!moved && !zoomed && s.ambientPois.isNotEmpty()) return
         ambientJob?.cancel()
+        // Span ≈ viewport height: ~9 km at z14 down to ~3.5 km zoomed in (kept ≥3.5 km — tighter
+        // than that returns FEWER local hits, per the live calibration).
+        val span = (9000.0 / 2.0.pow(zoom - 14.0)).coerceIn(3500.0, 9000.0)
         ambientJob = viewModelScope.launch {
             delay(500) // let the map settle before scraping
-            val res = runCatching { dataSource.search("places", center) }.getOrNull() ?: return@launch
+            val res = runCatching { dataSource.nearbyPlaces(center, span) }.getOrNull() ?: return@launch
             lastAmbientCenter = center
+            lastAmbientZoom = zoom
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            _state.update { it.copy(ambientPois = res.places.filterNot { p -> p.permanentlyClosed }.take(12)) }
+            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(30)) }
         }
     }
 
