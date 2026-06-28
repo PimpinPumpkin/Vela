@@ -120,7 +120,8 @@ class WebReviewsFetcher @Inject constructor(
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, last=-1, stable=0, tries=0;
+              var ID=$idj, last=-1, stable=0, tries=0, opened=false, best=[];
+              var CAP=20;
               function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
@@ -160,17 +161,28 @@ class WebReviewsFetcher @Inject constructor(
               }
               function expand(){ [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } }); }
               function scrollPanels(){ try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){ if(d.scrollHeight>d.clientHeight+200 && d.clientHeight>250 && d.getBoundingClientRect().left<640){ d.scrollTop=d.scrollHeight; } }); }catch(e){} }
+              // The ?cid= page opens the place OVERVIEW (only ~3 reviews) — click "More reviews"
+              // ONCE to open the full, pageable list, else many-review places (and some chains like
+              // Taco Bell whose overview shows none) come back with too few or nothing.
+              function openFull(){
+                if(opened) return;
+                var bs=[].slice.call(document.querySelectorAll('button'));
+                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(/more reviews/i.test(l)){ try{ bs[i].click(); }catch(e){} opened=true; return; } }
+              }
               function tick(){
                 tries++;
+                openFull();
                 expand();
                 scrollPanels();
                 var revs=extract();
-                // Stop once the count holds steady (handles few-review places fast), or we have plenty, or we time out.
+                // Keep the BEST (largest) extraction so far — clicking "More reviews" briefly empties
+                // the panel, and a heavy place renders in waves; we must never return that blink.
+                if(revs.length>best.length) best=revs;
                 if(revs.length===last && revs.length>0) stable++; else stable=0;
                 last=revs.length;
-                if( (stable>=2 && tries>=3) || revs.length>=24 || tries>14 ){
-                  expand(); var fin=extract();
-                  try{ VelaBridge.onResult(ID, JSON.stringify(fin.length?fin:revs)); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
+                // Stop at the cap, once the count holds steady (few-review places finish fast), or on timeout.
+                if( best.length>=CAP || (stable>=3 && tries>=5 && best.length>0) || tries>22 ){
+                  try{ VelaBridge.onResult(ID, JSON.stringify(best.slice(0,CAP+5))); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
                   return;
                 }
                 setTimeout(tick, 600);
@@ -181,7 +193,7 @@ class WebReviewsFetcher @Inject constructor(
     }
 
     private companion object {
-        const val TOTAL_TIMEOUT_MS = 20_000L
+        const val TOTAL_TIMEOUT_MS = 26_000L
         const val SETTLE_MS = 800L
         const val MAX_LOAD_MS = 7_000L
     }
