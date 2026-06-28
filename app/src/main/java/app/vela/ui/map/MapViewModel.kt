@@ -1285,7 +1285,7 @@ class MapViewModel @Inject constructor(
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(30)) }
+            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(50)) }
         }
     }
 
