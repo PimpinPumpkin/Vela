@@ -28,6 +28,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URLEncoder
+import kotlin.math.log2
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -73,6 +74,24 @@ class GoogleMapsDataSource @Inject constructor(
         // detail = the exact request URL so an opted-in user's export is replayable.
         diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results", url)
         SearchResult(query, jsTransforms.refineSearch(places))
+    }
+
+    override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> = io {
+        session.ensure()
+        val cal = calibration.current()
+        // The wide default search (!1d≈25229, !4f13.1) returns the ~20 most prominent places over a
+        // big area, so a strip mall shows almost none. Tighten the viewport (and match the !4f zoom)
+        // + ask for more (!7i40) so the ambient overlay fills with LOCAL businesses. Calibrated live:
+        // span 25229↔zoom 13.1; span ~4000 returns ~25 places within 700 m vs 1 at the default.
+        val zoom = (13.1 + log2(25229.0 / spanMeters)).coerceIn(13.0, 17.5)
+        val pb = SearchPb.build("places", center, cal.searchPb)
+            .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
+            .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
+            .replaceFirst(Regex("!7i\\d+"), "!7i40")
+        val url = "${cal.searchEndpoint}&q=places&pb=${pb.enc()}"
+        runCatching {
+            SearchParser.parse("places", GoogleResponse.parse(get(url)), center, cal.paths).places
+        }.getOrDefault(emptyList())
     }
 
     override suspend fun placeDetails(id: String): Place = io {

@@ -21,6 +21,13 @@ import app.vela.core.model.TravelMode
 interface MapDataSource {
     suspend fun search(query: String, near: LatLng? = null): SearchResult
 
+    /** Prominent places in the viewport, for the ambient map-POI overlay. [spanMeters] is the
+     *  viewport's height — a SMALLER span (zoomed in) returns DENSER, more local results than the
+     *  wide default search, so a strip mall fills with its own businesses. Default falls back to a
+     *  normal "places" search. */
+    suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> =
+        search("places", center).places
+
     suspend fun placeDetails(id: String): Place
 
     /** Reverse-geocode a tapped point to an address (drop-a-pin / tap-a-building).
