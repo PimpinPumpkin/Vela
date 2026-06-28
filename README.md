@@ -232,11 +232,12 @@ behind an obfuscated continuation token, deliberately not chased.
 on 2026-06-27**, which briefly blanked every hero strip — hot-fixed via calibration
 `v7`, no app update) — **de-duped** (Google now serves the single hero **twice**) plus
 a small `[1][204][0][i][1][2][0][0]` block that **only landmark places carry** (Space
-Needle → ~4; an ordinary business → **1**). **As of 2026-06 the full ~30-photo gallery
-is login-gated** — the keyless RPC below now returns only Street View to an anonymous
-session, so keyless shows the preview only; the full gallery needs an opt-in Google
-sign-in. The **full gallery (~30–40)** path remains wired (and works behind sign-in):
-the `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` RPC
+Needle → ~4; an ordinary business → **1**). The **full ~30-photo gallery is reachable
+keyless but INTERMITTENT** (corrected 2026-06-28 — *not* login-gated): the anonymous
+WebView RPC below returns a degraded Street-View-only reply on some tries and the real
+user gallery on others, so `WebPhotoFetcher` **retries** (up to 4×, first non-empty
+wins) and falls back to the preview only when every try is degraded. The **full gallery
+(~30–40)** comes from the `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` RPC
 (`/MapsPhotoService.ListEntityPhotos`, feature id at proto `[2][0]`), and it's the
 one endpoint that **only a real browser engine** can reach: a plain HTTP client —
 even with perfect headers + consent cookies — gets a degraded **Street-View-only**
@@ -244,8 +245,8 @@ reply (`streetviewpixels-pa.googleapis.com`), because the bot-detection is at th
 **TLS/fingerprint** level (on-device, OkHttp gets a 162 KB token-less "lite" page).
 So [`WebPhotoFetcher`](app/src/main/java/app/vela/web/WebPhotoFetcher.kt) runs a
 **hidden WebView** (real Chromium): it loads `maps.google.com` as an **anonymous,
-no-login** session — which *used to* return the photos to a logged-out browser, but
-**as of 2026-06 Google serves only Street View anonymously** (sign-in now required) —
+no-login** session — which *does* return the real photos to a logged-out browser, just
+**intermittently** (Google mixes in degraded Street-View-only replies, hence the retry) —
 then runs a same-origin `fetch` to the RPC and returns the raw response
 over a JS bridge, which [`PhotosParser`](core/src/main/java/app/vela/core/data/google/parse/PhotosParser.kt)
 turns into `googleusercontent` URLs (`[i][6][0]`; Street View filtered as a
