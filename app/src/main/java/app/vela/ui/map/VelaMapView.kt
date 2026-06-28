@@ -65,6 +65,11 @@ private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 private const val PIN_IMG = "vela-pin"
 private const val MARKER_INDEX_PROP = "vela-marker-index"
+// Ambient Google POIs — small category dots (reusing PoiIcons' `vela-poi-<group>` images), the
+// "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
+private const val AMBIENT_SRC = "vela-ambient-src"
+private const val AMBIENT_LAYER = "vela-ambient"
+private const val AMBIENT_INDEX_PROP = "vela-ambient-index"
 private const val ME_SRC = "vela-me-src"
 private const val ME_LAYER = "vela-me"
 private const val ME_ARROW_LAYER = "vela-me-arrow"
@@ -90,7 +95,7 @@ private const val TRAFFIC_TILES =
         "!4m2!1sincidents!2s1!4m2!1sincidents_text!2s1!3m8!2sen!3sus!5e1105!12m4!1e68!2m2!1sset!2sRoadmap!4e0!5m1!1e0"
 
 /** A tappable search-result pin on the map. */
-data class MapMarker(val name: String, val location: LatLng)
+data class MapMarker(val name: String, val location: LatLng, val category: String? = null)
 
 /**
  * MapLibre wrapped for Compose. Three camera behaviours:
@@ -129,6 +134,8 @@ fun VelaMapView(
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
+    ambientPois: List<MapMarker> = emptyList(),
+    onAmbientTap: (index: Int) -> Unit = {},
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
@@ -143,6 +150,7 @@ fun VelaMapView(
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
+    val ambientTap = rememberUpdatedState(onAmbientTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
     val navPanned = rememberUpdatedState(onNavPanned)
@@ -335,6 +343,12 @@ fun VelaMapView(
                         markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
                         return@addOnMapClickListener true
                     }
+                    // An ambient Google POI dot — opens the place (priority over basemap POI labels).
+                    val amb = feats.firstOrNull { it.hasProperty(AMBIENT_INDEX_PROP) }
+                    if (amb != null) {
+                        ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
+                        return@addOnMapClickListener true
+                    }
                     // Tap a greyed alternate route line to switch to it (Google-style).
                     val altHit = map.queryRenderedFeatures(
                         RectF(p.x - r, p.y - r, p.x + r, p.y + r), ALT_ROUTE_LAYER,
@@ -525,12 +539,12 @@ fun VelaMapView(
                 ensureLayers(style)
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(style, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(it, routePolyline, routeColor, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -706,6 +720,32 @@ private fun ensureLayers(style: Style) {
             ),
         )
     }
+    // Ambient Google POIs: small category dots (the same `vela-poi-<group>` images as the OSM POIs,
+    // so they read as native map POIs) + a decluttered label. Sits just under the search pins +
+    // location dot. Labels themed per-mode in applyLight/applyDark.
+    if (style.getSource(AMBIENT_SRC) == null) {
+        style.addSource(GeoJsonSource(AMBIENT_SRC))
+        style.addLayerBelow(
+            SymbolLayer(AMBIENT_LAYER, AMBIENT_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("icon")),
+                PropertyFactory.iconSize(0.62f),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.textField(Expression.get("name")),
+                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                PropertyFactory.textSize(11f),
+                PropertyFactory.textOffset(arrayOf(0f, 1.1f)),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                PropertyFactory.textMaxWidth(7f),
+                PropertyFactory.textOptional(true),
+                PropertyFactory.textAllowOverlap(false),
+                PropertyFactory.textColor("#3C4043"),
+                PropertyFactory.textHaloColor("#FFFFFF"),
+                PropertyFactory.textHaloWidth(1.2f),
+            ),
+            MARKERS_LAYER,
+        )
+    }
     if (style.getSource(ME_SRC) == null) {
         style.addSource(GeoJsonSource(ME_SRC))
         // Heading beam first so it sits BENEATH the dot (Google order): the
@@ -809,6 +849,11 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     if (dark) applyDark(style) else applyLight(style)
     PoiIcons.applyToLiberty(style, dark)
+    // Ambient Google-POI labels track the OSM POI label theming (light-grey in dark, dark-grey in light).
+    (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.textColor(if (dark) "#C8CDD4" else "#3C4043"),
+        PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+    )
     // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
     // park outlines, the stepped admin/city/county BOUNDARY lines, and the railroad
     // cross-tie hatching (the solid rail line stays). All read as weird stray dashes.
@@ -1212,6 +1257,7 @@ private fun applyData(
     alternates: List<Pair<Int, List<LatLng>>>,
     altColor: String,
     markers: List<MapMarker>,
+    ambientPois: List<MapMarker>,
     me: LatLng?,
     bearing: Float?,
     meStale: Boolean,
@@ -1259,6 +1305,25 @@ private fun applyData(
         },
     )
     style.getSourceAs<GeoJsonSource>(MARKERS_SRC)?.setGeoJson(markersFc)
+
+    // Ambient Google POIs → category-dot features (icon = vela-poi-<group>, label = name).
+    val ambientFc = FeatureCollection.fromFeatures(
+        ambientPois.mapIndexed { i, m ->
+            Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
+                addStringProperty("name", m.name)
+                addStringProperty("icon", "vela-poi-${PoiIcons.groupForCategory(m.category)}")
+                addNumberProperty(AMBIENT_INDEX_PROP, i)
+            }
+        },
+    )
+    style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
+    // Google-first: while ambient Google POIs are showing, hide the OSM *business* POIs
+    // (poi_r1/r7/r20) so the layers don't duplicate. OSM transit + the whole OSM basemap stay; when
+    // there are no ambient POIs (zoomed out / offline / nav / search) the OSM POIs come back.
+    val osmPoiVis = if (ambientPois.isNotEmpty()) Property.NONE else Property.VISIBLE
+    listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
+        style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
+    }
 
     // The location source: in browse mode applyData owns it (set it from the fix here);
     // in NAV the per-frame motion-model ticker owns it (smooth glide), so don't fight it —
