@@ -291,6 +291,34 @@ class NavEngineTest {
         val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
         assertTrue("a prompt should use metres, got $spoken", spoken.any { it.contains("meter") })
     }
+
+    /** Vela SPEAKS the road name — "turn right onto Larch Way" — not the bare "turn right" modern
+     *  Google Maps shortened its voice cue to. We reuse the written instruction (which keeps the
+     *  name) for TTS, so the name must survive into the spoken event. */
+    @Test
+    fun spokenPromptNamesTheRoad() {
+        val a = LatLng(37.0000, -122.0000)
+        val turn = LatLng(37.0030, -122.0000)   // ~334 m north — inside the 400 m prompt, outside 150 m
+        val end = LatLng(37.0030, -121.9960)
+        val route = Route(
+            polyline = listOf(a, turn, end),
+            legs = listOf(
+                RouteLeg(
+                    distanceMeters = 700.0, durationSeconds = 60.0, durationInTrafficSeconds = null,
+                    maneuvers = listOf(
+                        Maneuver(ManeuverType.DEPART, "Head north", a, 334.0, 30.0),
+                        Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Larch Way", turn, 366.0, 30.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive", end, 0.0, 0.0),
+                    ),
+                ),
+            ),
+            distanceMeters = 700.0, durationSeconds = 60.0, durationInTrafficSeconds = null,
+        )
+        val (s1, _) = NavEngine.update(route, NavState(), a, imperial = true) // consume DEPART
+        val (_, events) = NavEngine.update(route, s1, a, imperial = true)     // ~334 m out → prompt the turn
+        val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
+        assertTrue("the spoken prompt must name the road, got $spoken", spoken.any { it.contains("Larch Way") })
+    }
 }
 
 /** The offline nav auditor ([NavReplay]) — replays a GPS track through the real engine and diffs
