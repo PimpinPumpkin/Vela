@@ -12,6 +12,9 @@ import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.ReviewsParser
 import app.vela.core.data.google.parse.SearchParser
 import app.vela.core.model.LatLng
+import app.vela.core.model.Maneuver
+import app.vela.core.model.ManeuverType
+import app.vela.core.model.distanceTo
 import app.vela.core.model.Place
 import app.vela.core.model.Review
 import app.vela.core.model.Route
@@ -199,7 +202,7 @@ class GoogleMapsDataSource @Inject constructor(
         // fall back to an open router (FOSSGIS OSRM, per-mode backend) for a route
         // that came back without it (a straight start→end line); never a guess that
         // doubles back on itself.
-        if (routes.all { it.polyline.size > 2 }) {
+        val withGeom = if (routes.all { it.polyline.size > 2 }) {
             routes
         } else {
             val geoms = RouteGeometry.fetchAll(http, origin, destination, mode)
@@ -208,7 +211,70 @@ class GoogleMapsDataSource @Inject constructor(
                 else RouteGeometry.reposition(r, geoms.getOrNull(i) ?: listOf(origin, destination))
             }
         }
+        fillTurnRoads(withGeom)
     }
+
+    private val TURN_TYPES = setOf(
+        ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT,
+        ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT,
+        ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT,
+    )
+
+    /** A turn Google's keyless feed left WITHOUT a road ("Turn left", no "onto X"). */
+    private fun isBareTurn(m: Maneuver): Boolean =
+        m.type in TURN_TYPES && m.road.isNullOrBlank() &&
+            !m.instruction.contains(" onto ", ignoreCase = true) &&
+            !m.instruction.contains(" on ", ignoreCase = true)
+
+    /** A point [meters] from [a] toward [b] — used to sample the road just PAST a turn. */
+    private fun pointPast(a: LatLng, b: LatLng, meters: Double): LatLng {
+        val d = a.distanceTo(b)
+        if (d < 1.0) return b
+        val f = (meters / d).coerceIn(0.0, 1.0)
+        return LatLng(a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f)
+    }
+
+    /** Google's keyless directions omit the road on some turns ("Turn left", no street). Fill them
+     *  by reverse-geocoding (Nominatim, keyless/on-ethos — same source as long-press) a point just
+     *  PAST the turn = the road being entered → "Turn left onto Elm St". Best-effort + capped (a
+     *  miss leaves the bare turn); de-duped across routes since alternates share turns. */
+    private suspend fun fillTurnRoads(routes: List<Route>): List<Route> = coroutineScope {
+        fun key(l: LatLng) = "${(l.lat * 1e5).toInt()},${(l.lng * 1e5).toInt()}"
+        val pts = LinkedHashMap<String, LatLng>()
+        routes.forEach { r ->
+            r.legs.forEach { leg ->
+                val ms = leg.maneuvers
+                ms.forEachIndexed { i, m ->
+                    if (isBareTurn(m) && i + 1 < ms.size) {
+                        val p = pointPast(m.location, ms[i + 1].location, 28.0)
+                        pts.getOrPut(key(p)) { p }
+                    }
+                }
+            }
+        }
+        if (pts.isEmpty()) return@coroutineScope routes
+        // Cap the lookups so a pathological route can't fan out into a Nominatim storm.
+        val roads = pts.entries.take(12).map { (k, p) -> async { k to roadAt(p) } }.awaitAll().toMap()
+        routes.map { r ->
+            r.copy(legs = r.legs.map { leg ->
+                val ms = leg.maneuvers
+                leg.copy(maneuvers = ms.mapIndexed { i, m ->
+                    val road = if (isBareTurn(m) && i + 1 < ms.size)
+                        roads[key(pointPast(m.location, ms[i + 1].location, 28.0))] else null
+                    if (!road.isNullOrBlank()) m.copy(instruction = "${m.instruction} onto $road", road = road) else m
+                })
+            })
+        }
+    }
+
+    /** The street name at [loc] from Nominatim reverse-geocode (road / footway / cycleway), or null. */
+    private suspend fun roadAt(loc: LatLng): String? = runCatching {
+        val url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=17" +
+            "&lat=${loc.lat}&lon=${loc.lng}"
+        val addr = Json.parseToJsonElement(getNominatim(url)).jsonObject["address"]?.jsonObject ?: return@runCatching null
+        fun s(k: String) = (addr[k] as? JsonPrimitive)?.takeUnless { it is JsonNull }?.content?.ifBlank { null }
+        s("road") ?: s("pedestrian") ?: s("footway") ?: s("cycleway") ?: s("path")
+    }.getOrNull()
 
     // --- plumbing -----------------------------------------------------------
 
