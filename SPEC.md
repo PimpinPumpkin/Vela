@@ -110,7 +110,7 @@ dollar *range* "$10–20", not a 1–4 level — the tier flag lives in the `[1]
 bucket tree; `SearchParser.priceLevelOf` derives a 1–4 from the label for the filter) ·
 open-status `[1][203][1][8][0]` · rich status `[1][203][1][4][0]` · **feature id**
 `[1][10]` (`0x..:0x..` → reviews) · place id `[1][78]` · photos
-`[1][105][0][1][0][i][6][0]` (FIFE URLs, re-size `=w500-h350`) · featured review
+`[1][72][0][i][6][0]` (FIFE URLs, re-size `=w500-h350`; **moved from `[105]` 2026-06-27 — fix shipped via calibration v7**) · featured review
 `[1][142][1][0][1][0][0]` · About sections `[1][100][1]` (title `[s][1]`, items
 `[s][2][j][1]`) · **editorial one-liner** `[1][32][1][1]` · **owner "From the owner"
 blurb** `[1][154][0][0]` · weekly hours `[1][203][0]` (fallback `[1][118][0][3][0]`; 7
