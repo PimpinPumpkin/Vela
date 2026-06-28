@@ -7,7 +7,12 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
@@ -161,6 +166,7 @@ fun PlaceSheet(
     isSaved: Boolean,
     reviews: List<Review> = emptyList(),
     reviewsLoading: Boolean = false,
+    photosLoading: Boolean = false,
     detailsLoading: Boolean = false,
     placesHere: List<Place> = emptyList(),
     onClose: () -> Unit,
@@ -252,7 +258,7 @@ fun PlaceSheet(
             ) {
             // Photo hero at the top (Google-style) — always visible, even at the
             // peek height / in landscape; tap one to open the full gallery.
-            if (place.photoUrls.isNotEmpty()) {
+            if (place.photoUrls.isNotEmpty() || photosLoading) {
                 LazyRow(
                     Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -268,6 +274,15 @@ fun PlaceSheet(
                                 .background(dim.copy(alpha = 0.2f))
                                 .clickable { galleryStart = i },
                         )
+                    }
+                    // The full gallery scrapes in the background a beat after the sheet opens —
+                    // pulse placeholder tiles so it reads as "more photos loading", not "done".
+                    if (photosLoading) {
+                        item { PhotoShimmerTile(dim) }
+                        if (place.photoUrls.isEmpty()) {
+                            item { PhotoShimmerTile(dim) }
+                            item { PhotoShimmerTile(dim) }
+                        }
                     }
                 }
             }
@@ -1016,6 +1031,25 @@ private fun parseHexColor(hex: String?): Color? {
             else -> null
         }
     }.getOrNull()
+}
+
+/** A photo-tile-sized placeholder that gently pulses while the full gallery scrapes in —
+ *  signals "more photos loading" at the end of the strip (or fills it when there's no preview yet). */
+@Composable
+private fun PhotoShimmerTile(base: Color) {
+    val transition = rememberInfiniteTransition(label = "photoShimmer")
+    val alpha by transition.animateFloat(
+        initialValue = 0.12f,
+        targetValue = 0.32f,
+        animationSpec = infiniteRepeatable(tween(750), RepeatMode.Reverse),
+        label = "photoShimmerAlpha",
+    )
+    Box(
+        Modifier
+            .size(width = 152.dp, height = 110.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(base.copy(alpha = alpha)),
+    )
 }
 
 /** Full-screen, swipeable photo viewer (tap a photo in the strip to open). */
