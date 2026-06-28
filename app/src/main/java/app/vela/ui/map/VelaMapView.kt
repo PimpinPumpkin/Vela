@@ -117,6 +117,7 @@ fun VelaMapView(
     compassHeading: Float? = null, // device facing (sensor); points the browse cone when stopped
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
+    recenterTick: Int = 0, // bumped on each recenter tap → force a move even if already "centered"
     cameraBottomInsetPx: Int = 0,
     routePolyline: List<LatLng>,
     routeColor: String,
@@ -187,6 +188,7 @@ fun VelaMapView(
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastInsetPx by remember { mutableStateOf(-1) }
     var lastFittedRouteKey by remember { mutableStateOf<Int?>(null) }
+    var lastRecenterTick by remember { mutableStateOf(-1) }
     var lastFittedMarkersKey by remember { mutableStateOf<Int?>(null) }
     var lastPreviewTarget by remember { mutableStateOf<LatLng?>(null) }
     // The last fix we actually re-pointed the nav camera at, so we can skip the
@@ -566,6 +568,18 @@ fun VelaMapView(
             lastCameraTarget = null // re-frame the current target against the new inset
         }
         when {
+            // A recenter TAP always wins — even if we're already on the target (the
+            // `target != lastCameraTarget` guard below used to swallow it after a manual pan) or a
+            // route/markers would otherwise hold the camera. Force a move to the user, once per tap.
+            recenterTick != lastRecenterTick -> {
+                lastRecenterTick = recenterTick
+                val t = myLocation ?: cameraTarget
+                if (t != null) {
+                    lastCameraTarget = t
+                    val zoom = if (cameraBottomInsetPx > 0) 16.5 else 15.0
+                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(t.lat, t.lng), zoom), 500)
+                }
+            }
             // Previewing a step takes over the camera (and holds, suppressing
             // nav-follow) so you can look ahead at where you'd turn.
             previewTarget != null -> {
