@@ -34,6 +34,7 @@ import app.vela.service.NavigationService
 import app.vela.core.model.TransitItinerary
 import app.vela.web.WebDirectionsFetcher
 import app.vela.web.WebPhotoFetcher
+import app.vela.web.WebReviewsFetcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -129,6 +130,7 @@ class MapViewModel @Inject constructor(
     private val calibration: CalibrationStore,
     private val offlinePoiStore: OfflinePoiStore,
     private val webPhotos: WebPhotoFetcher,
+    private val webReviews: WebReviewsFetcher,
     private val webDirections: WebDirectionsFetcher,
     private val diag: app.vela.core.diag.DiagLog,
     private val diagExporter: app.vela.diag.DiagExporter,
@@ -697,15 +699,15 @@ class MapViewModel @Inject constructor(
             // that genuinely has no reviews (count 0/unknown) stops after the first try, so we
             // never hammer the endpoint for places with nothing to fetch.
             val expected = p.reviewCount ?: 0
-            var revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
+            var revs = runCatching { webReviews.fetch(fid) }.getOrDefault(emptyList())
             var attempt = 1
             // A fresh fetch clears the flake within a few seconds (confirmed: a manual tap-to-
             // retry succeeds), so auto-retry across a ~3 s window before falling back to the
             // manual retry — most flakes self-heal without the user touching anything.
-            while (revs.isEmpty() && expected > 0 && attempt <= 3) {
-                delay(500L * attempt) // 0.5s, 1s, 1.5s
+            while (revs.isEmpty() && expected > 0 && attempt <= 2) {
+                delay(500L * attempt) // the WebView fetch is thorough (internal polling) — one retry covers a page-load miss
                 if (_state.value.selected?.featureId != fid) return@launch // user moved on
-                revs = runCatching { dataSource.reviews(fid) }.getOrDefault(emptyList())
+                revs = runCatching { webReviews.fetch(fid) }.getOrDefault(emptyList())
                 attempt++
             }
             if (_state.value.selected?.featureId == fid) {
