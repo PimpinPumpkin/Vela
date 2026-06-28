@@ -316,6 +316,12 @@ fun VelaMapView(
                 // Hide the bottom-left attribution "ⓘ" — open-tile attribution lives
                 // in Settings → About instead, so the map stays clean (Google-style).
                 map.uiSettings.isAttributionEnabled = false
+                // Two-finger vertical drag tilts the map (3D ↔ flat), like Google. Enable it
+                // explicitly so it can't be off, and lift the default ~60° cap to 70° so a
+                // satisfying near-horizon 3D is reachable; browse-camera moves use
+                // newLatLngZoom (which preserves pitch), so a tilt the user sets sticks.
+                map.uiSettings.isTiltGesturesEnabled = true
+                map.setMaxPitchPreference(70.0)
                 // Tap a labelled POI on the map to open it.
                 map.addOnMapClickListener { tapped ->
                     val p = map.projection.toScreenLocation(tapped)
