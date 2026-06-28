@@ -198,6 +198,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   "Pkwy"/"St"/"Ave"/"N" letter-by-letter; `VoiceGuide` now expands them whole-word for
   the spoken text only ("Parkway", "Street", "Avenue", "North", "I-80" → "Interstate
   80"), while the on-screen banner keeps Google's compact forms
+- ✅ **Speaks the road name — "turn right onto Larch Way", not a bare "turn right"**
+  (a deliberate divergence: modern Google Maps shortened its *spoken* cue to drop the
+  street name — a TTS-pronunciation/brevity choice, **not** scraper defence; the name is
+  still in Google's data + on its banner, which is where we read it keyless). Vela
+  generates its own TTS straight from the **written** instruction (which keeps "onto
+  <road>"), so it speaks the full phrase — the old style some drivers prefer.
+  Regression-tested (`spokenPromptNamesTheRoad`). *(When Google's own step text has no
+  road name — some ramps/roundabout exits — Vela, like Google, says just "turn right";
+  synthesising a name from the next road is a possible follow-up.)*
 - 🐞 **Fixed: silent navigation** — on a targetSdk-30+ build, Android package
   visibility hid every TTS engine (`getEngines()` empty, the engine couldn't be
   bound) so guidance was silently dropped. A `<queries>` for `TTS_SERVICE` restores it;
