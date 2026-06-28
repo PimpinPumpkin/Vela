@@ -262,6 +262,8 @@ fun MapScreen(
             cameraBottomInsetPx = cameraBottomInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             routeColor = routeTrafficColor(state.activeRoute),
+            routeDashed = state.travelMode == app.vela.core.model.TravelMode.WALK ||
+                state.travelMode == app.vela.core.model.TravelMode.BICYCLE,
             routeTrafficSpans = routeTrafficSpans(state.activeRoute),
             // Greyed, tappable alternates (Google-style) — only off-nav, with a chooser up.
             alternates = if (state.navigating) emptyList() else run {
