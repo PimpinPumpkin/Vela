@@ -56,6 +56,7 @@ data class MapUiState(
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
     val query: String = "",
     val results: List<Place> = emptyList(),
+    val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
     val suggestions: List<Place> = emptyList(),
     val selected: Place? = null,
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
@@ -1240,6 +1241,33 @@ class MapViewModel @Inject constructor(
 
     fun onViewport(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         viewport = doubleArrayOf(south, west, north, east, zoom)
+        maybeLoadAmbientPois(LatLng((south + north) / 2, (west + east) / 2), zoom)
+    }
+
+    private var ambientJob: Job? = null
+    private var lastAmbientCenter: LatLng? = null
+
+    /**
+     * Ambient Google POIs: on a bare, zoomed-in browse map, fetch the prominent places Google
+     * knows for the visible area and show them as map pins — so Google-only spots (not in the OSM
+     * basemap) appear without searching. Tightly gated to keep the scraping modest: only zoomed in
+     * (neighbourhood level), only on the bare map (no search results / open place / nav / replay),
+     * debounced, and skipped for small pans. One keyless "places" query (~20 mixed-category hits).
+     */
+    private fun maybeLoadAmbientPois(center: LatLng, zoom: Double) {
+        val s = _state.value
+        if (zoom < 14.0 || s.navigating || s.replaying || s.results.isNotEmpty() || s.selected != null) return
+        lastAmbientCenter?.let { if (it.distanceTo(center) < 250.0 && s.ambientPois.isNotEmpty()) return }
+        ambientJob?.cancel()
+        ambientJob = viewModelScope.launch {
+            delay(500) // let the map settle before scraping
+            val res = runCatching { dataSource.search("places", center) }.getOrNull() ?: return@launch
+            lastAmbientCenter = center
+            // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
+            val cur = _state.value
+            if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
+            _state.update { it.copy(ambientPois = res.places.filterNot { p -> p.permanentlyClosed }.take(12)) }
+        }
     }
 
     fun hasViewport(): Boolean = viewport != null
