@@ -259,6 +259,7 @@ fun MapScreen(
             compassHeading = state.compassHeading,
             locationStale = state.myLocationStale,
             cameraTarget = state.center,
+            recenterTick = state.recenterTick,
             cameraBottomInsetPx = cameraBottomInset,
             routePolyline = state.activeRoute?.polyline ?: emptyList(),
             routeColor = routeTrafficColor(state.activeRoute),
