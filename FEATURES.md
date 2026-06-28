@@ -46,9 +46,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the query **viewport tracks the map zoom** (`nearbyPlaces(center, span)` — span ≈ 9 km at z14
   down to 3.5 km zoomed in, with the `!1d`/`!4f`/`!7i40` pb tightened to match) so zooming into a
   strip mall fills it with ITS businesses — **~11–25 local hits within 500 m vs 1** with the old
-  wide search (calibrated live). Re-queries on a real pan **or** zoom change, capped at 30, and the
-  dots **clear when you zoom out past z14** (and the OSM POIs come back). *(An on/off toggle is the
-  next option.)*
+  wide search (calibrated live). Re-queries on a real pan **or** zoom change, and the dots **clear
+  when you zoom out past z14** (and the OSM POIs come back). **Category fan-out (2026-06-27):**
+  `nearbyPlaces` now runs a small **parallel fan-out** of category queries
+  (`places`/`restaurants`/`coffee`/`stores`/`services`/`beauty salon`) and merges+dedupes them —
+  one "places" query is biased to prominent food/shops and misses whole tiers (the strip mall's
+  plumber, nail salon, IT shop), so the fan-out roughly **doubles local coverage (live: 22→52
+  unique within 600 m)**; capped at 50. *(An on/off toggle is the next option.)*
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
 - ⬜ Satellite layer (terrain relief ✅ done; aerial imagery still planned)
