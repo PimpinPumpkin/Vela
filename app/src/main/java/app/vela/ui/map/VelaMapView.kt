@@ -1189,6 +1189,12 @@ private fun routeGradient(
         val c = colorAt(b)
         if (c != prev) { stops.add(Expression.stop(b, Expression.color(c))); prev = c }
     }
+    // A `step` line-gradient needs ≥1 stop or MapLibre rejects the whole expression
+    // ("line-gradient Expected at least 4 arguments, but found only 2") — which happens on EVERY
+    // route with no driven-grey and no traffic spans (any directions preview, and early nav before
+    // progress > 0): the line then renders unstyled and the error spams each refresh. Seed a single
+    // base-colour stop so a band-less route is a valid solid line.
+    if (stops.isEmpty()) stops.add(Expression.stop(0.9999f, Expression.color(base)))
     return Expression.step(Expression.lineProgress(), Expression.color(base), *stops.toTypedArray())
 }
 
