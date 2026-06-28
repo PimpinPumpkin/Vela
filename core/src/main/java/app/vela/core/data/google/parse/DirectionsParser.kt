@@ -221,19 +221,20 @@ object DirectionsParser {
      *  the actual turn. Matching the polyline length pins each turn where it is. */
     internal fun placeManeuvers(maneuvers: List<Maneuver>, polyline: List<LatLng>): List<Maneuver> {
         if (maneuvers.isEmpty() || polyline.size < 2) return maneuvers
-        val polyLength = (0 until polyline.size - 1)
-            .sumOf { polyline[it].distanceTo(polyline[it + 1]) }
-            .coerceAtLeast(1.0)
+        // Place each turn by its fraction of the STEP-DISTANCE total, NOT the polyline length.
+        // The two often disagree (Google's per-step metres vs our decoded geometry can differ by
+        // a lot — seen 3.3 km of steps on a 6.4 km polyline), and dividing by polyLength then
+        // crammed every turn into the first half of the route, landing them on the wrong roads
+        // ("turn onto a road miles away"). Fraction-of-step-total maps each turn to the right
+        // PROPORTIONAL point along the geometry regardless of the absolute-length mismatch.
+        val stepTotal = maneuvers.sumOf { it.distanceMeters }.coerceAtLeast(1.0)
         var cum = 0.0
         val lastIdx = maneuvers.lastIndex
         return maneuvers.mapIndexed { i, m ->
-            // Place each turn at the START of its step — the cumulative distance of the steps
-            // BEFORE it — then add this step's length. The old code added FIRST, putting every
-            // turn a whole step too far: invisible on short city steps (why Davis→Sac looked
-            // fine), but a multi-mile highway step landed the turn miles past where it is.
-            // The final maneuver (ARRIVE) is still pinned to the route end (1.0): Google's step
-            // metres can total a few % short of the geometry, which would otherwise undershoot it.
-            val frac = if (i == lastIdx) 1.0 else (cum / polyLength).coerceIn(0.0, 1.0)
+            // Each turn sits at the START of its step (cumulative distance of the steps BEFORE it),
+            // then we add this step's length. The final maneuver (ARRIVE) is pinned to the route
+            // end (1.0) so a few-percent step/geometry drift can't undershoot the destination.
+            val frac = if (i == lastIdx) 1.0 else (cum / stepTotal).coerceIn(0.0, 1.0)
             cum += m.distanceMeters
             m.copy(location = pointAlong(polyline, frac))
         }
