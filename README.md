@@ -233,11 +233,12 @@ on 2026-06-27**, which briefly blanked every hero strip — hot-fixed via calibr
 `v7`, no app update) — **de-duped** (Google now serves the single hero **twice**) plus
 a small `[1][204][0][i][1][2][0][0]` block that **only landmark places carry** (Space
 Needle → ~4; an ordinary business → **1**). The **full ~30-photo gallery is reachable
-keyless but INTERMITTENT** (corrected 2026-06-28 — *not* login-gated): the anonymous
-WebView RPC below returns a degraded Street-View-only reply on some tries and the real
-user gallery on others, so `WebPhotoFetcher` **retries** (up to 4×, first non-empty
-wins) and falls back to the preview only when every try is degraded. The **full gallery
-(~30–40)** comes from the `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` RPC
+keyless but UNRELIABLE** (corrected 2026-06-28 — *not* login-gated, but not retry-fixable
+either): on-device logging showed Google degrades our anonymous session to a Street-View-only
+reply **per-session** (4 retries in 5 s were byte-identical), so `WebPhotoFetcher` keeps only
+a tiny 2× hedge and falls back to the de-duped preview; when the session *isn't* degraded the
+real gallery swaps in. The **full gallery (~30–40)** comes from the
+`POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` RPC
 (`/MapsPhotoService.ListEntityPhotos`, feature id at proto `[2][0]`), and it's the
 one endpoint that **only a real browser engine** can reach: a plain HTTP client —
 even with perfect headers + consent cookies — gets a degraded **Street-View-only**

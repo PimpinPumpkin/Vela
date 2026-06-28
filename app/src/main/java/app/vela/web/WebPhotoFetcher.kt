@@ -65,13 +65,15 @@ class WebPhotoFetcher @Inject constructor(
     /** The full gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL plus
      *  a "posted" date when present — or empty on any failure.
      *
-     *  **RETRIED.** Google's anonymous session intermittently answers the `hspqX` RPC with a
-     *  degraded (Street-View-only → filtered-empty) reply and then the *real* user gallery on
-     *  a later try — observed live: a place that first showed only its preview populated its
-     *  full gallery a few seconds later. A single shot therefore misses the gallery most of the
-     *  time. So we re-issue the same-origin fetch up to [MAX_TRIES] times and take the first
-     *  non-empty set (same flake, same cure as the reviews fetcher). Still best-effort: all
-     *  tries empty → caller keeps the search-preview photo. */
+     *  Google degrades our anonymous session to a Street-View-only reply (`streetviewpixels`,
+     *  ~2 KB, filtered → empty). On-device diagnosis (2026-06-28) showed this is **per-SESSION,
+     *  not per-request** — 4 retries in 5 s all returned the identical degraded reply — so a big
+     *  same-session retry can't help; we keep only a tiny [MAX_TRIES] hedge for a real network
+     *  blip. When the session ISN'T degraded (it happens — a user saw a full gallery populate),
+     *  the real user photos come back and swap in. Reliably un-degrading the session is unsolved
+     *  keyless; the promising lever is loading the place's own page so Google renders the photos
+     *  in-context (like the reviews scrape) rather than this bare RPC POST — see ROADMAP. Always
+     *  best-effort: degraded/empty → caller keeps the de-duped search-preview photo. */
     suspend fun fetch(featureId: String, count: Int = 50): List<Photo> {
         if (!featureId.contains(":")) return emptyList()
         val cal = calibration.current()
@@ -161,10 +163,14 @@ class WebPhotoFetcher @Inject constructor(
     }
 
     private companion object {
-        const val TOTAL_TIMEOUT_MS = 30_000L
-        const val PER_TRY_TIMEOUT_MS = 6_000L
-        const val MAX_TRIES = 4
-        const val RETRY_DELAY_MS = 1_500L
+        const val TOTAL_TIMEOUT_MS = 12_000L
+        const val PER_TRY_TIMEOUT_MS = 5_000L
+        // Google degrades our anonymous session to a Street-View-only reply *per session*, not
+        // per request (verified on-device: 4 identical degraded replies in 5 s), so a big retry
+        // just churns. Keep a tiny hedge for a genuine network blip; the real win needs a
+        // non-degraded session (see WebPhotoFetcher KDoc / ROADMAP — load the place page).
+        const val MAX_TRIES = 2
+        const val RETRY_DELAY_MS = 1_000L
         const val SETTLE_MS = 1_400L
         const val MAX_WARM_MS = 7_000L
     }
