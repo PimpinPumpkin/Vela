@@ -232,32 +232,26 @@ behind an obfuscated continuation token, deliberately not chased.
 on 2026-06-27**, which briefly blanked every hero strip — hot-fixed via calibration
 `v7`, no app update) — **de-duped** (Google now serves the single hero **twice**) plus
 a small `[1][204][0][i][1][2][0][0]` block that **only landmark places carry** (Space
-Needle → ~4; an ordinary business → **1**). The **full ~30-photo gallery is reachable
-keyless but UNRELIABLE** (corrected 2026-06-28 — *not* login-gated, but not retry-fixable
-either): on-device logging showed Google degrades our anonymous session to a Street-View-only
-reply **per-session** (4 retries in 5 s were byte-identical), so `WebPhotoFetcher` keeps only
-a tiny 2× hedge and falls back to the de-duped preview; when the session *isn't* degraded the
-real gallery swaps in. The **full gallery (~30–40)** comes from the
-`POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` RPC
-(`/MapsPhotoService.ListEntityPhotos`, feature id at proto `[2][0]`), and it's the
-one endpoint that **only a real browser engine** can reach: a plain HTTP client —
-even with perfect headers + consent cookies — gets a degraded **Street-View-only**
-reply (`streetviewpixels-pa.googleapis.com`), because the bot-detection is at the
-**TLS/fingerprint** level (on-device, OkHttp gets a 162 KB token-less "lite" page).
-So [`WebPhotoFetcher`](app/src/main/java/app/vela/web/WebPhotoFetcher.kt) runs a
-**hidden WebView** (real Chromium): it loads `maps.google.com` as an **anonymous,
-no-login** session — which *does* return the real photos to a logged-out browser, just
-**intermittently** (Google mixes in degraded Street-View-only replies, hence the retry) —
-then runs a same-origin `fetch` to the RPC and returns the raw response
-over a JS bridge, which [`PhotosParser`](core/src/main/java/app/vela/core/data/google/parse/PhotosParser.kt)
-turns into `googleusercontent` URLs (`[i][6][0]`; Street View filtered as a
-belt-and-braces). **Keyless** (no key, no account); lazy + best-effort (failure →
-keep the preview). Gotchas: **desktop UA** (a mobile UA makes Google redirect to
-`intent://` the native app), **block non-http(s) redirects**, and a `Handler` not
-`View.postDelayed` (a headless WebView never attaches, so View timers never fire).
-*(Earlier I wrongly called the gallery sign-in-gated — that was from testing in a
-logged-in browser **and** a bot-degraded HTTP client; a real anonymous browser
-engine gets it. Corrected 2026-06-17.)*
+Needle → ~4; an ordinary business → **1**). The **full gallery (~9–25 photos) is scraped from the place's own page**, and that
+**replaced** the bare `hspqX` photo RPC. That RPC
+(`POST …/batchexecute?rpcids=hspqX`, `/MapsPhotoService.ListEntityPhotos`) is **bot-degraded
+per-session** to a Street-View-only reply — on-device logging showed byte-identical degraded
+replies across retries, so retrying never recovers it. But Google **renders the real photo
+collage to a logged-out browser on the place PAGE itself.** So
+[`WebPhotoFetcher`](app/src/main/java/app/vela/web/WebPhotoFetcher.kt) (a **hidden WebView**,
+real Chromium, **desktop UA**, anonymous/no-login) loads the place's `?cid=` Maps page, lets
+Google's own JS draw it, then a self-polling injected script scrapes every `googleusercontent`
+photo URL out of the DOM (avatars + Street View filtered, de-duped by image id; clicks the
+"Photos" affordance + scrolls to surface more) and bridges them back — **the same tactic as
+[`WebReviewsFetcher`](app/src/main/java/app/vela/web/WebReviewsFetcher.kt)**. A rendered page
+is far harder for Google to bot-degrade than a naked RPC POST. **Keyless** (no key, no
+account); lazy + best-effort (failure → keep the preview). While it's in flight the sheet
+shows a row of **pulsing shimmer tiles** (`MapState.photosLoading`) so it reads as "more
+loading". Gotchas: **desktop UA** (a mobile UA makes Google deep-link to `intent://`),
+**block non-http(s) redirects**, and a `Handler` not `View.postDelayed` (a headless WebView
+never attaches). *(History — the gallery was first wrongly called sign-in-gated, then wrongly
+"retry-fixable"; the truth: the bare RPC is per-session-degraded and the page scrape sidesteps
+it. 2026-06-28.)*
 
 **Public transit** rides the same WebView trick for the same reason: a `directions`
 GET with the transit flag is silently downgraded to a *driving* reply, so
