@@ -29,8 +29,12 @@ import kotlinx.serialization.json.JsonPrimitive
  *     traffic s   `[10][0][0]`  live duration_in_traffic ("18 min") — the goal
  *     start pt    `[7][3][2]` = [.., .., lat, lng]
  *     end pt      `[7][3][3]`
- *   steps         emitted as `<step maneuver='TURN_LEFT' meters='120'>…</step>`
- *                 markup strings scattered through the route subtree.
+ *   steps         emitted as `<step maneuver='TURN' meters='120'>Turn <turn side='LEFT'>left
+ *                 </turn> onto <roadlist><road>Elm St</road></roadlist></step>` markup strings
+ *                 scattered through the route subtree. The maneuver attr is GENERIC ('TURN',
+ *                 'ON_RAMP', 'ROUNDABOUT_ENTER_AND_EXIT', 'NAME_CHANGE', …) — the left/right +
+ *                 slight/sharp live in the child `<turn side= type=>`, the road in `<road>`. NOTE:
+ *                 roundabout steps carry NO `<road>` keyless ("take the 2nd exit", no "onto X").
  *
  * The exact encoded overview-polyline field did not decode cleanly during
  * calibration, so geometry is currently APPROXIMATED from the in-bounds
@@ -147,8 +151,17 @@ object DirectionsParser {
         return raw.map { parseStep(it) }
     }
 
-    private fun parseStep(s: String): Maneuver {
-        val type = mapType(MANEUVER_ATTR.find(s)?.groupValues?.get(1))
+    // The keyless feed carries the turn DIRECTION in a child <turn side='LEFT'|'RIGHT' type='SLIGHT'
+    // |'SHARP'> element — NOT in the maneuver attribute, which is the generic 'TURN' / 'ON_RAMP' /
+    // 'ROUNDABOUT_ENTER_AND_EXIT'. (Verified against a live www.google.com directions capture.)
+    private val SIDE_ATTR = Regex("<turn\\b[^>]*\\bside='([^']+)'", RegexOption.IGNORE_CASE)
+    private val SEVERITY_ATTR = Regex("<turn\\b[^>]*\\btype='([^']+)'", RegexOption.IGNORE_CASE)
+
+    internal fun parseStep(s: String): Maneuver {
+        val token = MANEUVER_ATTR.find(s)?.groupValues?.get(1)
+        val side = SIDE_ATTR.find(s)?.groupValues?.get(1)
+        val severity = SEVERITY_ATTR.find(s)?.groupValues?.get(1)
+        val type = mapType(token, side, severity)
         val meters = METERS_ATTR.find(s)?.groupValues?.get(1)?.toDoubleOrNull() ?: 0.0
         val text = s.replace(TAGS, " ").replace(WS, " ").trim()
         val lane = LANE_PHRASE.find(text)
@@ -158,25 +171,46 @@ object DirectionsParser {
         return Maneuver(type, instruction.ifEmpty { "Continue" }, LatLng(0.0, 0.0), meters, 0.0, laneHint = laneHint)
     }
 
-    private fun mapType(s: String?): ManeuverType = when (s?.uppercase()) {
-        "DEPART" -> ManeuverType.DEPART
-        "DESTINATION", "ARRIVE" -> ManeuverType.ARRIVE
-        "TURN_LEFT" -> ManeuverType.TURN_LEFT
-        "TURN_RIGHT" -> ManeuverType.TURN_RIGHT
-        "TURN_SLIGHT_LEFT" -> ManeuverType.SLIGHT_LEFT
-        "TURN_SLIGHT_RIGHT" -> ManeuverType.SLIGHT_RIGHT
-        "TURN_SHARP_LEFT" -> ManeuverType.SHARP_LEFT
-        "TURN_SHARP_RIGHT" -> ManeuverType.SHARP_RIGHT
-        "UTURN", "UTURN_LEFT", "UTURN_RIGHT" -> ManeuverType.UTURN
-        "STRAIGHT", "CONTINUE", "NAME_CHANGE" -> ManeuverType.STRAIGHT
-        "MERGE", "MERGE_LEFT", "MERGE_RIGHT" -> ManeuverType.MERGE
-        "FORK_LEFT" -> ManeuverType.FORK_LEFT
-        "FORK_RIGHT" -> ManeuverType.FORK_RIGHT
-        "RAMP_LEFT", "ON_RAMP_LEFT", "OFF_RAMP_LEFT" -> ManeuverType.RAMP_LEFT
-        "RAMP_RIGHT", "ON_RAMP_RIGHT", "OFF_RAMP_RIGHT" -> ManeuverType.RAMP_RIGHT
-        "KEEP_LEFT" -> ManeuverType.KEEP_LEFT
-        "KEEP_RIGHT" -> ManeuverType.KEEP_RIGHT
-        else -> if (s?.contains("ROUNDABOUT") == true) ManeuverType.ROUNDABOUT else ManeuverType.UNKNOWN
+    /** Map Google's keyless maneuver [token] (+ the child `<turn>` [side]/[severity]) to a
+     *  [ManeuverType]. The feed uses a GENERIC token with left/right + slight/sharp carried
+     *  separately, so reading only the token left every plain turn and ramp as UNKNOWN — a generic
+     *  arrow and the wrong direction-coded haptic. Old explicit *_LEFT/_RIGHT tokens stay handled in
+     *  case the feed varies. */
+    internal fun mapType(token: String?, side: String?, severity: String?): ManeuverType {
+        val left = side.equals("LEFT", ignoreCase = true)
+        val right = side.equals("RIGHT", ignoreCase = true)
+        val slight = severity.equals("SLIGHT", ignoreCase = true)
+        val sharp = severity.equals("SHARP", ignoreCase = true)
+        fun lr(l: ManeuverType, r: ManeuverType, fallback: ManeuverType) = if (left) l else if (right) r else fallback
+        return when (token?.uppercase()) {
+            "DEPART" -> ManeuverType.DEPART
+            "DESTINATION", "ARRIVE" -> ManeuverType.ARRIVE
+            "TURN_LEFT" -> ManeuverType.TURN_LEFT
+            "TURN_RIGHT" -> ManeuverType.TURN_RIGHT
+            "TURN_SLIGHT_LEFT" -> ManeuverType.SLIGHT_LEFT
+            "TURN_SLIGHT_RIGHT" -> ManeuverType.SLIGHT_RIGHT
+            "TURN_SHARP_LEFT" -> ManeuverType.SHARP_LEFT
+            "TURN_SHARP_RIGHT" -> ManeuverType.SHARP_RIGHT
+            "TURN" -> when {
+                slight -> lr(ManeuverType.SLIGHT_LEFT, ManeuverType.SLIGHT_RIGHT, ManeuverType.STRAIGHT)
+                sharp -> lr(ManeuverType.SHARP_LEFT, ManeuverType.SHARP_RIGHT, ManeuverType.STRAIGHT)
+                else -> lr(ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.STRAIGHT)
+            }
+            "UTURN", "UTURN_LEFT", "UTURN_RIGHT" -> ManeuverType.UTURN
+            "STRAIGHT", "CONTINUE", "NAME_CHANGE" -> ManeuverType.STRAIGHT
+            "MERGE", "MERGE_LEFT", "MERGE_RIGHT" -> ManeuverType.MERGE
+            "FORK", "FORK_LEFT", "FORK_RIGHT" -> lr(ManeuverType.FORK_LEFT, ManeuverType.FORK_RIGHT, ManeuverType.STRAIGHT)
+            "ON_RAMP", "OFF_RAMP", "RAMP",
+            "RAMP_LEFT", "ON_RAMP_LEFT", "OFF_RAMP_LEFT",
+            "RAMP_RIGHT", "ON_RAMP_RIGHT", "OFF_RAMP_RIGHT" ->
+                lr(ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT, ManeuverType.MERGE)
+            "KEEP", "KEEP_LEFT", "KEEP_RIGHT" -> lr(ManeuverType.KEEP_LEFT, ManeuverType.KEEP_RIGHT, ManeuverType.STRAIGHT)
+            else -> when {
+                token?.contains("ROUNDABOUT") == true -> ManeuverType.ROUNDABOUT
+                left || right -> lr(ManeuverType.TURN_LEFT, ManeuverType.TURN_RIGHT, ManeuverType.UNKNOWN)
+                else -> ManeuverType.UNKNOWN
+            }
+        }
     }
 
     /** Position each maneuver at its *actual* cumulative step distance along the
