@@ -253,8 +253,9 @@ class GoogleMapsDataSource @Inject constructor(
             }
         }
         if (pts.isEmpty()) return@coroutineScope routes
-        // Cap the lookups so a pathological route can't fan out into a Nominatim storm.
-        val roads = pts.entries.take(12).map { (k, p) -> async { k to roadAt(p) } }.awaitAll().toMap()
+        // Nominatim's usage policy forbids bulk/parallel (it rate-limits or blocks the IP, which
+        // would also break long-press geocoding) — so look up only a FEW turns, SEQUENTIALLY.
+        val roads = pts.entries.take(6).associate { (k, p) -> k to roadAt(p) }
         routes.map { r ->
             r.copy(legs = r.legs.map { leg ->
                 val ms = leg.maneuvers
