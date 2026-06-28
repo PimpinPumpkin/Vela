@@ -151,6 +151,17 @@ genuinely needs no doc edit, say why in the commit.
   for richer photos (lazy, best-effort, OkHttp fallback). Gotchas: **desktop UA**
   (mobile UA → Google deep-links to `intent://`), block non-http(s) redirects, and
   use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
+- **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**
+  (`RouteGeometry.route`, `steps=true`, per-mode `routed-car`/`-bike`/`-foot`) — complete,
+  street-named maneuvers + real geometry. Google's keyless `/maps/preview/directions` returns
+  **abbreviated** steps for longer routes (a 6-mi route came back with 2 of ~10 turns), so it's
+  demoted to (a) the **live-traffic source** — `GoogleMapsDataSource.applyTraffic` scales OSRM's
+  free-flow duration by Google's in-traffic/typical ratio and maps its congestion spans onto the
+  OSRM geometry — and (b) the **fallback router** when OSRM is unreachable. The two are fetched in
+  parallel. Rationale: routing is a solved open-data problem; Google's edge is traffic/POIs/hours/
+  reviews, not routing. **`OSRM_BASE` is the FOSSGIS community server (fair-use) — point at a
+  self-hosted OSRM/Valhalla before any real release.** (This retired the keyless-step parsing as the
+  primary path + the Nominatim "fill the missing road name" hack.)
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
