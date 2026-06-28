@@ -290,6 +290,8 @@ fun MapScreen(
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
+            ambientPois = ambientMarkersOf(state),
+            onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
             onViewport = vm::onViewport,
@@ -690,10 +692,19 @@ private fun routeTrafficSpans(route: app.vela.core.model.Route?): List<Triple<Fl
 private fun displayedPlaces(state: MapUiState): List<Place> = when {
     state.results.isNotEmpty() -> state.results.filterNot { it.permanentlyClosed }
     state.selected != null -> listOf(state.selected)
-    // Ambient POIs are a bare-browse-map thing — keep them off the nav/replay/route-preview views.
-    state.navigating || state.replaying || state.activeRoute != null -> emptyList()
-    else -> state.ambientPois
+    else -> emptyList() // ambient Google POIs render as category dots (their own layer), not pins
 }
+
+/** Ambient Google POIs to draw as category dots — only on the bare browse map (off during search,
+ *  an open place, a route preview, nav, or replay). */
+private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
+    if (state.results.isEmpty() && state.selected == null && !state.navigating &&
+        !state.replaying && state.activeRoute == null
+    ) {
+        state.ambientPois.map { MapMarker(it.name, it.location, it.category) }
+    } else {
+        emptyList()
+    }
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
     displayedPlaces(state).map { MapMarker(it.name, it.location) }

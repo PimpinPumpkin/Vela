@@ -68,6 +68,37 @@ object PoiIcons {
         "transit" to listOf("bus", "railway", "aerodrome", "station", "subway", "tram", "ferry_terminal", "airport"),
     )
 
+    /** Best dot group for a Google place's category phrase ("Pizza restaurant", "Gas station",
+     *  "Coffee shop") so an ambient Google POI gets the SAME coloured dot as the equivalent OSM
+     *  POI. Keyword match over the same vocabulary as [CLASS_GROUPS]; order matters (more specific
+     *  first). The image to use is `vela-poi-<returned group>`. */
+    fun groupForCategory(category: String?): String {
+        val c = category?.lowercase() ?: return "default"
+        fun any(vararg k: String) = k.any { it in c }
+        return when {
+            any("gas station", "gas ", "fuel", "petrol", "charging station", "ev charg") -> "fuel"
+            any("coffee", "cafe", "café", "espresso", "tea ", "teahouse") -> "food"
+            any("restaurant", "pizza", "burger", "steak", "sushi", "diner", "bakery", "deli", "bistro",
+                "eatery", "barbecue", "bbq", "taco", "sandwich", "ice cream", "donut", "brewery", "brewpub",
+                "grill", " bar", "pub", "food", "buffet", "ramen", "noodle", "pho", "creamery") -> "food"
+            any("hotel", "motel", "inn", "lodging", "resort", "hostel", "bed & breakfast") -> "lodging"
+            any("hospital", "clinic", "pharmacy", "drugstore", "dentist", "doctor", "medical", "health",
+                "veterinar", "urgent care", "physician", "chiropract", "optometr") -> "health"
+            any("park", "garden", "trail", "playground", "campground", "nature") -> "park"
+            any("parking", "parking garage", "parking lot") -> "parking"
+            any("school", "university", "college", "academy", "education", "library", "kindergarten", "preschool") -> "edu"
+            any("museum", "theater", "theatre", "gallery", "cinema", "movie", "art ", "cultural", "historical", "aquarium", "zoo") -> "culture"
+            any("gym", "fitness", "stadium", "sport", "golf", "bowling", "yoga", "arena", "athletic", "climbing") -> "sport"
+            any("station", "transit", "airport", "bus ", "train", "subway", "metro", "light rail", "ferry") -> "transit"
+            any("bank", "atm", "credit union", "post office", "police", "fire station", "city hall",
+                "courthouse", "church", "mosque", "temple", "synagogue", "place of worship", "cemetery", "government") -> "civic"
+            any("store", "shop", "grocery", "supermarket", "market", "mall", "retail", "boutique", "outlet",
+                "dealer", "salon", "barber", "hardware", "florist", "laundr", "jewelr", "furniture", "pharmacy",
+                "auto parts", "tire", "nail", "spa") -> "shop"
+            else -> "default"
+        }
+    }
+
     /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our coloured markers,
      *  and (in light mode) colour the POI label text by category, like Google. */
     fun applyToLiberty(style: Style, dark: Boolean) {

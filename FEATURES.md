@@ -30,14 +30,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   between flat and a near-horizon 3D view (Google-style). Tilt gestures are now enabled
   explicitly and the max pitch is lifted to 70°; browse-camera moves use `newLatLngZoom`
   which preserves the pitch you set, so the tilt sticks until you change it
-- ✅ **Ambient Google POIs on the map** (2026-06-27, v1) — the basemap dots/labels are OSM
+- ✅ **Ambient Google POIs on the map** (2026-06-27) — the basemap dots/labels are OSM
   (OpenFreeMap), so Google-only places used to appear only when searched. Now, on a bare,
-  zoomed-in browse map, the visible area's prominent **Google** places are fetched and pinned
-  automatically (one keyless `"places"` query — ~20 mixed-category hits — capped to 12), tap to
-  open like any result. **Tightly gated** so the scraping stays modest: zoom ≥ 14, bare map only
-  (no search results / open place / nav / replay), debounced 500 ms, and skipped for pans under
-  250 m. *(v1 reuses the search-pin style; switching ambient POIs to smaller Google-style category
-  dots + an optional on/off toggle is the planned follow-up.)*
+  zoomed-in browse map, the visible area's prominent **Google** places are fetched automatically
+  (one keyless `"places"` query — ~20 mixed-category hits — capped to 12) and drawn as **small
+  Google-style category dots** — the *same* `vela-poi-<group>` icons as the OSM POIs (fork=food,
+  cart=shop, fuel, etc.), with decluttered labels — so they read as native map POIs, not clashing
+  red pins. Tap to open like any result. **Google-first balance:** while ambient Google POIs are
+  showing, the OSM **business** POI layers (`poi_r1/r7/r20`) are hidden so the two don't duplicate
+  ("OSM for the map, Google for the businesses"); OSM transit + the whole OSM basemap stay, and the
+  OSM POIs come back when ambient is off (zoomed out / offline / nav / search). **Tightly gated** so
+  scraping stays modest: zoom ≥ 14, bare map only (no results / open place / nav / replay),
+  debounced 500 ms, skipped for pans under 250 m. On-device-verified (the test city: Applebee's, Subway,
+  Safeway Fuel Station as category dots, tap → place sheet). *(An on/off toggle is the next option.)*
 - 🟡 Self-hosted PMTiles — the no-key, no-quota Google-look path — remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
 - ⬜ Satellite layer (terrain relief ✅ done; aerial imagery still planned)
