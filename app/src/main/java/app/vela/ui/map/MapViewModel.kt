@@ -1272,7 +1272,7 @@ class MapViewModel @Inject constructor(
             return
         }
         // Re-query only on a real pan or a real zoom change (not every settle).
-        val moved = lastAmbientCenter?.let { it.distanceTo(center) >= 250.0 } ?: true
+        val moved = lastAmbientCenter?.let { it.distanceTo(center) >= 180.0 } ?: true
         val zoomed = abs(zoom - lastAmbientZoom) >= 0.8
         if (!moved && !zoomed && s.ambientPois.isNotEmpty()) return
         ambientJob?.cancel()
@@ -1287,7 +1287,7 @@ class MapViewModel @Inject constructor(
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(50)) }
+            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(80)) }
         }
     }
 
