@@ -95,12 +95,13 @@ build `pb` (`SearchPb`) + `GET` → **optional JS override** (`JsTransforms`, §
 | Purpose | Request |
 |---|---|
 | Search | `GET /search?tbm=map&q=<q>&pb=<SearchPb>` |
-| Directions | `GET /maps/preview/directions?pb=<DirectionsPb>` |
+| Directions (turn-by-turn) | **PRIMARY: FOSSGIS OSRM** `route/v1?steps=true` (`routed-car`/`-bike`/`-foot`) — full street-named maneuvers + geometry |
+| Directions (traffic ETA + fallback) | `GET /maps/preview/directions?pb=<DirectionsPb>` — Google's live-traffic ETA/spans, overlaid on the OSRM route; also the fallback router |
 | Reviews | `GET /maps/preview/review/listentitiesreviews?pb=!1m2!1y<HIGH>!2y<LOW>!2m2!2i0!3i20!3e1!5m2!1svela!7e81` |
 | Photos (full gallery) | `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` (proto in calibration) |
 | Transit | hidden WebView on `/maps/dir/<o>/<d>/data=!4m2!4m1!3e3` (see below) |
 | Reverse-geocode | OSM **Nominatim** `/reverse` (NOT Google — Google `tbm=map` won't reverse a lat,lng) |
-| Route geometry fallback | FOSSGIS **OSRM** `routed-car`/`-bike`/`-foot` (only when Google omits geometry) |
+| (legacy) Google route geometry fallback | when OSRM is down, Google's directions + OSRM geometry fill |
 
 ### Search response (`root[64][i]`, each entry rooted at `[1]`)
 name `[1][11]` · full address `[1][39]` (fallback: join components `[1][2]`) · rating
