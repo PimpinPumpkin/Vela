@@ -169,7 +169,7 @@ each rooted at `[1]`: name `[1][11]`, **full address `[1][39]`** (street, city,
 state, ZIP — fall back to joining the components at `[1][2]`), rating `[1][4][7]`,
 reviews `[1][4][8]`, lat `[1][9][2]`, lng `[1][9][3]`, category `[1][13][0]`,
 feature id `[1][10]` (`0x..:0x..`, → reviews endpoint), place id `[1][78]`,
-**photos `[1][105][0][1][0][i][6][0]`** (FIFE URLs; re-size with a `=w500-h350`
+**photos `[1][72][0][i][6][0]`** (FIFE URLs; re-size with a `=w500-h350`
 suffix), **featured review snippet `[1][142][1][0][1][0][0]`**, and the **About**
 attributes at `[1][100][1]` (see below). Full reviews come from a separate
 keyless endpoint (below). A **specific/far address** doesn't come back as a `[64]`
@@ -227,8 +227,10 @@ them); a cookieless request returns an empty envelope. It serves a **fixed top
 ~20** (the `2i` offset is ignored and `3i` count is capped); deeper pagination is
 behind an obfuscated continuation token, deliberately not chased.
 
-**Photos** — the search response carries a **~10-photo preview** at
-`[1][105][0][1][0][i][6][0]` (the immediate hero). The **full gallery (~30–40)**
+**Photos** — the search response carries a **photo preview** at
+`[1][72][0][i][6][0]` (the immediate hero; Google **moved this block `[105]`→`[72]`
+on 2026-06-27**, which briefly blanked every hero strip — hot-fixed via calibration
+`v7`, no app update). The **full gallery (~30–40)**
 comes from the `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` RPC
 (`/MapsPhotoService.ListEntityPhotos`, feature id at proto `[2][0]`), and it's the
 one endpoint that **only a real browser engine** can reach: a plain HTTP client —
