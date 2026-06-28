@@ -289,7 +289,7 @@ fun MapScreen(
             trafficOn = Traffic.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
-            onMarkerTap = { i -> state.results.getOrNull(i)?.let(vm::selectPlace) },
+            onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
             onViewport = vm::onViewport,
@@ -684,15 +684,19 @@ private fun routeTrafficSpans(route: app.vela.core.model.Route?): List<Triple<Fl
     }
 }
 
+/** The places currently pinned on the map, in marker-index order (so a marker tap maps back to
+ *  the right [Place]). Search results win; else the opened place; else the ambient Google POIs
+ *  shown on the bare browse map. Dead POIs are dropped from the pins (Google-style). */
+private fun displayedPlaces(state: MapUiState): List<Place> = when {
+    state.results.isNotEmpty() -> state.results.filterNot { it.permanentlyClosed }
+    state.selected != null -> listOf(state.selected)
+    // Ambient POIs are a bare-browse-map thing — keep them off the nav/replay/route-preview views.
+    state.navigating || state.replaying || state.activeRoute != null -> emptyList()
+    else -> state.ambientPois
+}
+
 private fun markersOf(state: MapUiState): List<MapMarker> =
-    if (state.results.isNotEmpty()) {
-        // Dead POIs stay in the results list but are dropped from the map pins
-        // (Google-style) — a permanently-closed place shouldn't clutter the map.
-        // A place the user explicitly opened still gets its pin (the else branch).
-        state.results.filterNot { it.permanentlyClosed }.map { MapMarker(it.name, it.location) }
-    } else {
-        state.selected?.let { listOf(MapMarker(it.name, it.location)) } ?: emptyList()
-    }
+    displayedPlaces(state).map { MapMarker(it.name, it.location) }
 
 @Composable
 private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onCollapse: () -> Unit) {
