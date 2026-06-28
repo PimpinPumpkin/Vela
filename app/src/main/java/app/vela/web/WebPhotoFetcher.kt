@@ -9,169 +9,178 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import app.vela.core.VelaConfig
-import app.vela.core.config.CalibrationStore
-import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.model.Photo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.math.BigInteger
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fetches the full place photo gallery through a hidden [WebView] — Android's real
- * Chromium engine.
+ * Fetches a place's photo gallery through a hidden [WebView] by **loading the place's own
+ * `?cid=` page and scraping the rendered photo URLs out of the DOM** — the same tactic as
+ * [WebReviewsFetcher].
  *
- * Google serves the user-photo gallery (the `hspqX` RPC) **only to a genuine
- * browser session**; a plain HTTP client (OkHttp) gets a degraded, Street-View-only
- * reply — bot-detection at the TLS/fingerprint level that headers can't beat
- * (verified on-device: the `/maps` page comes back as a 162 KB token-less "lite"
- * shell). A WebView *is* Chromium, so it loads `maps.google.com` as an **anonymous,
- * no-login** session — exactly like a logged-out browser, which DOES show the
- * photos — then runs a same-origin `fetch` to the photos RPC and hands the raw
- * response back over a JS bridge. Keyless: no API key, no account.
+ * Why not the dedicated `hspqX` photos RPC? On-device logging (2026-06-28) proved Google
+ * **degrades a bare anonymous `hspqX` POST per-session** to a single Street-View-only reply
+ * (`streetviewpixels`, ~2 KB) — and a same-session retry returns the byte-identical degraded
+ * answer, so the RPC is unreliable keyless. But Google **renders the real photo collage to a
+ * logged-out browser on the place PAGE itself** (that's how a user sees them). So we let
+ * Google's own JS draw the page and read the `googleusercontent` photo URLs back out of the
+ * DOM — much harder for it to bot-degrade than a naked RPC call.
  *
- * It's created lazily (only when a place's photos are first wanted) to keep
- * Google's JS out of the process until then, and it's strictly best-effort: any
- * failure/timeout returns empty and the caller keeps the search-preview photos.
+ * Anonymous / no-login, desktop UA (a mobile UA deep-links to `intent://`). Strictly
+ * best-effort + lazy: any failure/timeout returns empty and the caller keeps the search-preview
+ * photo. Serialized by a [Mutex] since the single WebView navigates per place.
  */
 @Singleton
 class WebPhotoFetcher @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val calibration: CalibrationStore,
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val seq = AtomicInteger()
-    // A headless WebView is never attached to a window, so View.postDelayed would
-    // never fire — post timers straight to the main looper instead.
+    private val mutex = Mutex()
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile private var webView: WebView? = null
-    @Volatile private var warm: CompletableDeferred<Unit>? = null
 
     private inner class Bridge {
-        /** Called from the WebView's JS thread when a fetch resolves. */
         @JavascriptInterface
         fun onResult(id: String, payload: String) {
             pending.remove(id)?.complete(payload)
         }
     }
 
-    /** The full gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL plus
-     *  a "posted" date when present — or empty on any failure.
-     *
-     *  Google degrades our anonymous session to a Street-View-only reply (`streetviewpixels`,
-     *  ~2 KB, filtered → empty). On-device diagnosis (2026-06-28) showed this is **per-SESSION,
-     *  not per-request** — 4 retries in 5 s all returned the identical degraded reply — so a big
-     *  same-session retry can't help; we keep only a tiny [MAX_TRIES] hedge for a real network
-     *  blip. When the session ISN'T degraded (it happens — a user saw a full gallery populate),
-     *  the real user photos come back and swap in. Reliably un-degrading the session is unsolved
-     *  keyless; the promising lever is loading the place's own page so Google renders the photos
-     *  in-context (like the reviews scrape) rather than this bare RPC POST — see ROADMAP. Always
-     *  best-effort: degraded/empty → caller keeps the de-duped search-preview photo. */
+    /** The gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL (no posted date from a
+     *  DOM scrape) — or empty on any failure. [count] caps how many we keep. */
     suspend fun fetch(featureId: String, count: Int = 50): List<Photo> {
-        if (!featureId.contains(":")) return emptyList()
-        val cal = calibration.current()
-        val proto = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", count.toString())
-        return (withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
-            ensureWarm()
-            var photos = emptyList<Photo>()
-            for (attempt in 0 until MAX_TRIES) {
-                photos = runOnce(cal.photosEndpoint, proto)
-                if (photos.isNotEmpty()) break
-                delay(RETRY_DELAY_MS)
+        val cid = cidOf(featureId) ?: return emptyList()
+        return mutex.withLock {
+            val id = "p" + seq.incrementAndGet()
+            val deferred = CompletableDeferred<String>()
+            pending[id] = deferred
+            val raw = try {
+                withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
+                    withContext(Dispatchers.Main) {
+                        val wv = ensureWebView()
+                        val ready = CompletableDeferred<Unit>()
+                        wv.webViewClient = object : WebViewClient() {
+                            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                                val scheme = request?.url?.scheme
+                                return scheme != null && scheme != "https" && scheme != "http"
+                            }
+                            override fun onPageFinished(view: WebView?, url: String?) {
+                                main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, SETTLE_MS)
+                            }
+                        }
+                        wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
+                        main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, MAX_LOAD_MS)
+                        ready.await()
+                        wv.evaluateJavascript(extractScript(id, count), null)
+                    }
+                    deferred.await()
+                }
+            } finally {
+                pending.remove(id)
             }
-            photos
-        }) ?: emptyList()
-    }
-
-    /** One same-origin POST to the photos RPC inside the warmed page, parsed to [Photo]s. */
-    private suspend fun runOnce(endpoint: String, proto: String): List<Photo> {
-        val id = "p" + seq.incrementAndGet()
-        val deferred = CompletableDeferred<String>()
-        pending[id] = deferred
-        val raw = try {
-            withContext(Dispatchers.Main) { webView?.evaluateJavascript(script(id, endpoint, proto), null) }
-            withTimeoutOrNull(PER_TRY_TIMEOUT_MS) { deferred.await() }
-        } finally {
-            pending.remove(id)
+            val urls = raw?.split("\n")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+            urls.map { Photo(upsize(it)) }
         }
-        return if (raw.isNullOrEmpty()) emptyList() else runCatching { PhotosParser.parse(raw) }.getOrDefault(emptyList())
     }
 
-    /** Lazily create the WebView and load maps.google.com once. Concurrent callers
-     *  await the same warm-up (the Main dispatcher serialises the setup). */
+    /** The Google "cid" = the LOW half of the `0xHIGH:0xLOW` feature id as an unsigned decimal. */
+    private fun cidOf(featureId: String): String? {
+        val low = featureId.substringAfter(":", "").removePrefix("0x").ifBlank { return null }
+        return runCatching { BigInteger(low, 16).toString() }.getOrNull()
+    }
+
+    /** Up-size a FIFE thumbnail URL for the sheet's photo strip. */
+    private fun upsize(u: String): String =
+        u.replace(Regex("=w\\d+-h\\d+[^=]*$"), "=w600-h450").replace(Regex("=s\\d+[^=]*$"), "=s600")
+
     @SuppressLint("SetJavaScriptEnabled")
-    private suspend fun ensureWarm() = withContext(Dispatchers.Main) {
-        warm?.let { it.await(); return@withContext }
-        val w = CompletableDeferred<Unit>()
-        warm = w
+    private fun ensureWebView(): WebView {
+        webView?.let { return it }
         val wv = WebView(context)
         wv.settings.javaScriptEnabled = true
         wv.settings.domStorageEnabled = true
-        // Desktop Chrome UA → Google serves the desktop web Maps and does NOT try to
-        // deep-link into the native app (a mobile UA gets redirected to intent://).
         wv.settings.userAgentString = VelaConfig.USER_AGENT
         wv.addJavascriptInterface(Bridge(), "VelaBridge")
-        wv.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                // Block intent://, market://, geo:, … so a deep-link redirect can't
-                // navigate us off the real web page.
-                val scheme = request?.url?.scheme
-                return scheme != null && scheme != "https" && scheme != "http"
-            }
-            override fun onPageFinished(view: WebView?, url: String?) {
-                // Let the SPA settle past the initial document before we fetch.
-                main.postDelayed({ if (!w.isCompleted) w.complete(Unit) }, SETTLE_MS)
-            }
-        }
-        wv.loadUrl(calibration.current().sessionWarmUrl)
         webView = wv
-        // Fallback: proceed even if onPageFinished is slow/never fires on the SPA.
-        main.postDelayed({ if (!w.isCompleted) w.complete(Unit) }, MAX_WARM_MS)
-        w.await()
+        return wv
     }
 
-    /** A same-origin POST to the photos RPC, run inside the page; the raw response
-     *  text comes back through [Bridge.onResult]. */
-    /** A JS/JSON string literal (quoted + escaped) — `:app` has no JSON lib. */
-    private fun jsStr(s: String): String =
-        "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r") + "\""
-
-    private fun script(id: String, endpoint: String, proto: String): String {
-        val pj = jsStr(proto)   // proto as an escaped JS string literal
-        val ej = jsStr(endpoint)
-        val idj = jsStr(id)
+    /** Self-polling DOM scraper: collect every `googleusercontent` photo URL (the rendered photo
+     *  collage), click the "photos" affordance once to open the full gallery, scroll to surface
+     *  more, and bridge a newline-joined list back once the count holds steady. Avatars and Street
+     *  View are excluded; URLs are de-duped by image id (ignoring the size suffix). */
+    private fun extractScript(id: String, cap: Int): String {
+        val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              try {
-                var freq = JSON.stringify([[["hspqX", $pj, null, "generic"]]]);
-                fetch($ej, {method:"POST", credentials:"include",
-                    headers:{"content-type":"application/x-www-form-urlencoded;charset=UTF-8"},
-                    body:"f.req=" + encodeURIComponent(freq)})
-                  .then(function(r){ return r.text(); })
-                  .then(function(t){ VelaBridge.onResult($idj, t.slice(0, 800000)); })
-                  .catch(function(e){ VelaBridge.onResult($idj, ""); });
-              } catch(e){ VelaBridge.onResult($idj, ""); }
+              var ID=$idj, CAP=$cap, last=-1, stable=0, tries=0, opened=false, best=[];
+              function ok(u){
+                if(!u || u.indexOf('googleusercontent')<0) return false;
+                if(/streetviewpixels/.test(u)) return false;
+                if(/\/a[\/-]|ACg8oc|ALV-/.test(u)) return false;          // reviewer avatars
+                return true;
+              }
+              function collect(){
+                var map={};
+                function add(u){ if(ok(u)){ var k=u.replace(/=[wshpc].*$/,''); if(!map[k]) map[k]=u; } }
+                [].slice.call(document.querySelectorAll('img')).forEach(function(im){ add(im.currentSrc||im.src); });
+                // Photo tiles are role=img / buttons / inline-styled bg divs — scan only those
+                // (NOT every div+span, which would mean getComputedStyle on thousands of nodes).
+                [].slice.call(document.querySelectorAll('[role="img"],button,a,[style*="background"]')).forEach(function(el){
+                  var bg=el.style.backgroundImage||''; if(!bg){ try{ bg=getComputedStyle(el).backgroundImage||''; }catch(e){} }
+                  var m=bg.match(/url\(["']?([^"')]+)/); if(m) add(m[1]);
+                });
+                var out=[]; for(var k in map) out.push(map[k]); return out;
+              }
+              function openGallery(){
+                if(opened) return;
+                var bs=[].slice.call(document.querySelectorAll('button,a'));
+                for(var i=0;i<bs.length;i++){
+                  var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase();
+                  if(/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l) && !/street ?view|review|profile|video/.test(l)){
+                    try{ bs[i].click(); opened=true; return; }catch(e){}
+                  }
+                }
+              }
+              function scrollAll(){
+                try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){
+                  if(d.scrollHeight>d.clientHeight+300 && d.clientHeight>200){ d.scrollTop=d.scrollHeight; }
+                }); }catch(e){}
+              }
+              function tick(){
+                tries++;
+                openGallery();
+                scrollAll();
+                var u=collect();
+                if(u.length>best.length) best=u;       // keep the largest set (opening the gallery can blink)
+                if(u.length===last && u.length>0) stable++; else stable=0;
+                last=u.length;
+                if(best.length>=CAP || (stable>=3 && tries>=5 && best.length>0) || tries>24){
+                  try{ VelaBridge.onResult(ID, best.slice(0,CAP).join("\n")); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} }
+                  return;
+                }
+                setTimeout(tick, 500);
+              }
+              tick();
             })();
         """.trimIndent()
     }
 
     private companion object {
-        const val TOTAL_TIMEOUT_MS = 12_000L
-        const val PER_TRY_TIMEOUT_MS = 5_000L
-        // Google degrades our anonymous session to a Street-View-only reply *per session*, not
-        // per request (verified on-device: 4 identical degraded replies in 5 s), so a big retry
-        // just churns. Keep a tiny hedge for a genuine network blip; the real win needs a
-        // non-degraded session (see WebPhotoFetcher KDoc / ROADMAP — load the place page).
-        const val MAX_TRIES = 2
-        const val RETRY_DELAY_MS = 1_000L
-        const val SETTLE_MS = 1_400L
-        const val MAX_WARM_MS = 7_000L
+        const val TOTAL_TIMEOUT_MS = 24_000L
+        const val SETTLE_MS = 1_200L
+        const val MAX_LOAD_MS = 7_000L
     }
 }
