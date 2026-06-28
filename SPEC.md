@@ -162,15 +162,18 @@ depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
   per-review uploaded photos needs a different RPC/flag** (6 pb-flag guesses + the page's
   own request all yielded avatars-only — see `ROADMAP.md`). **Fixed top ~20** (offset `2i`
   ignored; deeper paging is a token, not chased).
-- **Photos**: the `hspqX` gallery RPC serves the real gallery **only to a real browser
-  engine** (OkHttp gets a bot-degraded Street-View-only reply — TLS fingerprint, not
-  headers). So `app/web/WebPhotoFetcher` loads `maps.google.com` in a **hidden,
-  anonymous WebView** and same-origin-`fetch`es the RPC. Gotchas: desktop UA (mobile →
-  `intent://`), block non-http(s) redirects, use a `Handler` not `View.postDelayed`
-  (headless WebView never attaches). Per-photo: URL `entry[6][0]`, **posted date
-  `entry[21][6][8]` = `[year, month, day, hour]`** (→ "May 2026"), upload-source tag
-  `[21][6][5][2]`. **No contributor name** in this response — only date + source — so
-  `Photo` carries url + date, not author (the name needs a separate per-id lookup).
+- **Photos**: the full gallery is **scraped from the place's own `?cid=` page** (2026-06-28),
+  *not* the `hspqX` RPC — that RPC is **bot-degraded per-session** to a Street-View-only reply
+  (an on-device log showed byte-identical degraded replies across retries, so retrying never
+  recovers it). `app/web/WebPhotoFetcher` loads the `?cid=` page in a **hidden, anonymous,
+  desktop-UA WebView**, lets Google's JS render it, and a self-polling script scrapes
+  `googleusercontent` photo URLs from the DOM (avatars + Street View filtered, de-duped by
+  image id, clicks the "Photos" affordance + scrolls to surface more) — **same pattern as
+  `WebReviewsFetcher`**; a rendered page is far harder to bot-degrade than a naked RPC POST.
+  ~9–25 photos/place, on-device-verified; a shimmer row (`MapState.photosLoading`) shows while
+  it's in flight. Gotchas: desktop UA (mobile → `intent://`), block non-http(s) redirects,
+  `Handler` not `View.postDelayed` (headless WebView never attaches). No posted-date or
+  contributor name from a DOM scrape (those were `hspqX`-only fields).
 - **Transit**: a plain keyless transit request is silently downgraded to *driving*, so
   `app/web/WebDirectionsFetcher` navigates the `/maps/dir/…/data=…!3e3` page and reads
   `window.APP_INITIALIZATION_STATE`. The payload is the **longest** `)]}'`-guarded

@@ -65,6 +65,7 @@ data class MapUiState(
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
+    val photosLoading: Boolean = false, // the lazy WebView gallery scrape is in flight (more photos coming)
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
@@ -477,7 +478,7 @@ class MapViewModel @Inject constructor(
         if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
-        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, loadingDetails = false) }
+        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, photosLoading = false, loadingDetails = false) }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
@@ -594,7 +595,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 selected = p, center = p.location, reviews = emptyList(), suggestions = emptyList(),
-                placesHere = othersAt(p, it.results), loadingDetails = false,
+                placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
             )
         }
         fetchReviews(p)
@@ -661,23 +662,22 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Pull the full photo gallery (~40+) by feature id and swap it in for the
-     *  search response's ~10-photo preview. Goes through [WebPhotoFetcher] — a real
-     *  browser session is the only thing Google serves the gallery to (the OkHttp
-     *  path just gets Street View). Best-effort: an empty/failed fetch leaves the
-     *  preview untouched (no regression). */
+    /** Pull the full photo gallery by scraping the place's own Google Maps page
+     *  ([WebPhotoFetcher]) and swap it in for the search response's ~1-photo preview.
+     *  Sets [MapState.photosLoading] while in flight so the sheet can show "more coming".
+     *  Best-effort: an empty/failed scrape leaves the preview untouched (no regression). */
     private fun fetchPhotos(p: Place) {
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
+        _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
         viewModelScope.launch {
             val full = runCatching { webPhotos.fetch(fid) }.getOrDefault(emptyList())
-            if (full.isNotEmpty()) {
-                _state.update { st ->
-                    val sel = st.selected
-                    if (sel?.featureId == fid) st.copy(
-                        selected = sel.copy(photoUrls = full.map { it.url }, photoDates = full.map { it.postedText }),
-                    ) else st
-                }
+            _state.update { st ->
+                val sel = st.selected
+                if (sel?.featureId == fid) st.copy(
+                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = full.map { it.postedText }) else sel,
+                    photosLoading = false,
+                ) else st
             }
         }
     }
@@ -770,6 +770,7 @@ class MapViewModel @Inject constructor(
                 placesHere = emptyList(),
                 reviews = emptyList(),
                 loadingDetails = false,
+                photosLoading = false,
                 pickingOrigin = false,
             )
         }
