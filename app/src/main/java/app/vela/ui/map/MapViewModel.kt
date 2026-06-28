@@ -52,6 +52,7 @@ import javax.inject.Inject
 
 data class MapUiState(
     val center: LatLng? = null,
+    val recenterTick: Int = 0, // bumped per recenter tap so the map force-moves even if "centered"
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
     val mySpeed: Float? = null, // metres/second, from GPS
@@ -669,7 +670,12 @@ class MapViewModel @Inject constructor(
     private fun fetchPhotos(p: Place) {
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
-        _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
+        // Only flash the loading shimmer for places LIKELY to have photos — a rated/reviewed
+        // business or one with a preview already. A residential address (no rating, reviews, or
+        // preview) shouldn't show a photo placeholder for a gallery it'll never have. We still
+        // run the scrape silently in case it surprises us; we just don't promise photos.
+        val photoWorthy = p.rating != null || p.reviewCount != null || p.photoUrls.isNotEmpty()
+        if (photoWorthy) _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
         viewModelScope.launch {
             val full = runCatching { webPhotos.fetch(fid) }.getOrDefault(emptyList())
             _state.update { st ->
@@ -1239,7 +1245,7 @@ class MapViewModel @Inject constructor(
 
     fun dismissPsdsTip() = _state.update { it.copy(showPsdsTip = false) }
 
-    fun recenter() = _state.update { it.copy(center = it.myLocation) }
+    fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1) }
 
     fun clearStatus() = _state.update { it.copy(status = null) }
 
