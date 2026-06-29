@@ -230,12 +230,12 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   (Bay-Bridge approach = one long level-2 span). The whole-map raster stays off during
   nav — the route now carries the traffic, like Google. *(Level→colour mapping is the
   best read of the 1/2 grades seen; trivially flipped if a heavy drive shows otherwise.)*
-- **Offline / on-device routing — the "Google routes, OSRM names the turns" unlock.** A heavy
-  native engine (Valhalla/GraphHopper) on the phone. Multi-session. Beyond going offline, this is
-  what makes the **clean always-snap** routing possible. The vision (raised 2026-06-28): always take
-  Google's traffic-smart path and use an open router only to recover street-named turns — *Google
-  picks the road, the open engine names it*. **Measured why we can't do it cleanly on public infra
-  today, and that NO self-hosting is required to *try*:**
+- **On-device map-matching (GraphHopper) — the "Google routes, the engine names the turns" unlock.**
+  *(Engine chosen 2026-06-28: **GraphHopper**, NOT Valhalla — see below. Multi-session.)* Beyond going
+  offline, this is what makes **clean always-snap** routing possible: always take Google's traffic-smart
+  path and use an on-device engine only to recover street-named turns — *Google picks the road, the open
+  engine names it*. **Why we can't do it cleanly on public infra today (measured), and that NO
+  self-hosting is required:**
   - Google's keyless **polyline is complete** (decoded `[0][7][i]`), so the path is fully traceable.
   - The clean tool is **map-matching** (trace → roads+turns). FOSSGIS **`/match` caps at 10 coords**
     (`TooBig` past that, ~0.01 confidence that sparse); public **Valhalla `/trace_route` times out**.
@@ -245,10 +245,38 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     Drive"). Turn-loss is the exact bug we just fixed, so always-snapping that way is a regression.
   - **Shipped instead:** option 3 — snap only on real traffic divergence, with modest (12) vias (see
     `SPEC.md` / `FEATURES.md`). Public-server-clean, keeps perfect turns on the free-flow majority.
-  - **The unlock:** **on-device Valhalla `/trace_route`** — our own coordinate cap (feed Google's
-    whole polyline), no flaky public server, works offline, correct turn detection. *Then* always-snap
-    becomes clean + unconditional and option 3 retires to the online/fallback path. This is the single
-    biggest reason to prioritise the on-device engine. **Serverless throughout — no backend.**
+  - **The unlock = on-device map-matching.** Engine research (2026-06-28) compared GraphHopper / Valhalla
+    / BRouter / Mapbox: **GraphHopper wins** — it's **pure JVM (no NDK)**, so it runs on Android with no
+    native cross-compile (GrapheneOS-friendly), its **map-matching module is embeddable + Apache-2.0**,
+    and it returns street names per edge (`EdgeIteratorState.getName()` / `street_name` path detail).
+    Valhalla's Meili is great but **no maintained Android binding exposes map-matching** (Rallista/
+    valhalla-mobile is route-only) → would mean owning a C++/JNI Meili surface; BRouter has **no street
+    names in its data** and no map-matching; Mapbox is token/MAU-gated. **JVM spike PASSED (2026-06-28):**
+    GraphHopper v11, fed a **bare 26-pt downsampled polyline** (no street info, Monaco), recovered **7/7
+    ground-truth street names in 34ms** — proving "scraped polyline → complete named turns" with **no
+    turn-loss** (names per road-segment, not per via). `/tmp/ghspike` (throwaway).
+  - **Sizing — MEASURED 2026-06-28, favourable.** A full metro (Washington DC, 21 MB extract) builds to a
+    **15 MB** GraphHopper graph folder (single car profile, flexible/no-CH), import 3.7 s on desktop —
+    *smaller* than the basemap tiles for the same area, and downloads the same way. A whole US state ≈ 10×.
+    So "ship/download a routing graph per region" is comfortably in line with the offline-tile download we
+    already do. We **import off-device** (CI/desktop) and ship the prebuilt graph; the phone only loads it.
+  - **Real integration risk = the dependency tree, not size** (scanned 2026-06-28). The on-device path
+    (load graph + route + match) is fine, BUT: (a) **Janino** (`org.codehaus.janino`, a *runtime Java
+    compiler* GraphHopper uses to compile custom-model JSON) is on the routing path and **doesn't work on
+    ART** — the known fix is GraphHopper's **interpreted custom-model** path (verify it covers v11 routing
+    + matching). (b) The OSM-**import** deps — `osmosis-osm-binary`, `protobuf-java`, `jackson-dataformat-xml`/
+    `woodstox`/StAX, `xmlgraphics-commons` (AWT-ish) — are Android-hostile but **import-only**, so they're
+    excluded from the app (we ship prebuilt graphs). Net: feasible, with Janino-on-ART the one thing to
+    prove. (c) Confirm v11 graph **loads on ART with `graph.dataaccess: MMAP`** (forum-proven ~5.x only).
+  - **Phasing.** **Phase 1 = GraphHopper as the OFFLINE router** (the hybrid the user described:
+    online OSRM+option-3+Google-traffic when connected, GraphHopper A→B with named turns when not) — the
+    big win (offline nav at all), and most of the value. **Phase 2 (optional) = online clean-turn
+    map-matching** — in *downloaded* regions, run GraphHopper match on Google's polyline to replace option
+    3's lossy dense-via with no-turn-loss naming (the original always-snap). Both need the same on-device
+    runtime, so the next prototype (on-device load + Janino) gates both. Plan: import graphs per region
+    off-device, ship/download alongside offline tiles, add a `RouteEngine` seam in `:core` selected by
+    connectivity + graph-presence (`RouteGeometry.routeVia` → on-device match in Phase 2). **Serverless
+    throughout — no backend; the engine runs on the phone.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
