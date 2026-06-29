@@ -187,14 +187,28 @@ class GoogleMapsDataSource @Inject constructor(
             val googleD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
             val open = openD.await()
             val google = googleD.await()
+            val gTop = google.firstOrNull()
+            // TRAFFIC-AWARE routing (option 3): if Google's live-traffic route took a DIFFERENT path
+            // than OSRM's free-flow one — i.e. Google rerouted around a jam — re-run OSRM forced
+            // through Google's path so we follow the traffic-smart route WITH full street-named steps.
+            // (Only on real divergence, so the normal case stays the fast single OSRM call.)
+            val trafficRoute = if (open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
+                RouteGeometry.divergent(open.first(), gTop)) {
+                RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode)
+                    .firstOrNull()
+            } else null
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
-                    "google ${google.size} (traffic=${google.firstOrNull()?.durationInTrafficSeconds != null})",
+                    "google ${google.size} (traffic=${gTop?.durationInTrafficSeconds != null}); rerouted=${trafficRoute != null}",
                 "",
             )
-            if (open.isNotEmpty()) open.map { applyTraffic(it, google.firstOrNull()) }
-            else google // OSRM unreachable → Google's abbreviated route beats nothing
+            when {
+                // Traffic-smart route first, OSRM's free-flow routes kept as the alternates.
+                trafficRoute != null -> (listOf(trafficRoute) + open).map { applyTraffic(it, gTop) }
+                open.isNotEmpty() -> open.map { applyTraffic(it, gTop) }
+                else -> google // OSRM unreachable → Google's abbreviated route beats nothing
+            }
         }
     }
 
