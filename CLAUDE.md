@@ -179,10 +179,25 @@ genuinely needs no doc edit, say why in the commit.
   fallback — dense-waypoint `/route` (40–100 vias, no cap) — *does* reproduce Google's path exactly,
   **but a via landing on a turn gets swallowed into a via arrive/depart → ~1-in-10 named turns lost**
   (measured: dropped "turn right onto Village Green Drive"). That turn-loss is the exact bug we fixed,
-  so we do **not** always-snap. Clean always-snap is gated on **on-device Valhalla** (`/trace_route`
-  locally, no cap, no flaky server, works offline) — see ROADMAP. Option 3 is the public-server
-  stopgap and stays as the online/fallback path even after Valhalla lands. **No backend needed for any
-  of this** (the serverless constraint holds).
+  so we do **not** always-snap. Clean always-snap (and offline routing) is gated on an **on-device
+  engine** — see the next bullet. Option 3 is the public-server stopgap and stays as the online/fallback
+  path. **No backend needed for any of this** (the serverless constraint holds).
+- **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
+  Pure-JVM, runs on ART — **validated end-to-end on a Pixel 5a** (`:ghprobe`, a throwaway instrumented
+  test; delete once this is wired). Chosen over Valhalla (no maintained Android map-matching binding) /
+  BRouter (no street names) / Mapbox (token-gated). It's wired as a `:core` dep
+  (`libs.graphhopper.mapmatching`, **OSM-import deps excluded** — osmosis/protobuf/woodstox/xmlgraphics
+  are Android-hostile + only needed to *build* graphs, which we do off-device). **Three ART workarounds,
+  all in `GraphHopperRouteEngine` — don't remove:** (1) **`graph.dataaccess=MMAP`** (default RAMDataAccess
+  static-inits a JDK-16 `VarHandle` method ART lacks); (2) **override `createWeightingFactory()`** to a
+  hand-rolled `SpeedWeighting`+access-block (v11 compiles custom models via **Janino** → JVM bytecode ART
+  can't load); (3) **swallow `close()`** (MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android — keep
+  one engine for the process lifetime). **R8:** `consumer-rules.pro` keeps `com.graphhopper.**` + hppc/jts/
+  jackson wholesale (GraphHopper resolves a lot reflectively) and `-dontwarn`s the excluded/absent refs —
+  release build is clean (**but +~10 MB APK; tighter keeps / on-demand delivery is a later optimisation**).
+  Graphs are built off-device, one per region, and (Phase 1b) downloaded alongside the offline tiles;
+  `RouteEngine` is selected by connectivity + graph-presence. **Status: engine integrated + R8-proven
+  (Phase 1a); NOT yet wired into `directions()` (Phase 1b).**
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
