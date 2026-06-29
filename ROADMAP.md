@@ -285,10 +285,18 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     big win (offline nav at all), and most of the value. **Phase 2 (optional) = online clean-turn
     map-matching** — in *downloaded* regions, run GraphHopper match on Google's polyline to replace option
     3's lossy dense-via with no-turn-loss naming (the original always-snap). Both need the same on-device
-    runtime, so the next prototype (on-device load + Janino) gates both. Plan: import graphs per region
-    off-device, ship/download alongside offline tiles, add a `RouteEngine` seam in `:core` selected by
-    connectivity + graph-presence (`RouteGeometry.routeVia` → on-device match in Phase 2). **Serverless
-    throughout — no backend; the engine runs on the phone.**
+    runtime, selected by connectivity + graph-presence.
+  - **Phase 1a — DONE 2026-06-28: engine integrated + R8-proven.** `core/data/RouteEngine` seam +
+    `GraphHopperRouteEngine` (the 3 ART workarounds ported from `:ghprobe`, translates GraphHopper's path
+    → Vela `Route`/`Maneuver`, DRIVE/car for now). `graphhopper-map-matching` is a `:core` dep (import-only
+    deps excluded); `consumer-rules.pro` keeps graphhopper/hppc/jts/jackson for R8. **`:app:assembleRelease`
+    (R8) builds clean**, `:core` unit tests green (`GraphHopperRouterTest` covers the sign/phrase mapping).
+    Cost: **APK 45.7 MB (~+10 MB)** — tighter keeps / on-demand (dynamic feature, like the voice engines) is
+    a later optimisation. **Phase 1b (next):** a graph-build pipeline (off-device, profile config matching
+    the engine), download-per-region wired into the existing offline-maps flow, and `directions()` calling
+    `RouteEngine` when offline (+ on-device *release*-build runtime smoke — Phase 1a proved debug runtime +
+    a clean R8 build; the kept libs make release runtime identical, but confirm it live once wired).
+    **Serverless throughout — no backend; the engine runs on the phone.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`

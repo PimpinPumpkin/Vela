@@ -25,6 +25,10 @@ androidxJunit = "1.2.1"
 # Rhino interpreter-only artifact (no compiler/codegen) — runs the remote
 # transforms.js in interpreted mode, the mode that works on Android/ART.
 rhino = "1.7.14"
+# GraphHopper — on-device routing + map-matching engine (offline routing, and the
+# clean "name Google's path" always-snap). Pure JVM; runs on ART with 3 workarounds
+# (MMAP / SpeedWeighting factory / close()-swallow) — see RouteEngine + ROADMAP.
+graphhopper = "11.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -60,6 +64,7 @@ coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coi
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 rhino-runtime = { group = "org.mozilla", name = "rhino-runtime", version.ref = "rhino" }
+graphhopper-mapmatching = { group = "com.graphhopper", name = "graphhopper-map-matching", version.ref = "graphhopper" }
 
 maplibre-android = { group = "org.maplibre.gl", name = "android-sdk", version.ref = "maplibre" }
 
