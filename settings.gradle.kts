@@ -32,3 +32,6 @@ rootProject.name = "Vela"
 // once the surface grows.
 include(":app")
 include(":core")
+// THROWAWAY: on-device GraphHopper v11 probe (instrumented test only). Delete after the
+// offline-routing prototype is decided — see ROADMAP "On-device map-matching (GraphHopper)".
+include(":ghprobe")
