@@ -260,14 +260,26 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     *smaller* than the basemap tiles for the same area, and downloads the same way. A whole US state ≈ 10×.
     So "ship/download a routing graph per region" is comfortably in line with the offline-tile download we
     already do. We **import off-device** (CI/desktop) and ship the prebuilt graph; the phone only loads it.
-  - **Real integration risk = the dependency tree, not size** (scanned 2026-06-28). The on-device path
-    (load graph + route + match) is fine, BUT: (a) **Janino** (`org.codehaus.janino`, a *runtime Java
-    compiler* GraphHopper uses to compile custom-model JSON) is on the routing path and **doesn't work on
-    ART** — the known fix is GraphHopper's **interpreted custom-model** path (verify it covers v11 routing
-    + matching). (b) The OSM-**import** deps — `osmosis-osm-binary`, `protobuf-java`, `jackson-dataformat-xml`/
-    `woodstox`/StAX, `xmlgraphics-commons` (AWT-ish) — are Android-hostile but **import-only**, so they're
-    excluded from the app (we ship prebuilt graphs). Net: feasible, with Janino-on-ART the one thing to
-    prove. (c) Confirm v11 graph **loads on ART with `graph.dataaccess: MMAP`** (forum-proven ~5.x only).
+  - **ON-DEVICE: VALIDATED end-to-end 2026-06-28** (`:ghprobe`, throwaway instrumented test, **PASSED on a
+    Pixel 5a / Android 14**): GraphHopper v11 **loaded** a prebuilt Monaco graph in **137 ms**, **routed**
+    1938 m / 11 instructions, and **map-matched** a bare polyline → **10 street names in 1.37 s**. So
+    GraphHopper v11 *does* run on ART — but needs **three workarounds**, each found + fixed live:
+    1. **`graph.dataaccess=MMAP`** (via `GraphHopperConfig`, no public DAType setter). The default
+       `RAMDataAccess` static-inits a `VarHandle.withInvokeExactBehavior()` (JDK-16) that **ART lacks** →
+       `NoSuchMethodError`. `MMapDataAccess` doesn't use it. (RAM_STORE & MMAP share on-disk format, so the
+       desktop-built graph loads as MMAP with no rebuild.)
+    2. **Dodge Janino.** v11 *mandates* custom-model profiles, compiled to JVM bytecode by Janino → ART
+       can't load it (`"Cannot compile expression: can't load this type of class file"`). Fix: subclass
+       `GraphHopper`, override the **`protected createWeightingFactory()`** to return a hand-rolled
+       `SpeedWeighting` (Janino-free) **plus an access block** (`if !car_access → ∞`, mirroring car.json's
+       `multiply_by 0`) — ~12 lines, no fork. (Plain `SpeedWeighting` ignores access → `ConnectionNotFound`.)
+    3. **Swallow `close()`** — MMAP unmap goes through `Unsafe.invokeCleaner`, absent on Android. Harmless:
+       the app keeps one engine for the process lifetime and never per-route closes.
+    Dependency hygiene confirmed: the OSM-**import** deps (`osmosis-osm-binary`, `protobuf-java`,
+    `jackson-dataformat-xml`/`woodstox`/StAX, `xmlgraphics-commons`) are **excluded** from the app — we ship
+    prebuilt graphs, so they're never on the load/route/match path, and it dexes + runs clean without them.
+    **Net: GraphHopper v11 on Android is PROVEN.** The `:ghprobe` module is the reference recipe; delete it
+    once the real `:core` integration ports these three workarounds.
   - **Phasing.** **Phase 1 = GraphHopper as the OFFLINE router** (the hybrid the user described:
     online OSRM+option-3+Google-traffic when connected, GraphHopper A→B with named turns when not) — the
     big win (offline nav at all), and most of the value. **Phase 2 (optional) = online clean-turn
