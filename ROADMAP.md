@@ -230,7 +230,25 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   (Bay-Bridge approach = one long level-2 span). The whole-map raster stays off during
   nav — the route now carries the traffic, like Google. *(Level→colour mapping is the
   best read of the 1/2 grades seen; trivially flipped if a heavy drive shows otherwise.)*
-- **Offline routing** — a heavy native engine (Valhalla/GraphHopper). Multi-session.
+- **Offline / on-device routing — the "Google routes, OSRM names the turns" unlock.** A heavy
+  native engine (Valhalla/GraphHopper) on the phone. Multi-session. Beyond going offline, this is
+  what makes the **clean always-snap** routing possible. The vision (raised 2026-06-28): always take
+  Google's traffic-smart path and use an open router only to recover street-named turns — *Google
+  picks the road, the open engine names it*. **Measured why we can't do it cleanly on public infra
+  today, and that NO self-hosting is required to *try*:**
+  - Google's keyless **polyline is complete** (decoded `[0][7][i]`), so the path is fully traceable.
+  - The clean tool is **map-matching** (trace → roads+turns). FOSSGIS **`/match` caps at 10 coords**
+    (`TooBig` past that, ~0.01 confidence that sparse); public **Valhalla `/trace_route` times out**.
+  - The serverless fallback, **dense-waypoint `/route`** (40–100 vias, no cap), reproduces Google's
+    path *exactly* with 0 U-turn artifacts — **but a via landing on a turn is swallowed into a via
+    arrive/depart → ~1-in-10 named turns lost** (measured: dropped "turn right onto Village Green
+    Drive"). Turn-loss is the exact bug we just fixed, so always-snapping that way is a regression.
+  - **Shipped instead:** option 3 — snap only on real traffic divergence, with modest (12) vias (see
+    `SPEC.md` / `FEATURES.md`). Public-server-clean, keeps perfect turns on the free-flow majority.
+  - **The unlock:** **on-device Valhalla `/trace_route`** — our own coordinate cap (feed Google's
+    whole polyline), no flaky public server, works offline, correct turn detection. *Then* always-snap
+    becomes clean + unconditional and option 3 retires to the online/fallback path. This is the single
+    biggest reason to prioritise the on-device engine. **Serverless throughout — no backend.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`

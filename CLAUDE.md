@@ -162,6 +162,27 @@ genuinely needs no doc edit, say why in the commit.
   reviews, not routing. **`OSRM_BASE` is the FOSSGIS community server (fair-use) — point at a
   self-hosted OSRM/Valhalla before any real release.** (This retired the keyless-step parsing as the
   primary path + the Nominatim "fill the missing road name" hack.)
+- **Traffic-AWARE routing (option 3, 2026-06-28).** OSRM's free-flow route ignores live traffic, so
+  when Google *rerouted around a jam* its path differs from OSRM's. `directions()` detects this
+  (`RouteGeometry.divergent` — sample Google's polyline, true if any point strays >700 m from OSRM's
+  line) and, only then, re-runs OSRM **through ~12 points sampled off Google's polyline**
+  (`sampleVias` → `routeVia`) so we follow Google's jam-avoiding path *with* full OSRM street-named
+  steps. Multi-waypoint OSRM returns one leg per via with spurious `arrive`+`depart` at each boundary
+  — `parseOsrmRoute` filters all but the true first-depart/last-arrive. Free-flow routes (the common
+  case) stay pure OSRM, untouched. The traffic-snapped route leads; OSRM's free-flow routes ride along
+  as the alternates; all get the `applyTraffic` ETA/colour overlay.
+- **Why not "always snap to Google's path"?** (measured 2026-06-28, the serverless question.) Google's
+  keyless **polyline is complete** (decoded from `root[0][7][i]`) even though its *step text* is
+  abbreviated — so we *can* always trace it. But doing it cleanly needs **map-matching**, and the
+  public infra won't reliably give it: FOSSGIS **`/match` caps at 10 trace coords** (11+ → `TooBig`;
+  confidence ~0.01 at that sparsity) and public **Valhalla `/trace_route` times out**. The serverless
+  fallback — dense-waypoint `/route` (40–100 vias, no cap) — *does* reproduce Google's path exactly,
+  **but a via landing on a turn gets swallowed into a via arrive/depart → ~1-in-10 named turns lost**
+  (measured: dropped "turn right onto Village Green Drive"). That turn-loss is the exact bug we fixed,
+  so we do **not** always-snap. Clean always-snap is gated on **on-device Valhalla** (`/trace_route`
+  locally, no cap, no flaky server, works offline) — see ROADMAP. Option 3 is the public-server
+  stopgap and stays as the online/fallback path even after Valhalla lands. **No backend needed for any
+  of this** (the serverless constraint holds).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
