@@ -97,6 +97,7 @@ build `pb` (`SearchPb`) + `GET` → **optional JS override** (`JsTransforms`, §
 | Search | `GET /search?tbm=map&q=<q>&pb=<SearchPb>` |
 | Directions (turn-by-turn) | **PRIMARY: FOSSGIS OSRM** `route/v1?steps=true` (`routed-car`/`-bike`/`-foot`) — full street-named maneuvers + geometry |
 | Directions (traffic ETA + fallback) | `GET /maps/preview/directions?pb=<DirectionsPb>` — Google's live-traffic ETA/spans, overlaid on the OSRM route; also the fallback router |
+| Directions (traffic-aware path, option 3) | when Google's route diverges >700 m from OSRM's (jam reroute), OSRM `route/v1` **through ~12 vias sampled off Google's polyline** → Google's path with full OSRM steps. `/match` map-matching would be cleaner but FOSSGIS caps it at 10 coords — see "Why dense-via, not map-matching" |
 | Reviews | `GET /maps/preview/review/listentitiesreviews?pb=!1m2!1y<HIGH>!2y<LOW>!2m2!2i0!3i20!3e1!5m2!1svela!7e81` |
 | Photos (full gallery) | `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` (proto in calibration) |
 | Transit | hidden WebView on `/maps/dir/<o>/<d>/data=!4m2!4m1!3e3` (see below) |
@@ -150,6 +151,20 @@ client, injected time fields are ignored/400, and the web depart-time control is
 un-automatable → it's login/Android-app-only. We surface the typical spread (`[10][4]`,
 above) as the honest keyless stand-in; a true per-minute ETA needs one captured real
 depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
+
+### Traffic-aware path (option 3) — why dense-via, not map-matching (measured 2026-06-28)
+Google's `[0][7][i]` polyline is **complete** even when its steps are abbreviated (3.3 km of
+steps seen on a 6.4 km line), so we *can* trace Google's exact jam-avoiding path. The clean way
+is **map-matching** (snap a trace → roads + turns), but public infra won't give it: FOSSGIS
+**`/match` caps at 10 coords** (`TooBig` past that; ~0.01 confidence that sparse) and public
+**Valhalla `/trace_route` times out**. So `RouteGeometry` snaps via **dense-waypoint `/route`**
+instead — `sampleVias` takes ~12 interior points of Google's line, `routeVia` routes OSRM through
+them (no coord cap; path reproduced exactly, 0 U-turn artifacts). Tradeoff, measured: a via that
+lands *on* a turn is encoded as a via arrive/depart, not a turn — **~1-in-10 named turns lost** at
+60 vias. So we keep vias modest (12) and gate the whole thing behind real divergence
+(`divergent`, >700 m), leaving the free-flow majority as pure-OSRM with perfect turns. The
+cleaner unconditional "Google routes, OSRM names turns" wants **on-device Valhalla** (`/trace_route`
+with our own cap) — `ROADMAP.md`.
 
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: `HIGH`/`LOW` are the two halves of the feature id as unsigned-64
