@@ -6,6 +6,7 @@ import app.vela.core.config.JsTransforms
 import app.vela.core.diag.DiagLog
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
+import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
 import app.vela.core.data.google.parse.DirectionsParser
 import app.vela.core.data.google.parse.PhotosParser
@@ -51,6 +52,7 @@ class GoogleMapsDataSource @Inject constructor(
     private val calibration: CalibrationStore,
     private val jsTransforms: JsTransforms,
     private val diag: DiagLog,
+    private val routeEngine: RouteEngine,
 ) : MapDataSource {
 
     override suspend fun search(query: String, near: LatLng?): SearchResult = io {
@@ -197,17 +199,24 @@ class GoogleMapsDataSource @Inject constructor(
                 RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode)
                     .firstOrNull()
             } else null
+            // OFFLINE fallback: OSRM (and Google) need the network. When OSRM came back empty — no
+            // connectivity, or the FOSSGIS server is down — route fully ON-DEVICE from a downloaded
+            // GraphHopper graph, if one covers this area. No traffic offline, but complete named turns.
+            val onDevice = if (open.isEmpty() && trafficRoute == null && routeEngine.isReady(mode))
+                routeEngine.route(origin, destination, mode) else emptyList()
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
-                    "google ${google.size} (traffic=${gTop?.durationInTrafficSeconds != null}); rerouted=${trafficRoute != null}",
+                    "google ${google.size} (traffic=${gTop?.durationInTrafficSeconds != null}); " +
+                    "rerouted=${trafficRoute != null}; onDevice=${onDevice.size}",
                 "",
             )
             when {
                 // Traffic-smart route first, OSRM's free-flow routes kept as the alternates.
                 trafficRoute != null -> (listOf(trafficRoute) + open).map { applyTraffic(it, gTop) }
                 open.isNotEmpty() -> open.map { applyTraffic(it, gTop) }
-                else -> google // OSRM unreachable → Google's abbreviated route beats nothing
+                onDevice.isNotEmpty() -> onDevice // offline, on-device route (no live-traffic overlay)
+                else -> google // everything unreachable → Google's abbreviated route beats nothing
             }
         }
     }
