@@ -182,21 +182,22 @@ name+coord array; a structurally-valid response with no matches returns empty
 Routes at `root[0][1][r]`, summary at `[0]`: distance m `[2][0]`, typical
 duration s `[3][0]`, and **live `duration_in_traffic` s `[10][0][0]`**. Steps
 arrive as `<step maneuver='TURN_LEFT' meters='120'>…</step>` markup — type and
-distance parse straight out of the attributes, and the **lane hint** ("Use the
-right 2 lanes to …") is split off into its own field for the step list + banner.
-Each route's geometry **is** in the response after all — delta-encoded E7
-coordinate arrays at `[0][7][i]`, index-aligned with the summaries — so every
-route, **alternates included**, draws along Google's *own* roads (decoded in
-[`DirectionsParser`](core/src/main/java/app/vela/core/data/google/parse/DirectionsParser.kt);
-this replaced an earlier scattered-point guess that doubled back on itself).
-**Per-segment live traffic** rides along at `route[3][5][0]` — a list of
-`[level, startMeters, lengthMeters]` congestion spans (only the non-free-flow
-stretches; gaps are free-flow), parsed into `Route.trafficSpans` and painted as
-the route line's Google-style colour bands (free-flow blue → amber → red →
-dark-red). An
-open router ([`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt),
-FOSSGIS OSRM with a per-mode `routed-car`/`routed-bike`/`routed-foot` backend)
-stays only as a fallback for the rare route Google omits geometry for. Live
+distance parse straight out of the attributes. But Google's keyless steps come
+back **abbreviated** on longer routes (a 6-mi route returned 2 of ~10 turns), so
+**turn-by-turn + geometry are now PRIMARY from an open router**
+([`RouteGeometry`](core/src/main/java/app/vela/core/data/RouteGeometry.kt), FOSSGIS
+OSRM with a per-mode `routed-car`/`routed-bike`/`routed-foot` backend) — every turn,
+with street names, for drive/walk/bike. Google's directions response is kept for
+what it actually wins: the **live `duration_in_traffic`** (scaled onto the OSRM
+route) and **per-segment congestion** at `route[3][5][0]` — `[level, startMeters,
+lengthMeters]` spans (non-free-flow stretches only), mapped onto the OSRM geometry
+as `Route.trafficSpans` → the route line's Google-style colour bands (blue → amber
+→ red → dark-red) — plus it's the **fallback router** when OSRM is unreachable. Its
+own complete geometry (delta-encoded E7 at `[0][7][i]`, decoded in
+[`DirectionsParser`](core/src/main/java/app/vela/core/data/google/parse/DirectionsParser.kt))
+still drives the **traffic-aware snap**: when Google's live route diverges from
+OSRM's free-flow one (a jam reroute), Vela re-runs OSRM *through points sampled off
+Google's polyline* so you follow Google's smart path **with** full OSRM steps. Live
 **public transit** is a separate path — Google silently downgrades a keyless
 transit request to driving, so it goes through a hidden WebView (see below).
 
