@@ -1,13 +1,18 @@
 package app.vela.core.di
 
+import android.content.Context
 import app.vela.core.VelaConfig
+import app.vela.core.data.GraphHopperRouteEngine
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.MockMapDataSource
+import app.vela.core.data.RouteEngine
 import app.vela.core.data.google.GoogleMapsDataSource
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import java.io.File
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -39,6 +44,19 @@ object CoreModule {
         mock: MockMapDataSource,
         google: GoogleMapsDataSource,
     ): MapDataSource = if (VelaConfig.USE_GOOGLE_SOURCE) google else mock
+
+    /**
+     * The on-device routing engine (offline fallback / future always-snap). Points at the
+     * downloaded routing graph for the current region in app-scoped **external** files
+     * (`Android/data/app.vela/files/routing-graph`) — the right home for a large (~state = 250 MB)
+     * graph: auto-removed on uninstall, no internal-storage bloat. When no graph is present
+     * [GraphHopperRouteEngine.isReady] is false and it's a no-op, so `directions()` just keeps
+     * using the online router. (Phase 1b will manage per-region graph dirs here.)
+     */
+    @Provides
+    @Singleton
+    fun routeEngine(@ApplicationContext context: Context): RouteEngine =
+        GraphHopperRouteEngine(File(context.getExternalFilesDir(null) ?: context.filesDir, "routing-graph"))
 }
 
 /**
