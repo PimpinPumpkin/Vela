@@ -27,6 +27,17 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.okhttp)
     implementation(libs.rhino.runtime)
+    // On-device routing/map-matching engine (see RouteEngine + ROADMAP). The OSM-IMPORT-only
+    // transitive deps are Android-hostile (AWT/StAX) and unused at runtime — we ship prebuilt
+    // graphs and only LOAD + route + match on-device — so they're excluded (proven via :ghprobe).
+    implementation(libs.graphhopper.mapmatching) {
+        exclude(group = "org.openstreetmap.osmosis")
+        exclude(group = "com.google.protobuf")
+        exclude(group = "com.fasterxml.jackson.dataformat", module = "jackson-dataformat-xml")
+        exclude(group = "com.fasterxml.woodstox")
+        exclude(group = "org.codehaus.woodstox")
+        exclude(group = "org.apache.xmlgraphics")
+    }
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
