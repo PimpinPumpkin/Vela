@@ -292,11 +292,27 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     deps excluded); `consumer-rules.pro` keeps graphhopper/hppc/jts/jackson for R8. **`:app:assembleRelease`
     (R8) builds clean**, `:core` unit tests green (`GraphHopperRouterTest` covers the sign/phrase mapping).
     Cost: **APK 45.7 MB (~+10 MB)** — tighter keeps / on-demand (dynamic feature, like the voice engines) is
-    a later optimisation. **Phase 1b (next):** a graph-build pipeline (off-device, profile config matching
-    the engine), download-per-region wired into the existing offline-maps flow, and `directions()` calling
-    `RouteEngine` when offline (+ on-device *release*-build runtime smoke — Phase 1a proved debug runtime +
-    a clean R8 build; the kept libs make release runtime identical, but confirm it live once wired).
-    **Serverless throughout — no backend; the engine runs on the phone.**
+    a later optimisation.
+  - **Phase 1b-i — DONE 2026-06-28: wired into `directions()` + release runtime proven on-device.**
+    `RouteEngine` is provided via Hilt (`CoreModule`, pointing at the per-region graph in app-scoped external
+    files) and injected into `GoogleMapsDataSource`; `directions()` falls back to it **only when OSRM came
+    back empty** (offline / FOSSGIS down) — online behaviour unchanged. On-device proof (release build,
+    Pixel 5a): with wifi+data OFF and a real WA graph present, the app **loaded the graph from external
+    storage and invoked the engine** (observed: 486 MB resident / climbing CPU during the compute) — so the
+    R8 *release* runtime + external-storage load + offline wiring are all confirmed.
+  - **Phase 1b PERF finding — use METRO graphs, not whole-state.** A whole-state graph (WA, 250 MB) was
+    pathologically slow on-device: routing a 24-mi trip was **I/O-bound on FUSE-mapped external storage**
+    (25.8% CPU, not 100%) over a huge no-CH graph. Fix = a right-sized **metro** graph (the per-region model
+    anyway): a a mid-size crop (`osmium extract`, 96 MB pbf → **76 MB graph**) routes the same 20-mi trip in
+    **102 ms** (desktop, flexible/no-CH). So **no Contraction Hierarchies needed** at metro scale — which
+    sidesteps the CH-vs-custom-weighting-baking problem (CH would bake the build-time weighting; our engine
+    overrides to `SpeedWeighting`). **Production: download a metro/region graph to INTERNAL storage**
+    (`filesDir`, fast MMAP — not FUSE external, which was only used here because it's the adb-pushable path).
+  - **Phase 1b-ii (next):** the off-device **graph-build pipeline** (CI builds per-region metro graphs with
+    the engine's exact profile config — `Profile("car")`+car.json — published as GitHub release assets like
+    the APK/`calibration.json`), and **download-per-region UX** wired into the existing offline-maps flow
+    (to `filesDir`). Then a clean in-app offline-route render closes it. **Serverless throughout — no
+    backend; the engine runs on the phone.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
