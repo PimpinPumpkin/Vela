@@ -130,11 +130,20 @@ object RouteGeometry {
      *  came back with 2 of ~10 turns), whereas OSRM gives them all. Free-flow duration only (no
      *  traffic — Google is queried separately for the live ETA and overlaid). Empty on any failure
      *  → caller falls back to the Google scrape. */
-    fun route(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<Route> = try {
+    fun route(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<Route> =
+        routeOsrm(http, listOf(origin, dest), mode, alternatives = true)
+
+    /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
+     *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
+     *  No alternatives (OSRM doesn't return them for multi-waypoint routes). */
+    fun routeVia(http: OkHttpClient, waypoints: List<LatLng>, mode: TravelMode): List<Route> =
+        if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false)
+
+    private fun routeOsrm(http: OkHttpClient, points: List<LatLng>, mode: TravelMode, alternatives: Boolean): List<Route> = try {
         val backend = backend(mode) ?: return emptyList()
-        val url = "$OSRM_BASE/$backend/route/v1/driving/" +
-            "${origin.lng},${origin.lat};${dest.lng},${dest.lat}" +
-            "?overview=full&geometries=polyline&steps=true&alternatives=3"
+        val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
+        val url = "$OSRM_BASE/$backend/route/v1/driving/$coords" +
+            "?overview=full&geometries=polyline&steps=true" + if (alternatives) "&alternatives=3" else ""
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.USER_AGENT).build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) return emptyList()
@@ -151,8 +160,15 @@ object RouteGeometry {
             ?.takeIf { it.size >= 2 } ?: return null
         val dist = r["distance"]?.jsonPrimitive?.doubleOrNull ?: return null
         val dur = r["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0
-        val maneuvers = (r["legs"]?.jsonArray ?: return null).flatMap { leg ->
+        val raw = (r["legs"]?.jsonArray ?: return null).flatMap { leg ->
             leg.jsonObject["steps"]?.jsonArray?.mapNotNull { osrmStep(it.jsonObject) } ?: emptyList()
+        }
+        // A multi-waypoint (via) route splits into legs, inserting a spurious "arrive"+"depart" at
+        // each via. Drop those so it reads as one continuous trip — keep only the first DEPART and
+        // the final ARRIVE.
+        val last = raw.lastIndex
+        val maneuvers = raw.filterIndexed { i, m ->
+            !(m.type == ManeuverType.DEPART && i != 0) && !(m.type == ManeuverType.ARRIVE && i != last)
         }
         if (maneuvers.size < 2) return null
         return Route(
@@ -227,5 +243,33 @@ object RouteGeometry {
             "uturn" -> "Make a U-turn$onto"
             else -> if (m.isNotBlank()) ("Turn $m").trim() + onto else "Continue$onto"
         }
+    }
+
+    // --- traffic-aware routing (option 3) -------------------------------------
+
+    /** True if Google's traffic-aware route [google] takes a meaningfully DIFFERENT path than
+     *  OSRM's free-flow [osrm] — i.e. Google rerouted around a jam. Samples points along Google's
+     *  line and checks whether any strays > [thresholdM] from OSRM's line. */
+    internal fun divergent(osrm: Route, google: Route, thresholdM: Double = 700.0): Boolean {
+        val a = osrm.polyline
+        val b = google.polyline
+        if (a.size < 2 || b.size < 2) return false
+        return (1..5).any { k ->
+            val p = b[(b.size * k / 6).coerceIn(0, b.size - 1)]
+            a.minOf { p.distanceTo(it) } > thresholdM
+        }
+    }
+
+    /** Interior points spaced along [poly] to feed OSRM as via-waypoints so it follows that path.
+     *  ~[count] of them: dense enough that OSRM's shortest path between consecutive vias IS the road
+     *  Google took (a short jam-detour between two sparse vias would otherwise be skipped), yet not so
+     *  dense that a via landing on a turn gets swallowed into a via arrive/depart and the turn is lost
+     *  (measured ~1-in-10 named-turn loss at 60 vias; negligible at ~12). Only ever used on the
+     *  divergent minority of routes, so the tradeoff rides on few requests. */
+    internal fun sampleVias(poly: List<LatLng>, count: Int = 12): List<LatLng> {
+        if (poly.size < 3) return emptyList() // need at least one interior point
+        val interior = poly.size - 2
+        val n = count.coerceAtMost(interior)
+        return (1..n).map { poly[(1 + (interior - 1).toLong() * (it - 1) / (n - 1).coerceAtLeast(1)).toInt()] }
     }
 }
