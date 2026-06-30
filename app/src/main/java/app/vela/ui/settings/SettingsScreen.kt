@@ -19,12 +19,15 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -270,7 +273,32 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 val ordered = state.routingRegions.sortedWith(
                     compareByDescending<app.vela.offline.RoutingRegion> { covers(it) }.thenBy { it.name },
                 )
-                ordered.forEach { region ->
+                // With a world-sized catalog, a name filter makes a region you're TRAVELLING to findable
+                // without scrolling past a hundred others (the covering-first sort handles where you are now).
+                var routeFilter by remember { mutableStateOf("") }
+                if (state.routingRegions.size > 8) {
+                    OutlinedTextField(
+                        value = routeFilter,
+                        onValueChange = { routeFilter = it },
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        singleLine = true,
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                        trailingIcon = {
+                            if (routeFilter.isNotEmpty()) {
+                                IconButton(onClick = { routeFilter = "" }) {
+                                    Icon(Icons.Default.Clear, contentDescription = "Clear filter")
+                                }
+                            }
+                        },
+                        placeholder = { Text("Filter ${state.routingRegions.size} regions… (e.g. Japan, Texas)") },
+                    )
+                }
+                val shown = if (routeFilter.isBlank()) ordered
+                    else ordered.filter { it.name.contains(routeFilter.trim(), ignoreCase = true) }
+                if (shown.isEmpty()) {
+                    Hint("No regions match “${routeFilter.trim()}”.")
+                }
+                shown.forEach { region ->
                     val installed = region.id in state.routingInstalledIds
                     val downloading = state.routingDownloadingId == region.id
                     val here = covers(region)
