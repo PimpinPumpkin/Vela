@@ -269,12 +269,19 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 val covers = { r: app.vela.offline.RoutingRegion ->
                     loc != null && loc.lat in r.s..r.n && loc.lng in r.w..r.e
                 }
-                // surface the region(s) covering where you are first, so the right one is easy to grab
+                // The region you're IN = the SMALLEST bbox that contains you. Region boxes carry a Geofabrik
+                // buffer that spills across borders (British Columbia's box dips into Seattle), so "any box that
+                // covers you" mislabels big neighbours — the smallest covering box is the specific one. Sort:
+                // installed first (manage what you have), then that primary region, then everything by name.
+                val primary = state.routingRegions.filter(covers)
+                    .minByOrNull { (it.n - it.s) * (it.e - it.w) }
                 val ordered = state.routingRegions.sortedWith(
-                    compareByDescending<app.vela.offline.RoutingRegion> { covers(it) }.thenBy { it.name },
+                    compareByDescending<app.vela.offline.RoutingRegion> { it.id in state.routingInstalledIds }
+                        .thenByDescending { it.id == primary?.id }
+                        .thenBy { it.name },
                 )
                 // With a world-sized catalog, a name filter makes a region you're TRAVELLING to findable
-                // without scrolling past a hundred others (the covering-first sort handles where you are now).
+                // without scrolling past a hundred others (the sort above handles where you are now).
                 var routeFilter by remember { mutableStateOf("") }
                 if (state.routingRegions.size > 8) {
                     OutlinedTextField(
@@ -301,7 +308,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 shown.forEach { region ->
                     val installed = region.id in state.routingInstalledIds
                     val downloading = state.routingDownloadingId == region.id
-                    val here = covers(region)
+                    val here = region.id == primary?.id
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,

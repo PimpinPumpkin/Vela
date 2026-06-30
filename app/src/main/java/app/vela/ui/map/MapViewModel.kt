@@ -1336,7 +1336,10 @@ class MapViewModel @Inject constructor(
                 routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL)
                     .also { rs -> _state.update { it.copy(routingRegions = rs) } }
             }
-            val region = regions.firstOrNull { lat in it.s..it.n && lng in it.w..it.e } ?: return@launch
+            // smallest covering box = the specific region for this area (boxes overlap at borders; a big
+            // neighbour like British Columbia shouldn't be grabbed for a Seattle download)
+            val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
+                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@launch
             if (region.id in routingGraphStore.installedIds() || _state.value.routingDownloadingId != null) return@launch
             downloadRoutingGraph(region) // shows its own progress + status
         }

@@ -207,7 +207,10 @@ genuinely needs no doc edit, say why in the commit.
   downloads region CH graphs from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=`
   for local testing) into `filesDir/graphs/<id>/`, merging each into `filesDir/graphs/index.json`
   (`[{id,bbox:[S,W,N,E]}]`); `GraphHopperRouteEngine` lazy-loads a `GraphHopper` per region and routes a trip on
-  the **first region whose bbox covers BOTH endpoints** (`inBox`, unit-tested). Settings → **Offline routing** is
+  the **smallest region whose bbox covers BOTH endpoints**, falling through to the next-smallest if that
+  graph can't make the trip (`inBox`, unit-tested). Smallest-first because Geofabrik extract boxes carry a
+  buffer that spills across borders (British Columbia's box dips into Seattle) — the same rule drives the
+  picker's "covers your location" label + the tiles→routing combine, so all three agree. Settings → **Offline routing** is
   a location-aware picker (regions covering the GPS fix sort first + flag "covers your location"; a name
   filter appears once the catalog is large); downloading
   offline map *tiles* for an area ALSO pulls that area's routing region (`MapViewModel.downloadRoutingForArea`).
