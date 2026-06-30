@@ -149,17 +149,24 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   tool (map-matching) is capped to 10 coords on the public server and the dense-via fallback drops
   ~1-in-10 turns when a via lands on one — so we snap only when traffic actually made Google diverge.
   The unconditional "Google routes, OSRM names turns" version waits on on-device map-matching (see below).
-- ✅ **Offline routing — fully on-device (built + device-verified 2026-06-30; goes live when region graphs are published).**
+- ✅ **Offline routing — fully on-device + live, world catalog hosted (2026-06-30).**
   When you're offline (or OSRM is down), `directions()` falls back to an **on-device GraphHopper engine**
-  (`core/data/GraphHopperRouteEngine`) that loads a downloaded **per-region Contraction-Hierarchies graph**
+  (`core/data/GraphHopperRouteEngine`) that loads downloaded **per-region Contraction-Hierarchies graphs**
   from internal storage and routes fully on the phone — complete street-named turn-by-turn, ~200 ms, no
-  signal. Download a region under **Settings → Offline routing** (`RoutingGraphStore` pulls a CH graph
-  ≈ 21 MB from a manifest). On-device end-to-end verified (Pixel 5a): downloaded the metro metro → offline →
-  21.8 mi route via the crosstown arterial with named steps + a correct 28-min ETA. Pure JVM (GraphHopper runs on ART
-  with three workarounds — MMAP / a Janino-free `SpeedWeighting` factory / swallow-`close()`); graphs are
-  built off-device by `tools/graphbuilder`. *(Online still wins on live traffic + POIs; this is the
-  no-signal fallback, and the foundation for offline-first navigation. Remaining: publish region graphs via
-  CI as GitHub release assets — see ROADMAP.)*
+  signal. Pure JVM (GraphHopper runs on ART with three workarounds — MMAP / a Janino-free `SpeedWeighting`
+  factory / swallow-`close()`); graphs are built off-device by `tools/graphbuilder`. On-device end-to-end
+  verified (Pixel 5a): downloaded a region from the GitHub release → offline → 21.8 mi route via the crosstown arterial
+  with named steps + a correct 28-min ETA.
+  - **Get a region two ways:** pick it under **Settings → Offline routing** (regions covering your current
+    location sort to the top and are flagged "covers your location"), **or** just download offline map tiles
+    for an area — "Download the area you're viewing" now **also grabs the routing graph for the region that
+    contains it**, so one tap gives you map *and* navigation offline.
+  - **Hosting + world catalog:** graphs + `routing-manifest.json` are static assets on the `routing-graphs`
+    GitHub release; the catalog is **`tools/routing-regions.json`** (135 regions — all US states, Canadian
+    provinces, ~36 European countries, + starter Asia/Oceania/Americas/Africa) and a **parallel GitHub-Actions
+    matrix** builds a whole continent per dispatch (race-safe: per-region zips + entry artifacts, one manifest
+    merge). *(Online still wins on live traffic + POIs; this is the no-signal fallback and the foundation for
+    offline-first navigation.)*
 - ✅ **Turn instructions keep the road name** ("Turn right **onto the local street**", spoken + on the banner). Now **native from OSRM** — `RouteGeometry.osrmPhrase` synthesizes the instruction from the step's `type`+`modifier`+`name` (OSRM ships no instruction text but every step carries its road name), so there are **no bare turns** to fill. *(The retired Google-keyless path used `DirectionsParser` to tag-strip `<step>` markup and a `fillTurnRoads` Nominatim reverse-geocode to patch the ≈3-of-11 turns Google omitted a `<road>` on — both **gone** now that OSRM supplies complete names; the Google markup parser only survives on the unreachable-OSRM fallback.)* **Regression tests:** `OsrmRouterTest` pins the `osrmType`/`osrmPhrase` mappings; `NavRoadNameTest` still drives captured markup through `NavEngine` for the fallback path.
 - ✅ **Walking / biking routes draw DASHED** (Google-style) — a second line layer on the route source (`vela-route-dash`, round-capped short on/off pattern) toggled by visibility, because MapLibre's `line-dasharray` disables `line-gradient` (so the solid traffic-gradient driving line and the dashed foot/bike line can't be one layer). Drive stays solid + traffic-coloured; Walk/Bike show the dashes.
 - ✅ **POI / interaction polish (2026-06-28):** (a) **ambient Google POIs now DECLUTTER** — the dot layer was `iconAllowOverlap=true`+`ignorePlacement=true`, so every POI stacked on its neighbours at tight zooms; now they collide + have `iconPadding`, sorted by prominence (`symbolSortKey`), so only non-overlapping ones show and more appear as you zoom in (Google-style). (b) **Tapping a POI while the directions chooser is up brings it to the FRONT** (closes the chooser) instead of loading the place sheet *invisibly underneath* it (the sheet is gated on `!directionsOpen`); picking the route origin by tapping the map adopts the tapped POI as origin. (c) **Search results get a clear "Hide results" bar at the bottom** of the panel — the list hangs from the top so a bottom collapse control is the natural close (the top handle alone read backwards); back gesture still works.
