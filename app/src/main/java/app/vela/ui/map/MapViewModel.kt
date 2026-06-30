@@ -109,6 +109,11 @@ data class MapUiState(
     val work: SavedPlace? = null,
     val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
     val notices: List<Notice> = emptyList(), // pushed via the signed calibration channel
+    // Offline routing (downloadable per-region CH graphs — Settings → Offline routing)
+    val routingRegions: List<app.vela.offline.RoutingRegion> = emptyList(),
+    val routingInstalledId: String? = null,       // region id whose graph is on disk, else null
+    val routingDownloadingId: String? = null,     // region id currently downloading, else null
+    val routingDownloadPct: Int = 0,
 )
 
 /**
@@ -138,6 +143,7 @@ class MapViewModel @Inject constructor(
     private val diagExporter: app.vela.diag.DiagExporter,
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
     private val tripStore: app.vela.replay.TripStore,
+    private val routingGraphStore: app.vela.offline.RoutingGraphStore,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
@@ -1319,6 +1325,38 @@ class MapViewModel @Inject constructor(
         val name = "Area near %.2f, %.2f".format((s + n) / 2, (w + e) / 2)
         app.vela.offline.OfflineMaps.download(appContext, _state.value.styleUri, bounds, minZ, maxZ, name, ::showStatus)
         downloadOfflinePois(s, w, n, e)
+    }
+
+    // --- Offline ROUTING graphs (Settings → Offline routing) ---------------------------------
+
+    /** Reflect what's installed + fetch the manifest of downloadable region graphs. */
+    fun refreshRoutingRegions() {
+        _state.update { it.copy(routingInstalledId = routingGraphStore.installedRegionId()) }
+        viewModelScope.launch {
+            val regions = routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL)
+            _state.update { it.copy(routingRegions = regions) }
+        }
+    }
+
+    /** Download + install [region]'s CH graph for fully-offline routing in that area. */
+    fun downloadRoutingGraph(region: app.vela.offline.RoutingRegion) {
+        if (_state.value.routingDownloadingId != null) return
+        _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0) }
+        viewModelScope.launch {
+            val ok = routingGraphStore.download(region) { pct ->
+                _state.update { it.copy(routingDownloadPct = pct) }
+            }
+            _state.update {
+                it.copy(routingDownloadingId = null, routingInstalledId = routingGraphStore.installedRegionId())
+            }
+            showStatus(if (ok) "Offline routing ready: ${region.name}" else "Offline routing download failed")
+        }
+    }
+
+    fun deleteRoutingGraph() {
+        routingGraphStore.delete()
+        _state.update { it.copy(routingInstalledId = null) }
+        showStatus("Offline routing removed")
     }
 
     /** When a map region is downloaded for offline use, also pull its POIs from

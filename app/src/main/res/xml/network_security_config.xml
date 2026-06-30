@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  All real traffic stays HTTPS-only (the platform default on targetSdk 35). The single exception is
+  localhost cleartext, so a dev can serve a routing-graph manifest from the workstation over
+  `adb reverse` while testing offline routing. No production code talks to localhost.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
