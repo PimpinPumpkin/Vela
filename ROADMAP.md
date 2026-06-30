@@ -300,19 +300,24 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     Pixel 5a): with wifi+data OFF and a real WA graph present, the app **loaded the graph from external
     storage and invoked the engine** (observed: 486 MB resident / climbing CPU during the compute) — so the
     R8 *release* runtime + external-storage load + offline wiring are all confirmed.
-  - **Phase 1b PERF finding — use METRO graphs, not whole-state.** A whole-state graph (WA, 250 MB) was
-    pathologically slow on-device: routing a 24-mi trip was **I/O-bound on FUSE-mapped external storage**
-    (25.8% CPU, not 100%) over a huge no-CH graph. Fix = a right-sized **metro** graph (the per-region model
-    anyway): a Puget-Sound crop (`osmium extract`, 96 MB pbf → **76 MB graph**) routes the same 20-mi trip in
-    **102 ms** (desktop, flexible/no-CH). So **no Contraction Hierarchies needed** at metro scale — which
-    sidesteps the CH-vs-custom-weighting-baking problem (CH would bake the build-time weighting; our engine
-    overrides to `SpeedWeighting`). **Production: download a metro/region graph to INTERNAL storage**
-    (`filesDir`, fast MMAP — not FUSE external, which was only used here because it's the adb-pushable path).
-  - **Phase 1b-ii (next):** the off-device **graph-build pipeline** (CI builds per-region metro graphs with
-    the engine's exact profile config — `Profile("car")`+car.json — published as GitHub release assets like
-    the APK/`calibration.json`), and **download-per-region UX** wired into the existing offline-maps flow
-    (to `filesDir`). Then a clean in-app offline-route render closes it. **Serverless throughout — no
-    backend; the engine runs on the phone.**
+  - **Phase 1b PERF — SOLVED 2026-06-29: metro graph + Contraction Hierarchies + internal storage.**
+    Two on-device perf traps, both measured + fixed:
+    1. **Storage** — a whole-state graph (WA, 250 MB) on **FUSE-mapped external storage** was I/O-bound
+       (25.8% CPU). Internal storage (`filesDir`/`cacheDir`) loads fast (a 53 MB metro graph: **168 ms**).
+       External was only ever the adb-pushable *test* path; production downloads to internal.
+    2. **Routing algorithm** — plain flexible A* with our interpreted `SpeedWeighting` override is fine on
+       desktop (102 ms) but **7639 ms on the Pixel 5a** (slow ART + per-edge virtual calls). Fix =
+       **Contraction Hierarchies**, prepared on the *same* `SpeedWeighting` (CH bakes the build-time
+       weighting, so it must match the engine's query weighting — it does). **On-device CH route: 188 ms**
+       for a 21-mi trip with 18 named steps (40× faster; `:ghprobe` `metroGraphRoutesFastFromInternalStorage`).
+    Engine + `:ghprobe` + the new `tools/graphbuilder` all build CH on the shared weighting. A metro CH graph
+    ≈ 53 MB (~21 MB zipped). **On-device offline routing is now proven FAST + usable.**
+  - **`tools/graphbuilder` (DONE)** — standalone JVM tool (not an app dep) that builds a per-region CH graph
+    matching the engine's exact config. `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`.
+  - **Phase 1b-ii (next):** wire `graphbuilder` into **CI** (matrix over a region list → upload each graph as
+    a GitHub release asset, like the APK/`calibration.json`) + an in-app **per-region download** into internal
+    `filesDir` via the existing offline-maps flow + a region picker. Then the in-app offline render is trivially
+    fast. **Serverless throughout — no backend; the engine runs on the phone.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`

@@ -35,3 +35,6 @@ Thumbs.db
 *.log
 *.bak
 *.tmp
+
+# Large regenerable on-device perf-test graph (ghprobe) — not committed
+ghprobe/src/androidTest/assets/seam-graph.zip
