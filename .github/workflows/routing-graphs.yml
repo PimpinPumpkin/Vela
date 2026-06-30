@@ -53,7 +53,9 @@ jobs:
           IDS: ${{ inputs.ids }}
           SKIP_BIG: ${{ inputs.skip_big }}
         run: |
-          ids_json=$(printf '%s' "$IDS" | tr ',' ' ' | xargs -n1 2>/dev/null | jq -R . | jq -s .)
+          # split IDS on commas/spaces, drop empties — pure jq so it's platform-independent
+          # (GNU xargs runs once on empty input → would yield [""], breaking the group path).
+          ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
           sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
             [ .regions[]
               | select( if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null else .group == $group end )
