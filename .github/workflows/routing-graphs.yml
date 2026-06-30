@@ -1,31 +1,79 @@
-# Build one region's offline-routing CH graph and publish it to the `routing-graphs` release
-# (+ merge it into routing-manifest.json). Run from the Actions tab → "Build offline routing graph"
-# → enter a region. This is how the offline-routing catalog grows toward world coverage; each run
-# adds/updates one region. (Big states/countries take a few minutes; well within the job limits.)
-name: Build offline routing graph
+# Build offline-routing CH graphs for many regions in parallel and publish them to the `routing-graphs`
+# release. This is how the offline-routing catalog grows toward world coverage.
+#
+# Run from the Actions tab → "Build offline routing graphs" → pick a `group` (us, canada, europe, …) or
+# pass explicit `ids`. Regions come from tools/routing-regions.json — to build something not listed, add
+# a line there first. Public-repo Actions minutes are free, so a whole continent in one dispatch is fine.
+#
+# Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.zip + a manifest
+# *entry* artifact (nothing shared). One final `merge` job folds every entry into routing-manifest.json in
+# a single upload, so parallel jobs can never clobber the manifest. Replace-by-id ⇒ re-running updates a
+# region in place and leaves the rest of the catalog untouched.
+name: Build offline routing graphs
 
 on:
   workflow_dispatch:
     inputs:
-      id:
-        description: "Region id, lowercase, no spaces (e.g. oregon)"
-        required: true
+      group:
+        description: "Region group to build (ignored if 'ids' is set)"
+        type: choice
+        options: [us, canada, europe, oceania, asia, south-america, central-america, africa]
+        default: us
+      ids:
+        description: "Optional: space/comma-separated region ids (e.g. 'arizona utah colorado'). Overrides 'group'."
         type: string
-      name:
-        description: "Display name (e.g. Oregon (state))"
-        required: true
-        type: string
-      pbf_url:
-        description: "Geofabrik .osm.pbf URL"
-        required: true
-        type: string
+        default: ""
+      skip_big:
+        description: "Skip large (big:true) regions for a quick run"
+        type: boolean
+        default: false
 
 permissions:
   contents: write # create/upload assets on the routing-graphs release
 
 jobs:
-  build:
+  prep:
     runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+      count: ${{ steps.sel.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          GROUP: ${{ inputs.group }}
+          IDS: ${{ inputs.ids }}
+          SKIP_BIG: ${{ inputs.skip_big }}
+        run: |
+          ids_json=$(printf '%s' "$IDS" | tr ',' ' ' | xargs -n1 2>/dev/null | jq -R . | jq -s .)
+          sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
+            [ .regions[]
+              | select( if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null else .group == $group end )
+              | select( ($skipBig | not) or (.big != true) )
+              | {id, name, pbf_url} ]
+          ' tools/routing-regions.json)
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GROUP' ids='$IDS'"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap — pick a smaller group or ids"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+      - name: Ensure the catalog release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view routing-graphs --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create routing-graphs --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Offline routing graphs" \
+              --notes "Prebuilt GraphHopper CH graphs for Vela offline routing. Data assets, not a code release."
+
+  build:
+    needs: prep
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # one bad region must not kill the rest of the batch
+      max-parallel: 12
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -34,8 +82,39 @@ jobs:
           java-version: "17"
       - name: Install tools
         run: sudo apt-get update && sudo apt-get install -y osmium-tool jq zip
-      - name: Build + publish region
+      - name: Build ${{ matrix.id }} + upload zip + emit entry
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VELA_REPO: ${{ github.repository }}
-        run: bash scripts/build-routing-region.sh "${{ inputs.id }}" "${{ inputs.name }}" "${{ inputs.pbf_url }}"
+          MANIFEST_MODE: emit
+          ENTRY_OUT: ${{ matrix.id }}.json
+        run: bash scripts/build-routing-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.pbf_url }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.id }}
+          path: ${{ matrix.id }}.json
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - uses: actions/download-artifact@v4
+        with:
+          path: entries
+          pattern: entry-*
+          merge-multiple: true
+      - name: Merge entries into routing-manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(entries/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          echo "merging ${#files[@]} entr(y/ies)"
+          bash scripts/merge-routing-manifest.sh entries
