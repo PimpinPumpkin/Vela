@@ -8,7 +8,9 @@
 # Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.zip + a manifest
 # *entry* artifact (nothing shared). One final `merge` job folds every entry into routing-manifest.json in
 # a single upload, so parallel jobs can never clobber the manifest. Replace-by-id ⇒ re-running updates a
-# region in place and leaves the rest of the catalog untouched.
+# region in place and leaves the rest of the catalog untouched. The `concurrency` group below also
+# serializes whole runs (a second dispatch queues, never cancels), so firing several groups back-to-back
+# (e.g. one continent after another) can't race two merge jobs against the manifest.
 name: Build offline routing graphs
 
 on:
@@ -30,6 +32,12 @@ on:
 
 permissions:
   contents: write # create/upload assets on the routing-graphs release
+
+# Serialize runs so two dispatches never race their merge jobs against routing-manifest.json.
+# cancel-in-progress:false ⇒ a second dispatch QUEUES behind the first instead of cancelling it.
+concurrency:
+  group: routing-graphs-manifest
+  cancel-in-progress: false
 
 jobs:
   prep:
