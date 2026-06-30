@@ -53,16 +53,23 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
 
     override fun route(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
         if (mode != TravelMode.DRIVE) return emptyList()
-        // A single graph can't route across regions, so we need one region covering BOTH ends.
-        val region = regions().firstOrNull { it.id !in failed && it.covers(origin) && it.covers(destination) }
-            ?: return emptyList()
-        val gh = hopper(region) ?: return emptyList()
-        return try {
-            val rsp = gh.route(GHRequest(origin.lat, origin.lng, destination.lat, destination.lng).setProfile(PROFILE))
-            if (rsp.hasErrors()) emptyList() else listOf(toRoute(rsp.best))
-        } catch (e: Exception) {
-            emptyList()
+        // A single graph can't route across regions, so we need one region covering BOTH ends. Region boxes
+        // overlap at borders (Geofabrik extracts carry a buffer — British Columbia's box dips into Sacramento),
+        // so try the most specific (smallest-box) covering region first and fall through to the next if its
+        // graph can't actually make the trip; only give up when none can.
+        val candidates = regions()
+            .filter { it.id !in failed && it.covers(origin) && it.covers(destination) }
+            .sortedBy { (it.n - it.s) * (it.e - it.w) }
+        for (region in candidates) {
+            val gh = hopper(region) ?: continue
+            try {
+                val rsp = gh.route(GHRequest(origin.lat, origin.lng, destination.lat, destination.lng).setProfile(PROFILE))
+                if (!rsp.hasErrors()) return listOf(toRoute(rsp.best))
+            } catch (e: Exception) {
+                // try the next covering region
+            }
         }
+        return emptyList()
     }
 
     /** Drop all loaded graphs (e.g. after install/delete changes the set). Swallows the Android unmap quirk. */
@@ -165,8 +172,9 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
     }
 
     internal companion object {
-        /** A region's box [S,W,N,E] covers ([lat],[lng])? The engine routes a trip on the first installed
-         *  region covering BOTH endpoints (a monolithic graph can't route across regions). */
+        /** A region's box [S,W,N,E] covers ([lat],[lng])? The engine routes a trip on the smallest installed
+         *  region covering BOTH endpoints (boxes overlap at borders; a monolithic graph can't route across
+         *  regions), falling through to the next-smallest if that graph can't make the trip. */
         internal fun inBox(s: Double, w: Double, n: Double, e: Double, lat: Double, lng: Double) =
             lat in s..n && lng in w..e
 
