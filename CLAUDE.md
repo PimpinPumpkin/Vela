@@ -208,7 +208,8 @@ genuinely needs no doc edit, say why in the commit.
   for local testing) into `filesDir/graphs/<id>/`, merging each into `filesDir/graphs/index.json`
   (`[{id,bbox:[S,W,N,E]}]`); `GraphHopperRouteEngine` lazy-loads a `GraphHopper` per region and routes a trip on
   the **first region whose bbox covers BOTH endpoints** (`inBox`, unit-tested). Settings → **Offline routing** is
-  a location-aware picker (regions covering the GPS fix sort first + flag "covers your location"); downloading
+  a location-aware picker (regions covering the GPS fix sort first + flag "covers your location"; a name
+  filter appears once the catalog is large); downloading
   offline map *tiles* for an area ALSO pulls that area's routing region (`MapViewModel.downloadRoutingForArea`).
   `directions()` uses the engine when OSRM is empty. A trip must fit ONE region's monolithic graph (cross-region
   → online).
