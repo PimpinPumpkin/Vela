@@ -256,6 +256,46 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
 
             Spacer(Modifier.height(20.dp))
+            SectionTitle("Offline routing (beta)")
+            LaunchedEffect(Unit) { vm.refreshRoutingRegions() }
+            Hint("Download a region's road network to navigate with no signal — full turn-by-turn works offline in downloaded areas. Online still uses live traffic; this is the fallback when you lose connection.")
+            if (state.routingRegions.isEmpty()) {
+                Hint("No regions available yet.")
+            } else {
+                state.routingRegions.forEach { region ->
+                    val installed = state.routingInstalledId == region.id
+                    val downloading = state.routingDownloadingId == region.id
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text(region.name, style = MaterialTheme.typography.bodyLarge)
+                            Text(
+                                when {
+                                    downloading -> "Downloading… ${state.routingDownloadPct}%"
+                                    installed -> "Installed · routes offline here"
+                                    else -> "${region.sizeMb} MB"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        when {
+                            downloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            installed -> IconButton(onClick = { vm.deleteRoutingGraph() }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Remove offline routing")
+                            }
+                            else -> OutlinedButton(
+                                onClick = { vm.downloadRoutingGraph(region) },
+                                enabled = state.routingDownloadingId == null,
+                            ) { Text("Download") }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
             SectionTitle("Saved places")
             Hint("Back up your starred places to a file, or restore them on another device. Import merges into what you already have — it never overwrites or removes anything.")
             val importLauncher = rememberLauncherForActivityResult(
