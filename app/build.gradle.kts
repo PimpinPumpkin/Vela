@@ -40,7 +40,7 @@ android {
             "String",
             "ROUTING_MANIFEST_URL",
             "\"${(project.findProperty("routingManifestUrl") as String?)
-                ?: "https://github.com/PimpinPumpkin/Vela/releases/latest/download/routing-manifest.json"}\"",
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/routing-graphs/routing-manifest.json"}\"",
         )
     }
 
