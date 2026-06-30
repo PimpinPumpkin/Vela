@@ -6,6 +6,8 @@ plugins { application }
 dependencies { implementation("com.graphhopper:graphhopper-map-matching:11.0") }
 application {
     mainClass.set("GraphBuilder")
-    applicationDefaultJvmArgs = listOf("-Xmx6g") // state-sized imports are memory-heavy
+    // Imports are memory-heavy; 12g lets country-sized regions build on a 16 GB CI runner.
+    // The very largest (Germany/France) may still need splitting into Geofabrik subregions.
+    applicationDefaultJvmArgs = listOf("-Xmx12g")
 }
 java { toolchain { languageVersion.set(JavaLanguageVersion.of(17)) } }
