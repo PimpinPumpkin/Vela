@@ -46,16 +46,16 @@ object CoreModule {
     ): MapDataSource = if (VelaConfig.USE_GOOGLE_SOURCE) google else mock
 
     /**
-     * The on-device routing engine (offline fallback / future always-snap). Reads the downloaded
-     * routing graph from **internal** storage (`filesDir/routing-graph`) — fast MMAP; a metro CH graph
-     * is ~53 MB, and FUSE-mapped *external* storage was measured I/O-bound for routing's random access.
-     * [RoutingGraphStore] (`:app`) downloads + unzips graphs to this exact dir. When no graph is present
-     * [GraphHopperRouteEngine.isReady] is false and it's a no-op, so `directions()` keeps using OSRM.
+     * The on-device routing engine (offline fallback / future always-snap). Reads downloaded per-region
+     * CH graphs from **internal** storage (`filesDir/graphs/<id>/` + `index.json`) — fast MMAP; FUSE-mapped
+     * external storage was measured I/O-bound for routing's random access. [RoutingGraphStore] (`:app`)
+     * downloads graphs + maintains the index here. When no region covers a trip [GraphHopperRouteEngine]
+     * returns empty, so `directions()` keeps using OSRM.
      */
     @Provides
     @Singleton
     fun routeEngine(@ApplicationContext context: Context): RouteEngine =
-        GraphHopperRouteEngine(File(context.filesDir, "routing-graph"))
+        GraphHopperRouteEngine(File(context.filesDir, "graphs"))
 }
 
 /**
