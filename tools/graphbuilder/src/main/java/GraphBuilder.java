@@ -66,6 +66,9 @@ public class GraphBuilder {
         hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("car"));
         hopper.importOrLoad();
         System.out.println("built " + args[1] + " from " + args[0] + " in " + (System.currentTimeMillis() - t0) + " ms");
+        // bbox for the region's manifest entry ([S,W,N,E] — the order RoutingGraphStore/engine expect).
+        com.graphhopper.util.shapes.BBox bb = hopper.getBaseGraph().getBounds();
+        System.out.printf("manifest bbox [S,W,N,E] = [%.5f, %.5f, %.5f, %.5f]%n", bb.minLat, bb.minLon, bb.maxLat, bb.maxLon);
 
         // sanity: the built CH graph must route quickly (coords default to a mid-size trip; harmless
         // to fail elsewhere — just a smoke check).
