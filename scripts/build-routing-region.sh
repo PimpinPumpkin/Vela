@@ -25,8 +25,10 @@ echo "→ building CH graph"
 ( cd "$WORK/graph" && zip -qr "$WORK/$ID.zip" . )
 SIZE=$(( ( $(stat -f%z "$WORK/$ID.zip" 2>/dev/null || stat -c%s "$WORK/$ID.zip") + 1048575 ) / 1048576 ))
 
-# bbox [S,W,N,E] from the extract's data extent: osmium prints (minlon,minlat,maxlon,maxlat)
-read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -e -g data.bbox "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
+# bbox [S,W,N,E] from the extract's HEADER box (the declared region) — NOT data.bbox, whose node
+# extent gets blown up by outlier nodes (a stray ferry/error node sends it to Alaska). osmium prints
+# (minlon,minlat,maxlon,maxlat).
+read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
 BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.zip"
 echo "→ $ID: ${SIZE} MB, bbox $BBOX"
