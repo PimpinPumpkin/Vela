@@ -17,106 +17,126 @@ import com.graphhopper.routing.weighting.SpeedWeighting
 import com.graphhopper.util.EdgeIteratorState
 import com.graphhopper.util.GHUtility
 import com.graphhopper.util.Instruction
+import org.json.JSONArray
 import java.io.File
+import java.util.concurrent.ConcurrentHashMap
 
 /**
- * On-device routing from a prebuilt GraphHopper graph (one [graphDir] per downloaded region).
- * Pure JVM — runs on ART, **validated end-to-end on a Pixel 5a** (see `:ghprobe` + ROADMAP). Three
- * Android workarounds, all here:
- *  1. **MMAP** data access — the default `RAMDataAccess` static-inits `VarHandle.withInvokeExactBehavior()`
- *     (JDK-16), absent on ART; `MMapDataAccess` doesn't. Set via [GraphHopperConfig].
- *  2. **No Janino** — v11 compiles custom-model weightings to JVM bytecode ART can't load. We override
- *     [GraphHopper.createWeightingFactory] to return a hand-rolled [SpeedWeighting] + an access block.
- *  3. **Swallow `close()`** — MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android. We never close
- *     per-route (one engine for the process lifetime); [shutdown] guards it.
+ * On-device routing from prebuilt GraphHopper graphs — **one self-contained graph per downloaded
+ * region** (a GraphHopper graph is monolithic; a trip must fit inside a single region's graph, so the
+ * whole world can't be one file, but you download the regions you travel). [graphsRoot] holds
+ * `<regionId>/` graph folders plus an `index.json` (`[{id, bbox:[S,W,N,E]}]`) that [RoutingGraphStore]
+ * writes on install; this engine reads it to pick, per trip, the region whose box covers BOTH endpoints.
  *
- * Graphs are built OFF-device (the OSM-import path needs Android-hostile deps we exclude) and shipped
- * per region; the phone only loads + routes. DRIVE only for now (a car graph); other modes fall back
- * to the online engine. Loading (~140 ms) is lazy + once; routing is thread-safe afterwards.
+ * Pure JVM — runs on ART, **validated end-to-end on a Pixel 5a** (see `:ghprobe` + ROADMAP). Per graph:
+ *  1. **MMAP** data access — the default `RAMDataAccess` static-inits `VarHandle.withInvokeExactBehavior()`
+ *     (JDK-16), absent on ART; `MMapDataAccess` doesn't.
+ *  2. **No Janino** — v11 compiles custom-model weightings to JVM bytecode ART can't load. We override
+ *     [GraphHopper.createWeightingFactory] to a hand-rolled [SpeedWeighting] + access block, and graphs
+ *     bake **Contraction Hierarchies** on that same weighting (CH = ~200 ms on-device vs 7.6 s flexible).
+ *  3. **Swallow `close()`** — MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android.
+ *
+ * Each region's graph is loaded lazily + once (~150 ms), cached, and routing is thread-safe afterwards.
+ * DRIVE only for now (a car graph); other modes fall back to the online engine.
  */
-class GraphHopperRouteEngine(private val graphDir: File) : RouteEngine {
+class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
 
-    @Volatile private var hopper: GraphHopper? = null
-    @Volatile private var failed = false
+    private data class Region(val id: String, val s: Double, val w: Double, val n: Double, val e: Double) {
+        fun covers(p: LatLng) = inBox(s, w, n, e, p.lat, p.lng)
+    }
+
+    private val hoppers = ConcurrentHashMap<String, GraphHopper>()
+    private val failed = ConcurrentHashMap.newKeySet<String>() // graphs that errored on load — don't retry-thrash
 
     override fun isReady(mode: TravelMode): Boolean =
-        mode == TravelMode.DRIVE && !failed && File(graphDir, "properties").exists()
+        mode == TravelMode.DRIVE && regions().any { it.id !in failed && hasGraph(it.id) }
 
     override fun route(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
         if (mode != TravelMode.DRIVE) return emptyList()
-        val gh = engine() ?: return emptyList()
+        // A single graph can't route across regions, so we need one region covering BOTH ends.
+        val region = regions().firstOrNull { it.id !in failed && it.covers(origin) && it.covers(destination) }
+            ?: return emptyList()
+        val gh = hopper(region) ?: return emptyList()
         return try {
-            val rsp = gh.route(
-                GHRequest(origin.lat, origin.lng, destination.lat, destination.lng).setProfile(PROFILE),
-            )
+            val rsp = gh.route(GHRequest(origin.lat, origin.lng, destination.lat, destination.lng).setProfile(PROFILE))
             if (rsp.hasErrors()) emptyList() else listOf(toRoute(rsp.best))
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    /** Drop the loaded graph (e.g. when the region is deleted). Swallows the Android MMAP-unmap quirk. */
+    /** Drop all loaded graphs (e.g. after install/delete changes the set). Swallows the Android unmap quirk. */
     fun shutdown() {
         synchronized(this) {
-            try {
-                hopper?.close()
-            } catch (e: Throwable) {
-                // MMAP unmap via Unsafe.invokeCleaner is absent on Android — harmless on teardown.
-            }
-            hopper = null
+            hoppers.values.forEach { runCatching { it.close() } }
+            hoppers.clear()
+            failed.clear()
         }
     }
 
-    private fun engine(): GraphHopper? {
-        hopper?.let { return it }
-        if (failed || !File(graphDir, "properties").exists()) return null
-        synchronized(this) {
-            hopper?.let { return it }
-            return try {
-                val gh = object : GraphHopper() {
-                    override fun createWeightingFactory(): WeightingFactory =
-                        WeightingFactory { _, _, _ ->
-                            val speed = encodingManager.getDecimalEncodedValue(SPEED_EV)
-                            val access = encodingManager.getBooleanEncodedValue(ACCESS_EV)
-                            // SpeedWeighting is Janino-free but ignores access; add the access block so
-                            // it matches the car custom model's "if !car_access: multiply_by 0".
-                            object : SpeedWeighting(speed) {
-                                override fun calcEdgeWeight(edge: EdgeIteratorState, reverse: Boolean): Double {
-                                    val ok = if (reverse) edge.getReverse(access) else edge.get(access)
-                                    return if (!ok) Double.POSITIVE_INFINITY else super.calcEdgeWeight(edge, reverse)
-                                }
+    private fun hasGraph(id: String) = File(File(graphsRoot, id), "properties").exists()
 
-                                // car_average_speed is km/h, but SpeedWeighting reports time as
-                                // distance_m/speed (as if m/s) → ETAs come out 3.6x too fast. Report real
-                                // ms. (Only the reported duration; routing/CH use the weight above.)
-                                override fun calcEdgeMillis(edge: EdgeIteratorState, reverse: Boolean): Long {
-                                    val kmh = if (reverse) edge.getReverse(speed) else edge.get(speed)
-                                    return if (kmh <= 0.0) Long.MAX_VALUE else (edge.distance * 3600.0 / kmh).toLong()
-                                }
-                            }
-                        }
-                }
-                val cfg = GraphHopperConfig().apply {
-                    putObject("graph.location", graphDir.absolutePath)
-                    putObject("graph.dataaccess", "MMAP") // ART lacks RAMDataAccess's VarHandle method
-                    putObject("graph.encoded_values", ENCODED_VALUES)
-                    putObject("import.osm.ignored_highways", "") // import-only; required by init() validation
-                    // car.json custom model is metadata only here (our factory ignores it for weighting);
-                    // it keeps the profile version matching a standard car-built graph.
-                    profiles = listOf(Profile(PROFILE).setCustomModel(GHUtility.loadCustomModelFromJar("car.json")))
-                    // Contraction Hierarchies (prebuilt on the SAME SpeedWeighting) — flexible A* with our
-                    // interpreted weighting was 7.6 s for a 24-mi trip on-device; CH makes it ~tens of ms.
-                    setCHProfiles(listOf(CHProfile(PROFILE)))
-                }
-                gh.init(cfg)
-                gh.importOrLoad()
-                hopper = gh
-                gh
+    /** Installed regions + their bounding boxes, from `graphsRoot/index.json` (written by the store). */
+    private fun regions(): List<Region> = runCatching {
+        val f = File(graphsRoot, "index.json")
+        if (!f.exists()) return emptyList()
+        val arr = JSONArray(f.readText())
+        (0 until arr.length()).mapNotNull { i ->
+            val o = arr.getJSONObject(i)
+            val b = o.getJSONArray("bbox")
+            Region(o.getString("id"), b.getDouble(0), b.getDouble(1), b.getDouble(2), b.getDouble(3))
+        }
+    }.getOrDefault(emptyList())
+
+    private fun hopper(region: Region): GraphHopper? {
+        hoppers[region.id]?.let { return it }
+        if (region.id in failed) return null
+        synchronized(this) {
+            hoppers[region.id]?.let { return it }
+            val dir = File(graphsRoot, region.id)
+            if (!File(dir, "properties").exists()) return null
+            return try {
+                load(dir).also { hoppers[region.id] = it }
             } catch (e: Throwable) {
-                failed = true // a bad/incompatible graph shouldn't retry-thrash every route
+                failed.add(region.id)
                 null
             }
         }
+    }
+
+    /** Load one prebuilt CH graph with the three ART workarounds. */
+    private fun load(dir: File): GraphHopper {
+        val hopper = object : GraphHopper() {
+            override fun createWeightingFactory(): WeightingFactory =
+                WeightingFactory { _, _, _ ->
+                    val speed = encodingManager.getDecimalEncodedValue(SPEED_EV)
+                    val access = encodingManager.getBooleanEncodedValue(ACCESS_EV)
+                    object : SpeedWeighting(speed) {
+                        override fun calcEdgeWeight(edge: EdgeIteratorState, reverse: Boolean): Double {
+                            val ok = if (reverse) edge.getReverse(access) else edge.get(access)
+                            return if (!ok) Double.POSITIVE_INFINITY else super.calcEdgeWeight(edge, reverse)
+                        }
+
+                        // car_average_speed is km/h; SpeedWeighting reports time as if it were m/s (3.6x
+                        // too fast). Report real ms — routing/CH still use the proportional weight above.
+                        override fun calcEdgeMillis(edge: EdgeIteratorState, reverse: Boolean): Long {
+                            val kmh = if (reverse) edge.getReverse(speed) else edge.get(speed)
+                            return if (kmh <= 0.0) Long.MAX_VALUE else (edge.distance * 3600.0 / kmh).toLong()
+                        }
+                    }
+                }
+        }
+        val cfg = GraphHopperConfig().apply {
+            putObject("graph.location", dir.absolutePath)
+            putObject("graph.dataaccess", "MMAP") // ART lacks RAMDataAccess's VarHandle method
+            putObject("graph.encoded_values", ENCODED_VALUES)
+            putObject("import.osm.ignored_highways", "") // import-only; required by init() validation
+            profiles = listOf(Profile(PROFILE).setCustomModel(GHUtility.loadCustomModelFromJar("car.json")))
+            setCHProfiles(listOf(CHProfile(PROFILE))) // prebuilt CH → fast on-device routing
+        }
+        hopper.init(cfg)
+        hopper.importOrLoad()
+        return hopper
     }
 
     private fun toRoute(path: ResponsePath): Route {
@@ -145,6 +165,11 @@ class GraphHopperRouteEngine(private val graphDir: File) : RouteEngine {
     }
 
     internal companion object {
+        /** A region's box [S,W,N,E] covers ([lat],[lng])? The engine routes a trip on the first installed
+         *  region covering BOTH endpoints (a monolithic graph can't route across regions). */
+        internal fun inBox(s: Double, w: Double, n: Double, e: Double, lat: Double, lng: Double) =
+            lat in s..n && lng in w..e
+
         private const val PROFILE = "car"
         private const val ENCODED_VALUES = "car_access, car_average_speed, road_access"
         private const val SPEED_EV = "car_average_speed"
@@ -168,7 +193,7 @@ class GraphHopperRouteEngine(private val graphDir: File) : RouteEngine {
         }
 
         /** Synthesize the human instruction (GraphHopper ships none unless given a Translation). */
-        fun ghPhrase(type: ManeuverType, road: String?): String {
+        internal fun ghPhrase(type: ManeuverType, road: String?): String {
             val onto = road?.let { " onto $it" } ?: ""
             return when (type) {
                 ManeuverType.DEPART -> if (road != null) "Head out on $road" else "Head out"
