@@ -40,12 +40,23 @@ gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
 
 gh release upload "$TAG" "$WORK/$ID.zip" --clobber --repo "$REPO"
 
-# merge this region into routing-manifest.json (replace any existing entry with the same id)
-gh release download "$TAG" --repo "$REPO" -p routing-manifest.json -O "$WORK/manifest.json" 2>/dev/null \
-  || echo '{"regions":[]}' > "$WORK/manifest.json"
-jq --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
-  '.regions = ([.regions[] | select(.id != $id)] + [{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}])' \
-  "$WORK/manifest.json" > "$WORK/routing-manifest.json"
-gh release upload "$TAG" "$WORK/routing-manifest.json" --clobber --repo "$REPO"
+# this region's manifest entry
+ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
+  '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
 
-echo "✓ published $ID — the app's Settings → Offline routing will list it"
+# MANIFEST_MODE=emit (CI matrix): just drop the entry to $ENTRY_OUT and stop — the manifest merge is
+# centralised in one job (scripts/merge-routing-manifest.sh) so parallel region builds can't clobber it.
+# Default (local single-region): read-modify-write the manifest ourselves.
+if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
+  printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?set ENTRY_OUT in emit mode}"
+  echo "✓ built $ID, zip uploaded, entry → $ENTRY_OUT (manifest merged separately)"
+else
+  # merge this region into routing-manifest.json (replace any existing entry with the same id)
+  gh release download "$TAG" --repo "$REPO" -p routing-manifest.json -O "$WORK/manifest.json" 2>/dev/null \
+    || echo '{"regions":[]}' > "$WORK/manifest.json"
+  jq --argjson entry "$ENTRY" \
+    '.regions = ([.regions[] | select(.id != ($entry.id))] + [$entry])' \
+    "$WORK/manifest.json" > "$WORK/routing-manifest.json"
+  gh release upload "$TAG" "$WORK/routing-manifest.json" --clobber --repo "$REPO"
+  echo "✓ published $ID — the app's Settings → Offline routing will list it"
+fi
