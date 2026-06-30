@@ -196,8 +196,14 @@ genuinely needs no doc edit, say why in the commit.
   jackson wholesale (GraphHopper resolves a lot reflectively) and `-dontwarn`s the excluded/absent refs —
   release build is clean (**but +~10 MB APK; tighter keeps / on-demand delivery is a later optimisation**).
   Graphs are built off-device, one per region, and (Phase 1b) downloaded alongside the offline tiles;
-  `RouteEngine` is selected by connectivity + graph-presence. **Status: engine integrated + R8-proven
-  (Phase 1a); NOT yet wired into `directions()` (Phase 1b).**
+  `RouteEngine` is selected by connectivity + graph-presence. **Speed needs Contraction Hierarchies:**
+  plain flexible A* with the interpreted `SpeedWeighting` was **7.6 s** for a 24-mi trip on a Pixel 5a;
+  **CH prepared on the SAME `SpeedWeighting`** (the engine declares `setCHProfiles`, `tools/graphbuilder`
+  builds it) → **188 ms**. Graphs MUST be built with CH on that weighting (CH bakes the build-time
+  weighting), to **internal** storage (FUSE external was I/O-bound). **Status: integrated, R8-proven, wired
+  into `directions()` as the offline fallback, on-device fast-routing proven (Phase 1a + 1b-i). Remaining
+  (1b-ii): CI graph-build + per-region download UX — `directions()` already calls the engine when OSRM is
+  empty.** Build region graphs with `tools/graphbuilder` (`./gradlew :tools:graphbuilder:run`).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
