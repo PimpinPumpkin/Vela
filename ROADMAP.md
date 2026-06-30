@@ -341,12 +341,24 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     tracks). `ROUTING_MANIFEST_URL` defaults to `releases/download/routing-graphs/routing-manifest.json`.
     Seeded with **Washington (147 MB), Seattle metro (21 MB), Washington DC (6 MB)**. **Verified end-to-end on
     a Pixel 5a with a production build** (no localhost): fetched the GitHub manifest → downloaded Washington
-    (147 MB) from the release → routed Everett→Seattle offline (28 min, 21.8 mi via NE 45th St). **Growing the
-    catalog toward world coverage:** `scripts/build-routing-region.sh <id> "<name>" <geofabrik-pbf-url>` builds
-    + publishes one region (download → `graphbuilder` CH graph → bbox via osmium → upload + merge the manifest);
-    the **`routing-graphs` GitHub Action** (`workflow_dispatch`) runs it from the Actions tab. Each run adds one
-    region. *Still open:* a curated region list (US states + countries, big ones split), and cross-region trips
-    (bigger regions or a merged graph). **Serverless throughout — static release assets, no backend.**
+    (147 MB) from the release → routed Everett→Seattle offline (28 min, 21.8 mi via NE 45th St).
+  - **World catalog + parallel build pipeline — DONE 2026-06-30.** The catalog is now a curated
+    **`tools/routing-regions.json`** (135 regions: all 50 US states, Canadian provinces + Mexico, ~36 European
+    countries, and starter Asia/Oceania/South-/Central-America/Africa; `big:true` flags country-sized graphs),
+    grouped so a whole continent builds in one dispatch. The **`routing-graphs` GitHub Action** is now a
+    **race-safe matrix**: a `prep` job turns a `group` (or explicit `ids`) into a build matrix, parallel jobs
+    each build their region's CH graph + upload only their own `<id>.zip` + a manifest *entry* artifact
+    (nothing shared), and one `merge` job folds every entry into `routing-manifest.json` in a single upload
+    (replace-by-id, so re-runs update in place and never clobber siblings). Public-repo Actions minutes are
+    free, so this scales to the planet without touching a dev machine. `scripts/build-routing-region.sh`
+    (now with `MANIFEST_MODE=emit` for the matrix) + `scripts/merge-routing-manifest.sh` are the two halves;
+    the script still does all-in-one single-region builds locally. Seeded so far: **Washington, Seattle metro,
+    Washington DC, Oregon, California** (+ Idaho/Nevada building). *Still open:* trigger the broader groups;
+    cross-region trips (a trip must fit one region's monolithic graph — bigger regions or a merged graph).
+    **Serverless throughout — static release assets, no backend.**
+    - *bbox fix (2026-06-30):* region boxes come from `osmium fileinfo -g header.boxes` (the declared extract
+      region), **not** `data.bbox` (raw node extent — outlier nodes blew Oregon's box across WA + CA, so it
+      falsely "covered" Seattle in the picker). All catalog builds use the corrected script.
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`

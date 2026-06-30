@@ -203,14 +203,29 @@ genuinely needs no doc edit, say why in the commit.
   weighting), to **internal** storage (FUSE external was I/O-bound). **`SpeedWeighting` ETA gotcha:** it
   reports time as `distance_m/speed` as if `car_average_speed` (km/h) were m/s — 3.6× too fast — so the
   engine AND `graphbuilder` override `calcEdgeMillis` to `distance_m·3600/kmh`; keep them identical.
-  **Status: DONE end-to-end + on-device verified (Phase 1a–1b-ii).** `RoutingGraphStore` (`:app`) downloads
-  a region's CH graph from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=`
-  for local testing) into `filesDir/routing-graph`; Settings → **Offline routing** is the picker; `directions()`
-  uses the engine when OSRM is empty. **Remaining = publish real graphs**: wire `graphbuilder` into CI
-  (region matrix → CH graphs + `routing-manifest.json` as GitHub release assets). Build a region graph with
-  `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`. Local test: serve a manifest+graph,
-  `adb reverse tcp:8099 tcp:8099`, build with `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json`
-  (localhost cleartext is allowed by `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
+  **Status: DONE end-to-end, on-device verified, graphs HOSTED + multi-region.** `RoutingGraphStore` (`:app`)
+  downloads region CH graphs from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=`
+  for local testing) into `filesDir/graphs/<id>/`, merging each into `filesDir/graphs/index.json`
+  (`[{id,bbox:[S,W,N,E]}]`); `GraphHopperRouteEngine` lazy-loads a `GraphHopper` per region and routes a trip on
+  the **first region whose bbox covers BOTH endpoints** (`inBox`, unit-tested). Settings → **Offline routing** is
+  a location-aware picker (regions covering the GPS fix sort first + flag "covers your location"); downloading
+  offline map *tiles* for an area ALSO pulls that area's routing region (`MapViewModel.downloadRoutingForArea`).
+  `directions()` uses the engine when OSRM is empty. A trip must fit ONE region's monolithic graph (cross-region
+  → online).
+  **Hosting + world catalog (DONE 2026-06-30):** graphs + `routing-manifest.json` are assets on the
+  **`routing-graphs` GitHub release** (fixed-tag prerelease, never the "Latest" the APK tracks). The catalog is
+  **`tools/routing-regions.json`** (135 regions, grouped by continent; `big:true` = country-sized). CI
+  **`.github/workflows/routing-graphs.yml`** is a **race-safe matrix**: `prep` (group/ids → matrix) → parallel
+  `build` (each region: `graphbuilder` CH graph → upload its own `<id>.zip` + emit a manifest *entry* artifact,
+  via `scripts/build-routing-region.sh MANIFEST_MODE=emit`) → one `merge` (`scripts/merge-routing-manifest.sh`
+  folds all entries into the manifest in a single replace-by-id upload — parallel jobs never clobber it). Public
+  -repo Actions minutes are free, so a continent builds per dispatch. **bbox MUST come from `osmium -g
+  header.boxes`** (declared extract region) — `data.bbox` (node extent) is polluted by outlier nodes and made
+  Oregon falsely cover WA. Build one region locally: `scripts/build-routing-region.sh <id> "<name>" <pbf-url>`
+  (all-in-one), or the graph alone: `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`. Local
+  manifest test: serve a manifest+graph, `adb reverse tcp:8099 tcp:8099`, build with
+  `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json` (localhost cleartext allowed by
+  `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
