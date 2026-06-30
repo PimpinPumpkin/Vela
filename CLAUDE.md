@@ -218,7 +218,9 @@ genuinely needs no doc edit, say why in the commit.
   **`.github/workflows/routing-graphs.yml`** is a **race-safe matrix**: `prep` (group/ids → matrix) → parallel
   `build` (each region: `graphbuilder` CH graph → upload its own `<id>.zip` + emit a manifest *entry* artifact,
   via `scripts/build-routing-region.sh MANIFEST_MODE=emit`) → one `merge` (`scripts/merge-routing-manifest.sh`
-  folds all entries into the manifest in a single replace-by-id upload — parallel jobs never clobber it). Public
+  folds all entries into the manifest in a single replace-by-id upload — parallel jobs never clobber it; a
+  `concurrency: routing-graphs-manifest` guard also serializes whole runs so back-to-back dispatches queue
+  instead of racing two merge jobs). Public
   -repo Actions minutes are free, so a continent builds per dispatch. **bbox MUST come from `osmium -g
   header.boxes`** (declared extract region) — `data.bbox` (node extent) is polluted by outlier nodes and made
   Oregon falsely cover WA. Build one region locally: `scripts/build-routing-region.sh <id> "<name>" <pbf-url>`
