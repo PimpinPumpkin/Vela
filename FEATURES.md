@@ -157,7 +157,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   factory / swallow-`close()`); graphs are built off-device by `tools/graphbuilder`. On-device end-to-end
   verified (Pixel 5a): downloaded a region from the GitHub release → offline → 21.8 mi route via NE 45th St
   with named steps + a correct 28-min ETA.
-  - **Get a region two ways:** pick it under **Settings → Offline routing** (regions covering your current
+  - **Get a region two ways:** pick it under **Settings → Offline → Routing regions** (regions covering your current
     location sort to the top and are flagged "covers your location"; a **name filter** appears once the
     catalog is large, so a region you're *travelling* to — "Japan", "Texas" — is one type away instead of a
     long scroll), **or** just download offline map tiles for an area — "Download the area you're viewing" now
@@ -388,7 +388,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Optional BeaconDB WiFi positioning for faster coarse fix
 
 ## Offline
-- ✅ **Offline basemap region downloads** — **Settings → Offline maps → "Download the
+- ✅ **Offline basemap region downloads** — **Settings → Offline → Map area → "Download the
   area you're viewing"** saves the last on-screen area's tiles/glyphs/sprites (via
   MapLibre's built-in offline store) so it renders later with **no network**; the
   same section manages/deletes saved areas. (Moved off the map FAB stack to declutter;
