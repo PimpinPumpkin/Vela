@@ -263,7 +263,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 Hint("No regions available yet.")
             } else {
                 state.routingRegions.forEach { region ->
-                    val installed = state.routingInstalledId == region.id
+                    val installed = region.id in state.routingInstalledIds
                     val downloading = state.routingDownloadingId == region.id
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -283,7 +283,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         }
                         when {
                             downloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
-                            installed -> IconButton(onClick = { vm.deleteRoutingGraph() }) {
+                            installed -> IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
                                 Icon(Icons.Default.Delete, contentDescription = "Remove offline routing")
                             }
                             else -> OutlinedButton(
