@@ -1325,6 +1325,21 @@ class MapViewModel @Inject constructor(
         val name = "Area near %.2f, %.2f".format((s + n) / 2, (w + e) / 2)
         app.vela.offline.OfflineMaps.download(appContext, _state.value.styleUri, bounds, minZ, maxZ, name, ::showStatus)
         downloadOfflinePois(s, w, n, e)
+        downloadRoutingForArea((s + n) / 2, (w + e) / 2)
+    }
+
+    /** Saving an area offline also pulls the routing graph for the region that CONTAINS it (if one is
+     *  catalogued + not already installed) — so "offline for this area" means map AND navigation, one tap. */
+    private fun downloadRoutingForArea(lat: Double, lng: Double) {
+        viewModelScope.launch {
+            val regions = _state.value.routingRegions.ifEmpty {
+                routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL)
+                    .also { rs -> _state.update { it.copy(routingRegions = rs) } }
+            }
+            val region = regions.firstOrNull { lat in it.s..it.n && lng in it.w..it.e } ?: return@launch
+            if (region.id in routingGraphStore.installedIds() || _state.value.routingDownloadingId != null) return@launch
+            downloadRoutingGraph(region) // shows its own progress + status
+        }
     }
 
     // --- Offline ROUTING graphs (Settings → Offline routing) ---------------------------------

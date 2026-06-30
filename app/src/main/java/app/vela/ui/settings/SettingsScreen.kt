@@ -234,7 +234,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 },
                 enabled = vm.hasViewport(),
             ) { Text("Download the area you're viewing") }
-            Hint("Saves the open tiles for the map area you last had on screen, so it renders later with no network. (Routing and search still need a connection.)")
+            Hint("Saves the open tiles for the map area you last had on screen, so it renders later with no network — and also grabs offline routing for the region that contains it (its state graph), so navigation works there too. Search still needs a connection.")
             if (regions.isEmpty()) {
                 Hint("No areas saved yet.")
             } else {
@@ -262,9 +262,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             if (state.routingRegions.isEmpty()) {
                 Hint("No regions available yet.")
             } else {
-                state.routingRegions.forEach { region ->
+                val loc = state.myLocation
+                val covers = { r: app.vela.offline.RoutingRegion ->
+                    loc != null && loc.lat in r.s..r.n && loc.lng in r.w..r.e
+                }
+                // surface the region(s) covering where you are first, so the right one is easy to grab
+                val ordered = state.routingRegions.sortedWith(
+                    compareByDescending<app.vela.offline.RoutingRegion> { covers(it) }.thenBy { it.name },
+                )
+                ordered.forEach { region ->
                     val installed = region.id in state.routingInstalledIds
                     val downloading = state.routingDownloadingId == region.id
+                    val here = covers(region)
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -275,10 +284,12 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                                 when {
                                     downloading -> "Downloading… ${state.routingDownloadPct}%"
                                     installed -> "Installed · routes offline here"
+                                    here -> "${region.sizeMb} MB · covers your location"
                                     else -> "${region.sizeMb} MB"
                                 },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = if (here && !installed && !downloading) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         when {
