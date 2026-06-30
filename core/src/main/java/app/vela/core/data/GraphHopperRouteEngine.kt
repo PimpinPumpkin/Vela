@@ -10,6 +10,7 @@ import com.graphhopper.GHRequest
 import com.graphhopper.GraphHopper
 import com.graphhopper.GraphHopperConfig
 import com.graphhopper.ResponsePath
+import com.graphhopper.config.CHProfile
 import com.graphhopper.config.Profile
 import com.graphhopper.routing.WeightingFactory
 import com.graphhopper.routing.weighting.SpeedWeighting
@@ -95,6 +96,9 @@ class GraphHopperRouteEngine(private val graphDir: File) : RouteEngine {
                     // car.json custom model is metadata only here (our factory ignores it for weighting);
                     // it keeps the profile version matching a standard car-built graph.
                     profiles = listOf(Profile(PROFILE).setCustomModel(GHUtility.loadCustomModelFromJar("car.json")))
+                    // Contraction Hierarchies (prebuilt on the SAME SpeedWeighting) — flexible A* with our
+                    // interpreted weighting was 7.6 s for a 24-mi trip on-device; CH makes it ~tens of ms.
+                    setCHProfiles(listOf(CHProfile(PROFILE)))
                 }
                 gh.init(cfg)
                 gh.importOrLoad()
