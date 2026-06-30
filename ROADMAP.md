@@ -314,10 +314,22 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     ≈ 53 MB (~21 MB zipped). **On-device offline routing is now proven FAST + usable.**
   - **`tools/graphbuilder` (DONE)** — standalone JVM tool (not an app dep) that builds a per-region CH graph
     matching the engine's exact config. `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`.
-  - **Phase 1b-ii (next):** wire `graphbuilder` into **CI** (matrix over a region list → upload each graph as
-    a GitHub release asset, like the APK/`calibration.json`) + an in-app **per-region download** into internal
-    `filesDir` via the existing offline-maps flow + a region picker. Then the in-app offline render is trivially
-    fast. **Serverless throughout — no backend; the engine runs on the phone.**
+  - **Phase 1b-ii — DONE 2026-06-30: per-region download + END-TO-END offline routing, on-device verified.**
+    `RoutingGraphStore` (`:app`) fetches a manifest (`{"regions":[{id,name,url,sizeMb}]}` at
+    `BuildConfig.ROUTING_MANIFEST_URL`) and downloads + unzips a region's CH graph into internal
+    `filesDir/routing-graph` (progress %, atomic swap, marker file). Settings → **Offline routing (beta)**
+    lists regions with Download / Installed-delete; `directions()` already falls back to the engine when
+    OSRM is empty. **On-device, full flow PASSED** (release build, Pixel 5a): downloaded the 21 MB Sacramento
+    metro graph → went offline → got a complete route, **21.8 mi via NE 45th St, named turn-by-turn, ~200 ms,
+    correct 28-min ETA**. (Found + fixed a real bug: GraphHopper's `SpeedWeighting` reports time as if
+    `car_average_speed` were m/s, so ETAs were 3.6× too fast — engine + `graphbuilder` now override
+    `calcEdgeMillis` to `distance_m·3600/kmh`.) Tested via a local manifest host over `adb reverse` +
+    a localhost-cleartext `network_security_config` (production traffic stays HTTPS-only).
+  - **Phase 1b-ii remaining (the deliberately-outward bits):** publish real region graphs — wire
+    `graphbuilder` into **CI** (matrix over a region list → upload each CH graph + a `routing-manifest.json`
+    as **GitHub release assets**, like the APK), so `ROUTING_MANIFEST_URL`'s default (the latest-release asset)
+    resolves. Then offline routing is live for users. Plus: multi-region (the engine reloads on region switch;
+    today one region + a process restart), and a region picker tied to the map view. **Serverless throughout.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
