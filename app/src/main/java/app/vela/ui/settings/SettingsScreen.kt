@@ -227,7 +227,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             Hint("Shades roads by congestion while browsing the map (Google's keyless traffic tiles). Off by default — navigation already colours your route by traffic, so this is just for scanning the wider area. It's a raster overlay, so it's a touch grainy.")
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Offline maps")
+            SectionTitle("Offline")
+            Hint("Using the map without signal takes two things — the map TILES you see, and the ROAD NETWORK that routes you. Saving a map area grabs both for that spot; the region list below adds the road network for anywhere you're travelling.")
+            SubHead("Map area")
             var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
             LaunchedEffect(Unit) { OfflineMaps.list(context) { regions = it } }
             OutlinedButton(
@@ -237,7 +239,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 },
                 enabled = vm.hasViewport(),
             ) { Text("Download the area you're viewing") }
-            Hint("Saves the open tiles for the map area you last had on screen, so it renders later with no network — and also grabs offline routing for the region that contains it (its state graph), so navigation works there too. Search still needs a connection.")
+            Hint("Saves the open tiles for the map area you last had on screen — and the routing region around it — so it renders and navigates later with no network. Search still needs a connection.")
             if (regions.isEmpty()) {
                 Hint("No areas saved yet.")
             } else {
@@ -258,10 +260,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 }
             }
 
-            Spacer(Modifier.height(20.dp))
-            SectionTitle("Offline routing (beta)")
+            SubHead("Routing regions")
             LaunchedEffect(Unit) { vm.refreshRoutingRegions() }
-            Hint("Download a region's road network to navigate with no signal — full turn-by-turn works offline in downloaded areas. Online still uses live traffic; this is the fallback when you lose connection.")
+            Hint("The road network for a whole region (state, country…), so turn-by-turn works offline anywhere inside it — grab where you're travelling. Online still uses live traffic; this is the no-signal fallback.")
             if (state.routingRegions.isEmpty()) {
                 Hint("No regions available yet.")
             } else {
@@ -574,6 +575,17 @@ private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit)
         RadioButton(selected = selected, onClick = onClick)
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }
+}
+
+/** A lighter heading for sub-parts within a section (e.g. "Map area" / "Routing regions" under "Offline"). */
+@Composable
+private fun SubHead(text: String) {
+    Text(
+        text,
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.padding(top = 12.dp, bottom = 2.dp),
+    )
 }
 
 @Composable

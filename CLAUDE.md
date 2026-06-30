@@ -210,7 +210,8 @@ genuinely needs no doc edit, say why in the commit.
   the **smallest region whose bbox covers BOTH endpoints**, falling through to the next-smallest if that
   graph can't make the trip (`inBox`, unit-tested). Smallest-first because Geofabrik extract boxes carry a
   buffer that spills across borders (British Columbia's box dips into Sacramento) — the same rule drives the
-  picker's "covers your location" label + the tiles→routing combine, so all three agree. Settings → **Offline routing** is
+  picker's "covers your location" label + the tiles→routing combine, so all three agree. Settings → **Offline** (one
+  section: a **Map area** subhead = viewport tile download, and a **Routing regions** subhead = the picker) is
   a location-aware picker (regions covering the GPS fix sort first + flag "covers your location"; a name
   filter appears once the catalog is large); downloading
   offline map *tiles* for an area ALSO pulls that area's routing region (`MapViewModel.downloadRoutingForArea`).
