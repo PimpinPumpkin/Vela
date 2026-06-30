@@ -200,10 +200,17 @@ genuinely needs no doc edit, say why in the commit.
   plain flexible A* with the interpreted `SpeedWeighting` was **7.6 s** for a 24-mi trip on a Pixel 5a;
   **CH prepared on the SAME `SpeedWeighting`** (the engine declares `setCHProfiles`, `tools/graphbuilder`
   builds it) → **188 ms**. Graphs MUST be built with CH on that weighting (CH bakes the build-time
-  weighting), to **internal** storage (FUSE external was I/O-bound). **Status: integrated, R8-proven, wired
-  into `directions()` as the offline fallback, on-device fast-routing proven (Phase 1a + 1b-i). Remaining
-  (1b-ii): CI graph-build + per-region download UX — `directions()` already calls the engine when OSRM is
-  empty.** Build region graphs with `tools/graphbuilder` (`./gradlew :tools:graphbuilder:run`).
+  weighting), to **internal** storage (FUSE external was I/O-bound). **`SpeedWeighting` ETA gotcha:** it
+  reports time as `distance_m/speed` as if `car_average_speed` (km/h) were m/s — 3.6× too fast — so the
+  engine AND `graphbuilder` override `calcEdgeMillis` to `distance_m·3600/kmh`; keep them identical.
+  **Status: DONE end-to-end + on-device verified (Phase 1a–1b-ii).** `RoutingGraphStore` (`:app`) downloads
+  a region's CH graph from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=`
+  for local testing) into `filesDir/routing-graph`; Settings → **Offline routing** is the picker; `directions()`
+  uses the engine when OSRM is empty. **Remaining = publish real graphs**: wire `graphbuilder` into CI
+  (region matrix → CH graphs + `routing-manifest.json` as GitHub release assets). Build a region graph with
+  `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`. Local test: serve a manifest+graph,
+  `adb reverse tcp:8099 tcp:8099`, build with `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json`
+  (localhost cleartext is allowed by `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
