@@ -4,6 +4,8 @@ import app.vela.core.data.GraphHopperRouteEngine
 import app.vela.core.model.ManeuverType
 import com.graphhopper.util.Instruction
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -31,5 +33,15 @@ class GraphHopperRouterTest {
         assertEquals("Head out on Elm St", GraphHopperRouteEngine.ghPhrase(ManeuverType.DEPART, "Elm St"))
         assertEquals("Make a U-turn onto Oak Ave", GraphHopperRouteEngine.ghPhrase(ManeuverType.UTURN, "Oak Ave"))
         assertEquals("Arrive at your destination", GraphHopperRouteEngine.ghPhrase(ManeuverType.ARRIVE, null))
+    }
+
+    /** Multi-region: a trip routes on the first installed region whose box covers BOTH endpoints. */
+    @Test fun regionBoxCoversEndpoints() {
+        // Sacramento metro box [S, W, N, E]
+        val s = 47.55; val w = -122.45; val n = 48.05; val e = -122.10
+        assertTrue(GraphHopperRouteEngine.inBox(s, w, n, e, 38.55, -121.74)) // South Davis (Sacramento)
+        assertTrue(GraphHopperRouteEngine.inBox(s, w, n, e, 38.58, -121.49)) // Sacramento
+        assertFalse(GraphHopperRouteEngine.inBox(s, w, n, e, 36.17, -115.14)) // Portland — out
+        assertFalse(GraphHopperRouteEngine.inBox(s, w, n, e, 38.55, -121.50)) // east of box — out
     }
 }

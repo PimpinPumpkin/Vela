@@ -325,11 +325,21 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     `car_average_speed` were m/s, so ETAs were 3.6× too fast — engine + `graphbuilder` now override
     `calcEdgeMillis` to `distance_m·3600/kmh`.) Tested via a local manifest host over `adb reverse` +
     a localhost-cleartext `network_security_config` (production traffic stays HTTPS-only).
-  - **Phase 1b-ii remaining (the deliberately-outward bits):** publish real region graphs — wire
-    `graphbuilder` into **CI** (matrix over a region list → upload each CH graph + a `routing-manifest.json`
-    as **GitHub release assets**, like the APK), so `ROUTING_MANIFEST_URL`'s default (the latest-release asset)
-    resolves. Then offline routing is live for users. Plus: multi-region (the engine reloads on region switch;
-    today one region + a process restart), and a region picker tied to the map view. **Serverless throughout.**
+  - **Multi-region — DONE 2026-06-30.** Install **several** region graphs (download what you travel); the
+    engine reads `filesDir/graphs/index.json` (`[{id, bbox:[S,W,N,E]}]`, written by `RoutingGraphStore` on
+    install) and routes each trip on the **first installed region whose box covers both endpoints**, with a
+    lazily-loaded `GraphHopper` per region. (A GraphHopper graph is monolithic, so a trip must fit inside one
+    region — cross-region trips fall to online.) Manifest entries carry a `bbox`; `inBox` selection is
+    unit-tested. **Sizing for "cover the world" (measured CH-graph downloads):** metro **≈ 21 MB**, US state
+    **≈ 160 MB**, the whole planet as ONE graph ≈ **30 GB+ → infeasible on a phone**. So world coverage =
+    the OsmAnd/Google-Offline model: a catalog of state/country graphs, download your slice. *Remaining there:*
+    region granularity for big countries (split by state), and cross-region trips (bigger regions or a future
+    merged graph). **Re-download of an already-loaded region still needs an app restart** (the engine caches
+    the old graph) — fine for the add-regions common case.
+  - **Phase 1b-ii remaining (the deliberately-outward bit):** publish real region graphs — wire `graphbuilder`
+    into **CI** (matrix over a region list → upload each CH graph + a `routing-manifest.json` with bboxes as
+    **GitHub release assets**, like the APK), so `ROUTING_MANIFEST_URL`'s default (the latest-release asset)
+    resolves. Then offline routing is live for users. **Serverless throughout.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
