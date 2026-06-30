@@ -336,10 +336,17 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     region granularity for big countries (split by state), and cross-region trips (bigger regions or a future
     merged graph). **Re-download of an already-loaded region still needs an app restart** (the engine caches
     the old graph) — fine for the add-regions common case.
-  - **Phase 1b-ii remaining (the deliberately-outward bit):** publish real region graphs — wire `graphbuilder`
-    into **CI** (matrix over a region list → upload each CH graph + a `routing-manifest.json` with bboxes as
-    **GitHub release assets**, like the APK), so `ROUTING_MANIFEST_URL`'s default (the latest-release asset)
-    resolves. Then offline routing is live for users. **Serverless throughout.**
+  - **Graph HOSTING — LIVE 2026-06-30.** Region CH graphs + `routing-manifest.json` are published as assets on
+    the **`routing-graphs` GitHub release** (a fixed-tag *prerelease*, so it never becomes the "Latest" the APK
+    tracks). `ROUTING_MANIFEST_URL` defaults to `releases/download/routing-graphs/routing-manifest.json`.
+    Seeded with **Washington (147 MB), Seattle metro (21 MB), Washington DC (6 MB)**. **Verified end-to-end on
+    a Pixel 5a with a production build** (no localhost): fetched the GitHub manifest → downloaded Washington
+    (147 MB) from the release → routed Everett→Seattle offline (28 min, 21.8 mi via NE 45th St). **Growing the
+    catalog toward world coverage:** `scripts/build-routing-region.sh <id> "<name>" <geofabrik-pbf-url>` builds
+    + publishes one region (download → `graphbuilder` CH graph → bbox via osmium → upload + merge the manifest);
+    the **`routing-graphs` GitHub Action** (`workflow_dispatch`) runs it from the Actions tab. Each run adds one
+    region. *Still open:* a curated region list (US states + countries, big ones split), and cross-region trips
+    (bigger regions or a merged graph). **Serverless throughout — static release assets, no backend.**
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
