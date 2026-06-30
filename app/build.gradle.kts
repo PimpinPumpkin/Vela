@@ -32,6 +32,16 @@ android {
             "MAPTILER_KEY",
             "\"${(project.findProperty("maptilerKey") as String?) ?: ""}\"",
         )
+
+        // Offline-routing region manifest (lists the prebuilt per-region CH graphs to download).
+        // Default = the latest GitHub release's asset; override for local testing with
+        // -ProutingManifestUrl=http://127.0.0.1:8099/manifest.json (served via `adb reverse`).
+        buildConfigField(
+            "String",
+            "ROUTING_MANIFEST_URL",
+            "\"${(project.findProperty("routingManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/latest/download/routing-manifest.json"}\"",
+        )
     }
 
     // Real release signing comes from CI env vars; local dev falls back to the
