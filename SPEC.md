@@ -163,8 +163,18 @@ them (no coord cap; path reproduced exactly, 0 U-turn artifacts). Tradeoff, meas
 lands *on* a turn is encoded as a via arrive/depart, not a turn — **~1-in-10 named turns lost** at
 60 vias. So we keep vias modest (12) and gate the whole thing behind real divergence
 (`divergent`, >700 m), leaving the free-flow majority as pure-OSRM with perfect turns. The
-cleaner unconditional "Google routes, OSRM names turns" wants **on-device Valhalla** (`/trace_route`
-with our own cap) — `ROADMAP.md`.
+cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** — now shipped as
+the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
+
+**Offline routing (on-device, DONE 2026-06-30).** When OSRM is unreachable, `directions()` routes fully
+on the phone via **GraphHopper** (`core/data/GraphHopperRouteEngine`, pure-JVM on ART — three workarounds:
+MMAP data-access, a Janino-free `SpeedWeighting` factory, swallowed `close()`; Contraction Hierarchies →
+~200 ms). Region **CH graphs are built off-device** (`tools/graphbuilder`, same weighting + CH) and **hosted
+as GitHub-release assets** — a **137-region world catalog** (`tools/routing-regions.json` → a race-safe
+GitHub-Actions build matrix → `routing-manifest.json`). The app downloads regions into `filesDir/graphs/<id>/`
+(by picker, or bundled with an offline-tiles area download) and routes a trip on the **smallest installed
+region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
+must fit one region's monolithic graph; cross-region falls online.
 
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: `HIGH`/`LOW` are the two halves of the feature id as unsigned-64

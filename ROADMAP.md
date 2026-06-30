@@ -352,13 +352,22 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     (replace-by-id, so re-runs update in place and never clobber siblings). Public-repo Actions minutes are
     free, so this scales to the planet without touching a dev machine. `scripts/build-routing-region.sh`
     (now with `MANIFEST_MODE=emit` for the matrix) + `scripts/merge-routing-manifest.sh` are the two halves;
-    the script still does all-in-one single-region builds locally. Seeded so far: **Washington, Sacramento metro,
-    Washington DC, Oregon, California** (+ Idaho/Nevada building). *Still open:* trigger the broader groups;
-    cross-region trips (a trip must fit one region's monolithic graph — bigger regions or a merged graph).
-    **Serverless throughout — static release assets, no backend.**
+    the script still does all-in-one single-region builds locally. **THE ENTIRE CATALOG IS NOW BUILT +
+    HOSTED — 137 regions live** (135 catalog + Sacramento/DC metros; all 50 US states, 13 Canadian provinces +
+    Mexico, 36 European countries incl. Germany/France/UK whole, 10 Asia, Australia/NZ, 9 South America, 7
+    Central America, 7 Africa), ~22 GB of CH graphs as release assets. Every region built first try on the
+    12 GB-heap runner — no OOMs. *Still open (minor):* the largest single-country graphs are big downloads
+    (Germany/France ≈ 1.2 GB) — optionally split giant countries into Geofabrik subregions later; cross-region
+    trips (a trip must fit one region's monolithic graph). **Serverless throughout — static release assets, no
+    backend.** On-device verified end-to-end on a Pixel 5a: full 137-region picker, name filter, correct
+    location-aware ordering.
     - *bbox fix (2026-06-30):* region boxes come from `osmium fileinfo -g header.boxes` (the declared extract
       region), **not** `data.bbox` (raw node extent — outlier nodes blew Oregon's box across WA + CA, so it
       falsely "covered" Sacramento in the picker). All catalog builds use the corrected script.
+    - *border-overlap fix (2026-06-30):* even clean `header.boxes` boxes carry a Geofabrik buffer that spills
+      across borders (British Columbia's box dips into Sacramento), so the picker, the tiles→routing combine, and
+      the engine all now pick the **smallest** box covering you (the engine falls through to the next-smallest
+      if a graph can't make the trip) instead of the first.
 - **Street View** — key-gated on Google; the aligned path is open imagery
   (Mapillary/KartaView) with a free token, which is sparser.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
