@@ -158,9 +158,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   verified (Pixel 5a): downloaded a region from the GitHub release → offline → 21.8 mi route via NE 45th St
   with named steps + a correct 28-min ETA.
   - **Get a region two ways:** pick it under **Settings → Offline routing** (regions covering your current
-    location sort to the top and are flagged "covers your location"), **or** just download offline map tiles
-    for an area — "Download the area you're viewing" now **also grabs the routing graph for the region that
-    contains it**, so one tap gives you map *and* navigation offline.
+    location sort to the top and are flagged "covers your location"; a **name filter** appears once the
+    catalog is large, so a region you're *travelling* to — "Japan", "Texas" — is one type away instead of a
+    long scroll), **or** just download offline map tiles for an area — "Download the area you're viewing" now
+    **also grabs the routing graph for the region that contains it**, so one tap gives you map *and* navigation offline.
   - **Hosting + world catalog:** graphs + `routing-manifest.json` are static assets on the `routing-graphs`
     GitHub release; the catalog is **`tools/routing-regions.json`** (135 regions — all US states, Canadian
     provinces, ~36 European countries, + starter Asia/Oceania/Americas/Africa) and a **parallel GitHub-Actions
