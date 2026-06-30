@@ -85,6 +85,14 @@ class GraphHopperRouteEngine(private val graphDir: File) : RouteEngine {
                                     val ok = if (reverse) edge.getReverse(access) else edge.get(access)
                                     return if (!ok) Double.POSITIVE_INFINITY else super.calcEdgeWeight(edge, reverse)
                                 }
+
+                                // car_average_speed is km/h, but SpeedWeighting reports time as
+                                // distance_m/speed (as if m/s) → ETAs come out 3.6x too fast. Report real
+                                // ms. (Only the reported duration; routing/CH use the weight above.)
+                                override fun calcEdgeMillis(edge: EdgeIteratorState, reverse: Boolean): Long {
+                                    val kmh = if (reverse) edge.getReverse(speed) else edge.get(speed)
+                                    return if (kmh <= 0.0) Long.MAX_VALUE else (edge.distance * 3600.0 / kmh).toLong()
+                                }
                             }
                         }
                 }

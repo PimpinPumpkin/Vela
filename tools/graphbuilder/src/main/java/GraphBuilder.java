@@ -47,6 +47,14 @@ public class GraphBuilder {
                             boolean ok = reverse ? e.getReverse(access) : e.get(access);
                             return ok ? super.calcEdgeWeight(e, reverse) : Double.POSITIVE_INFINITY;
                         }
+
+                        // car_average_speed is km/h; SpeedWeighting reports time as if it were m/s
+                        // (3.6x too fast). Report real ms — must stay identical to GraphHopperRouteEngine.
+                        @Override
+                        public long calcEdgeMillis(EdgeIteratorState e, boolean reverse) {
+                            double kmh = reverse ? e.getReverse(speed) : e.get(speed);
+                            return kmh <= 0 ? Long.MAX_VALUE : (long) (e.getDistance() * 3600.0 / kmh);
+                        }
                     };
                 };
             }
