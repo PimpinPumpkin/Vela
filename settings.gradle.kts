@@ -35,3 +35,6 @@ include(":core")
 // THROWAWAY: on-device GraphHopper v11 probe (instrumented test only). Delete after the
 // offline-routing prototype is decided — see ROADMAP "On-device map-matching (GraphHopper)".
 include(":ghprobe")
+// Standalone JVM tool (not an app dependency) — builds per-region routing graphs off-device.
+// Run: ./gradlew :tools:graphbuilder:run --args="<region.osm.pbf> <out-dir>"
+include(":tools:graphbuilder")
