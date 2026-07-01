@@ -99,8 +99,17 @@ from the `directions` diag), offline highway refs (a graph rebuild — parked).
     Coverage follow-up: similar-places only rides *focused* searches today — to show it on
     address-snap / list-tap opens too, do a focused name lookup on open (the OkHttp focused
     search carries `[2][11][0]`; the WebView enrichment response does not).
-  - *Medium — a separate keyless RPC:* **Q&A** (questions & answers),
-    **"mentioned in reviews" topic chips** / review keyword summary.
+  - **Q&A (questions & answers) — LOGIN-GATED, not keyless (triaged 2026-07-01).** Scraped the logged-out
+    `?cid=` page in a real WebView (the tactic that works for reviews/photos) on **both an attraction
+    (Space Needle) and a business (Home Depot)**: **no Q&A section renders at all** — zero "question" text
+    anywhere in the DOM (the only topic-ish chips are review keywords like "helpful employees, mentioned in
+    37 reviews"). So Google serves Q&A only to a **logged-in** session — same "needs login" bucket as
+    predictive depart-time and the login-gated popular-times path. **Not achievable within the degoogled/
+    keyless posture** (no login); the `WebQuestionsFetcher` scaffold was removed. Would only unblock via an
+    opt-in Google login, which the project deliberately avoids.
+  - *Medium — a separate keyless RPC:* **"mentioned in reviews" topic chips** / review keyword summary
+    (these DO render logged-out — the "helpful employees / mask policy, mentioned in N reviews" radios seen
+    in the Q&A triage — so this one is feasible: parse those from the reviews page).
     ~~**photo categories** (menu / food / vibe tabs in the gallery)~~ — **DONE 2026-07-01**: the tabs are in
     the `?cid=` page DOM, so `WebPhotoFetcher` visits each category tab + tags photos, and the sheet shows
     All/Menu/Food&drink/Vibe filter chips (`Photo.category`/`Place.photoCategories`). Device-verified.
