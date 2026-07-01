@@ -178,8 +178,11 @@ genuinely needs no doc edit, say why in the commit.
   ETA must be ≤ OSRM free-flow best × `SNAP_ETA_MARGIN` (1.2), else a divergent-but-not-faster snap steps
   aside for OSRM's clean route (fixed 2026-06-30 — the old code always led with the snap on divergence, the
   "fucky reroute"). The `directions` diag logs `snapKept`/`gEta`/`osrmFF` to tune the margin from real
-  side-by-side data. Note: a true per-alternate re-rank is impossible — Google returns ONE live-traffic
-  figure, so `applyTraffic` scales every route by the same ratio and can't reorder the OSRM alternates.
+  side-by-side data. **Per-alternate re-rank (2026-07-01):** each Google route in `root[0][1]` carries its
+  OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
+  **sorted by live in-traffic ETA — fastest leads, Google-style.** (Earlier note that this was "impossible"
+  was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real
+  per-route traffic.)
   **Alternates = GOOGLE's own alternate routes, NAME-ON-PICK (2026-06-30):** we fetch all of Google's
   routes but used only the top; `directions()` now returns the named primary + each distinct Google route
   as a **provisional** `Route` (`Route.provisional` — polyline + live ETA now, turn-by-turn deferred),
