@@ -151,7 +151,10 @@ fun ManeuverBanner(
             }
             // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
             // THIS turn highlighted) when we have it; else the old count-based hint from Google markup.
-            if (lanes.isNotEmpty()) {
+            // Only show lanes when you're actually APPROACHING the maneuver (Google-style) — otherwise the
+            // arrows sit there for miles telling you to "be in the right lane" for an exit way ahead, which
+            // is just noise. In step-preview (swiping ahead) always show them, since you're inspecting a step.
+            if (lanes.isNotEmpty() && (previewing || distanceMeters <= LANE_SHOW_M)) {
                 Spacer(Modifier.height(10.dp))
                 LaneDiagram(lanes)
             } else laneHint?.let {
@@ -183,6 +186,10 @@ fun ManeuverBanner(
         }
     }
 }
+
+// Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
+// just noise telling you to pick a lane for an exit miles ahead.
+private const val LANE_SHOW_M = 800.0
 
 private val EXIT_RE = Regex("""\bexit\s+(\w[\w-]*)""", RegexOption.IGNORE_CASE)
 // I / US / SR / Hwy (space or dash), plus any 2-letter-DASH-number for state/provincial routes
