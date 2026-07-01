@@ -283,11 +283,13 @@ fun VelaMapView(
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
                 }
                 // Keep the traversed-grey cut UNDER the arrow: update the route gradient HERE
-                // (throttled to ~3 m of progress) so it tracks the per-frame puck instead of
-                // lagging at the slower recomposition rate — that lag left a sliver of coloured
-                // route just behind the arrow ("not solid"). Idle → no advance → no update.
+                // (throttled to ~1 m of progress) so it tracks the per-frame puck instead of
+                // lagging at the slower recomposition rate. The old 3 m throttle left a ~3 m coloured
+                // sliver behind the arrow — a FIXED ground distance, so it grew more obvious the further
+                // you zoomed in ("gradient before the arrow"); 1 m keeps it sub-pixel at nav zoom. Idle →
+                // no advance → no update.
                 if (routeCum.isNotEmpty() && routeCum.last() > 0.0 &&
-                    kotlin.math.abs(navPuck.progressM - lastGradM[0]) > 3.0
+                    kotlin.math.abs(navPuck.progressM - lastGradM[0]) > 1.0
                 ) {
                     lastGradM[0] = navPuck.progressM
                     val gp = (navPuck.progressM / routeCum.last()).toFloat().coerceIn(0.001f, 0.998f)
