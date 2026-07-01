@@ -29,6 +29,9 @@ journeys below under Big bets / Known-hard:
   (`LANE_SHOW_M`) and the "then &lt;next&gt;" compound line only when the next maneuver closely follows
   (`COMPOUND_M`, `isCompoundNext`) + carries the next step's shield; both used to render for maneuvers miles
   ahead (reported noise). Also fixed: business name leaking into the place address (`stripNamePrefix`).
+- **Alternate-route deltas (2026-07-01)** — the directions picker now shows a **"+N min"** tag on each
+  slower alternate (fastest keeps "Fastest"), so the alternates are weighable at a glance (Google-style);
+  device-verified on the test city→Sacramento (Fastest via I-405 & I-5, +1 min via I-405, +13 min via I-5).
   *Remaining lane idea (future):* highlight the **continuing** lanes for a compound maneuver (which of the
   exit lanes also serve the immediately-following keep/merge) — OSRM gives no cross-step lane linkage, so it
   needs a careful heuristic; deferred rather than fake it.
