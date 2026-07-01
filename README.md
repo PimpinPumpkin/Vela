@@ -255,7 +255,13 @@ a title `[s][1]` and items `[s][2][j][1]` (Service options, Highlights,
 Accessibility, …). **Popular times** (`[1][84]`) ride a hidden WebView with a
 *specific* query — see below.
 
-**Reviews** — `GET /maps/preview/review/listentitiesreviews?pb=…` is a keyless
+**Reviews** — ⚠️ **the `listentitiesreviews` RPC below is DEAD** (Google 404'd it; it only ever
+served avatars). Reviews now come from the place's `?cid=` page rendered in a hidden WebView
+([`WebReviewsFetcher`](app/src/main/java/app/vela/web/WebReviewsFetcher.kt)): `.jJc9Ad` cards de-duped by
+`data-review-id`, accumulated across scroll, **with per-review uploaded photos** — up to ~50, not the old
+~3 (the headless WebView needs an explicit offscreen viewport for Google's virtualized list to render — see
+SPEC §Reviews). The pb below is kept only as calibration history.
+`GET /maps/preview/review/listentitiesreviews?pb=…` was a keyless
 endpoint (no token: the `!5m2!1s<session>` block accepts any string). The pb is
 `!1m2!1y<HIGH>!2y<LOW>!2m2!2i<offset>!3i<count>!3e1!5m2!1svela!7e81`, where
 `<HIGH>`/`<LOW>` are the two halves of the place's feature id `[1][10]`
