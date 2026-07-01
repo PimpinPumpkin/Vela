@@ -207,6 +207,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   render the whole time the maneuver was next, so on a long highway leg the "be in the right lane" arrows
   sat there for miles before the exit, which read as noise. Now they surface as you approach (Google-style);
   in step-preview (swiping the step list) they always show, since you're deliberately inspecting a step.
+- ✅ **Compound maneuver preview ("… then keep right")** — the banner's secondary "then &lt;next&gt;" line
+  now shows **only when the next maneuver closely follows** this one (`COMPOUND_M` ≈ 0.3 mi, `isCompoundNext`,
+  2026-07-01), the way Google surfaces back-to-back turns (exit-then-merge). It used to show for *any* next
+  maneuver, even one miles away — the same noise as the lanes-too-early bug. The "then" line now also carries
+  the **next step's highway/exit shield**, so a compound "then take I-580" shows the I-580 shield.
 - ✅ **Highway/exit signage with real shield shapes** — route refs ("I-80 E", "US-50 E",
   "CA-99", "ON-401") and exit numbers ("Exit 4A") are parsed out of each instruction and
   rendered as Google-style badges: a **green exit tab** plus the **actual route-shield
