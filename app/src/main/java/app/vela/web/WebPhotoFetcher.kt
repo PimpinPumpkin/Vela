@@ -90,8 +90,14 @@ class WebPhotoFetcher @Inject constructor(
             } finally {
                 pending.remove(id)
             }
-            val urls = raw?.split("\n")?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
-            urls.map { Photo(upsize(it)) }
+            // Each line is "category\turl" (category "" = uncategorized/All). Category-scraping tags each
+            // photo with its gallery tab (Menu / Food & drink / Vibe / By owner / …).
+            raw?.split("\n")?.mapNotNull { line ->
+                if (line.isBlank()) return@mapNotNull null
+                val tab = line.indexOf('\t')
+                if (tab < 0) Photo(upsize(line.trim()))
+                else Photo(upsize(line.substring(tab + 1).trim()), category = line.substring(0, tab).trim().ifBlank { null })
+            } ?: emptyList()
         }
     }
 
@@ -117,60 +123,36 @@ class WebPhotoFetcher @Inject constructor(
         return wv
     }
 
-    /** Self-polling DOM scraper: collect every `googleusercontent` photo URL (the rendered photo
-     *  collage), click the "photos" affordance once to open the full gallery, scroll to surface
-     *  more, and bridge a newline-joined list back once the count holds steady. Avatars and Street
-     *  View are excluded; URLs are de-duped by image id (ignoring the size suffix). */
+    /** Self-polling DOM scraper: open the gallery, then VISIT EACH CATEGORY TAB (Menu / Food & drink /
+     *  Vibe / By owner) in turn — clicking it, scrolling, and tagging the photos it shows with that
+     *  category — then sweep the "All" view for the rest (uncategorized). Bridges "category\turl" lines
+     *  back, de-duped by image id (first category a photo appears under wins). Avatars + Street View
+     *  excluded. Google keeps these tabs in the DOM (verified on-device), so this is keyless. */
     private fun extractScript(id: String, cap: Int): String {
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, CAP=$cap, last=-1, stable=0, tries=0, opened=false, best=[];
-              function ok(u){
-                if(!u || u.indexOf('googleusercontent')<0) return false;
-                if(/streetviewpixels/.test(u)) return false;
-                if(/\/a[\/-]|ACg8oc|ALV-/.test(u)) return false;          // reviewer avatars
-                return true;
-              }
-              function collect(){
-                var map={};
-                function add(u){ if(ok(u)){ var k=u.replace(/=[wshpc].*$/,''); if(!map[k]) map[k]=u; } }
-                [].slice.call(document.querySelectorAll('img')).forEach(function(im){ add(im.currentSrc||im.src); });
-                // Photo tiles are role=img / buttons / inline-styled bg divs — scan only those
-                // (NOT every div+span, which would mean getComputedStyle on thousands of nodes).
-                [].slice.call(document.querySelectorAll('[role="img"],button,a,[style*="background"]')).forEach(function(el){
-                  var bg=el.style.backgroundImage||''; if(!bg){ try{ bg=getComputedStyle(el).backgroundImage||''; }catch(e){} }
-                  var m=bg.match(/url\(["']?([^"')]+)/); if(m) add(m[1]);
-                });
-                var out=[]; for(var k in map) out.push(map[k]); return out;
-              }
-              function openGallery(){
-                if(opened) return;
-                var bs=[].slice.call(document.querySelectorAll('button,a'));
-                for(var i=0;i<bs.length;i++){
-                  var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase();
-                  if(/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l) && !/street ?view|review|profile|video/.test(l)){
-                    try{ bs[i].click(); opened=true; return; }catch(e){}
-                  }
-                }
-              }
-              function scrollAll(){
-                try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){
-                  if(d.scrollHeight>d.clientHeight+300 && d.clientHeight>200){ d.scrollTop=d.scrollHeight; }
-                }); }catch(e){}
-              }
+              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0;
+              // The gallery tabs worth tagging (skip All/Latest/Videos/Street View — All is the fallback sweep).
+              var CATRE=/^(menu|food|drink|vibe|by owner)/i;
+              function ok(u){ return !!u && u.indexOf('googleusercontent')>=0 && !/streetviewpixels/.test(u) && !/\/a[\/-]|ACg8oc|ALV-/.test(u); }
+              function idOf(u){ return u.replace(/=[wshpc].*$/,''); }
+              function urlOf(el){ var u=el.currentSrc||el.src||''; if(!u || u.indexOf('googleusercontent')<0){ var bg=el.style.backgroundImage||''; if(!bg){ try{ bg=getComputedStyle(el).backgroundImage||''; }catch(e){} } var m=bg.match(/url\(["']?([^"')]+)/); if(m) u=m[1]; } return u; }
+              function collect(cat){ [].slice.call(document.querySelectorAll('img,[role="img"],button,a,[style*="background"]')).forEach(function(el){ var u=urlOf(el); if(ok(u)){ var k=idOf(u); if(!acc[k]) acc[k]={c:cat,u:u}; } }); }
+              function clickExact(name){ var bs=[].slice.call(document.querySelectorAll('[role="tab"],button,a')); for(var i=0;i<bs.length;i++){ if((((bs[i].getAttribute('aria-label')||bs[i].textContent)||'').trim())===name){ try{ bs[i].click(); }catch(e){} return; } } }
+              function clickPhotos(){ var bs=[].slice.call(document.querySelectorAll('button,a')); for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase(); if((/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l)) && !/street ?view|review|profile|video/.test(l)){ try{ bs[i].click(); }catch(e){} return; } } }
+              function scroll(){ try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){ if(d.scrollHeight>d.clientHeight+300 && d.clientHeight>200) d.scrollTop=d.scrollHeight; }); }catch(e){} }
+              function tabsNow(){ var out=[]; [].slice.call(document.querySelectorAll('[role="tab"],button,a')).forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<24 && CATRE.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
+              function finish(){ var lines=[]; for(var k in acc) lines.push((acc[k].c||'')+'\t'+acc[k].u); try{ VelaBridge.onResult(ID, lines.slice(0,CAP).join("\n")); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
               function tick(){
                 tries++;
-                openGallery();
-                scrollAll();
-                var u=collect();
-                if(u.length>best.length) best=u;       // keep the largest set (opening the gallery can blink)
-                if(u.length===last && u.length>0) stable++; else stable=0;
-                last=u.length;
-                if(best.length>=CAP || (stable>=3 && tries>=5 && best.length>0) || tries>24){
-                  try{ VelaBridge.onResult(ID, best.slice(0,CAP).join("\n")); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} }
-                  return;
+                if(phase===0){ clickPhotos(); scroll(); if(tries>=3){ cats=tabsNow(); ci=0; sub=0; phase=1; } }
+                else if(phase===1){
+                  if(ci>=cats.length){ phase=2; sub=0; }
+                  else { if(sub===0) clickExact(cats[ci]); scroll(); sub++; if(sub>=4){ collect(cats[ci]); ci++; sub=0; } }
                 }
+                else { clickExact('All'); scroll(); collect(''); sub++; if(sub>=3){ finish(); return; } }
+                if(tries>46){ collect(''); finish(); return; }
                 setTimeout(tick, 500);
               }
               tick();
