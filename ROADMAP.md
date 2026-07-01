@@ -4,7 +4,7 @@
 > [`SPEC.md`](SPEC.md) is **how it's built**; this file is **what's planned** and the
 > bigger bets. Keep it current — add ideas here the moment they come up.
 
-Last updated: 2026-06-21.
+Last updated: 2026-06-30.
 
 ## North star
 
@@ -12,6 +12,24 @@ A degoogled, keyless Google-Maps replacement that reaches **parity** with Google
 Maps and, over time, **leans less on Google** by growing Vela's own data layer
 (starting with traffic). Privacy-first, F-Droid, GPLv3 — every new data flow is
 opt-in and documented in [`PRIVACY.md`](PRIVACY.md).
+
+## Recently shipped (2026-06-28 → 30)
+
+The big recent landings — detail in [`FEATURES.md`](FEATURES.md) / [`SPEC.md`](SPEC.md), full
+journeys below under Big bets / Known-hard:
+
+- **Open router (OSRM) is now PRIMARY** — complete street-named turn-by-turn incl. **highway `ref`s /
+  exit numbers / sign destinations**; Google demoted to the live-traffic overlay + jam-reroute + fallback.
+- **Offline routing on-device (GraphHopper)** — a **137-region world catalog** (all US states, Canada,
+  Europe, +) built by a race-safe CI matrix, hosted on GitHub, downloaded per region; smallest-covering
+  region selection; combined map+routing area download; a location-aware, filterable picker.
+- **Navigation** — a **real per-lane diagram** (OSRM lane data), highway/exit shields on the banner,
+  OSRM retry (fewer nameless fallbacks), and the traversed-grey trail tightened under the arrow.
+- **Traffic snap earns its lead** — the option-3 reroute only leads when its live ETA beats OSRM's
+  free-flow best (`SNAP_ETA_MARGIN`), so a divergent-but-not-faster snap no longer wins.
+
+*Still to validate on real drives:* route-speed parity vs Google (the snap-guard threshold is tunable
+from the `directions` diag), offline highway refs (a graph rebuild — parked).
 
 ## Near-term (next up)
 
@@ -231,6 +249,12 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   nav — the route now carries the traffic, like Google. *(Level→colour mapping is the
   best read of the 1/2 grades seen; trivially flipped if a heavy drive shows otherwise.)*
 - **On-device map-matching (GraphHopper) — the "Google routes, the engine names the turns" unlock.**
+  > **✅ SHIPPED as the OFFLINE ROUTER (2026-06-30)** — Phase 1 is done end-to-end + on a 137-region world
+  > catalog (see "Recently shipped" up top, `SPEC.md` §Offline routing, `FEATURES.md`). This long entry is
+  > the **engineering record of how it was un-blocked**; kept for reference. Still OPEN = **Phase 2**: use the
+  > same on-device engine for *online* clean always-snap (map-match Google's polyline → replace the option-3
+  > via-snap). The rest below is history.
+
   *(Engine chosen 2026-06-28: **GraphHopper**, NOT Valhalla — see below. Multi-session.)* Beyond going
   offline, this is what makes **clean always-snap** routing possible: always take Google's traffic-smart
   path and use an on-device engine only to recover street-named turns — *Google picks the road, the open
