@@ -236,22 +236,12 @@ class GoogleMapsDataSource @Inject constructor(
                 val primary = if (snapWorthIt) (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop) }
                     else open.map { applyTraffic(it, gTop) }
                 // ALTERNATES to choose from = Google's OWN alternate routes (the real, traffic-aware ones you
-                // miss). Each distinct one past the top route (which `primary` already represents) is snapped
-                // through OSRM for named turns — guarded to actually reach the destination — and overlaid with
-                // ITS live ETA. Deduped by path so the same line isn't listed twice; capped so the picker
-                // stays short. (Naming currently reuses the via-snap; moving it to on-pick + on-device
-                // map-matching is the planned refinement.)
-                val googleAlts = google.drop(1).filter { it.polyline.size >= 5 }.map { g ->
-                    async {
-                        RouteGeometry.routeVia(
-                            http, listOf(origin) + RouteGeometry.sampleVias(g.polyline) + destination, mode,
-                        ).firstOrNull()
-                            ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
-                            ?.let { applyTraffic(it, g) }
-                    }
-                }.awaitAll().filterNotNull()
-                // Lead with the primary; then prefer Google's alternates; then OSRM's free-flow ones fill
-                // any remaining slots. Deduped + capped.
+                // miss). Kept PROVISIONAL: their polyline + live ETA are shown now, but turn-by-turn is named
+                // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
+                // route you don't take. Google's routes already carry duration_in_traffic + congestion spans.
+                val googleAlts = google.drop(1).filter { it.polyline.size >= 5 }.map { it.copy(provisional = true) }
+                // Lead with the named primary; then prefer Google's alternates; then OSRM's free-flow ones fill
+                // any remaining slots. Deduped by path + capped so the picker stays short.
                 dedupeRoutes(listOf(primary.first()) + googleAlts + primary.drop(1)).take(MAX_ROUTES)
             }
         }
@@ -287,6 +277,19 @@ class GoogleMapsDataSource @Inject constructor(
             durationInTrafficSeconds = route.durationSeconds * factor,
             trafficSpans = g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) },
         )
+    }
+
+    /** Name a provisional alternate the moment the user picks it to drive: snap its (Google) polyline
+     *  through OSRM for real named turn-by-turn, guarded to reach the destination, and re-apply Google's
+     *  live-traffic overlay. Failure keeps Google's own (abbreviated) steps so nav still works.
+     *  (On-device GraphHopper map-match for downloaded regions plugs in here next.) */
+    override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode): Route = io {
+        if (!route.provisional || route.polyline.size < 3) return@io route.copy(provisional = false)
+        val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
+        val named = RouteGeometry.routeVia(http, vias, mode).firstOrNull()
+            ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
+        if (named != null) applyTraffic(named, route).copy(provisional = false)
+        else route.copy(provisional = false)
     }
 
     /** Google's keyless directions — now the FALLBACK router (OSRM unreachable) and the
