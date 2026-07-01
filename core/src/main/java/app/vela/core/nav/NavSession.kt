@@ -5,6 +5,7 @@ import app.vela.core.data.MapDataSource
 import app.vela.core.feedback.Haptics
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
+import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import app.vela.core.voice.VoiceGuide
 import kotlinx.coroutines.CoroutineScope
@@ -62,9 +63,29 @@ class NavSession @Inject constructor(
     private var lastRecheckMs = 0L
     private var tripStartMs = 0L
     private var recheckJob: Job? = null
+    // Multi-stop: intermediate waypoints (in travel order), each with its along-route "pass mark" so we can
+    // announce "you've reached <stop>" as progress passes it, and reroute through the REMAINING ones.
+    private var mode: TravelMode = TravelMode.DRIVE
+    private var stops: List<NavStop> = emptyList()
+    private var stopMarks: List<Double?> = emptyList()
+    private var passedStops = 0
 
-    fun start(route: Route, destination: LatLng, destinationLabel: String = "", voiceEngine: String? = null) {
+    /** An intermediate stop on a multi-stop trip. */
+    data class NavStop(val location: LatLng, val label: String)
+
+    fun start(
+        route: Route,
+        destination: LatLng,
+        destinationLabel: String = "",
+        voiceEngine: String? = null,
+        stops: List<NavStop> = emptyList(),
+        mode: TravelMode = TravelMode.DRIVE,
+    ) {
         this.destination = destination
+        this.mode = mode
+        this.stops = stops
+        this.stopMarks = NavEngine.stopMarks(route, stops.map { it.location })
+        this.passedStops = 0
         voice.init(voiceEngine)
         lastRecheckMs = SystemClock.elapsedRealtime()
         tripStartMs = SystemClock.elapsedRealtime()
@@ -93,6 +114,7 @@ class NavSession @Inject constructor(
         recheckJob?.cancel()
         voice.stop()
         destination = null
+        stops = emptyList(); stopMarks = emptyList(); passedStops = 0
         _state.value = State()
     }
 
@@ -131,12 +153,34 @@ class NavSession @Inject constructor(
                 }
             }
         }
+        announceStopsPassed(next.traveledM)
         maybeRecheck(loc, next)
+    }
+
+    /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in
+     *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is skipped
+     *  silently rather than blocking the rest. */
+    private fun announceStopsPassed(traveledM: Double) {
+        while (passedStops < stops.size) {
+            val mark = stopMarks.getOrNull(passedStops)
+            if (mark == null) { passedStops++; continue }
+            if (traveledM >= mark - STOP_ARRIVE_TOL_M) {
+                val label = stops[passedStops].label
+                voice.speak(if (label.isNotBlank()) "You've reached $label" else "You've reached your stop")
+                diag.record("nav", "reached stop ${passedStops + 1}/${stops.size}: ${label.ifBlank { "(unnamed)" }}")
+                passedStops++
+            } else break
+        }
     }
 
     fun acceptFasterRoute() {
         val faster = _state.value.fasterRoute ?: return
         val first = faster.maneuvers.firstOrNull()?.instruction.orEmpty()
+        // The faster candidate was routed through the remaining stops → adopt them + recompute marks.
+        val remaining = stops.drop(passedStops)
+        stops = remaining
+        stopMarks = NavEngine.stopMarks(faster, remaining.map { it.location })
+        passedStops = 0
         lastRecheckMs = SystemClock.elapsedRealtime()
         _state.update {
             it.copy(
@@ -163,8 +207,9 @@ class NavSession @Inject constructor(
         if (recheckJob?.isActive == true) return
         val dest = destination ?: return
         lastRecheckMs = now
+        val remaining = stops.drop(passedStops)
         recheckJob = scope.launch {
-            val candidate = runCatching { dataSource.directions(loc, dest).firstOrNull() }.getOrNull()
+            val candidate = runCatching { dataSource.directions(loc, dest, mode, remaining.map { it.location }).firstOrNull() }.getOrNull()
                 ?.takeIf { it.reaches(dest) } ?: return@launch
             val candidateEta = candidate.durationInTrafficSeconds ?: candidate.durationSeconds
             val remaining = _state.value.remainingDuration
@@ -180,12 +225,20 @@ class NavSession @Inject constructor(
 
     private fun reroute(loc: LatLng) {
         val dest = destination ?: return
+        // Reroute THROUGH the stops you haven't reached yet — not straight to the final destination
+        // (that used to silently drop your remaining stops on any off-route wobble).
+        val remaining = stops.drop(passedStops)
         scope.launch {
             voice.speak("Rerouting", interrupt = true)
             // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
-            // current route rather than swapping to a truncated/wrong one.
-            val r = runCatching { dataSource.directions(loc, dest) }.getOrNull()?.firstOrNull()
-                ?.takeIf { it.reaches(dest) } ?: return@launch
+            // current route rather than swapping to a truncated/wrong one. (Guard unchanged: the route still
+            // ends at the same final dest even with waypoints in between.)
+            val r = runCatching { dataSource.directions(loc, dest, mode, remaining.map { it.location }) }
+                .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) } ?: return@launch
+            // New route starts here + covers the remaining stops → recompute their marks, reset the counter.
+            stops = remaining
+            stopMarks = NavEngine.stopMarks(r, remaining.map { it.location })
+            passedStops = 0
             lastRecheckMs = SystemClock.elapsedRealtime()
             _state.update {
                 it.copy(
@@ -215,5 +268,7 @@ class NavSession @Inject constructor(
         // …and it can't be implausibly short: the same trip can't suddenly take <40% of the time left
         // (that's a bad route, not real traffic). Guards the faster-route offer from a bogus short ETA.
         const val MIN_PLAUSIBLE_ETA_FRACTION = 0.4
+        // Fire the per-stop cue when along-route progress gets within this of the stop's mark (as you pass).
+        const val STOP_ARRIVE_TOL_M = 25.0
     }
 }
