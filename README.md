@@ -14,14 +14,20 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 >   **popular times**, and **"people also search for"**; **Home/Work shortcuts**,
 >   saved places, and **deep links** (Vela opens `geo:`/Google-Maps links and
 >   shares a place as a keyless `geo:` pin).
-> - **Routing** — drive / walk / bike / **public transit**, **traffic-aware ETAs**,
->   selectable **alternates** (drawn greyed + tappable on the map, along *Google's
->   own* route geometry), a **reverse-trip swap**, a **live-traffic overlay**,
+> - **Routing** — drive / walk / bike / **public transit**. Turn-by-turn comes from
+>   the **open OSRM** router (complete street-named steps, incl. highway refs / exit
+>   numbers / shields); **Google is overlaid for the live-traffic ETA and to reroute
+>   around jams** (it re-runs OSRM through Google's jam-avoiding path only when they
+>   diverge). Selectable **alternates**, **reverse-trip swap**, **live-traffic overlay**,
 >   **search-along-route**, and depart/arrive-time planning.
-> - **Navigation** — turn-by-turn with a Google-style maneuver banner (lane
->   guidance, highway/exit shields, swipe-to-look-ahead), spoken + haptic guidance,
->   a **speedometer**, pan-away **re-center**, faster-route re-checks, and an arrival
->   summary.
+> - **Offline routing** — full turn-by-turn **on the phone** via an embedded
+>   **GraphHopper** engine, from a downloadable **137-region world catalog** (all US
+>   states, Canada, Europe, + more) hosted as GitHub release assets. Saving offline
+>   map tiles for an area grabs its routing graph too.
+> - **Navigation** — turn-by-turn with a Google-style maneuver banner: a **real
+>   per-lane diagram** (which lane to be in), **highway/exit shields**,
+>   swipe-to-look-ahead, spoken + haptic guidance, a **speedometer**, pan-away
+>   **re-center**, faster-route re-checks, and an arrival summary.
 > - **Polish** — in-app light/dark, one consistent Google-grey UI, custom POI
 >   markers, hillshade relief, a **map scale bar**, and **offline** basemap + POI
 >   download.
@@ -75,6 +81,35 @@ Two decisions from the planning phase shape everything:
    traffic that's baked into its directions responses — the parts where Google
    genuinely has unique data.
 
+## How it works — each capability and the method behind it
+
+The one-screen map of *what Vela does* and *how*, with the entry point to read next. Deeper detail is in [`SPEC.md`](SPEC.md); this is the index into it.
+
+| Capability | Method (how) | Start here |
+|---|---|---|
+| **Basemap** | Open vector tiles (OpenFreeMap / Protomaps) via MapLibre — keyless, no Google | `core/data/tiles/`, `app/ui/map/VelaMapView.kt` |
+| **Search, places, reviews, hours** | Per-user keyless scrape of `google.com` `pb` endpoints (browser-like session token); responses are positional arrays walked by calibrated index paths | `core/data/google/`, SPEC §3 |
+| **Photo gallery** | Hidden **anonymous WebView** same-origin-fetches the gallery RPC (OkHttp gets a bot-degraded reply) | `app/web/WebPhotoFetcher.kt` |
+| **Public transit** | Hidden WebView reads the directions SPA's `APP_INITIALIZATION_STATE` | `app/web/WebDirectionsFetcher.kt`, `core/…/TransitParser` |
+| **Turn-by-turn routing** | **FOSSGIS OSRM** (open) — complete street-named steps incl. highway `ref`/exit/lanes; retried on blips | `core/data/RouteGeometry.kt` |
+| **Traffic ETA + jam reroute** | Google's directions overlaid on the OSRM route; re-runs OSRM through Google's path only when they diverge (option 3) | `GoogleMapsDataSource.directions`/`applyTraffic` |
+| **Offline routing** | On-device **GraphHopper** CH graphs, one per region, downloaded from a 137-region world catalog | `core/data/GraphHopperRouteEngine.kt`, `app/offline/RoutingGraphStore.kt`, `tools/routing-regions.json` |
+| **Navigation (banner, voice, haptics)** | Pure `NavEngine` turn logic (unit-tested) → maneuver banner (lane diagram / shields), AOSP TTS, direction-coded vibration | `core/nav/`, `app/ui/nav/`, `core/voice/`, `core/feedback/` |
+| **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor — never GMS/Fused | `core/location/` |
+| **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
+| **Distribution** | Every push to `main` → CI builds + signs → `v0.2.<run>` GitHub release; Obtainium tracks it | `.github/workflows/ci.yml` |
+
+## Docs — where to look
+
+| File | What's in it |
+|---|---|
+| [`README.md`](README.md) | This — what Vela is, why, the how-it-works map above, and build/run |
+| [`FEATURES.md`](FEATURES.md) | The full, categorised list of every shipped capability (the encyclopaedia) |
+| [`SPEC.md`](SPEC.md) | The authoritative **rebuild spec** — architecture, extractor contract (pb layouts + response indices), resilience layer, hard constraints |
+| [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |
+| [`PRIVACY.md`](PRIVACY.md) | Exactly what each Google endpoint receives, per request |
+| [`CLAUDE.md`](CLAUDE.md) | Build rules, module layout, and the hard-won gotchas — for contributors (human or AI) |
+
 ## Architecture
 
 Two Gradle modules (AGP 8.7.3, Kotlin 2.1, Compose, Hilt, version catalog,
@@ -93,6 +128,9 @@ R8 release builds):
         │   │   ├─ GoogleResponse        XSSI strip + positional-array navigator
         │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
         │   │   └─ parse/                 Search / Directions / Transit / Photos / Reviews
+        │   ├─ RouteGeometry             OSRM turn-by-turn (open router) + parse of steps/lanes/refs
+        │   ├─ RouteEngine               offline-routing interface (connectivity/graph-presence picks it)
+        │   ├─ GraphHopperRouteEngine    on-device GraphHopper CH graphs, one per downloaded region
         │   ├─ RouteCorridor             "search along route" — filter results to the line
         │   ├─ OverpassPois              keyless OSM POI fetch (offline-search source)
         │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
@@ -114,7 +152,7 @@ R8 release builds):
         ├─ ui/theme/         AppTheme — in-app light/dark, decoupled from the OS
         ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
         ├─ web/              WebPhotoFetcher, WebDirectionsFetcher — hidden-WebView scrapes
-        ├─ offline/          OfflineMaps — MapLibre offline region download/store
+        ├─ offline/          OfflineMaps (MapLibre tiles) + RoutingGraphStore (per-region GraphHopper graphs)
         └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / keep-screen-on / offline)
 ```
 
@@ -365,14 +403,15 @@ without an app release.
 - [x] **Calibrate search + directions** against live captures — live & verified
 - [x] Place details — hours / website / price / open-status / **reviews** / **photo gallery**
 - [x] Travel modes — drive / walk / bike / **public transit**
-- [x] **Alternates along Google's own route geometry**, **traffic-aware ETAs**, **live-traffic overlay**
-- [x] Turn-by-turn — maneuver banner (lanes / exit shields / swipe-ahead), spoken + haptic guidance, **speedometer**, **re-center**, arrival summary
+- [x] **Open router (OSRM) is primary** — complete street-named steps incl. highway refs / exit numbers / **per-lane diagrams**; Google overlays the **traffic-aware ETA** + **jam reroute** and is the offline-less fallback
+- [x] **Alternates**, **live-traffic overlay**, **search-along-route**, depart/arrive-time planning
+- [x] Turn-by-turn — maneuver banner (real lane diagram / exit shields / swipe-ahead), spoken + haptic guidance, **speedometer**, **re-center**, arrival summary
 - [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
+- [x] **Offline routing on-device (GraphHopper)** — a downloadable **137-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief
-- [x] **Offline** basemap + OSM POI index; **search-along-route**; depart/arrive-time planning
-- [x] **Popular / busy times** — keyless via a hidden WebView + a *specific* (name + address) search
+- [x] **Offline** basemap + OSM POI index; **popular / busy times** (keyless hidden-WebView search)
 - [ ] **Predictive** (future-traffic) depart-time ETA — needs a directions-`pb` calibration
-- [ ] Embedded offline routing (Valhalla JNI) + bundled PMTiles fonts — v2
+- [ ] Rank shown routes by live-traffic ETA (not just OSRM free-flow order); optional offline highway refs
 - [ ] Street-level imagery (Mapillary / KartaView; needs a free token)
 - [ ] F-Droid submission + reproducible build
 
