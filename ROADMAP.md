@@ -93,9 +93,11 @@ from the `directions` diag), offline highway refs (a graph rebuild — parked).
     "Order online" + "Join waitlist" across 2 groups). The restaurant *does* carry a real menu URL
     (`olivegarden.com/menu/classic-entrees?…`, distinct from the website) **and** menu **photos**
     (googleusercontent `gps-cs-s` images with alt "Food menu (Front side)" / "Drink menu (Back side)"
-    — these feed the photo-**categories** Menu tab). The menu-link URL's exact positional path didn't
-    pin cleanly in a tree-walk (search sometimes didn't land on the restaurant); needs one more focused
-    restaurant capture to lock `menuUrl=[…]` before wiring `Place.menuUrl` + a Menu button.
+    — these feed the photo-**categories** Menu tab, DONE). **Menu-link button DEFERRED** — the menu URL
+    appears **inconsistently** across Google's responses (found in one capture, absent in the next on the
+    same Olive Garden) and its positional path won't pin reliably (fragile calibration). **Lower priority
+    now that the menu is accessible via the shipped photo "Menu" category tab** (the actual menu photos).
+    A link button would need a stable-path capture first; parked.
     Coverage follow-up: similar-places only rides *focused* searches today — to show it on
     address-snap / list-tap opens too, do a focused name lookup on open (the OkHttp focused
     search carries `[2][11][0]`; the WebView enrichment response does not).
