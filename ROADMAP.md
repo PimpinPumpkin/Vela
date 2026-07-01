@@ -25,6 +25,13 @@ journeys below under Big bets / Known-hard:
   region selection; combined map+routing area download; a location-aware, filterable picker.
 - **Navigation** — a **real per-lane diagram** (OSRM lane data), highway/exit shields on the banner,
   OSRM retry (fewer nameless fallbacks), and the traversed-grey trail tightened under the arrow.
+- **Nav guidance de-noised (2026-07-01)** — the lane diagram now only shows within ~0.5 mi of the maneuver
+  (`LANE_SHOW_M`) and the "then &lt;next&gt;" compound line only when the next maneuver closely follows
+  (`COMPOUND_M`, `isCompoundNext`) + carries the next step's shield; both used to render for maneuvers miles
+  ahead (reported noise). Also fixed: business name leaking into the place address (`stripNamePrefix`).
+  *Remaining lane idea (future):* highlight the **continuing** lanes for a compound maneuver (which of the
+  exit lanes also serve the immediately-following keep/merge) — OSRM gives no cross-step lane linkage, so it
+  needs a careful heuristic; deferred rather than fake it.
 - **Traffic snap earns its lead** — the option-3 reroute only leads when its live ETA beats OSRM's
   free-flow best (`SNAP_ETA_MARGIN`), so a divergent-but-not-faster snap no longer wins.
 
