@@ -29,6 +29,10 @@ data class Place(
     // Empty for the search-response preview; the WebView gallery fills it in (the dates
     // live in the gallery RPC, not the search response). Read by the full-screen viewer.
     val photoDates: List<String?> = emptyList(),
+    // Gallery category per photo ("Menu" / "Food & drink" / "Vibe" / "By owner" / null = All),
+    // index-aligned with [photoUrls]. Filled by the WebView gallery scrape; drives the gallery's
+    // category filter chips.
+    val photoCategories: List<String?> = emptyList(),
     val featuredReview: String? = null, // Google's single highlighted review snippet
     val featureId: String? = null,      // Google feature id "0x..:0x.." → reviews RPC
     val placeId: String? = null,        // "ChIJ..." place id (for deep links)
@@ -51,7 +55,7 @@ data class SimilarPlace(
 /** One gallery photo: its FIFE image [url] and, when known, a human "posted" label
  *  ("May 2026"). The contributor's *name* isn't in the keyless gallery RPC (only a
  *  date + source), so there's no author field here. */
-data class Photo(val url: String, val postedText: String? = null)
+data class Photo(val url: String, val postedText: String? = null, val category: String? = null)
 
 /** Google's "popular times": a typical-busyness histogram per day of the week. */
 data class PopularTimes(val days: List<DayBusyness>)

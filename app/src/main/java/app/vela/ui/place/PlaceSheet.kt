@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -188,6 +189,8 @@ fun PlaceSheet(
     val dim = if (dark) DimDark else DimLight
     // A tapped photo opens the full-screen gallery; resets when the sheet switches place.
     var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
+    // Gallery category filter (null = All); resets per place. Chips appear only when Google tagged photos.
+    var photoCat by remember(place.id) { mutableStateOf<String?>(null) }
 
     // The place card PEEKS at ~half-screen (so business info isn't immediately
     // full-screen); drag the handle up to expand for the reviews.
@@ -263,13 +266,35 @@ fun PlaceSheet(
             // Photo hero at the top (Google-style) — always visible, even at the
             // peek height / in landscape; tap one to open the full gallery.
             if (place.photoUrls.isNotEmpty() || photosLoading) {
+                // Category filter chips (Menu / Food & drink / Vibe / By owner …) — only when Google tagged
+                // photos with categories, mirroring its gallery tabs. "All" clears the filter.
+                val photoCats = remember(place.photoCategories) { place.photoCategories.filterNotNull().distinct() }
+                if (photoCats.isNotEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        (listOf<String?>(null) + photoCats).forEach { cat ->
+                            FilterChip(
+                                selected = photoCat == cat,
+                                onClick = { photoCat = cat },
+                                label = { Text(cat ?: "All") },
+                            )
+                        }
+                    }
+                }
+                // Indices into the FULL photo list that match the selected category (keeps galleryStart
+                // pointing at the right photo in the full-screen viewer).
+                val shown = remember(place.photoUrls, place.photoCategories, photoCat) {
+                    place.photoUrls.indices.filter { photoCat == null || place.photoCategories.getOrNull(it) == photoCat }
+                }
                 LazyRow(
                     Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    itemsIndexed(place.photoUrls) { i, url ->
+                    items(shown, key = { it }) { i ->
                         AsyncImage(
-                            model = url,
+                            model = place.photoUrls[i],
                             contentDescription = "Photo ${i + 1}",
                             contentScale = ContentScale.Crop,
                             modifier = Modifier

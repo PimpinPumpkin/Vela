@@ -691,7 +691,7 @@ class MapViewModel @Inject constructor(
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.featureId == fid) st.copy(
-                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = full.map { it.postedText }) else sel,
+                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = full.map { it.postedText }, photoCategories = full.map { it.category }) else sel,
                     photosLoading = false,
                 ) else st
             }
