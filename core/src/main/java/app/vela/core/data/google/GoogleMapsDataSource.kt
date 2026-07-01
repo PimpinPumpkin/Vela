@@ -229,13 +229,49 @@ class GoogleMapsDataSource @Inject constructor(
                     "onDevice=${onDevice.size}",
                 "",
             )
-            when {
-                // Google's traffic-smart route leads only when it's worth it; OSRM routes are the alternates.
-                snapWorthIt -> (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop) }
-                open.isNotEmpty() -> open.map { applyTraffic(it, gTop) }
-                onDevice.isNotEmpty() -> onDevice // offline, on-device route (no live-traffic overlay)
-                else -> google // everything unreachable → Google's abbreviated route beats nothing
+            if (open.isEmpty()) {
+                // OSRM unreachable → the on-device offline route, or Google's abbreviated one, whichever we have.
+                if (onDevice.isNotEmpty()) onDevice else google
+            } else {
+                val primary = if (snapWorthIt) (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop) }
+                    else open.map { applyTraffic(it, gTop) }
+                // ALTERNATES to choose from = Google's OWN alternate routes (the real, traffic-aware ones you
+                // miss). Each distinct one past the top route (which `primary` already represents) is snapped
+                // through OSRM for named turns — guarded to actually reach the destination — and overlaid with
+                // ITS live ETA. Deduped by path so the same line isn't listed twice; capped so the picker
+                // stays short. (Naming currently reuses the via-snap; moving it to on-pick + on-device
+                // map-matching is the planned refinement.)
+                val googleAlts = google.drop(1).filter { it.polyline.size >= 5 }.map { g ->
+                    async {
+                        RouteGeometry.routeVia(
+                            http, listOf(origin) + RouteGeometry.sampleVias(g.polyline) + destination, mode,
+                        ).firstOrNull()
+                            ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
+                            ?.let { applyTraffic(it, g) }
+                    }
+                }.awaitAll().filterNotNull()
+                // Lead with the primary; then prefer Google's alternates; then OSRM's free-flow ones fill
+                // any remaining slots. Deduped + capped.
+                dedupeRoutes(listOf(primary.first()) + googleAlts + primary.drop(1)).take(MAX_ROUTES)
             }
+        }
+    }
+
+    /** Drop routes that follow ~the same path as an earlier one (keeps the picker to genuinely distinct
+     *  choices). Order is preserved, so the primary stays first. */
+    private fun dedupeRoutes(routes: List<Route>): List<Route> {
+        val kept = mutableListOf<Route>()
+        for (r in routes) if (kept.none { routesSimilar(it, r) }) kept += r
+        return kept
+    }
+
+    /** Two routes are "the same" if a handful of points sampled along one all sit within ~150 m of the
+     *  other's line — i.e. they trace essentially the same roads. */
+    private fun routesSimilar(a: Route, b: Route): Boolean {
+        if (a.polyline.size < 2 || b.polyline.size < 2) return false
+        return (1..4).all { k ->
+            val p = b.polyline[(b.polyline.size * k / 5).coerceIn(0, b.polyline.size - 1)]
+            a.polyline.minOf { p.distanceTo(it) } < 150.0
         }
     }
 
@@ -335,5 +371,6 @@ class GoogleMapsDataSource @Inject constructor(
         // real side-by-side data — the `directions` diag logs gEta/osrmFF so the threshold can be pinned.
         const val SNAP_ETA_MARGIN = 1.2
         const val SNAP_REACH_M = 500.0 // the snapped route's last point must be within this of the destination
+        const val MAX_ROUTES = 4       // primary + up to 3 alternates in the picker
     }
 }
