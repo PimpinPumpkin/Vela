@@ -57,6 +57,18 @@ class OpeningHoursTest {
         assertEquals(false, s?.open)
     }
 
+    @Test fun holidayLabelIsIgnoredWhenComputing() { // readHours appends " · 4th of July"; times still parse
+        assertEquals(false, OpeningHours.statusAt(listOf("Monday: Closed · 4th of July"), mon(14))?.open)
+        assertEquals(true, OpeningHours.statusAt(listOf("Monday: 9 AM–5 PM · 4th of July (Observed)"), mon(14))?.open)
+    }
+
+    @Test fun splitShiftDay() { // "9 AM–12 PM, 1 PM–5 PM" — closed during the 12–1 lunch break
+        val h = listOf("Monday: 9 AM–12 PM, 1 PM–5 PM")
+        assertEquals(true, OpeningHours.statusAt(h, mon(10))?.open)
+        assertEquals(false, OpeningHours.statusAt(h, mon(12, 30))?.open)
+        assertEquals(true, OpeningHours.statusAt(h, mon(14))?.open)
+    }
+
     @Test fun unparseableFallsBackToNull() {
         assertNull(OpeningHours.statusAt(listOf("Monday: whenever we feel like it"), mon(12)))
         assertNull(OpeningHours.statusAt(emptyList(), mon(12)))
