@@ -74,6 +74,8 @@ data class MapUiState(
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
     val pickingOrigin: Boolean = false,      // the next search pick sets the origin, not a destination
+    val directionsWaypoints: List<Place> = emptyList(), // intermediate stops, in order (multi-stop)
+    val pickingStop: Boolean = false,        // the next search pick is added as a stop
     val travelMode: TravelMode = TravelMode.DRIVE,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
@@ -484,6 +486,7 @@ class MapViewModel @Inject constructor(
     fun selectSaved(sp: SavedPlace) {
         if (consumeAssign(sp)) return
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
+        if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
         _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, photosLoading = false, loadingDetails = false) }
         rememberRecentPlace(sp)
@@ -597,6 +600,7 @@ class MapViewModel @Inject constructor(
 
     fun selectPlace(p: Place) {
         if (consumeAssign(SavedPlace.of(p))) return
+        if (_state.value.pickingStop) { addStop(p); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(p); return }
         suggestJob?.cancel()
         _state.update {
@@ -743,6 +747,7 @@ class MapViewModel @Inject constructor(
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
+                directionsWaypoints = emptyList(), pickingStop = false,
             )
         }
 
@@ -756,6 +761,7 @@ class MapViewModel @Inject constructor(
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
                 directionsOrigin = null, pickingOrigin = false, directionsReversed = false,
+                directionsWaypoints = emptyList(), pickingStop = false,
             )
         }
     }
@@ -894,9 +900,9 @@ class MapViewModel @Inject constructor(
 
     fun routeToSelected() {
         if (_state.value.selected == null) return
-        // Start each directions session clean — don't inherit a custom origin or
+        // Start each directions session clean — don't inherit a custom origin, stops, or
         // pick-mode left over from a previous place's directions.
-        _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false) }
+        _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
         route(_state.value.travelMode)
     }
 
@@ -924,6 +930,24 @@ class MapViewModel @Inject constructor(
      *  pick-mode (it's offered as the top row of the origin picker). */
     fun useMyLocationAsOrigin() {
         _state.update { it.copy(directionsOrigin = null, pickingOrigin = false) }
+        route(_state.value.travelMode)
+    }
+
+    /** Tapped "Add stop" → the next search pick becomes an intermediate stop (multi-stop routing).
+     *  [addStop]/[cancelPickStop] ends the mode. */
+    fun beginPickStop() = _state.update { it.copy(pickingStop = true, query = "", suggestions = emptyList()) }
+
+    fun cancelPickStop() = _state.update { it.copy(pickingStop = false) }
+
+    /** Append an intermediate stop and re-route through it. */
+    fun addStop(p: Place) {
+        _state.update { it.copy(directionsWaypoints = it.directionsWaypoints + p, pickingStop = false) }
+        route(_state.value.travelMode)
+    }
+
+    /** Remove the stop at [index] and re-route. */
+    fun removeStop(index: Int) {
+        _state.update { it.copy(directionsWaypoints = it.directionsWaypoints.filterIndexed { i, _ -> i != index }) }
         route(_state.value.travelMode)
     }
 
@@ -973,9 +997,11 @@ class MapViewModel @Inject constructor(
         val dest = (if (s.directionsReversed) fromPoint else place) ?: return
         destination = dest
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest); return }
+        // Intermediate stops in travel order — reversed when the trip is reversed (place→you).
+        val stops = s.directionsWaypoints.map { it.location }.let { if (s.directionsReversed) it.reversed() else it }
         viewModelScope.launch {
             try {
-                val routes = dataSource.directions(origin, dest, mode)
+                val routes = dataSource.directions(origin, dest, mode, stops)
                 _state.update {
                     it.copy(
                         routes = routes,
