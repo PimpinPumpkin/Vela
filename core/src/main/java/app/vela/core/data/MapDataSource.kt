@@ -48,6 +48,17 @@ interface MapDataSource {
         destination: LatLng,
         mode: TravelMode = TravelMode.DRIVE,
     ): List<Route>
+
+    /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its
+     *  polyline into real named turn-by-turn (map-matched on-device where the region's downloaded, else
+     *  snapped through OSRM). Returns the named route, or the input unchanged if it's already named /
+     *  can't be named. Default: no-op (Mock). */
+    suspend fun nameRoute(
+        route: Route,
+        origin: LatLng,
+        destination: LatLng,
+        mode: TravelMode = TravelMode.DRIVE,
+    ): Route = route
 }
 
 /**

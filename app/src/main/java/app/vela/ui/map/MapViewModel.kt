@@ -928,9 +928,33 @@ class MapViewModel @Inject constructor(
     }
 
     /** Pick one of the alternate routes (drawn greyed on the map / listed in the
-     *  directions panel) as the active one. */
-    fun selectRoute(index: Int) = _state.update {
-        it.copy(activeRoute = it.routes.getOrNull(index) ?: it.activeRoute)
+     *  directions panel) as the active one. A provisional Google alternate (polyline + ETA only) is
+     *  NAMED here — the moment you pick it — so its turn-by-turn is ready by the time you hit Start. */
+    fun selectRoute(index: Int) {
+        val picked = _state.value.routes.getOrNull(index) ?: return
+        _state.update { it.copy(activeRoute = picked) }
+        if (!picked.provisional) return
+        namingJob?.cancel()
+        namingJob = viewModelScope.launch {
+            val named = nameIfNeeded(picked)
+            _state.update { st ->
+                val routes = st.routes.toMutableList()
+                if (index in routes.indices && routes[index] === picked) routes[index] = named
+                st.copy(routes = routes, activeRoute = if (st.activeRoute === picked) named else st.activeRoute)
+            }
+        }
+    }
+
+    private var namingJob: kotlinx.coroutines.Job? = null
+
+    /** Turn a provisional route's placeholder steps into real named turn-by-turn (map-matched / snapped
+     *  on-device). Its own polyline endpoints are the origin + destination. Best-effort. */
+    private suspend fun nameIfNeeded(route: app.vela.core.model.Route): app.vela.core.model.Route {
+        if (!route.provisional) return route
+        val o = route.polyline.firstOrNull() ?: return route.copy(provisional = false)
+        val d = route.polyline.lastOrNull() ?: return route.copy(provisional = false)
+        return runCatching { dataSource.nameRoute(route, o, d, _state.value.travelMode) }
+            .getOrNull() ?: route.copy(provisional = false)
     }
 
     fun setTravelMode(mode: TravelMode) {
@@ -990,6 +1014,19 @@ class MapViewModel @Inject constructor(
 
     fun startNav() {
         val route = _state.value.activeRoute ?: return
+        // If they hit Start before a picked alternate finished naming, name it first, then launch.
+        if (route.provisional) {
+            viewModelScope.launch {
+                val named = nameIfNeeded(route)
+                _state.update { it.copy(activeRoute = named) }
+                launchNav(named)
+            }
+        } else {
+            launchNav(route)
+        }
+    }
+
+    private fun launchNav(route: app.vela.core.model.Route) {
         val dest = destination ?: route.polyline.lastOrNull() ?: return
         startLocation() // make sure live fixes are flowing — they drive the nav loop
         navSession.start(route, dest, _state.value.selected?.name.orEmpty(), _state.value.selectedEngine?.packageName)

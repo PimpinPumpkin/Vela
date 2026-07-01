@@ -67,6 +67,10 @@ data class Route(
     // surface the range Google itself shows rather than a false-precision single ETA.
     val typicalLowSeconds: Double? = null,
     val typicalHighSeconds: Double? = null,
+    // A "provisional" alternate: its polyline + ETA are good (Google's), but its turn-by-turn is a
+    // placeholder — it gets NAMED (map-matched / snapped) only when you actually pick it to navigate,
+    // so the picker loads fast and we don't snap routes you never drive. Primary route is never provisional.
+    val provisional: Boolean = false,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }
