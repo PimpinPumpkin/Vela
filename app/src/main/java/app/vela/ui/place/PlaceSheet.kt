@@ -361,7 +361,17 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            place.statusText?.takeIf { !place.permanentlyClosed }?.let { status ->
+            // Prefer an Open/Closed status COMPUTED from the weekly hours (past-midnight-aware) over Google's
+            // live status STRING, which is unreliable for late-closers/departments (a 1 AM-closing Safeway
+            // read "Closed" at 11 PM). Fall back to Google's string when the hours can't be parsed.
+            val computedStatus = remember(place.hours) {
+                app.vela.core.util.OpeningHours.statusAt(place.hours, java.time.LocalDateTime.now())
+            }
+            val statusLine = when {
+                computedStatus != null -> (if (computedStatus.open) "Open" else "Closed") + " · " + computedStatus.detail
+                else -> place.statusText
+            }
+            statusLine?.takeIf { !place.permanentlyClosed }?.let { status ->
                 // Google colours the status word (Open/Closed) and keeps the time
                 // in the normal ink colour: "**Open** · Closes 9 PM".
                 val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
