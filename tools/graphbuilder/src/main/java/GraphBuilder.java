@@ -9,6 +9,7 @@ import com.graphhopper.routing.ev.DecimalEncodedValue;
 import com.graphhopper.routing.weighting.SpeedWeighting;
 import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.GHUtility;
+import com.graphhopper.util.Instruction;
 
 /**
  * Builds an on-device GraphHopper graph for one region — the off-device half of Vela's offline
@@ -70,14 +71,31 @@ public class GraphBuilder {
         com.graphhopper.util.shapes.BBox bb = hopper.getBaseGraph().getBounds();
         System.out.printf("manifest bbox [S,W,N,E] = [%.5f, %.5f, %.5f, %.5f]%n", bb.minLat, bb.minLon, bb.maxLat, bb.maxLon);
 
-        // sanity: the built CH graph must route quickly (coords default to a Puget-Sound trip; harmless
-        // to fail elsewhere — just a smoke check).
+        // sanity: the built CH graph must route quickly (coords default to a Puget-Sound trip; override
+        // with args[2..5] = fromLat fromLon toLat toLon to smoke a route inside THIS region).
+        double fLat = 47.86, fLon = -122.20, tLat = 47.66, tLon = -122.30;
+        if (args.length >= 6) {
+            fLat = Double.parseDouble(args[2]); fLon = Double.parseDouble(args[3]);
+            tLat = Double.parseDouble(args[4]); tLon = Double.parseDouble(args[5]);
+        }
         try {
             long t = System.currentTimeMillis();
-            GHResponse rs = hopper.route(new GHRequest(47.86, -122.20, 47.66, -122.30).setProfile("car"));
+            GHResponse rs = hopper.route(new GHRequest(fLat, fLon, tLat, tLon).setProfile("car"));
             if (rs.hasErrors()) System.out.println("route smoke check: " + rs.getErrors() + " (ok if outside this region)");
-            else System.out.println("route smoke check: " + Math.round(rs.getBest().getDistance() / 1609.0)
-                    + " mi in " + (System.currentTimeMillis() - t) + " ms (CH)");
+            else {
+                System.out.println("route smoke check: " + Math.round(rs.getBest().getDistance() / 1609.0)
+                        + " mi in " + (System.currentTimeMillis() - t) + " ms (CH)");
+                // Do the built instructions carry STREET NAMES? (offline turn-by-turn reads Instruction.getName())
+                int named = 0, total = 0;
+                for (Instruction ins : rs.getBest().getInstructions()) {
+                    total++;
+                    String nm = ins.getName();
+                    if (nm != null && !nm.isEmpty()) named++;
+                    if (total <= 8) System.out.println("    instr sign=" + ins.getSign() + " name='" + nm + "'");
+                }
+                System.out.println("NAMED INSTRUCTIONS: " + named + "/" + total
+                        + (named == 0 ? "  <<< NO STREET NAMES IN GRAPH" : ""));
+            }
         } catch (Exception e) {
             System.out.println("route smoke check skipped: " + e.getMessage());
         }

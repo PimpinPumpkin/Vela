@@ -29,11 +29,23 @@ class OsrmRouterTest {
     }
 
     @Test fun phrasesReadNaturally() {
-        assertEquals("Turn right onto 164th St SE", RouteGeometry.osrmPhrase("turn", "right", "164th St SE", null))
-        assertEquals("Continue onto 132nd St SE", RouteGeometry.osrmPhrase("new name", "straight", "132nd St SE", null))
-        assertEquals("Arrive at your destination", RouteGeometry.osrmPhrase("arrive", null, null, null))
-        assertEquals("At the roundabout, take exit 2 onto Main St", RouteGeometry.osrmPhrase("roundabout", null, "Main St", 2))
-        assertEquals("Head out on Elm St", RouteGeometry.osrmPhrase("depart", "left", "Elm St", null))
+        assertEquals("Turn right onto 164th St SE", RouteGeometry.osrmPhrase("turn", "right", "164th St SE", null, null, null))
+        assertEquals("Continue onto 132nd St SE", RouteGeometry.osrmPhrase("new name", "straight", "132nd St SE", null, null, null))
+        assertEquals("Arrive at your destination", RouteGeometry.osrmPhrase("arrive", null, null, null, null, null))
+        assertEquals("At the roundabout, take exit 2 onto Main St", RouteGeometry.osrmPhrase("roundabout", null, "Main St", null, null, 2))
+        assertEquals("Head out on Elm St", RouteGeometry.osrmPhrase("depart", "left", "Elm St", null, null, null))
+    }
+
+    // Highways identify by ref, not name — the ref must reach the text (so it reads right AND the banner
+    // can pull a shield out of it). Regression for the "take the exit / no street / no shield" field bug.
+    @Test fun highwayRefsAndExits() {
+        // ref carried in as `road` (parseOsrmRoute does name ?: ref) → named continue + a shield-able "I 80"
+        assertEquals("Continue onto I 80", RouteGeometry.osrmPhrase("new name", "straight", "I 80", null, null, null))
+        assertEquals("Merge toward I 90 E", RouteGeometry.osrmPhrase("merge", "slight right", "I 90 E", "I 90 E", null, null))
+        // off ramp: exit number + sign destination (both carry through to the banner as tab + shield)
+        assertEquals("Take exit 15 toward I-80 E: Sacramento", RouteGeometry.osrmPhrase("off ramp", "right", null, "I-80 E: Sacramento", "15", null))
+        assertEquals("Take the exit toward Reno", RouteGeometry.osrmPhrase("off ramp", "right", null, "Reno", null, null))
+        assertEquals("Take the exit", RouteGeometry.osrmPhrase("off ramp", "right", null, null, null, null))
     }
 
     // Traffic-aware routing (option 3): only re-route through Google's path when it genuinely diverges.

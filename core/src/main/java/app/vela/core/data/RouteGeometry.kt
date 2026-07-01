@@ -38,6 +38,7 @@ import okhttp3.Request
  */
 object RouteGeometry {
     private const val OSRM_BASE = "https://routing.openstreetmap.de"
+    private const val OSRM_TRIES = 3 // FOSSGIS community server blips on mobile; a miss = nameless Google fallback
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The FOSSGIS OSRM backend for each mode. Transit has none → null geometry. */
@@ -139,20 +140,32 @@ object RouteGeometry {
     fun routeVia(http: OkHttpClient, waypoints: List<LatLng>, mode: TravelMode): List<Route> =
         if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false)
 
-    private fun routeOsrm(http: OkHttpClient, points: List<LatLng>, mode: TravelMode, alternatives: Boolean): List<Route> = try {
+    private fun routeOsrm(http: OkHttpClient, points: List<LatLng>, mode: TravelMode, alternatives: Boolean): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
         val url = "$OSRM_BASE/$backend/route/v1/driving/$coords" +
             "?overview=full&geometries=polyline&steps=true" + if (alternatives) "&alternatives=3" else ""
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.USER_AGENT).build()
-        http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return emptyList()
-            (json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject["routes"]?.jsonArray
-                ?: return emptyList())
-                .mapNotNull { parseOsrmRoute(it.jsonObject) }
+        // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops
+        // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
+        // a couple times with a short backoff. A SUCCESSFUL response (even an empty route list = genuine
+        // "no route") returns immediately; only transport/5xx failures retry.
+        repeat(OSRM_TRIES) { attempt ->
+            try {
+                http.newCall(req).execute().use { resp ->
+                    if (resp.isSuccessful) {
+                        val routes = json.parseToJsonElement(resp.body?.string().orEmpty())
+                            .jsonObject["routes"]?.jsonArray
+                        if (routes != null) return routes.mapNotNull { parseOsrmRoute(it.jsonObject) }
+                    }
+                    // unsuccessful (5xx / 429 rate-limit) — fall through to retry
+                }
+            } catch (e: Exception) {
+                // network blip / timeout — fall through to retry
+            }
+            if (attempt < OSRM_TRIES - 1) runCatching { Thread.sleep(200L * (attempt + 1)) }
         }
-    } catch (e: Exception) {
-        emptyList()
+        return emptyList()
     }
 
     private fun parseOsrmRoute(r: JsonObject): Route? {
@@ -189,13 +202,22 @@ object RouteGeometry {
         val lat = loc.getOrNull(1)?.jsonPrimitive?.doubleOrNull ?: return null
         val lng = loc.getOrNull(0)?.jsonPrimitive?.doubleOrNull ?: return null
         val name = s["name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+        // Highways identify by REF ("I 80"), not name — OSRM puts the name empty and the ref in `ref`.
+        // Dropping it (the old bug) left highway steps nameless → generic "take the exit" AND no shield
+        // (the banner parses shields out of the instruction text). `destinations` is where a ramp goes
+        // ("I-80 East: Sacramento"). road = name ?: ref so surface streets read by name, highways by shield.
+        val ref = s["ref"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+        val dest = s["destinations"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+        val exits = s["exits"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+        val road = name ?: ref
         return Maneuver(
             type = osrmType(type, mod),
-            instruction = osrmPhrase(type, mod, name, man["exit"]?.jsonPrimitive?.intOrNull),
+            instruction = osrmPhrase(type, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
             location = LatLng(lat, lng),
             distanceMeters = s["distance"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
             durationSeconds = s["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
-            road = name,
+            road = road,
+            ref = ref?.substringBefore(";")?.trim(), // first ref → the shield (a road can have name AND ref)
         )
     }
 
@@ -225,20 +247,29 @@ object RouteGeometry {
     }
 
     /** A human instruction (OSRM ships no text; `osrm-text-instructions` is a JS lib we inline the
-     *  gist of) — "Turn right onto 164th St SE", "Continue onto 132nd St SE", etc. */
-    internal fun osrmPhrase(type: String, mod: String?, name: String?, exit: Int?): String {
-        val onto = if (name != null) " onto $name" else ""
+     *  gist of) — "Turn right onto 164th St SE", "Continue onto I 80", "Take exit 15 toward Sacramento".
+     *  [road] is the name-or-ref of the road being entered; [dest] is a ramp's sign destination
+     *  ("I-80 East: Sacramento"); [exitNo] is a ramp's exit number; [rbExit] is a roundabout exit count. */
+    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) " onto $road" else ""
         val m = (mod ?: "").trim()
+        // Exits/ramps: say where it GOES. Prefer the sign destination, else the road it joins.
+        val toward = when {
+            dest != null -> " toward $dest"
+            road != null -> " onto $road"
+            else -> ""
+        }
+        val exitTab = if (exitNo != null) " $exitNo" else ""
         return when (type) {
-            "depart" -> if (name != null) "Head out on $name" else "Start your route"
+            "depart" -> if (road != null) "Head out on $road" else "Start your route"
             "arrive" -> "Arrive at your destination"
             "turn", "end of road" -> ("Turn $m").trim() + onto
             "continue", "new name" -> if (m.isNotBlank() && m != "straight") ("Bear $m").trim() + onto else "Continue$onto"
-            "merge" -> "Merge$onto"
-            "on ramp", "ramp" -> "Take the ramp$onto"
-            "off ramp" -> "Take the exit$onto"
-            "fork" -> ("Keep $m").trim() + onto
-            "roundabout", "rotary" -> if (exit != null) "At the roundabout, take exit $exit$onto" else "Enter the roundabout$onto"
+            "merge" -> "Merge$toward"
+            "on ramp", "ramp" -> "Take the ramp$toward"
+            "off ramp" -> if (exitNo != null) "Take exit$exitTab$toward" else "Take the exit$toward"
+            "fork" -> ("Keep $m").trim() + toward
+            "roundabout", "rotary" -> if (rbExit != null) "At the roundabout, take exit $rbExit$onto" else "Enter the roundabout$onto"
             "roundabout turn" -> ("At the roundabout, turn $m").trim() + onto
             "uturn" -> "Make a U-turn$onto"
             else -> if (m.isNotBlank()) ("Turn $m").trim() + onto else "Continue$onto"
