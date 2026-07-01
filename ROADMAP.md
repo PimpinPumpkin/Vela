@@ -104,7 +104,10 @@ from the `directions` diag), offline highway refs (a graph rebuild — parked).
     categories** (menu / food / vibe tabs in the gallery).
   - *App-level:* ~~**multi-stop directions** (waypoints)~~ — **DONE 2026-07-01** (an "Add stop" row in the
     directions panel; routes OSRM straight through the stops via `routeVia` + Google traffic ratio, single
-    route; device-verified). Follow-ups: per-stop arrival announcement, reorder, reroute-through-remaining.
+    route; device-verified). ~~Follow-ups: per-stop arrival announcement, reorder, reroute-through-remaining~~
+    — **also DONE 2026-07-01**: per-stop "You've reached &lt;stop&gt;" voice cue (`NavEngine.stopMarks`,
+    unit-tested), reroute-through-remaining (off-route reroute + faster-recheck now go through unreached
+    stops, reaches-dest guards intact), and up/down reorder arrows (`moveStop`).
     **avoid tolls/highways** (a directions-`pb` options field — see Known-hard), **explicit lists/labels** for
     saved places.
   - *Not feasible keyless / out of scope:* Street View (key-gated — see Known-hard),

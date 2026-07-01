@@ -207,8 +207,14 @@ arrive/depart already filtered into one continuous trip) and overlays Google's i
 (`applyTrafficRatio` — scales duration only; the direct-path congestion spans wouldn't align to a through
 path so they're dropped). A waypointed trip returns a **single** route (the alternates/divergence-snap logic
 is skipped). The app holds the stops as `MapViewModel.directionsWaypoints` (a stop-pick mode mirrors the
-origin picker); nav drives the through-route as one path. Follow-ups: per-stop arrival cue, reorder, and an
-off-route reroute that targets the next remaining stop rather than the final destination.
+origin picker). **Follow-ups DONE 2026-07-01:** `NavEngine.stopMarks(route, stops)` projects each waypoint
+onto the route line → its along-route metre "pass mark" (or null if >150 m off the line); `NavSession` holds
+the stops + marks + a `passedStops` counter and fires a **per-stop voice cue** ("You've reached &lt;stop&gt;")
+in order as `traveledM` passes each mark (unit-tested `NavStopMarksTest`; `NavEngine` stays pure). `reroute`
+and the faster-route `maybeRecheck` now call `directions(loc, dest, mode, remainingStops)` where
+`remainingStops = stops.drop(passedStops)` — so going off-route (or taking a faster route) keeps the stops
+you haven't reached, instead of dropping them; the `reaches(dest)` guards are unchanged (the route still ends
+at the same final dest). The panel has up/down **reorder** arrows (`moveStop`).
 
 **Offline routing (on-device, DONE 2026-06-30).** When OSRM is unreachable, `directions()` routes fully
 on the phone via **GraphHopper** (`core/data/GraphHopperRouteEngine`, pure-JVM on ART — three workarounds:
