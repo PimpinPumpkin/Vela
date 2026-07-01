@@ -51,6 +51,7 @@ import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ContentCopy
@@ -584,6 +585,9 @@ fun DirectionsPanel(
     destinationName: String,
     onEditOrigin: (() -> Unit)? = null,
     onEditDestination: (() -> Unit)? = null,
+    stops: List<String> = emptyList(),
+    onAddStop: (() -> Unit)? = null,
+    onRemoveStop: (Int) -> Unit = {},
     onSwap: () -> Unit,
     currentMode: TravelMode,
     routes: List<Route>,
@@ -652,6 +656,32 @@ fun DirectionsPanel(
                         }
                     }
                     Spacer(Modifier.height(3.dp))
+                    // Intermediate stops (multi-stop), between From and To like Google — each removable,
+                    // then an "Add stop" row. Only shown for drive/walk/bike (transit has no waypoints).
+                    if (currentMode != TravelMode.TRANSIT) {
+                        stops.forEachIndexed { i, stopName ->
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                                Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
+                                Spacer(Modifier.width(11.dp))
+                                Text(stopName, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                Icon(
+                                    Icons.Default.Close, contentDescription = "Remove stop", tint = dim,
+                                    modifier = Modifier.size(18.dp).clip(CircleShape).clickable { onRemoveStop(i) }.padding(1.dp),
+                                )
+                            }
+                        }
+                        if (onAddStop != null) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { onAddStop() }.padding(vertical = 2.dp),
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Add stop", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                            }
+                            Spacer(Modifier.height(3.dp))
+                        }
+                    }
                     // The "To" row — editable in the same way as "From", used when the
                     // route is *reversed* (then the custom endpoint is the destination).
                     Row(
