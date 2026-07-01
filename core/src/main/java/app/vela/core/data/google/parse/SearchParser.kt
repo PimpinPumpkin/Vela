@@ -56,7 +56,18 @@ object SearchParser {
         val similar = runCatching { parseSimilarPlaces(root, paths) }.getOrDefault(emptyList())
         val withSimilar = if (similar.isNotEmpty() && places.isNotEmpty())
             places.mapIndexed { i, p -> if (i == 0) p.copy(similarPlaces = similar) else p } else places
-        return SearchResult(query, withSimilar.sortedBy { it.distanceMeters ?: Double.MAX_VALUE })
+        // Order nearest-first, BUT within the same ~120 m (a shopping centre / one address) rank by
+        // prominence (review count) so the MAIN store beats its florist/pharmacy departments sitting at the
+        // same spot. Distance still wins across genuinely different locations. (Was pure distance, which let
+        // a nearby low-review department outrank the big store it's a part of — the "Safeway Floral" bug.)
+        val ranked = withSimilar.sortedWith(
+            compareBy<Place>(
+                { it.distanceMeters?.let { d -> (d / 120.0).toLong() } ?: Long.MAX_VALUE }, // 120 m distance buckets
+                { -(it.reviewCount ?: 0) },                                                 // within a bucket: more reviews first
+                { it.distanceMeters ?: Double.MAX_VALUE },                                   // then exact distance
+            ),
+        )
+        return SearchResult(query, ranked)
     }
 
     /** A specific/far address resolves to a *single* geocoded result rather than
