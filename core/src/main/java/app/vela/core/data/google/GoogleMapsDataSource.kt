@@ -190,7 +190,20 @@ class GoogleMapsDataSource @Inject constructor(
         origin: LatLng,
         destination: LatLng,
         mode: TravelMode,
+        waypoints: List<LatLng>,
     ): List<Route> = io {
+        // Multi-stop: route OSRM straight THROUGH the stops (routeVia filters the spurious per-via
+        // arrive/depart into one continuous trip), then overlay Google's live in-traffic ETA ratio for the
+        // whole origin→dest so the time is traffic-aware. A waypointed trip is a single path — no alternates.
+        if (waypoints.isNotEmpty()) {
+            return@io coroutineScope {
+                val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode) }
+                val gD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
+                val via = viaD.await().firstOrNull()
+                if (via != null) listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
+                else gD.await().take(1) // OSRM down → best-effort direct Google route (loses the stops)
+            }
+        }
         coroutineScope {
             // PRIMARY: the open router (OSRM) — complete, street-named turn-by-turn + real geometry.
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
@@ -293,6 +306,16 @@ class GoogleMapsDataSource @Inject constructor(
             durationInTrafficSeconds = route.durationSeconds * factor,
             trafficSpans = g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) },
         )
+    }
+
+    /** Lighter traffic overlay for a multi-stop route: scale the ETA by Google's in-traffic ratio for a
+     *  traffic-aware time, but DON'T map the congestion spans — Google's direct origin→dest path differs
+     *  from the through-the-stops path, so its span offsets wouldn't line up. ETA only. */
+    private fun applyTrafficRatio(route: Route, g: Route?): Route {
+        val typical = g?.durationSeconds?.takeIf { it > 0 } ?: return route
+        val inTraffic = g.durationInTrafficSeconds ?: return route
+        val factor = (inTraffic / typical).coerceIn(0.5, 4.0)
+        return route.copy(durationInTrafficSeconds = route.durationSeconds * factor)
     }
 
     /** Name a provisional alternate the moment the user picks it to drive: snap its (Google) polyline

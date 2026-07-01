@@ -201,6 +201,15 @@ live-traffic figure, so the overlay scales every route by the same ratio and can
 cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** — now shipped as
 the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
 
+**Multi-stop (waypoints, DONE 2026-07-01).** `directions(origin, dest, mode, waypoints)` — when `waypoints`
+is non-empty it reuses the same `routeVia` machinery (OSRM through `origin → stops… → dest`, the per-via
+arrive/depart already filtered into one continuous trip) and overlays Google's in-traffic ratio for the ETA
+(`applyTrafficRatio` — scales duration only; the direct-path congestion spans wouldn't align to a through
+path so they're dropped). A waypointed trip returns a **single** route (the alternates/divergence-snap logic
+is skipped). The app holds the stops as `MapViewModel.directionsWaypoints` (a stop-pick mode mirrors the
+origin picker); nav drives the through-route as one path. Follow-ups: per-stop arrival cue, reorder, and an
+off-route reroute that targets the next remaining stop rather than the final destination.
+
 **Offline routing (on-device, DONE 2026-06-30).** When OSRM is unreachable, `directions()` routes fully
 on the phone via **GraphHopper** (`core/data/GraphHopperRouteEngine`, pure-JVM on ART — three workarounds:
 MMAP data-access, a Janino-free `SpeedWeighting` factory, swallowed `close()`; Contraction Hierarchies →
