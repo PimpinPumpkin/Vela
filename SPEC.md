@@ -152,6 +152,15 @@ un-automatable → it's login/Android-app-only. We surface the typical spread (`
 above) as the honest keyless stand-in; a true per-minute ETA needs one captured real
 depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
 
+### Hours node (`[1][203][0]`) — date-specific, holidays baked in (observed 2026-07-01)
+Each day entry is `[name, dow(1=Mon..7=Sun), [Y,M,D], ranges, flag, flag, special?]` — a **rolling next-7-days**
+list keyed to the ACTUAL date, so **holiday overrides are already in it**: a Jul-4 bank showed
+`["Saturday",6,[2026,7,4],[["Closed"]],1,2,["4th of July hours","4th of July",1]]`. `ranges` = `[[text,[[openH],[closeH]]], …]`
+(MULTIPLE per day — split shifts); `special[1]` = a holiday label ("4th of July"). `readHours` joins all
+ranges and appends `" · <label>"`; `OpeningHours` strips the label, so the open/closed FALLBACK is holiday-aware
+for free (it computes from today's date-specific, holiday-adjusted entry). Google's live status STRING stays
+PRIMARY (it's the only source for an owner's ad-hoc "closed today", which is NOT in the scheduled ranges).
+
 ### Directions — untapped capabilities (observed on the wire, not from the binary)
 A running "port these into our own code" list, derived purely from the response we already receive
 (clean-room = protocol observation, never decompilation):

@@ -62,7 +62,7 @@ object OpeningHours {
     }
 
     private fun intervals(specRaw: String): List<Pair<Int, Int>>? {
-        val spec = specRaw.trim()
+        val spec = specRaw.substringBefore(" · ").trim() // drop any trailing " · <holiday label>"
         if (spec.isBlank()) return null
         val low = spec.lowercase()
         if (low.startsWith("closed")) return emptyList()
