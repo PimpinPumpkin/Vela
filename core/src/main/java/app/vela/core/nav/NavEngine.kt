@@ -19,6 +19,7 @@ object NavEngine {
     private const val OFF_ROUTE_HITS = 4      // debounce GPS jitter before rerouting
     private const val ARRIVE_RADIUS_M = 25.0
     private const val ON_ROUTE_M = 60.0       // within this of the windowed route → keep tracking progress
+    private const val STOP_ON_ROUTE_M = 150.0 // a waypoint farther than this from the line isn't on this route
     private val PROMPT_DISTANCES = listOf(400, 150) // metres before a maneuver
 
     fun update(route: Route, state: NavState, loc: LatLng, imperial: Boolean = false): Pair<NavState, List<NavEvent>> {
@@ -146,6 +147,19 @@ object NavEngine {
             if (d < min) min = d
         }
         return min
+    }
+
+    /** For each intermediate [stops] waypoint, the metres-along-[route] of its nearest point on the route
+     *  line — the "you're passing this stop" mark that drives the per-stop arrival cue — or null when the
+     *  stop sits farther than [STOP_ON_ROUTE_M] from the line (not really on this route). Pure + testable. */
+    fun stopMarks(route: Route, stops: List<LatLng>): List<Double?> {
+        if (stops.isEmpty() || route.polyline.size < 2) return stops.map { null }
+        val cum = cumulative(route.polyline)
+        val total = cum.lastOrNull() ?: 0.0
+        return stops.map { s ->
+            val (m, d) = projectAlong(route.polyline, cum, s, 0.0, total)
+            if (d <= STOP_ON_ROUTE_M) m else null
+        }
     }
 
     /** Cumulative geometric length (m) of [path] at each vertex (cum[0] = 0). */

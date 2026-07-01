@@ -53,6 +53,8 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
@@ -588,6 +590,7 @@ fun DirectionsPanel(
     stops: List<String> = emptyList(),
     onAddStop: (() -> Unit)? = null,
     onRemoveStop: (Int) -> Unit = {},
+    onMoveStop: (Int, Int) -> Unit = { _, _ -> },
     onSwap: () -> Unit,
     currentMode: TravelMode,
     routes: List<Route>,
@@ -664,6 +667,12 @@ fun DirectionsPanel(
                                 Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
                                 Spacer(Modifier.width(11.dp))
                                 Text(stopName, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                // Reorder arrows (only with 2+ stops): up unless first, down unless last.
+                                if (stops.size > 1) {
+                                    if (i > 0) Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move stop up", tint = dim, modifier = Modifier.size(20.dp).clip(CircleShape).clickable { onMoveStop(i, -1) }.padding(1.dp))
+                                    if (i < stops.size - 1) Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move stop down", tint = dim, modifier = Modifier.size(20.dp).clip(CircleShape).clickable { onMoveStop(i, 1) }.padding(1.dp))
+                                    Spacer(Modifier.width(2.dp))
+                                }
                                 Icon(
                                     Icons.Default.Close, contentDescription = "Remove stop", tint = dim,
                                     modifier = Modifier.size(18.dp).clip(CircleShape).clickable { onRemoveStop(i) }.padding(1.dp),
