@@ -145,6 +145,7 @@ import app.vela.ui.RatingStars
 import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
+import kotlin.math.roundToInt
 import app.vela.ui.placeStatusColor
 import java.util.Locale
 
@@ -708,10 +709,14 @@ fun DirectionsPanel(
                         Text("Finding the best route…", style = MaterialTheme.typography.bodyMedium, color = dim)
                     }
                 } else {
+                    // Fastest ETA across the alternates (list is sorted fastest-first, but take the min
+                    // so the "+N min" deltas are robust even if two tie) → each slower route shows how much
+                    // longer it is, Google-style, so you can weigh the alternates at a glance.
+                    val fastestEta = routes.minOf { it.durationInTrafficSeconds ?: it.durationSeconds }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         routes.forEachIndexed { i, r ->
                             val selected = r === activeRoute || (activeRoute == null && i == 0)
-                            RouteOption(r, selected, fastest = i == 0, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
+                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -834,11 +839,15 @@ private fun DepartTimeChooser(route: Route?, dim: Color) {
 }
 
 /** One route choice in the directions panel: a traffic-coloured ETA + distance/
- *  via, highlighted when it's the active one, with a "Fastest" tag on the first. */
+ *  via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
+ *  alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
 @Composable
-private fun RouteOption(r: Route, selected: Boolean, fastest: Boolean, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
-    val eta = formatDuration(r.durationInTrafficSeconds ?: r.durationSeconds)
+private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
+    val etaSeconds = r.durationInTrafficSeconds ?: r.durationSeconds
+    val eta = formatDuration(etaSeconds)
     val etaColor = trafficEtaColor(r) ?: ink
+    // Round to the nearest minute; anything under ~30 s slower is effectively "the same" → still "Fastest".
+    val deltaMin = ((etaSeconds - fastestEtaSeconds) / 60.0).roundToInt()
     val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
     else SheetPalette.row(dark)
     Row(
@@ -853,8 +862,8 @@ private fun RouteOption(r: Route, selected: Boolean, fastest: Boolean, dark: Boo
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(eta, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = etaColor)
-                if (fastest) {
-                    Spacer(Modifier.width(8.dp))
+                Spacer(Modifier.width(8.dp))
+                if (deltaMin <= 0) {
                     Text(
                         "Fastest",
                         style = MaterialTheme.typography.labelSmall,
@@ -862,6 +871,17 @@ private fun RouteOption(r: Route, selected: Boolean, fastest: Boolean, dark: Boo
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+                            .padding(horizontal = 6.dp, vertical = 1.dp),
+                    )
+                } else {
+                    // "+5 min" vs the fastest — a quiet tag so the fastest still reads as primary.
+                    Text(
+                        "+$deltaMin min",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = dim,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(ink.copy(alpha = 0.08f))
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 }
