@@ -551,6 +551,7 @@ fun MapScreen(
                 stops = state.directionsWaypoints.map { it.name },
                 onAddStop = vm::beginPickStop,
                 onRemoveStop = vm::removeStop,
+                onMoveStop = vm::moveStop,
                 onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
