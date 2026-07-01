@@ -221,17 +221,20 @@ region box covering both endpoints** (boxes overlap at borders; falls through to
 must fit one region's monolithic graph; cross-region falls online.
 
 ### Reviews / Photos / Transit (the hard ones)
-- **Reviews**: `HIGH`/`LOW` are the two halves of the feature id as unsigned-64
-  decimals. Reviews at `root[2]`: author `[0][1]`, author photo `[0][2]`, rel-time `[1]`,
-  text `[3]`, rating `[4]`. **Photos by URL shape, not index** (recalibrated 2026-06-20):
-  this RPC carries **only the reviewer's avatar** (at `[0][2]`, `[12][1][3]`, `[60][2]` —
-  `/a/…ACg8oc`, `/a-/…ALV-`), **never uploaded photos**. The old "`[12]` = user photos"
-  was wrong — it's an avatar copy, and the parser was showing the reviewer's face. So
-  `ReviewsParser` now collects only FIFE UGC URLs (`/gps-cs`, `/geougc`, `/p/AF1Qip`) and
-  rejects avatars; the strip shows nothing here (this RPC has no uploads). **Sourcing real
-  per-review uploaded photos needs a different RPC/flag** (6 pb-flag guesses + the page's
-  own request all yielded avatars-only — see `ROADMAP.md`). **Fixed top ~20** (offset `2i`
-  ignored; deeper paging is a token, not chased).
+- **Reviews**: DOM-scraped from the place's own `?cid=` page in a hidden anonymous desktop-UA WebView
+  (`WebReviewsFetcher`) — the keyless `listentitiesreviews` RPC is **dead** (404) and only ever served
+  avatars anyway. `?cid=` = the `LOW` half of the `0xHIGH:0xLOW` feature id as unsigned decimal. **Two
+  things that were silently capping it at ~3, fixed 2026-07-01:** (1) the hidden WebView is never attached,
+  so it was **0×0**; Google's review list is **virtualized/lazy-loaded off the scroll viewport**, so at
+  0×0 it renders the chrome (rating histogram, topic filters) but **no review cards** — `measure`+`layout`
+  the WebView to a real **1200×3200 offscreen viewport** and the `m6QErb` scroll pane becomes real +
+  pages. (2) cards are **`.jJc9Ad`** each with a unique **`data-review-id`**; the scraper selects those
+  directly and **accumulates across scroll windows de-duped by review-id** (the panel recycles DOM nodes,
+  so one snapshot = ~10; the union = the list). Per card: author `.d4r55`, text `.wiI7pd`, rel-date
+  `.rsqaWe`, star aria, avatar + **uploaded photos** (googleusercontent background-images, avatars/
+  ALV-/ACg8oc filtered). Clicks "More reviews" to open the full list, dwells at the bottom to let the
+  lazy-loader page in more, caps at 50. **Per-review photos ARE delivered this way** (the old RPC's
+  avatars-only limitation doesn't apply to the rendered page). Device-verified **3 → 37** on Space Needle.
 - **Photos**: the full gallery is **scraped from the place's own `?cid=` page** (2026-06-28),
   *not* the `hspqX` RPC — that RPC is **bot-degraded per-session** to a Street-View-only reply
   (an on-device log showed byte-identical degraded replies across retries, so retrying never

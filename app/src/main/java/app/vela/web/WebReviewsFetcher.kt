@@ -110,29 +110,39 @@ class WebReviewsFetcher @Inject constructor(
         // Desktop UA so Google serves the desktop web Maps (a mobile UA deep-links to intent://).
         wv.settings.userAgentString = VelaConfig.USER_AGENT
         wv.addJavascriptInterface(Bridge(), "VelaBridge")
+        // Give the hidden (never-attached) WebView a REAL offscreen viewport. Google's reviews list is
+        // virtualized + lazy-loaded off the scroll viewport; a 0×0 headless WebView renders the chrome
+        // (rating histogram, topic filters) but NEVER the review cards. A tall explicit layout makes the
+        // scroll pane real so the list renders + pages. (Photos don't need this; the review list does.)
+        wv.measure(
+            android.view.View.MeasureSpec.makeMeasureSpec(WV_WIDTH, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(WV_HEIGHT, android.view.View.MeasureSpec.EXACTLY),
+        )
+        wv.layout(0, 0, WV_WIDTH, WV_HEIGHT)
         webView = wv
         return wv
     }
 
-    /** Self-polling DOM scraper: scroll the review panel to surface more, extract each review card
-     *  (one star rating + an author button), and bridge a JSON array back once it's stable. */
+    /** Self-polling DOM scraper: open the full reviews list, then scroll it a window at a time,
+     *  ACCUMULATING each review card into a keyed set (Google virtualizes the panel — it recycles
+     *  DOM nodes as you scroll, so any single snapshot holds only ~10 cards; the union across scroll
+     *  positions is the full list). Bridges the accumulated JSON array back once the list is exhausted
+     *  or the cap is hit. */
     private fun extractScript(id: String): String {
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, last=-1, stable=0, tries=0, opened=false, best=[];
-              var CAP=20;
+              var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
+              var CAP=50;
               function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
-                var all=[].slice.call(document.querySelectorAll('div'));
-                var cards=all.filter(function(d){
-                  var st=d.querySelectorAll('[role="img"][aria-label*="star" i], span[aria-label*=" star" i]');
-                  var len=d.textContent?d.textContent.length:0;
-                  return st.length===1 && len>30 && len<3000;
-                });
-                var revs=cards.filter(function(c){ return !cards.some(function(o){ return o!==c && c.contains(o); }); });
+                // Review cards are `.jJc9Ad`, each with a unique `data-review-id` — far more robust than the
+                // old "div with one star + text" heuristic, which also matched the place header ("4.6 stars
+                // (57,969)") and affiliate ticket cards, and missed most real reviews.
+                var revs=[].slice.call(document.querySelectorAll('.jJc9Ad'));
                 return revs.map(function(c){
+                  var idEl=c.querySelector('[data-review-id]'); var rid=idEl?(idEl.getAttribute('data-review-id')||''):'';
                   var star=c.querySelector('[role="img"][aria-label*="star" i], span[aria-label*=" star" i]');
                   // author: Google's review name class, else pull the NAME out of a button aria — the
                   // name is always right before "'s review" (after a "Share "/"Photo N on " prefix) or
@@ -156,11 +166,24 @@ class WebReviewsFetcher @Inject constructor(
                     var mm=bg.match(/url\(["']?(https:\/\/[^"')]+googleusercontent[^"')]+)/);
                     if(mm && !/\/a[\/-]|ACg8oc|ALV-/.test(mm[1]) && photos.indexOf(mm[1])<0) photos.push(mm[1]);
                   });
-                  return { r:num(star&&star.getAttribute('aria-label')), a:author.slice(0,80), d:date, t:text, av:avatar, p:photos.slice(0,10) };
-                }).filter(function(x){ return x.a; });
+                  return { rid:rid, r:num(star&&star.getAttribute('aria-label')), a:author.slice(0,80), d:date, t:text, av:avatar, p:photos.slice(0,10) };
+                }).filter(function(x){ return x.rid || x.a; });
               }
               function expand(){ [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } }); }
-              function scrollPanels(){ try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){ if(d.scrollHeight>d.clientHeight+200 && d.clientHeight>250 && d.getBoundingClientRect().left<640){ d.scrollTop=d.scrollHeight; } }); }catch(e){} }
+              // De-dupe across scroll windows by the review's stable id (falls back to author+date+text).
+              function key(x){ return x.rid || ((x.a||'')+'|'+(x.d||'')+'|'+((x.t||'').slice(0,48))); }
+              // Scroll each tall left-column panel down by ~80% of a viewport (windows overlap so no
+              // card is skipped past). Returns true if anything actually moved (false ⇒ at the bottom).
+              function scrollStep(){
+                var moved=false;
+                try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){
+                  if(d.scrollHeight>d.clientHeight+200 && d.clientHeight>250 && d.getBoundingClientRect().left<640){
+                    var before=d.scrollTop; d.scrollTop=Math.min(d.scrollHeight, d.scrollTop+Math.round(d.clientHeight*0.8));
+                    if(d.scrollTop>before+5) moved=true;
+                  }
+                }); }catch(e){}
+                return moved;
+              }
               // The ?cid= page opens the place OVERVIEW (only ~3 reviews) — click "More reviews"
               // ONCE to open the full, pageable list, else many-review places (and some chains like
               // Taco Bell whose overview shows none) come back with too few or nothing.
@@ -173,19 +196,22 @@ class WebReviewsFetcher @Inject constructor(
                 tries++;
                 openFull();
                 expand();
-                scrollPanels();
+                // ACCUMULATE this window's cards (don't replace) — the panel virtualizes, so each
+                // scroll position exposes a fresh ~10 that would otherwise be lost when recycled.
                 var revs=extract();
-                // Keep the BEST (largest) extraction so far — clicking "More reviews" briefly empties
-                // the panel, and a heavy place renders in waves; we must never return that blink.
-                if(revs.length>best.length) best=revs;
-                if(revs.length===last && revs.length>0) stable++; else stable=0;
-                last=revs.length;
-                // Stop at the cap, once the count holds steady (few-review places finish fast), or on timeout.
-                if( best.length>=CAP || (stable>=3 && tries>=5 && best.length>0) || tries>22 ){
-                  try{ VelaBridge.onResult(ID, JSON.stringify(best.slice(0,CAP+5))); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
+                for(var i=0;i<revs.length;i++){ var k=key(revs[i]); if(k.length>2 && !acc[k]){ acc[k]=revs[i]; accN++; } }
+                var moved=scrollStep();
+                atBottom = moved ? 0 : atBottom+1;
+                noGrow = (accN===lastN) ? noGrow+1 : 0;
+                lastN=accN;
+                // Done: hit the cap, OR dwelled at the bottom with no new reviews for several ticks (give
+                // the lazy-loader time to page in more before giving up), OR ran long.
+                if( accN>=CAP || (atBottom>=4 && noGrow>=4 && tries>=8) || tries>48 ){
+                  var out=[]; for(var kk in acc) out.push(acc[kk]);
+                  try{ VelaBridge.onResult(ID, JSON.stringify(out.slice(0,CAP))); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
                   return;
                 }
-                setTimeout(tick, 600);
+                setTimeout(tick, 550);
               }
               tick();
             })();
@@ -193,8 +219,14 @@ class WebReviewsFetcher @Inject constructor(
     }
 
     private companion object {
-        const val TOTAL_TIMEOUT_MS = 26_000L
+        // Longer than before: accumulating 40 reviews across scroll windows takes more ticks than the
+        // old single-snapshot grab. Still lazy + best-effort (the sheet shows other content meanwhile).
+        const val TOTAL_TIMEOUT_MS = 40_000L
         const val SETTLE_MS = 800L
         const val MAX_LOAD_MS = 7_000L
+        // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
+        // healthy batch per scroll position.
+        const val WV_WIDTH = 1200
+        const val WV_HEIGHT = 3200
     }
 }
