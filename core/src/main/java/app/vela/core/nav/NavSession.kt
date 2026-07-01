@@ -5,6 +5,7 @@ import app.vela.core.data.MapDataSource
 import app.vela.core.feedback.Haptics
 import app.vela.core.model.LatLng
 import app.vela.core.model.Route
+import app.vela.core.model.distanceTo
 import app.vela.core.voice.VoiceGuide
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -163,11 +164,14 @@ class NavSession @Inject constructor(
         val dest = destination ?: return
         lastRecheckMs = now
         recheckJob = scope.launch {
-            val candidate = runCatching { dataSource.directions(loc, dest).firstOrNull() }.getOrNull() ?: return@launch
+            val candidate = runCatching { dataSource.directions(loc, dest).firstOrNull() }.getOrNull()
+                ?.takeIf { it.reaches(dest) } ?: return@launch
             val candidateEta = candidate.durationInTrafficSeconds ?: candidate.durationSeconds
             val remaining = _state.value.remainingDuration
             val saving = remaining - candidateEta
-            if (saving > FASTER_THRESHOLD_S && candidateEta < remaining * 0.9) {
+            // Offer it only if it saves real time AND isn't implausibly short — a candidate claiming to cut
+            // the same trip to a fraction of the time left is a bad route, not a real faster path.
+            if (saving > FASTER_THRESHOLD_S && candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)) {
                 _state.update { it.copy(fasterRoute = candidate, fasterSavingSeconds = saving) }
                 voice.speak("Faster route available, saving about ${(saving / 60).toInt()} minutes")
             }
@@ -178,7 +182,10 @@ class NavSession @Inject constructor(
         val dest = destination ?: return
         scope.launch {
             voice.speak("Rerouting", interrupt = true)
-            val r = runCatching { dataSource.directions(loc, dest) }.getOrNull()?.firstOrNull() ?: return@launch
+            // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
+            // current route rather than swapping to a truncated/wrong one.
+            val r = runCatching { dataSource.directions(loc, dest) }.getOrNull()?.firstOrNull()
+                ?.takeIf { it.reaches(dest) } ?: return@launch
             lastRecheckMs = SystemClock.elapsedRealtime()
             _state.update {
                 it.copy(
@@ -193,9 +200,20 @@ class NavSession @Inject constructor(
         }
     }
 
+    /** Does this route actually END near [dest]? A route whose last point is far from the destination is
+     *  truncated or wrong; swapping to it mid-nav is the "10 min away / wrong final step" bug. */
+    private fun Route.reaches(dest: LatLng) =
+        polyline.lastOrNull()?.let { it.distanceTo(dest) <= REACH_TOLERANCE_M } ?: false
+
     private companion object {
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val MIN_RECHECK_DISTANCE_M = 1_500.0 // don't bother near the destination
         const val FASTER_THRESHOLD_S = 90.0        // only offer if it saves real time
+        // A reroute/faster candidate must actually END near the destination — a truncated or wrong route
+        // (its last point miles from dest) is the "10 min away, wrong final step" bug; never swap to it.
+        const val REACH_TOLERANCE_M = 500.0
+        // …and it can't be implausibly short: the same trip can't suddenly take <40% of the time left
+        // (that's a bad route, not real traffic). Guards the faster-route offer from a bogus short ETA.
+        const val MIN_PLAUSIBLE_ETA_FRACTION = 0.4
     }
 }

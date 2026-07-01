@@ -18,6 +18,7 @@ import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.SearchResult
 import app.vela.core.model.TravelMode
+import app.vela.core.model.distanceTo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -212,13 +213,18 @@ class GoogleMapsDataSource @Inject constructor(
             // hands back ONE live-traffic figure, so applyTraffic scales every route by the same ratio and
             // can't reorder the OSRM alternates — this ETA gate is the meaningful lever.)
             val googleEtaS = gTop?.durationInTrafficSeconds ?: gTop?.durationSeconds
-            val snapWorthIt = trafficRoute != null && open.isNotEmpty() && googleEtaS != null &&
+            // The snapped via-route must actually REACH the destination — a truncated one ending at an
+            // intermediate via (short ETA, wrong last step) is the "10 min away" nav bug — AND be time-
+            // competitive with OSRM's free-flow best.
+            val snapReaches = trafficRoute?.polyline?.lastOrNull()
+                ?.let { it.distanceTo(destination) <= SNAP_REACH_M } == true
+            val snapWorthIt = trafficRoute != null && snapReaches && open.isNotEmpty() && googleEtaS != null &&
                 googleEtaS <= open.first().durationSeconds * SNAP_ETA_MARGIN
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
                     "google ${google.size} (traffic=${gTop?.durationInTrafficSeconds != null}); " +
-                    "rerouted=${trafficRoute != null} snapKept=$snapWorthIt " +
+                    "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s); " +
                     "onDevice=${onDevice.size}",
                 "",
@@ -328,5 +334,6 @@ class GoogleMapsDataSource @Inject constructor(
         // (its detour is time-competitive with OSRM's ideal → the jam justifies the reroute). Tunable from
         // real side-by-side data — the `directions` diag logs gEta/osrmFF so the threshold can be pinned.
         const val SNAP_ETA_MARGIN = 1.2
+        const val SNAP_REACH_M = 500.0 // the snapped route's last point must be within this of the destination
     }
 }
