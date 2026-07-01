@@ -79,6 +79,16 @@ class GoogleMapsDataSource @Inject constructor(
         }
         // detail = the exact request URL so an opted-in user's export is replayable.
         diag.record("search", "\"$query\" near ${near?.lat ?: "?"},${near?.lng ?: "?"} → ${places.size} results", url)
+        // open/closed diagnosis: what status + hours did we actually parse for each result? (compare
+        // the status string to the hours to see whether Google's string is wrong or we mis-parse.)
+        places.take(6).forEach { p ->
+            diag.record(
+                "placestatus",
+                "${p.name}: openNow=${p.openNow} status=\"${p.statusText}\" permClosed=${p.permanentlyClosed} " +
+                    "| hours(${p.hours.size}): ${p.hours.joinToString(" · ").take(180)}",
+                "",
+            )
+        }
         SearchResult(query, jsTransforms.refineSearch(places))
     }
 
@@ -223,7 +233,8 @@ class GoogleMapsDataSource @Inject constructor(
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
-                    "google ${google.size} (traffic=${gTop?.durationInTrafficSeconds != null}); " +
+                    "google ${google.size} (typ=${gTop?.durationSeconds?.toInt()}s traf=${gTop?.durationInTrafficSeconds?.toInt()}s " +
+                    "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format("%.2f", t / it) } }}); " +
                     "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s); " +
                     "onDevice=${onDevice.size}",
