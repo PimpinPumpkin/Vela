@@ -47,6 +47,9 @@ interface MapDataSource {
         origin: LatLng,
         destination: LatLng,
         mode: TravelMode = TravelMode.DRIVE,
+        // Intermediate stops the route must pass through, in order (multi-stop trips). Empty = direct
+        // origin→destination. A waypointed route is a single path through the stops (no alternates).
+        waypoints: List<LatLng> = emptyList(),
     ): List<Route>
 
     /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its
