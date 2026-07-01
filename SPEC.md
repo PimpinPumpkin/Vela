@@ -162,7 +162,12 @@ instead — `sampleVias` takes ~12 interior points of Google's line, `routeVia` 
 them (no coord cap; path reproduced exactly, 0 U-turn artifacts). Tradeoff, measured: a via that
 lands *on* a turn is encoded as a via arrive/depart, not a turn — **~1-in-10 named turns lost** at
 60 vias. So we keep vias modest (12) and gate the whole thing behind real divergence
-(`divergent`, >700 m), leaving the free-flow majority as pure-OSRM with perfect turns. The
+(`divergent`, >700 m), leaving the free-flow majority as pure-OSRM with perfect turns. We also
+**only LEAD with the snapped route when it earns it** — its live in-traffic ETA must be within
+`SNAP_ETA_MARGIN` (×1.2) of OSRM's free-flow best, so a divergent-but-not-actually-faster snap steps
+aside for OSRM's clean route instead of being forced to the top (the `directions` diag logs `gEta`/`osrmFF`
+to tune this from real side-by-side data). A true per-alternate re-rank isn't possible — Google returns one
+live-traffic figure, so the overlay scales every route by the same ratio and can't reorder the alternates. The
 cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** — now shipped as
 the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
 
@@ -363,6 +368,7 @@ handed — no filesystem, network, or device access.
 See **[`FEATURES.md`](FEATURES.md)** for the exhaustive, ticked list (search/places,
 reviews, photo gallery, directions + alternates + swap + depart-time +
 search-along-route, drive/walk/bike/transit, turn-by-turn with shields/lanes/voice/
-haptics/speedometer, traffic overlay, offline basemap + POI (the offline SQLite POI
-index keeps OSM address/phone/website/opening_hours, not just name+category), Home/Work shortcuts,
+haptics/speedometer/**per-lane diagram**, traffic overlay, **offline on-device routing** (GraphHopper,
+137-region world catalog), offline basemap + POI (the offline SQLite POI index keeps OSM
+address/phone/website/opening_hours, not just name+category), Home/Work shortcuts,
 saved/recent places, deep links, scale bar, in-app theme, the resilience layer above).

@@ -174,8 +174,13 @@ genuinely needs no doc edit, say why in the commit.
   (`sampleVias` → `routeVia`) so we follow Google's jam-avoiding path *with* full OSRM street-named
   steps. Multi-waypoint OSRM returns one leg per via with spurious `arrive`+`depart` at each boundary
   — `parseOsrmRoute` filters all but the true first-depart/last-arrive. Free-flow routes (the common
-  case) stay pure OSRM, untouched. The traffic-snapped route leads; OSRM's free-flow routes ride along
-  as the alternates; all get the `applyTraffic` ETA/colour overlay.
+  case) stay pure OSRM, untouched. The traffic-snapped route leads **only when it earns it** — its live
+  ETA must be ≤ OSRM free-flow best × `SNAP_ETA_MARGIN` (1.2), else a divergent-but-not-faster snap steps
+  aside for OSRM's clean route (fixed 2026-06-30 — the old code always led with the snap on divergence, the
+  "fucky reroute"). The `directions` diag logs `snapKept`/`gEta`/`osrmFF` to tune the margin from real
+  side-by-side data. Note: a true per-alternate re-rank is impossible — Google returns ONE live-traffic
+  figure, so `applyTraffic` scales every route by the same ratio and can't reorder the OSRM alternates.
+  OSRM's free-flow routes ride along as the alternates; all get the `applyTraffic` ETA/colour overlay.
 - **Why not "always snap to Google's path"?** (measured 2026-06-28, the serverless question.) Google's
   keyless **polyline is complete** (decoded from `root[0][7][i]`) even though its *step text* is
   abbreviated — so we *can* always trace it. But doing it cleanly needs **map-matching**, and the
