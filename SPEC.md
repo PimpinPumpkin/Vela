@@ -152,6 +152,27 @@ un-automatable → it's login/Android-app-only. We surface the typical spread (`
 above) as the honest keyless stand-in; a true per-minute ETA needs one captured real
 depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
 
+### Directions — untapped capabilities (observed on the wire, not from the binary)
+A running "port these into our own code" list, derived purely from the response we already receive
+(clean-room = protocol observation, never decompilation):
+- **Per-route in-traffic ETA → RE-RANK (DONE 2026-07-01).** Each route's `[10][0][0]` is *its own*
+  `duration_in_traffic` (not one shared figure — the earlier "can't re-rank" note was wrong). `directions()`
+  now sorts the returned list by it, so the fastest-right-now route leads, Google-style.
+- **Overall per-route traffic grade `[10][2]`** — a coarse congestion score per alternate; candidate for
+  colouring the ETA chip / a "heavy traffic" badge on a route without walking every span.
+- **Lane guidance inside Google's `<step>` markup** — Google's own per-step lane data (we currently take
+  lanes only from OSRM); worth capturing so the *Google-path* alternates get lane diagrams too.
+- **Route-preference request flags** (avoid tolls / highways / ferries) — `pb` REQUEST fields in
+  `DirectionsPb`, not response; a known-hard TODO, needs one captured toggle to pin the field.
+- **Not-yet-parsed response nodes:** route warnings/advisories, toll cost, per-step road-name/ref (would
+  give named turns without OSRM), and the rest of the `[10]` node beyond `[0]/[2]/[4]`.
+- **The nav "polish" is NOT in this protocol** — GPS-jitter attenuation, accelerometer-fused dead
+  reckoning, junk-fix rejection, buttery puck — that's client-side **sensor fusion** (Kalman/complementary
+  filter + IMU dead-reckoning + accuracy-gated outlier rejection + map-match smoothing), documented in
+  public literature, NOT Google's binary. Vela already does the biggest lever (map-match snap during nav);
+  the gaps (IMU dead-reckon, accuracy gating) build straight from raw `SensorManager`. Spec it from the
+  literature + on-device tuning when prioritised — no disassembly, fully portable.
+
 ### Traffic-aware path (option 3) — why dense-via, not map-matching (measured 2026-06-28)
 Google's `[0][7][i]` polyline is **complete** even when its steps are abbreviated (3.3 km of
 steps seen on a 6.4 km line), so we *can* trace Google's exact jam-avoiding path. The clean way
