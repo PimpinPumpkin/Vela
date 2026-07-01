@@ -135,7 +135,9 @@ fun StepsSheet(
                             m.road?.let {
                                 Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
                             }
-                            m.laneHint?.let {
+                            if (m.lanes.isNotEmpty()) {
+                                LaneDiagram(m.lanes, on = ink, modifier = Modifier.padding(top = 3.dp))
+                            } else m.laneHint?.let {
                                 Text(
                                     it,
                                     style = MaterialTheme.typography.bodySmall,
