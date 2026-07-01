@@ -264,21 +264,28 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   keyless `/maps/preview/directions` (OkHttp) on a 25-mi Seattle route: **423 KB, zero incident text**
   (no "crash"/"accident"/"construction"/"closure"/"closed" anywhere) and `route[3][5]` empty off-peak — so
   the OkHttp directions payload carries congestion grades but **no per-incident objects/text**. Three
-  candidate paths, none a clean autonomous ship:
-  1. **WebView directions payload** — the OkHttp feed is bot-degraded on this endpoint family (proven for
-     photos/transit/**popular-times**, where the WebView `APP_INITIALIZATION_STATE` had data OkHttp lacked).
-     Incidents may ride the driving-directions page the same way. *Most promising Google path*, but
-     unconfirmed (needs a WebView capture **with a live incident on the route** to prove) — same "needs one
-     real captured request" bucket as depart-time.
+  candidate paths:
+  1. **WebView / Google — CHOSEN by the user, then INVESTIGATED (2026-07-01): it bottoms out at binary
+     tiles, NOT a clean read.** Unlike photos/transit/popular-times (where the driving/transit page's
+     `APP_INITIALIZATION_STATE` carried the data OkHttp stripped), the **driving page state has no incidents
+     either** — captured it in the anonymous WebView twice (444 KB, then 471 KB), **zero incident text both
+     times**. Then intercepted the WebView's network (`shouldInterceptRequest`): the **only** traffic-related
+     requests are **`/maps/vt/…` — Google's proprietary binary vector tiles** (`/maps/vt/proto`,
+     `/maps/vt/pb=!…!2m2!1e1!…` = the traffic layer). So incidents render from the **`vt` tile stream**, which
+     is Google's own obfuscated protobuf (NOT standard MVT — MapLibre can't decode it). Getting incidents this
+     way = **fetch the route's `vt` traffic tiles + reverse-engineer their binary schema + track its changes**:
+     a large, fragile RE effort, the same "decode Google's `/maps/vt`" lift the route-naming note flags — an
+     order of magnitude more than the page-state reads, and it can break whenever Google reshapes the tile.
   2. **Open DOT / 511 incident feeds** — the **degoogled-pure** alternative (open government data, no Google
-     scrape): structured incidents w/ lat-lng, category, severity, headline. Fits Vela's ethos better than
-     scraping Google, and the user is in **WSDOT** territory (a well-documented free feed → live-testable).
-     Cost: feeds are **fragmented** (per-state/metro APIs, differing shapes) and often **token-gated** (free,
-     but a key → the optional-user-token model we use for `MAPTILER_KEY`, never committed). Pluggable
-     provider + start with one region (like the routing catalog grew), grow coverage over time.
+     scrape): structured incidents w/ lat-lng, category, severity, headline — **already JSON**, no binary RE.
+     Fits Vela's ethos better than scraping Google, and the user is in **WSDOT** territory (a well-documented
+     free feed → live-testable). Cost: feeds are **fragmented** (per-state/metro APIs, differing shapes) and
+     often **token-gated** (free, but a key → the optional-user-token model we use for `MAPTILER_KEY`, never
+     committed). Pluggable provider + start with one region (like the routing catalog grew), grow coverage.
   3. **Defer** — congestion colouring already covers "where's it slow"; discrete incidents are polish.
-  **Recommendation: decide the direction before building** (WebView-scrape vs open-feed is a
-  data-source/coverage/ethos/token fork). No half-built parser shipped; probe removed.
+  **Status: Google path's true cost now known (binary `vt`-tile RE, high + fragile). Given that, the
+  open-feed path is likely the pragmatic way to actually ship incidents despite its fragmentation — surfaced
+  to the user with the recalibrated tradeoff. All probes removed; nothing half-built shipped.**
 - **On-device map-matching (GraphHopper) — the "Google routes, the engine names the turns" unlock.**
   > **✅ SHIPPED as the OFFLINE ROUTER (2026-06-30)** — Phase 1 is done end-to-end + on a 137-region world
   > catalog (see "Recently shipped" up top, `SPEC.md` §Offline routing, `FEATURES.md`). This long entry is
