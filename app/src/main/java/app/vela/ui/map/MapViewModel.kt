@@ -951,6 +951,17 @@ class MapViewModel @Inject constructor(
         route(_state.value.travelMode)
     }
 
+    /** Move the stop at [index] by [delta] (−1 up / +1 down) and re-route through the new order. */
+    fun moveStop(index: Int, delta: Int) {
+        _state.update { s ->
+            val list = s.directionsWaypoints.toMutableList()
+            val to = index + delta
+            if (index in list.indices && to in list.indices) list.add(to, list.removeAt(index))
+            s.copy(directionsWaypoints = list)
+        }
+        route(_state.value.travelMode)
+    }
+
     /** Pick one of the alternate routes (drawn greyed on the map / listed in the
      *  directions panel) as the active one. A provisional Google alternate (polyline + ETA only) is
      *  NAMED here — the moment you pick it — so its turn-by-turn is ready by the time you hit Start. */
@@ -1055,7 +1066,12 @@ class MapViewModel @Inject constructor(
     private fun launchNav(route: app.vela.core.model.Route) {
         val dest = destination ?: route.polyline.lastOrNull() ?: return
         startLocation() // make sure live fixes are flowing — they drive the nav loop
-        navSession.start(route, dest, _state.value.selected?.name.orEmpty(), _state.value.selectedEngine?.packageName)
+        // Intermediate stops in travel order (reversed when the trip is reversed) → per-stop arrival cues +
+        // reroute-through-remaining.
+        val s = _state.value
+        val stops = s.directionsWaypoints.map { NavSession.NavStop(it.location, it.name) }
+            .let { if (s.directionsReversed) it.reversed() else it }
+        navSession.start(route, dest, s.selected?.name.orEmpty(), s.selectedEngine?.packageName, stops, s.travelMode)
         NavigationService.start(appContext)
         // Record this trip's GPS trace for later replay, if the user opted in. Read
         // the pref directly so it works even before Settings has been opened.
