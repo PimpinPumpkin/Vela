@@ -100,8 +100,14 @@ from the `directions` diag), offline highway refs (a graph rebuild — parked).
     address-snap / list-tap opens too, do a focused name lookup on open (the OkHttp focused
     search carries `[2][11][0]`; the WebView enrichment response does not).
   - *Medium — a separate keyless RPC:* **Q&A** (questions & answers),
-    **"mentioned in reviews" topic chips** / review keyword summary, **photo
-    categories** (menu / food / vibe tabs in the gallery).
+    **"mentioned in reviews" topic chips** / review keyword summary.
+    ~~**photo categories** (menu / food / vibe tabs in the gallery)~~ — **DONE 2026-07-01**: the tabs are in
+    the `?cid=` page DOM, so `WebPhotoFetcher` visits each category tab + tags photos, and the sheet shows
+    All/Menu/Food&drink/Vibe filter chips (`Photo.category`/`Place.photoCategories`). Device-verified.
+  - *Photo posted-dates — DEFERRED (triaged 2026-07-01):* gallery TILES (`.aHpZye`) carry only the image
+    URL; the date ("Photo - Dec 2022") is only shown for a **focused** photo (lightbox), so per-photo dates
+    would need opening each in the lightbox (N interactions). Low yield; `Photo.postedText` + the viewer's
+    date caption already exist (unused) for if a per-tile date source ever appears.
   - *App-level:* ~~**multi-stop directions** (waypoints)~~ — **DONE 2026-07-01** (an "Add stop" row in the
     directions panel; routes OSRM straight through the stops via `routeVia` + Google traffic ratio, single
     route; device-verified). ~~Follow-ups: per-stop arrival announcement, reorder, reroute-through-remaining~~
