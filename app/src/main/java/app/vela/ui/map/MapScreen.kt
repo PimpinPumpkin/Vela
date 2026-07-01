@@ -319,6 +319,8 @@ fun MapScreen(
                 lanes = shown?.lanes.orEmpty(),
                 nextText = next?.instruction,
                 nextType = next?.type,
+                nextRef = next?.ref,
+                nextDistanceMeters = next?.distanceMeters,
                 previewing = previewing,
                 onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
                 onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },

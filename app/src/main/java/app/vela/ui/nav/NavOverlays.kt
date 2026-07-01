@@ -74,6 +74,8 @@ fun ManeuverBanner(
     lanes: List<Lane> = emptyList(),
     nextText: String? = null,
     nextType: ManeuverType? = null,
+    nextRef: String? = null,
+    nextDistanceMeters: Double? = null,
     previewing: Boolean = false,
     onPreviewNext: () -> Unit = {},
     onPreviewPrev: () -> Unit = {},
@@ -161,8 +163,12 @@ fun ManeuverBanner(
                 Spacer(Modifier.height(10.dp))
                 LaneGuide(it, type)
             }
-            if (nextText != null && nextType != null) {
+            // Compound "then <next>" preview — only when the next maneuver CLOSELY follows this one
+            // (Google shows it only for back-to-back turns like "exit, then keep right"). Showing it for a
+            // maneuver miles ahead is the same noise as lanes-too-early. Includes the next step's shield.
+            if (nextText != null && nextType != null && isCompoundNext(nextDistanceMeters)) {
                 Spacer(Modifier.height(8.dp))
+                val nextSigns = roadSigns(nextText, nextRef)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         "then",
@@ -172,7 +178,8 @@ fun ManeuverBanner(
                     Spacer(Modifier.width(8.dp))
                     Icon(maneuverIcon(nextType), contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(nextText, style = MaterialTheme.typography.bodyMedium)
+                    nextSigns.firstOrNull()?.let { SignChip(it); Spacer(Modifier.width(6.dp)) }
+                    Text(nextText, style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
             }
             if (previewing) {
@@ -190,6 +197,14 @@ fun ManeuverBanner(
 // Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
 private const val LANE_SHOW_M = 800.0
+
+// A "then <next>" compound preview only makes sense when the next maneuver closely follows this one
+// (~0.3 mi) — an exit-then-merge, not a turn 5 miles later. Matches Google's compound-maneuver treatment.
+private const val COMPOUND_M = 500.0
+
+/** True when the next maneuver follows closely enough to show the compound "then …" preview. */
+internal fun isCompoundNext(nextDistanceMeters: Double?): Boolean =
+    nextDistanceMeters != null && nextDistanceMeters <= COMPOUND_M
 
 private val EXIT_RE = Regex("""\bexit\s+(\w[\w-]*)""", RegexOption.IGNORE_CASE)
 // I / US / SR / Hwy (space or dash), plus any 2-letter-DASH-number for state/provincial routes
