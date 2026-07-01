@@ -17,6 +17,8 @@ data class Maneuver(
     val distanceMeters: Double,   // length of the step that ENDS at this maneuver
     val durationSeconds: Double,
     val road: String? = null,     // road being entered, for "… onto Elm Street"
+    val ref: String? = null,      // highway ref of the road entered ("I 80") for the shield badge —
+                                  // separate from [road] because a highway can have a name AND a ref
     val laneHint: String? = null, // e.g. "Use the right 2 lanes" (from Google's step markup)
 )
 

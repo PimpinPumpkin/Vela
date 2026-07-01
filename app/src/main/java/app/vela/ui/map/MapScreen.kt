@@ -314,6 +314,7 @@ fun MapScreen(
                 text = if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText,
                 distanceMeters = if (previewing) (shown?.distanceMeters ?: 0.0) else state.nav.distanceToNextManeuver,
                 type = shown?.type ?: ManeuverType.STRAIGHT,
+                ref = shown?.ref,
                 laneHint = shown?.laneHint,
                 nextText = next?.instruction,
                 nextType = next?.type,
