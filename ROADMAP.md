@@ -255,6 +255,27 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   (Bay-Bridge approach = one long level-2 span). The whole-map raster stays off during
   nav — the route now carries the traffic, like Google. *(Level→colour mapping is the
   best read of the 1/2 grades seen; trivially flipped if a heavy drive shows otherwise.)*
+- **Individual traffic incidents (crashes / construction / closures) — INVESTIGATED 2026-07-01, no clean
+  keyless source yet.** Google shows discrete incident icons/cards ("Crash ahead", "Road closed"); Vela
+  today has only the aggregate **congestion spans** (`route[3][5]`, per-segment colour). Probed the raw
+  keyless `/maps/preview/directions` (OkHttp) on a 25-mi Seattle route: **423 KB, zero incident text**
+  (no "crash"/"accident"/"construction"/"closure"/"closed" anywhere) and `route[3][5]` empty off-peak — so
+  the OkHttp directions payload carries congestion grades but **no per-incident objects/text**. Three
+  candidate paths, none a clean autonomous ship:
+  1. **WebView directions payload** — the OkHttp feed is bot-degraded on this endpoint family (proven for
+     photos/transit/**popular-times**, where the WebView `APP_INITIALIZATION_STATE` had data OkHttp lacked).
+     Incidents may ride the driving-directions page the same way. *Most promising Google path*, but
+     unconfirmed (needs a WebView capture **with a live incident on the route** to prove) — same "needs one
+     real captured request" bucket as depart-time.
+  2. **Open DOT / 511 incident feeds** — the **degoogled-pure** alternative (open government data, no Google
+     scrape): structured incidents w/ lat-lng, category, severity, headline. Fits Vela's ethos better than
+     scraping Google, and the user is in **WSDOT** territory (a well-documented free feed → live-testable).
+     Cost: feeds are **fragmented** (per-state/metro APIs, differing shapes) and often **token-gated** (free,
+     but a key → the optional-user-token model we use for `MAPTILER_KEY`, never committed). Pluggable
+     provider + start with one region (like the routing catalog grew), grow coverage over time.
+  3. **Defer** — congestion colouring already covers "where's it slow"; discrete incidents are polish.
+  **Recommendation: decide the direction before building** (WebView-scrape vs open-feed is a
+  data-source/coverage/ethos/token fork). No half-built parser shipped; probe removed.
 - **On-device map-matching (GraphHopper) — the "Google routes, the engine names the turns" unlock.**
   > **✅ SHIPPED as the OFFLINE ROUTER (2026-06-30)** — Phase 1 is done end-to-end + on a 137-region world
   > catalog (see "Recently shipped" up top, `SPEC.md` §Offline routing, `FEATURES.md`). This long entry is
