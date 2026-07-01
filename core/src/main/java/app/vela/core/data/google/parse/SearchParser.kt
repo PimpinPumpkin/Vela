@@ -259,8 +259,14 @@ object SearchParser {
         val arr = days.arr() ?: return emptyList()
         return arr.mapNotNull { day ->
             val name = day.at(0).str() ?: return@mapNotNull null
-            val hrs = day.at(3, 0, 0).str() ?: return@mapNotNull null
-            "$name: $hrs"
+            // day[3] = ALL of the date's ranges, each `[text, [[openH],[closeH]]]`; join them — we used to read
+            // only the first, so a split-shift day ("9 AM–12 PM, 1–5 PM") showed just the morning. Google bakes
+            // HOLIDAY hours straight into day[3] (Jul 4 → "Closed"), and day[6][1] carries the label
+            // ("4th of July") — surface it after a " · " (OpeningHours strips it before parsing the times).
+            val hrs = day.at(3).arr()?.mapNotNull { it.at(0).str()?.ifBlank { null } }
+                ?.joinToString(", ")?.ifBlank { null } ?: return@mapNotNull null
+            val note = day.at(6, 1).str()?.ifBlank { null }
+            if (note != null) "$name: $hrs · $note" else "$name: $hrs"
         }
     }
 
