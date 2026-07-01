@@ -1,6 +1,7 @@
 package app.vela.ui.nav
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -37,12 +38,16 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.vela.core.model.Lane
 import app.vela.core.model.ManeuverType
 import app.vela.ui.SheetPalette
 import app.vela.ui.formatArrivalClock
@@ -66,6 +71,7 @@ fun ManeuverBanner(
     type: ManeuverType = ManeuverType.STRAIGHT,
     ref: String? = null,
     laneHint: String? = null,
+    lanes: List<Lane> = emptyList(),
     nextText: String? = null,
     nextType: ManeuverType? = null,
     previewing: Boolean = false,
@@ -143,7 +149,12 @@ fun ManeuverBanner(
                     Text(text.ifEmpty { "Continue" }, style = MaterialTheme.typography.bodyLarge)
                 }
             }
-            laneHint?.let {
+            // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
+            // THIS turn highlighted) when we have it; else the old count-based hint from Google markup.
+            if (lanes.isNotEmpty()) {
+                Spacer(Modifier.height(10.dp))
+                LaneDiagram(lanes)
+            } else laneHint?.let {
                 Spacer(Modifier.height(10.dp))
                 LaneGuide(it, type)
             }
@@ -253,6 +264,83 @@ private fun LaneGuide(hint: String, type: ManeuverType) {
 private fun laneArrowCount(hint: String): Int {
     val n = Regex("\\d+").find(hint)?.value?.toIntOrNull()
     return (n ?: if (hint.contains("any", ignoreCase = true)) 2 else 1).coerceIn(1, 3)
+}
+
+/** Google-style lane diagram: one cell per approach lane, drawn in road order, each showing the
+ *  arrow(s) that lane permits. Lanes that serve THIS maneuver ([Lane.valid]) are bright; the rest are
+ *  dimmed — so you can see which lane to be in. Data is OSRM's per-lane `indications`/`valid`. */
+@Composable
+internal fun LaneDiagram(
+    lanes: List<Lane>,
+    on: Color = MaterialTheme.colorScheme.onPrimaryContainer,
+    modifier: Modifier = Modifier,
+) {
+    val bright = on
+    val dim = on.copy(alpha = 0.28f)
+    Surface(color = on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
+        Row(
+            Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            lanes.take(8).forEach { lane ->
+                val c = if (lane.valid) bright else dim
+                Canvas(Modifier.size(width = 20.dp, height = 26.dp)) {
+                    val inds = lane.indications.ifEmpty { listOf("straight") }
+                    // arrows share a base, so multiple indications read as one shaft that forks
+                    inds.distinct().forEach { laneArrow(it, c) }
+                }
+            }
+        }
+    }
+}
+
+/** Draw one lane arrow (shaft from the bottom, bending to the indicated direction, with a head). */
+private fun DrawScope.laneArrow(indication: String, color: Color) {
+    val w = size.width
+    val h = size.height
+    val baseX = w / 2f
+    val baseY = h * 0.92f
+    val bendY = h * 0.46f
+    val stroke = w * 0.12f
+    val deg = when (indication.trim().lowercase().replace('_', ' ')) {
+        "straight", "none", "" -> 0f
+        "slight right" -> 32f
+        "slight left" -> -32f
+        "right" -> 66f
+        "left" -> -66f
+        "sharp right" -> 108f
+        "sharp left" -> -108f
+        "uturn" -> 155f
+        "merge to left" -> -32f
+        "merge to right" -> 32f
+        else -> 0f
+    }
+    val a = Math.toRadians(deg.toDouble())
+    val headLen = h * 0.40f
+    val tip = Offset(
+        baseX + (kotlin.math.sin(a) * headLen).toFloat(),
+        bendY - (kotlin.math.cos(a) * headLen).toFloat(),
+    )
+    if (deg == 0f) {
+        drawLine(color, Offset(baseX, baseY), tip, stroke, cap = StrokeCap.Round)
+    } else {
+        drawLine(color, Offset(baseX, baseY), Offset(baseX, bendY), stroke, cap = StrokeCap.Round)
+        drawLine(color, Offset(baseX, bendY), tip, stroke, cap = StrokeCap.Round)
+    }
+    // arrowhead: two barbs pointing back along the head direction
+    val barb = w * 0.30f
+    listOf(150.0, -150.0).forEach { d ->
+        val ba = a + Math.toRadians(d)
+        drawLine(
+            color, tip,
+            Offset(
+                tip.x + (kotlin.math.sin(ba) * barb).toFloat(),
+                tip.y - (kotlin.math.cos(ba) * barb).toFloat(),
+            ),
+            stroke, cap = StrokeCap.Round,
+        )
+    }
 }
 
 /** Bottom bar during navigation: remaining time/distance + an End button. */

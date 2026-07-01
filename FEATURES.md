@@ -180,11 +180,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   few metres from the outbound leg made the global-nearest collapse "remaining" to almost-
   arrived while the next turn read crow-flies-huge — the test-drive's "51 mi to turn · 0.3
   mi remaining". *(2026-06-21; unit-tested with a hairpin route — `remainingStaysHonest…`; **verified on-device** on a real 14.5-mi route: `remaining` counted down 14.5→11.9 mi monotonically with 0 violations across 75 nav updates, next-turn always ≪ remaining.)*
-- ✅ **Lane guidance** — Google's lane hints ("Use the right 2 lanes to turn") are
-  pulled out of the step markup into their own field; the nav banner renders them as
-  a **strip of turn-direction arrows** (one per indicated lane) + the hint text, and
-  the step list shows them highlighted (the main instruction stays clean: "Turn right
-  onto …")
+- ✅ **Lane guidance — real per-lane diagram** (2026-06-30). OSRM gives true per-lane data
+  (`intersections[0].lanes`: each lane's permitted arrows + whether it serves this maneuver), so the nav
+  banner **and** the step list now draw a **Google-style lane diagram** — one cell per approach lane in
+  road order, each with Canvas-drawn arrow(s) for what it allows, the lanes for THIS turn **bright** and
+  the rest **dimmed** (`NavOverlays.LaneDiagram`/`laneArrow`, `Maneuver.lanes`). On-device verified: a
+  "Keep slight left toward I 5 South" step shows a bright straight arrow + a dimmed slight-right, with the
+  I-5 shield. *(The older count-based strip from Google's "Use the right 2 lanes" hint is kept as the
+  fallback for the OSRM-unreachable path; the main instruction stays clean — "Turn right onto …".)*
 - ✅ **Highway/exit signage with real shield shapes** — route refs ("I-80 E", "US-50 E",
   "CA-99", "ON-401") and exit numbers ("Exit 4A") are parsed out of each instruction and
   rendered as Google-style badges: a **green exit tab** plus the **actual route-shield
