@@ -180,7 +180,11 @@ genuinely needs no doc edit, say why in the commit.
   "fucky reroute"). The `directions` diag logs `snapKept`/`gEta`/`osrmFF` to tune the margin from real
   side-by-side data. Note: a true per-alternate re-rank is impossible — Google returns ONE live-traffic
   figure, so `applyTraffic` scales every route by the same ratio and can't reorder the OSRM alternates.
-  OSRM's free-flow routes ride along as the alternates; all get the `applyTraffic` ETA/colour overlay.
+  **Alternates = GOOGLE's own alternate routes (2026-06-30):** we fetch all of Google's routes but used
+  only the top; `directions()` now snaps EACH distinct one (`routeVia`, guarded to reach dest), overlays
+  its ETA, `dedupeRoutes`, prefers them over OSRM's free-flow alts, caps at `MAX_ROUTES`=4. (Naming still
+  via the snap; planned = name-on-pick + on-device map-match [GraphHopper where the region's downloaded,
+  else the loaded vector tiles' road names] — "GraphHopper everywhere" is impossible, it needs the graph.)
 - **Why not "always snap to Google's path"?** (measured 2026-06-28, the serverless question.) Google's
   keyless **polyline is complete** (decoded from `root[0][7][i]`) even though its *step text* is
   abbreviated — so we *can* always trace it. But doing it cleanly needs **map-matching**, and the
