@@ -60,7 +60,7 @@ class WebPhotoFetcher @Inject constructor(
 
     /** The gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL (no posted date from a
      *  DOM scrape) — or empty on any failure. [count] caps how many we keep. */
-    suspend fun fetch(featureId: String, count: Int = 50): List<Photo> {
+    suspend fun fetch(featureId: String, count: Int = 80): List<Photo> {
         val cid = cidOf(featureId) ?: return emptyList()
         return mutex.withLock {
             val id = "p" + seq.incrementAndGet()
@@ -92,12 +92,13 @@ class WebPhotoFetcher @Inject constructor(
             }
             // Each line is "category\turl" (category "" = uncategorized/All). Category-scraping tags each
             // photo with its gallery tab (Menu / Food & drink / Vibe / By owner / …).
-            raw?.split("\n")?.mapNotNull { line ->
+            val out = raw?.split("\n")?.mapNotNull { line ->
                 if (line.isBlank()) return@mapNotNull null
                 val tab = line.indexOf('\t')
                 if (tab < 0) Photo(upsize(line.trim()))
                 else Photo(upsize(line.substring(tab + 1).trim()), category = line.substring(0, tab).trim().ifBlank { null })
             } ?: emptyList()
+            out
         }
     }
 
@@ -119,6 +120,13 @@ class WebPhotoFetcher @Inject constructor(
         wv.settings.domStorageEnabled = true
         wv.settings.userAgentString = VelaConfig.USER_AGENT
         wv.addJavascriptInterface(Bridge(), "VelaBridge")
+        // Real offscreen viewport — the category grids are VIRTUALIZED (like the reviews list); at 0×0 a
+        // category tab renders only ~1 tile, so a tall viewport is what makes each category populate fully.
+        wv.measure(
+            android.view.View.MeasureSpec.makeMeasureSpec(WV_WIDTH, android.view.View.MeasureSpec.EXACTLY),
+            android.view.View.MeasureSpec.makeMeasureSpec(WV_HEIGHT, android.view.View.MeasureSpec.EXACTLY),
+        )
+        wv.layout(0, 0, WV_WIDTH, WV_HEIGHT)
         webView = wv
         return wv
     }
@@ -142,17 +150,21 @@ class WebPhotoFetcher @Inject constructor(
               function clickExact(name){ var bs=[].slice.call(document.querySelectorAll('[role="tab"],button,a')); for(var i=0;i<bs.length;i++){ if((((bs[i].getAttribute('aria-label')||bs[i].textContent)||'').trim())===name){ try{ bs[i].click(); }catch(e){} return; } } }
               function clickPhotos(){ var bs=[].slice.call(document.querySelectorAll('button,a')); for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase(); if((/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l)) && !/street ?view|review|profile|video/.test(l)){ try{ bs[i].click(); }catch(e){} return; } } }
               function scroll(){ try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){ if(d.scrollHeight>d.clientHeight+300 && d.clientHeight>200) d.scrollTop=d.scrollHeight; }); }catch(e){} }
-              function tabsNow(){ var out=[]; [].slice.call(document.querySelectorAll('[role="tab"],button,a')).forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<24 && CATRE.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
+              // A real category tab is a clean name ("Menu", "Food & drink", "By owner") — EXCLUDE photo
+              // captions that also start with a category word ("Menu · Photo 1 of 12") via the ·/digit/photo test.
+              function tabsNow(){ var out=[]; [].slice.call(document.querySelectorAll('[role="tab"],button,a')).forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<20 && CATRE.test(t) && /^[a-z &]+${'$'}/i.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
               function finish(){ var lines=[]; for(var k in acc) lines.push((acc[k].c||'')+'\t'+acc[k].u); try{ VelaBridge.onResult(ID, lines.slice(0,CAP).join("\n")); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
               function tick(){
                 tries++;
                 if(phase===0){ clickPhotos(); scroll(); if(tries>=3){ cats=tabsNow(); ci=0; sub=0; phase=1; } }
                 else if(phase===1){
                   if(ci>=cats.length){ phase=2; sub=0; }
-                  else { if(sub===0) clickExact(cats[ci]); scroll(); sub++; if(sub>=4){ collect(cats[ci]); ci++; sub=0; } }
+                  // Per tab: click it, then scroll + COLLECT each tick (accumulate the grid across scroll
+                  // positions — it virtualizes, so one collect misses most), for ~5 ticks, then next tab.
+                  else { if(sub===0) clickExact(cats[ci]); scroll(); if(sub>=2) collect(cats[ci]); sub++; if(sub>=6){ ci++; sub=0; } }
                 }
-                else { clickExact('All'); scroll(); collect(''); sub++; if(sub>=3){ finish(); return; } }
-                if(tries>46){ collect(''); finish(); return; }
+                else { clickExact('All'); scroll(); collect(''); sub++; if(sub>=4){ finish(); return; } }
+                if(tries>58){ collect(''); finish(); return; }
                 setTimeout(tick, 500);
               }
               tick();
@@ -161,8 +173,12 @@ class WebPhotoFetcher @Inject constructor(
     }
 
     private companion object {
-        const val TOTAL_TIMEOUT_MS = 24_000L
+        // Longer than before: with a viewport + per-category scraping there are more tabs × ticks to walk.
+        const val TOTAL_TIMEOUT_MS = 30_000L
         const val SETTLE_MS = 1_200L
         const val MAX_LOAD_MS = 7_000L
+        // Offscreen viewport so the virtualized category grids render a full batch (not ~1 tile).
+        const val WV_WIDTH = 1200
+        const val WV_HEIGHT = 3200
     }
 }
