@@ -316,6 +316,7 @@ fun MapScreen(
                 type = shown?.type ?: ManeuverType.STRAIGHT,
                 ref = shown?.ref,
                 laneHint = shown?.laneHint,
+                lanes = shown?.lanes.orEmpty(),
                 nextText = next?.instruction,
                 nextType = next?.type,
                 previewing = previewing,

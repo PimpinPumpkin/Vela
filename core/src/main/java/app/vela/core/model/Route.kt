@@ -20,7 +20,13 @@ data class Maneuver(
     val ref: String? = null,      // highway ref of the road entered ("I 80") for the shield badge —
                                   // separate from [road] because a highway can have a name AND a ref
     val laneHint: String? = null, // e.g. "Use the right 2 lanes" (from Google's step markup)
+    val lanes: List<Lane> = emptyList(), // per-lane turn guidance (from OSRM) for the Google-style diagram
 )
+
+/** One approach lane's turn guidance: the arrow directions it permits ([indications], OSRM's set —
+ *  "straight", "left", "slight right", "sharp left", "uturn", "none", …) and whether it's a valid lane
+ *  for THIS maneuver ([valid] → drawn bright/highlighted; the others dimmed). */
+data class Lane(val indications: List<String>, val valid: Boolean)
 
 data class RouteLeg(
     val distanceMeters: Double,
