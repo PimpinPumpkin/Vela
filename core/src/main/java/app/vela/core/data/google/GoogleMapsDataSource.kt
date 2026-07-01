@@ -240,9 +240,14 @@ class GoogleMapsDataSource @Inject constructor(
                 // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
                 // route you don't take. Google's routes already carry duration_in_traffic + congestion spans.
                 val googleAlts = google.drop(1).filter { it.polyline.size >= 5 }.map { it.copy(provisional = true) }
-                // Lead with the named primary; then prefer Google's alternates; then OSRM's free-flow ones fill
-                // any remaining slots. Deduped by path + capped so the picker stays short.
-                dedupeRoutes(listOf(primary.first()) + googleAlts + primary.drop(1)).take(MAX_ROUTES)
+                // Rank by live in-traffic ETA so the FASTEST-right-now route leads (Google-style). This is
+                // possible because each Google alternate carries its OWN duration_in_traffic (parseRoute reads
+                // summary[10][0][0] per route in root[0][1]) — real per-route traffic, not one scaled figure.
+                // Dedupe by path (keeps the fastest of look-alikes) + cap so the picker stays short.
+                dedupeRoutes(
+                    (listOf(primary.first()) + googleAlts + primary.drop(1))
+                        .sortedBy { it.durationInTrafficSeconds ?: it.durationSeconds },
+                ).take(MAX_ROUTES)
             }
         }
     }
