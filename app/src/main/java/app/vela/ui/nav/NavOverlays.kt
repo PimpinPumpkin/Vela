@@ -64,6 +64,7 @@ fun ManeuverBanner(
     text: String,
     distanceMeters: Double,
     type: ManeuverType = ManeuverType.STRAIGHT,
+    ref: String? = null,
     laneHint: String? = null,
     nextText: String? = null,
     nextType: ManeuverType? = null,
@@ -131,7 +132,7 @@ fun ManeuverBanner(
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
                     )
-                    val signs = roadSigns(text)
+                    val signs = roadSigns(text, ref)
                     if (signs.isNotEmpty()) {
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -181,14 +182,19 @@ private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|[A-Za-z
 /** A highway shield or exit tab extracted from an instruction. */
 internal data class Sign(val isExit: Boolean, val label: String)
 
-/** Pull route shields ("I-80 E") and the exit tab ("Exit 71") out of an
- *  instruction so they can be rendered as Google-style badges. */
-internal fun roadSigns(text: String): List<Sign> {
+/** Pull route shields ("I-80 E") and the exit tab ("Exit 71") out of an instruction so they can be
+ *  rendered as Google-style badges. [explicitRef] is the maneuver's own ref field (OSRM's `ref`): a
+ *  highway can have a NAME in the text and a ref that never appears there ("Continue onto Yolo Causeway",
+ *  ref "I 80"), so pass it to still get the shield. */
+internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
     val seen = HashSet<String>()
     val out = ArrayList<Sign>()
     EXIT_RE.find(text)?.let {
         val label = "Exit ${it.groupValues[1]}"
         if (seen.add(label.lowercase())) out.add(Sign(isExit = true, label = label))
+    }
+    explicitRef?.trim()?.replace(Regex("\\s+"), " ")?.uppercase()?.takeIf { it.isNotBlank() }?.let {
+        if (seen.add(it.lowercase())) out.add(Sign(isExit = false, label = it))
     }
     ROUTE_RE.findAll(text).forEach { m ->
         val label = m.value.trim().replace(Regex("\\s+"), " ").uppercase()
