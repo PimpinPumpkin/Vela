@@ -251,8 +251,12 @@ must fit one region's monolithic graph; cross-region falls online.
   `WebReviewsFetcher`**; a rendered page is far harder to bot-degrade than a naked RPC POST.
   ~9–25 photos/place, on-device-verified; a shimmer row (`MapState.photosLoading`) shows while
   it's in flight. Gotchas: desktop UA (mobile → `intent://`), block non-http(s) redirects,
-  `Handler` not `View.postDelayed` (headless WebView never attaches). No posted-date or
-  contributor name from a DOM scrape (those were `hspqX`-only fields).
+  `Handler` not `View.postDelayed` (headless WebView never attaches). No contributor name from a DOM
+  scrape (that was an `hspqX`-only field). **Categories (2026-07-01):** Google keeps the gallery tabs
+  (Menu / Food & drink / Vibe / By owner) in the `?cid=` DOM, so the scraper **visits each tab** (click →
+  scroll → tag its photos) then sweeps "All" for the rest, returning `category⇥url` lines → `Photo.category`
+  / index-aligned `Place.photoCategories` → filter chips on the sheet. **Posted-dates deferred:** the tiles
+  carry only the URL; the date is per-**focused** photo (lightbox), too costly to harvest per tile.
 - **Transit**: a plain keyless transit request is silently downgraded to *driving*, so
   `app/web/WebDirectionsFetcher` navigates the `/maps/dir/…/data=…!3e3` page and reads
   `window.APP_INITIALIZATION_STATE`. The payload is the **longest** `)]}'`-guarded
