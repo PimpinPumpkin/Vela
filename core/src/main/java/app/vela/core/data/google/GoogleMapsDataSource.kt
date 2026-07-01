@@ -204,16 +204,28 @@ class GoogleMapsDataSource @Inject constructor(
             // GraphHopper graph, if one covers this area. No traffic offline, but complete named turns.
             val onDevice = if (open.isEmpty() && trafficRoute == null && routeEngine.isReady(mode))
                 routeEngine.route(origin, destination, mode) else emptyList()
+            // Lead with Google's jam-avoiding path (option 3) only when it EARNS it: its live in-traffic
+            // ETA is within a small margin of OSRM's FREE-FLOW best, so even Google's detour is time-
+            // competitive → the jam is real. The old code led with the snap on ANY >700 m divergence, so a
+            // longer/wonky snapped path could win even when it wasn't faster (the "fucky reroute"); now such
+            // a snap steps aside for OSRM's clean route. (A true per-alternate re-rank isn't possible: Google
+            // hands back ONE live-traffic figure, so applyTraffic scales every route by the same ratio and
+            // can't reorder the OSRM alternates — this ETA gate is the meaningful lever.)
+            val googleEtaS = gTop?.durationInTrafficSeconds ?: gTop?.durationSeconds
+            val snapWorthIt = trafficRoute != null && open.isNotEmpty() && googleEtaS != null &&
+                googleEtaS <= open.first().durationSeconds * SNAP_ETA_MARGIN
             diag.record(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
                     "google ${google.size} (traffic=${gTop?.durationInTrafficSeconds != null}); " +
-                    "rerouted=${trafficRoute != null}; onDevice=${onDevice.size}",
+                    "rerouted=${trafficRoute != null} snapKept=$snapWorthIt " +
+                    "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s); " +
+                    "onDevice=${onDevice.size}",
                 "",
             )
             when {
-                // Traffic-smart route first, OSRM's free-flow routes kept as the alternates.
-                trafficRoute != null -> (listOf(trafficRoute) + open).map { applyTraffic(it, gTop) }
+                // Google's traffic-smart route leads only when it's worth it; OSRM routes are the alternates.
+                snapWorthIt -> (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop) }
                 open.isNotEmpty() -> open.map { applyTraffic(it, gTop) }
                 onDevice.isNotEmpty() -> onDevice // offline, on-device route (no live-traffic overlay)
                 else -> google // everything unreachable → Google's abbreviated route beats nothing
@@ -312,5 +324,9 @@ class GoogleMapsDataSource @Inject constructor(
         // viewport-driven and needs one. Callers normally pass the real location.
         val DEFAULT_VIEWPORT = LatLng(37.7749, -122.4194)
         const val PHOTO_COUNT = 50 // gallery page size for the hspqX request
+        // Follow Google's jam-avoiding reroute only if its live ETA is within this ×OSRM-free-flow-best
+        // (its detour is time-competitive with OSRM's ideal → the jam justifies the reroute). Tunable from
+        // real side-by-side data — the `directions` diag logs gEta/osrmFF so the threshold can be pinned.
+        const val SNAP_ETA_MARGIN = 1.2
     }
 }
