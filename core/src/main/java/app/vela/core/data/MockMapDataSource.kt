@@ -59,6 +59,7 @@ class MockMapDataSource @Inject constructor() : MapDataSource {
         origin: LatLng,
         destination: LatLng,
         mode: TravelMode,
+        waypoints: List<LatLng>,
     ): List<Route> {
         delay(220)
         // A simple L-shaped path: straight, one turn, arrive. Enough geometry

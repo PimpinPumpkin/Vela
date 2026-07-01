@@ -96,8 +96,10 @@ from the `directions` diag), offline highway refs (a graph rebuild — parked).
   - *Medium — a separate keyless RPC:* **Q&A** (questions & answers),
     **"mentioned in reviews" topic chips** / review keyword summary, **photo
     categories** (menu / food / vibe tabs in the gallery).
-  - *App-level:* **multi-stop directions** (waypoints), **avoid tolls/highways**
-    (a directions-`pb` options field — see Known-hard), **explicit lists/labels** for
+  - *App-level:* ~~**multi-stop directions** (waypoints)~~ — **DONE 2026-07-01** (an "Add stop" row in the
+    directions panel; routes OSRM straight through the stops via `routeVia` + Google traffic ratio, single
+    route; device-verified). Follow-ups: per-stop arrival announcement, reorder, reroute-through-remaining.
+    **avoid tolls/highways** (a directions-`pb` options field — see Known-hard), **explicit lists/labels** for
     saved places.
   - *Not feasible keyless / out of scope:* Street View (key-gated — see Known-hard),
     satellite imagery (no open keyless source), account features (your contributions,

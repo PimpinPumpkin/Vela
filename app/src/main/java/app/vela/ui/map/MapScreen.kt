@@ -189,7 +189,7 @@ fun MapScreen(
     // The search overlay is open when the field is focused OR we're picking a custom
     // directions origin (which opens the same overlay WITHOUT focusing the field — so
     // we can't rely on clearFocus() to close it; pick-mode is reset explicitly instead).
-    val searchOpen = searchFocused || state.pickingOrigin
+    val searchOpen = searchFocused || state.pickingOrigin || state.pickingStop
     var metersPerPixel by remember { mutableStateOf(0.0) }
     val focusManager = LocalFocusManager.current
 
@@ -204,7 +204,7 @@ fun MapScreen(
             (state.results.isNotEmpty() && !state.resultsCollapsed),
     ) {
         when {
-            searchOpen -> { focusManager.clearFocus(); vm.cancelPickOrigin() }
+            searchOpen -> { focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
@@ -361,7 +361,7 @@ fun MapScreen(
                         onOpenSettings = onOpenSettings,
                         onClear = vm::clearSearch,
                         onFocusChange = { searchFocused = it },
-                        onBack = if (searchOpen) ({ focusManager.clearFocus(); vm.cancelPickOrigin() }) else null,
+                        onBack = if (searchOpen) ({ focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
                     )
                     when {
                         searchOpen -> SearchEntryContent(
@@ -548,6 +548,9 @@ fun MapScreen(
                 // where the editable endpoint sits). Both open the search to pick a place.
                 onEditOrigin = if (state.directionsReversed) null else vm::beginPickOrigin,
                 onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else null,
+                stops = state.directionsWaypoints.map { it.name },
+                onAddStop = vm::beginPickStop,
+                onRemoveStop = vm::removeStop,
                 onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
