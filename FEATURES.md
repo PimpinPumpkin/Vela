@@ -2,6 +2,20 @@
 
 Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
+> **At a glance** (jump to a section for the detail). For *how* each of these works and the code
+> behind it, see the "How it works" table in [`README.md`](README.md#how-it-works--each-capability-and-the-method-behind-it).
+>
+> | Area | The short version |
+> |---|---|
+> | [Map & rendering](#map--rendering) | Keyless OpenFreeMap/Protomaps vector tiles, Google-style POI markers, hillshade, in-app light/dark, scale bar |
+> | [Search & POIs](#search--pois-live-google-data) | Live keyless Google search — name/rating/reviews/hours/price/website/photos/popular-times/"people also search for" |
+> | [Routing & traffic](#routing--traffic) | OSRM turn-by-turn (primary) + Google traffic ETA & jam reroute; alternates; **offline on-device routing** (137-region world catalog) |
+> | [Navigation](#navigation) | Maneuver banner with a real lane diagram + highway shields, spoken + haptic guidance, speedometer, re-center, arrival summary |
+> | [Location](#location-degoogled) | AOSP LocationManager + rotation-vector heading — no GMS/Fused |
+> | [Offline](#offline) | Downloadable basemap tiles + OSM POI index + routing graphs; combined map+routing area download |
+> | [Platform](#platform--distribution) | GrapheneOS/no-GMS, CI-signed `v0.2.<run>` releases, Obtainium |
+> | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices — hot-fix drift without an app update |
+
 ## Map & rendering
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
 - ✅ Detailed open basemap: bundled OpenFreeMap Liberty + injected house numbers at z17; OpenMapTiles vector source pinned to OpenFreeMap's **versioned** tile path (the un-versioned path serves empty tiles — that was a blank-map bug)
