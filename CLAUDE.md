@@ -180,11 +180,16 @@ genuinely needs no doc edit, say why in the commit.
   "fucky reroute"). The `directions` diag logs `snapKept`/`gEta`/`osrmFF` to tune the margin from real
   side-by-side data. Note: a true per-alternate re-rank is impossible — Google returns ONE live-traffic
   figure, so `applyTraffic` scales every route by the same ratio and can't reorder the OSRM alternates.
-  **Alternates = GOOGLE's own alternate routes (2026-06-30):** we fetch all of Google's routes but used
-  only the top; `directions()` now snaps EACH distinct one (`routeVia`, guarded to reach dest), overlays
-  its ETA, `dedupeRoutes`, prefers them over OSRM's free-flow alts, caps at `MAX_ROUTES`=4. (Naming still
-  via the snap; planned = name-on-pick + on-device map-match [GraphHopper where the region's downloaded,
-  else the loaded vector tiles' road names] — "GraphHopper everywhere" is impossible, it needs the graph.)
+  **Alternates = GOOGLE's own alternate routes, NAME-ON-PICK (2026-06-30):** we fetch all of Google's
+  routes but used only the top; `directions()` now returns the named primary + each distinct Google route
+  as a **provisional** `Route` (`Route.provisional` — polyline + live ETA now, turn-by-turn deferred),
+  `dedupeRoutes`, prefers them over OSRM's free-flow alts, caps at `MAX_ROUTES`=4. Picking a provisional
+  alternate (`MapViewModel.selectRoute` → `MapDataSource.nameRoute`, also on `startNav` as a safety) NAMES
+  it — currently by snapping its polyline through OSRM (`routeVia`, guarded to reach dest) + re-applying
+  Google's traffic. So only the route you drive gets snapped, and the picker loads fast. **Next = swap
+  `nameRoute`'s snap for on-device GraphHopper MAP-MATCH where the region's downloaded** (wobble-free); the
+  snap stays the fallback. (NB: MapLibre vector tiles only cover the on-screen area, so they can't name a
+  whole long route — a universal-clean version would need fetching+decoding the route's MVT tiles.)
 - **Why not "always snap to Google's path"?** (measured 2026-06-28, the serverless question.) Google's
   keyless **polyline is complete** (decoded from `root[0][7][i]`) even though its *step text* is
   abbreviated — so we *can* always trace it. But doing it cleanly needs **map-matching**, and the
