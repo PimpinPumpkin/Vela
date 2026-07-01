@@ -587,6 +587,22 @@ class SearchParserHoursTest {
         )
     }
 
+    @Test // real structure from a live capture: multiple ranges per day + a holiday label at day[6][1]
+    fun readHoursJoinsRangesAndKeepsHolidayLabel() {
+        val days = json(
+            """
+            [
+              ["Saturday",6,[2026,7,4],[["Closed"]],1,2,["4th of July hours","4th of July",1]],
+              ["Sunday",7,[2026,7,5],[["9 AM–12 PM",[[9],[12]]],["1 PM–5 PM",[[13],[17]]]],0,1]
+            ]
+            """.trimIndent(),
+        )
+        assertEquals(
+            listOf("Saturday: Closed · 4th of July", "Sunday: 9 AM–12 PM, 1 PM–5 PM"),
+            SearchParser.readHours(days),
+        )
+    }
+
     @Test
     fun ignoresNonHourArrays() {
         assertEquals(emptyList<String>(), SearchParser.readHours(null))
