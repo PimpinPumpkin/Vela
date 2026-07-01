@@ -2,6 +2,7 @@ package app.vela.core.data
 
 import app.vela.core.VelaConfig
 import app.vela.core.data.google.PolylineCodec
+import app.vela.core.model.Lane
 import app.vela.core.model.LatLng
 import app.vela.core.model.Maneuver
 import app.vela.core.model.ManeuverType
@@ -11,6 +12,7 @@ import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
@@ -210,6 +212,16 @@ object RouteGeometry {
         val dest = s["destinations"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         val exits = s["exits"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         val road = name ?: ref
+        // Per-lane turn guidance for the Google-style diagram: the maneuver's own intersection
+        // (intersections[0]) carries the approach lanes — each lane's allowed arrows + whether it
+        // serves this turn (`valid`). Absent on most steps (only turns/exits with mapped lanes).
+        val lanes = s["intersections"]?.jsonArray?.firstOrNull()?.jsonObject
+            ?.get("lanes")?.jsonArray?.mapNotNull { el ->
+                val o = el.jsonObject
+                val inds = o["indications"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }
+                    ?: return@mapNotNull null
+                Lane(inds, o["valid"]?.jsonPrimitive?.booleanOrNull ?: false)
+            }.orEmpty()
         return Maneuver(
             type = osrmType(type, mod),
             instruction = osrmPhrase(type, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
@@ -218,6 +230,7 @@ object RouteGeometry {
             durationSeconds = s["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
             road = road,
             ref = ref?.substringBefore(";")?.trim(), // first ref → the shield (a road can have name AND ref)
+            lanes = lanes,
         )
     }
 
