@@ -76,6 +76,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list — fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
 - ✅ **Address → business snap** — searching a raw address that *is* a business (e.g. "1020 Olive Dr, Davis") now lands on the **business** (In-N-Out Burger, rating/hours/category and all), not the bare address — Google lists the "at this place" business under the geocoded node (`[0][1][0][14][68]`) and Vela now reads it. *(verified on-device; unit-tested; the path is in calibration so it's remotely fixable)*
+- ✅ **Business name stripped from the address line** (2026-07-01) — some places' formatted address comes back name-prefixed ("Safeway, 5802 134th Pl SE"); since the sheet already shows the name on its own line, that read the name twice. `SearchParser.stripNamePrefix` drops a clean name prefix (only at a real word boundary, and never if it'd empty the line) and the component-array fallback filters out any component equal to the name. *(unit-tested)*
 - ✅ Search-result rows show **5-star rating**, colour-coded open/closed status, and the **full address (city/state/ZIP)** to disambiguate similar names / lookalike residential addresses — **sized for legibility** (name at titleMedium, the rating/category/address lines bumped up from the cramped small text)
 - ✅ Place sheet (**Google-styled**): high-contrast white-on-dark / black-on-white name + status time (fixed palette, not washed-out by Material You), **5-star rating visual**, **swipe-down to dismiss from anywhere on the sheet** (a nested-scroll handler: at the top of the body a downward drag collapses then dismisses; mid-list it scrolls), status with the **word colour-coded** (Open green / Closed red) and the time in plain ink, **distance from your location** (when opened from a located search) + price + category, **full address with a copy button**, **collapsible weekly hours** (today first, expand for the week)
 - ✅ Full-screen photo viewer: **pinch-to-zoom** (+ pan when zoomed) and **swipe-down-to-dismiss**, swipe sideways between photos
@@ -202,6 +203,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   "Keep slight left toward I 5 South" step shows a bright straight arrow + a dimmed slight-right, with the
   I-5 shield. *(The older count-based strip from Google's "Use the right 2 lanes" hint is kept as the
   fallback for the OSRM-unreachable path; the main instruction stays clean — "Turn right onto …".)*
+  **The diagram only appears within ~0.5 mi of the maneuver** (`LANE_SHOW_M`, 2026-07-01) — it used to
+  render the whole time the maneuver was next, so on a long highway leg the "be in the right lane" arrows
+  sat there for miles before the exit, which read as noise. Now they surface as you approach (Google-style);
+  in step-preview (swiping the step list) they always show, since you're deliberately inspecting a step.
 - ✅ **Highway/exit signage with real shield shapes** — route refs ("I-80 E", "US-50 E",
   "CA-99", "ON-401") and exit numbers ("Exit 4A") are parsed out of each instruction and
   rendered as Google-style badges: a **green exit tab** plus the **actual route-shield

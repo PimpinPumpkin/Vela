@@ -609,6 +609,22 @@ class SearchParserHoursTest {
         assertEquals(emptyList<String>(), SearchParser.readHours(json("[[1,2,3],[4,5,6]]")))
     }
 
+    /** Some places' formatted address is prefixed with the business name; the sheet already shows the
+     *  name on its own line, so the parser strips a clean name prefix (only at a real word boundary). */
+    @Test
+    fun stripsBusinessNamePrefixFromAddress() {
+        assertEquals("5802 134th Pl SE, Everett, WA 98208",
+            SearchParser.stripNamePrefix("Safeway, 5802 134th Pl SE, Everett, WA 98208", "Safeway"))
+        assertEquals("5802 134th Pl SE",
+            SearchParser.stripNamePrefix("Safeway 5802 134th Pl SE", "Safeway"))
+        // Not a prefix → untouched.
+        assertEquals("100 Main St", SearchParser.stripNamePrefix("100 Main St", "Safeway"))
+        // Prefix but no word boundary ("Safeway" vs "Safeways Plaza") → leave it, don't mangle.
+        assertEquals("Safeways Plaza Dr", SearchParser.stripNamePrefix("Safeways Plaza Dr", "Safeway"))
+        // Stripping would empty the line → keep original.
+        assertEquals("Safeway", SearchParser.stripNamePrefix("Safeway", "Safeway"))
+    }
+
     /** Price level derived from Google's dollar-range / symbol label (the response
      *  never ships the classic 1–4), powering the price filter. */
     @Test

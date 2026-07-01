@@ -107,10 +107,14 @@ object SearchParser {
             location = loc,
             category = field("category").str(),
             // Full address incl. city/state/zip — clean one-liner, else join the
-            // component array, else just the street line.
-            address = field("address").str()
-                ?: field("addressComponents").arr()?.mapNotNull { it.str() }?.joinToString(", ")?.ifBlank { null }
-                ?: field("addressComponents").at(0).str(),
+            // component array (dropping any component that's just the business name), else the street line.
+            // Some places' formatted address is prefixed with the business NAME ("Safeway, 5802 134th Pl SE");
+            // the sheet already shows the name on its own line, so strip that prefix — else it reads twice.
+            address = (field("address").str()
+                ?: field("addressComponents").arr()?.mapNotNull { it.str() }
+                    ?.filterNot { it.equals(name, ignoreCase = true) }?.joinToString(", ")?.ifBlank { null }
+                ?: field("addressComponents").at(0).str())
+                ?.let { addr -> stripNamePrefix(addr, name) },
             rating = field("rating").dbl(),
             reviewCount = field("reviewCount").int(),
             priceText = field("priceText").str(),
@@ -222,6 +226,17 @@ object SearchParser {
 
     /** "Permanently closed" (and the rarer "Permanently closed" rich-status variant)
      *  → a dead POI. Kept in search results but hidden from the map and labelled. */
+    /** Drop a leading business-name from a formatted address ("Safeway, 5802 134th Pl SE" → "5802 …").
+     *  The sheet shows the name on its own line, so a name-prefixed address reads it twice. Only strips a
+     *  clean prefix followed by a separator (", " / " ") so a street that merely starts with the same word
+     *  isn't mangled; if stripping would empty the line, keep the original. */
+    internal fun stripNamePrefix(addr: String, name: String): String {
+        if (name.isBlank() || !addr.startsWith(name, ignoreCase = true)) return addr
+        val rest = addr.substring(name.length)
+        if (rest.isNotEmpty() && rest[0].isLetterOrDigit()) return addr // "Safeway Plaza" — not a boundary
+        return rest.trimStart(' ', ',', '·', '-', '–', ' ').ifBlank { addr }
+    }
+
     private fun isPermanentlyClosed(vararg status: String?): Boolean =
         status.any { it != null && it.contains("Permanently", ignoreCase = true) }
 
