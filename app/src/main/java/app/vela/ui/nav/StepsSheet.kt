@@ -124,7 +124,7 @@ fun StepsSheet(
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                                 color = ink,
                             )
-                            val signs = roadSigns(m.instruction)
+                            val signs = roadSigns(m.instruction, m.ref)
                             if (signs.isNotEmpty()) {
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
