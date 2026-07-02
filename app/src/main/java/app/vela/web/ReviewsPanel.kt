@@ -52,8 +52,12 @@ fun GoogleReviewsPanel(
     dark: Boolean,
     modifier: Modifier = Modifier,
     onFailed: () -> Unit = {},
+    onPhotos: (List<String>, Int) -> Unit = { _, _ -> },
 ) {
     val cid = cidOf(featureId) ?: return
+    // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose — read
+    // the latest through this so a tapped photo always reaches the current handler.
+    val photos = androidx.compose.runtime.rememberUpdatedState(onPhotos)
     // key(): a place switch / theme flip must tear the WHOLE AndroidView node down and rebuild
     // it — AndroidView's factory runs only when its node enters composition, so destroying the
     // WebView from a keyed effect while the node survived left a dead view and an eternal
@@ -69,6 +73,7 @@ fun GoogleReviewsPanel(
                         ctx, cid, dark,
                         onReady = { ready = true },
                         onFail = onFailed,
+                        onPhotos = { urls, i -> photos.value(urls, i) },
                     )
                 },
                 onRelease = { it.destroy() },
@@ -117,6 +122,7 @@ private fun buildPanelWebView(
     dark: Boolean,
     onReady: () -> Unit,
     onFail: () -> Unit,
+    onPhotos: (List<String>, Int) -> Unit,
 ): WebView {
     val wv = WebView(ctx)
     wv.settings.javaScriptEnabled = true
@@ -145,6 +151,17 @@ private fun buildPanelWebView(
 
         @JavascriptInterface
         fun fail() { wv.post { onFail() } }
+
+        // A tapped review photo — its review's upsized photo URLs + the tapped index. Google's own
+        // photo route renders nothing inside the carve, so JS blocks it and hands the URLs here to
+        // open Vela's native full-screen gallery. JavaBridge thread → post to main.
+        @JavascriptInterface
+        fun onReviewPhotos(json: String, index: Int) {
+            val urls = runCatching {
+                val a = org.json.JSONArray(json); (0 until a.length()).map { a.getString(it) }
+            }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return
+            wv.post { onPhotos(urls, index.coerceIn(0, urls.size - 1)) }
+        }
     }
     wv.addJavascriptInterface(bridge, "VelaPanel")
     wv.webViewClient = object : WebViewClient() {
@@ -218,7 +235,7 @@ private fun carveScript(dark: Boolean): String {
     """ else ""
     return """
         (function(){
-          var tries=0, readySent=false, maint=0;
+          var tries=0, readySent=false, maint=0, revAt=-1;
           function isolate(){
             var main=document.querySelector('[role="main"]');
             if(!main) return false;
@@ -336,12 +353,30 @@ private fun carveScript(dark: Boolean): String {
             }
             document.addEventListener('keydown', dropKb, true);
             document.addEventListener('search', dropKb, true);
-            // Any tap can open a Google popup (Sort / per-review menu / photo viewer) into a portal
-            // my carve hid — reveal it right after it renders (a few passes: the SPA attaches it a
-            // beat after the click, and the maintenance loop stops after ~60 s).
-            ['click','pointerup'].forEach(function(ev){ document.addEventListener(ev, function(){
+            // Tapping a review photo: Google's own viewer route-changes but renders nothing inside
+            // the carve. Intercept in CAPTURE (before Google's jsaction bubble handler), block it,
+            // collect the tapped review's photos (upsized to =s1600), and hand them to Vela's native
+            // gallery. Non-photo taps fall through to the overlay reveal below.
+            document.addEventListener('click', function(e){
+              var btn = e.target && e.target.closest ? e.target.closest('button,[role="button"]') : null;
+              if(btn && /^photo \d+ on /i.test(btn.getAttribute('aria-label')||'')){
+                e.preventDefault(); e.stopImmediatePropagation();
+                var card = btn.closest('.jJc9Ad') || btn.closest('[data-review-id]') || btn.parentElement;
+                var urls=[], tap=0;
+                [].slice.call(card.querySelectorAll('button,[role="button"]')).forEach(function(b){
+                  if(!/^photo \d+ on /i.test(b.getAttribute('aria-label')||'')) return;
+                  var bg=''; try{ bg=getComputedStyle(b).backgroundImage||''; }catch(x){}
+                  var m=bg.match(/url\(["']?([^"')]+)/);
+                  if(m && /googleusercontent/.test(m[1])){ if(b===btn) tap=urls.length; urls.push(m[1].replace(/=[^=\/]*${'$'}/,'=s1600')); }
+                });
+                if(urls.length){ try{ VelaPanel.onReviewPhotos(JSON.stringify(urls), tap); }catch(x){} }
+                return;
+              }
               requestAnimationFrame(revealOverlays); setTimeout(revealOverlays,150); setTimeout(revealOverlays,400);
-            }, true); });
+            }, true);
+            document.addEventListener('pointerup', function(){
+              requestAnimationFrame(revealOverlays); setTimeout(revealOverlays,150);
+            }, true);
           }
           // Stretch the reviews scroll region (Google leaves it ~372px) to fill the panel —
           // otherwise swipes below its bottom edge land in dead space. ONLY runs once the
@@ -395,7 +430,14 @@ private fun carveScript(dark: Boolean): String {
               return;
             }
             var rev=reviewsOpen();
-            if(iso && rev){ readySent=true; setupOnce(); stretch(); try{ VelaPanel.ready(); }catch(e){} }
+            if(rev && revAt<0) revAt=tries;
+            // Prefer readying once review CARDS have painted — then the panel never flashes the
+            // overview (Order-online button) during the tab transition. BUT don't HANG on it: a
+            // place with a rating and zero written reviews never renders a card, and the card class
+            // can rotate — so after a short grace once the Reviews tab has settled, ready anyway
+            // (shows Google's own "no reviews" state) rather than spinning to the fail() timeout.
+            var haveCards = !!document.querySelector('.jJc9Ad,[data-review-id]');
+            if(iso && rev && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; setupOnce(); stretch(); try{ VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }
