@@ -89,6 +89,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -174,6 +175,7 @@ fun PlaceSheet(
     isSaved: Boolean,
     reviews: List<Review> = emptyList(),
     reviewsLoading: Boolean = false,
+    reviewsFound: Int = 0,
     photosLoading: Boolean = false,
     detailsLoading: Boolean = false,
     placesHere: List<Place> = emptyList(),
@@ -602,7 +604,7 @@ fun PlaceSheet(
                 }
             }
 
-            PlaceTabs(place, reviews, reviewsLoading, onRetryReviews, ink, dim)
+            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim)
             }
         }
     }
@@ -1264,6 +1266,7 @@ private fun PlaceTabs(
     place: Place,
     reviews: List<Review>,
     reviewsLoading: Boolean,
+    reviewsFound: Int,
     onRetryReviews: () -> Unit,
     ink: Color,
     dim: Color,
@@ -1290,7 +1293,7 @@ private fun PlaceTabs(
         }
         Column(Modifier.padding(top = 10.dp)) {
             when (tabs[selected]) {
-                "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, onRetryReviews, ink, dim)
+                "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim)
                 "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
             }
         }
@@ -1298,7 +1301,7 @@ private fun PlaceTabs(
 }
 
 @Composable
-private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, onRetry: () -> Unit, ink: Color, dim: Color) {
+private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, found: Int, onRetry: () -> Unit, ink: Color, dim: Color) {
     // Search within the loaded reviews (author or text, case-insensitive). Resets per place.
     var reviewQuery by remember(place.id) { mutableStateOf("") }
     Column {
@@ -1321,13 +1324,30 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, on
             }
         }
         when {
-            loading && reviews.isEmpty() -> Row(
-                Modifier.padding(vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                Spacer(Modifier.width(10.dp))
-                Text("Loading reviews…", style = MaterialTheme.typography.bodyMedium, color = dim)
+            // The WebView scrape legitimately takes a while (~10-40 s on busy places), so show REAL
+            // progress: the scraper streams its running count, and when we know the place's review
+            // count we can draw a determinate bar toward the cap — the wait reads as work, not a hang.
+            loading && reviews.isEmpty() -> Column(Modifier.padding(vertical = 8.dp)) {
+                // What the scrape can at most deliver: the place's own count, capped like the scraper.
+                val target = (place.reviewCount ?: 0).coerceAtMost(50)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        when {
+                            found > 0 && target > 0 -> "Loading reviews… $found of ~${maxOf(target, found)}"
+                            found > 0 -> "Loading reviews… $found so far"
+                            else -> "Loading reviews… this can take half a minute"
+                        },
+                        style = MaterialTheme.typography.bodyMedium, color = dim,
+                    )
+                }
+                if (found > 0 && target > 0) {
+                    LinearProgressIndicator(
+                        progress = { (found.toFloat() / maxOf(target, found)).coerceIn(0f, 1f) },
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    )
+                }
             }
             // The count says this place HAS reviews but we have none — the RPC flaked (it's
             // intermittent), so this is a load FAILURE, not a review-less place. Say so and
