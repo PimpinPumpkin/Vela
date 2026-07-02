@@ -40,6 +40,8 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
+import kotlin.coroutines.coroutineContext
 import kotlin.math.abs
 import kotlin.math.pow
 import kotlinx.coroutines.withContext
@@ -701,7 +703,14 @@ class MapViewModel @Inject constructor(
 
     /** Pull full reviews for a place by its Google feature id (best-effort,
      *  applied only if it's still the selected place when they arrive). */
+    private var reviewsJob: Job? = null
+
     private fun fetchReviews(p: Place) {
+        // Supersede any in-flight scrape: the fetcher serializes on a Mutex, so an abandoned
+        // 40 s Taco Bell grind would otherwise make the NEXT place's reviews queue behind it
+        // (~90 s worst case to first review). Cancelling frees the mutex immediately, and this
+        // fetch's page navigation kills the old page's scraper script.
+        reviewsJob?.cancel()
         val fid = p.featureId
         if (fid.isNullOrBlank()) {
             _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
@@ -713,7 +722,18 @@ class MapViewModel @Inject constructor(
         val onProgress: (Int) -> Unit = { n ->
             _state.update { if (it.selected?.featureId == fid) it.copy(reviewsFound = n) else it }
         }
-        viewModelScope.launch {
+        // Stream the accumulated reviews into the list AS THEY'RE SCRAPED, under the progress bar
+        // — 30 s of bar-only was a dead wait. Also gated on reviewsLoading inside the atomic
+        // update: the final result clears that flag in the same copy, so a straggler partial
+        // racing past the finish line can't overwrite the complete list with a prefix.
+        var streamed: List<Review> = emptyList()
+        val onPartial: (List<Review>) -> Unit = { list ->
+            streamed = list
+            _state.update {
+                if (it.selected?.featureId == fid && it.reviewsLoading) it.copy(reviews = list) else it
+            }
+        }
+        reviewsJob = viewModelScope.launch {
             // The reviews RPC intermittently comes back empty (a bot-degraded reply / rate
             // blip), which used to show "no reviews" permanently until you reopened the place.
             // When the place's OWN count says it HAS reviews but the fetch returned none, treat
@@ -721,18 +741,29 @@ class MapViewModel @Inject constructor(
             // that genuinely has no reviews (count 0/unknown) stops after the first try, so we
             // never hammer the endpoint for places with nothing to fetch.
             val expected = p.reviewCount ?: 0
-            var revs = runCatching { webReviews.fetch(fid, onProgress) }.getOrDefault(emptyList())
+            // A Kotlin-side timeout returns EMPTY even after partials streamed — keep the streamed
+            // set rather than wiping the list the user is already reading (empty < partial < full).
+            fun settle(r: List<Review>) = if (r.isEmpty()) streamed else r
+            // Retry when the attempt produced nothing OR only a suspicious sliver of a place that
+            // clearly has more (the wedged-scrape signature: a couple of overview cards streamed,
+            // then the timeout). Without the sliver test, settle() would present 3-of-612 as the
+            // final list AND disable both recovery paths at once (this loop, and the tap-to-retry
+            // row, which only shows for an EMPTY list).
+            fun tooFew(r: List<Review>) = r.size < minOf(4, expected)
+            var revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial) }.getOrDefault(emptyList()))
+            coroutineContext.ensureActive() // superseded by a newer fetch — don't touch state below
             var attempt = 1
             // A fresh fetch clears the flake within a few seconds (confirmed: a manual tap-to-
             // retry succeeds), so auto-retry across a ~3 s window before falling back to the
             // manual retry — most flakes self-heal without the user touching anything.
-            while (revs.isEmpty() && expected > 0 && attempt <= 2) {
+            while (tooFew(revs) && expected > 0 && attempt <= 2) {
                 delay(500L * attempt) // the WebView fetch is thorough (internal polling) — one retry covers a page-load miss
                 if (_state.value.selected?.featureId != fid) return@launch // user moved on
                 // The dead attempt's last count would otherwise sit frozen on the bar through the
                 // retry's page-load window, then visibly snap backward when its first tick lands.
                 _state.update { it.copy(reviewsFound = 0) }
-                revs = runCatching { webReviews.fetch(fid, onProgress) }.getOrDefault(emptyList())
+                revs = settle(runCatching { webReviews.fetch(fid, onProgress, onPartial) }.getOrDefault(emptyList()))
+                coroutineContext.ensureActive()
                 attempt++
             }
             if (_state.value.selected?.featureId == fid) {
@@ -749,7 +780,8 @@ class MapViewModel @Inject constructor(
         fetchReviews(p)
     }
 
-    fun clearSelection() =
+    fun clearSelection() {
+        reviewsJob?.cancel() // free the scrape WebView/mutex — nothing is reading its result now
         _state.update {
             it.copy(
                 selected = null, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, loadingDetails = false,
@@ -759,6 +791,7 @@ class MapViewModel @Inject constructor(
                 directionsWaypoints = emptyList(), pickingStop = false,
             )
         }
+    }
 
     /** Back out of the directions preview to the place sheet: drop the route,
      *  keep the place selected (so back peels one layer at a time). */
@@ -800,6 +833,7 @@ class MapViewModel @Inject constructor(
         }
         // Tapping a POI brings it to the FRONT — close the directions chooser so the place sheet
         // isn't loaded invisibly underneath it (it's gated on !directionsOpen). Google does the same.
+        reviewsJob?.cancel() // the old place's scrape holds the WebView/mutex — free it for this one
         _state.update {
             it.copy(
                 selected = Place(id = "poi:" + name.hashCode(), name = name, location = location),
@@ -893,6 +927,7 @@ class MapViewModel @Inject constructor(
     /** Long-press the map (or a building) → drop a pin and reverse-geocode it
      *  to an address, like Google's press-and-hold. */
     fun onMapLongPress(location: LatLng) {
+        reviewsJob?.cancel() // a pin never fetches reviews — free the old scrape's WebView/mutex
         _state.update {
             it.copy(
                 selected = Place(id = "pin:${location.lat},${location.lng}", name = "Dropped pin", location = location),
