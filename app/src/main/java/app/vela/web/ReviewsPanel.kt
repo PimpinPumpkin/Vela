@@ -91,6 +91,12 @@ fun GoogleReviewsPanel(
     // natively and drives the hidden originals via [controller].
     onChips: (List<PanelChip>) -> Unit = {},
     controller: ReviewsPanelController? = null,
+    // FULL-SCREEN mode (the "Read all reviews" view): the WebView owns the whole screen, so there's
+    // NO nested scroll — the scroll-sync touch listener is skipped, and the carve is lighter (keeps
+    // Google's own search/sort/histogram + lets Google's native photo/VIDEO viewer handle taps, so
+    // videos play). Inline (false) is unused now that the inline reviews are the native list; the
+    // panel exists only as this full-screen view.
+    fullScreen: Boolean = false,
 ) {
     val cid = cidOf(featureId) ?: return
     // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose — read
@@ -121,6 +127,7 @@ fun GoogleReviewsPanel(
                         onOverscroll = { dy -> overscroll.value(dy) },
                         onOverscrollEnd = { v -> overscrollEnd.value(v) },
                         onEngaged = { engaged.value() },
+                        fullScreen = fullScreen,
                         onHistogramParsed = { counts -> histogram.value(counts) },
                         onChipsParsed = { list -> chips.value(list) },
                     ).also { controller?.webView = it }
@@ -177,6 +184,7 @@ private fun buildPanelWebView(
     onOverscroll: (Float) -> Unit,
     onOverscrollEnd: (Float) -> Unit,
     onEngaged: () -> Unit,
+    fullScreen: Boolean,
     onHistogramParsed: (List<Int>) -> Unit,
     onChipsParsed: (List<PanelChip>) -> Unit,
 ): WebView {
@@ -224,7 +232,9 @@ private fun buildPanelWebView(
         c.recycle()
     }
     wv.overScrollMode = android.view.View.OVER_SCROLL_NEVER // no glow while the sheet takes the drag
-    wv.setOnTouchListener { v, ev ->
+    // FULL-SCREEN: the WebView owns the whole screen, no scrolling parent — skip all the scroll-sync
+    // machinery and let it scroll natively (this is what makes full-screen jitter-free by design).
+    if (!fullScreen) wv.setOnTouchListener { v, ev ->
         if (ev.actionMasked != MotionEvent.ACTION_UP && ev.actionMasked != MotionEvent.ACTION_CANCEL) {
             v.parent?.requestDisallowInterceptTouchEvent(true)
         }
@@ -392,7 +402,7 @@ private fun buildPanelWebView(
 
         override fun onPageFinished(view: WebView?, url: String?) {
             loaded = true
-            view?.evaluateJavascript(carveScript(dark), null)
+            view?.evaluateJavascript(carveScript(dark, fullScreen), null)
         }
     }
     wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
@@ -420,7 +430,7 @@ private fun buildPanelWebView(
  *   opaque they bleed white through the transparent main.
  * Maintenance passes keep re-applying for a while (the SPA re-attaches chrome on interaction).
  */
-private fun carveScript(dark: Boolean): String {
+private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
     // Vela's own sheet colour (SheetPalette Dark/Light) — the panel matches it EXACTLY so there's
     // no seam with the surrounding place sheet.
     val bg = if (dark) "#1f1f1f" else "#ffffff"
@@ -440,9 +450,14 @@ private fun carveScript(dark: Boolean): String {
         [role="menu"],[role="listbox"],[role="dialog"]{filter:invert(0.94) hue-rotate(180deg) !important}
         [role="menu"] img,[role="dialog"] img,[role="dialog"] video,[role="dialog"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
     """ else ""
+    val fullJs = if (fullScreen) "true" else "false"
     return """
         (function(){
           var tries=0, readySent=false, revAt=-1;
+          // FULL = the full-screen "Read all" view: keep Google's OWN search/sort/histogram + its
+          // native photo/VIDEO viewer (so videos play), and don't intercept photo taps. Inline
+          // reviews are the native list now, so FULL is effectively always true in practice.
+          var FULL=$fullJs;
           // --- review media helpers (used by the photo interceptor) ---
           // A review media button is keyed by its jsaction (review.openPhoto), NOT its aria-label:
           // Google labels SOME photos descriptively ("Mixed dumplings with rye bread…") instead of
@@ -475,6 +490,7 @@ private fun carveScript(dark: Boolean): String {
           // 4.7 + stars + histogram — found by walking the table up to the scroller child, with
           // the same never-hide-cards guards as strip). Re-hides each tick (SPA re-attaches).
           function velaHistogram(){
+            if(FULL) return; // full-screen keeps Google's own summary/histogram — nothing to carve
             // Do NOTHING until review cards exist. Google's reviews-tab init is fragile while it
             // boots: acting during it — even the histogram SEND, whose native render nudges the
             // WebView's layout mid-init — correlated with the page logging "error.2" and NEVER
@@ -579,6 +595,7 @@ private fun carveScript(dark: Boolean): String {
             return row;
           }
           function velaChips(){
+            if(FULL) return; // full-screen shows Google's own chip/search/sort row
             if(window.__velaChipsSent) return;
             var row=velaChipsRow(); if(!row) return;
             var out=[];
@@ -769,7 +786,9 @@ private fun carveScript(dark: Boolean): String {
             // gallery. Non-photo taps fall through to the overlay reveal below.
             document.addEventListener('click', function(e){
               var t = e.target;
-              var btn = t && t.closest ? t.closest('[jsaction*="review.openPhoto"],.Tya61d') : null;
+              // FULL-screen: DON'T intercept — let Google's own photo/video lightbox handle the tap
+              // (that's how videos play). revealOverlays surfaces that lightbox above the carve.
+              var btn = (!FULL && t && t.closest) ? t.closest('[jsaction*="review.openPhoto"],.Tya61d') : null;
               if(btn){
                 e.preventDefault(); e.stopImmediatePropagation();
                 var card = btn.closest('.jJc9Ad') || btn.closest('[data-review-id]') || btn.parentElement;
