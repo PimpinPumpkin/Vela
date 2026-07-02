@@ -66,6 +66,7 @@ data class MapUiState(
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
     val reviews: List<Review> = emptyList(),
     val reviewsLoading: Boolean = false,
+    val reviewsFound: Int = 0, // live count streamed by the scrape while reviewsLoading (progress, not final)
     val photosLoading: Boolean = false, // the lazy WebView gallery scrape is in flight (more photos coming)
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
@@ -488,7 +489,7 @@ class MapViewModel @Inject constructor(
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
-        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, photosLoading = false, loadingDetails = false) }
+        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false) }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
@@ -703,10 +704,15 @@ class MapViewModel @Inject constructor(
     private fun fetchReviews(p: Place) {
         val fid = p.featureId
         if (fid.isNullOrBlank()) {
-            _state.update { it.copy(reviews = emptyList(), reviewsLoading = false) }
+            _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
             return
         }
-        _state.update { it.copy(reviewsLoading = true) }
+        _state.update { it.copy(reviewsLoading = true, reviewsFound = 0) }
+        // Live progress off the scrape (arrives on a WebView thread — StateFlow.update is
+        // thread-safe). Feature-id-gated so a slow scrape can't tick a different place's counter.
+        val onProgress: (Int) -> Unit = { n ->
+            _state.update { if (it.selected?.featureId == fid) it.copy(reviewsFound = n) else it }
+        }
         viewModelScope.launch {
             // The reviews RPC intermittently comes back empty (a bot-degraded reply / rate
             // blip), which used to show "no reviews" permanently until you reopened the place.
@@ -715,7 +721,7 @@ class MapViewModel @Inject constructor(
             // that genuinely has no reviews (count 0/unknown) stops after the first try, so we
             // never hammer the endpoint for places with nothing to fetch.
             val expected = p.reviewCount ?: 0
-            var revs = runCatching { webReviews.fetch(fid) }.getOrDefault(emptyList())
+            var revs = runCatching { webReviews.fetch(fid, onProgress) }.getOrDefault(emptyList())
             var attempt = 1
             // A fresh fetch clears the flake within a few seconds (confirmed: a manual tap-to-
             // retry succeeds), so auto-retry across a ~3 s window before falling back to the
@@ -723,11 +729,14 @@ class MapViewModel @Inject constructor(
             while (revs.isEmpty() && expected > 0 && attempt <= 2) {
                 delay(500L * attempt) // the WebView fetch is thorough (internal polling) — one retry covers a page-load miss
                 if (_state.value.selected?.featureId != fid) return@launch // user moved on
-                revs = runCatching { webReviews.fetch(fid) }.getOrDefault(emptyList())
+                // The dead attempt's last count would otherwise sit frozen on the bar through the
+                // retry's page-load window, then visibly snap backward when its first tick lands.
+                _state.update { it.copy(reviewsFound = 0) }
+                revs = runCatching { webReviews.fetch(fid, onProgress) }.getOrDefault(emptyList())
                 attempt++
             }
             if (_state.value.selected?.featureId == fid) {
-                _state.update { it.copy(reviews = revs, reviewsLoading = false) }
+                _state.update { it.copy(reviews = revs, reviewsLoading = false, reviewsFound = 0) }
             }
         }
     }
@@ -743,7 +752,7 @@ class MapViewModel @Inject constructor(
     fun clearSelection() =
         _state.update {
             it.copy(
-                selected = null, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, loadingDetails = false,
+                selected = null, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, loadingDetails = false,
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
@@ -798,6 +807,11 @@ class MapViewModel @Inject constructor(
                 center = location,
                 placesHere = emptyList(),
                 reviews = emptyList(),
+                // Also clear the loading flag + live counter: a still-in-flight scrape for the
+                // PREVIOUS place would otherwise leave its count showing under THIS one (its
+                // completion update is feature-id-gated, so the stale flag never self-heals).
+                reviewsLoading = false,
+                reviewsFound = 0,
                 loadingDetails = false,
                 photosLoading = false,
                 pickingOrigin = false,
@@ -887,6 +901,10 @@ class MapViewModel @Inject constructor(
                 showSearchThisArea = false,
                 placesHere = emptyList(),
                 reviews = emptyList(),
+                // A dropped pin never fetches reviews, so a stale in-flight flag/counter from the
+                // previous place would show (and spin) here FOREVER — clear both.
+                reviewsLoading = false,
+                reviewsFound = 0,
                 pickingOrigin = false,
                 pickingStop = false,
             )

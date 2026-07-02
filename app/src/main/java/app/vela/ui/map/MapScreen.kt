@@ -585,6 +585,7 @@ fun MapScreen(
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
                 reviewsLoading = state.reviewsLoading,
+                reviewsFound = state.reviewsFound,
                 photosLoading = state.photosLoading,
                 detailsLoading = state.loadingDetails,
                 placesHere = state.placesHere,
