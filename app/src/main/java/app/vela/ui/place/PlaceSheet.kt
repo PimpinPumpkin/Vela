@@ -1362,6 +1362,10 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, fo
             }
             reviews.isEmpty() -> Text("No reviews available.", style = MaterialTheme.typography.bodyMedium, color = dim)
             else -> {
+                // NB: every fetch path empties `reviews` before setting `loading`, so a list is never
+                // shown with a fetch still in flight — the loading branch above owns that state and
+                // the scrape delivers ONCE, complete. (A "loading more…" row here would be dead code;
+                // revisit only if incremental delivery ever lands.)
                 // Search box (only once there's enough to be worth filtering) — matches text OR author.
                 if (reviews.size >= 5) {
                     OutlinedTextField(

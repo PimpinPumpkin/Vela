@@ -155,7 +155,7 @@ class WebReviewsFetcher @Inject constructor(
         return """
             (function(){
               var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
-              var openedAt=-1, sawCards=false, lastRep=-1;
+              var openedAt=-1, lastRep=-1, openedBy='', sawEntry=false, everCards=false, btnReclicks=0;
               var CAP=50;
               function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
@@ -222,15 +222,19 @@ class WebReviewsFetcher @Inject constructor(
                 for(var i=0;i<ts.length;i++){
                   var tl=((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim();
                   if(/^reviews\b/i.test(tl)){
-                    if((ts[i].getAttribute('aria-selected')||'')==='true'){ if(!opened){ opened=true; openedAt=tries; } return; }
+                    sawEntry=true;
+                    if((ts[i].getAttribute('aria-selected')||'')==='true'){ if(!opened){ opened=true; openedAt=tries; openedBy='tab'; } return; }
                     try{ ts[i].click(); }catch(e){}
                     return;
                   }
                 }
-                // No reviews tab in this layout — fall back to the "More reviews" button (clicked once).
+                // No reviews tab in this layout — fall back to the "More reviews" button. Unlike the
+                // tab there's no aria-selected to confirm the click took, so it's clicked once and
+                // the tick loop re-arms it ONE time if nothing ever renders (a not-yet-hydrated
+                // button silently no-ops, same as the tab).
                 if(opened) return;
                 var bs=[].slice.call(document.querySelectorAll('button'));
-                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(/more reviews/i.test(l)){ try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; return; } }
+                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(/more reviews/i.test(l)){ sawEntry=true; try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; openedBy='btn'; return; } }
               }
               function tick(){
                 tries++;
@@ -245,20 +249,33 @@ class WebReviewsFetcher @Inject constructor(
                 // Stream the running count to the app whenever it changes — the sheet shows a live
                 // "N of ~M" while this scrape grinds, so the wait reads as progress, not a hang.
                 if(accN!==lastRep){ lastRep=accN; try{ VelaBridge.onProgress(ID, accN); }catch(e){} }
-                // Have the review cards actually rendered yet? On busy business pages (food, retail) the
-                // Reviews tab's list can take ~8 s to populate after the click; until then the panel holds
-                // only the rating histogram + topic chips, NOT the cards.
-                if(document.querySelectorAll('.jJc9Ad').length>0) sawCards=true;
+                // Are review cards rendered RIGHT NOW? On busy business pages (food, retail) the Reviews
+                // tab's list can take ~8 s to populate after the click; until then the panel holds only
+                // the rating histogram + topic chips, NOT the cards. This must be a per-tick check, not a
+                // once-latched flag: the OVERVIEW's 3 preview cards render briefly before the tab click
+                // blanks the panel, and a latch set by those let the idle-bail fire during the blank
+                // window with exactly 3 accumulated (the "loaded 3 then stopped" bug).
+                var cardsNow = document.querySelectorAll('.jJc9Ad').length>0;
+                if(cardsNow) everCards=true;
                 var moved=scrollStep();
                 atBottom = moved ? 0 : atBottom+1;
                 noGrow = (accN===lastN) ? noGrow+1 : 0;
                 lastN=accN;
-                // Idle-bail ONLY after cards have really rendered. The 3-reviews bug was bailing during the
-                // blank pre-render window: atBottom/noGrow climbed while the list was still empty, so the
-                // "settled at the bottom, nothing new" test fired before the reviews ever appeared.
-                var settled = sawCards && (!opened || tries>=openedAt+6);
-                // Done: hit the cap, OR settled at the bottom with no new reviews, OR ran long.
-                if( accN>=CAP || (settled && atBottom>=4 && noGrow>=4) || tries>60 ){
+                // Button-path no-op retry: the click was fired blind (no aria-selected to confirm)
+                // and nothing has rendered since — re-arm openFull once. Tab clicks self-retry.
+                if(opened && openedBy==='btn' && !everCards && tries>=openedAt+8 && btnReclicks<1){ opened=false; openedAt=-1; btnReclicks++; }
+                // Idle-bail ONLY while cards are actually on screen. When an entry (tab/button)
+                // exists but hasn't opened yet, hold longer so a late-hydrating tab still gets its
+                // click; a layout with NO entry at all (a tiny place whose full list IS the
+                // overview) settles quickly — there's nothing more to open.
+                var settled = cardsNow && (opened ? tries>=openedAt+6 : (sawEntry ? tries>=14 : tries>=8));
+                // Zero-review places: no card will EVER render, so "settled" never fires — bail on
+                // a generous empty deadline instead of grinding to the 60-tick hard stop (~33 s of
+                // blank spinner on every review-less place).
+                var emptyDone = !everCards && accN===0 && (opened ? tries>=openedAt+24 : tries>=30);
+                // Done: cap hit, OR settled at the bottom with no new reviews, OR provably empty,
+                // OR ran long.
+                if( accN>=CAP || (settled && atBottom>=4 && noGrow>=4) || emptyDone || tries>60 ){
                   var out=[]; for(var kk in acc) out.push(acc[kk]);
                   out = out.slice(0,CAP);
                   try{ VelaBridge.onResult(ID, JSON.stringify(out)); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
