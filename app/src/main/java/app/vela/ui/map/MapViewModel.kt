@@ -531,9 +531,12 @@ class MapViewModel @Inject constructor(
         suggestJob?.cancel()
         recentStore.add(q)
         _state.update { it.copy(recents = recentStore.recent()) }
-        // A search strongly predicts opening a place — warm the detail WebView now so
-        // popular times etc. land faster when the user taps a result (idempotent).
+        // A search strongly predicts opening a place — warm the detail WebViews now so
+        // popular times AND the photo gallery land faster when the user taps a result
+        // (both idempotent; the photo warm primes the renderer + HTTP/2 sockets + cache
+        // so the first place page skips the cold start).
         viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
+        runCatching { webPhotos.warm() }
         viewModelScope.launch {
             _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false) }
             try {
@@ -690,7 +693,22 @@ class MapViewModel @Inject constructor(
         val photoWorthy = p.rating != null || p.reviewCount != null || p.photoUrls.isNotEmpty()
         if (photoWorthy) _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
         viewModelScope.launch {
-            val full = runCatching { webPhotos.fetch(fid) }.getOrDefault(emptyList())
+            // Photos STREAM in: the scraper reports the accumulated set whenever it grows, so the
+            // strip fills progressively (first partial = the page's hero photos, ~1s after load)
+            // instead of waiting ~20s for the full category walk. Monotonic (a partial never
+            // shrinks the strip below the search preview) + feature-id/loading gated (a stale
+            // partial can't touch the next place; the final result clears the flag in the same
+            // atomic copy, so a straggler can't overwrite it — same pattern as review streaming).
+            val full = runCatching {
+                webPhotos.fetch(fid, onPartial = { part ->
+                    if (part.isNotEmpty()) _state.update { st ->
+                        val sel = st.selected
+                        if (sel?.featureId == fid && st.photosLoading && part.size > sel.photoUrls.size) st.copy(
+                            selected = sel.copy(photoUrls = part.map { it.url }, photoDates = part.map { it.postedText }, photoCategories = part.map { it.category }),
+                        ) else st
+                    }
+                })
+            }.getOrDefault(emptyList())
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.featureId == fid) st.copy(
