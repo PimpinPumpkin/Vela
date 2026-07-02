@@ -9,6 +9,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
@@ -55,9 +56,18 @@ fun GoogleReviewsPanel(
     onPhotos: (List<String>, List<String?>, Int) -> Unit = { _, _, _ -> },
     // Scroll-sync: a boundary drag (reviews at their top edge + finger dragging down, or bottom
     // edge + up) is forwarded here as raw pixel deltas so the caller can move the Vela sheet 1:1
-    // with the finger; onOverscrollEnd fires at finger-up with the tracked fling velocity (px/s).
+    // with the finger; onOverscrollEnd fires at finger-up with the tracked fling velocity (px/s)
+    // AND when an inertial inner fling lands on the top edge with leftover momentum.
     onOverscroll: (Float) -> Unit = {},
     onOverscrollEnd: (Float) -> Unit = {},
+    // One-shot when the user starts really scrolling the reviews (re-armed at their top) — the
+    // caller slides the sheet to full screen around the panel, Google-style.
+    onEngaged: () -> Unit = {},
+    // The page's rating distribution ([5★..1★] counts), for a native histogram in Vela's header.
+    onHistogram: (List<Int>) -> Unit = {},
+    // Fires once the panel has painted (the internal spinner clears) — lets the caller drop any
+    // loading teaser it shows alongside.
+    onLoaded: () -> Unit = {},
 ) {
     val cid = cidOf(featureId) ?: return
     // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose — read
@@ -65,6 +75,9 @@ fun GoogleReviewsPanel(
     val photos = androidx.compose.runtime.rememberUpdatedState(onPhotos)
     val overscroll = androidx.compose.runtime.rememberUpdatedState(onOverscroll)
     val overscrollEnd = androidx.compose.runtime.rememberUpdatedState(onOverscrollEnd)
+    val engaged = androidx.compose.runtime.rememberUpdatedState(onEngaged)
+    val histogram = androidx.compose.runtime.rememberUpdatedState(onHistogram)
+    val loadedCb = androidx.compose.runtime.rememberUpdatedState(onLoaded)
     // key(): a place switch / theme flip must tear the WHOLE AndroidView node down and rebuild
     // it — AndroidView's factory runs only when its node enters composition, so destroying the
     // WebView from a keyed effect while the node survived left a dead view and an eternal
@@ -78,18 +91,22 @@ fun GoogleReviewsPanel(
                 factory = { ctx ->
                     buildPanelWebView(
                         ctx, cid, dark,
-                        onReady = { ready = true },
+                        onReady = { ready = true; loadedCb.value() },
                         onFail = onFailed,
                         onPhotos = { urls, caps, i -> photos.value(urls, caps, i) },
                         onOverscroll = { dy -> overscroll.value(dy) },
                         onOverscrollEnd = { v -> overscrollEnd.value(v) },
+                        onEngaged = { engaged.value() },
+                        onHistogramParsed = { counts -> histogram.value(counts) },
                     )
                 },
                 onRelease = { it.destroy() },
             )
             if (!ready) {
+                // Near the TOP of the panel, not centered — the panel is most of a screen tall,
+                // so a centered spinner sits below the fold while you scroll toward it.
                 CircularProgressIndicator(
-                    Modifier.size(22.dp).align(Alignment.Center),
+                    Modifier.padding(top = 48.dp).size(22.dp).align(Alignment.TopCenter),
                     strokeWidth = 2.dp,
                 )
             }
@@ -134,6 +151,8 @@ private fun buildPanelWebView(
     onPhotos: (List<String>, List<String?>, Int) -> Unit,
     onOverscroll: (Float) -> Unit,
     onOverscrollEnd: (Float) -> Unit,
+    onEngaged: () -> Unit,
+    onHistogramParsed: (List<Int>) -> Unit,
 ): WebView {
     val wv = WebView(ctx)
     wv.settings.javaScriptEnabled = true
@@ -260,6 +279,36 @@ private fun buildPanelWebView(
             panelAtBottom.set(atBottom)
         }
 
+        // An inertial inner fling landed on the top edge with leftover momentum (CSS px/s):
+        // carry it into the sheet so the fling doesn't dead-stop at the boundary. Only when no
+        // finger is down — a finger-driven boundary drag already forwards its own deltas.
+        @JavascriptInterface
+        fun onEdgeFling(cssVelocity: Double) {
+            wv.post {
+                if (tracker == null) {
+                    @Suppress("DEPRECATION")
+                    onOverscrollEnd((cssVelocity * wv.scale).toFloat())
+                }
+            }
+        }
+
+        // The user started really scrolling the reviews — Vela slides the sheet to full screen
+        // around them (Google-style). One-shot per engagement; the page re-arms it at the top.
+        @JavascriptInterface
+        fun onPanelEngaged() {
+            wv.post { onEngaged() }
+        }
+
+        // The page's rating distribution ([5★,4★,3★,2★,1★] counts) — rendered natively by Vela;
+        // Google's in-panel summary block is hidden once this is sent.
+        @JavascriptInterface
+        fun onHistogram(json: String) {
+            val counts = runCatching {
+                val a = org.json.JSONArray(json); (0 until a.length()).map { a.getInt(it) }
+            }.getOrNull()?.takeIf { it.size == 5 } ?: return
+            wv.post { onHistogramParsed(counts) }
+        }
+
         @JavascriptInterface
         fun fail() { wv.post { onFail() } }
 
@@ -380,6 +429,71 @@ private fun carveScript(dark: Boolean): String {
             var all=card.querySelectorAll('span,div'); for(var i=0;i<all.length;i++){ var e=all[i]; if(e.children.length===0 && /^(a|an|\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/i.test((e.textContent||'').trim())) return e.textContent.trim(); }
             return '';
           }
+          // Rating histogram → native. The panel page renders the distribution as tr[aria-label]
+          // rows ("5 stars, 1,189 reviews"); parse the counts once, hand them to Vela to draw
+          // natively next to its own rating header, then HIDE Google's whole summary block (big
+          // 4.7 + stars + histogram — found by walking the table up to the scroller child, with
+          // the same never-hide-cards guards as strip). Re-hides each tick (SPA re-attaches).
+          function velaHistogram(){
+            // Do NOTHING until review cards exist. Google's reviews-tab init is fragile while it
+            // boots: acting during it — even the histogram SEND, whose native render nudges the
+            // WebView's layout mid-init — correlated with the page logging "error.2" and NEVER
+            // issuing the review-feed request (panel stuck at zero reviews; reproduced on two
+            // places, cleared by the pre-polish build). Cards rendered == init done == safe.
+            if(!document.querySelector('.jJc9Ad,[data-review-id]')) return;
+            var rows=[].slice.call(document.querySelectorAll('tr[aria-label]')).filter(function(r){
+              return /^\s*\d\s+stars?,/i.test(r.getAttribute('aria-label')||'');
+            });
+            if(rows.length<5) return;
+            if(!window.__velaHistSent){
+              var counts={};
+              rows.forEach(function(r){
+                var m=(r.getAttribute('aria-label')||'').match(/^\s*(\d)\s+stars?,\s*([\d,]+)/i);
+                if(m) counts[m[1]]=parseInt(m[2].replace(/,/g,''),10);
+              });
+              if(counts['5']!==undefined && counts['1']!==undefined){
+                window.__velaHistSent=1;
+                try{ VelaPanel.onHistogram(JSON.stringify([counts['5']||0,counts['4']||0,counts['3']||0,counts['2']||0,counts['1']||0])); }catch(x){}
+              }
+            }
+            // HIDE only after review CARDS exist. Google's reviews-tab init measures/binds the
+            // summary block; hiding it mid-init kills their JS (the page logs "error.2" and the
+            // review feed request is NEVER issued — panel stuck with zero reviews forever, seen
+            // live on two places). Cards rendered == their init finished == safe to carve.
+            if(!document.querySelector('.jJc9Ad,[data-review-id]')) return;
+            var tbl=rows[0].closest('table'); if(!tbl) return;
+            // Walk up to the summary BLOCK — guards must be self-contained (NOT __velaSc, which
+            // is unset early): stop below any SCROLLABLE parent, any parent holding review cards,
+            // and [role=main]. And never hide anything near viewport height — early in the load
+            // (cards not yet painted, scroller not yet scrollable) the walk can reach the
+            // reviews scroller itself, and hiding IT blanks the whole panel permanently (the
+            // cards then never render — seen live: main child m6QErb display:none, h=0).
+            var cap=window.innerHeight*0.5;
+            var cand=tbl;
+            while(cand.parentElement){
+              var p2=cand.parentElement;
+              if(p2.getAttribute('role')==='main') break;
+              if(p2.querySelector('.jJc9Ad,[data-review-id]')) break;
+              // The ceiling is SIZE, not scrollability: the reviews scroller can read as
+              // non-scrollable early (content barely taller than the box), but it is always
+              // viewport-scale (~600px, even unstretched ~372px) while the summary block is
+              // ~125px — so never climb into anything half the viewport tall.
+              if(p2.offsetHeight>=cap) break;
+              if(p2.scrollHeight>p2.clientHeight+50) break;
+              cand=p2;
+            }
+            if(!cand.querySelector('.jJc9Ad,[data-review-id]') &&
+               cand.offsetHeight>0 && cand.offsetHeight<cap){
+              // NOT display:none, and NO layout change at all — the virtualized reviews list
+              // computes its visible range from content offsets inside the scroller, and ANY
+              // geometry change to the summary at mount time corrupts that math: cards render,
+              // then the SPA unmounts every one of them, permanently (reproduced live twice;
+              // un-hiding after the fact does not recover). Opacity keeps the box, kills the
+              // visual dupe; the ~125px blank band reads as top padding.
+              cand.style.setProperty('opacity','0','important');
+              cand.style.setProperty('pointer-events','none','important');
+            }
+          }
           // --- scroll-sync: tell the native side when the reviews scroller is at its top/bottom edge,
           // so the OnTouchListener can hand a boundary drag to the Vela sheet (scroll-up / collapse)
           // instead of hogging every gesture. Only fires on an edge-state CHANGE (cheap).
@@ -388,6 +502,7 @@ private fun carveScript(dark: Boolean): String {
             var sc=window.__velaSc; if(!sc) return;
             var at=sc.scrollTop<=1;
             var ab=(sc.scrollTop+sc.clientHeight)>=(sc.scrollHeight-2);
+            if(at) window.__velaEngaged=0; // back at the top: re-arm the sheet-takeover signal
             if(at!==__velaTop || ab!==__velaBot){ __velaTop=at; __velaBot=ab; try{ VelaPanel.onPanelEdge(at, ab); }catch(x){} }
           }
           function isolate(){
@@ -443,6 +558,10 @@ private fun carveScript(dark: Boolean): String {
             if(!document.getElementById('vela-carve')){
               var st=document.createElement('style'); st.id='vela-carve';
               st.textContent='html,body{overflow-x:hidden !important;background:$bg !important;}'
+                // Reviewer name / "N reviews" render as links: navigation is blocked, so kill the
+                // link affordances (tap underline + highlight flash) — they read as broken.
+                + '[role="main"] a,[role="main"] a:hover,[role="main"] a:active,[role="main"] a:focus{text-decoration:none !important;outline:none !important;}'
+                + '*{-webkit-tap-highlight-color:transparent !important;}'
                 + `$darkCss`;
               document.head.appendChild(st);
             }
@@ -562,13 +681,38 @@ private fun carveScript(dark: Boolean): String {
                 sc.style.setProperty('height',(h-top)+'px','important');
                 sc.style.setProperty('max-height',(h-top)+'px','important');
                 window.__velaSc=sc;
-                // Attach the edge reporter once per scroller (the SPA can swap the node). ALSO
+                // Attach the edge reporter once per scroller (the SPA can swap the node). The
+                // scroll listener also (a) tracks a low-passed scroll VELOCITY so an inertial
+                // fling that lands on the top edge hands its leftover momentum to the sheet
+                // (else the fling dead-stops at the boundary — the "snap"), and (b) fires a
+                // one-shot ENGAGED signal when the user starts really scrolling the reviews, so
+                // Vela can slide the sheet to full screen around them (re-armed at top). ALSO
                 // watch for content growth: paging in more reviews grows scrollHeight WITHOUT a
                 // scroll event, which silently un-bottoms the scroller (stale atBottom would
-                // double-scroll an up-drag until the next 1s tick).
+                // double-scroll an up-drag until the next 1s tick) — and newly-paged cards need
+                // their Like/Share stripped NOW, not at the next 1s tick (the "buttons return"
+                // flash).
                 if(!sc.__velaEdgeHooked){ sc.__velaEdgeHooked=1;
-                  sc.addEventListener('scroll', function(){ requestAnimationFrame(velaReportEdge); }, {passive:true});
-                  try{ new MutationObserver(function(){ requestAnimationFrame(velaReportEdge); }).observe(sc,{childList:true,subtree:true}); }catch(x){}
+                  sc.addEventListener('scroll', function(){
+                    var now=performance.now(), y=sc.scrollTop;
+                    var pv=sc.__velaPrev; sc.__velaPrev={t:now,y:y};
+                    if(pv && now>pv.t){
+                      var v=(y-pv.y)/(now-pv.t); // css px/ms, negative = moving toward the top
+                      sc.__velaV = (sc.__velaV===undefined) ? v : (0.6*sc.__velaV + 0.4*v);
+                    }
+                    if(y<=1 && sc.__velaV<-0.25){
+                      var vv=Math.abs(sc.__velaV)*1000; sc.__velaV=0;
+                      try{ VelaPanel.onEdgeFling(vv); }catch(x){}
+                    }
+                    if(!window.__velaEngaged && y>40){
+                      window.__velaEngaged=1;
+                      try{ VelaPanel.onPanelEngaged(); }catch(x){}
+                    }
+                    requestAnimationFrame(velaReportEdge);
+                  }, {passive:true});
+                  try{ new MutationObserver(function(){
+                    requestAnimationFrame(function(){ velaReportEdge(); strip(); });
+                  }).observe(sc,{childList:true,subtree:true}); }catch(x){}
                 }
                 velaReportEdge();
               }
@@ -596,7 +740,19 @@ private fun carveScript(dark: Boolean): String {
               // (each needing its Like/Share stripped via isolate()->strip()), and scroll-sync's
               // edge reporting rides stretch()'s scroller adoption, so a dead loop froze both
               // after a minute. NO tab re-click here — the user may browse Menu/About.
-              stretch(); revealOverlays();
+              stretch(); revealOverlays(); velaHistogram();
+              // Feed watchdog: Google sometimes serves the page SHELL but silently withholds the
+              // review feed (soft bot-throttle — tabs + histogram render, the feed request is
+              // never issued; observed live under heavy testing). Ready-but-cardless for ~15 s
+              // means the user is staring at an empty panel: fail over to the native scraper
+              // instead. Once ANY card has rendered, the watchdog disarms for good.
+              if(!window.__velaFedOk){
+                if(document.querySelector('.jJc9Ad,[data-review-id]')){ window.__velaFedOk=1; }
+                else if((window.__velaFeedless=(window.__velaFeedless||0)+1)>15){
+                  try{ VelaPanel.fail(); }catch(e){}
+                  return;
+                }
+              }
               setTimeout(tick,1000);
               return;
             }
@@ -608,7 +764,7 @@ private fun carveScript(dark: Boolean): String {
             // can rotate — so after a short grace once the Reviews tab has settled, ready anyway
             // (shows Google's own "no reviews" state) rather than spinning to the fail() timeout.
             var haveCards = !!document.querySelector('.jJc9Ad,[data-review-id]');
-            if(iso && rev && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; setupOnce(); stretch(); try{ VelaPanel.ready(); }catch(e){} }
+            if(iso && rev && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; setupOnce(); stretch(); velaHistogram(); try{ VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }
