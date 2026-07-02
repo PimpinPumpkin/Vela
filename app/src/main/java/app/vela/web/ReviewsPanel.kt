@@ -124,7 +124,9 @@ private fun buildPanelWebView(
     // Desktop UA: the desktop place panel is ~408 px wide — phone-width, and it's the layout the
     // scrapers are calibrated against. (A mobile UA deep-links to intent:// — non-starter.)
     wv.settings.userAgentString = VelaConfig.USER_AGENT
-    wv.setBackgroundColor(if (dark) 0xFF111417.toInt() else 0xFFFFFFFF.toInt())
+    // Match Vela's SheetPalette exactly (Dark #1F1F1F / Light #FFFFFF) so the WebView surface
+    // behind the page is the sheet colour before the page even paints.
+    wv.setBackgroundColor(if (dark) 0xFF1F1F1F.toInt() else 0xFFFFFFFF.toInt())
     // The panel lives inside the sheet's scrollable column — own the vertical gesture while the
     // finger is on the panel so the list scrolls instead of the sheet.
     wv.setOnTouchListener { v, ev ->
@@ -185,13 +187,24 @@ private fun buildPanelWebView(
  *   (and transformed, hence containing-block-forming) wrapper clipped every descendant.
  * - Hide siblings on the walk up (kills map canvas/omnibox/footer), EXCEPT dialogs — a tapped
  *   review photo opens a lightbox that is a sibling of the panel.
- * - Dark theme: invert+hue-rotate scoped to the PANEL, not <html> — a filter on a fixed
- *   element's ancestor becomes its containing block and re-breaks the sizing.
+ * - Strip Google's chrome we don't want: the Overview/Menu/Reviews/About tab bar, the
+ *   "Order online" promo block, and the "Write a review" button (blocked — leads to sign-in).
+ * - Theme to match Vela's sheet EXACTLY (no seam): <body> carries the Vela colour; main AND every
+ *   ancestor are made transparent so that colour is the backdrop; dark inverts only main's content
+ *   (a filter on <html> would become the fixed panel's containing block and re-break the sizing).
+ *   The ancestors matter — they hold Google's white bg OUTSIDE the (main-scoped) filter, so left
+ *   opaque they bleed white through the transparent main.
  * Maintenance passes keep re-applying for a while (the SPA re-attaches chrome on interaction).
  */
 private fun carveScript(dark: Boolean): String {
+    // Vela's own sheet colour (SheetPalette Dark/Light) — the panel matches it EXACTLY so there's
+    // no seam with the surrounding place sheet.
+    val bg = if (dark) "#1f1f1f" else "#ffffff"
+    // Dark = a scoped invert on the PANEL CONTENT ONLY (main), NOT its background. The Vela colour
+    // lives on <body> (which the filter doesn't touch — it's on main), and main + every ancestor
+    // are made transparent so that colour is the panel's backdrop; only Google's content inverts.
     val darkCss = if (dark) """
-        [role="main"]{filter:invert(0.92) hue-rotate(180deg) !important;background:#fff !important}
+        [role="main"]{filter:invert(0.92) hue-rotate(180deg) !important}
         [role="main"] img,[role="main"] video,[role="main"] canvas{filter:invert(1) hue-rotate(180deg) !important}
         [role="main"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
     """ else ""
@@ -214,6 +227,9 @@ private fun carveScript(dark: Boolean): String {
             main.style.setProperty('max-width',w+'px','important');
             main.style.setProperty('overflow-y','auto','important');
             main.style.setProperty('z-index','999999','important');
+            // Transparent so <body>'s Vela colour is the panel backdrop (Google's white bg would
+            // otherwise show — inverted to near-black in dark, mismatching the sheet).
+            main.style.setProperty('background','transparent','important');
             var el=main;
             while(el && el!==document.documentElement){
               var p=el.parentElement; if(!p) break;
@@ -233,15 +249,37 @@ private fun carveScript(dark: Boolean): String {
               p.style.setProperty('max-height','none','important');
               p.style.setProperty('overflow','visible','important');
               p.style.setProperty('transform','none','important');
+              // AND transparent — main's ancestors carry Google's white background OUTSIDE the
+              // invert filter (which is on main), so they'd bleed white through the transparent
+              // main. Clearing them lets <body>'s Vela colour show as the seamless backdrop.
+              p.style.setProperty('background','transparent','important');
+              p.style.setProperty('background-color','transparent','important');
               el=p;
             }
+            strip();
             if(!document.getElementById('vela-carve')){
               var st=document.createElement('style'); st.id='vela-carve';
-              st.textContent='html,body{overflow-x:hidden !important;background:${if (dark) "#111417" else "#fff"} !important;}'
+              st.textContent='html,body{overflow-x:hidden !important;background:$bg !important;}'
                 + `$darkCss`;
               document.head.appendChild(st);
             }
             return true;
+          }
+          // Remove Google's own chrome we don't want: the Overview/Menu/Reviews/About tab bar
+          // (we force Reviews), the "Get pickup or delivery / Order online" promo block, and the
+          // "Write a review" button (blocked — it leads to Google sign-in). Runs every tick since
+          // the SPA re-attaches these. Text/role-based, not class-based (Google's classes rotate).
+          function strip(){
+            var tl=document.querySelector('[role="tablist"]');
+            if(tl) tl.style.setProperty('display','none','important');
+            var m=document.querySelector('[role="main"]');
+            if(m){ [].slice.call(m.children).forEach(function(c){
+              if(/order online|get pickup/i.test(c.textContent||'')) c.style.setProperty('display','none','important');
+            }); }
+            [].slice.call(document.querySelectorAll('button,a')).forEach(function(b){
+              var t=(b.getAttribute('aria-label')||'')+' '+(b.textContent||'');
+              if(/write a review/i.test(t)) b.style.setProperty('display','none','important');
+            });
           }
           // Stretch the reviews scroll region (Google leaves it ~372px) to fill the panel —
           // otherwise swipes below its bottom edge land in dead space. ONLY runs once the
