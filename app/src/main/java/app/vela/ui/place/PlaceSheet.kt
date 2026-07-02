@@ -1354,7 +1354,9 @@ private fun PanelControls(
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             shape = RoundedCornerShape(24.dp),
-            modifier = Modifier.weight(1f).height(52.dp),
+            // No fixed height: OutlinedTextField reserves internal padding for a label line, so a
+            // 52dp clamp clipped the text's descenders at the bottom. Natural height doesn't clip.
+            modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(6.dp))
         var sortOpen by remember { mutableStateOf(false) }
@@ -1493,7 +1495,12 @@ private fun PlaceTabs(
                             // engaged mode — nothing floats above the reviews.
                             if (!panelEngaged) {
                                 place.rating?.let { r ->
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                                    // Centered to sit above the centered histogram.
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                                    ) {
                                         Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
                                         Spacer(Modifier.width(8.dp))
                                         RatingStars(r)
