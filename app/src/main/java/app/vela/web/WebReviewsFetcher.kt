@@ -325,11 +325,11 @@ class WebReviewsFetcher @Inject constructor(
         // Must outlast the script's own hard stop (60 ticks × 550 ms ≈ 33 s + page load) — if Kotlin
         // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
         const val TOTAL_TIMEOUT_MS = 45_000L
-        const val SETTLE_MS = 800L
+        const val SETTLE_MS = 150L
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
         // healthy batch per scroll position.
         const val WV_WIDTH = 1200
-        const val WV_HEIGHT = 3200
+        const val WV_HEIGHT = 6000
     }
 }
