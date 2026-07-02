@@ -200,8 +200,24 @@ class GoogleMapsDataSource @Inject constructor(
                 val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode) }
                 val gD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
                 val via = viaD.await().firstOrNull()
-                if (via != null) listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
-                else gD.await().take(1) // OSRM down → best-effort direct Google route (loses the stops)
+                // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
+                // single-destination path's offline fallback; only then fall to Google's DIRECT route
+                // (which reaches the destination but loses the stops).
+                val onDevice = if (via == null && routeEngine.isReady(mode))
+                    chainOnDevice(listOf(origin) + waypoints + destination, mode) else null
+                val result = when {
+                    via != null -> listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
+                    onDevice != null -> listOf(onDevice)
+                    else -> gD.await().take(1)
+                }
+                diag.record(
+                    "directions",
+                    "$mode multi-stop ×${waypoints.size} → via=${via != null} onDevice=${onDevice != null} " +
+                        "googleDirect=${result.isNotEmpty() && via == null && onDevice == null}" +
+                        if (via == null && onDevice == null) " (STOPS DROPPED if google won)" else "",
+                    "",
+                )
+                result
             }
         }
         coroutineScope {
@@ -247,7 +263,7 @@ class GoogleMapsDataSource @Inject constructor(
                 "directions",
                 "$mode → OSRM ${open.size} routes / ${open.firstOrNull()?.maneuvers?.size ?: 0} steps; " +
                     "google ${google.size} (typ=${gTop?.durationSeconds?.toInt()}s traf=${gTop?.durationInTrafficSeconds?.toInt()}s " +
-                    "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format("%.2f", t / it) } }}); " +
+                    "ratio=${gTop?.durationInTrafficSeconds?.let { t -> gTop?.durationSeconds?.takeIf { it > 0 }?.let { String.format(java.util.Locale.US, "%.2f", t / it) } }}); " +
                     "rerouted=${trafficRoute != null} snapKept=$snapWorthIt snapReaches=$snapReaches " +
                     "(gEta=${googleEtaS?.toInt()}s osrmFF=${open.firstOrNull()?.durationSeconds?.toInt()}s); " +
                     "onDevice=${onDevice.size}",
@@ -305,6 +321,35 @@ class GoogleMapsDataSource @Inject constructor(
         return route.copy(
             durationInTrafficSeconds = route.durationSeconds * factor,
             trafficSpans = g.trafficSpans.map { it.copy(startMeters = it.startMeters * scale, lengthMeters = it.lengthMeters * scale) },
+        )
+    }
+
+    /** Offline multi-stop: route each leg (origin→w1, w1→w2, …, wn→dest) on the on-device engine and
+     *  stitch them into ONE continuous route — polylines joined (dropping each leg's duplicated joint
+     *  point), each non-final leg's ARRIVE and non-first leg's DEPART dropped (mirroring what routeVia's
+     *  parser does for via boundaries), distances/durations summed. Null if any leg can't be routed
+     *  (cross-region or off-graph), so the caller can fall through. */
+    private fun chainOnDevice(points: List<LatLng>, mode: TravelMode): Route? {
+        val legs = points.zipWithNext().map { (a, b) ->
+            runCatching { routeEngine.route(a, b, mode).firstOrNull() }.getOrNull() ?: return null
+        }
+        val polyline = legs.flatMapIndexed { i, leg -> if (i == 0) leg.polyline else leg.polyline.drop(1) }
+        val maneuvers = legs.flatMapIndexed { i, leg ->
+            leg.maneuvers.filter { m ->
+                !(m.type == app.vela.core.model.ManeuverType.ARRIVE && i != legs.lastIndex) &&
+                    !(m.type == app.vela.core.model.ManeuverType.DEPART && i != 0)
+            }
+        }
+        if (polyline.size < 2 || maneuvers.size < 2) return null
+        val dist = legs.sumOf { it.distanceMeters }
+        val dur = legs.sumOf { it.durationSeconds }
+        return Route(
+            polyline = polyline,
+            legs = listOf(app.vela.core.model.RouteLeg(dist, dur, null, maneuvers)),
+            distanceMeters = dist,
+            durationSeconds = dur,
+            durationInTrafficSeconds = null, // offline — no live traffic
+            summary = legs.firstOrNull()?.summary,
         )
     }
 

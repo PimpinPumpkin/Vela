@@ -58,8 +58,9 @@ class WebPhotoFetcher @Inject constructor(
         }
     }
 
-    /** The gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL (no posted date from a
-     *  DOM scrape) — or empty on any failure. [count] caps how many we keep. */
+    /** The gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL plus the gallery-tab
+     *  [Photo.category] when Google tagged it (Menu / Food & drink / Vibe / By owner; null = All).
+     *  No posted date from a DOM scrape. Empty on any failure. [count] caps how many we keep. */
     suspend fun fetch(featureId: String, count: Int = 80): List<Photo> {
         val cid = cidOf(featureId) ?: return emptyList()
         return mutex.withLock {
@@ -73,13 +74,24 @@ class WebPhotoFetcher @Inject constructor(
                         val ready = CompletableDeferred<Unit>()
                         wv.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                                val scheme = request?.url?.scheme
-                                return scheme != null && scheme != "https" && scheme != "http"
+                                // Block anything that isn't a google.com page — the overview has a bare
+                                // "Menu" ACTION LINK to the restaurant's own site; following it would kill
+                                // the scrape (and quietly load a third-party site in the hidden WebView).
+                                val u = request?.url ?: return false
+                                val scheme = u.scheme
+                                if (scheme != "https" && scheme != "http") return true
+                                val host = u.host.orEmpty()
+                                return !(host == "google.com" || host.endsWith(".google.com"))
                             }
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, SETTLE_MS)
                             }
                         }
+                        // Blank the PREVIOUS place's DOM before navigating: on a slow load the MAX_LOAD
+                        // fallback can inject the scraper before the new page commits — against an empty
+                        // DOM that yields an empty result (safe) instead of the previous place's photos
+                        // being returned for THIS featureId (cross-place data).
+                        wv.evaluateJavascript("try{document.documentElement.innerHTML=''}catch(e){}", null)
                         wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
                         main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, MAX_LOAD_MS)
                         ready.await()
@@ -140,30 +152,49 @@ class WebPhotoFetcher @Inject constructor(
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0;
+              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0, opened=false;
               // The gallery tabs worth tagging (skip All/Latest/Videos/Street View — All is the fallback sweep).
               var CATRE=/^(menu|food|drink|vibe|by owner)/i;
               function ok(u){ return !!u && u.indexOf('googleusercontent')>=0 && !/streetviewpixels/.test(u) && !/\/a[\/-]|ACg8oc|ALV-/.test(u); }
               function idOf(u){ return u.replace(/=[wshpc].*$/,''); }
               function urlOf(el){ var u=el.currentSrc||el.src||''; if(!u || u.indexOf('googleusercontent')<0){ var bg=el.style.backgroundImage||''; if(!bg){ try{ bg=getComputedStyle(el).backgroundImage||''; }catch(e){} } var m=bg.match(/url\(["']?([^"')]+)/); if(m) u=m[1]; } return u; }
               function collect(cat){ [].slice.call(document.querySelectorAll('img,[role="img"],button,a,[style*="background"]')).forEach(function(el){ var u=urlOf(el); if(ok(u)){ var k=idOf(u); if(!acc[k]) acc[k]={c:cat,u:u}; } }); }
-              function clickExact(name){ var bs=[].slice.call(document.querySelectorAll('[role="tab"],button,a')); for(var i=0;i<bs.length;i++){ if((((bs[i].getAttribute('aria-label')||bs[i].textContent)||'').trim())===name){ try{ bs[i].click(); }catch(e){} return; } } }
-              function clickPhotos(){ var bs=[].slice.call(document.querySelectorAll('button,a')); for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase(); if((/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l)) && !/street ?view|review|profile|video/.test(l)){ try{ bs[i].click(); }catch(e){} return; } } }
+              // Tabs come from role="tab" ONLY: the place overview also has a bare "Menu" ACTION LINK (an
+              // <a> to the restaurant's own site) — clicking that would navigate the WebView off Maps and
+              // kill the scrape. (The Kotlin side also blocks off-google navigations as a belt-and-braces.)
+              function tabEls(){ return [].slice.call(document.querySelectorAll('[role="tab"]')); }
+              function clickTab(name){ var ts=tabEls(); for(var i=0;i<ts.length;i++){ if((((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim())===name){ try{ ts[i].click(); }catch(e){} return; } } }
+              function tabSelected(name){ var ts=tabEls(); for(var i=0;i<ts.length;i++){ var t=(((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim()); if(t===name) return ts[i].getAttribute('aria-selected')==='true'; } return false; }
+              // One-shot: after the gallery opens, its own tiles carry "Photo 2 of 45"-style labels that
+              // match /photos?/ — re-firing this would click INTO a photo lightbox and break the tab walk.
+              function clickPhotos(){ if(opened) return; var bs=[].slice.call(document.querySelectorAll('button,a')); for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase(); if((/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l)) && !/street ?view|review|profile|video/.test(l)){ try{ bs[i].click(); }catch(e){} opened=true; return; } } }
               function scroll(){ try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){ if(d.scrollHeight>d.clientHeight+300 && d.clientHeight>200) d.scrollTop=d.scrollHeight; }); }catch(e){} }
               // A real category tab is a clean name ("Menu", "Food & drink", "By owner") — EXCLUDE photo
-              // captions that also start with a category word ("Menu · Photo 1 of 12") via the ·/digit/photo test.
-              function tabsNow(){ var out=[]; [].slice.call(document.querySelectorAll('[role="tab"],button,a')).forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<20 && CATRE.test(t) && /^[a-z &]+${'$'}/i.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
+              // captions that also start with a category word ("Menu · Photo 1 of 12") via the letters-only test.
+              function tabsNow(){ var out=[]; tabEls().forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<20 && CATRE.test(t) && /^[a-z &]+${'$'}/i.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
               function finish(){ var lines=[]; for(var k in acc) lines.push((acc[k].c||'')+'\t'+acc[k].u); try{ VelaBridge.onResult(ID, lines.slice(0,CAP).join("\n")); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
               function tick(){
                 tries++;
-                if(phase===0){ clickPhotos(); scroll(); if(tries>=3){ cats=tabsNow(); ci=0; sub=0; phase=1; } }
+                if(phase===0){
+                  clickPhotos(); scroll();
+                  // Wait until the gallery's category tabs actually exist (slow loads) — but not forever:
+                  // a place with no categorized gallery proceeds tab-less to the plain All sweep.
+                  cats=tabsNow();
+                  if(cats.length>0 || tries>=8){ ci=0; sub=0; phase=1; }
+                }
                 else if(phase===1){
                   if(ci>=cats.length){ phase=2; sub=0; }
-                  // Per tab: click it, then scroll + COLLECT each tick (accumulate the grid across scroll
-                  // positions — it virtualizes, so one collect misses most), for ~5 ticks, then next tab.
-                  else { if(sub===0) clickExact(cats[ci]); scroll(); if(sub>=2) collect(cats[ci]); sub++; if(sub>=6){ ci++; sub=0; } }
+                  // Per tab: click it, then scroll + COLLECT each tick — but only once the tab is actually
+                  // SELECTED (aria-selected), else a slow grid swap would tag the previous tab's photos
+                  // with this category. Accumulate across ticks (the grid virtualizes).
+                  else { if(sub===0) clickTab(cats[ci]); scroll(); if(sub>=2 && tabSelected(cats[ci])) collect(cats[ci]); sub++; if(sub>=6){ ci++; sub=0; } }
                 }
-                else { clickExact('All'); scroll(); collect(''); sub++; if(sub>=4){ finish(); return; } }
+                else {
+                  // The All sweep: click, give the grid one no-collect settle tick, then sweep uncategorized.
+                  if(sub===0) clickTab('All');
+                  scroll(); if(sub>=1) collect('');
+                  sub++; if(sub>=5){ finish(); return; }
+                }
                 if(tries>58){ collect(''); finish(); return; }
                 setTimeout(tick, 500);
               }
@@ -173,8 +204,10 @@ class WebPhotoFetcher @Inject constructor(
     }
 
     private companion object {
-        // Longer than before: with a viewport + per-category scraping there are more tabs × ticks to walk.
-        const val TOTAL_TIMEOUT_MS = 30_000L
+        // Must outlast the script's own hard stop (58 ticks × 500 ms = 29 s + page load ≤ 8 s) — if the
+        // Kotlin timeout fires first we return NULL and throw away everything the walk accumulated,
+        // instead of the partial set the script's salvage path would deliver.
+        const val TOTAL_TIMEOUT_MS = 40_000L
         const val SETTLE_MS = 1_200L
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport so the virtualized category grids render a full batch (not ~1 tile).

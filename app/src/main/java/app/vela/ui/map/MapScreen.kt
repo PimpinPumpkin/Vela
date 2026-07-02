@@ -52,6 +52,7 @@ import androidx.compose.material.icons.filled.LocalCafe
 import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.LocalPharmacy
+import androidx.compose.material.icons.filled.AddLocationAlt
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Restaurant
@@ -320,7 +321,12 @@ fun MapScreen(
                 nextText = next?.instruction,
                 nextType = next?.type,
                 nextRef = next?.ref,
-                nextDistanceMeters = next?.distanceMeters,
+                // The shown→next gap is the SHOWN maneuver's step length (a maneuver's distanceMeters is
+                // the travel AFTER it, to the next maneuver — both OSRM and the Google parser use that
+                // convention). Passing next.distanceMeters was the next→next-next gap: it made "then
+                // Arrive" (ARRIVE has 0 after it) show permanently while approaching the final turn, and
+                // suppressed true exit-then-merge compounds whose merge had a long following leg.
+                nextDistanceMeters = shown?.distanceMeters,
                 previewing = previewing,
                 onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
                 onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },
@@ -364,7 +370,12 @@ fun MapScreen(
                         onBack = if (searchOpen) ({ focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
                     )
                     when {
-                        searchOpen -> SearchEntryContent(
+                        // While picking an origin/stop the overlay stays latched open (pickingOrigin/
+                        // pickingStop, not field focus) — but a typed IME submit or a recent-search tap
+                        // fills state.results with the field UNfocused. Fall through to the results list
+                        // then (its taps flow into selectPlace, whose pick-mode guards consume them),
+                        // else the results would be invisible behind the entry page: a dead-end.
+                        searchOpen && (searchFocused || state.results.isEmpty()) -> SearchEntryContent(
                             suggestions = state.suggestions,
                             saved = state.saved,
                             recents = state.recents,
@@ -373,6 +384,8 @@ fun MapScreen(
                             work = state.work,
                             assigning = state.assigningShortcut,
                             pickingOrigin = state.pickingOrigin,
+                            pickingStop = state.pickingStop,
+                            onCancelPickStop = vm::cancelPickStop,
                             onUseMyLocation = vm::useMyLocationAsOrigin,
                             onPickSuggestion = {
                                 focusManager.clearFocus()
@@ -990,6 +1003,8 @@ private fun SearchEntryContent(
     work: SavedPlace?,
     assigning: ShortcutKind?,
     pickingOrigin: Boolean = false,
+    pickingStop: Boolean = false,
+    onCancelPickStop: () -> Unit = {},
     onUseMyLocation: () -> Unit = {},
     onPickSuggestion: (Place) -> Unit,
     onPickSaved: (SavedPlace) -> Unit,
@@ -1010,6 +1025,7 @@ private fun SearchEntryContent(
             Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 8.dp),
         ) {
             if (assigning != null) AssignBanner(assigning, onCancelAssign)
+            if (pickingStop) PickStopBanner(onCancelPickStop)
             suggestions.forEach { p ->
                 SuggestionRow(
                     icon = Icons.Default.Search,
@@ -1030,6 +1046,7 @@ private fun SearchEntryContent(
             .padding(top = 8.dp),
     ) {
         if (assigning != null) AssignBanner(assigning, onCancelAssign)
+        if (pickingStop) PickStopBanner(onCancelPickStop)
         // When picking a directions origin, offer "Your location" at the very top to
         // reset back to live GPS (Google-style From picker).
         if (pickingOrigin) {
@@ -1208,6 +1225,27 @@ private fun AssignBanner(kind: ShortcutKind, onCancel: () -> Unit) {
         Spacer(Modifier.width(12.dp))
         Text(
             "Search for your ${kind.label.lowercase()} address",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+        TextButton(onClick = onCancel) { Text("Cancel") }
+    }
+}
+
+/** A slim banner while picking a place to add as a directions stop — without it the Add-stop
+ *  picker is visually identical to plain search (no hint you're in a mode, no way out but Back). */
+@Composable
+private fun PickStopBanner(onCancel: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Default.AddLocationAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(12.dp))
+        Text(
+            "Choose a place to add as a stop",
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )

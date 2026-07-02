@@ -153,15 +153,18 @@ fun ManeuverBanner(
             }
             // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
             // THIS turn highlighted) when we have it; else the old count-based hint from Google markup.
-            // Only show lanes when you're actually APPROACHING the maneuver (Google-style) — otherwise the
-            // arrows sit there for miles telling you to "be in the right lane" for an exit way ahead, which
-            // is just noise. In step-preview (swiping ahead) always show them, since you're inspecting a step.
-            if (lanes.isNotEmpty() && (previewing || distanceMeters <= LANE_SHOW_M)) {
-                Spacer(Modifier.height(10.dp))
-                LaneDiagram(lanes)
-            } else laneHint?.let {
-                Spacer(Modifier.height(10.dp))
-                LaneGuide(it, type)
+            // Only show lane guidance when you're actually APPROACHING the maneuver (Google-style) —
+            // otherwise the arrows sit there for miles telling you to "be in the right lane" for an exit
+            // way ahead, which is just noise. The distance gate covers BOTH paths (the count-based hint
+            // was just as noisy). In step-preview (swiping ahead) always show, since you're inspecting a step.
+            if (previewing || distanceMeters <= LANE_SHOW_M) {
+                if (lanes.isNotEmpty()) {
+                    Spacer(Modifier.height(10.dp))
+                    LaneDiagram(lanes)
+                } else laneHint?.let {
+                    Spacer(Modifier.height(10.dp))
+                    LaneGuide(it, type)
+                }
             }
             // Compound "then <next>" preview — only when the next maneuver CLOSELY follows this one
             // (Google shows it only for back-to-back turns like "exit, then keep right"). Showing it for a
