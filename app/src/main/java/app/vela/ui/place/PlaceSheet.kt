@@ -611,7 +611,7 @@ fun PlaceSheet(
     }
 
     galleryStart?.let { start ->
-        PhotoGallery(place.photoUrls, place.photoDates, start) { galleryStart = null }
+        PhotoGallery(place.photoUrls, place.photoDates.map { d -> d?.let { "Photo · $it" } }, start) { galleryStart = null }
     }
 }
 
@@ -1238,10 +1238,11 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 color = Color.White,
                 modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(12.dp),
             )
-            // "Photo · May 2026" when the gallery RPC gave a posted date (Google-style).
-            dates.getOrNull(pager.currentPage)?.let { posted ->
+            // Per-photo caption, rendered as-is: the POI gallery passes "Photo · May 2026", the
+            // review gallery passes "Thais Miller · 6 months ago".
+            dates.getOrNull(pager.currentPage)?.let { caption ->
                 Text(
-                    "Photo · $posted",
+                    caption,
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White.copy(alpha = 0.85f),
                     modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
@@ -1308,7 +1309,7 @@ private fun PlaceTabs(
                     if (app.vela.ui.LiveReviews.on.value && !panelFailed && fid != null && fid.contains(":")) {
                         // A tapped review photo opens Vela's own full-screen gallery (Google's embedded
                         // viewer renders nothing inside the carve) — urls + start index from the panel.
-                        var reviewPhotos by remember(place.id) { mutableStateOf<Pair<List<String>, Int>?>(null) }
+                        var reviewPhotos by remember(place.id) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
                         Column {
                             place.rating?.let { r ->
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
@@ -1326,11 +1327,11 @@ private fun PlaceTabs(
                                 dark = isAppInDarkTheme(),
                                 modifier = Modifier.fillMaxWidth().height(560.dp),
                                 onFailed = { panelFailed = true; onRetryReviews() },
-                                onPhotos = { urls, start -> reviewPhotos = urls to start },
+                                onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
                             )
                         }
-                        reviewPhotos?.let { (urls, start) ->
-                            PhotoGallery(urls, urls.map { null }, start) { reviewPhotos = null }
+                        reviewPhotos?.let { (urls, caps, start) ->
+                            PhotoGallery(urls, caps, start) { reviewPhotos = null }
                         }
                     } else {
                         // Self-heal: reaching the native list with nothing loaded and nothing
