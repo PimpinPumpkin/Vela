@@ -47,6 +47,25 @@ import java.math.BigInteger
  * (`shouldOverrideUrlLoading` → true), so a tap on an author profile / report link can't leave
  * the panel (the SPA's in-panel interactions are client-side and unaffected).
  */
+/** A topic chip scraped off the panel ("potato dumplings" ×50; "All" has no count). */
+data class PanelChip(val label: String, val count: Int? = null)
+
+/** Drives the panel's hidden Google controls from Vela's native UI. Safe to call any time —
+ *  no-ops until the panel's WebView exists. */
+class ReviewsPanelController {
+    internal var webView: WebView? = null
+    private fun js(code: String) {
+        val wv = webView ?: return
+        wv.post { runCatching { wv.evaluateJavascript(code, null) } }
+    }
+    /** Server-side search across ALL reviews (empty = clear). */
+    fun search(q: String) = js("try{window.velaSearch(" + org.json.JSONObject.quote(q) + ")}catch(e){}")
+    /** Apply a topic chip by its label ("All" clears). */
+    fun chip(label: String) = js("try{window.velaClickChip(" + org.json.JSONObject.quote(label) + ")}catch(e){}")
+    /** Sort order: "Most relevant" / "Newest" / "Highest rating" / "Lowest rating". */
+    fun sort(label: String) = js("try{window.velaSort(" + org.json.JSONObject.quote(label) + ")}catch(e){}")
+}
+
 @Composable
 fun GoogleReviewsPanel(
     featureId: String,
@@ -68,6 +87,10 @@ fun GoogleReviewsPanel(
     // Fires once the panel has painted (the internal spinner clears) — lets the caller drop any
     // loading teaser it shows alongside.
     onLoaded: () -> Unit = {},
+    // Topic chips scraped off the page ("All", "potato dumplings" ×50 …) — Vela renders them
+    // natively and drives the hidden originals via [controller].
+    onChips: (List<PanelChip>) -> Unit = {},
+    controller: ReviewsPanelController? = null,
 ) {
     val cid = cidOf(featureId) ?: return
     // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose — read
@@ -78,6 +101,7 @@ fun GoogleReviewsPanel(
     val engaged = androidx.compose.runtime.rememberUpdatedState(onEngaged)
     val histogram = androidx.compose.runtime.rememberUpdatedState(onHistogram)
     val loadedCb = androidx.compose.runtime.rememberUpdatedState(onLoaded)
+    val chips = androidx.compose.runtime.rememberUpdatedState(onChips)
     // key(): a place switch / theme flip must tear the WHOLE AndroidView node down and rebuild
     // it — AndroidView's factory runs only when its node enters composition, so destroying the
     // WebView from a keyed effect while the node survived left a dead view and an eternal
@@ -98,9 +122,10 @@ fun GoogleReviewsPanel(
                         onOverscrollEnd = { v -> overscrollEnd.value(v) },
                         onEngaged = { engaged.value() },
                         onHistogramParsed = { counts -> histogram.value(counts) },
-                    )
+                        onChipsParsed = { list -> chips.value(list) },
+                    ).also { controller?.webView = it }
                 },
-                onRelease = { it.destroy() },
+                onRelease = { controller?.webView = null; it.destroy() },
             )
             if (!ready) {
                 // Near the TOP of the panel, not centered — the panel is most of a screen tall,
@@ -153,6 +178,7 @@ private fun buildPanelWebView(
     onOverscrollEnd: (Float) -> Unit,
     onEngaged: () -> Unit,
     onHistogramParsed: (List<Int>) -> Unit,
+    onChipsParsed: (List<PanelChip>) -> Unit,
 ): WebView {
     val wv = WebView(ctx)
     wv.settings.javaScriptEnabled = true
@@ -297,6 +323,20 @@ private fun buildPanelWebView(
         @JavascriptInterface
         fun onPanelEngaged() {
             wv.post { onEngaged() }
+        }
+
+        // Topic chips ([{l,n?}…]) — rendered natively by Vela; Google's chips + search rows are
+        // carved once this is sent (the native controls are the replacement).
+        @JavascriptInterface
+        fun onChips(json: String) {
+            val list = runCatching {
+                val a = org.json.JSONArray(json)
+                (0 until a.length()).map { i ->
+                    val o = a.getJSONObject(i)
+                    PanelChip(o.getString("l"), if (o.has("n")) o.getInt("n") else null)
+                }
+            }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return
+            wv.post { onChipsParsed(list) }
         }
 
         // The page's rating distribution ([5★,4★,3★,2★,1★] counts) — rendered natively by Vela;
@@ -462,21 +502,14 @@ private fun carveScript(dark: Boolean): String {
             var blocks=[];
             var tbl=rows[0].closest('table');
             if(tbl && window.__velaHistSent){
-              // Walk up to the summary BLOCK — guards must be self-contained (NOT __velaSc,
-              // which is unset early): stop at [role=main], any parent holding review cards,
-              // anything viewport-scale (the scroller reads as non-scrollable early, so SIZE is
-              // the ceiling: scroller ~600px / even unstretched ~372px vs summary ~125px), and
-              // any scrollable parent.
-              var cand=tbl;
-              while(cand.parentElement){
-                var p2=cand.parentElement;
-                if(p2.getAttribute('role')==='main') break;
-                if(p2.querySelector('.jJc9Ad,[data-review-id]')) break;
-                if(p2.offsetHeight>=cap) break;
-                if(p2.scrollHeight>p2.clientHeight+50) break;
-                cand=p2;
-              }
-              blocks.push({el:cand,isSum:1});
+              blocks.push({el:velaBlockOf(tbl),isSum:1});
+            }
+            // Google's search/sort row + topic-chips row: carved only once the CHIPS data reached
+            // Vela (the native search field + chip row are the replacement).
+            if(window.__velaChipsSent){
+              var crow=velaChipsRow(); if(crow) blocks.push({el:crow,isSum:0});
+              var inp=document.querySelector('[role="main"] input');
+              if(inp) blocks.push({el:velaBlockOf(inp),isSum:0});
             }
             [].slice.call(document.querySelectorAll('[role="main"] div')).some(function(d){
               if(d.offsetHeight<=0 || d.offsetHeight>=80) return false;
@@ -520,6 +553,72 @@ private fun carveScript(dark: Boolean): String {
               }catch(x){}
             }
           }
+          // Walk an element up to its carve-able BLOCK: stop at [role=main], review cards, anything
+          // viewport-scale, or a scrollable parent (same guards the summary walk proved out).
+          function velaBlockOf(el){
+            var cap2=window.innerHeight*0.5;
+            var cand=el;
+            while(cand.parentElement){
+              var p2=cand.parentElement;
+              if(p2.getAttribute('role')==='main') break;
+              if(p2.querySelector('.jJc9Ad,[data-review-id]')) break;
+              if(p2.offsetHeight>=cap2) break;
+              if(p2.scrollHeight>p2.clientHeight+50) break;
+              cand=p2;
+            }
+            return cand;
+          }
+          // --- Native search / topic chips / sort (Vela UI drives Google's hidden controls) ---
+          // The chips row is anchored by its "All" chip (position-based, no classes).
+          function velaChipsRow(){
+            var all=[].slice.call(document.querySelectorAll('[role="main"] button')).filter(function(b){ return ((b.textContent||'').trim())==='All'; })[0];
+            if(!all) return null;
+            var row=all.parentElement;
+            for(var i=0;i<4 && row;i++){ if(row.querySelectorAll('button').length>=2) break; row=row.parentElement; }
+            return row;
+          }
+          function velaChips(){
+            if(window.__velaChipsSent) return;
+            var row=velaChipsRow(); if(!row) return;
+            var out=[];
+            [].slice.call(row.querySelectorAll('button')).forEach(function(b){
+              var t=(b.textContent||'').trim(); if(!t || t.length>32) return;
+              var m=t.match(/^(.*?)\s*(\d+)$/);
+              if(t==='All') out.push({l:'All'});
+              else if(m && m[1]) out.push({l:m[1].trim(), n:parseInt(m[2],10)});
+              else out.push({l:t});
+            });
+            if(out.length>=2){ window.__velaChipsSent=1; try{ VelaPanel.onChips(JSON.stringify(out)); }catch(e){} }
+          }
+          window.velaClickChip=function(label){
+            var row=velaChipsRow(); if(!row) return;
+            var bs=[].slice.call(row.querySelectorAll('button'));
+            for(var i=0;i<bs.length;i++){ var t=(bs[i].textContent||'').trim(); if(t===label || t.replace(/\s*\d+$/,'')===label){ try{ bs[i].click(); }catch(e){} return; } }
+          };
+          window.velaSearch=function(q){
+            var inp=document.querySelector('[role="main"] input'); if(!inp) return;
+            try{
+              var set=Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype,'value').set;
+              set.call(inp,q);
+              inp.dispatchEvent(new Event('input',{bubbles:true}));
+              inp.dispatchEvent(new KeyboardEvent('keydown',{bubbles:true,key:'Enter',keyCode:13}));
+              inp.dispatchEvent(new KeyboardEvent('keyup',{bubbles:true,key:'Enter',keyCode:13}));
+            }catch(e){}
+          };
+          window.velaSort=function(label){
+            var bs=[].slice.call(document.querySelectorAll('[role="main"] button')).filter(function(b){ return /sort/i.test((b.getAttribute('aria-label')||b.textContent||'')); });
+            if(!bs.length) return;
+            try{ bs[0].click(); }catch(e){}
+            var attempts=0;
+            var t=setInterval(function(){
+              attempts++;
+              var items=[].slice.call(document.querySelectorAll('[role="menuitem"],[role="menuitemradio"],[role="option"]'));
+              for(var i=0;i<items.length;i++){
+                if(((items[i].textContent||'').trim().toLowerCase())===label.toLowerCase()){ try{ items[i].click(); }catch(e){} clearInterval(t); return; }
+              }
+              if(attempts>8) clearInterval(t);
+            },150);
+          };
           // Class-agnostic "reviews are rendered" check. Google A/B-serves front-end builds with
           // ROTATED class names: on those, cards render fine but '.jJc9Ad,[data-review-id]' counts
           // zero — the watchdog then kills a HEALTHY panel the user is about to scroll (reported
@@ -777,7 +876,7 @@ private fun carveScript(dark: Boolean): String {
               // (each needing its Like/Share stripped via isolate()->strip()), and scroll-sync's
               // edge reporting rides stretch()'s scroller adoption, so a dead loop froze both
               // after a minute. NO tab re-click here — the user may browse Menu/About.
-              stretch(); revealOverlays(); velaHistogram(); velaFont();
+              stretch(); revealOverlays(); velaHistogram(); velaChips(); velaFont();
               // Feed watchdog: Google sometimes serves the page SHELL but silently withholds the
               // review feed (soft bot-throttle — tabs + histogram render, the feed request is
               // never issued; observed live under heavy testing). Ready-but-cardless for ~15 s
@@ -801,7 +900,7 @@ private fun carveScript(dark: Boolean): String {
             // Fade Google's summary the MOMENT its rows render (opacity = zero layout risk even
             // pre-cards) — waiting for the ready tick left it visible for up to a second (the
             // "saw the google histogram for a second" flash).
-            if(rev) velaHistogram();
+            if(rev){ velaHistogram(); velaChips(); }
             // Prefer readying once review CARDS have painted — then the panel never flashes the
             // overview (Order-online button) during the tab transition. BUT don't HANG on it: a
             // place with a rating and zero written reviews never renders a card, and the card class
