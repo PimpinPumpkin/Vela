@@ -302,7 +302,9 @@ internal fun LaneDiagram(
     modifier: Modifier = Modifier,
 ) {
     val bright = on
-    val dim = on.copy(alpha = 0.28f)
+    // Flat mid-grey for the arrows you're NOT taking — a solid colour (not a translucent tint of
+    // `on`) so overlapping strokes don't build up into a muddy skeuomorphic blob.
+    val dim = Color(0xFF80868B)
     // A signed direction level for the maneuver, or null when the type doesn't pin a side (MERGE /
     // ROUNDABOUT / arrive / unknown) — in that case we can't say WHICH allowed direction we're
     // taking, so a valid lane lights ALL its arrows rather than guessing (and lighting the wrong one).
@@ -321,11 +323,16 @@ internal fun LaneDiagram(
                 // indication closest to the maneuver's direction. When the maneuver side is unknown
                 // (target null), light all of a valid lane's arrows. Invalid lanes: all dim.
                 val active = if (lane.valid && target != null) inds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) } else null
-                // Wider than tall + more horizontal room so two forked heads don't overlap.
-                Canvas(Modifier.size(width = 26.dp, height = 26.dp)) {
-                    inds.forEach { ind ->
-                        val lit = lane.valid && (target == null || ind == active)
-                        laneArrow(ind, if (lit) bright else dim)
+                fun lit(ind: String) = lane.valid && (target == null || ind == active)
+                // One SHARED vertical shaft + a head per indication (not a whole arrow each — that
+                // double-drew the shaft). Wider cell + smaller heads so two forked heads don't
+                // overlap; dim heads drawn first so the bright active head sits on top of any touch.
+                Canvas(Modifier.size(width = 30.dp, height = 26.dp)) {
+                    val cw = size.width; val ch = size.height
+                    val baseX = cw / 2f; val bendY = ch * 0.44f; val stroke = cw * 0.11f
+                    drawLine(if (lane.valid) bright else dim, Offset(baseX, ch * 0.92f), Offset(baseX, bendY), stroke, cap = StrokeCap.Round)
+                    inds.sortedBy { if (lit(it)) 1 else 0 }.forEach { ind ->
+                        laneHead(ind, if (lit(ind)) bright else dim, baseX, bendY, cw, ch, stroke)
                     }
                 }
             }
@@ -362,14 +369,10 @@ private fun maneuverBucket(type: ManeuverType): Int? = when (type) {
     else -> null
 }
 
-/** Draw one lane arrow (shaft from the bottom, bending to the indicated direction, with a head). */
-private fun DrawScope.laneArrow(indication: String, color: Color) {
-    val w = size.width
-    val h = size.height
-    val baseX = w / 2f
-    val baseY = h * 0.92f
-    val bendY = h * 0.46f
-    val stroke = w * 0.12f
+/** Draw one lane HEAD: the angled stem rising from the shared bend point [bendY] to a tip, plus the
+ *  two barbs. The vertical shaft (base→bend) is drawn once per lane by the caller, so several
+ *  indications on one lane share it instead of each redrawing (and muddying) it. */
+private fun DrawScope.laneHead(indication: String, color: Color, baseX: Float, bendY: Float, w: Float, h: Float, stroke: Float) {
     val deg = when (indication.trim().lowercase().replace('_', ' ')) {
         "straight", "none", "" -> 0f
         "slight right" -> 32f
@@ -389,14 +392,11 @@ private fun DrawScope.laneArrow(indication: String, color: Color) {
         baseX + (kotlin.math.sin(a) * headLen).toFloat(),
         bendY - (kotlin.math.cos(a) * headLen).toFloat(),
     )
-    if (deg == 0f) {
-        drawLine(color, Offset(baseX, baseY), tip, stroke, cap = StrokeCap.Round)
-    } else {
-        drawLine(color, Offset(baseX, baseY), Offset(baseX, bendY), stroke, cap = StrokeCap.Round)
-        drawLine(color, Offset(baseX, bendY), tip, stroke, cap = StrokeCap.Round)
-    }
-    // arrowhead: two barbs pointing back along the head direction
-    val barb = w * 0.30f
+    // the stem from the shared bend up to the tip (vertical when straight)
+    drawLine(color, Offset(baseX, bendY), tip, stroke, cap = StrokeCap.Round)
+    // arrowhead: two short barbs pointing back along the head direction (smaller than before so two
+    // forked heads in one cell don't collide)
+    val barb = w * 0.22f
     listOf(150.0, -150.0).forEach { d ->
         val ba = a + Math.toRadians(d)
         drawLine(

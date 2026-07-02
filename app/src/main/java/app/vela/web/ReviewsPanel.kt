@@ -52,7 +52,7 @@ fun GoogleReviewsPanel(
     dark: Boolean,
     modifier: Modifier = Modifier,
     onFailed: () -> Unit = {},
-    onPhotos: (List<String>, Int) -> Unit = { _, _ -> },
+    onPhotos: (List<String>, List<String?>, Int) -> Unit = { _, _, _ -> },
 ) {
     val cid = cidOf(featureId) ?: return
     // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose — read
@@ -73,7 +73,7 @@ fun GoogleReviewsPanel(
                         ctx, cid, dark,
                         onReady = { ready = true },
                         onFail = onFailed,
-                        onPhotos = { urls, i -> photos.value(urls, i) },
+                        onPhotos = { urls, caps, i -> photos.value(urls, caps, i) },
                     )
                 },
                 onRelease = { it.destroy() },
@@ -122,7 +122,7 @@ private fun buildPanelWebView(
     dark: Boolean,
     onReady: () -> Unit,
     onFail: () -> Unit,
-    onPhotos: (List<String>, Int) -> Unit,
+    onPhotos: (List<String>, List<String?>, Int) -> Unit,
 ): WebView {
     val wv = WebView(ctx)
     wv.settings.javaScriptEnabled = true
@@ -152,15 +152,22 @@ private fun buildPanelWebView(
         @JavascriptInterface
         fun fail() { wv.post { onFail() } }
 
-        // A tapped review photo — its review's upsized photo URLs + the tapped index. Google's own
-        // photo route renders nothing inside the carve, so JS blocks it and hands the URLs here to
-        // open Vela's native full-screen gallery. JavaBridge thread → post to main.
+        // A tapped review photo — a JSON blob {urls, index, author, date} for the tapped review.
+        // Google's own photo route renders nothing inside the carve, so JS blocks it and hands the
+        // data here to open Vela's native full-screen gallery, captioned "Author · date" (every
+        // photo in one review shares that caption). JavaBridge thread → post to main.
         @JavascriptInterface
-        fun onReviewPhotos(json: String, index: Int) {
-            val urls = runCatching {
-                val a = org.json.JSONArray(json); (0 until a.length()).map { a.getString(it) }
-            }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return
-            wv.post { onPhotos(urls, index.coerceIn(0, urls.size - 1)) }
+        fun onReviewPhotos(json: String) {
+            val o = runCatching { org.json.JSONObject(json) }.getOrNull() ?: return
+            val arr = o.optJSONArray("urls") ?: return
+            val urls = (0 until arr.length()).map { arr.getString(it) }
+            if (urls.isEmpty()) return
+            val author = o.optString("author").trim()
+            val date = o.optString("date").trim()
+            val caption = listOf(author, date).filter { it.isNotEmpty() }.joinToString(" · ").ifBlank { null }
+            val captions = List<String?>(urls.size) { caption }
+            val index = o.optInt("index", 0).coerceIn(0, urls.size - 1)
+            wv.post { onPhotos(urls, captions, index) }
         }
     }
     wv.addJavascriptInterface(bridge, "VelaPanel")
@@ -236,6 +243,32 @@ private fun carveScript(dark: Boolean): String {
     return """
         (function(){
           var tries=0, readySent=false, maint=0, revAt=-1;
+          // --- review media helpers (used by the photo interceptor) ---
+          // A review media button is keyed by its jsaction (review.openPhoto), NOT its aria-label:
+          // Google labels SOME photos descriptively ("Mixed dumplings with rye bread…") instead of
+          // "Photo N on …", so an aria-label match silently drops the described ones (the "first pic
+          // won't open, shows 1/1" bug). Class .Tya61d is a belt-and-braces fallback.
+          function velaMediaBtns(card){ return [].slice.call(card.querySelectorAll('[jsaction*="review.openPhoto"],.Tya61d')); }
+          function velaMediaUrl(b){
+            var m=(b.style&&b.style.backgroundImage||'').match(/url\(["']?([^"')]+)/);
+            if(m && /googleusercontent|ggpht/.test(m[1])) return m[1];
+            try{ var c=(getComputedStyle(b).backgroundImage||'').match(/url\(["']?([^"')]+)/); if(c && /googleusercontent|ggpht/.test(c[1])) return c[1]; }catch(x){}
+            var im=b.querySelector('img'); if(im){ var s=im.currentSrc||im.src||''; if(/googleusercontent|ggpht/.test(s)) return s; }
+            var dd=b.querySelectorAll('*'); for(var i=0;i<dd.length;i++){ var g=''; try{g=getComputedStyle(dd[i]).backgroundImage||'';}catch(y){} var mm=g.match(/url\(["']?([^"')]+)/); if(mm && /googleusercontent|ggpht/.test(mm[1])) return mm[1]; }
+            return null;
+          }
+          // Upsize the size-suffix (…=w300-h200-…) to =s1600 for a full-res gallery image.
+          function velaUpsize(u){ var eq=u.indexOf('=', u.lastIndexOf('/')); return eq<0 ? u : u.slice(0,eq)+'=s1600'; }
+          function velaAuthor(card){
+            var d=card.querySelector('.d4r55'); if(d && d.textContent.trim()) return d.textContent.trim();
+            var a=card.querySelector('[aria-label^="Photo of "]'); if(a) return (a.getAttribute('aria-label')||'').replace(/^Photo of /,'').trim();
+            return '';
+          }
+          function velaDate(card){
+            var d=card.querySelector('.rsqaWe'); if(d && d.textContent.trim()) return d.textContent.trim();
+            var all=card.querySelectorAll('span,div'); for(var i=0;i<all.length;i++){ var e=all[i]; if(e.children.length===0 && /^(a|an|\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/i.test((e.textContent||'').trim())) return e.textContent.trim(); }
+            return '';
+          }
           function isolate(){
             var main=document.querySelector('[role="main"]');
             if(!main) return false;
@@ -358,18 +391,23 @@ private fun carveScript(dark: Boolean): String {
             // collect the tapped review's photos (upsized to =s1600), and hand them to Vela's native
             // gallery. Non-photo taps fall through to the overlay reveal below.
             document.addEventListener('click', function(e){
-              var btn = e.target && e.target.closest ? e.target.closest('button,[role="button"]') : null;
-              if(btn && /^photo \d+ on /i.test(btn.getAttribute('aria-label')||'')){
+              var t = e.target;
+              var btn = t && t.closest ? t.closest('[jsaction*="review.openPhoto"],.Tya61d') : null;
+              if(btn){
                 e.preventDefault(); e.stopImmediatePropagation();
                 var card = btn.closest('.jJc9Ad') || btn.closest('[data-review-id]') || btn.parentElement;
                 var urls=[], tap=0;
-                [].slice.call(card.querySelectorAll('button,[role="button"]')).forEach(function(b){
-                  if(!/^photo \d+ on /i.test(b.getAttribute('aria-label')||'')) return;
-                  var bg=''; try{ bg=getComputedStyle(b).backgroundImage||''; }catch(x){}
-                  var m=bg.match(/url\(["']?([^"')]+)/);
-                  if(m && /googleusercontent/.test(m[1])){ if(b===btn) tap=urls.length; urls.push(m[1].replace(/=[^=\/]*${'$'}/,'=s1600')); }
+                velaMediaBtns(card).forEach(function(b){
+                  var u=velaMediaUrl(b); if(!u) return;
+                  u=velaUpsize(u);
+                  var at=urls.indexOf(u);               // de-dupe: a nested jsaction+.Tya61d pair could
+                  if(at<0){ at=urls.length; urls.push(u); } // resolve to the same photo URL twice
+                  if(b===btn || b.contains(t)) tap=at;
                 });
-                if(urls.length){ try{ VelaPanel.onReviewPhotos(JSON.stringify(urls), tap); }catch(x){} }
+                if(urls.length){
+                  var meta={urls:urls, index:tap, author:velaAuthor(card), date:velaDate(card)};
+                  try{ VelaPanel.onReviewPhotos(JSON.stringify(meta)); }catch(x){}
+                }
                 return;
               }
               requestAnimationFrame(revealOverlays); setTimeout(revealOverlays,150); setTimeout(revealOverlays,400);
