@@ -729,13 +729,10 @@ class MapViewModel @Inject constructor(
         // (~90 s worst case to first review). Cancelling frees the mutex immediately, and this
         // fetch's page navigation kills the old page's scraper script.
         reviewsJob?.cancel()
-        // The live Google panel renders reviews itself — don't burn a 20 s background scrape
-        // the tab won't show. [force] = the panel failed to carve and the tab fell back to the
-        // native list (retryReviews), which DOES need the scrape.
-        if (app.vela.ui.LiveReviews.on.value && !force) {
-            _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
-            return
-        }
+        // The INLINE reviews are now the native scraped list (smooth, no nested WebView) — always
+        // run the scrape. The live Google panel is a separate FULL-SCREEN "read all" view that
+        // loads its own reviews on demand, so it no longer suppresses this. ([force] is now moot
+        // but kept for the retry path's call sites.)
         val fid = p.featureId
         if (fid.isNullOrBlank()) {
             _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
