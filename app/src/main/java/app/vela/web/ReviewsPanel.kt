@@ -53,11 +53,18 @@ fun GoogleReviewsPanel(
     modifier: Modifier = Modifier,
     onFailed: () -> Unit = {},
     onPhotos: (List<String>, List<String?>, Int) -> Unit = { _, _, _ -> },
+    // Scroll-sync: a boundary drag (reviews at their top edge + finger dragging down, or bottom
+    // edge + up) is forwarded here as raw pixel deltas so the caller can move the Vela sheet 1:1
+    // with the finger; onOverscrollEnd fires at finger-up with the tracked fling velocity (px/s).
+    onOverscroll: (Float) -> Unit = {},
+    onOverscrollEnd: (Float) -> Unit = {},
 ) {
     val cid = cidOf(featureId) ?: return
     // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose — read
     // the latest through this so a tapped photo always reaches the current handler.
     val photos = androidx.compose.runtime.rememberUpdatedState(onPhotos)
+    val overscroll = androidx.compose.runtime.rememberUpdatedState(onOverscroll)
+    val overscrollEnd = androidx.compose.runtime.rememberUpdatedState(onOverscrollEnd)
     // key(): a place switch / theme flip must tear the WHOLE AndroidView node down and rebuild
     // it — AndroidView's factory runs only when its node enters composition, so destroying the
     // WebView from a keyed effect while the node survived left a dead view and an eternal
@@ -74,6 +81,8 @@ fun GoogleReviewsPanel(
                         onReady = { ready = true },
                         onFail = onFailed,
                         onPhotos = { urls, caps, i -> photos.value(urls, caps, i) },
+                        onOverscroll = { dy -> overscroll.value(dy) },
+                        onOverscrollEnd = { v -> overscrollEnd.value(v) },
                     )
                 },
                 onRelease = { it.destroy() },
@@ -123,6 +132,8 @@ private fun buildPanelWebView(
     onReady: () -> Unit,
     onFail: () -> Unit,
     onPhotos: (List<String>, List<String?>, Int) -> Unit,
+    onOverscroll: (Float) -> Unit,
+    onOverscrollEnd: (Float) -> Unit,
 ): WebView {
     val wv = WebView(ctx)
     wv.settings.javaScriptEnabled = true
@@ -133,29 +144,106 @@ private fun buildPanelWebView(
     // Match Vela's SheetPalette exactly (Dark #1F1F1F / Light #FFFFFF) so the WebView surface
     // behind the page is the sheet colour before the page even paints.
     wv.setBackgroundColor(if (dark) 0xFF1F1F1F.toInt() else 0xFFFFFFFF.toInt())
-    // Scroll-sync: the panel lives inside the sheet's scrollable column. It OWNS the vertical
-    // gesture (so the reviews list scrolls, not the sheet) — EXCEPT at a scroll boundary, where it
-    // HANDS the drag to the Vela sheet so panel + sheet feel like one surface: at the reviews' top,
-    // a downward drag flows through to scroll the sheet body up / collapse it; at the bottom, an
-    // upward drag flows through. The edge state comes from the page via `onPanelEdge` (JS reports
-    // the inner scroller's top/bottom). Re-asserting disallow on EVERY move is still required — the
-    // Compose sheet resets a once-per-gesture disallow and would otherwise steal the stream.
+    // Scroll-sync: the panel lives inside the sheet's scrollable column and OWNS every vertical
+    // gesture (disallow-intercept re-asserted on EVERY event — the Compose sheet resets a
+    // once-per-gesture disallow and steals the stream otherwise). At a scroll BOUNDARY — reviews
+    // at their top edge + finger dragging down, or bottom edge + up — the WebView can't consume
+    // the drag, so the deltas are FORWARDED to the caller (onOverscroll), which moves the Vela
+    // sheet 1:1 with the finger; finger-up sends the tracked velocity (onOverscrollEnd) so a
+    // boundary fling glides the sheet. Edge state comes from the page (`onPanelEdge` bridge).
+    //
+    // v1 tried gesture HANDOFF instead — flipping requestDisallowInterceptTouchEvent(false) at
+    // the boundary so the sheet would take the stream. DON'T go back to that: Compose's drag
+    // detector has already abandoned a stream whose early events the WebView consumed, so a
+    // mid-gesture flip does nothing (a slow synthetic swipe happened to work; real fingers and
+    // flings didn't — the panel became a scroll trap). Manual delta-forwarding has no ownership
+    // transfer at all, so it also survives mid-gesture direction reversals.
     val panelAtTop = java.util.concurrent.atomic.AtomicBoolean(true)
     val panelAtBottom = java.util.concurrent.atomic.AtomicBoolean(false)
-    var lastTouchY = 0f
+    // All positions are WINDOW-space (view-local y + the view's window offset): the forwarded
+    // scroll moves the WebView itself, so a view-local delta shrinks by exactly the amount the
+    // sheet just moved — the sheet would track at HALF the finger speed, stepping every other
+    // frame, and the fling velocity would halve too. Window space measures the finger.
+    val winLoc = IntArray(2)
+    var activeId = -1 // tracked pointer ID (ids survive index compaction; raw ev.y is index 0)
+    var lastY = 0f
+    var lastX = 0f
+    var forwarded = false
+    var forwardDist = 0f
+    var tracker: android.view.VelocityTracker? = null
+    // Feed the tracker window-space copies so its velocity measures the finger too.
+    val feedTracker = { ev: MotionEvent ->
+        val c = MotionEvent.obtain(ev)
+        c.offsetLocation(winLoc[0].toFloat(), winLoc[1].toFloat())
+        tracker?.addMovement(c)
+        c.recycle()
+    }
+    wv.overScrollMode = android.view.View.OVER_SCROLL_NEVER // no glow while the sheet takes the drag
     wv.setOnTouchListener { v, ev ->
+        if (ev.actionMasked != MotionEvent.ACTION_UP && ev.actionMasked != MotionEvent.ACTION_CANCEL) {
+            v.parent?.requestDisallowInterceptTouchEvent(true)
+        }
+        v.getLocationInWindow(winLoc)
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                lastTouchY = ev.y
-                v.parent?.requestDisallowInterceptTouchEvent(true)
+                activeId = ev.getPointerId(0)
+                lastY = ev.y + winLoc[1]; lastX = ev.x + winLoc[0]
+                forwarded = false; forwardDist = 0f
+                tracker?.recycle(); tracker = android.view.VelocityTracker.obtain()
+                feedTracker(ev)
+            }
+            MotionEvent.ACTION_POINTER_UP -> {
+                // The tracked finger lifted while another stays down: adopt a survivor and
+                // RE-BASE (no delta) — otherwise the next MOVE reads the other finger and the
+                // inter-finger distance appears as one huge dy that teleports/dismisses the sheet.
+                if (ev.getPointerId(ev.actionIndex) == activeId) {
+                    val idx = if (ev.actionIndex == 0) 1 else 0
+                    activeId = ev.getPointerId(idx)
+                    lastY = ev.getY(idx) + winLoc[1]; lastX = ev.getX(idx) + winLoc[0]
+                    tracker?.clear()
+                }
             }
             MotionEvent.ACTION_MOVE -> {
-                val dy = ev.y - lastTouchY
-                lastTouchY = ev.y
-                // Hand off only when the reviews scroller can't consume this direction: at the top
-                // dragging down (finger down), or at the bottom dragging up. Then the sheet takes it.
-                val handoff = (panelAtTop.get() && dy > 1f) || (panelAtBottom.get() && dy < -1f)
-                v.parent?.requestDisallowInterceptTouchEvent(!handoff)
+                feedTracker(ev)
+                val idx = ev.findPointerIndex(activeId)
+                if (idx >= 0) {
+                    val y = ev.getY(idx) + winLoc[1]
+                    val x = ev.getX(idx) + winLoc[0]
+                    val dy = y - lastY
+                    val dx = x - lastX
+                    lastY = y; lastX = x
+                    // Forward only clearly-vertical boundary drags (a horizontal chip swipe with
+                    // a slight slope must not jiggle the sheet).
+                    if (kotlin.math.abs(dy) > kotlin.math.abs(dx) &&
+                        ((panelAtTop.get() && dy > 0f) || (panelAtBottom.get() && dy < 0f))
+                    ) {
+                        forwarded = true
+                        forwardDist += kotlin.math.abs(dy)
+                        onOverscroll(dy)
+                    } else if (forwarded && kotlin.math.abs(dy) > 0.5f) {
+                        // Left the boundary mid-gesture (direction flip / inner list took over):
+                        // END the forwarding now — resets the caller's pull accumulators and
+                        // disarms the end-fling, so a drag that merely TOUCHED the boundary can't
+                        // fling the sheet when it ends as ordinary review scrolling.
+                        forwarded = false; forwardDist = 0f
+                        onOverscrollEnd(0f)
+                    }
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                if (forwarded) {
+                    var vel = 0f
+                    // Fling only a real boundary drag (> a slop's worth of forwarded travel) —
+                    // a tap with a 2px jiggle at the boundary must not launch the sheet.
+                    if (ev.actionMasked == MotionEvent.ACTION_UP && forwardDist > 24f) {
+                        feedTracker(ev)
+                        tracker?.computeCurrentVelocity(1000)
+                        vel = tracker?.getYVelocity(activeId) ?: 0f
+                    }
+                    onOverscrollEnd(vel)
+                }
+                tracker?.recycle(); tracker = null
+                activeId = -1
             }
         }
         false
@@ -265,7 +353,7 @@ private fun carveScript(dark: Boolean): String {
     """ else ""
     return """
         (function(){
-          var tries=0, readySent=false, maint=0, revAt=-1;
+          var tries=0, readySent=false, revAt=-1;
           // --- review media helpers (used by the photo interceptor) ---
           // A review media button is keyed by its jsaction (review.openPhoto), NOT its aria-label:
           // Google labels SOME photos descriptively ("Mixed dumplings with rye bread…") instead of
@@ -474,8 +562,14 @@ private fun carveScript(dark: Boolean): String {
                 sc.style.setProperty('height',(h-top)+'px','important');
                 sc.style.setProperty('max-height',(h-top)+'px','important');
                 window.__velaSc=sc;
-                // Attach the edge reporter once per scroller (the SPA can swap the node).
-                if(!sc.__velaEdgeHooked){ sc.__velaEdgeHooked=1; sc.addEventListener('scroll', function(){ requestAnimationFrame(velaReportEdge); }, {passive:true}); }
+                // Attach the edge reporter once per scroller (the SPA can swap the node). ALSO
+                // watch for content growth: paging in more reviews grows scrollHeight WITHOUT a
+                // scroll event, which silently un-bottoms the scroller (stale atBottom would
+                // double-scroll an up-drag until the next 1s tick).
+                if(!sc.__velaEdgeHooked){ sc.__velaEdgeHooked=1;
+                  sc.addEventListener('scroll', function(){ requestAnimationFrame(velaReportEdge); }, {passive:true});
+                  try{ new MutationObserver(function(){ requestAnimationFrame(velaReportEdge); }).observe(sc,{childList:true,subtree:true}); }catch(x){}
+                }
                 velaReportEdge();
               }
             }
@@ -496,11 +590,14 @@ private fun carveScript(dark: Boolean): String {
             tries++;
             var iso=isolate();
             if(readySent){
-              // Maintenance: keep the carve + scroller sizing fresh for a while (the SPA
-              // re-attaches chrome and swaps nodes on interaction), then stop. NO tab
-              // re-click here — the user is free to browse Google's Menu/About tabs.
+              // Maintenance: keep the carve + scroller sizing fresh for the panel's LIFETIME
+              // (the WebView is destroyed with the place sheet, which kills this loop). It used
+              // to stop after 60 ticks — but the reviews list pages in new cards indefinitely
+              // (each needing its Like/Share stripped via isolate()->strip()), and scroll-sync's
+              // edge reporting rides stretch()'s scroller adoption, so a dead loop froze both
+              // after a minute. NO tab re-click here — the user may browse Menu/About.
               stretch(); revealOverlays();
-              if(maint++<60){ setTimeout(tick,1000); }
+              setTimeout(tick,1000);
               return;
             }
             var rev=reviewsOpen();
