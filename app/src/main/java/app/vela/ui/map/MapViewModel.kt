@@ -1100,6 +1100,12 @@ class MapViewModel @Inject constructor(
                         status = if (routes.isEmpty()) "No ${mode.name.lowercase()} route found" else null,
                     )
                 }
+                // The default active route can be a PROVISIONAL Google alternate (it sorts to the
+                // top when it has the fastest live ETA). A provisional route carries Google's
+                // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed
+                // wrong turns/ETA that only "corrected" when Start named it. Name it NOW (OSRM snap +
+                // re-applied traffic), exactly as picking an alternate does, so preview == nav.
+                if (routes.firstOrNull()?.provisional == true) selectRoute(0)
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = "Directions need recalibration: ${e.message}") }
             } catch (e: Exception) {
