@@ -780,7 +780,11 @@ class MapViewModel @Inject constructor(
      *  details (hours, rating, …) from a search for that name nearby. */
     fun onPoiTap(name: String, location: LatLng) {
         if (consumeAssign(SavedPlace(id = "poi:" + name.hashCode(), name = name, lat = location.lat, lng = location.lng))) return
-        // Picking the route origin by tapping the map → adopt this POI as the origin, don't open it.
+        // Picking the route origin (or a stop) by tapping the map → adopt this POI, don't open it.
+        if (_state.value.pickingStop) {
+            addStop(Place(id = "poi:" + name.hashCode(), name = name, location = location))
+            return
+        }
         if (_state.value.pickingOrigin) {
             setDirectionsOrigin(Place(id = "poi:" + name.hashCode(), name = name, location = location))
             return
@@ -797,6 +801,7 @@ class MapViewModel @Inject constructor(
                 loadingDetails = false,
                 photosLoading = false,
                 pickingOrigin = false,
+                pickingStop = false,
                 directionsOpen = false,
             )
         }
@@ -883,6 +888,7 @@ class MapViewModel @Inject constructor(
                 placesHere = emptyList(),
                 reviews = emptyList(),
                 pickingOrigin = false,
+                pickingStop = false,
             )
         }
         viewModelScope.launch {
@@ -906,9 +912,17 @@ class MapViewModel @Inject constructor(
         route(_state.value.travelMode)
     }
 
-    /** Swap origin and destination — route the other way (you ⇄ the place). */
+    /** Swap origin and destination — route the other way (you ⇄ the place). The stop list is
+     *  physically reversed too, so STORED order always == DISPLAYED order == TRAVEL order — otherwise
+     *  the panel would list stops opposite to how they're driven and the reorder arrows would act
+     *  inverted on a reversed trip. */
     fun swapDirections() {
-        _state.update { it.copy(directionsReversed = !it.directionsReversed) }
+        _state.update {
+            it.copy(
+                directionsReversed = !it.directionsReversed,
+                directionsWaypoints = it.directionsWaypoints.reversed(),
+            )
+        }
         route(_state.value.travelMode)
     }
 
@@ -1008,8 +1022,9 @@ class MapViewModel @Inject constructor(
         val dest = (if (s.directionsReversed) fromPoint else place) ?: return
         destination = dest
         if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest); return }
-        // Intermediate stops in travel order — reversed when the trip is reversed (place→you).
-        val stops = s.directionsWaypoints.map { it.location }.let { if (s.directionsReversed) it.reversed() else it }
+        // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
+        // per-call reversal here — display, reorder arrows and routing all agree on one order.
+        val stops = s.directionsWaypoints.map { it.location }
         viewModelScope.launch {
             try {
                 val routes = dataSource.directions(origin, dest, mode, stops)
@@ -1066,11 +1081,10 @@ class MapViewModel @Inject constructor(
     private fun launchNav(route: app.vela.core.model.Route) {
         val dest = destination ?: route.polyline.lastOrNull() ?: return
         startLocation() // make sure live fixes are flowing — they drive the nav loop
-        // Intermediate stops in travel order (reversed when the trip is reversed) → per-stop arrival cues +
-        // reroute-through-remaining.
+        // Stops are stored in travel order (swapDirections reverses the list itself) → per-stop arrival
+        // cues + reroute-through-remaining.
         val s = _state.value
         val stops = s.directionsWaypoints.map { NavSession.NavStop(it.location, it.name) }
-            .let { if (s.directionsReversed) it.reversed() else it }
         navSession.start(route, dest, s.selected?.name.orEmpty(), s.selectedEngine?.packageName, stops, s.travelMode)
         NavigationService.start(appContext)
         // Record this trip's GPS trace for later replay, if the user opted in. Read

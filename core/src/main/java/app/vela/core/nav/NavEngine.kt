@@ -151,14 +151,23 @@ object NavEngine {
 
     /** For each intermediate [stops] waypoint, the metres-along-[route] of its nearest point on the route
      *  line — the "you're passing this stop" mark that drives the per-stop arrival cue — or null when the
-     *  stop sits farther than [STOP_ON_ROUTE_M] from the line (not really on this route). Pure + testable. */
+     *  stop sits farther than [STOP_ON_ROUTE_M] from the line (not really on this route). Marks are
+     *  NON-DECREASING: each stop is projected only onto the route AFTER the previous stop's mark, so an
+     *  out-and-back route that passes a later stop's location on the way to an earlier one can't hand the
+     *  later stop its first (wrong) pass and fire its cue early. Pure + testable. */
     fun stopMarks(route: Route, stops: List<LatLng>): List<Double?> {
         if (stops.isEmpty() || route.polyline.size < 2) return stops.map { null }
         val cum = cumulative(route.polyline)
         val total = cum.lastOrNull() ?: 0.0
+        var from = 0.0
         return stops.map { s ->
-            val (m, d) = projectAlong(route.polyline, cum, s, 0.0, total)
-            if (d <= STOP_ON_ROUTE_M) m else null
+            // Nudge the window start past the previous mark: a segment ENDING exactly at `from` still
+            // "overlaps" the window, and its projection (before `from`) would win projectAlong's
+            // strictly-less tie against the true later pass. Clamp the result for the same reason —
+            // ordering is what the cue logic needs; a metre of positional slack is irrelevant at
+            // STOP_ARRIVE tolerances.
+            val (m, d) = projectAlong(route.polyline, cum, s, from + 0.5, total)
+            if (d <= STOP_ON_ROUTE_M) { from = m.coerceAtLeast(from); from } else null
         }
     }
 

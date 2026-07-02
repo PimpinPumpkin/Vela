@@ -81,6 +81,7 @@ import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -98,6 +99,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -105,6 +107,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -390,12 +393,21 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            // Google's live status STRING is PRIMARY: it's the only source that knows holiday hours and an
-            // owner-set "closed today" (the weekly hours are blind to both). Only when Google gives NO status
-            // do we fall back to an Open/Closed computed from the weekly hours (past-midnight-aware) — better
-            // than a blank than than trusting stale regular hours over a real closure.
-            val computedStatus = remember(place.hours) {
-                app.vela.core.util.OpeningHours.statusAt(place.hours, java.time.LocalDateTime.now())
+            // Google's live status STRING is PRIMARY: it's the only source that knows an owner-set
+            // "closed today" (the weekly hours now carry holiday overrides, but not ad-hoc closures).
+            // Only when Google gives NO status do we fall back to an Open/Closed computed from the weekly
+            // hours (past-midnight-aware) — better than a blank, without trusting stale regular hours
+            // over a real closure.
+            // Ticks each minute so a sheet left open crosses an open/close boundary instead of showing
+            // "Open · Closes 9 PM" forever after 9 PM (the fallback is only used when Google sent no status).
+            val nowMinute by produceState(initialValue = java.time.LocalDateTime.now()) {
+                while (true) {
+                    kotlinx.coroutines.delay(60_000)
+                    value = java.time.LocalDateTime.now()
+                }
+            }
+            val computedStatus = remember(place.hours, nowMinute) {
+                app.vela.core.util.OpeningHours.statusAt(place.hours, nowMinute)
             }
             val statusLine = place.statusText
                 ?: computedStatus?.let { (if (it.open) "Open" else "Closed") + " · " + it.detail }
@@ -688,20 +700,25 @@ fun DirectionsPanel(
                     // then an "Add stop" row. Only shown for drive/walk/bike (transit has no waypoints).
                     if (currentMode != TravelMode.TRANSIT) {
                         stops.forEachIndexed { i, stopName ->
-                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
                                 Spacer(Modifier.width(11.dp))
                                 Text(stopName, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                                 // Reorder arrows (only with 2+ stops): up unless first, down unless last.
+                                // IconButtons (like the Swap/Close controls in this header), NOT raw 18-20dp
+                                // clickable Icons — three tiny targets 2dp apart invite remove-instead-of-
+                                // reorder mis-taps, and removal re-routes immediately with no undo.
                                 if (stops.size > 1) {
-                                    if (i > 0) Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move stop up", tint = dim, modifier = Modifier.size(20.dp).clip(CircleShape).clickable { onMoveStop(i, -1) }.padding(1.dp))
-                                    if (i < stops.size - 1) Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move stop down", tint = dim, modifier = Modifier.size(20.dp).clip(CircleShape).clickable { onMoveStop(i, 1) }.padding(1.dp))
-                                    Spacer(Modifier.width(2.dp))
+                                    if (i > 0) IconButton(onClick = { onMoveStop(i, -1) }, modifier = Modifier.size(36.dp)) {
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move stop up", tint = dim, modifier = Modifier.size(20.dp))
+                                    }
+                                    if (i < stops.size - 1) IconButton(onClick = { onMoveStop(i, 1) }, modifier = Modifier.size(36.dp)) {
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move stop down", tint = dim, modifier = Modifier.size(20.dp))
+                                    }
                                 }
-                                Icon(
-                                    Icons.Default.Close, contentDescription = "Remove stop", tint = dim,
-                                    modifier = Modifier.size(18.dp).clip(CircleShape).clickable { onRemoveStop(i) }.padding(1.dp),
-                                )
+                                IconButton(onClick = { onRemoveStop(i) }, modifier = Modifier.size(36.dp)) {
+                                    Icon(Icons.Default.Close, contentDescription = "Remove stop", tint = dim, modifier = Modifier.size(18.dp))
+                                }
                             }
                         }
                         if (onAddStop != null) {
@@ -1282,6 +1299,8 @@ private fun PlaceTabs(
 
 @Composable
 private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, onRetry: () -> Unit, ink: Color, dim: Color) {
+    // Search within the loaded reviews (author or text, case-insensitive). Resets per place.
+    var reviewQuery by remember(place.id) { mutableStateOf("") }
     Column {
         place.rating?.let { r ->
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
@@ -1322,7 +1341,42 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, on
                 Text("Couldn't load reviews. Tap to retry.", style = MaterialTheme.typography.bodyMedium, color = dim)
             }
             reviews.isEmpty() -> Text("No reviews available.", style = MaterialTheme.typography.bodyMedium, color = dim)
-            else -> reviews.forEach { ReviewRow(it, ink, dim) }
+            else -> {
+                // Search box (only once there's enough to be worth filtering) — matches text OR author.
+                if (reviews.size >= 5) {
+                    OutlinedTextField(
+                        value = reviewQuery,
+                        onValueChange = { reviewQuery = it },
+                        placeholder = { Text("Search reviews", color = dim) },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
+                        trailingIcon = if (reviewQuery.isNotEmpty()) {
+                            {
+                                Icon(
+                                    Icons.Default.Close, contentDescription = "Clear review search", tint = dim,
+                                    modifier = Modifier.size(18.dp).clip(CircleShape).clickable { reviewQuery = "" },
+                                )
+                            }
+                        } else null,
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                    )
+                }
+                val q = reviewQuery.trim()
+                val shown = if (q.isEmpty()) reviews else reviews.filter {
+                    it.text?.contains(q, ignoreCase = true) == true || it.author.contains(q, ignoreCase = true)
+                }
+                if (shown.isEmpty()) {
+                    Text(
+                        "No reviews mention “$q” (searching the ${reviews.size} loaded).",
+                        style = MaterialTheme.typography.bodyMedium, color = dim,
+                        modifier = Modifier.padding(vertical = 8.dp),
+                    )
+                } else {
+                    shown.forEach { ReviewRow(it, ink, dim) }
+                }
+            }
         }
     }
 }

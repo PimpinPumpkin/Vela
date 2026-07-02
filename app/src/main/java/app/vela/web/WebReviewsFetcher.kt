@@ -72,13 +72,22 @@ class WebReviewsFetcher @Inject constructor(
                         val ready = CompletableDeferred<Unit>()
                         wv.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                                val scheme = request?.url?.scheme
-                                return scheme != null && scheme != "https" && scheme != "http"
+                                // Only google.com pages — a stray click on an external link (e.g. the
+                                // place's website/menu action) must not navigate the hidden WebView away.
+                                val u = request?.url ?: return false
+                                val scheme = u.scheme
+                                if (scheme != "https" && scheme != "http") return true
+                                val host = u.host.orEmpty()
+                                return !(host == "google.com" || host.endsWith(".google.com"))
                             }
                             override fun onPageFinished(view: WebView?, url: String?) {
                                 main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, SETTLE_MS)
                             }
                         }
+                        // Blank the PREVIOUS place's DOM before navigating — a slow load could otherwise
+                        // let the MAX_LOAD fallback inject the scraper into the old page and return the
+                        // previous place's reviews for THIS featureId (empty > wrong).
+                        wv.evaluateJavascript("try{document.documentElement.innerHTML=''}catch(e){}", null)
                         wv.loadUrl("https://www.google.com/maps?cid=$cid&hl=en&gl=us")
                         // Proceed even if the SPA's onPageFinished is slow.
                         main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, MAX_LOAD_MS)
@@ -113,7 +122,8 @@ class WebReviewsFetcher @Inject constructor(
         // Give the hidden (never-attached) WebView a REAL offscreen viewport. Google's reviews list is
         // virtualized + lazy-loaded off the scroll viewport; a 0×0 headless WebView renders the chrome
         // (rating histogram, topic filters) but NEVER the review cards. A tall explicit layout makes the
-        // scroll pane real so the list renders + pages. (Photos don't need this; the review list does.)
+        // scroll pane real so the list renders + pages. (The photo gallery's category grids need the
+        // same treatment — see WebPhotoFetcher.)
         wv.measure(
             android.view.View.MeasureSpec.makeMeasureSpec(WV_WIDTH, android.view.View.MeasureSpec.EXACTLY),
             android.view.View.MeasureSpec.makeMeasureSpec(WV_HEIGHT, android.view.View.MeasureSpec.EXACTLY),
@@ -133,6 +143,7 @@ class WebReviewsFetcher @Inject constructor(
         return """
             (function(){
               var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
+              var openedAt=-1, sawCards=false;
               var CAP=50;
               function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
@@ -167,7 +178,9 @@ class WebReviewsFetcher @Inject constructor(
                     if(mm && !/\/a[\/-]|ACg8oc|ALV-/.test(mm[1]) && photos.indexOf(mm[1])<0) photos.push(mm[1]);
                   });
                   return { rid:rid, r:num(star&&star.getAttribute('aria-label')), a:author.slice(0,80), d:date, t:text, av:avatar, p:photos.slice(0,10) };
-                }).filter(function(x){ return x.rid || x.a; });
+                  // Require an AUTHOR (rid stays the de-dup key): the parser drops author-less entries
+                  // anyway, so letting them through only wastes CAP slots on cards we can't render.
+                }).filter(function(x){ return x.a; });
               }
               function expand(){ [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } }); }
               // De-dupe across scroll windows by the review's stable id (falls back to author+date+text).
@@ -184,31 +197,56 @@ class WebReviewsFetcher @Inject constructor(
                 }); }catch(e){}
                 return moved;
               }
-              // The ?cid= page opens the place OVERVIEW (only ~3 reviews) — click "More reviews"
-              // ONCE to open the full, pageable list, else many-review places (and some chains like
-              // Taco Bell whose overview shows none) come back with too few or nothing.
+              // Open the FULL reviews list. The canonical entry is the "Reviews" role=tab; fall back to a
+              // "More reviews" button for layouts that only expose that. On busy pages (food/retail) the
+              // tab's list can take ~8 s to render after the click — the idle-bail is gated on `sawCards`
+              // below so we never quit during that blank window (that was the "only 3 reviews" bug).
               function openFull(){
+                // Prefer the "Reviews" role=tab. Click it every tick UNTIL it actually reports selected —
+                // a click on a not-yet-hydrated tab silently no-ops, so one-and-done can leave the list
+                // unopened. Once selected we latch `opened` and STOP clicking: re-clicking a selected-but-
+                // still-loading list restarts its ~8 s render (that regression turned busy pages back to 3).
+                var ts=[].slice.call(document.querySelectorAll('[role="tab"]'));
+                for(var i=0;i<ts.length;i++){
+                  var tl=((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim();
+                  if(/^reviews\b/i.test(tl)){
+                    if((ts[i].getAttribute('aria-selected')||'')==='true'){ if(!opened){ opened=true; openedAt=tries; } return; }
+                    try{ ts[i].click(); }catch(e){}
+                    return;
+                  }
+                }
+                // No reviews tab in this layout — fall back to the "More reviews" button (clicked once).
                 if(opened) return;
                 var bs=[].slice.call(document.querySelectorAll('button'));
-                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(/more reviews/i.test(l)){ try{ bs[i].click(); }catch(e){} opened=true; return; } }
+                for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||bs[i].textContent)||''); if(/more reviews/i.test(l)){ try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; return; } }
               }
               function tick(){
                 tries++;
-                openFull();
+                // Let the SPA hydrate a beat before clicking the Reviews tab — clicking a not-yet-live
+                // tab on tick 1 can silently no-op, and then the list only renders much later.
+                if(tries>=2) openFull();
                 expand();
                 // ACCUMULATE this window's cards (don't replace) — the panel virtualizes, so each
                 // scroll position exposes a fresh ~10 that would otherwise be lost when recycled.
                 var revs=extract();
                 for(var i=0;i<revs.length;i++){ var k=key(revs[i]); if(k.length>2 && !acc[k]){ acc[k]=revs[i]; accN++; } }
+                // Have the review cards actually rendered yet? On busy business pages (food, retail) the
+                // Reviews tab's list can take ~8 s to populate after the click; until then the panel holds
+                // only the rating histogram + topic chips, NOT the cards.
+                if(document.querySelectorAll('.jJc9Ad').length>0) sawCards=true;
                 var moved=scrollStep();
                 atBottom = moved ? 0 : atBottom+1;
                 noGrow = (accN===lastN) ? noGrow+1 : 0;
                 lastN=accN;
-                // Done: hit the cap, OR dwelled at the bottom with no new reviews for several ticks (give
-                // the lazy-loader time to page in more before giving up), OR ran long.
-                if( accN>=CAP || (atBottom>=4 && noGrow>=4 && tries>=8) || tries>48 ){
+                // Idle-bail ONLY after cards have really rendered. The 3-reviews bug was bailing during the
+                // blank pre-render window: atBottom/noGrow climbed while the list was still empty, so the
+                // "settled at the bottom, nothing new" test fired before the reviews ever appeared.
+                var settled = sawCards && (!opened || tries>=openedAt+6);
+                // Done: hit the cap, OR settled at the bottom with no new reviews, OR ran long.
+                if( accN>=CAP || (settled && atBottom>=4 && noGrow>=4) || tries>60 ){
                   var out=[]; for(var kk in acc) out.push(acc[kk]);
-                  try{ VelaBridge.onResult(ID, JSON.stringify(out.slice(0,CAP))); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
+                  out = out.slice(0,CAP);
+                  try{ VelaBridge.onResult(ID, JSON.stringify(out)); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
                   return;
                 }
                 setTimeout(tick, 550);
@@ -219,9 +257,9 @@ class WebReviewsFetcher @Inject constructor(
     }
 
     private companion object {
-        // Longer than before: accumulating 40 reviews across scroll windows takes more ticks than the
-        // old single-snapshot grab. Still lazy + best-effort (the sheet shows other content meanwhile).
-        const val TOTAL_TIMEOUT_MS = 40_000L
+        // Must outlast the script's own hard stop (60 ticks × 550 ms ≈ 33 s + page load) — if Kotlin
+        // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
+        const val TOTAL_TIMEOUT_MS = 45_000L
         const val SETTLE_MS = 800L
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
