@@ -665,16 +665,25 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             var h=window.innerHeight, w=window.innerWidth;
             if(!h || !w) return false;
             // Pixels, not vh — vh is 0 in this embedded WebView (verified via devtools).
-            main.style.setProperty('position','fixed','important');
-            main.style.setProperty('top','0','important');
-            main.style.setProperty('left','0','important');
-            main.style.setProperty('height',h+'px','important');
-            main.style.setProperty('max-height',h+'px','important');
-            main.style.setProperty('min-height',h+'px','important');
-            main.style.setProperty('width',w+'px','important');
-            main.style.setProperty('max-width',w+'px','important');
-            main.style.setProperty('overflow-y','auto','important');
-            main.style.setProperty('z-index','999999','important');
+            // FULL-screen: DON'T pin main. position:fixed makes main the containing block for
+            // Google's OWN position:fixed photo/video lightbox (→ it renders off-screen = "can't
+            // tap photos"), and overflow-y:auto hijacks scroll from Google's inner reviews list so
+            // its virtualizer never pages in until a re-layout is forced (the "select a chip then
+            // switch back to All to load" bug). In full-screen the WebView IS the viewport, so
+            // Google's own layout + inner scroller + lightbox all work natively — just remove the
+            // surrounding chrome (below) and theme it.
+            if(!FULL){
+              main.style.setProperty('position','fixed','important');
+              main.style.setProperty('top','0','important');
+              main.style.setProperty('left','0','important');
+              main.style.setProperty('height',h+'px','important');
+              main.style.setProperty('max-height',h+'px','important');
+              main.style.setProperty('min-height',h+'px','important');
+              main.style.setProperty('width',w+'px','important');
+              main.style.setProperty('max-width',w+'px','important');
+              main.style.setProperty('overflow-y','auto','important');
+              main.style.setProperty('z-index','999999','important');
+            }
             // Transparent so <body>'s Vela colour is the panel backdrop (Google's white bg would
             // otherwise show — inverted to near-black in dark, mismatching the sheet).
             main.style.setProperty('background','transparent','important');
@@ -786,9 +795,11 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             // gallery. Non-photo taps fall through to the overlay reveal below.
             document.addEventListener('click', function(e){
               var t = e.target;
-              // FULL-screen: DON'T intercept — let Google's own photo/video lightbox handle the tap
-              // (that's how videos play). revealOverlays surfaces that lightbox above the carve.
-              var btn = (!FULL && t && t.closest) ? t.closest('[jsaction*="review.openPhoto"],.Tya61d') : null;
+              // Intercept photo taps → Vela's native gallery (the reliable path). Google's own
+              // photo VIEWER is a page navigation, which the nav-lockdown blocks AND the carve
+              // can't host — so even in full-screen we open the native gallery. (Verified: a raw
+              // photo click with the carve fully removed still renders no viewer — it's a nav.)
+              var btn = (t && t.closest) ? t.closest('[jsaction*="review.openPhoto"],.Tya61d') : null;
               if(btn){
                 e.preventDefault(); e.stopImmediatePropagation();
                 var card = btn.closest('.jJc9Ad') || btn.closest('[data-review-id]') || btn.parentElement;
@@ -819,6 +830,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           // the real list (the "black panel" regression). Un-stretches a stale target when the
           // SPA swaps nodes.
           function stretch(){
+            if(FULL) return; // full-screen: Google's own inner scroller sizes itself natively
             var main=document.querySelector('[role="main"]');
             if(!main) return;
             var h=window.innerHeight;
