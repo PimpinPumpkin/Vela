@@ -16,6 +16,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -111,8 +112,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -226,6 +229,41 @@ fun PlaceSheet(
                 if (available.y < 0f) acc = 0f
                 return Offset.Zero
             }
+        }
+    }
+    // Scroll-sync with the live reviews panel: the panel forwards boundary drags (reviews at
+    // their top + finger down, or bottom + up) as raw deltas; we scroll the sheet body 1:1 with
+    // the finger, and past the body's own ends mirror dismissConn (collapse → dismiss on a pull
+    // past the top; expand on a push past the bottom). pull[0]/pull[1] accumulate those
+    // overshoots; any real body movement resets them (same feel as dismissConn's acc).
+    val scope = rememberCoroutineScope()
+    val pull = remember(place.id) { floatArrayOf(0f, 0f) }
+    val onPanelOverscroll: (Float) -> Unit = { dy ->
+        val consumed = bodyScroll.dispatchRawDelta(-dy)
+        val leftover = -dy - consumed
+        when {
+            leftover < -0.5f -> { // pulling down past the body top
+                pull[1] = 0f
+                pull[0] += -leftover
+                when {
+                    expandedState.value && pull[0] > 90f -> { expandedState.value = false; pull[0] = 0f }
+                    !expandedState.value && pull[0] > 150f -> { pull[0] = 0f; onCloseUpdated.value() }
+                }
+            }
+            leftover > 0.5f -> { // pushing up past the body bottom
+                pull[0] = 0f
+                pull[1] += leftover
+                if (!expandedState.value && pull[1] > 90f) { expandedState.value = true; pull[1] = 0f }
+            }
+            else -> { pull[0] = 0f; pull[1] = 0f }
+        }
+    }
+    val onPanelOverscrollEnd: (Float) -> Unit = { velocityY ->
+        pull[0] = 0f; pull[1] = 0f
+        // Carry a boundary fling into the sheet so it glides instead of dead-stopping at
+        // finger-up. velocityY is finger px/s (+down); scroll space is inverted.
+        if (kotlin.math.abs(velocityY) > 600f) {
+            scope.launch { bodyScroll.animateScrollBy(-velocityY * 0.3f) }
         }
     }
     Card(
@@ -605,7 +643,7 @@ fun PlaceSheet(
                 }
             }
 
-            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim)
+            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd)
             }
         }
     }
@@ -1272,6 +1310,8 @@ private fun PlaceTabs(
     onRetryReviews: () -> Unit,
     ink: Color,
     dim: Color,
+    onPanelOverscroll: (Float) -> Unit = {},
+    onPanelOverscrollEnd: (Float) -> Unit = {},
 ) {
     // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
     // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
@@ -1328,6 +1368,8 @@ private fun PlaceTabs(
                                 modifier = Modifier.fillMaxWidth().height(560.dp),
                                 onFailed = { panelFailed = true; onRetryReviews() },
                                 onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
+                                onOverscroll = onPanelOverscroll,
+                                onOverscrollEnd = onPanelOverscrollEnd,
                             )
                         }
                         reviewPhotos?.let { (urls, caps, start) ->
