@@ -335,7 +335,7 @@ private fun buildPanelWebView(
                     val o = a.getJSONObject(i)
                     PanelChip(o.getString("l"), if (o.has("n")) o.getInt("n") else null)
                 }
-            }.getOrNull()?.takeIf { it.isNotEmpty() } ?: return
+            }.getOrNull() ?: return
             wv.post { onChipsParsed(list) }
         }
 
@@ -892,6 +892,10 @@ private fun carveScript(dark: Boolean): String {
                 }
               } else {
                 window.__velaStable=(window.__velaStable||0)+1;
+                if(!window.__velaChipsSent && (window.__velaStable||0)>2){
+                  window.__velaChipsSent=1; // no topic chips on this business — unblock the native search/sort
+                  try{ VelaPanel.onChips('[]'); }catch(e){}
+                }
               }
               setTimeout(tick,1000);
               return;
