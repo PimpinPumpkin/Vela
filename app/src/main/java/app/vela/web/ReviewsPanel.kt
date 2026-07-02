@@ -519,6 +519,17 @@ private fun carveScript(dark: Boolean): String {
               }catch(x){}
             }
           }
+          // Class-agnostic "reviews are rendered" check. Google A/B-serves front-end builds with
+          // ROTATED class names: on those, cards render fine but '.jJc9Ad,[data-review-id]' counts
+          // zero — the watchdog then kills a HEALTHY panel the user is about to scroll (reported
+          // live). Relative-date texts ("2 months ago") are content, not markup — they can't
+          // rotate. Known classes stay as the fast path.
+          function velaHasReviews(){
+            if(document.querySelector('.jJc9Ad,[data-review-id]')) return true;
+            return [].slice.call(document.querySelectorAll('span,div')).some(function(e){
+              return e.children.length===0 && /^(a|an|\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago/i.test((e.textContent||'').trim());
+            });
+          }
           // --- scroll-sync: tell the native side when the reviews scroller is at its top/bottom edge,
           // so the OnTouchListener can hand a boundary drag to the Vela sheet (scroll-up / collapse)
           // instead of hogging every gesture. Only fires on an edge-state CHANGE (cheap).
@@ -773,8 +784,8 @@ private fun carveScript(dark: Boolean): String {
               // instead. Once ANY card has rendered, the watchdog disarms for good and
               // __velaStable starts counting (gates the summary-collapse phase).
               if(!window.__velaFedOk){
-                if(document.querySelector('.jJc9Ad,[data-review-id]')){ window.__velaFedOk=1; }
-                else if((window.__velaFeedless=(window.__velaFeedless||0)+1)>15){
+                if(velaHasReviews()){ window.__velaFedOk=1; }
+                else if((window.__velaFeedless=(window.__velaFeedless||0)+1)>20){
                   try{ VelaPanel.fail(); }catch(e){}
                   return;
                 }
@@ -795,7 +806,7 @@ private fun carveScript(dark: Boolean): String {
             // place with a rating and zero written reviews never renders a card, and the card class
             // can rotate — so after a short grace once the Reviews tab has settled, ready anyway
             // (shows Google's own "no reviews" state) rather than spinning to the fail() timeout.
-            var haveCards = !!document.querySelector('.jJc9Ad,[data-review-id]');
+            var haveCards = velaHasReviews();
             if(iso && rev && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; setupOnce(); stretch(); velaHistogram(); velaFont(); try{ VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
