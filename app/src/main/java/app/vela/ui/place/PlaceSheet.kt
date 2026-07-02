@@ -39,6 +39,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
@@ -49,6 +51,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
@@ -130,6 +133,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -1318,6 +1322,64 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
+/** Native search / sort / topic chips for the live reviews panel — Vela's own UI driving the
+ *  panel's hidden Google controls (the originals are carved out once the chips arrive). Search
+ *  is Google's server-side one (ALL reviews, not just those loaded); chips are Google's
+ *  auto-parsed review topics; sort mirrors Google's four orders. */
+@Composable
+private fun PanelControls(
+    chips: List<app.vela.web.PanelChip>?,
+    selected: String,
+    query: String,
+    onQuery: (String) -> Unit,
+    onSearch: () -> Unit,
+    onChip: (String) -> Unit,
+    onSort: (String) -> Unit,
+    ink: Color,
+    dim: Color,
+) {
+    if (chips == null) return // nothing to control yet — the panel is still booting
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQuery,
+            placeholder = { Text("Search reviews", color = dim) },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = ink),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+            keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier.weight(1f).height(52.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        var sortOpen by remember { mutableStateOf(false) }
+        Box {
+            IconButton(onClick = { sortOpen = true }) {
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort reviews", tint = dim)
+            }
+            DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                listOf("Most relevant", "Newest", "Highest rating", "Lowest rating").forEach { o ->
+                    DropdownMenuItem(text = { Text(o) }, onClick = { sortOpen = false; onSort(o) })
+                }
+            }
+        }
+    }
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+    ) {
+        items(chips.size) { i ->
+            val c = chips[i]
+            FilterChip(
+                selected = selected == c.label,
+                onClick = { onChip(c.label) },
+                label = { Text(if (c.count != null) "${c.label}  ${c.count}" else c.label) },
+            )
+        }
+    }
+}
+
 /** Native rating distribution (Google-style amber bars), counts ordered [5★,4★,3★,2★,1★] —
  *  scraped off the live reviews panel so the histogram renders in Vela's own UI. */
 @Composable
@@ -1415,6 +1477,13 @@ private fun PlaceTabs(
                         // share one look, and less of the visible UI rides the WebView.
                         var panelHist by remember(place.id) { mutableStateOf<List<Int>?>(null) }
                         var panelReady by remember(place.id) { mutableStateOf(false) }
+                        // Native search / topic chips / sort — Vela UI driving the panel's hidden
+                        // Google controls (server-side search across ALL reviews; the chips are
+                        // Google's auto-parsed review topics, scraped off the page).
+                        var panelChips by remember(place.id) { mutableStateOf<List<app.vela.web.PanelChip>?>(null) }
+                        var chipSel by remember(place.id) { mutableStateOf("All") }
+                        var panelQuery by remember(place.id) { mutableStateOf("") }
+                        val panelCtl = remember(place.id) { app.vela.web.ReviewsPanelController() }
                         Column {
                             // The whole native header (rating row + histogram) clears out in
                             // engaged mode — nothing floats above the reviews.
@@ -1436,6 +1505,17 @@ private fun PlaceTabs(
                             // eating height; it returns when they walk the sheet back up.
                             if (!panelEngaged) {
                                 panelHist?.let { RatingHistogram(it, dim, Modifier.fillMaxWidth(0.62f).padding(bottom = 8.dp)) }
+                                PanelControls(
+                                    chips = panelChips,
+                                    selected = chipSel,
+                                    query = panelQuery,
+                                    onQuery = { panelQuery = it },
+                                    onSearch = { panelCtl.search(panelQuery.trim()) },
+                                    onChip = { label -> chipSel = label; panelCtl.chip(label) },
+                                    onSort = { panelCtl.sort(it) },
+                                    ink = ink,
+                                    dim = dim,
+                                )
                             }
                             if (!panelReady) {
                                 // Teaser while the panel loads: the search response's featured review
@@ -1463,6 +1543,8 @@ private fun PlaceTabs(
                                 onEngaged = onPanelEngaged,
                                 onHistogram = { panelHist = it },
                                 onLoaded = { panelReady = true },
+                                onChips = { panelChips = it },
+                                controller = panelCtl,
                             )
                         }
                         reviewPhotos?.let { (urls, caps, start) ->
