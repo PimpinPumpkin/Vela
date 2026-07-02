@@ -249,7 +249,9 @@ must fit one region's monolithic graph; cross-region falls online.
   photos ARE delivered this way** (the old RPC's avatars-only limitation doesn't apply to the rendered
   page). Device-verified: Taco Bell **3 → 50**, Pike Place Chowder **3 → 37**, Space Needle **37 → 46**.
   The place sheet adds a **"Search reviews"** box (≥5 loaded) that live-filters the loaded set by
-  text/author.
+  text/author. While the scrape runs (~10–40 s on busy places) the scraper **streams its running count**
+  over the bridge (`onProgress`) and the tab shows "Loading reviews… N of ~min(count,50)" with a
+  determinate bar — real progress, not a bare spinner.
 - **Photos**: the full gallery is **scraped from the place's own `?cid=` page** (2026-06-28),
   *not* the `hspqX` RPC — that RPC is **bot-degraded per-session** to a Street-View-only reply
   (an on-device log showed byte-identical degraded replies across retries, so retrying never
