@@ -243,7 +243,6 @@ fun PlaceSheet(
     // histogram so the panel gets the height.
     val reviewsEngaged = remember(place.id) { mutableStateOf(false) }
     val onPanelOverscroll: (Float) -> Unit = { dy ->
-        if (dy > 0f) reviewsEngaged.value = false // walking home — bring the header content back
         val consumed = bodyScroll.dispatchRawDelta(-dy)
         val leftover = -dy - consumed
         when {
@@ -265,6 +264,10 @@ fun PlaceSheet(
     }
     val onPanelOverscrollEnd: (Float) -> Unit = { velocityY ->
         pull[0] = 0f; pull[1] = 0f
+        // Disengage at GESTURE END, not per-pixel: re-inserting the header content (rating +
+        // histogram + tabs) mid-drag shifts the layout right under the held finger — the user
+        // read it as flicker. At finger-up, if the body actually walked up, bring it back.
+        if (bodyScroll.value < bodyScroll.maxValue - 150) reviewsEngaged.value = false
         // Carry a boundary fling into the sheet so it glides instead of dead-stopping at
         // finger-up. velocityY is finger px/s (+down); scroll space is inverted.
         if (kotlin.math.abs(velocityY) > 600f) {
@@ -1381,13 +1384,17 @@ private fun PlaceTabs(
     val selected = sel.coerceIn(0, tabs.lastIndex)
 
     Column(Modifier.padding(top = 12.dp)) {
-        TabRow(
-            selectedTabIndex = selected,
-            containerColor = Color.Transparent,
-            contentColor = ink,
-        ) {
-            tabs.forEachIndexed { i, title ->
-                Tab(selected = i == selected, onClick = { sel = i }, text = { Text(title) })
+        // In engaged reviews mode the panel takes the WHOLE sheet — no floating tab bar above
+        // it (it returns when the user walks the sheet back up and disengages).
+        if (!panelEngaged) {
+            TabRow(
+                selectedTabIndex = selected,
+                containerColor = Color.Transparent,
+                contentColor = ink,
+            ) {
+                tabs.forEachIndexed { i, title ->
+                    Tab(selected = i == selected, onClick = { sel = i }, text = { Text(title) })
+                }
             }
         }
         Column(Modifier.padding(top = 10.dp)) {
@@ -1409,14 +1416,18 @@ private fun PlaceTabs(
                         var panelHist by remember(place.id) { mutableStateOf<List<Int>?>(null) }
                         var panelReady by remember(place.id) { mutableStateOf(false) }
                         Column {
-                            place.rating?.let { r ->
-                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
-                                    Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
-                                    Spacer(Modifier.width(8.dp))
-                                    RatingStars(r)
-                                    place.reviewCount?.let {
+                            // The whole native header (rating row + histogram) clears out in
+                            // engaged mode — nothing floats above the reviews.
+                            if (!panelEngaged) {
+                                place.rating?.let { r ->
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                                        Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
                                         Spacer(Modifier.width(8.dp))
-                                        Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
+                                        RatingStars(r)
+                                        place.reviewCount?.let {
+                                            Spacer(Modifier.width(8.dp))
+                                            Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
+                                        }
                                     }
                                 }
                             }
