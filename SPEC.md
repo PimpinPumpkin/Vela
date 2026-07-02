@@ -253,8 +253,12 @@ must fit one region's monolithic graph; cross-region falls online.
   page). Device-verified: Taco Bell **3 → 50**, Pike Place Chowder **3 → 37**, Space Needle **37 → 46**.
   The place sheet adds a **"Search reviews"** box (≥5 loaded) that live-filters the loaded set by
   text/author. While the scrape runs (~10–40 s on busy places) the scraper **streams its running count**
-  over the bridge (`onProgress`) and the tab shows "Loading reviews… N of ~min(count,50)" with a
-  determinate bar — real progress, not a bare spinner.
+  (`onProgress` → "Loading reviews… N of ~min(count,50)" + a determinate bar) **and the accumulated
+  reviews themselves** (`onPartial` → the list fills in under the bar live). The streaming state update
+  is gated on `reviewsLoading` inside the atomic CAS (the final result clears the flag in the same copy
+  — no straggler-partial overwrite), and an empty final after partials keeps the streamed set. **Idle
+  patience:** the opened list's "done" test is 8 no-growth / 6 at-bottom ticks — Google's pager takes
+  >2.2 s per page on busy places and the old 4/4 bailed mid-list (Taco Bell ~15 of 612 → now 50/cap).
 - **Photos**: the full gallery is **scraped from the place's own `?cid=` page** (2026-06-28),
   *not* the `hspqX` RPC — that RPC is **bot-degraded per-session** to a Street-View-only reply
   (an on-device log showed byte-identical degraded replies across retries, so retrying never
