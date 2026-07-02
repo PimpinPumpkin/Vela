@@ -65,10 +65,17 @@ class NavSession @Inject constructor(
     private var recheckJob: Job? = null
     // Multi-stop: intermediate waypoints (in travel order), each with its along-route "pass mark" so we can
     // announce "you've reached <stop>" as progress passes it, and reroute through the REMAINING ones.
+    // The whole plan (stops + marks + counter + the route the marks were measured on) is guarded by
+    // [stopLock] and swapped ATOMICALLY with a new route: reroute() runs on Dispatchers.Default while
+    // onLocation arrives on the location thread — without the lock (and the planRoute identity check in
+    // announceStopsPassed) a fix still measured against the OLD route could be compared to the NEW marks,
+    // firing every remaining cue at once and permanently dropping unvisited stops.
+    private val stopLock = Any()
     private var mode: TravelMode = TravelMode.DRIVE
     private var stops: List<NavStop> = emptyList()
     private var stopMarks: List<Double?> = emptyList()
     private var passedStops = 0
+    private var planRoute: Route? = null // the route [stopMarks] were computed against
 
     /** An intermediate stop on a multi-stop trip. */
     data class NavStop(val location: LatLng, val label: String)
@@ -83,9 +90,12 @@ class NavSession @Inject constructor(
     ) {
         this.destination = destination
         this.mode = mode
-        this.stops = stops
-        this.stopMarks = NavEngine.stopMarks(route, stops.map { it.location })
-        this.passedStops = 0
+        synchronized(stopLock) {
+            this.stops = stops
+            this.stopMarks = NavEngine.stopMarks(route, stops.map { it.location })
+            this.passedStops = 0
+            this.planRoute = route
+        }
         voice.init(voiceEngine)
         lastRecheckMs = SystemClock.elapsedRealtime()
         tripStartMs = SystemClock.elapsedRealtime()
@@ -114,7 +124,7 @@ class NavSession @Inject constructor(
         recheckJob?.cancel()
         voice.stop()
         destination = null
-        stops = emptyList(); stopMarks = emptyList(); passedStops = 0
+        synchronized(stopLock) { stops = emptyList(); stopMarks = emptyList(); passedStops = 0; planRoute = null }
         _state.value = State()
     }
 
@@ -153,34 +163,46 @@ class NavSession @Inject constructor(
                 }
             }
         }
-        announceStopsPassed(next.traveledM)
+        announceStopsPassed(route, next.traveledM)
         maybeRecheck(loc, next)
     }
 
     /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in
      *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is skipped
-     *  silently rather than blocking the rest. */
-    private fun announceStopsPassed(traveledM: Double) {
-        while (passedStops < stops.size) {
-            val mark = stopMarks.getOrNull(passedStops)
-            if (mark == null) { passedStops++; continue }
-            if (traveledM >= mark - STOP_ARRIVE_TOL_M) {
-                val label = stops[passedStops].label
-                voice.speak(if (label.isNotBlank()) "You've reached $label" else "You've reached your stop")
-                diag.record("nav", "reached stop ${passedStops + 1}/${stops.size}: ${label.ifBlank { "(unnamed)" }}")
-                passedStops++
-            } else break
+     *  silently rather than blocking the rest. [route] must be the route [traveledM] was measured on —
+     *  if a reroute swapped the plan mid-fix, the identity check drops the stale frame instead of
+     *  comparing old progress to new marks (which would fire every cue at once). */
+    private fun announceStopsPassed(route: Route, traveledM: Double) {
+        val toSpeak = mutableListOf<String>()
+        synchronized(stopLock) {
+            if (route !== planRoute) return
+            while (passedStops < stops.size) {
+                val mark = stopMarks.getOrNull(passedStops)
+                if (mark == null) { passedStops++; continue }
+                if (traveledM >= mark - STOP_ARRIVE_TOL_M) {
+                    toSpeak += stops[passedStops].label
+                    passedStops++
+                } else break
+            }
+        }
+        toSpeak.forEach { label ->
+            voice.speak(if (label.isNotBlank()) "You've reached $label" else "You've reached your stop")
+            diag.record("nav", "reached stop: ${label.ifBlank { "(unnamed)" }}")
         }
     }
 
     fun acceptFasterRoute() {
         val faster = _state.value.fasterRoute ?: return
         val first = faster.maneuvers.firstOrNull()?.instruction.orEmpty()
-        // The faster candidate was routed through the remaining stops → adopt them + recompute marks.
-        val remaining = stops.drop(passedStops)
-        stops = remaining
-        stopMarks = NavEngine.stopMarks(faster, remaining.map { it.location })
-        passedStops = 0
+        // The faster candidate was routed through the remaining stops (maybeRecheck rejects candidates
+        // that don't cover them) → adopt them + recompute marks, atomically with the plan-route swap.
+        synchronized(stopLock) {
+            val remainingStops = stops.drop(passedStops)
+            stops = remainingStops
+            stopMarks = NavEngine.stopMarks(faster, remainingStops.map { it.location })
+            passedStops = 0
+            planRoute = faster
+        }
         lastRecheckMs = SystemClock.elapsedRealtime()
         _state.update {
             it.copy(
@@ -207,10 +229,19 @@ class NavSession @Inject constructor(
         if (recheckJob?.isActive == true) return
         val dest = destination ?: return
         lastRecheckMs = now
-        val remaining = stops.drop(passedStops)
+        // Named remainingStops (not `remaining`) — the launch body below declares `remaining` for the
+        // remaining DURATION, which would shadow this and hand a future edit seconds instead of stops.
+        val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         recheckJob = scope.launch {
-            val candidate = runCatching { dataSource.directions(loc, dest, mode, remaining.map { it.location }).firstOrNull() }.getOrNull()
+            val candidate = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }).firstOrNull() }.getOrNull()
                 ?.takeIf { it.reaches(dest) } ?: return@launch
+            // The waypointed directions call falls back to a DIRECT origin→dest route when the via
+            // routing fails — that route passes reaches(dest) but skips the stops, and it reads minutes
+            // "faster" precisely because it drops the detours. Never OFFER a route that doesn't cover
+            // every remaining stop (an offer is optional; guiding past a stop is not).
+            if (remainingStops.isNotEmpty() &&
+                NavEngine.stopMarks(candidate, remainingStops.map { it.location }).any { it == null }
+            ) return@launch
             val candidateEta = candidate.durationInTrafficSeconds ?: candidate.durationSeconds
             val remaining = _state.value.remainingDuration
             val saving = remaining - candidateEta
@@ -227,18 +258,29 @@ class NavSession @Inject constructor(
         val dest = destination ?: return
         // Reroute THROUGH the stops you haven't reached yet — not straight to the final destination
         // (that used to silently drop your remaining stops on any off-route wobble).
-        val remaining = stops.drop(passedStops)
+        val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         scope.launch {
             voice.speak("Rerouting", interrupt = true)
             // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
             // current route rather than swapping to a truncated/wrong one. (Guard unchanged: the route still
             // ends at the same final dest even with waypoints in between.)
-            val r = runCatching { dataSource.directions(loc, dest, mode, remaining.map { it.location }) }
+            val r = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }) }
                 .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) } ?: return@launch
-            // New route starts here + covers the remaining stops → recompute their marks, reset the counter.
-            stops = remaining
-            stopMarks = NavEngine.stopMarks(r, remaining.map { it.location })
-            passedStops = 0
+            // New route starts here → recompute the marks, reset the counter. Unlike the faster-route
+            // OFFER we accept a route that couldn't include the stops (being guided beats staying
+            // off-route), but we say so and KEEP the stops in the plan — their marks are null on this
+            // route, and the next recheck routes through them again once the via routing recovers.
+            val marks = NavEngine.stopMarks(r, remainingStops.map { it.location })
+            synchronized(stopLock) {
+                stops = remainingStops
+                stopMarks = marks
+                passedStops = 0
+                planRoute = r
+            }
+            if (remainingStops.isNotEmpty() && marks.any { it == null }) {
+                voice.speak("Couldn't include your stops in this route. I'll keep trying.")
+                diag.record("nav", "reroute missing ${marks.count { it == null }}/${remainingStops.size} stops")
+            }
             lastRecheckMs = SystemClock.elapsedRealtime()
             _state.update {
                 it.copy(

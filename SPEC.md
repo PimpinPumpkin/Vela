@@ -229,18 +229,27 @@ must fit one region's monolithic graph; cross-region falls online.
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: DOM-scraped from the place's own `?cid=` page in a hidden anonymous desktop-UA WebView
   (`WebReviewsFetcher`) — the keyless `listentitiesreviews` RPC is **dead** (404) and only ever served
-  avatars anyway. `?cid=` = the `LOW` half of the `0xHIGH:0xLOW` feature id as unsigned decimal. **Two
+  avatars anyway. `?cid=` = the `LOW` half of the `0xHIGH:0xLOW` feature id as unsigned decimal. **Three
   things that were silently capping it at ~3, fixed 2026-07-01:** (1) the hidden WebView is never attached,
   so it was **0×0**; Google's review list is **virtualized/lazy-loaded off the scroll viewport**, so at
   0×0 it renders the chrome (rating histogram, topic filters) but **no review cards** — `measure`+`layout`
   the WebView to a real **1200×3200 offscreen viewport** and the `m6QErb` scroll pane becomes real +
   pages. (2) cards are **`.jJc9Ad`** each with a unique **`data-review-id`**; the scraper selects those
   directly and **accumulates across scroll windows de-duped by review-id** (the panel recycles DOM nodes,
-  so one snapshot = ~10; the union = the list). Per card: author `.d4r55`, text `.wiI7pd`, rel-date
-  `.rsqaWe`, star aria, avatar + **uploaded photos** (googleusercontent background-images, avatars/
-  ALV-/ACg8oc filtered). Clicks "More reviews" to open the full list, dwells at the bottom to let the
-  lazy-loader page in more, caps at 50. **Per-review photos ARE delivered this way** (the old RPC's
-  avatars-only limitation doesn't apply to the rendered page). Device-verified **3 → 37** on a landmark.
+  so one snapshot = ~10; the union = the list). (3) **on busy business pages** (food/retail — attractions
+  were unaffected) the list takes **~8 s to render** after the tab click, and the idle-termination
+  (`atBottom && noGrow`) mistook that blank pre-render window for "done", bailing with only the 3 overview
+  cards. Two guards fix it: open via the **`[role="tab"]` "Reviews" tab**, clicked-until-`aria-selected`
+  (a click on a not-yet-hydrated tab retries rather than no-opping; a selected-but-loading list is never
+  re-clicked — re-clicking restarts its render, which regressed busy pages back to 3), and **gate the
+  idle-bail on `sawCards`** — never quit until `.jJc9Ad` cards have actually appeared. Per card: author
+  `.d4r55`, text `.wiI7pd`, rel-date `.rsqaWe`, star aria, avatar + **uploaded photos** (googleusercontent
+  background-images, avatars/ALV-/ACg8oc filtered). A "More reviews" button is the fallback for layouts
+  with no Reviews tab; dwells at the bottom to let the lazy-loader page in more, caps at 50. **Per-review
+  photos ARE delivered this way** (the old RPC's avatars-only limitation doesn't apply to the rendered
+  page). Device-verified: Taco Bell **3 → 50**, Pike Place Chowder **3 → 37**, a landmark **37 → 46**.
+  The place sheet adds a **"Search reviews"** box (≥5 loaded) that live-filters the loaded set by
+  text/author.
 - **Photos**: the full gallery is **scraped from the place's own `?cid=` page** (2026-06-28),
   *not* the `hspqX` RPC — that RPC is **bot-degraded per-session** to a Street-View-only reply
   (an on-device log showed byte-identical degraded replies across retries, so retrying never

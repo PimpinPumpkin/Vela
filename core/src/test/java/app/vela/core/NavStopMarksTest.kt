@@ -47,6 +47,21 @@ class NavStopMarksTest {
         assertEquals(true, marks[0]!! < marks[1]!!)
     }
 
+    @Test fun outAndBackRouteKeepsMarksInStopOrder() {
+        // Route goes west→east, then doubles back west: origin → B's location (outbound) → A → B (return).
+        // Stops in travel order are [A (far end), B (hit on the RETURN pass)]. A global nearest-projection
+        // would give B its FIRST (outbound) pass — before A — firing its cue early and out of order; the
+        // windowed projection must place mark(B) after mark(A).
+        val outAndBack = listOf(
+            LatLng(38.55, -121.90), LatLng(38.55, -121.74), LatLng(38.55, -121.80),
+        )
+        val a = LatLng(38.55, -121.74)
+        val b = LatLng(38.55, -121.80)
+        val marks = NavEngine.stopMarks(route(outAndBack), listOf(a, b))
+        assertNotNull(marks[0]); assertNotNull(marks[1])
+        assertEquals(true, marks[1]!! > marks[0]!!)
+    }
+
     @Test fun emptyAndDegenerateInputs() {
         assertEquals(emptyList<Double?>(), NavEngine.stopMarks(route(poly), emptyList()))
         // A route with no drawable line → every stop is unlocatable (null), never crashes.
