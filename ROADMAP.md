@@ -43,6 +43,21 @@ from the `directions` diag), offline highway refs (a graph rebuild — parked).
 
 ## Near-term (next up)
 
+- **Visible-WebView reviews panel (EXPLORE — user wants this on the table).** Instead of
+  DOM-scraping the reviews into native UI, embed Google's own live reviews panel in a
+  **visible in-app WebView** inside the place sheet, with injected CSS hiding everything
+  but the reviews list. What you'd gain: GMWV-speed rendering and **free infinite scroll**
+  (Google auto-pages as you scroll — no polling loop at all). Constraints learned so far:
+  a true **iframe is impossible** (`X-Frame-Options: SAMEORIGIN` on the `?cid=` page,
+  verified 2026-07-01 — google.com/maps refuses to render framed on any non-Google page);
+  a direct WebView load is fine (that's what GMWV is). Costs to solve: Google's UI inside
+  Vela (fonts/theme mismatch, rotating class names for the CSS surgery), block all
+  navigations out, more Google JS with a visible surface (fingerprinting), and native
+  review search/filter would need to co-exist (data stays in Google's DOM). The scrape
+  currently does 50 reviews in ~19-25 s streaming from ~3-5 s (2.1× faster after the
+  2026-07-01 tuning round; the residual is Google's own render + pager fetches) — revisit
+  if that's still not fast enough in practice.
+
 - ~~Higher-res README screenshots~~ — **DONE 2026-06-21** (all 9 recaptured at
   1080×2400 on-device, current UI). Store screenshots when there's a store listing.
 - **Stability pass** — core flows smoke-tested on-device 2026-06-21 (fresh install →
