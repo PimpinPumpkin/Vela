@@ -135,6 +135,11 @@ genuinely needs no doc edit, say why in the commit.
   Android sensor, not GMS. **Navigation never uses it** (the nav heading comes from the
   matched road); it's pushed to state only in browse + only on a real change, so it can't
   spam recomposition during nav.
+- Nav-puck speed fusion: raw `TYPE_LINEAR_ACCELERATION` + `TYPE_ROTATION_VECTOR`
+  (`core/location/MotionProvider` → world-frame accel; `core/location/SpeedKalman` fuses it
+  with GPS speed — accel predicts between fixes, each fix measures). Collected ONLY during
+  nav, written into a plain array (never compose state — sensor-rate recomposition). Missing
+  sensors degrade to `a = 0` = the old constant-speed dead reckoning.
 - Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS.
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
   (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.

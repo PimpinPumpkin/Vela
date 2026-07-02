@@ -165,6 +165,7 @@ fun VelaMapView(
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
     val navFollowingHolder = rememberUpdatedState(navFollowing)
+    val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val viewport = rememberUpdatedState(onViewport)
     val gestureMove = remember { booleanArrayOf(false) }
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
@@ -197,6 +198,20 @@ fun VelaMapView(
     var lastNavBearing by remember { mutableStateOf<Float?>(null) }
     val navPuck = remember { NavPuck() }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
+    // Accelerometer feed for the puck's speed Kalman — collected only during nav, written into a
+    // PLAIN array (not compose state: sensor-rate updates through MutableState would recompose
+    // the world 60×/s; the frame ticker below reads it directly instead).
+    val motionProvider = remember { app.vela.core.location.MotionProvider(context) }
+    val worldAccel = remember { floatArrayOf(0f, 0f) }
+    LaunchedEffect(navMode) {
+        worldAccel[0] = 0f
+        worldAccel[1] = 0f
+        if (!navMode) return@LaunchedEffect
+        motionProvider.worldAccel().collect { a ->
+            worldAccel[0] = a[0]
+            worldAccel[1] = a[1]
+        }
+    }
 
     // Declutter POIs during turn-by-turn (Google-style): POI labels re-run symbol collision on
     // every nav camera rotate/zoom and pop in and out at zoom thresholds. Hide ALL POI tiers
@@ -224,19 +239,50 @@ fun VelaMapView(
     // ticker relaunches with the fresh route + cum and re-acquires the puck onto it at the
     // next fix (engaged=false) instead of gliding along stale geometry.
     LaunchedEffect(navMode, routePolyline) {
-        if (!navMode) return@LaunchedEffect
+        if (!navMode) {
+            navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
+            return@LaunchedEffect
+        }
         navPuck.engaged = false
         var lastNanos = 0L
         while (true) {
             val now = withFrameNanos { it }
-            val dt = if (lastNanos == 0L) 0f else ((now - lastNanos) / 1e9f).coerceIn(0f, 0.1f)
+            // Two frame deltas: dtRaw (true wall-clock, for the PHYSICS — a janky 150 ms frame
+            // must integrate 150 ms of travel, else the puck loses distance and lurches at each
+            // fix) and dt (clamped, for the EASING filters only, where a huge step just means
+            // "snap most of the way" and 0.1 s keeps them stable).
+            val dtRaw = if (lastNanos == 0L) 0.0 else ((now - lastNanos) / 1e9)
+            val dt = dtRaw.toFloat().coerceIn(0f, 0.1f)
             lastNanos = now
             val style = styleRef ?: continue
             if (navPuck.engaged && routePolyline.size >= 2) {
-                // Dead-reckon the goal forward from the last fix at the known speed (capped
-                // at 2 s so a dropped GPS signal can't run the puck away down the route).
-                val sinceFix = ((android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0).coerceIn(0.0, 2.0)
-                val predicted = navPuck.targetM + navPuck.speed * sinceFix
+                // Kalman-predict the speed each frame: fold the MEASURED forward acceleration
+                // into the modelled speed, so braking kills the prediction NOW — not at the next
+                // GPS fix. The old last-fix-speed × elapsed reckoning glided at full speed for up
+                // to a second after you hit the brakes, and monotonic progress could never walk
+                // it back (the "puck sits ahead of me when I stop" weirdness). The projection
+                // bearing is the VEHICLE's course (myBearing), not the drawn puck's route bearing
+                // — when the puck has overshot around a corner those diverge, and projecting onto
+                // the puck's own bearing attenuates (90°) or even INVERTS (U-turn) the braking
+                // signal exactly when it matters most.
+                val vehBrg = myBearingHolder.value?.toDouble()
+                    ?: (if (navPuck.displayBearing.isNaN()) null else navPuck.displayBearing.toDouble())
+                val fwd = if (vehBrg == null) 0.0
+                    else app.vela.core.location.forwardAccel(
+                        worldAccel[0].toDouble(), worldAccel[1].toDouble(), vehBrg,
+                    )
+                // Clamp the predict step (an app-pause gap shouldn't integrate minutes of stale
+                // accel); the GPS fix after the gap re-measures anyway.
+                navPuck.kalman.predict(fwd, dtRaw.coerceAtMost(0.5))
+                navPuck.speed = navPuck.kalman.speed
+                // Dead-reckon by INTEGRATING the live modelled speed — over THIS frame's part of
+                // the 2 s blind window since the fix (wall-clock; the window caps how far a
+                // dropped GPS signal can run the puck away down the route).
+                val sinceFix = (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0
+                val tEnd = sinceFix.coerceIn(0.0, 2.0)
+                val tStart = (sinceFix - dtRaw).coerceIn(0.0, 2.0)
+                if (tEnd > tStart) navPuck.reckonedM += navPuck.kalman.speed * (tEnd - tStart)
+                val predicted = navPuck.targetM + navPuck.reckonedM
                 val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dt / 0.25f))
                 navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
                 val (pt, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
@@ -501,7 +547,15 @@ fun VelaMapView(
         // unaffected: there `snap.second` (the road heading) wins, and off-route falls to myBearing.
         val displayBearing = snap?.second ?: (if (!navMode) compassHeading else null) ?: myBearing
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
-        if (navMode && snap != null) {
+        // Gated on the fix being NEW (identity — the ViewModel makes a fresh LatLng per fix and
+        // recompositions re-pass the same instance): this block runs in a recomposing scope, and
+        // kalman.update / reckonedM=0 / targetAtMs=now / missCount++ are NOT idempotent — an
+        // unrelated recomposition (stale-flag flip, mute toggle) would re-inject a stale GPS
+        // speed at high gain (undoing the accelerometer's braking) and re-open the blind
+        // reckoning window; the miss branch would count phantom misses toward disengage.
+        val newFix = myLocation != null && myLocation !== navPuck.lastFixLoc
+        if (navMode && newFix && snap != null) {
+            navPuck.lastFixLoc = myLocation
             val m = snap.third
             val now = android.os.SystemClock.elapsedRealtime()
             if (!navPuck.engaged) {
@@ -515,8 +569,13 @@ fun VelaMapView(
             }
             navPuck.missCount = 0
             navPuck.targetAtMs = now // anchor for dead reckoning
-            navPuck.speed = (mySpeed ?: 0f).toDouble().coerceAtLeast(0.0)
-        } else if (navMode && navPuck.engaged) {
+            navPuck.reckonedM = 0.0  // fresh fix re-anchors — the integral starts over from it
+            // GPS speed is the Kalman MEASUREMENT; the accelerometer steers it between fixes
+            // (predict step in the frame ticker). navPuck.speed mirrors the filtered value.
+            navPuck.kalman.update((mySpeed ?: 0f).toDouble())
+            navPuck.speed = navPuck.kalman.speed
+        } else if (navMode && newFix && navPuck.engaged) {
+            navPuck.lastFixLoc = myLocation
             // Nothing ahead on the route within tolerance: a GPS spike, or we've drifted off it.
             // HOLD — stay engaged so the ticker keeps dead-reckoning forward along the route —
             // rather than the old global re-snap that teleported the camera onto a random leg.
@@ -527,7 +586,7 @@ fun VelaMapView(
             if (navPuck.missCount >= 6) navPuck.engaged = false
             navPuck.raw = myLocation
             navPuck.rawBearing = myBearing
-        } else {
+        } else if (!navMode || !navPuck.engaged) {
             navPuck.engaged = false
             navPuck.raw = myLocation
             navPuck.rawBearing = myBearing
@@ -1172,7 +1231,13 @@ private class NavPuck {
     var progressM = 0.0           // displayed metres along the route (what's drawn)
     var targetM = 0.0             // latest fix's metres along the route (where we're heading)
     var targetAtMs = 0L           // elapsedRealtime() the target was set — for dead reckoning
-    var speed = 0.0               // m/s, for the inter-fix dead reckoning
+    var speed = 0.0               // m/s — the KALMAN speed (GPS ⊕ accelerometer), see [kalman]
+    val kalman = app.vela.core.location.SpeedKalman() // GPS-fix measurement + accel prediction
+    var reckonedM = 0.0           // ∫speed·dt since the last fix — the dead-reckoned advance
+    var lastFixLoc: LatLng? = null // identity of the last INGESTED fix — the fix-processing block
+                                   // runs in a recomposing scope, and kalman.update/reckonedM=0 are
+                                   // NOT idempotent: re-running them on a mere recomposition re-injects
+                                   // a stale speed and re-opens the blind reckoning window
     var displayBearing = Float.NaN // smoothed heading actually drawn (NaN = not yet seeded)
     var drawn: LatLng? = null     // last point actually drawn — the camera follows THIS, not the raw fix
     var raw: LatLng? = null       // off-route fallback position
