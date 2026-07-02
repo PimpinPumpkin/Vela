@@ -252,7 +252,13 @@ must fit one region's monolithic graph; cross-region falls online.
   photos ARE delivered this way** (the old RPC's avatars-only limitation doesn't apply to the rendered
   page). Device-verified: Taco Bell **3 → 50**, Pike Place Chowder **3 → 37**, a landmark **37 → 46**.
   The place sheet adds a **"Search reviews"** box (≥5 loaded) that live-filters the loaded set by
-  text/author. While the scrape runs (~10–40 s on busy places) the scraper **streams its running count**
+  text/author. **Default path since 2026-07-01 is the LIVE PANEL** (`app/web/ReviewsPanel.kt`,
+  `LiveReviews` toggle): Google's reviews pane in a VISIBLE WebView, CSS-carved — pixel-sized (vh
+  units are 0 in an embedded WebView), ancestor chain un-clipped/un-transformed (else nothing
+  paints), scroller stretched only after the Reviews tab reports `aria-selected`, trackers/beacons
+  blocked in `shouldInterceptRequest`, all post-load navigations blocked, disallow-intercept
+  re-asserted per touch event (the Compose sheet steals the gesture otherwise). The scrape above is
+  the automatic fallback (toggle off / carve failure). While the scrape runs (~10–40 s on busy places) the scraper **streams its running count**
   (`onProgress` → "Loading reviews… N of ~min(count,50)" + a determinate bar) **and the accumulated
   reviews themselves** (`onPartial` → the list fills in under the bar live). The streaming state update
   is gated on `reviewsLoading` inside the atomic CAS (the final result clears the flag in the same copy
