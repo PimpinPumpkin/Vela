@@ -50,8 +50,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
@@ -1468,112 +1471,27 @@ private fun PlaceTabs(
         Column(Modifier.padding(top = 10.dp)) {
             when (tabs[selected]) {
                 "Reviews" -> {
-                    // Live Google panel (experimental, Settings-toggleable): Google's own reviews
-                    // pane in a visible WebView — full-speed rendering, auto-paging on scroll,
-                    // Google's server-side review search. Falls back to the native scraped list
-                    // if the panel can't carve (markup shift) or the toggle is off.
+                    // Inline = the NATIVE scraped list (smooth, no nested WebView, no scroll seam).
+                    // Tapping a review photo opens the shared full-screen gallery; a "Read all
+                    // reviews" button opens the live Google panel FULL-SCREEN (its own screen, so
+                    // no nesting → Google's own infinite scroll + search + native photo/video).
                     val fid = place.featureId
-                    var panelFailed by remember(place.id) { mutableStateOf(false) }
-                    if (app.vela.ui.LiveReviews.on.value && !panelFailed && fid != null && fid.contains(":")) {
-                        // A tapped review photo opens Vela's own full-screen gallery (Google's embedded
-                        // viewer renders nothing inside the carve) — urls + start index from the panel.
-                        var reviewPhotos by remember(place.id) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
-                        // The page's rating distribution, scraped over the bridge and drawn NATIVELY
-                        // here (Google's in-panel summary block is hidden) — panel and fallback modes
-                        // share one look, and less of the visible UI rides the WebView.
-                        var panelHist by remember(place.id) { mutableStateOf<List<Int>?>(null) }
-                        var panelReady by remember(place.id) { mutableStateOf(false) }
-                        // Native search / topic chips / sort — Vela UI driving the panel's hidden
-                        // Google controls (server-side search across ALL reviews; the chips are
-                        // Google's auto-parsed review topics, scraped off the page).
-                        var panelChips by remember(place.id) { mutableStateOf<List<app.vela.web.PanelChip>?>(null) }
-                        var chipSel by remember(place.id) { mutableStateOf("All") }
-                        var panelQuery by remember(place.id) { mutableStateOf("") }
-                        val panelCtl = remember(place.id) { app.vela.web.ReviewsPanelController() }
-                        Column {
-                            // The whole native header (rating row + histogram) clears out in
-                            // engaged mode — nothing floats above the reviews.
-                            if (!panelEngaged) {
-                                place.rating?.let { r ->
-                                    // Centered to sit above the centered histogram.
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.Center,
-                                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
-                                    ) {
-                                        Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
-                                        Spacer(Modifier.width(8.dp))
-                                        RatingStars(r)
-                                        place.reviewCount?.let {
-                                            Spacer(Modifier.width(8.dp))
-                                            Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
-                                        }
-                                    }
-                                }
-                            }
-                            // Narrower than the sheet (Google-compact), and HIDDEN while the user is
-                            // reading reviews full-screen — it otherwise floats above the panel
-                            // eating height; it returns when they walk the sheet back up.
-                            if (!panelEngaged) {
-                                panelHist?.let {
-                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                                        RatingHistogram(it, dim, Modifier.fillMaxWidth(0.62f).padding(bottom = 8.dp))
-                                    }
-                                }
-                                PanelControls(
-                                    chips = panelChips,
-                                    selected = chipSel,
-                                    query = panelQuery,
-                                    onQuery = { panelQuery = it },
-                                    onSearch = { panelCtl.search(panelQuery.trim()) },
-                                    onChip = { label -> chipSel = label; panelCtl.chip(label) },
-                                    onSort = { panelCtl.sort(it) },
-                                    ink = ink,
-                                    dim = dim,
-                                )
-                            }
-                            if (!panelReady) {
-                                // Teaser while the panel loads: the search response's featured review
-                                // is already on-device — something to read instead of a bare spinner.
-                                place.featuredReview?.let { rev ->
-                                    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
-                                        Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
-                                        Spacer(Modifier.width(8.dp))
-                                        Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
-                                    }
-                                }
-                            }
-                            // CONSTANT full-sheet height — engaged mode must not RESIZE the WebView
-                            // (Chromium paints a resized strip a frame late = a black-band flicker);
-                            // engaging only hides the header above, and the full-size panel slides up.
-                            val panelH = (LocalConfiguration.current.screenHeightDp * 0.92f - 44f).coerceAtLeast(480f)
-                            app.vela.web.GoogleReviewsPanel(
-                                featureId = fid,
-                                dark = isAppInDarkTheme(),
-                                modifier = Modifier.fillMaxWidth().height(panelH.dp),
-                                onFailed = { panelFailed = true; onRetryReviews() },
-                                onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
-                                onOverscroll = onPanelOverscroll,
-                                onOverscrollEnd = onPanelOverscrollEnd,
-                                onEngaged = onPanelEngaged,
-                                onHistogram = { panelHist = it },
-                                onLoaded = { panelReady = true },
-                                onChips = { panelChips = it },
-                                controller = panelCtl,
-                            )
-                        }
-                        reviewPhotos?.let { (urls, caps, start) ->
-                            PhotoGallery(urls, caps, start) { reviewPhotos = null }
-                        }
-                    } else {
-                        // Self-heal: reaching the native list with nothing loaded and nothing
-                        // loading means the scrape was skipped while the panel was on (e.g. the
-                        // toggle flipped off with this place open) — start it now, once per
-                        // place/toggle state, instead of showing a dead "couldn't load" row.
-                        LaunchedEffect(place.id, app.vela.ui.LiveReviews.on.value) {
-                            if (reviews.isEmpty() && !reviewsLoading) onRetryReviews()
-                        }
-                        ReviewsTab(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim)
+                    var reviewPhotos by remember(place.id) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
+                    var showFullPanel by remember(place.id) { mutableStateOf(false) }
+                    ReviewsTab(
+                        place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim,
+                        onPhotoTap = { urls, start, caption ->
+                            reviewPhotos = Triple(urls, urls.map { caption }, start)
+                        },
+                        onReadAll = if (app.vela.ui.LiveReviews.on.value && fid != null && fid.contains(":")) {
+                            { showFullPanel = true }
+                        } else null,
+                    )
+                    reviewPhotos?.let { (urls, caps, start) ->
+                        PhotoGallery(urls, caps, start) { reviewPhotos = null }
+                    }
+                    if (showFullPanel && fid != null) {
+                        FullScreenReviews(fid, place, ink, dim) { showFullPanel = false }
                     }
                 }
                 "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
@@ -1582,13 +1500,61 @@ private fun PlaceTabs(
     }
 }
 
+/** The live Google reviews panel, FULL-SCREEN (the "Read all reviews" view). No nesting inside a
+ *  scroll → no scroll-sync, no jitter; Google's own infinite scroll, server-side search, and
+ *  native photo/video viewers all work. Back / the top-bar arrow closes it back to the sheet. */
 @Composable
-private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, found: Int, onRetry: () -> Unit, ink: Color, dim: Color) {
+private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: Color, onClose: () -> Unit) {
+    val dark = isAppInDarkTheme()
+    BackHandler(onBack = onClose)
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
+            Column(Modifier.fillMaxSize().statusBarsPadding()) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                ) {
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ink)
+                    }
+                    Column(Modifier.weight(1f)) {
+                        Text(place.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ink, maxLines = 1)
+                        Text("Reviews", style = MaterialTheme.typography.bodySmall, color = dim)
+                    }
+                }
+                app.vela.web.GoogleReviewsPanel(
+                    featureId = featureId,
+                    dark = dark,
+                    fullScreen = true,
+                    modifier = Modifier.fillMaxSize(),
+                    onFailed = onClose, // can't carve (throttle / markup drift) → bounce back; the inline native list is still there
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewsTab(
+    place: Place,
+    reviews: List<Review>,
+    loading: Boolean,
+    found: Int,
+    onRetry: () -> Unit,
+    ink: Color,
+    dim: Color,
+    onPhotoTap: (List<String>, Int, String?) -> Unit = { _, _, _ -> },
+    onReadAll: (() -> Unit)? = null,
+) {
     // Search within the loaded reviews (author or text, case-insensitive). Resets per place.
     var reviewQuery by remember(place.id) { mutableStateOf("") }
     Column {
         place.rating?.let { r ->
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+            ) {
                 Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
                 Spacer(Modifier.width(8.dp))
                 RatingStars(r)
@@ -1596,6 +1562,14 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, fo
                     Spacer(Modifier.width(8.dp))
                     Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
                 }
+            }
+        }
+        // Entry to the full-screen live Google reviews (all reviews, server-side search, videos).
+        onReadAll?.let { open ->
+            OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
+                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(place.reviewCount?.let { "Read all $it reviews" } ?: "Read all reviews on Google")
             }
         }
         place.featuredReview?.let { rev ->
@@ -1686,7 +1660,7 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, fo
                         modifier = Modifier.padding(vertical = 8.dp),
                     )
                 } else {
-                    shown.forEach { ReviewRow(it, ink, dim) }
+                    shown.forEach { ReviewRow(it, ink, dim, onPhotoTap) }
                 }
             }
         }
@@ -1694,7 +1668,7 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, fo
 }
 
 @Composable
-private fun ReviewRow(review: Review, ink: Color, dim: Color) {
+private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<String>, Int, String?) -> Unit = { _, _, _ -> }) {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (review.authorPhoto != null) {
@@ -1725,13 +1699,16 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color) {
         review.text?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
         }
-        // User-attached review photos (Google-style thumbnail strip).
+        // User-attached review photos (Google-style thumbnail strip) — tap to open the shared
+        // full-screen gallery, captioned "Author · date" (the whole review's photo set, opened
+        // at the tapped index).
         if (review.photos.isNotEmpty()) {
+            val caption = listOfNotNull(review.author.ifBlank { null }, review.relativeTime).joinToString(" · ").ifBlank { null }
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                review.photos.forEach { url ->
+                review.photos.forEachIndexed { i, url ->
                     AsyncImage(
                         model = url,
                         contentDescription = null,
@@ -1740,7 +1717,8 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color) {
                         // thumbnail loads (or if it fails).
                         modifier = Modifier.size(104.dp)
                             .clip(RoundedCornerShape(10.dp))
-                            .background(dim.copy(alpha = 0.12f)),
+                            .background(dim.copy(alpha = 0.12f))
+                            .clickable { onPhotoTap(review.photos, i, caption) },
                     )
                 }
             }
