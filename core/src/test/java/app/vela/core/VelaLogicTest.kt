@@ -621,6 +621,15 @@ class SearchParserHoursTest {
         assertEquals("100 Main St", SearchParser.stripNamePrefix("100 Main St", "Safeway"))
         // Prefix but no word boundary ("Safeway" vs "Safeways Plaza") → leave it, don't mangle.
         assertEquals("Safeways Plaza Dr", SearchParser.stripNamePrefix("Safeways Plaza Dr", "Safeway"))
+        // A bare space alone is NOT a boundary — the next token must be the street NUMBER, else a
+        // street merely named after the place would be beheaded ("Plaza, …" / "Access Rd, Seattle").
+        assertEquals(
+            "Safeway Plaza, 5802 134th Pl SE",
+            SearchParser.stripNamePrefix("Safeway Plaza, 5802 134th Pl SE", "Safeway"),
+        )
+        assertEquals("Boeing Access Rd, Seattle", SearchParser.stripNamePrefix("Boeing Access Rd, Seattle", "Boeing"))
+        // Unexpected continuation (apostrophe) → leave untouched rather than half-strip.
+        assertEquals("Safeway's Fuel, 123 Main St", SearchParser.stripNamePrefix("Safeway's Fuel, 123 Main St", "Safeway"))
         // Stripping would empty the line → keep original.
         assertEquals("Safeway", SearchParser.stripNamePrefix("Safeway", "Safeway"))
     }

@@ -60,7 +60,11 @@ object SearchParser {
         // prominence (review count) so the MAIN store beats its florist/pharmacy departments sitting at the
         // same spot. Distance still wins across genuinely different locations. (Was pure distance, which let
         // a nearby low-review department outrank the big store it's a part of — the "Safeway Floral" bug.)
-        val ranked = withSimilar.sortedWith(
+        // ONLY when a bias point exists: with near==null every place lands in the same null-distance
+        // bucket and the whole list would re-sort by review count — but callers without a bias point
+        // (PopularTimesParser's focused name+address lookup) rely on Google's RESPONSE ORDER, where the
+        // FIRST entry is the focused result; re-ranking grafted a busier neighbour's data onto it.
+        val ranked = if (near == null) withSimilar else withSimilar.sortedWith(
             compareBy<Place>(
                 { it.distanceMeters?.let { d -> (d / 120.0).toLong() } ?: Long.MAX_VALUE }, // 120 m distance buckets
                 { -(it.reviewCount ?: 0) },                                                 // within a bucket: more reviews first
@@ -224,19 +228,25 @@ object SearchParser {
         return urls.take(12)
     }
 
-    /** "Permanently closed" (and the rarer "Permanently closed" rich-status variant)
-     *  → a dead POI. Kept in search results but hidden from the map and labelled. */
     /** Drop a leading business-name from a formatted address ("Safeway, 5802 134th Pl SE" → "5802 …").
-     *  The sheet shows the name on its own line, so a name-prefixed address reads it twice. Only strips a
-     *  clean prefix followed by a separator (", " / " ") so a street that merely starts with the same word
-     *  isn't mangled; if stripping would empty the line, keep the original. */
+     *  The sheet shows the name on its own line, so a name-prefixed address reads it twice. Strips ONLY
+     *  when what follows the name is an explicit separator (","/"·"/dash) or goes straight to the street
+     *  NUMBER — a bare space alone is NOT a boundary ("Safeway Plaza, …", "Boeing Access Rd" must survive),
+     *  and an unexpected continuation char (apostrophe, exotic dot) leaves the address untouched rather
+     *  than half-stripped. If stripping would empty the line, keep the original. */
     internal fun stripNamePrefix(addr: String, name: String): String {
         if (name.isBlank() || !addr.startsWith(name, ignoreCase = true)) return addr
         val rest = addr.substring(name.length)
-        if (rest.isNotEmpty() && rest[0].isLetterOrDigit()) return addr // "Safeway Plaza" — not a boundary
-        return rest.trimStart(' ', ',', '·', '-', '–', ' ').ifBlank { addr }
+        if (rest.isNotEmpty() && rest[0].isLetterOrDigit()) return addr // "Safeways Plaza" — not a boundary
+        val afterSpaces = rest.trimStart(' ', ' ')
+        // Require a real separator or the street number right after the name; anything else ("'s Fuel…",
+        // "• …") means this isn't a plain name-prefix — don't touch it.
+        if (afterSpaces.isNotEmpty() && !afterSpaces[0].isDigit() && afterSpaces[0] !in ",·–-") return addr
+        return afterSpaces.trimStart(',', '·', '-', '–', ' ', ' ').ifBlank { addr }
     }
 
+    /** "Permanently closed" (and the rarer "Permanently closed" rich-status variant)
+     *  → a dead POI. Kept in search results but hidden from the map and labelled. */
     private fun isPermanentlyClosed(vararg status: String?): Boolean =
         status.any { it != null && it.contains("Permanently", ignoreCase = true) }
 
