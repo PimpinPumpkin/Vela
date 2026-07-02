@@ -35,7 +35,10 @@ class OpeningHoursTest {
     }
 
     @Test fun open24Hours() {
-        assertEquals(true, OpeningHours.statusAt(listOf("Monday: Open 24 hours"), mon(3))?.open)
+        val s = OpeningHours.statusAt(listOf("Monday: Open 24 hours"), mon(3))
+        assertEquals(true, s?.open)
+        // NOT "Closes 12 AM" — the (0,1440) encoding's midnight "close" is an artifact, not a closing time.
+        assertEquals("Open 24 hours", s?.detail)
     }
 
     @Test fun closedForTheDay() {
