@@ -507,9 +507,9 @@ private fun carveScript(dark: Boolean): String {
             // Google's search/sort row + topic-chips row: carved only once the CHIPS data reached
             // Vela (the native search field + chip row are the replacement).
             if(window.__velaChipsSent){
-              var crow=velaChipsRow(); if(crow) blocks.push({el:crow,isSum:0});
+              var crow=velaChipsRow(); if(crow) blocks.push({el:crow,isCtl:1});
               var inp=document.querySelector('[role="main"] input');
-              if(inp) blocks.push({el:velaBlockOf(inp),isSum:0});
+              if(inp) blocks.push({el:velaBlockOf(inp),isCtl:1});
             }
             [].slice.call(document.querySelectorAll('[role="main"] div')).some(function(d){
               if(d.offsetHeight<=0 || d.offsetHeight>=80) return false;
@@ -531,7 +531,8 @@ private fun carveScript(dark: Boolean): String {
               if(b.offsetHeight>=cap) return;
               b.style.setProperty('opacity','0','important');
               b.style.setProperty('pointer-events','none','important');
-              if(w.isSum) window.__velaSumFaded=1; // ONLY the summary releases the reveal-hold
+              if(w.isSum) window.__velaSumFaded=1; // the summary + control rows each release their hold
+              if(w.isCtl) window.__velaCtlFaded=1;
               if(collapse) b.style.setProperty('display','none','important');
             });
           }
@@ -910,7 +911,9 @@ private fun carveScript(dark: Boolean): String {
             // Hold the reveal while the native histogram exists but Google's copy hasn't faded
             // yet — revealing in that window shows BOTH histograms (reported). Bounded: give up
             // holding after ~2.5s so a guard-blocked fade can't hang the reveal.
-            var sumOk = !window.__velaHistSent || window.__velaSumFaded || (revAt>=0 && tries-revAt>=10);
+            var grace10 = (revAt>=0 && tries-revAt>=10);
+            var sumOk = (!window.__velaHistSent || window.__velaSumFaded || grace10) &&
+                        (!window.__velaChipsSent || window.__velaCtlFaded || grace10);
             if(iso && rev && sumOk && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; window.__velaBootDone=1; setupOnce(); stretch(); velaHistogram(); velaFont(); try{ VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
@@ -922,8 +925,8 @@ private fun carveScript(dark: Boolean): String {
           // landed; the scroller-level observer handles later recycles.
           try{
             var bootMo=new MutationObserver(function(){
-              if(window.__velaSumFaded || window.__velaBootDone){ bootMo.disconnect(); return; }
-              velaHistogram();
+              if((window.__velaSumFaded && window.__velaCtlFaded) || window.__velaBootDone){ bootMo.disconnect(); return; }
+              velaChips(); velaHistogram();
             });
             bootMo.observe(document.documentElement,{childList:true,subtree:true});
           }catch(x){}
