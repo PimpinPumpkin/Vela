@@ -19,6 +19,7 @@ class VelaApp : Application() {
         Units.init(this)
         AppTheme.init(this)
         Traffic.init(this)
+        app.vela.ui.LiveReviews.init(this)
         Onboarding.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
         // restart and can be exported from Settings → Diagnostics next launch.
