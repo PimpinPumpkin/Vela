@@ -133,14 +133,30 @@ private fun buildPanelWebView(
     // Match Vela's SheetPalette exactly (Dark #1F1F1F / Light #FFFFFF) so the WebView surface
     // behind the page is the sheet colour before the page even paints.
     wv.setBackgroundColor(if (dark) 0xFF1F1F1F.toInt() else 0xFFFFFFFF.toInt())
-    // The panel lives inside the sheet's scrollable column — own the vertical gesture while the
-    // finger is on the panel so the list scrolls instead of the sheet.
+    // Scroll-sync: the panel lives inside the sheet's scrollable column. It OWNS the vertical
+    // gesture (so the reviews list scrolls, not the sheet) — EXCEPT at a scroll boundary, where it
+    // HANDS the drag to the Vela sheet so panel + sheet feel like one surface: at the reviews' top,
+    // a downward drag flows through to scroll the sheet body up / collapse it; at the bottom, an
+    // upward drag flows through. The edge state comes from the page via `onPanelEdge` (JS reports
+    // the inner scroller's top/bottom). Re-asserting disallow on EVERY move is still required — the
+    // Compose sheet resets a once-per-gesture disallow and would otherwise steal the stream.
+    val panelAtTop = java.util.concurrent.atomic.AtomicBoolean(true)
+    val panelAtBottom = java.util.concurrent.atomic.AtomicBoolean(false)
+    var lastTouchY = 0f
     wv.setOnTouchListener { v, ev ->
-        // Re-assert on EVERY event: the Compose sheet's drag handling resets/ignores a
-        // once-per-gesture disallow, and steals the stream after the down (the swipe then
-        // moves nothing — touchstart reached the page but the moves never did).
-        if (ev.actionMasked != MotionEvent.ACTION_UP && ev.actionMasked != MotionEvent.ACTION_CANCEL) {
-            v.parent?.requestDisallowInterceptTouchEvent(true)
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                lastTouchY = ev.y
+                v.parent?.requestDisallowInterceptTouchEvent(true)
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dy = ev.y - lastTouchY
+                lastTouchY = ev.y
+                // Hand off only when the reviews scroller can't consume this direction: at the top
+                // dragging down (finger down), or at the bottom dragging up. Then the sheet takes it.
+                val handoff = (panelAtTop.get() && dy > 1f) || (panelAtBottom.get() && dy < -1f)
+                v.parent?.requestDisallowInterceptTouchEvent(!handoff)
+            }
         }
         false
     }
@@ -148,6 +164,13 @@ private fun buildPanelWebView(
     val bridge = object {
         @JavascriptInterface
         fun ready() { wv.post { onReady() } }
+
+        // Scroll-sync edge state (JavaBridge thread → read on the UI thread by the touch listener).
+        @JavascriptInterface
+        fun onPanelEdge(atTop: Boolean, atBottom: Boolean) {
+            panelAtTop.set(atTop)
+            panelAtBottom.set(atBottom)
+        }
 
         @JavascriptInterface
         fun fail() { wv.post { onFail() } }
@@ -268,6 +291,16 @@ private fun carveScript(dark: Boolean): String {
             var d=card.querySelector('.rsqaWe'); if(d && d.textContent.trim()) return d.textContent.trim();
             var all=card.querySelectorAll('span,div'); for(var i=0;i<all.length;i++){ var e=all[i]; if(e.children.length===0 && /^(a|an|\d+)\s+(second|minute|hour|day|week|month|year)s?\s+ago$/i.test((e.textContent||'').trim())) return e.textContent.trim(); }
             return '';
+          }
+          // --- scroll-sync: tell the native side when the reviews scroller is at its top/bottom edge,
+          // so the OnTouchListener can hand a boundary drag to the Vela sheet (scroll-up / collapse)
+          // instead of hogging every gesture. Only fires on an edge-state CHANGE (cheap).
+          var __velaTop=true, __velaBot=false;
+          function velaReportEdge(){
+            var sc=window.__velaSc; if(!sc) return;
+            var at=sc.scrollTop<=1;
+            var ab=(sc.scrollTop+sc.clientHeight)>=(sc.scrollHeight-2);
+            if(at!==__velaTop || ab!==__velaBot){ __velaTop=at; __velaBot=ab; try{ VelaPanel.onPanelEdge(at, ab); }catch(x){} }
           }
           function isolate(){
             var main=document.querySelector('[role="main"]');
@@ -441,6 +474,9 @@ private fun carveScript(dark: Boolean): String {
                 sc.style.setProperty('height',(h-top)+'px','important');
                 sc.style.setProperty('max-height',(h-top)+'px','important');
                 window.__velaSc=sc;
+                // Attach the edge reporter once per scroller (the SPA can swap the node).
+                if(!sc.__velaEdgeHooked){ sc.__velaEdgeHooked=1; sc.addEventListener('scroll', function(){ requestAnimationFrame(velaReportEdge); }, {passive:true}); }
+                velaReportEdge();
               }
             }
           }
