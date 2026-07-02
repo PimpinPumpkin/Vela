@@ -45,28 +45,55 @@ class WebPhotoFetcher @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
+    private val partials = ConcurrentHashMap<String, (String) -> Unit>()
     private val seq = AtomicInteger()
     private val mutex = Mutex()
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile private var webView: WebView? = null
+    @Volatile private var warmed = false
 
     private inner class Bridge {
         @JavascriptInterface
         fun onResult(id: String, payload: String) {
             pending.remove(id)?.complete(payload)
         }
+
+        // Streaming: the scraper reports the accumulated set whenever it GROWS, so the gallery
+        // fills in as tabs are visited instead of arriving all at once at the end. JavaBridge
+        // thread — the callback must be thread-safe.
+        @JavascriptInterface
+        fun onPartial(id: String, payload: String) {
+            partials[id]?.invoke(payload)
+        }
+    }
+
+    /** Prime the hidden WebView BEFORE the first place is opened (call on first search): creates
+     *  the WebView and loads maps.google.com once, so the first real photo fetch reuses a live
+     *  renderer, warm HTTP/2 connections, cookies, and cached JS — instead of paying the whole
+     *  cold start on top of the place page load. No-op after anything has used the WebView. */
+    fun warm() {
+        if (warmed || webView != null) return
+        warmed = true
+        main.post {
+            runCatching {
+                val wv = ensureWebView()
+                wv.webViewClient = WebViewClient()
+                wv.loadUrl("https://www.google.com/maps?hl=en")
+            }
+        }
     }
 
     /** The gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL plus the gallery-tab
      *  [Photo.category] when Google tagged it (Menu / Food & drink / Vibe / By owner; null = All).
      *  No posted date from a DOM scrape. Empty on any failure. [count] caps how many we keep. */
-    suspend fun fetch(featureId: String, count: Int = 80): List<Photo> {
+    suspend fun fetch(featureId: String, count: Int = 80, onPartial: ((List<Photo>) -> Unit)? = null): List<Photo> {
         val cid = cidOf(featureId) ?: return emptyList()
         return mutex.withLock {
             val id = "p" + seq.incrementAndGet()
             val deferred = CompletableDeferred<String>()
             pending[id] = deferred
+            if (onPartial != null) partials[id] = { raw -> onPartial(parseLines(raw)) }
             val raw = try {
                 withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
                     withContext(Dispatchers.Main) {
@@ -101,17 +128,19 @@ class WebPhotoFetcher @Inject constructor(
                 }
             } finally {
                 pending.remove(id)
+                partials.remove(id)
             }
-            // Each line is "category\turl" (category "" = uncategorized/All). Category-scraping tags each
-            // photo with its gallery tab (Menu / Food & drink / Vibe / By owner / …).
-            val out = raw?.split("\n")?.mapNotNull { line ->
-                if (line.isBlank()) return@mapNotNull null
-                val tab = line.indexOf('\t')
-                if (tab < 0) Photo(upsize(line.trim()))
-                else Photo(upsize(line.substring(tab + 1).trim()), category = line.substring(0, tab).trim().ifBlank { null })
-            } ?: emptyList()
-            out
+            raw?.let { parseLines(it) } ?: emptyList()
         }
+    }
+
+    /** Each line is "category\turl" (category "" = uncategorized/All) — shared by the final result
+     *  and the streamed partials. */
+    private fun parseLines(raw: String): List<Photo> = raw.split("\n").mapNotNull { line ->
+        if (line.isBlank()) return@mapNotNull null
+        val tab = line.indexOf('\t')
+        if (tab < 0) Photo(upsize(line.trim()))
+        else Photo(upsize(line.substring(tab + 1).trim()), category = line.substring(0, tab).trim().ifBlank { null })
     }
 
     /** The Google "cid" = the LOW half of the `0xHIGH:0xLOW` feature id as an unsigned decimal. */
@@ -172,11 +201,16 @@ class WebPhotoFetcher @Inject constructor(
               // A real category tab is a clean name ("Menu", "Food & drink", "By owner") — EXCLUDE photo
               // captions that also start with a category word ("Menu · Photo 1 of 12") via the letters-only test.
               function tabsNow(){ var out=[]; tabEls().forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<20 && CATRE.test(t) && /^[a-z &]+${'$'}/i.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
-              function finish(){ var lines=[]; for(var k in acc) lines.push((acc[k].c||'')+'\t'+acc[k].u); try{ VelaBridge.onResult(ID, lines.slice(0,CAP).join("\n")); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
+              function lines(){ var out=[]; for(var k in acc) out.push((acc[k].c||'')+'\t'+acc[k].u); return out.slice(0,CAP).join("\n"); }
+              function finish(){ try{ VelaBridge.onResult(ID, lines()); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
+              var sentN=0;
+              // Stream growth: the sheet fills in as photos are found instead of waiting ~20s for
+              // the full tab walk (first partial = the OVERVIEW's hero photos, ~1 tick after load).
+              function partial(){ var n=0; for(var k in acc) n++; if(n>sentN){ sentN=n; try{ VelaBridge.onPartial(ID, lines()); }catch(e){} } }
               function tick(){
                 tries++;
                 if(phase===0){
-                  clickPhotos(); scroll();
+                  collect(''); clickPhotos(); scroll();
                   // Wait until the gallery's category tabs actually exist (slow loads) — but not forever:
                   // a place with no categorized gallery proceeds tab-less to the plain All sweep.
                   cats=tabsNow();
@@ -196,6 +230,7 @@ class WebPhotoFetcher @Inject constructor(
                   sub++; if(sub>=5){ finish(); return; }
                 }
                 if(tries>58){ collect(''); finish(); return; }
+                partial();
                 setTimeout(tick, 500);
               }
               tick();
