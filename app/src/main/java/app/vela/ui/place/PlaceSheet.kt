@@ -105,6 +105,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -1271,7 +1272,11 @@ private fun PlaceTabs(
     ink: Color,
     dim: Color,
 ) {
-    val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null
+    // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
+    // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
+    // zero-reviews state if there are none.
+    val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
+        (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
     val hasAbout = place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null
     val tabs = buildList {
         if (hasReviews) add("Reviews")
@@ -1293,7 +1298,44 @@ private fun PlaceTabs(
         }
         Column(Modifier.padding(top = 10.dp)) {
             when (tabs[selected]) {
-                "Reviews" -> ReviewsTab(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim)
+                "Reviews" -> {
+                    // Live Google panel (experimental, Settings-toggleable): Google's own reviews
+                    // pane in a visible WebView — full-speed rendering, auto-paging on scroll,
+                    // Google's server-side review search. Falls back to the native scraped list
+                    // if the panel can't carve (markup shift) or the toggle is off.
+                    val fid = place.featureId
+                    var panelFailed by remember(place.id) { mutableStateOf(false) }
+                    if (app.vela.ui.LiveReviews.on.value && !panelFailed && fid != null && fid.contains(":")) {
+                        Column {
+                            place.rating?.let { r ->
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
+                                    Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
+                                    Spacer(Modifier.width(8.dp))
+                                    RatingStars(r)
+                                    place.reviewCount?.let {
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
+                                    }
+                                }
+                            }
+                            app.vela.web.GoogleReviewsPanel(
+                                featureId = fid,
+                                dark = isAppInDarkTheme(),
+                                modifier = Modifier.fillMaxWidth().height(560.dp),
+                                onFailed = { panelFailed = true; onRetryReviews() },
+                            )
+                        }
+                    } else {
+                        // Self-heal: reaching the native list with nothing loaded and nothing
+                        // loading means the scrape was skipped while the panel was on (e.g. the
+                        // toggle flipped off with this place open) — start it now, once per
+                        // place/toggle state, instead of showing a dead "couldn't load" row.
+                        LaunchedEffect(place.id, app.vela.ui.LiveReviews.on.value) {
+                            if (reviews.isEmpty() && !reviewsLoading) onRetryReviews()
+                        }
+                        ReviewsTab(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim)
+                    }
+                }
                 "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
             }
         }
