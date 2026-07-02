@@ -45,6 +45,7 @@ class WebReviewsFetcher @Inject constructor(
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
+    private val partial = ConcurrentHashMap<String, (List<Review>) -> Unit>()
     private val seq = AtomicInteger()
     private val mutex = Mutex()
     private val main = Handler(Looper.getMainLooper())
@@ -64,18 +65,33 @@ class WebReviewsFetcher @Inject constructor(
         fun onProgress(id: String, n: Int) {
             progress[id]?.invoke(n)
         }
+
+        // The accumulated reviews SO FAR, sent whenever the count grows — the sheet streams them
+        // into the list under the progress bar instead of making the user stare at a bar for 30 s.
+        // Same JavaBridge thread; parse failures are dropped (the final onResult is authoritative).
+        @JavascriptInterface
+        fun onPartial(id: String, payload: String) {
+            val cb = partial[id] ?: return
+            runCatching { ReviewsWebParser.parse(payload) }.getOrNull()?.let { if (it.isNotEmpty()) cb(it) }
+        }
     }
 
     /** Reviews for [featureId] (`0x..:0x..`) — newest/most-relevant first as Google renders them,
      *  each with its uploaded photos — or empty on any failure. [onProgress] streams the running
-     *  count of reviews found while the scrape is in flight (called off the main thread). */
-    suspend fun fetch(featureId: String, onProgress: (Int) -> Unit = {}): List<Review> {
+     *  count while the scrape is in flight; [onPartial] streams the accumulated reviews themselves
+     *  (a growing prefix of the final result). Both are called off the main thread. */
+    suspend fun fetch(
+        featureId: String,
+        onProgress: (Int) -> Unit = {},
+        onPartial: (List<Review>) -> Unit = {},
+    ): List<Review> {
         val cid = cidOf(featureId) ?: return emptyList()
         return mutex.withLock {
             val id = "r" + seq.incrementAndGet()
             val deferred = CompletableDeferred<String>()
             pending[id] = deferred
             progress[id] = onProgress
+            partial[id] = onPartial
             val raw = try {
                 withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
                     withContext(Dispatchers.Main) {
@@ -110,6 +126,7 @@ class WebReviewsFetcher @Inject constructor(
             } finally {
                 pending.remove(id)
                 progress.remove(id)
+                partial.remove(id)
             }
             if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
         }
@@ -197,6 +214,9 @@ class WebReviewsFetcher @Inject constructor(
               function expand(){ [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } }); }
               // De-dupe across scroll windows by the review's stable id (falls back to author+date+text).
               function key(x){ return x.rid || ((x.a||'')+'|'+(x.d||'')+'|'+((x.t||'').slice(0,48))); }
+              // The accumulated reviews so far, capped — used for both the partial streams and the
+              // final result, so a partial is always a prefix-consistent snapshot of the final list.
+              function snap(){ var o=[]; for(var k in acc) o.push(acc[k]); return o.slice(0,CAP); }
               // Scroll each tall left-column panel down by ~80% of a viewport (windows overlap so no
               // card is skipped past). Returns true if anything actually moved (false ⇒ at the bottom).
               function scrollStep(){
@@ -246,9 +266,13 @@ class WebReviewsFetcher @Inject constructor(
                 // scroll position exposes a fresh ~10 that would otherwise be lost when recycled.
                 var revs=extract();
                 for(var i=0;i<revs.length;i++){ var k=key(revs[i]); if(k.length>2 && !acc[k]){ acc[k]=revs[i]; accN++; } }
-                // Stream the running count to the app whenever it changes — the sheet shows a live
-                // "N of ~M" while this scrape grinds, so the wait reads as progress, not a hang.
-                if(accN!==lastRep){ lastRep=accN; try{ VelaBridge.onProgress(ID, accN); }catch(e){} }
+                // Stream progress whenever the count grows: the running count (drives the "N of ~M"
+                // bar) AND the accumulated reviews themselves, so the sheet fills in under the bar
+                // while the scrape grinds instead of making the user stare at a bar for 30 s.
+                if(accN!==lastRep){ lastRep=accN;
+                  try{ VelaBridge.onProgress(ID, accN); }catch(e){}
+                  try{ VelaBridge.onPartial(ID, JSON.stringify(snap())); }catch(e){}
+                }
                 // Are review cards rendered RIGHT NOW? On busy business pages (food, retail) the Reviews
                 // tab's list can take ~8 s to populate after the click; until then the panel holds only
                 // the rating histogram + topic chips, NOT the cards. This must be a per-tick check, not a
@@ -273,12 +297,15 @@ class WebReviewsFetcher @Inject constructor(
                 // a generous empty deadline instead of grinding to the 60-tick hard stop (~33 s of
                 // blank spinner on every review-less place).
                 var emptyDone = !everCards && accN===0 && (opened ? tries>=openedAt+24 : tries>=30);
+                // Idle patience: the OPENED full list pages over the network — Google's lazy-loader
+                // routinely takes >2 s to fetch the next ~10 on a busy place, and 4 quiet ticks
+                // (2.2 s) misread that as "done" (Taco Bell returned ~15 of 612). The unopened
+                // overview has nothing to page, so it keeps the short fuse.
+                var idle = opened ? (atBottom>=6 && noGrow>=8) : (atBottom>=4 && noGrow>=4);
                 // Done: cap hit, OR settled at the bottom with no new reviews, OR provably empty,
                 // OR ran long.
-                if( accN>=CAP || (settled && atBottom>=4 && noGrow>=4) || emptyDone || tries>60 ){
-                  var out=[]; for(var kk in acc) out.push(acc[kk]);
-                  out = out.slice(0,CAP);
-                  try{ VelaBridge.onResult(ID, JSON.stringify(out)); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
+                if( accN>=CAP || (settled && idle) || emptyDone || tries>60 ){
+                  try{ VelaBridge.onResult(ID, JSON.stringify(snap())); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
                   return;
                 }
                 setTimeout(tick, 550);
