@@ -160,7 +160,7 @@ fun ManeuverBanner(
             if (previewing || distanceMeters <= LANE_SHOW_M) {
                 if (lanes.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
-                    LaneDiagram(lanes)
+                    LaneDiagram(lanes, type)
                 } else laneHint?.let {
                     Spacer(Modifier.height(10.dp))
                     LaneGuide(it, type)
@@ -297,27 +297,69 @@ private fun laneArrowCount(hint: String): Int {
 @Composable
 internal fun LaneDiagram(
     lanes: List<Lane>,
+    maneuver: ManeuverType = ManeuverType.STRAIGHT,
     on: Color = MaterialTheme.colorScheme.onPrimaryContainer,
     modifier: Modifier = Modifier,
 ) {
     val bright = on
     val dim = on.copy(alpha = 0.28f)
+    // A signed direction level for the maneuver, or null when the type doesn't pin a side (MERGE /
+    // ROUNDABOUT / arrive / unknown) — in that case we can't say WHICH allowed direction we're
+    // taking, so a valid lane lights ALL its arrows rather than guessing (and lighting the wrong one).
+    val target = maneuverBucket(maneuver)
     Surface(color = on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
         Row(
             Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             lanes.take(8).forEach { lane ->
-                val c = if (lane.valid) bright else dim
-                Canvas(Modifier.size(width = 20.dp, height = 26.dp)) {
-                    val inds = lane.indications.ifEmpty { listOf("straight") }
-                    // arrows share a base, so multiple indications read as one shaft that forks
-                    inds.distinct().forEach { laneArrow(it, c) }
+                val inds = lane.indications.ifEmpty { listOf("straight") }.distinct()
+                // In a valid lane, ONLY the arrow for the turn we're taking lights up — the other
+                // directions the lane also allows stay dim (so a "go straight" turn doesn't light
+                // the right-turn head on a straight-or-right lane). The active one = the lane's
+                // indication closest to the maneuver's direction. When the maneuver side is unknown
+                // (target null), light all of a valid lane's arrows. Invalid lanes: all dim.
+                val active = if (lane.valid && target != null) inds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) } else null
+                // Wider than tall + more horizontal room so two forked heads don't overlap.
+                Canvas(Modifier.size(width = 26.dp, height = 26.dp)) {
+                    inds.forEach { ind ->
+                        val lit = lane.valid && (target == null || ind == active)
+                        laneArrow(ind, if (lit) bright else dim)
+                    }
                 }
             }
         }
     }
+}
+
+/** Coarse signed direction level for a lane indication (straight 0, right +, left −); used to
+ *  match a lane's allowed directions against the maneuver we're actually taking. A u-turn is a
+ *  hard LEFT (−4), so it matches a "uturn" indication AND, absent one, the left-most arrow. */
+private fun laneBucket(indication: String): Int = when (indication.trim().lowercase().replace('_', ' ')) {
+    "uturn" -> -4
+    "sharp left" -> -3
+    "left" -> -2
+    "slight left", "merge to left" -> -1
+    "slight right", "merge to right" -> 1
+    "right" -> 2
+    "sharp right" -> 3
+    else -> 0 // straight / none / ""
+}
+
+/** The maneuver's signed direction, or null when the type doesn't pin a side (a valid lane then
+ *  lights all its arrows rather than guessing wrong). */
+private fun maneuverBucket(type: ManeuverType): Int? = when (type) {
+    ManeuverType.UTURN -> -4
+    ManeuverType.SHARP_LEFT -> -3
+    ManeuverType.TURN_LEFT -> -2
+    ManeuverType.SLIGHT_LEFT, ManeuverType.FORK_LEFT, ManeuverType.KEEP_LEFT, ManeuverType.RAMP_LEFT -> -1
+    ManeuverType.SLIGHT_RIGHT, ManeuverType.FORK_RIGHT, ManeuverType.KEEP_RIGHT, ManeuverType.RAMP_RIGHT -> 1
+    ManeuverType.TURN_RIGHT -> 2
+    ManeuverType.SHARP_RIGHT -> 3
+    ManeuverType.STRAIGHT, ManeuverType.CONTINUE, ManeuverType.DEPART -> 0
+    // MERGE / ROUNDABOUT / EXIT_ROUNDABOUT / ARRIVE / UNKNOWN — side not encoded in the type.
+    else -> null
 }
 
 /** Draw one lane arrow (shaft from the bottom, bending to the indicated direction, with a head). */
