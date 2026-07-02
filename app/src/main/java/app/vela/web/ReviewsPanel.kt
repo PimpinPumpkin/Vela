@@ -269,15 +269,26 @@ private fun carveScript(dark: Boolean): String {
           // (we force Reviews), the "Get pickup or delivery / Order online" promo block, and the
           // "Write a review" button (blocked — it leads to Google sign-in). Runs every tick since
           // the SPA re-attaches these. Text/role-based, not class-based (Google's classes rotate).
+          function stripBlockOf(el){
+            // Walk the CTA element up to the [role="main"] direct child that wraps it, and hide
+            // that block — BUT never the reviews scroller (guarded below).
+            var m=document.querySelector('[role="main"]'); if(!m) return;
+            var c=el; while(c && c.parentElement && c.parentElement!==m) c=c.parentElement;
+            if(c && c.parentElement===m &&
+               !c.querySelector('.jJc9Ad,[data-review-id]') && c.scrollHeight<=c.clientHeight+40){
+              c.style.setProperty('display','none','important');
+            }
+          }
           function strip(){
             var tl=document.querySelector('[role="tablist"]');
             if(tl) tl.style.setProperty('display','none','important');
-            var m=document.querySelector('[role="main"]');
-            if(m){ [].slice.call(m.children).forEach(function(c){
-              if(/order online|get pickup/i.test(c.textContent||'')) c.style.setProperty('display','none','important');
-            }); }
-            [].slice.call(document.querySelectorAll('button,a')).forEach(function(b){
-              var t=(b.getAttribute('aria-label')||'')+' '+(b.textContent||'');
+            // Match the CTA ELEMENTS by their OWN (short) text — NOT a container's textContent.
+            // The old container-text match hid any main child containing "order online", and the
+            // reviews scroller IS a main child, so a single review saying "order online" nuked the
+            // whole list on scroll (the disappearing-panel bug). An <a>/<button> is never a review.
+            [].slice.call(document.querySelectorAll('a,button')).forEach(function(b){
+              var t=((b.getAttribute('aria-label')||b.textContent)||'').trim();
+              if(t.length<=24 && /order online|get pickup/i.test(t)) stripBlockOf(b);
               if(/write a review/i.test(t)) b.style.setProperty('display','none','important');
             });
           }
