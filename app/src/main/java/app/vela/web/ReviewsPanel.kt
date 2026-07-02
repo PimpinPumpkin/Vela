@@ -393,7 +393,7 @@ private fun carveScript(dark: Boolean): String {
         [role="main"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
         /* Star glyphs invert to a muddy dark — re-invert them (a double-invert restores the amber).
            Scoped to the [role=img] star WIDGET so no text comes back dark with it. */
-        [role="main"] [role="img"][aria-label*="star" i]{filter:invert(1) hue-rotate(180deg) !important}
+        [role="main"] [role="img"][aria-label*="star" i]{filter:invert(1) hue-rotate(180deg) saturate(1.7) brightness(1.12) !important}
         /* Overlays (Sort menu, per-review menus, photo viewer) live OUTSIDE main so the filter never
            reaches them — they'd flash Google's white. Invert them to match; un-invert their images
            (a review photo in the viewer must stay true-colour). */
@@ -491,7 +491,7 @@ private fun carveScript(dark: Boolean): String {
             // space. NEVER collapse earlier: a layout removal while the list mounts corrupts
             // its offset math and the SPA permanently unmounts every card (reproduced live
             // twice; un-hiding does not recover).
-            var collapse = window.__velaFedOk && (window.__velaStable||0)>4;
+            var collapse = window.__velaFedOk && (window.__velaStable||0)>4 && (!window.__velaSc || window.__velaSc.scrollTop<=5);
             blocks.forEach(function(b){
               if(!b || b.querySelector('.jJc9Ad,[data-review-id]')) return;
               if(b.offsetHeight>=cap) return;
@@ -513,7 +513,7 @@ private fun carveScript(dark: Boolean): String {
               try{
                 var ff=getComputedStyle(e).fontFamily||'';
                 if(/google sans/i.test(ff) && !/symbols|icons/i.test(ff)){
-                  e.style.setProperty('font-family','Roboto, sans-serif','important');
+                  e.style.setProperty('font-family','sans-serif','important'); // generic = the SYSTEM font (inherits phone font changes)
                 }
               }catch(x){}
             }
@@ -584,7 +584,7 @@ private fun carveScript(dark: Boolean): String {
               st.textContent='html,body{overflow-x:hidden !important;background:$bg !important;}'
                 // Reviewer name / "N reviews" render as links: navigation is blocked, so kill the
                 // link affordances (tap underline + highlight flash) — they read as broken.
-                + '[role="main"] a,[role="main"] a:hover,[role="main"] a:active,[role="main"] a:focus{text-decoration:none !important;outline:none !important;}'
+                + '[role="main"] a,[role="main"] a *,[role="main"] button,[role="main"] button *,[role="main"] a:hover,[role="main"] a:active,[role="main"] a:focus,[role="main"] button:active,[role="main"] button:focus{text-decoration:none !important;outline:none !important;}'
                 + '*{-webkit-tap-highlight-color:transparent !important;}'
                 + `$darkCss`;
               document.head.appendChild(st);
@@ -728,14 +728,14 @@ private fun carveScript(dark: Boolean): String {
                       var vv=Math.abs(sc.__velaV)*1000; sc.__velaV=0;
                       try{ VelaPanel.onEdgeFling(vv); }catch(x){}
                     }
-                    if(!window.__velaEngaged && y>40){
+                    if(!window.__velaEngaged && y>120){
                       window.__velaEngaged=1;
                       try{ VelaPanel.onPanelEngaged(); }catch(x){}
                     }
                     requestAnimationFrame(velaReportEdge);
                   }, {passive:true});
                   try{ new MutationObserver(function(){
-                    requestAnimationFrame(function(){ velaReportEdge(); strip(); });
+                    requestAnimationFrame(function(){ velaReportEdge(); strip(); velaHistogram(); });
                   }).observe(sc,{childList:true,subtree:true}); }catch(x){}
                 }
                 velaReportEdge();
@@ -785,6 +785,10 @@ private fun carveScript(dark: Boolean): String {
             }
             var rev=reviewsOpen();
             if(rev && revAt<0) revAt=tries;
+            // Fade Google's summary the MOMENT its rows render (opacity = zero layout risk even
+            // pre-cards) — waiting for the ready tick left it visible for up to a second (the
+            // "saw the google histogram for a second" flash).
+            if(rev) velaHistogram();
             // Prefer readying once review CARDS have painted — then the panel never flashes the
             // overview (Order-online button) during the tab transition. BUT don't HANG on it: a
             // place with a rating and zero written reviews never renders a card, and the card class
