@@ -1323,11 +1323,12 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, fo
                 Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
             }
         }
-        when {
-            // The WebView scrape legitimately takes a while (~10-40 s on busy places), so show REAL
-            // progress: the scraper streams its running count, and when we know the place's review
-            // count we can draw a determinate bar toward the cap — the wait reads as work, not a hang.
-            loading && reviews.isEmpty() -> Column(Modifier.padding(vertical = 8.dp)) {
+        // The WebView scrape legitimately takes a while (~10-40 s on busy places), so show REAL
+        // progress the whole time it runs: the scraper streams its running count (the "N of ~M"
+        // bar) AND the reviews themselves, which fill the list BELOW this header as they're found
+        // — the wait reads as work arriving, not a hang.
+        if (loading) {
+            Column(Modifier.padding(vertical = 8.dp)) {
                 // What the scrape can at most deliver: the place's own count, capped like the scraper.
                 val target = (place.reviewCount ?: 0).coerceAtMost(50)
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -1349,6 +1350,10 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, fo
                     )
                 }
             }
+        }
+        when {
+            // Still loading with nothing streamed yet — the header above is the whole story.
+            loading && reviews.isEmpty() -> {}
             // The count says this place HAS reviews but we have none — the RPC flaked (it's
             // intermittent), so this is a load FAILURE, not a review-less place. Say so and
             // let the user retry instead of lying with "No reviews available."
@@ -1362,12 +1367,13 @@ private fun ReviewsTab(place: Place, reviews: List<Review>, loading: Boolean, fo
             }
             reviews.isEmpty() -> Text("No reviews available.", style = MaterialTheme.typography.bodyMedium, color = dim)
             else -> {
-                // NB: every fetch path empties `reviews` before setting `loading`, so a list is never
-                // shown with a fetch still in flight — the loading branch above owns that state and
-                // the scrape delivers ONCE, complete. (A "loading more…" row here would be dead code;
-                // revisit only if incremental delivery ever lands.)
-                // Search box (only once there's enough to be worth filtering) — matches text OR author.
-                if (reviews.size >= 5) {
+                // Reaches here DURING loading too — partials stream in and render under the
+                // progress header above, growing until the scrape completes.
+                // Search box (only once there's enough to be worth filtering) — matches text OR
+                // author. Held back until the scrape COMPLETES: popping a text field in above rows
+                // the user is reading mid-stream shifts everything under their finger; appearing at
+                // completion it takes the space the progress header just vacated (a near-swap).
+                if (!loading && reviews.size >= 5) {
                     OutlinedTextField(
                         value = reviewQuery,
                         onValueChange = { reviewQuery = it },
