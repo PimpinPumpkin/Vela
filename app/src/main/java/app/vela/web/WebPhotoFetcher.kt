@@ -53,6 +53,12 @@ class WebPhotoFetcher @Inject constructor(
     @Volatile private var webView: WebView? = null
     @Volatile private var warmed = false
 
+    // featureId → its scraped gallery. Re-tapping a place (or bouncing back from directions) then
+    // shows photos INSTANTLY instead of re-running the ~20 s scrape. Access-order LRU, small cap.
+    private val cache = object : LinkedHashMap<String, List<Photo>>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Photo>>) = size > 32
+    }
+
     private inner class Bridge {
         @JavascriptInterface
         fun onResult(id: String, payload: String) {
@@ -89,6 +95,7 @@ class WebPhotoFetcher @Inject constructor(
      *  No posted date from a DOM scrape. Empty on any failure. [count] caps how many we keep. */
     suspend fun fetch(featureId: String, count: Int = 80, onPartial: ((List<Photo>) -> Unit)? = null): List<Photo> {
         val cid = cidOf(featureId) ?: return emptyList()
+        synchronized(cache) { cache[featureId] }?.let { return it } // instant on revisit — skip the scrape
         return mutex.withLock {
             val id = "p" + seq.incrementAndGet()
             val deferred = CompletableDeferred<String>()
@@ -130,7 +137,9 @@ class WebPhotoFetcher @Inject constructor(
                 pending.remove(id)
                 partials.remove(id)
             }
-            raw?.let { parseLines(it) } ?: emptyList()
+            val out = raw?.let { parseLines(it) } ?: emptyList()
+            if (out.isNotEmpty()) synchronized(cache) { cache[featureId] = out } // cache only real results
+            out
         }
     }
 
