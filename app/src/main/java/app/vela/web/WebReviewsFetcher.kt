@@ -44,6 +44,7 @@ class WebReviewsFetcher @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
+    private val progress = ConcurrentHashMap<String, (Int) -> Unit>()
     private val seq = AtomicInteger()
     private val mutex = Mutex()
     private val main = Handler(Looper.getMainLooper())
@@ -55,16 +56,26 @@ class WebReviewsFetcher @Inject constructor(
         fun onResult(id: String, payload: String) {
             pending.remove(id)?.complete(payload)
         }
+
+        // Live "N reviews found so far" ticks from the scraper (the scrape runs ~10-40 s on busy
+        // pages — the UI shows this so the wait reads as progress, not a hang). Arrives on the
+        // WebView's JavaBridge thread — the callback must be thread-safe.
+        @JavascriptInterface
+        fun onProgress(id: String, n: Int) {
+            progress[id]?.invoke(n)
+        }
     }
 
     /** Reviews for [featureId] (`0x..:0x..`) — newest/most-relevant first as Google renders them,
-     *  each with its uploaded photos — or empty on any failure. */
-    suspend fun fetch(featureId: String): List<Review> {
+     *  each with its uploaded photos — or empty on any failure. [onProgress] streams the running
+     *  count of reviews found while the scrape is in flight (called off the main thread). */
+    suspend fun fetch(featureId: String, onProgress: (Int) -> Unit = {}): List<Review> {
         val cid = cidOf(featureId) ?: return emptyList()
         return mutex.withLock {
             val id = "r" + seq.incrementAndGet()
             val deferred = CompletableDeferred<String>()
             pending[id] = deferred
+            progress[id] = onProgress
             val raw = try {
                 withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
                     withContext(Dispatchers.Main) {
@@ -98,6 +109,7 @@ class WebReviewsFetcher @Inject constructor(
                 }
             } finally {
                 pending.remove(id)
+                progress.remove(id)
             }
             if (raw.isNullOrEmpty()) emptyList() else runCatching { ReviewsWebParser.parse(raw) }.getOrDefault(emptyList())
         }
@@ -143,7 +155,7 @@ class WebReviewsFetcher @Inject constructor(
         return """
             (function(){
               var ID=$idj, tries=0, opened=false, acc={}, accN=0, lastN=0, noGrow=0, atBottom=0;
-              var openedAt=-1, sawCards=false;
+              var openedAt=-1, sawCards=false, lastRep=-1;
               var CAP=50;
               function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
@@ -230,6 +242,9 @@ class WebReviewsFetcher @Inject constructor(
                 // scroll position exposes a fresh ~10 that would otherwise be lost when recycled.
                 var revs=extract();
                 for(var i=0;i<revs.length;i++){ var k=key(revs[i]); if(k.length>2 && !acc[k]){ acc[k]=revs[i]; accN++; } }
+                // Stream the running count to the app whenever it changes — the sheet shows a live
+                // "N of ~M" while this scrape grinds, so the wait reads as progress, not a hang.
+                if(accN!==lastRep){ lastRep=accN; try{ VelaBridge.onProgress(ID, accN); }catch(e){} }
                 // Have the review cards actually rendered yet? On busy business pages (food, retail) the
                 // Reviews tab's list can take ~8 s to populate after the click; until then the panel holds
                 // only the rating histogram + topic chips, NOT the cards.
