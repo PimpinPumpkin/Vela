@@ -158,6 +158,12 @@ class WebReviewsFetcher @Inject constructor(
             android.view.View.MeasureSpec.makeMeasureSpec(WV_HEIGHT, android.view.View.MeasureSpec.EXACTLY),
         )
         wv.layout(0, 0, WV_WIDTH, WV_HEIGHT)
+        // A never-attached WebView reads as a BACKGROUND page to Chromium: JS timers throttle
+        // toward 1 Hz and rAF-driven rendering slows, which is why the visible Google Maps
+        // WebView pages reviews near-instantly while this scrape crawled. Explicitly resume
+        // the view + its timers so the renderer runs at foreground cadence.
+        wv.onResume()
+        wv.resumeTimers()
         webView = wv
         return wv
     }
@@ -287,28 +293,28 @@ class WebReviewsFetcher @Inject constructor(
                 lastN=accN;
                 // Button-path no-op retry: the click was fired blind (no aria-selected to confirm)
                 // and nothing has rendered since — re-arm openFull once. Tab clicks self-retry.
-                if(opened && openedBy==='btn' && !everCards && tries>=openedAt+8 && btnReclicks<1){ opened=false; openedAt=-1; btnReclicks++; }
+                if(opened && openedBy==='btn' && !everCards && tries>=openedAt+18 && btnReclicks<1){ opened=false; openedAt=-1; btnReclicks++; }
                 // Idle-bail ONLY while cards are actually on screen. When an entry (tab/button)
                 // exists but hasn't opened yet, hold longer so a late-hydrating tab still gets its
                 // click; a layout with NO entry at all (a tiny place whose full list IS the
                 // overview) settles quickly — there's nothing more to open.
-                var settled = cardsNow && (opened ? tries>=openedAt+6 : (sawEntry ? tries>=14 : tries>=8));
+                var settled = cardsNow && (opened ? tries>=openedAt+13 : (sawEntry ? tries>=30 : tries>=17));
                 // Zero-review places: no card will EVER render, so "settled" never fires — bail on
                 // a generous empty deadline instead of grinding to the 60-tick hard stop (~33 s of
                 // blank spinner on every review-less place).
-                var emptyDone = !everCards && accN===0 && (opened ? tries>=openedAt+24 : tries>=30);
+                var emptyDone = !everCards && accN===0 && (opened ? tries>=openedAt+52 : tries>=65);
                 // Idle patience: the OPENED full list pages over the network — Google's lazy-loader
                 // routinely takes >2 s to fetch the next ~10 on a busy place, and 4 quiet ticks
                 // (2.2 s) misread that as "done" (Taco Bell returned ~15 of 612). The unopened
                 // overview has nothing to page, so it keeps the short fuse.
-                var idle = opened ? (atBottom>=6 && noGrow>=8) : (atBottom>=4 && noGrow>=4);
+                var idle = opened ? (atBottom>=13 && noGrow>=18) : (atBottom>=9 && noGrow>=9);
                 // Done: cap hit, OR settled at the bottom with no new reviews, OR provably empty,
                 // OR ran long.
-                if( accN>=CAP || (settled && idle) || emptyDone || tries>60 ){
+                if( accN>=CAP || (settled && idle) || emptyDone || tries>130 ){
                   try{ VelaBridge.onResult(ID, JSON.stringify(snap())); }catch(e){ try{ VelaBridge.onResult(ID,'[]'); }catch(e2){} }
                   return;
                 }
-                setTimeout(tick, 550);
+                setTimeout(tick, 250);
               }
               tick();
             })();
