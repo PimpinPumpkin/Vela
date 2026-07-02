@@ -21,6 +21,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
@@ -233,7 +234,13 @@ fun PlaceSheet(
                     }
                     return available
                 }
-                if (available.y < 0f) acc = 0f
+                // Scrolling INTO the content (dragging up / content moving up) grows the sheet to
+                // full height first, Google-style — so reading down the POI info expands it without
+                // reaching for the handle. Doesn't consume the scroll: the body scrolls too.
+                if (available.y < 0f) {
+                    acc = 0f
+                    if (!expandedState.value) expandedState.value = true
+                }
                 return Offset.Zero
             }
         }
@@ -302,9 +309,14 @@ fun PlaceSheet(
         // Card background fills to the screen bottom; pad the content up off the nav bar.
         Column(Modifier.navigationBarsPadding()) {
             // Drag the handle UP to expand (reviews), DOWN to shrink, down again to dismiss.
+            // TAP toggles expand/peek. The touch target is a tall (36dp) invisible strip — the
+            // 4dp handle is just the visual; a fat hit-area makes it easy to grab.
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { expandedState.value = !expandedState.value })
+                    }
                     .pointerInput(Unit) {
                         var total = 0f
                         detectVerticalDragGestures(
@@ -319,14 +331,15 @@ fun PlaceSheet(
                             },
                         )
                     }
-                    .padding(top = 10.dp, bottom = 8.dp),
+                    .heightIn(min = 36.dp)
+                    .padding(vertical = 14.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Box(
                     Modifier
-                        .size(width = 36.dp, height = 4.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(dim.copy(alpha = 0.5f)),
+                        .size(width = 40.dp, height = 5.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(dim.copy(alpha = 0.6f)),
                 )
             }
             Column(
@@ -1506,7 +1519,9 @@ private fun PlaceTabs(
 @Composable
 private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: Color, onClose: () -> Unit) {
     val dark = isAppInDarkTheme()
-    BackHandler(onBack = onClose)
+    var reviewPhotos by remember(featureId) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
+    // Back closes the photo gallery first (if open), else the whole screen.
+    BackHandler(onBack = { if (reviewPhotos != null) reviewPhotos = null else onClose() })
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -1528,9 +1543,15 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                     fullScreen = true,
                     modifier = Modifier.fillMaxSize(),
                     onFailed = onClose, // can't carve (throttle / markup drift) → bounce back; the inline native list is still there
+                    // Tapping a review photo opens Vela's own gallery (Google's photo viewer is a
+                    // page-nav the lockdown blocks + the carve can't host).
+                    onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
                 )
             }
         }
+    }
+    reviewPhotos?.let { (urls, caps, start) ->
+        PhotoGallery(urls, caps, start) { reviewPhotos = null }
     }
 }
 
@@ -1660,15 +1681,31 @@ private fun ReviewsTab(
                         modifier = Modifier.padding(vertical = 8.dp),
                     )
                 } else {
-                    shown.forEach { ReviewRow(it, ink, dim, onPhotoTap) }
+                    shown.forEach { ReviewRow(it, ink, dim, onPhotoTap, q) }
                 }
             }
         }
     }
 }
 
+/** Emphasise every occurrence of [query] in [text] (case-insensitive) in bold — used to show
+ *  what a review search matched. Empty query → plain text. */
+private fun emphasize(text: String, query: String): androidx.compose.ui.text.AnnotatedString = buildAnnotatedString {
+    if (query.isBlank()) { append(text); return@buildAnnotatedString }
+    val lc = text.lowercase()
+    val q = query.lowercase()
+    var i = 0
+    while (true) {
+        val idx = lc.indexOf(q, i)
+        if (idx < 0) { append(text.substring(i)); break }
+        append(text.substring(i, idx))
+        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(text.substring(idx, idx + query.length)) }
+        i = idx + query.length
+    }
+}
+
 @Composable
-private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<String>, Int, String?) -> Unit = { _, _, _ -> }) {
+private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<String>, Int, String?) -> Unit = { _, _, _ -> }, query: String = "") {
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (review.authorPhoto != null) {
@@ -1686,7 +1723,7 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(review.author, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = ink, maxLines = 1)
+                Text(emphasize(review.author, query), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = ink, maxLines = 1)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     RatingStars(review.rating.toDouble(), starSize = 12.dp)
                     review.relativeTime?.let {
@@ -1697,7 +1734,7 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<
             }
         }
         review.text?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
+            Text(emphasize(it, query), style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
         }
         // User-attached review photos (Google-style thumbnail strip) — tap to open the shared
         // full-screen gallery, captioned "Author · date" (the whole review's photo set, opened
