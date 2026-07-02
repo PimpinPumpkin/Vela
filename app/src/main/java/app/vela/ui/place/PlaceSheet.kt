@@ -1306,6 +1306,9 @@ private fun PlaceTabs(
                     val fid = place.featureId
                     var panelFailed by remember(place.id) { mutableStateOf(false) }
                     if (app.vela.ui.LiveReviews.on.value && !panelFailed && fid != null && fid.contains(":")) {
+                        // A tapped review photo opens Vela's own full-screen gallery (Google's embedded
+                        // viewer renders nothing inside the carve) — urls + start index from the panel.
+                        var reviewPhotos by remember(place.id) { mutableStateOf<Pair<List<String>, Int>?>(null) }
                         Column {
                             place.rating?.let { r ->
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
@@ -1323,7 +1326,11 @@ private fun PlaceTabs(
                                 dark = isAppInDarkTheme(),
                                 modifier = Modifier.fillMaxWidth().height(560.dp),
                                 onFailed = { panelFailed = true; onRetryReviews() },
+                                onPhotos = { urls, start -> reviewPhotos = urls to start },
                             )
+                        }
+                        reviewPhotos?.let { (urls, start) ->
+                            PhotoGallery(urls, urls.map { null }, start) { reviewPhotos = null }
                         }
                     } else {
                         // Self-heal: reaching the native list with nothing loaded and nothing
