@@ -4,13 +4,13 @@ import java.time.DayOfWeek
 import java.time.LocalDateTime
 
 /**
- * Compute **open/closed right now** from the human hours strings Google gives us ("Monday: 6 AM–1 AM"),
- * because Google's live status *string* is unreliable for some places — most visibly ones that close
- * **past midnight** (a store open till 1 AM read as "Closed" at 11 PM) — while the weekly hours list is
- * the source of truth. Handles AM/PM, minutes, "Open 24 hours", "Closed", multiple ranges per day, an
- * implicit meridian ("5–10 PM"), and intervals that run past midnight (close ≤ open → into the next day).
+ * Compute **open/closed right now** from the human hours strings Google gives us ("Monday: 6 AM–1 AM").
+ * This is the **FALLBACK** when Google ships no live status string — Google's own string stays PRIMARY,
+ * because it alone knows an owner-set ad-hoc "closed today" (the weekly hours carry scheduled + holiday
+ * ranges, not one-off closures). Handles AM/PM, minutes, "Open 24 hours", "Closed", multiple ranges per
+ * day, an implicit meridian ("5–10 PM"), and intervals that run past midnight (close ≤ open → next day).
  *
- * Returns `null` when it can't parse confidently, so the caller falls back to Google's status string.
+ * Returns `null` when it can't parse confidently, so the caller shows nothing rather than a guess.
  * Times are minutes-from-midnight; a close that runs into the next day is stored as `close + 1440`.
  */
 object OpeningHours {
@@ -29,6 +29,11 @@ object OpeningHours {
         val hitToday = todayIv.firstOrNull { nowMin >= it.first && nowMin < it.second }
         val hitYest = yestIv.firstOrNull { it.second > DAY && nowMin < it.second - DAY }
         if (hitToday != null || hitYest != null) {
+            // A full-day interval means "Open 24 hours" — its encoded close (0..1440 → midnight) would
+            // otherwise read as the misleading "Closes 12 AM" on a place that never closes today.
+            if (hitToday != null && hitToday.first == 0 && hitToday.second >= DAY) {
+                return Status(true, "Open 24 hours")
+            }
             val closeMin = (hitToday?.second ?: hitYest!!.second) % DAY
             return Status(true, "Closes ${fmt(closeMin)}")
         }

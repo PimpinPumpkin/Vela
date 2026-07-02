@@ -13,7 +13,10 @@ import kotlinx.serialization.json.jsonPrimitive
  * rendered review DOM — Google **deleted** the keyless `listentitiesreviews` endpoint (404) and
  * moved reviews behind a `batchexecute` RPC (`rpcids=T4jwAf`) whose proto resisted capture, so we
  * read the reviews the real browser engine renders instead (same hidden-WebView tactic as photos/
- * transit). Each element is `{r:rating, a:author, d:relativeDate, t:text, av:avatarUrl, p:[photoUrls]}`.
+ * transit). Each element is `{rid:reviewId, r:rating, a:author, d:relativeDate, t:text, av:avatarUrl,
+ * p:[photoUrls]}` — `rid` is the scraper's cross-scroll de-dup key, ignored here; the script may also
+ * prepend a `{meta:…}` diagnostics element, which the author-required filter below skips. An element
+ * without an author is dropped (a card whose name never resolved isn't renderable).
  *
  * Lives in `:core` (kotlinx.serialization) so `:app` stays JSON-free, exactly like [PhotosParser] /
  * [TransitParser] taking a raw response string. Best-effort: a malformed blob → empty list.

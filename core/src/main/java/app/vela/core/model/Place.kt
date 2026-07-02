@@ -52,9 +52,10 @@ data class SimilarPlace(
     val featureId: String? = null,
 )
 
-/** One gallery photo: its FIFE image [url] and, when known, a human "posted" label
- *  ("May 2026"). The contributor's *name* isn't in the keyless gallery RPC (only a
- *  date + source), so there's no author field here. */
+/** One gallery photo: its FIFE image [url], a human "posted" label ("May 2026") when known,
+ *  and the gallery-tab [category] it was scraped under ("Menu" / "Food & drink" / "Vibe" /
+ *  "By owner"; null = uncategorized/All). The contributor's *name* isn't in the keyless
+ *  gallery (only a date + source), so there's no author field here. */
 data class Photo(val url: String, val postedText: String? = null, val category: String? = null)
 
 /** Google's "popular times": a typical-busyness histogram per day of the week. */
