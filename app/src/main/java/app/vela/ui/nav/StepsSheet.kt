@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -115,8 +117,12 @@ fun StepsSheet(
                             maneuverIcon(m.type),
                             contentDescription = null,
                             tint = if (active) MaterialTheme.colorScheme.primary else ink,
-                            modifier = Modifier.size(24.dp).padding(end = 16.dp),
+                            // size + gap must be SEPARATE modifiers: `.size(24).padding(end=16)`
+                            // insets the icon INSIDE the 24 dp box, shrinking the actual glyph to
+                            // ~8 dp (why the step icons looked tiny). Spacer carries the gap.
+                            modifier = Modifier.size(30.dp),
                         )
+                        Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
                             Text(
                                 m.instruction.ifEmpty { "Continue" },
@@ -136,7 +142,7 @@ fun StepsSheet(
                                 Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
                             }
                             if (m.lanes.isNotEmpty()) {
-                                LaneDiagram(m.lanes, on = ink, modifier = Modifier.padding(top = 3.dp))
+                                LaneDiagram(m.lanes, m.type, on = ink, modifier = Modifier.padding(top = 3.dp))
                             } else m.laneHint?.let {
                                 Text(
                                     it,
