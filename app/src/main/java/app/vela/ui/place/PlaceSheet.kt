@@ -1585,19 +1585,25 @@ private fun ReviewsTab(
                 }
             }
         }
-        // Entry to the full-screen live Google reviews (all reviews, server-side search, videos).
+        // Entry to the full-screen live Google reviews — all of them, plus Google's own SORT and
+        // server-side search. The label says so (the button used to just say "Read all").
         onReadAll?.let { open ->
             OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(place.reviewCount?.let { "Read all $it reviews" } ?: "Read all reviews on Google")
+                Text(place.reviewCount?.let { "All $it reviews · sort & search" } ?: "All reviews · sort & search")
             }
         }
-        place.featuredReview?.let { rev ->
-            Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
-                Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
+        // Featured-review quote is only a TEASER while the real reviews are still streaming in —
+        // once they arrive it'd be a redundant "quote break" between the button and the list, so
+        // drop it then (the actual reviews below say it better).
+        if (reviews.isEmpty()) {
+            place.featuredReview?.let { rev ->
+                Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
+                }
             }
         }
         // The WebView scrape legitimately takes a while (~10-40 s on busy places), so show REAL

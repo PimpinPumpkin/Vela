@@ -27,14 +27,19 @@ class VoiceInstaller @Inject constructor(
 ) {
     data class Engine(val pkg: String, val label: String, val note: String)
 
-    /** Offered engines, both GPL/FOSS on F-Droid. eSpeak is self-contained; RHVoice is
-     *  more natural but needs a one-time in-app voice download. */
+    /** Offered engines, all FOSS on F-Droid. SherpaTTS runs sherpa-onnx neural models (Kokoro is
+     *  near-Siri quality) but needs a one-time model download; eSpeak is tiny + self-contained;
+     *  RHVoice is in between. Best-first. */
     val engines = listOf(
-        Engine("com.reecedunn.espeak", "eSpeak NG", "Tiny — speaks as soon as it installs (robotic but clear)."),
+        Engine(
+            "org.woheller69.ttsengine", "SherpaTTS — neural (Kokoro)",
+            "Best quality by far — near-Siri neural voices. After it installs, open SherpaTTS once and download a voice (the multi-speaker \"kokoro\" model is excellent; a few hundred MB), then pick SherpaTTS here.",
+        ),
         Engine(
             "com.github.olga_yakovleva.rhvoice.android", "RHVoice",
-            "More natural. After it installs, open RHVoice once to add an English voice.",
+            "More natural than eSpeak, lighter than SherpaTTS. After it installs, open RHVoice once to add an English voice.",
         ),
+        Engine("com.reecedunn.espeak", "eSpeak NG", "Tiny — speaks as soon as it installs (robotic but clear)."),
     )
 
     fun isInstalled(pkg: String): Boolean =
