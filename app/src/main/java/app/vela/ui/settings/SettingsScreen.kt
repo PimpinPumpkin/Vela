@@ -230,13 +230,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Live Google reviews panel", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text("“Read all reviews” button", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = app.vela.ui.LiveReviews.on.value,
                     onCheckedChange = { app.vela.ui.LiveReviews.set(context, it) },
                 )
             }
-            Hint("Experimental: the Reviews tab embeds Google's own reviews panel — loads fast, keeps loading more as you scroll, and its search box searches ALL reviews (not just the first ~50). Trackers and beacons are blocked, but it does run Google's page inside the app. Off = Vela's built-in review scraper.")
+            Hint("Reviews in the place sheet are always Vela's own smooth native list. This adds a “Read all reviews” button that opens Google's full reviews page FULL-SCREEN — every review (not just the first ~50), Google's server-side search, and video reviews play. Trackers/beacons are blocked, but it does run Google's page inside the app. Off = native list only, no Google page for reviews.")
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Offline")
