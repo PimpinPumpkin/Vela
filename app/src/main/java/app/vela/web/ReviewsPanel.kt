@@ -207,6 +207,14 @@ private fun carveScript(dark: Boolean): String {
         [role="main"]{filter:invert(0.92) hue-rotate(180deg) !important}
         [role="main"] img,[role="main"] video,[role="main"] canvas{filter:invert(1) hue-rotate(180deg) !important}
         [role="main"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
+        /* Star glyphs invert to a muddy dark — re-invert them (a double-invert restores the amber).
+           Scoped to the [role=img] star WIDGET so no text comes back dark with it. */
+        [role="main"] [role="img"][aria-label*="star" i]{filter:invert(1) hue-rotate(180deg) !important}
+        /* Overlays (Sort menu, per-review menus, photo viewer) live OUTSIDE main so the filter never
+           reaches them — they'd flash Google's white. Invert them to match; un-invert their images
+           (a review photo in the viewer must stay true-colour). */
+        [role="menu"],[role="listbox"],[role="dialog"]{filter:invert(0.94) hue-rotate(180deg) !important}
+        [role="menu"] img,[role="dialog"] img,[role="dialog"] video,[role="dialog"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
     """ else ""
     return """
         (function(){
@@ -236,10 +244,14 @@ private fun carveScript(dark: Boolean): String {
               for(var i=0;i<p.children.length;i++){
                 var c=p.children[i];
                 if(c===el || c.tagName==='STYLE' || c.tagName==='SCRIPT') continue;
-                // Keep dialogs/menus alive: a tapped review photo opens a lightbox that renders
-                // as a SIBLING of the panel — hiding it would make photo taps do nothing.
-                if(c.getAttribute('role')==='dialog' || c.querySelector('[role="dialog"],[role="menu"]')) continue;
-                c.style.setProperty('display','none','important');
+                // Google's menus/dialogs/photo-viewer render into portal containers that are EMPTY
+                // at carve time and populated on tap. Hiding an empty one leaves the later overlay
+                // display:none'd (the "Sort does nothing / photos won't open" bug). If it now holds
+                // a live overlay, UN-hide it; otherwise hide it, tagged so revealOverlays can find it.
+                if(c.getAttribute('role')==='dialog' || c.querySelector('[role="dialog"],[role="menu"],[role="listbox"]')){
+                  c.style.removeProperty('display'); c.removeAttribute('data-vh'); continue;
+                }
+                c.style.setProperty('display','none','important'); c.setAttribute('data-vh','1');
               }
               // Un-clip + un-transform the whole chain: a 0-height overflow-clipping ancestor
               // clips every descendant no matter its size, and a transformed one becomes the
@@ -290,7 +302,46 @@ private fun carveScript(dark: Boolean): String {
               var t=((b.getAttribute('aria-label')||b.textContent)||'').trim();
               if(t.length<=24 && /order online|get pickup/i.test(t)) stripBlockOf(b);
               if(/write a review/i.test(t)) b.style.setProperty('display','none','important');
+              // Per-review Like / Share / ⋮-actions: not useful embedded (Like/Share need sign-in,
+              // ⋮ is report/etc) and they clutter each card. Hide the button itself (element-precise).
+              if(/^like$/i.test(t) || /^share\b/i.test(t) || /^actions for /i.test(t)) b.style.setProperty('display','none','important');
             });
+          }
+          // Google's popups (Sort menu, per-review menus, the photo viewer) render into portals my
+          // carve hid, and OUTSIDE main so the dark filter never reaches them (they'd flash white).
+          // For every LIVE overlay: un-hide the [data-vh] ancestors I hid, lift it above the panel,
+          // clamp a menu that overflows the viewport, and (dark) invert it — un-inverting its images
+          // so review photos in the viewer stay true-colour.
+          function revealOverlays(){
+            var live=[].slice.call(document.querySelectorAll('[role="menu"],[role="listbox"]'));
+            [].slice.call(document.querySelectorAll('[role="dialog"]')).forEach(function(d){
+              if(d.getAttribute('aria-hidden')!=='true' && d.getBoundingClientRect().width>0) live.push(d);
+            });
+            live.forEach(function(o){
+              var el=o;
+              while(el && el!==document.documentElement){ if(el.getAttribute('data-vh')==='1'){ el.style.removeProperty('display'); el.removeAttribute('data-vh'); } el=el.parentElement; }
+              o.style.setProperty('z-index','2147483646','important');
+              var r=o.getBoundingClientRect();
+              if(r.width>0 && r.right>window.innerWidth){ o.style.setProperty('left',Math.max(4,window.innerWidth-r.width-8)+'px','important'); o.style.setProperty('right','auto','important'); }
+            });
+          }
+          function setupOnce(){
+            if(window.__velaOnce) return; window.__velaOnce=1;
+            // Submitting the reviews search should drop the soft keyboard. The IME "Search"/"Go"
+            // key fires either a keydown Enter OR a 'search' event (on type=search inputs) — catch
+            // both and blur the input, which dismisses the keyboard.
+            function dropKb(e){
+              var t=e.target;
+              if(t && t.tagName==='INPUT' && (e.type==='search' || e.key==='Enter')){ setTimeout(function(){ try{ t.blur(); }catch(x){} },0); }
+            }
+            document.addEventListener('keydown', dropKb, true);
+            document.addEventListener('search', dropKb, true);
+            // Any tap can open a Google popup (Sort / per-review menu / photo viewer) into a portal
+            // my carve hid — reveal it right after it renders (a few passes: the SPA attaches it a
+            // beat after the click, and the maintenance loop stops after ~60 s).
+            ['click','pointerup'].forEach(function(ev){ document.addEventListener(ev, function(){
+              requestAnimationFrame(revealOverlays); setTimeout(revealOverlays,150); setTimeout(revealOverlays,400);
+            }, true); });
           }
           // Stretch the reviews scroll region (Google leaves it ~372px) to fill the panel —
           // otherwise swipes below its bottom edge land in dead space. ONLY runs once the
@@ -339,12 +390,12 @@ private fun carveScript(dark: Boolean): String {
               // Maintenance: keep the carve + scroller sizing fresh for a while (the SPA
               // re-attaches chrome and swaps nodes on interaction), then stop. NO tab
               // re-click here — the user is free to browse Google's Menu/About tabs.
-              stretch();
+              stretch(); revealOverlays();
               if(maint++<60){ setTimeout(tick,1000); }
               return;
             }
             var rev=reviewsOpen();
-            if(iso && rev){ readySent=true; stretch(); try{ VelaPanel.ready(); }catch(e){} }
+            if(iso && rev){ readySent=true; setupOnce(); stretch(); try{ VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }
