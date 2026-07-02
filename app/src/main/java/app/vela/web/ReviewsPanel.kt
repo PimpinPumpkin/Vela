@@ -456,42 +456,66 @@ private fun carveScript(dark: Boolean): String {
                 try{ VelaPanel.onHistogram(JSON.stringify([counts['5']||0,counts['4']||0,counts['3']||0,counts['2']||0,counts['1']||0])); }catch(x){}
               }
             }
-            // HIDE only after review CARDS exist. Google's reviews-tab init measures/binds the
-            // summary block; hiding it mid-init kills their JS (the page logs "error.2" and the
-            // review feed request is NEVER issued — panel stuck with zero reviews forever, seen
-            // live on two places). Cards rendered == their init finished == safe to carve.
-            if(!document.querySelector('.jJc9Ad,[data-review-id]')) return;
-            var tbl=rows[0].closest('table'); if(!tbl) return;
-            // Walk up to the summary BLOCK — guards must be self-contained (NOT __velaSc, which
-            // is unset early): stop below any SCROLLABLE parent, any parent holding review cards,
-            // and [role=main]. And never hide anything near viewport height — early in the load
-            // (cards not yet painted, scroller not yet scrollable) the walk can reach the
-            // reviews scroller itself, and hiding IT blanks the whole panel permanently (the
-            // cards then never render — seen live: main child m6QErb display:none, h=0).
+            // Blocks to carve: the summary block (walk the table up) + the "Reviews are
+            // automatically processed…" ⓘ info row (matched by its own text, smallest wrapper).
             var cap=window.innerHeight*0.5;
-            var cand=tbl;
-            while(cand.parentElement){
-              var p2=cand.parentElement;
-              if(p2.getAttribute('role')==='main') break;
-              if(p2.querySelector('.jJc9Ad,[data-review-id]')) break;
-              // The ceiling is SIZE, not scrollability: the reviews scroller can read as
-              // non-scrollable early (content barely taller than the box), but it is always
-              // viewport-scale (~600px, even unstretched ~372px) while the summary block is
-              // ~125px — so never climb into anything half the viewport tall.
-              if(p2.offsetHeight>=cap) break;
-              if(p2.scrollHeight>p2.clientHeight+50) break;
-              cand=p2;
+            var blocks=[];
+            var tbl=rows[0].closest('table');
+            if(tbl){
+              // Walk up to the summary BLOCK — guards must be self-contained (NOT __velaSc,
+              // which is unset early): stop at [role=main], any parent holding review cards,
+              // anything viewport-scale (the scroller reads as non-scrollable early, so SIZE is
+              // the ceiling: scroller ~600px / even unstretched ~372px vs summary ~125px), and
+              // any scrollable parent.
+              var cand=tbl;
+              while(cand.parentElement){
+                var p2=cand.parentElement;
+                if(p2.getAttribute('role')==='main') break;
+                if(p2.querySelector('.jJc9Ad,[data-review-id]')) break;
+                if(p2.offsetHeight>=cap) break;
+                if(p2.scrollHeight>p2.clientHeight+50) break;
+                cand=p2;
+              }
+              blocks.push(cand);
             }
-            if(!cand.querySelector('.jJc9Ad,[data-review-id]') &&
-               cand.offsetHeight>0 && cand.offsetHeight<cap){
-              // NOT display:none, and NO layout change at all — the virtualized reviews list
-              // computes its visible range from content offsets inside the scroller, and ANY
-              // geometry change to the summary at mount time corrupts that math: cards render,
-              // then the SPA unmounts every one of them, permanently (reproduced live twice;
-              // un-hiding after the fact does not recover). Opacity keeps the box, kills the
-              // visual dupe; the ~125px blank band reads as top padding.
-              cand.style.setProperty('opacity','0','important');
-              cand.style.setProperty('pointer-events','none','important');
+            [].slice.call(document.querySelectorAll('[role="main"] div')).some(function(d){
+              if(d.offsetHeight<=0 || d.offsetHeight>=80) return false;
+              if(!/reviews are automatically processed/i.test(d.textContent||'')) return false;
+              if(d.parentElement && d.parentElement.offsetHeight<80) return false; // want the outermost small wrapper
+              blocks.push(d); return true;
+            });
+            // Two-phase carve. Phase 1 (immediately, even before cards): opacity — NO layout
+            // change, so Google's mounting virtualized list is untouched, and the user never
+            // sees a flash of Google's own histogram. Phase 2 (only well AFTER the feed proved
+            // healthy — __velaFedOk + a few stable ticks): display:none to reclaim the blank
+            // space. NEVER collapse earlier: a layout removal while the list mounts corrupts
+            // its offset math and the SPA permanently unmounts every card (reproduced live
+            // twice; un-hiding does not recover).
+            var collapse = window.__velaFedOk && (window.__velaStable||0)>4;
+            blocks.forEach(function(b){
+              if(!b || b.querySelector('.jJc9Ad,[data-review-id]')) return;
+              if(b.offsetHeight>=cap) return;
+              b.style.setProperty('opacity','0','important');
+              b.style.setProperty('pointer-events','none','important');
+              if(collapse) b.style.setProperty('display','none','important');
+            });
+          }
+          // Vela's app UI is the system Roboto; Google's page headings use "Google Sans" —
+          // rewrite JUST those to Roboto for consistency (never touch icon fonts — "Google
+          // Symbols"/"Material Icons" don't match the test). Each node checked ONCE (data-vf),
+          // capped per pass; new cards get picked up by later passes.
+          function velaFont(){
+            var m=document.querySelector('[role="main"]'); if(!m) return;
+            var els=m.querySelectorAll('*:not([data-vf])');
+            var n=Math.min(els.length,400);
+            for(var i=0;i<n;i++){
+              var e=els[i]; e.setAttribute('data-vf','1');
+              try{
+                var ff=getComputedStyle(e).fontFamily||'';
+                if(/google sans/i.test(ff) && !/symbols|icons/i.test(ff)){
+                  e.style.setProperty('font-family','Roboto, sans-serif','important');
+                }
+              }catch(x){}
             }
           }
           // --- scroll-sync: tell the native side when the reviews scroller is at its top/bottom edge,
@@ -740,18 +764,21 @@ private fun carveScript(dark: Boolean): String {
               // (each needing its Like/Share stripped via isolate()->strip()), and scroll-sync's
               // edge reporting rides stretch()'s scroller adoption, so a dead loop froze both
               // after a minute. NO tab re-click here — the user may browse Menu/About.
-              stretch(); revealOverlays(); velaHistogram();
+              stretch(); revealOverlays(); velaHistogram(); velaFont();
               // Feed watchdog: Google sometimes serves the page SHELL but silently withholds the
               // review feed (soft bot-throttle — tabs + histogram render, the feed request is
               // never issued; observed live under heavy testing). Ready-but-cardless for ~15 s
               // means the user is staring at an empty panel: fail over to the native scraper
-              // instead. Once ANY card has rendered, the watchdog disarms for good.
+              // instead. Once ANY card has rendered, the watchdog disarms for good and
+              // __velaStable starts counting (gates the summary-collapse phase).
               if(!window.__velaFedOk){
                 if(document.querySelector('.jJc9Ad,[data-review-id]')){ window.__velaFedOk=1; }
                 else if((window.__velaFeedless=(window.__velaFeedless||0)+1)>15){
                   try{ VelaPanel.fail(); }catch(e){}
                   return;
                 }
+              } else {
+                window.__velaStable=(window.__velaStable||0)+1;
               }
               setTimeout(tick,1000);
               return;
@@ -764,7 +791,7 @@ private fun carveScript(dark: Boolean): String {
             // can rotate — so after a short grace once the Reviews tab has settled, ready anyway
             // (shows Google's own "no reviews" state) rather than spinning to the fail() timeout.
             var haveCards = !!document.querySelector('.jJc9Ad,[data-review-id]');
-            if(iso && rev && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; setupOnce(); stretch(); velaHistogram(); try{ VelaPanel.ready(); }catch(e){} }
+            if(iso && rev && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; setupOnce(); stretch(); velaHistogram(); velaFont(); try{ VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }
