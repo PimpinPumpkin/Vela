@@ -14,7 +14,8 @@ data class Maneuver(
     val type: ManeuverType,
     val instruction: String,
     val location: LatLng,
-    val distanceMeters: Double,   // length of the step that ENDS at this maneuver
+    val distanceMeters: Double,   // travel AFTER this maneuver, to the next one (OSRM step.distance;
+                                  // the Google parser places each turn at the START of its step)
     val durationSeconds: Double,
     val road: String? = null,     // road being entered, for "… onto Elm Street"
     val ref: String? = null,      // highway ref of the road entered ("I 80") for the shield badge —
