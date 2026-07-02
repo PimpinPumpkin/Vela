@@ -1448,9 +1448,10 @@ private fun PlaceTabs(
                                     }
                                 }
                             }
-                            // Tall enough to fill the expanded sheet (the "reviews take over" mode);
-                            // at peek the overflow just sits below the fold.
-                            val panelH = (LocalConfiguration.current.screenHeightDp * 0.92f - 170f).coerceAtLeast(480f)
+                            // Tall enough to fill the expanded sheet; in ENGAGED mode it takes the
+                            // WHOLE sheet — hiding individual header pieces just let the next thing
+                            // up the column (popular times) slide into the gap and float there.
+                            val panelH = (LocalConfiguration.current.screenHeightDp * 0.92f - (if (panelEngaged) 40f else 170f)).coerceAtLeast(480f)
                             app.vela.web.GoogleReviewsPanel(
                                 featureId = fid,
                                 dark = isAppInDarkTheme(),

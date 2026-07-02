@@ -497,6 +497,7 @@ private fun carveScript(dark: Boolean): String {
               if(b.offsetHeight>=cap) return;
               b.style.setProperty('opacity','0','important');
               b.style.setProperty('pointer-events','none','important');
+              window.__velaSumFaded=1; // boot observer can stand down
               if(collapse) b.style.setProperty('display','none','important');
             });
           }
@@ -799,6 +800,18 @@ private fun carveScript(dark: Boolean): String {
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }
+          // Zero-flash guarantee: MutationObserver callbacks run at MICROTASK timing — before
+          // the browser paints the mutated frame — so fading the summary here means it can
+          // never reach the screen (the 250ms tick + post-adoption observers all left a
+          // visible-frame window; user kept catching the flash). Disconnects once the fade has
+          // landed; the scroller-level observer handles later recycles.
+          try{
+            var bootMo=new MutationObserver(function(){
+              if(window.__velaSumFaded){ bootMo.disconnect(); return; }
+              velaHistogram();
+            });
+            bootMo.observe(document.documentElement,{childList:true,subtree:true});
+          }catch(x){}
           tick();
         })();
     """.trimIndent()
