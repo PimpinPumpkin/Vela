@@ -461,7 +461,7 @@ private fun carveScript(dark: Boolean): String {
             var cap=window.innerHeight*0.5;
             var blocks=[];
             var tbl=rows[0].closest('table');
-            if(tbl){
+            if(tbl && window.__velaHistSent){
               // Walk up to the summary BLOCK — guards must be self-contained (NOT __velaSc,
               // which is unset early): stop at [role=main], any parent holding review cards,
               // anything viewport-scale (the scroller reads as non-scrollable early, so SIZE is
@@ -476,13 +476,13 @@ private fun carveScript(dark: Boolean): String {
                 if(p2.scrollHeight>p2.clientHeight+50) break;
                 cand=p2;
               }
-              blocks.push(cand);
+              blocks.push({el:cand,isSum:1});
             }
             [].slice.call(document.querySelectorAll('[role="main"] div')).some(function(d){
               if(d.offsetHeight<=0 || d.offsetHeight>=80) return false;
               if(!/reviews are automatically processed/i.test(d.textContent||'')) return false;
               if(d.parentElement && d.parentElement.offsetHeight<80) return false; // want the outermost small wrapper
-              blocks.push(d); return true;
+              blocks.push({el:d,isSum:0}); return true;
             });
             // Two-phase carve. Phase 1 (immediately, even before cards): opacity — NO layout
             // change, so Google's mounting virtualized list is untouched, and the user never
@@ -492,12 +492,13 @@ private fun carveScript(dark: Boolean): String {
             // its offset math and the SPA permanently unmounts every card (reproduced live
             // twice; un-hiding does not recover).
             var collapse = window.__velaFedOk && (window.__velaStable||0)>4 && (!window.__velaSc || window.__velaSc.scrollTop<=5);
-            blocks.forEach(function(b){
+            blocks.forEach(function(w){
+              var b=w.el;
               if(!b || b.querySelector('.jJc9Ad,[data-review-id]')) return;
               if(b.offsetHeight>=cap) return;
               b.style.setProperty('opacity','0','important');
               b.style.setProperty('pointer-events','none','important');
-              window.__velaSumFaded=1; // boot observer can stand down
+              if(w.isSum) window.__velaSumFaded=1; // ONLY the summary releases the reveal-hold
               if(collapse) b.style.setProperty('display','none','important');
             });
           }
@@ -807,7 +808,11 @@ private fun carveScript(dark: Boolean): String {
             // can rotate — so after a short grace once the Reviews tab has settled, ready anyway
             // (shows Google's own "no reviews" state) rather than spinning to the fail() timeout.
             var haveCards = velaHasReviews();
-            if(iso && rev && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; setupOnce(); stretch(); velaHistogram(); velaFont(); try{ VelaPanel.ready(); }catch(e){} }
+            // Hold the reveal while the native histogram exists but Google's copy hasn't faded
+            // yet — revealing in that window shows BOTH histograms (reported). Bounded: give up
+            // holding after ~2.5s so a guard-blocked fade can't hang the reveal.
+            var sumOk = !window.__velaHistSent || window.__velaSumFaded || (revAt>=0 && tries-revAt>=10);
+            if(iso && rev && sumOk && (haveCards || (revAt>=0 && tries-revAt>=8))){ readySent=true; window.__velaBootDone=1; setupOnce(); stretch(); velaHistogram(); velaFont(); try{ VelaPanel.ready(); }catch(e){} }
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }
@@ -818,7 +823,7 @@ private fun carveScript(dark: Boolean): String {
           // landed; the scroller-level observer handles later recycles.
           try{
             var bootMo=new MutationObserver(function(){
-              if(window.__velaSumFaded){ bootMo.disconnect(); return; }
+              if(window.__velaSumFaded || window.__velaBootDone){ bootMo.disconnect(); return; }
               velaHistogram();
             });
             bootMo.observe(document.documentElement,{childList:true,subtree:true});
