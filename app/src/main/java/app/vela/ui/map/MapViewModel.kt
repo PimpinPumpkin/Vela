@@ -901,10 +901,14 @@ class MapViewModel @Inject constructor(
                 showSearchThisArea = false,
                 placesHere = emptyList(),
                 reviews = emptyList(),
-                // A dropped pin never fetches reviews, so a stale in-flight flag/counter from the
-                // previous place would show (and spin) here FOREVER — clear both.
+                // A dropped pin never fetches reviews OR photos, and the previous place's in-flight
+                // fetches complete behind feature-id gates that no longer match — so any stale
+                // loading flag would show (shimmer tiles on a bare road / a spinning review row)
+                // FOREVER. Clear them all, like the POI-tap block does.
                 reviewsLoading = false,
                 reviewsFound = 0,
+                photosLoading = false,
+                loadingDetails = false,
                 pickingOrigin = false,
                 pickingStop = false,
             )
