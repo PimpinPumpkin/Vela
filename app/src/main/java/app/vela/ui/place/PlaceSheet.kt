@@ -266,6 +266,16 @@ fun PlaceSheet(
             scope.launch { bodyScroll.animateScrollBy(-velocityY * 0.3f) }
         }
     }
+    // The user started really scrolling the reviews panel: slide the sheet to full screen around
+    // them, Google-style (expand + settle the body so the panel fills the viewport). The second
+    // animateScrollTo chases the body's max as the expand animation grows it.
+    val onPanelEngaged: () -> Unit = {
+        scope.launch {
+            expandedState.value = true
+            bodyScroll.animateScrollTo(bodyScroll.maxValue)
+            bodyScroll.animateScrollTo(bodyScroll.maxValue)
+        }
+    }
     Card(
         modifier.fillMaxWidth().heightIn(max = maxSheetHeight),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -643,7 +653,7 @@ fun PlaceSheet(
                 }
             }
 
-            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd)
+            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged)
             }
         }
     }
@@ -1299,6 +1309,41 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
+/** Native rating distribution (Google-style amber bars), counts ordered [5★,4★,3★,2★,1★] —
+ *  scraped off the live reviews panel so the histogram renders in Vela's own UI. */
+@Composable
+private fun RatingHistogram(counts: List<Int>, dim: Color, modifier: Modifier = Modifier) {
+    val max = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        counts.forEachIndexed { i, n ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "${5 - i}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = dim,
+                    modifier = Modifier.width(12.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .height(7.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(dim.copy(alpha = 0.22f)),
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(n / max.toFloat())
+                            .height(7.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFF9AB00)),
+                    )
+                }
+            }
+        }
+    }
+}
+
 /** Reviews / About tabs. Only tabs with content show; the content area is
  *  height-capped and scrolls (e.g. the reviews list). */
 @Composable
@@ -1312,6 +1357,7 @@ private fun PlaceTabs(
     dim: Color,
     onPanelOverscroll: (Float) -> Unit = {},
     onPanelOverscrollEnd: (Float) -> Unit = {},
+    onPanelEngaged: () -> Unit = {},
 ) {
     // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
     // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
@@ -1350,6 +1396,11 @@ private fun PlaceTabs(
                         // A tapped review photo opens Vela's own full-screen gallery (Google's embedded
                         // viewer renders nothing inside the carve) — urls + start index from the panel.
                         var reviewPhotos by remember(place.id) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
+                        // The page's rating distribution, scraped over the bridge and drawn NATIVELY
+                        // here (Google's in-panel summary block is hidden) — panel and fallback modes
+                        // share one look, and less of the visible UI rides the WebView.
+                        var panelHist by remember(place.id) { mutableStateOf<List<Int>?>(null) }
+                        var panelReady by remember(place.id) { mutableStateOf(false) }
                         Column {
                             place.rating?.let { r ->
                                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(bottom = 6.dp)) {
@@ -1362,14 +1413,32 @@ private fun PlaceTabs(
                                     }
                                 }
                             }
+                            panelHist?.let { RatingHistogram(it, dim, Modifier.padding(bottom = 8.dp)) }
+                            if (!panelReady) {
+                                // Teaser while the panel loads: the search response's featured review
+                                // is already on-device — something to read instead of a bare spinner.
+                                place.featuredReview?.let { rev ->
+                                    Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.Top) {
+                                        Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(rev, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink, modifier = Modifier.weight(1f))
+                                    }
+                                }
+                            }
+                            // Tall enough to fill the expanded sheet (the "reviews take over" mode);
+                            // at peek the overflow just sits below the fold.
+                            val panelH = (LocalConfiguration.current.screenHeightDp * 0.92f - 170f).coerceAtLeast(480f)
                             app.vela.web.GoogleReviewsPanel(
                                 featureId = fid,
                                 dark = isAppInDarkTheme(),
-                                modifier = Modifier.fillMaxWidth().height(560.dp),
+                                modifier = Modifier.fillMaxWidth().height(panelH.dp),
                                 onFailed = { panelFailed = true; onRetryReviews() },
                                 onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
                                 onOverscroll = onPanelOverscroll,
                                 onOverscrollEnd = onPanelOverscrollEnd,
+                                onEngaged = onPanelEngaged,
+                                onHistogram = { panelHist = it },
+                                onLoaded = { panelReady = true },
                             )
                         }
                         reviewPhotos?.let { (urls, caps, start) ->
