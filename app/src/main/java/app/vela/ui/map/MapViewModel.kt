@@ -705,12 +705,19 @@ class MapViewModel @Inject constructor(
      *  applied only if it's still the selected place when they arrive). */
     private var reviewsJob: Job? = null
 
-    private fun fetchReviews(p: Place) {
+    private fun fetchReviews(p: Place, force: Boolean = false) {
         // Supersede any in-flight scrape: the fetcher serializes on a Mutex, so an abandoned
         // 40 s Taco Bell grind would otherwise make the NEXT place's reviews queue behind it
         // (~90 s worst case to first review). Cancelling frees the mutex immediately, and this
         // fetch's page navigation kills the old page's scraper script.
         reviewsJob?.cancel()
+        // The live Google panel renders reviews itself — don't burn a 20 s background scrape
+        // the tab won't show. [force] = the panel failed to carve and the tab fell back to the
+        // native list (retryReviews), which DOES need the scrape.
+        if (app.vela.ui.LiveReviews.on.value && !force) {
+            _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
+            return
+        }
         val fid = p.featureId
         if (fid.isNullOrBlank()) {
             _state.update { it.copy(reviews = emptyList(), reviewsLoading = false, reviewsFound = 0) }
@@ -777,7 +784,7 @@ class MapViewModel @Inject constructor(
      *  blip, this covers one that's stuck for longer than the place sheet's first try.) */
     fun retryReviews() {
         val p = _state.value.selected ?: return
-        fetchReviews(p)
+        fetchReviews(p, force = true)
     }
 
     fun clearSelection() {

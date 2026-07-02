@@ -226,6 +226,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
             Hint("Shades roads by congestion while browsing the map (Google's keyless traffic tiles). Off by default — navigation already colours your route by traffic, so this is just for scanning the wider area. It's a raster overlay, so it's a touch grainy.")
 
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Live Google reviews panel", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.LiveReviews.on.value,
+                    onCheckedChange = { app.vela.ui.LiveReviews.set(context, it) },
+                )
+            }
+            Hint("Experimental: the Reviews tab embeds Google's own reviews panel — loads fast, keeps loading more as you scroll, and its search box searches ALL reviews (not just the first ~50). Trackers and beacons are blocked, but it does run Google's page inside the app. Off = Vela's built-in review scraper.")
+
             Spacer(Modifier.height(20.dp))
             SectionTitle("Offline")
             Hint("Using the map without signal takes two things — the map TILES you see, and the ROAD NETWORK that routes you. Saving a map area grabs both for that spot; the region list below adds the road network for anywhere you're travelling.")
