@@ -254,8 +254,8 @@ fun PlaceSheet(
                 pull[1] = 0f
                 pull[0] += -leftover
                 when {
-                    expandedState.value && pull[0] > 90f -> { expandedState.value = false; pull[0] = 0f }
-                    !expandedState.value && pull[0] > 150f -> { pull[0] = 0f; onCloseUpdated.value() }
+                    expandedState.value && pull[0] > 90f -> { expandedState.value = false; reviewsEngaged.value = false; pull[0] = 0f }
+                    !expandedState.value && pull[0] > 150f -> { pull[0] = 0f; reviewsEngaged.value = false; onCloseUpdated.value() }
                 }
             }
             leftover > 0.5f -> { // pushing up past the body bottom
@@ -269,9 +269,11 @@ fun PlaceSheet(
     val onPanelOverscrollEnd: (Float) -> Unit = { velocityY ->
         pull[0] = 0f; pull[1] = 0f
         // Disengage at GESTURE END, not per-pixel: re-inserting the header content (rating +
-        // histogram + tabs) mid-drag shifts the layout right under the held finger — the user
-        // read it as flicker. At finger-up, if the body actually walked up, bring it back.
-        if (bodyScroll.value < bodyScroll.maxValue - 150) reviewsEngaged.value = false
+        // histogram + tabs) mid-drag shifts the layout right under the held finger — flicker.
+        // Fires when the body walked up OR is simply at/near its top — in engaged mode the
+        // panel fills the sheet, so the body's whole range is tiny and a "walked 150px" test
+        // could NEVER pass (engaged got stuck forever; the header never came back).
+        if (bodyScroll.value <= 1 || bodyScroll.value < bodyScroll.maxValue - 150) reviewsEngaged.value = false
         // Carry a boundary fling into the sheet so it glides instead of dead-stopping at
         // finger-up. velocityY is finger px/s (+down); scroll space is inverted.
         if (kotlin.math.abs(velocityY) > 600f) {
@@ -1528,10 +1530,10 @@ private fun PlaceTabs(
                                     }
                                 }
                             }
-                            // Tall enough to fill the expanded sheet; in ENGAGED mode it takes the
-                            // WHOLE sheet — hiding individual header pieces just let the next thing
-                            // up the column (popular times) slide into the gap and float there.
-                            val panelH = (LocalConfiguration.current.screenHeightDp * 0.92f - (if (panelEngaged) 40f else 170f)).coerceAtLeast(480f)
+                            // CONSTANT full-sheet height — engaged mode must not RESIZE the WebView
+                            // (Chromium paints a resized strip a frame late = a black-band flicker);
+                            // engaging only hides the header above, and the full-size panel slides up.
+                            val panelH = (LocalConfiguration.current.screenHeightDp * 0.92f - 44f).coerceAtLeast(480f)
                             app.vela.web.GoogleReviewsPanel(
                                 featureId = fid,
                                 dark = isAppInDarkTheme(),
