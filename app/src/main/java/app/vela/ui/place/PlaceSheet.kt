@@ -1341,6 +1341,8 @@ private fun PanelControls(
     dim: Color,
 ) {
     if (chips == null) return // nothing to control yet — the panel is still booting
+    // NOTE: an EMPTY list is meaningful — the business has no auto-parsed topics; search + sort
+    // still render (they exist on every panel), only the chip row is skipped.
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
         OutlinedTextField(
             value = query,
@@ -1367,7 +1369,7 @@ private fun PanelControls(
             }
         }
     }
-    LazyRow(
+    if (chips.isNotEmpty()) LazyRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp),
         modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
     ) {
@@ -1506,7 +1508,11 @@ private fun PlaceTabs(
                             // reading reviews full-screen — it otherwise floats above the panel
                             // eating height; it returns when they walk the sheet back up.
                             if (!panelEngaged) {
-                                panelHist?.let { RatingHistogram(it, dim, Modifier.fillMaxWidth(0.62f).padding(bottom = 8.dp)) }
+                                panelHist?.let {
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        RatingHistogram(it, dim, Modifier.fillMaxWidth(0.62f).padding(bottom = 8.dp))
+                                    }
+                                }
                                 PanelControls(
                                     chips = panelChips,
                                     selected = chipSel,
