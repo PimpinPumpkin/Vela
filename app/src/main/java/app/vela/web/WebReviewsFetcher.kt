@@ -202,16 +202,32 @@ class WebReviewsFetcher @Inject constructor(
                   // review text: the wiI7pd body, else the longest leaf span that isn't chrome.
                   var text=t1(c,'.wiI7pd');
                   if(!text){ var best=0; [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(s.childElementCount===0){ var tt=(s.textContent||'').trim(); if(tt.length>best && tt.length>12 && !/^(see more|more|like|share|response from|local guide)/i.test(tt) && !/\bstar/i.test(tt)){ best=tt.length; text=tt; } } }); }
-                  // relative date.
+                  // relative date. `.rsqaWe` is the date element when present; else scan leaf spans.
+                  // The old fallback grabbed the FIRST span merely CONTAINING "ago" (tt<22, /\bago\b/) —
+                  // which also matches a short sentence in the review body ("been pthere ago"… any body
+                  // span with "ago") and only knew English "ago"/bare-year. Anchor to the full relative-
+                  // date shape ("10 months ago", "a year ago", "Edited 2 weeks ago") or a lone year,
+                  // skip owner "Response" lines, and skip spans whose text is part of the review body —
+                  // so we pick the real date, not a phrase out of the prose.
                   var date=t1(c,'.rsqaWe');
-                  if(!date){ [].slice.call(c.querySelectorAll('span')).forEach(function(s){ var tt=(s.textContent||'').trim(); if(!date && tt.length<22 && (/\bago\b/.test(tt)||/^20\d\d${'$'}/.test(tt))) date=tt; }); }
+                  if(!date){ var body=(text||'').toLowerCase();
+                    var reRel=/^(?:edited\s+)?(?:an?|\d+)\s+(?:second|minute|hour|day|week|month|year)s?\s+ago${'$'}/i;
+                    [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(date||s.childElementCount>0) return;
+                      var tt=(s.textContent||'').trim();
+                      if(tt.length<28 && (reRel.test(tt)||/^20\d\d${'$'}/.test(tt)) && !/^response/i.test(tt) && body.indexOf(tt.toLowerCase())<0) date=tt; }); }
                   var avatar=''; var ai=c.querySelector('img'); if(ai && /googleusercontent/.test(ai.src||'')) avatar=ai.src;
                   var photos=[];
-                  [].slice.call(c.querySelectorAll('button')).forEach(function(b){
+                  function addPhoto(u){ if(u && u!==avatar && /googleusercontent/.test(u) && !/\/a[\/-]|ACg8oc|ALV-/.test(u) && photos.indexOf(u)<0) photos.push(u); }
+                  // Uploaded review photos are a <button>/<a> with a background-image on most layouts, but
+                  // some cards expose them as plain <img> tiles — collect BOTH (avatar-filtered) so a card
+                  // whose photos aren't button-backed still gets a tappable, author·date-captioned strip.
+                  // (Was button-background-only, which silently dropped the whole strip on those cards.)
+                  [].slice.call(c.querySelectorAll('button,a')).forEach(function(b){
                     var bg=''; try{ bg=getComputedStyle(b).backgroundImage||''; }catch(e){}
                     var mm=bg.match(/url\(["']?(https:\/\/[^"')]+googleusercontent[^"')]+)/);
-                    if(mm && !/\/a[\/-]|ACg8oc|ALV-/.test(mm[1]) && photos.indexOf(mm[1])<0) photos.push(mm[1]);
+                    if(mm) addPhoto(mm[1]);
                   });
+                  [].slice.call(c.querySelectorAll('img')).forEach(function(im){ addPhoto(im.src||''); });
                   return { rid:rid, r:num(star&&star.getAttribute('aria-label')), a:author.slice(0,80), d:date, t:text, av:avatar, p:photos.slice(0,10) };
                   // Require an AUTHOR (rid stays the de-dup key): the parser drops author-less entries
                   // anyway, so letting them through only wastes CAP slots on cards we can't render.
