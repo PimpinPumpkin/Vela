@@ -238,7 +238,12 @@ fun PlaceSheet(
     // overshoots; any real body movement resets them (same feel as dismissConn's acc).
     val scope = rememberCoroutineScope()
     val pull = remember(place.id) { floatArrayOf(0f, 0f) }
+    // True while the user is reading reviews "full screen" (panel engaged): set by the panel's
+    // engagement signal, cleared when they drag back toward the sheet top. Hides the native
+    // histogram so the panel gets the height.
+    val reviewsEngaged = remember(place.id) { mutableStateOf(false) }
     val onPanelOverscroll: (Float) -> Unit = { dy ->
+        if (dy > 0f) reviewsEngaged.value = false // walking home — bring the header content back
         val consumed = bodyScroll.dispatchRawDelta(-dy)
         val leftover = -dy - consumed
         when {
@@ -270,6 +275,7 @@ fun PlaceSheet(
     // them, Google-style (expand + settle the body so the panel fills the viewport). The second
     // animateScrollTo chases the body's max as the expand animation grows it.
     val onPanelEngaged: () -> Unit = {
+        reviewsEngaged.value = true
         scope.launch {
             expandedState.value = true
             bodyScroll.animateScrollTo(bodyScroll.maxValue)
@@ -653,7 +659,7 @@ fun PlaceSheet(
                 }
             }
 
-            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged)
+            PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value)
             }
         }
     }
@@ -1358,6 +1364,7 @@ private fun PlaceTabs(
     onPanelOverscroll: (Float) -> Unit = {},
     onPanelOverscrollEnd: (Float) -> Unit = {},
     onPanelEngaged: () -> Unit = {},
+    panelEngaged: Boolean = false,
 ) {
     // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
     // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
@@ -1413,7 +1420,12 @@ private fun PlaceTabs(
                                     }
                                 }
                             }
-                            panelHist?.let { RatingHistogram(it, dim, Modifier.padding(bottom = 8.dp)) }
+                            // Narrower than the sheet (Google-compact), and HIDDEN while the user is
+                            // reading reviews full-screen — it otherwise floats above the panel
+                            // eating height; it returns when they walk the sheet back up.
+                            if (!panelEngaged) {
+                                panelHist?.let { RatingHistogram(it, dim, Modifier.fillMaxWidth(0.62f).padding(bottom = 8.dp)) }
+                            }
                             if (!panelReady) {
                                 // Teaser while the panel loads: the search response's featured review
                                 // is already on-device — something to read instead of a bare spinner.
