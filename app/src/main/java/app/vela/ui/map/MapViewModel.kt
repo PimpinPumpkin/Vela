@@ -1565,6 +1565,10 @@ class MapViewModel @Inject constructor(
     private var ambientJob: Job? = null
     private var lastAmbientCenter: LatLng? = null
     private var lastAmbientZoom = 0.0
+    // Last full fetch, reused to repaint POIs INSTANTLY when you zoom back into an area (no empty-map
+    // gap + no OSM-POI "small then pop bigger" flash while the fresh fetch runs).
+    private var ambientCacheCenter: LatLng? = null
+    private var ambientCache: List<app.vela.core.model.Place> = emptyList()
 
     /**
      * Ambient Google POIs: on a bare, zoomed-in browse map, fetch the prominent Google places for
@@ -1593,44 +1597,46 @@ class MapViewModel @Inject constructor(
         // Span ≈ viewport height: ~9 km at z14 down to ~3.5 km zoomed in (kept ≥3.5 km — tighter
         // than that returns FEWER local hits, per the live calibration).
         val span = (9000.0 / 2.0.pow(zoom - 14.0)).coerceIn(3500.0, 9000.0)
+        // Just came back into range (dots were cleared by a zoom-out) and we have a recent nearby
+        // fetch cached? Repaint it INSTANTLY (re-centred + view-filtered) so there's no empty→OSM-POI
+        // flash→ambient "small then pop bigger" while the network fetch below runs; it then refines.
+        if (s.ambientPois.isEmpty()) {
+            ambientCacheCenter?.let { cc ->
+                if (cc.distanceTo(center) < 900.0 && ambientCache.isNotEmpty()) {
+                    val recentered = ambientCache.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
+                    _state.update { it.copy(ambientPois = keepAmbientForView(recentered, viewRadiusMeters)) }
+                }
+            }
+        }
         ambientJob = viewModelScope.launch {
-            delay(500) // let the map settle before scraping
+            delay(300) // brief settle so a flick doesn't scrape — but snappy
             val res = runCatching { dataSource.nearbyPlaces(center, span) }.getOrNull() ?: return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
+            ambientCacheCenter = center
+            ambientCache = res
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            // Hand the map ALL of them (a generous safety ceiling) and let MapLibre's VIEW-AWARE
-            // collision decide what actually paints — the in-view, prominence-ordered subset, showing
-            // more as you zoom in (the dots spread out so fewer collide). Capping the list HERE was the
-            // "seeing fewer results" bug: over a ~3.5 km span the deep pool's far, more-prominent places
-            // filled a small cap, so a low-commercial view's own nearby shops were cut before the map
-            // could even try to draw them. The collision layer already limits on-screen density.
-            // Hand the map only the POIs NEAR the view (+ a small pan margin) and cap the count, so an
-            // old phone isn't running symbol collision over the whole ~3.5 km pool every drag frame.
-            // What's off-screen can't render anyway. `res` is already prominence-sorted, and we PRESERVE
-            // that order (the ambient layer's collision key = list index), so the anchor store still
-            // beats its in-store tenant; the margin filter is purely about coverage, the cap about the
-            // 5a's frame budget. In a low-commercial view the handful of local businesses all fit under
-            // the cap, so nothing is cut there (the "fewer results" fix stays); the cap only bites in a
-            // dense view, where the extras would collide off anyway. Fixes the 5a lag from take(800).
-            val kept = res.asSequence()
-                .filterNot { p -> p.permanentlyClosed }
-                .filter { p ->
-                    if (viewRadiusMeters <= 0.0) return@filter true
-                    // Prominence-weighted keep-radius: a high-prominence anchor (Safeway) survives from
-                    // farther off-centre (up to 1.6× the view) so it still shows at the edge like Google
-                    // does at ~500 ft; low-signal places only when they're actually near (1.25×).
-                    val reach = viewRadiusMeters *
-                        (1.25 + 0.35 * (ambientProminence(p) / 8.0).coerceIn(0.0, 1.0))
-                    (p.distanceMeters ?: 0.0) <= reach
-                }
-                .take(AMBIENT_ONSCREEN_CAP)
-                .toList()
-            _state.update { it.copy(ambientPois = kept) }
+            _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters)) }
         }
     }
+
+    /** The on-screen ambient set the map layer renders: POIs NEAR the view (a prominence-weighted
+     *  keep-radius — anchors survive farther off-centre, like Google) capped at [AMBIENT_ONSCREEN_CAP]
+     *  so a budget GPU isn't colliding the whole ~3.5 km pool each drag frame. Off-screen POIs can't
+     *  paint anyway. Preserves `res`'s prominence order (the ambient layer's collision key = index),
+     *  so the anchor store still beats its in-store tenant. */
+    private fun keepAmbientForView(res: List<app.vela.core.model.Place>, viewRadiusMeters: Double): List<app.vela.core.model.Place> =
+        res.asSequence()
+            .filterNot { p -> p.permanentlyClosed }
+            .filter { p ->
+                if (viewRadiusMeters <= 0.0) return@filter true
+                val reach = viewRadiusMeters * (1.25 + 0.35 * (ambientProminence(p) / 8.0).coerceIn(0.0, 1.0))
+                (p.distanceMeters ?: 0.0) <= reach
+            }
+            .take(AMBIENT_ONSCREEN_CAP)
+            .toList()
 
     fun hasViewport(): Boolean = viewport != null
 

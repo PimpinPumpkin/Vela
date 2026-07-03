@@ -23,11 +23,12 @@ class Haptics @Inject constructor(
 ) {
     private val vibrator: Vibrator? = context.getSystemService()
 
-    /** Per-travel-mode toggle. Falls back to the legacy global [KEY] (so an existing on/off choice
-     *  carries over as each mode's default) until the user sets a per-mode switch. */
+    /** Per-travel-mode toggle. Default = [defaultFor] (on everywhere except driving), unless the user
+     *  had explicitly turned the legacy global switch OFF — then it stays off until they set per-mode. */
     private fun enabled(mode: TravelMode): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return p.getBoolean(keyFor(mode), p.getBoolean(KEY, true))
+        val default = if (!p.getBoolean(KEY, true)) false else defaultFor(mode)
+        return p.getBoolean(keyFor(mode), default)
     }
 
     fun cue(type: ManeuverType, approaching: Boolean, mode: TravelMode) {
@@ -50,6 +51,10 @@ class Haptics @Inject constructor(
         const val KEY = "haptics_on"
         /** Per-mode SharedPreferences key, e.g. "haptics_drive" / "haptics_bicycle". */
         fun keyFor(mode: TravelMode) = "haptics_${mode.name.lowercase()}"
+
+        /** Default per mode: on for walk/bike/transit (helpful hands-free by feel), OFF for driving —
+         *  in a car you already have the screen + spoken directions, so a buzz on every turn is noise. */
+        fun defaultFor(mode: TravelMode) = mode != TravelMode.DRIVE
         val LEFTS = setOf(
             ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT,
             ManeuverType.FORK_LEFT, ManeuverType.RAMP_LEFT, ManeuverType.KEEP_LEFT, ManeuverType.UTURN,
