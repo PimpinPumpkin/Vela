@@ -521,6 +521,24 @@ fun PlaceSheet(
                 }
                 Text(annotated, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
             }
+            // Holiday / special hours callout (Google shows these prominently — e.g. "Independence
+            // Day · Hours might differ" — not just buried on one day's row). The parser tags the
+            // holiday day's string with " · <label>"; surface the soonest one up top.
+            val holiday = remember(place.hours, nowMinute) {
+                upcomingHoliday(place.hours, nowMinute.toLocalDate())
+            }
+            if (!place.permanentlyClosed) holiday?.let { h ->
+                Text(
+                    buildAnnotatedString {
+                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = Color(0xFFE0A63C))) {
+                            append(h.label)
+                        }
+                        withStyle(SpanStyle(color = dim)) { append("  ·  ${h.whenLabel} · ${h.hours}") }
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
             place.address?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -2003,6 +2021,39 @@ private fun attributeHighlights(about: List<AboutSection>): List<String> {
         .filter { it.isNotEmpty() }
         .distinct()
         .take(6)
+}
+
+private data class HolidayHours(val label: String, val whenLabel: String, val hours: String, val daysAway: Int)
+
+private val HOLIDAY_DAY_NAMES = mapOf(
+    "monday" to java.time.DayOfWeek.MONDAY, "tuesday" to java.time.DayOfWeek.TUESDAY,
+    "wednesday" to java.time.DayOfWeek.WEDNESDAY, "thursday" to java.time.DayOfWeek.THURSDAY,
+    "friday" to java.time.DayOfWeek.FRIDAY, "saturday" to java.time.DayOfWeek.SATURDAY,
+    "sunday" to java.time.DayOfWeek.SUNDAY,
+)
+
+/** From weekly hours whose affected day is tagged " · <holiday label>" (e.g. "Thursday: Closed ·
+ *  Independence Day"), return the SOONEST upcoming special-hours day (today first) so the place card
+ *  can flag it Google-style instead of leaving it buried on one day's row. Null if none this week. */
+private fun upcomingHoliday(hours: List<String>, today: java.time.LocalDate): HolidayHours? {
+    val todayDow = today.dayOfWeek
+    return hours.mapNotNull { line ->
+        val dot = line.lastIndexOf(" · ")
+        if (dot < 0) return@mapNotNull null
+        val label = line.substring(dot + 3).trim().ifBlank { return@mapNotNull null }
+        val head = line.substring(0, dot)
+        val colon = head.indexOf(':')
+        if (colon < 0) return@mapNotNull null
+        val dow = HOLIDAY_DAY_NAMES[head.substring(0, colon).trim().lowercase()] ?: return@mapNotNull null
+        val hrs = head.substring(colon + 1).trim().ifBlank { "Hours may differ" }
+        val daysAway = ((dow.value - todayDow.value) + 7) % 7 // 0 = today, 1..6 = upcoming this week
+        val whenLabel = when (daysAway) {
+            0 -> "today"
+            1 -> "tomorrow"
+            else -> dow.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.getDefault())
+        }
+        HolidayHours(label, whenLabel, hrs, daysAway)
+    }.minByOrNull { it.daysAway }
 }
 
 @Composable
