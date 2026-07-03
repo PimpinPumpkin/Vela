@@ -1305,7 +1305,13 @@ class MapViewModel @Inject constructor(
                     val dest = meta.dest ?: route?.polyline?.lastOrNull()
                     if (route != null && dest != null) {
                         destination = dest
-                        navSession.start(route, dest, meta.label, null)
+                        // Replay must speak through the SAME engine as live nav — the user's selected
+                        // voice (e.g. the Vela neural voice), not null → which fell back to the system
+                        // TTS while still applying the voice-speed pref (the "GrapheneOS voice at 0.8×"
+                        // bug). Wire the neural synth too, in case the pick changed since launch.
+                        val engine = _state.value.selectedEngine?.packageName
+                        neuralSynthFor(engine)?.let { voice.neural = it }
+                        navSession.start(route, dest, meta.label, engine)
                         replayOwnsNav = true
                     }
                 }
@@ -1590,17 +1596,13 @@ class MapViewModel @Inject constructor(
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            // Hand MORE POIs to the map the tighter you're zoomed in: in a small area the dots spread
-            // across the screen so few collide, so the map can render further DOWN the prominence rank
-            // (the little shops, not just the anchors) — Google-style. The ambient layer's collision still
-            // decides what actually paints; this just makes the deeper ranks available at high zoom.
-            val cap = when {
-                zoom >= 16.5 -> 260
-                zoom >= 15.5 -> 180
-                zoom >= 14.5 -> 120
-                else -> 80
-            }
-            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(cap)) }
+            // Hand the map ALL of them (a generous safety ceiling) and let MapLibre's VIEW-AWARE
+            // collision decide what actually paints — the in-view, prominence-ordered subset, showing
+            // more as you zoom in (the dots spread out so fewer collide). Capping the list HERE was the
+            // "seeing fewer results" bug: over a ~3.5 km span the deep pool's far, more-prominent places
+            // filled a small cap, so a low-commercial view's own nearby shops were cut before the map
+            // could even try to draw them. The collision layer already limits on-screen density.
+            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(800)) }
         }
     }
 
