@@ -229,6 +229,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   render the whole time the maneuver was next, so on a long highway leg the "be in the right lane" arrows
   sat there for miles before the exit, which read as noise. Now they surface as you approach (Google-style);
   in step-preview (swiping the step list) they always show, since you're deliberately inspecting a step.
+- ✅ **Spoken lane guidance (2026-07-03).** Vela now SAYS the lane, not just draws it — the far approach
+  prompt adds "…take exit 172 toward Sacramento. **Use the right 2 lanes**" (Google-style). It's computed
+  from the same OSRM per-lane `valid` data as the arrows (`Route.laneGuidance` reduces them to a side +
+  count when the valid lanes are a contiguous block at one edge; no hint when any lane works or the block
+  is non-contiguous — the diagram covers those). Spoken once, at the first prompt distance, so it doesn't
+  nag. Localized via `NavStrings.useLanes` (EN "Use the left lane"/"right 2 lanes", FR "Empruntez la voie
+  de gauche"/"les 2 voies de droite"). Unit-tested.
 - ✅ **Compound maneuver preview ("… then keep right")** — the banner's secondary "then &lt;next&gt;" line
   now shows **only when the next maneuver closely follows** this one (`COMPOUND_M` ≈ 0.3 mi, `isCompoundNext`,
   2026-07-01), the way Google surfaces back-to-back turns (exit-then-merge). It used to show for *any* next
