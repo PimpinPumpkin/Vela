@@ -556,9 +556,32 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+            // Quick-action pills FIRST — a highlighted Directions + short Call / Website, right under
+            // the identity block so Directions is reachable WITHOUT scrolling (Google's order). Save/
+            // Share live in the header; the actual phone number / website domain are tappable detail
+            // rows lower down (below the hours), out of the way of the primary action.
+            Row(
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 14.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ActionPill(Icons.Default.Directions, "Directions", emphasized = true, onClick = onDirections)
+                place.phone?.let { ph ->
+                    ActionPill(Icons.Default.Call, "Call") {
+                        val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
+                        runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                    }
+                }
+                place.website?.let { site ->
+                    ActionPill(Icons.Default.Language, "Website") {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                    }
+                }
+            }
+
             place.address?.let { addr ->
                 Row(
-                    Modifier.fillMaxWidth().padding(top = 8.dp),
+                    Modifier.fillMaxWidth().padding(top = 14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(Icons.Default.Place, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
@@ -573,9 +596,18 @@ fun PlaceSheet(
                     }
                 }
             }
-            // Phone + website as their own tappable rows (Google shows the actual number / domain here,
-            // below the quick-action buttons). The action pills up top are the fast path; these show the
-            // detail.
+
+            // A permanently-closed POI already says so in red above — don't also
+            // nag "Hours not listed" beneath it (the dead-POI hours are moot).
+            if (place.hours.isNotEmpty()) {
+                HoursSection(place.hours, ink, dim)
+            } else if (place.category != null && !place.permanentlyClosed) {
+                Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
+            }
+
+            // Phone + website as their own tappable rows showing the actual number / domain — placed
+            // BELOW the hours (Google's order), well clear of the Directions button up top. The pills
+            // are the fast path; these are the detail for when you want to see/copy the number or URL.
             place.phone?.let { ph ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
@@ -606,37 +638,6 @@ fun PlaceSheet(
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                }
-            }
-
-            // Hours sit above the action buttons (Directions/Call/…), per request.
-            // A permanently-closed POI already says so in red above — don't also
-            // nag "Hours not listed" beneath it (the dead-POI hours are moot).
-            if (place.hours.isNotEmpty()) {
-                HoursSection(place.hours, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed) {
-                Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
-            }
-
-            // Quick-action pills — a highlighted Directions + short Call / Website (the fast path;
-            // the actual number/URL live as tappable rows above, Google-style). Save/Share are in the
-            // header. Horizontally scrollable as a safety, though these three fit without scrolling.
-            Row(
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ActionPill(Icons.Default.Directions, "Directions", emphasized = true, onClick = onDirections)
-                place.phone?.let { ph ->
-                    ActionPill(Icons.Default.Call, "Call") {
-                        val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
-                        runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
-                    }
-                }
-                place.website?.let { site ->
-                    ActionPill(Icons.Default.Language, "Website") {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
-                    }
                 }
             }
 
