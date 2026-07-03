@@ -111,6 +111,10 @@ object PoiIcons {
                 layer.setProperties(
                     PropertyFactory.iconImage(icon),
                     PropertyFactory.iconSize(0.8f),
+                    // Rank the collision by the tile's `rank` (lower = more prominent), which matches
+                    // symbol-sort-key order (lower is placed first = wins the slot). So a Safeway (low
+                    // rank) beats a tiny tenant inside it (high rank) instead of arbitrary tile order.
+                    PropertyFactory.symbolSortKey(Expression.get("rank")),
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
@@ -128,7 +132,11 @@ object PoiIcons {
             // bus stops clutter every zoom level. Push it to z16+ like Google, and
             // give it our marker + category colour for consistency.
             (style.getLayer("poi_transit") as? SymbolLayer)?.let { layer ->
-                layer.setProperties(PropertyFactory.iconImage(icon), PropertyFactory.iconSize(0.8f))
+                layer.setProperties(
+                    PropertyFactory.iconImage(icon),
+                    PropertyFactory.iconSize(0.8f),
+                    PropertyFactory.symbolSortKey(Expression.get("rank")),
+                )
                 if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
                 layer.setMinZoom(16f)
                 hideNameless(layer)
