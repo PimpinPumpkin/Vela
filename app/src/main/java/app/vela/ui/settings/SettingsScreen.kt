@@ -21,6 +21,8 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -275,7 +277,11 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             Hint("Reviews in the place sheet are always Vela's own smooth native list. This adds a “Read all reviews” button that opens Google's full reviews page FULL-SCREEN — every review (not just the first ~50), Google's server-side search, and video reviews play. Trackers/beacons are blocked, but it does run Google's page inside the app. Off = native list only, no Google page for reviews.")
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Offline")
+            // Collapsed by default — the routing-region list can be long, so don't make the user
+            // scroll past all of it to reach the sections below.
+            var offlineExpanded by remember { mutableStateOf(false) }
+            CollapsibleSectionTitle("Offline", offlineExpanded) { offlineExpanded = !offlineExpanded }
+            if (offlineExpanded) {
             Hint("Using the map without signal takes two things — the map TILES you see, and the ROAD NETWORK that routes you. Saving a map area grabs both for that spot; the region list below adds the road network for anywhere you're travelling.")
             SubHead("Map area")
             var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
@@ -389,6 +395,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     }
                 }
             }
+            } // end if (offlineExpanded)
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Saved places")
@@ -612,6 +619,28 @@ private fun SectionTitle(text: String) {
         color = MaterialTheme.colorScheme.primary,
         modifier = Modifier.padding(vertical = 8.dp),
     )
+}
+
+/** A [SectionTitle] that toggles a collapsible body — tap the whole row; a chevron shows the state. */
+@Composable
+private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = if (expanded) "Collapse" else "Expand",
+            tint = MaterialTheme.colorScheme.primary,
+        )
+    }
 }
 
 @Composable
