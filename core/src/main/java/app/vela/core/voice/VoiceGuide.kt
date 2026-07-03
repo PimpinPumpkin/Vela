@@ -29,6 +29,14 @@ class VoiceGuide @Inject constructor(
 ) : TextToSpeech.OnInitListener {
 
     private var tts: TextToSpeech? = null
+
+    /** Speech-rate multiplier (1.0 = normal, >1 = faster), settable live from Settings. Applied to the
+     *  Android TextToSpeech engine; the neural voice reads its own `voice_speed` pref per utterance. */
+    @Volatile private var speechRate = 0.97f
+    fun setRate(rate: Float) {
+        speechRate = rate.coerceIn(0.5f, 2.0f)
+        tts?.setSpeechRate(speechRate)
+    }
     private var ready = false
     private var currentEngine: String? = null
     private val pending = ArrayDeque<Pair<String, Boolean>>()
@@ -116,7 +124,7 @@ class VoiceGuide @Inject constructor(
         val langResult = t.setLanguage(lang)
         // A measured pace + neutral pitch reads more like a real nav voice than
         // the engine default (often a touch fast/robotic on stock Pico).
-        t.setSpeechRate(0.97f)
+        t.setSpeechRate(speechRate)
         t.setPitch(1.0f)
         selectBestVoice(t, lang)
         ready = true

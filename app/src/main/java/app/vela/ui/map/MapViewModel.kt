@@ -103,6 +103,7 @@ data class MapUiState(
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
     val kokoroDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
     val voiceSpeaker: Int = 0, // chosen speaker # for the multi-speaker Vela voice (playground stepper)
+    val voiceSpeed: Float = 1.0f, // spoken-directions speed multiplier (1.0 = normal, >1 = faster)
     val showPsdsTip: Boolean = false,
     val showSearchThisArea: Boolean = false,
     val showSteps: Boolean = false,
@@ -198,9 +199,13 @@ class MapViewModel @Inject constructor(
             _state.update { it.copy(selectedEngine = VoiceEngine(savedEngine, label)) }
         }
         neuralSynthFor(savedEngine)?.warmUp()
+        val voicePrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+        val savedSpeed = voicePrefs.getFloat("voice_speed", 1.0f)
+        voice.setRate(savedSpeed) // relay the saved rate to the AOSP TTS engine at startup
         _state.update {
             it.copy(
-                voiceSpeaker = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE).getInt("voice_speaker", 0),
+                voiceSpeaker = voicePrefs.getInt("voice_speaker", calibration.current().defaultVoiceSpeaker).coerceAtLeast(0),
+                voiceSpeed = savedSpeed,
                 recents = recentStore.recent(), saved = savedStore.saved(),
                 recentPlaces = recentPlaceStore.recent(),
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
@@ -1459,6 +1464,16 @@ class MapViewModel @Inject constructor(
         voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
     }
 
+    /** Adjust the spoken-directions speed by [delta] (clamped 0.5–2.0×), persist, apply, and preview. */
+    fun setVoiceSpeed(delta: Float) {
+        var s = (_state.value.voiceSpeed + delta).coerceIn(0.5f, 2.0f)
+        s = Math.round(s * 20f) / 20f // snap to 0.05 so it can't drift off exactly 1.00
+        settingsPrefs.edit().putFloat("voice_speed", s).apply()
+        voice.setRate(s) // AOSP engine; the neural voice reads the voice_speed pref per utterance
+        _state.update { it.copy(voiceSpeed = s) }
+        voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
+    }
+
     /** Download the neural voice (Piper) into the app, then make it the active voice. */
     fun downloadPiper() {
         if (_state.value.kokoroDownloadPct != null) return // one at a time
@@ -1525,7 +1540,12 @@ class MapViewModel @Inject constructor(
 
     fun onViewport(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         viewport = doubleArrayOf(south, west, north, east, zoom)
-        maybeLoadAmbientPois(LatLng((south + north) / 2, (west + east) / 2), zoom)
+        val center = LatLng((south + north) / 2, (west + east) / 2)
+        // onViewport fires on EVERY camera idle (unlike onCameraIdle, which is gesture-gated and can
+        // miss a pan due to a camera-reason race). Keep the "Search this area" center = the live
+        // viewport center here so the search can never bias to a stale, pre-pan location.
+        mapCenter = center
+        maybeLoadAmbientPois(center, zoom)
     }
 
     private var ambientJob: Job? = null
