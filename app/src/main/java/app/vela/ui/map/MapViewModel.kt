@@ -1614,9 +1614,14 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Onboarding's one-tap install — grabs the fleet-default voice (remote-settable via calibration)
-     *  and, as the first voice, activates it. */
-    fun downloadPiper() = downloadVoice(calibration.current().defaultVoiceId)
+    /** Onboarding's one-tap install — grabs a voice that MATCHES the app language (so a French phone
+     *  gets a French voice + French nav text out of the box), falling back to the remote-settable fleet
+     *  default (HFC) for English. As the first voice, it's activated. */
+    fun downloadPiper() {
+        val lang = app.vela.ui.AppLocale.effective().language
+        val id = if (lang == "en") calibration.current().defaultVoiceId else PiperCatalog.defaultFor(lang).id
+        downloadVoice(id)
+    }
 
     /** null = still initialising, true = a voice is ready, false = no usable voice. */
     fun voiceWorking(): Boolean? = voice.working
