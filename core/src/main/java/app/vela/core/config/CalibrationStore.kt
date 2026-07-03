@@ -136,6 +136,7 @@ class CalibrationStore @Inject constructor(
             notices = notices,
             transformsJs = transformsJs,
             defaultVoiceSpeaker = (o["defaultVoiceSpeaker"] as? JsonPrimitive)?.content?.toIntOrNull() ?: d.defaultVoiceSpeaker,
+            defaultVoiceSpeed = (o["defaultVoiceSpeed"] as? JsonPrimitive)?.content?.toFloatOrNull() ?: d.defaultVoiceSpeed,
         )
     }.getOrNull()
 

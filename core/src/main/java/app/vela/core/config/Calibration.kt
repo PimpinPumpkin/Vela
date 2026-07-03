@@ -46,9 +46,15 @@ data class Calibration(
     // good-sounding speaker can be set as the default without an app release. A user's explicit pick
     // (the `voice_speaker` pref) always wins over this.
     val defaultVoiceSpeaker: Int = DEFAULT_VOICE_SPEAKER,
+    // Default spoken-directions speed multiplier (1.0 = normal, <1 = slower/clearer, >1 = faster),
+    // used until the user adjusts it in Settings → Voice. Also remote-pushable; a user's explicit
+    // `voice_speed` pref wins. 0.8 reads as a measured, easy-to-follow nav cadence.
+    val defaultVoiceSpeed: Float = DEFAULT_VOICE_SPEED,
 ) {
     companion object {
-        const val DEFAULT_VOICE_SPEAKER = 0
+        // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
+        const val DEFAULT_VOICE_SPEAKER = 14
+        const val DEFAULT_VOICE_SPEED = 0.8f
         const val DEFAULT_PHOTOS_ENDPOINT =
             "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX&source-path=/maps&hl=en&_reqid=1&rt=c"
 
