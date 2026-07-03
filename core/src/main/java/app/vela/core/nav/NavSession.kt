@@ -111,7 +111,7 @@ class NavSession @Inject constructor(
             destinationLabel = destinationLabel,
             tripDistanceMeters = route.distanceMeters,
         )
-        voice.speak("Starting navigation. $first")
+        voice.speak(app.vela.core.i18n.NavStringsRegistry.current().startNav(first))
         diag.record(
             "nav",
             "start → ${destinationLabel.ifBlank { "destination" }} " +
@@ -186,7 +186,7 @@ class NavSession @Inject constructor(
             }
         }
         toSpeak.forEach { label ->
-            voice.speak(if (label.isNotBlank()) "You've reached $label" else "You've reached your stop")
+            voice.speak(app.vela.core.i18n.NavStringsRegistry.current().reachedStop(label))
             diag.record("nav", "reached stop: ${label.ifBlank { "(unnamed)" }}")
         }
     }
@@ -215,7 +215,7 @@ class NavSession @Inject constructor(
                 fasterSavingSeconds = 0.0,
             )
         }
-        voice.speak("Taking the faster route. $first", interrupt = true)
+        voice.speak(app.vela.core.i18n.NavStringsRegistry.current().fasterRoute(first), interrupt = true)
     }
 
     fun dismissFasterRoute() = _state.update { it.copy(fasterRoute = null, fasterSavingSeconds = 0.0) }
