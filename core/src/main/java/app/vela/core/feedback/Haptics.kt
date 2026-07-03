@@ -5,6 +5,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 import androidx.core.content.getSystemService
 import app.vela.core.model.ManeuverType
+import app.vela.core.model.TravelMode
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -22,11 +23,15 @@ class Haptics @Inject constructor(
 ) {
     private val vibrator: Vibrator? = context.getSystemService()
 
-    private fun enabled(): Boolean =
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, true)
+    /** Per-travel-mode toggle. Falls back to the legacy global [KEY] (so an existing on/off choice
+     *  carries over as each mode's default) until the user sets a per-mode switch. */
+    private fun enabled(mode: TravelMode): Boolean {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return p.getBoolean(keyFor(mode), p.getBoolean(KEY, true))
+    }
 
-    fun cue(type: ManeuverType, approaching: Boolean) {
-        if (!enabled()) return
+    fun cue(type: ManeuverType, approaching: Boolean, mode: TravelMode) {
+        if (!enabled(mode)) return
         val v = vibrator?.takeIf { it.hasVibrator() } ?: return
         val pattern = when {
             approaching -> longArrayOf(0, 90)                        // light "get ready" tick
@@ -40,9 +45,11 @@ class Haptics @Inject constructor(
     private fun isLeft(t: ManeuverType) = t in LEFTS
     private fun isRight(t: ManeuverType) = t in RIGHTS
 
-    private companion object {
+    companion object {
         const val PREFS = "vela_settings"
         const val KEY = "haptics_on"
+        /** Per-mode SharedPreferences key, e.g. "haptics_drive" / "haptics_bicycle". */
+        fun keyFor(mode: TravelMode) = "haptics_${mode.name.lowercase()}"
         val LEFTS = setOf(
             ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT,
             ManeuverType.FORK_LEFT, ManeuverType.RAMP_LEFT, ManeuverType.KEEP_LEFT, ManeuverType.UTURN,

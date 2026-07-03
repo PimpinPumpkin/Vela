@@ -53,7 +53,7 @@ import javax.inject.Singleton
  * thousands, the sushi counter inside it dozens), log-compressed so a mega-chain doesn't utterly bury
  * everything, and nudged by rating so among similarly-popular places the better-rated wins.
  */
-internal fun ambientProminence(p: Place): Double =
+fun ambientProminence(p: Place): Double =
     ln((p.reviewCount ?: 0) + 1.0) * (0.6 + (p.rating ?: 3.5) / 10.0)
 
 /**
