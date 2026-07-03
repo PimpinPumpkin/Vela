@@ -63,7 +63,13 @@ object NavEngine {
         var stepIndex = idx
         var spoken = state.spoken
 
-        if (target.type != ManeuverType.ARRIVE) {
+        // The DEPART ("Head out / Head east on …") maneuver sits at the start point (dtn ≈ 0), and it's
+        // ALREADY spoken by NavSession.start ("Starting navigation. Head east on F St"). Announcing it
+        // here again — the approach prompts AND the interrupt on arrival — is what cut the start prompt
+        // off with "a similar direction". Skip it entirely and advance silently to the first real turn,
+        // which announces itself as you approach it (Google does the same).
+        val isDepart = target.type == ManeuverType.DEPART
+        if (target.type != ManeuverType.ARRIVE && !isDepart) {
             for (p in PROMPT_DISTANCES) {
                 if (dtn <= p && p !in spoken) {
                     spoken = spoken + p
@@ -77,8 +83,10 @@ object NavEngine {
 
         if (dtn <= ARRIVE_RADIUS_M) {
             if (idx < maneuvers.lastIndex) {
-                events += NavEvent.Speak(target.instruction, interrupt = true)
-                events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
+                if (!isDepart) {
+                    events += NavEvent.Speak(target.instruction, interrupt = true)
+                    events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
+                }
                 stepIndex = idx + 1
                 spoken = emptySet()
             } else {
