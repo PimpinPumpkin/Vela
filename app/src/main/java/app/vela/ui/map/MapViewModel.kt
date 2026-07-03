@@ -1586,18 +1586,24 @@ class MapViewModel @Inject constructor(
         val wasActive = VelaPiper.effectiveVoiceId(appContext) == id
         val dir = VelaPiper.modelDirFor(appContext, id)
         settingsPrefs.edit().remove(VelaPiper.speakerKey(id)).apply()
+        // Drop it from the UI IMMEDIATELY (optimistic): the actual unlink is async (worker/IO), and
+        // re-reading the registry before it finishes would leave the deleted voice looking installed —
+        // that was the "still had the trash icon" bug when deleting the active voice.
+        fun hide() = _state.update { it.copy(installedVoiceIds = it.installedVoiceIds - id) }
+        hide()
         if (wasActive) {
             val next = VelaPiper.installedVoiceIds(appContext).firstOrNull { it != id }
             if (next != null) {
-                selectVoice(next) // reloads the synth onto `next` (off `id`'s files), then:
+                selectVoice(next) // reloads the synth onto `next` (off `id`'s files); refreshes state, then:
                 piperSynth.deleteModelDir(dir) // unlink `id` on the worker, after the reload
+                hide() // selectVoice's refresh re-read the (still-present) dir → hide `id` again
             } else {
                 VelaPiper.clearSelectedVoice(appContext)
                 piperSynth.release() // no neural voice left → drop the engine
                 piperSynth.deleteModelDir(dir)
                 // Fall back to a system TTS engine if one is installed, else leave nav silent.
                 voiceEngines().firstOrNull { it.packageName != VelaPiper.ENGINE_ID }?.let { setVoiceEngine(it) }
-                refreshInstalledVoices()
+                _state.update { it.copy(installedVoiceIds = it.installedVoiceIds - id, selectedVoiceId = null) }
                 flashStatus("Vela voice removed")
             }
         } else {
