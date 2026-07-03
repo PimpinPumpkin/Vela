@@ -1,5 +1,8 @@
 package app.vela.core.i18n
 
+import app.vela.core.model.Lane
+import app.vela.core.model.LaneSide
+import app.vela.core.model.laneGuidance
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -65,6 +68,26 @@ class NavStringsTest {
         assertEquals("Vous êtes arrivé à votre étape", FrNavStrings.reachedStop(""))
         assertEquals("Taking the faster route. Turn right", EnNavStrings.fasterRoute("Turn right"))
         assertEquals("Itinéraire plus rapide. Tournez à droite", FrNavStrings.fasterRoute("Tournez à droite"))
+    }
+
+    @Test fun `lane guidance derives side + count and speaks it`() {
+        // 3 lanes, right 2 valid → "Use the right 2 lanes"
+        val right2 = listOf(Lane(listOf("straight"), false), Lane(listOf("right"), true), Lane(listOf("right"), true))
+        val g = laneGuidance(right2)!!
+        assertEquals(LaneSide.RIGHT, g.side)
+        assertEquals(2, g.count)
+        assertEquals("Use the right 2 lanes", EnNavStrings.useLanes(g.side, g.count))
+        assertEquals("Empruntez les 2 voies de droite", FrNavStrings.useLanes(g.side, g.count))
+        // single left lane
+        val left1 = laneGuidance(listOf(Lane(listOf("left"), true), Lane(listOf("straight"), false)))!!
+        assertEquals(LaneSide.LEFT, left1.side)
+        assertEquals(1, left1.count)
+        assertEquals("Use the left lane", EnNavStrings.useLanes(left1.side, left1.count))
+        assertEquals("Empruntez la voie de gauche", FrNavStrings.useLanes(left1.side, left1.count))
+        // nothing useful: all valid, non-contiguous, or too few lanes → null
+        assertEquals(null, laneGuidance(listOf(Lane(listOf("s"), true), Lane(listOf("s"), true))))
+        assertEquals(null, laneGuidance(listOf(Lane(listOf("l"), true), Lane(listOf("s"), false), Lane(listOf("r"), true))))
+        assertEquals(null, laneGuidance(listOf(Lane(listOf("s"), true))))
     }
 
     @Test fun `expandForSpeech is English-only opt-in`() {
