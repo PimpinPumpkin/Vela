@@ -6,6 +6,7 @@ import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
 import app.vela.core.voice.NeuralSynth
+import app.vela.core.voice.SpeechText
 import app.vela.core.voice.VelaPiper
 import com.k2fsa.sherpa.onnx.OfflineTts
 import com.k2fsa.sherpa.onnx.OfflineTtsConfig
@@ -50,10 +51,11 @@ class PiperSynth @Inject constructor(
         return if (numSpeakers > 0) n.coerceIn(0, numSpeakers - 1) else n.coerceAtLeast(0)
     }
 
-    /** The user's chosen speech-speed multiplier (persisted; 1.0 = normal, >1 = faster), clamped. */
+    /** The user's chosen speech-speed multiplier (persisted; 1.0 = normal, >1 = faster), clamped.
+     *  Defaults to the remotely-configurable [Calibration.defaultVoiceSpeed] until the user adjusts it. */
     private fun speed(): Float =
         context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
-            .getFloat("voice_speed", 1.0f).coerceIn(0.5f, 2.0f)
+            .getFloat("voice_speed", calibration.current().defaultVoiceSpeed).coerceIn(0.5f, 2.0f)
 
     override fun warmUp() {
         if (tts != null || loadFailed || !VelaPiper.isReady(context)) return
@@ -91,22 +93,54 @@ class PiperSynth @Inject constructor(
             if (engine == null || myGen != generation) { onDone(); return@execute }
             try {
                 val t0 = android.os.SystemClock.elapsedRealtime()
-                val audio = engine.generate(text = text, sid = speakerId(), speed = speed())
+                val sid = speakerId()
+                val spd = speed()
+                // Synthesize each sentence on its own and splice a fixed silence gap between them, so
+                // periods get a real, controllable beat. sherpa-onnx's own `silenceScale` config is a
+                // no-op for this Piper/VITS path (measured on-device: 0.2 vs 1.4 gave identical audio
+                // length), and one-shot generation runs sentences together, so we do the pausing here.
+                // Splitting (which periods are real sentence ends vs. abbreviations) lives in :core so
+                // it's unit-tested — see SpeechText.
+                val parts = SpeechText.splitSentences(text)
+                var sampleRate = 22050
+                val chunks = ArrayList<FloatArray>(parts.size)
+                for (p in parts) {
+                    if (myGen != generation) { onDone(); return@execute }
+                    val a = engine.generate(text = p, sid = sid, speed = spd)
+                    sampleRate = a.sampleRate
+                    if (a.samples.isNotEmpty()) chunks.add(a.samples)
+                }
+                val samples = joinWithGaps(chunks, sampleRate)
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 if (myGen != generation) { onDone(); return@execute }
-                val samples = audio.samples
                 if (samples.isNotEmpty()) {
-                    val at = ensureTrack(audio.sampleRate)
+                    val at = ensureTrack(sampleRate)
                     at.pause(); at.flush(); at.play()
                     at.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
                 }
-                Log.i(TAG, "spoke ${"%.1f".format(samples.size / audio.sampleRate.toFloat())}s audio in ${genMs}ms")
+                Log.i(TAG, "spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${parts.size} sent.) in ${genMs}ms")
             } catch (t: Throwable) {
                 Log.e(TAG, "speak failed: ${t.message}", t)
             } finally {
                 onDone()
             }
         }
+    }
+
+    /** Concatenate sentence audio chunks with [PAUSE_SEC]-worth of silence between (not after the
+     *  last), giving a clear beat at each period. Single chunk → returned as-is (no trailing silence). */
+    private fun joinWithGaps(chunks: List<FloatArray>, sampleRate: Int): FloatArray {
+        if (chunks.isEmpty()) return FloatArray(0)
+        if (chunks.size == 1) return chunks[0]
+        val gap = (sampleRate * PAUSE_SEC).toInt()
+        val total = chunks.sumOf { it.size } + gap * (chunks.size - 1)
+        val out = FloatArray(total)
+        var pos = 0
+        for ((i, c) in chunks.withIndex()) {
+            c.copyInto(out, pos); pos += c.size
+            if (i < chunks.size - 1) pos += gap // leave zeros (silence) for the gap
+        }
+        return out
     }
 
     private fun ensureTrack(sampleRate: Int): AudioTrack {
@@ -152,5 +186,7 @@ class PiperSynth @Inject constructor(
     private companion object {
         const val TAG = "PiperSynth"
         const val SPEED = 1.0f
+        // Silence spliced between sentences (seconds) — a natural period beat for nav prompts.
+        const val PAUSE_SEC = 0.32f
     }
 }
