@@ -1,6 +1,8 @@
 package app.vela.core.i18n
 
+import app.vela.core.voice.SpeechText
 import java.util.Locale
+import kotlin.math.roundToInt
 
 /**
  * All Vela-GENERATED spoken/banner nav text for ONE language. Vela builds turn instructions itself
@@ -25,6 +27,24 @@ interface NavStrings {
      * number; [rbExit] a roundabout exit count.
      */
     fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String
+
+    /** A distance phrased for SPEECH, honouring the imperial/metric preference — "500 feet" / "150 mètres". */
+    fun spokenDistance(meters: Double, imperial: Boolean): String
+
+    /** The pre-turn frame combining a distance phrase and the instruction — EN "In X, Y" / FR "Dans X, Y". */
+    fun inThen(distancePhrase: String, instruction: String): String
+
+    /** The at-arrival spoken callout — EN "You have arrived". */
+    fun arrived(): String
+
+    /**
+     * Expand road abbreviations + numbers so the TTS engine SAYS them ("St"→"Street", "128th"→"one
+     * twenty-eighth"). English-specific, so it's **opt-in**: the default is identity, and ONLY
+     * [EnNavStrings] overrides it. Other languages must leave the text — including road-name DATA —
+     * untouched, so an English rule can never mangle a foreign name (a French "Rue"/"Bd" is read
+     * natively by the French voice).
+     */
+    fun expandForSpeech(text: String): String = text
 }
 
 /** English (source of truth) — byte-identical to the original `osrmPhrase`, so existing nav tests pass. */
@@ -55,7 +75,68 @@ object EnNavStrings : NavStrings {
             else -> if (m.isNotBlank()) ("Turn $m").trim() + onto else "Continue$onto"
         }
     }
+
+    // Feet under ~0.15 mi, else miles; metres under ~1 km, else kilometres (unchanged from NavEngine).
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(feet / 50).roundToInt() * 50} feet"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 mile" else "$miles miles"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} meters"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 kilometer" else "$km kilometers"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "In $distancePhrase, $instruction"
+
+    override fun arrived(): String = "You have arrived"
+
+    /** Whole-word road abbreviation → spoken form, "I-80"→"Interstate 80", and 3-digit street ordinals
+     *  ("128th"→"one twenty-eighth"). Moved here from VoiceGuide.forSpeech so it's English-scoped. */
+    override fun expandForSpeech(text: String): String {
+        var s = text
+        s = Regex("\\bI-(\\d+)").replace(s) { "Interstate ${it.groupValues[1]}" }
+        s = Regex("\\bUS-(\\d+)").replace(s) { "US ${it.groupValues[1]}" }
+        EN_SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
+        s = SpeechText.spokenNumbers(s) // "128th" → "one twenty-eighth", not a mangled "one hundred and 28th"
+        return s
+    }
 }
+
+/** Whole-word road-abbreviation → spoken form, applied only by [EnNavStrings.expandForSpeech]. Road-type
+ *  suffixes are case-insensitive; the directionals are uppercase (as they appear in road names) and come
+ *  LAST so they can't chew into a word an earlier rule expanded. */
+private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
+    Regex("\\bSt\\b", RegexOption.IGNORE_CASE) to "Street",
+    Regex("\\bAve\\b", RegexOption.IGNORE_CASE) to "Avenue",
+    Regex("\\bBlvd\\b", RegexOption.IGNORE_CASE) to "Boulevard",
+    Regex("\\bRd\\b", RegexOption.IGNORE_CASE) to "Road",
+    Regex("\\bDr\\b", RegexOption.IGNORE_CASE) to "Drive",
+    Regex("\\bLn\\b", RegexOption.IGNORE_CASE) to "Lane",
+    Regex("\\bCt\\b", RegexOption.IGNORE_CASE) to "Court",
+    Regex("\\bPkwy\\b", RegexOption.IGNORE_CASE) to "Parkway",
+    Regex("\\bHwy\\b", RegexOption.IGNORE_CASE) to "Highway",
+    Regex("\\bPl\\b", RegexOption.IGNORE_CASE) to "Place",
+    Regex("\\bTer\\b", RegexOption.IGNORE_CASE) to "Terrace",
+    Regex("\\bCir\\b", RegexOption.IGNORE_CASE) to "Circle",
+    Regex("\\bSq\\b", RegexOption.IGNORE_CASE) to "Square",
+    Regex("\\bTrl\\b", RegexOption.IGNORE_CASE) to "Trail",
+    Regex("\\bExpy\\b", RegexOption.IGNORE_CASE) to "Expressway",
+    Regex("\\bFwy\\b", RegexOption.IGNORE_CASE) to "Freeway",
+    Regex("\\bNE\\b") to "Northeast",
+    Regex("\\bNW\\b") to "Northwest",
+    Regex("\\bSE\\b") to "Southeast",
+    Regex("\\bSW\\b") to "Southwest",
+    Regex("\\bN\\b") to "North",
+    Regex("\\bS\\b") to "South",
+    Regex("\\bE\\b") to "East",
+    Regex("\\bW\\b") to "West",
+)
 
 /**
  * French — the first non-English NavStrings, proving the per-language-template design (note the word
@@ -100,6 +181,30 @@ object FrNavStrings : NavStrings {
             else -> if (m.isNotBlank()) ("Tournez $m").trim() + sur else "Continuez$sur"
         }
     }
+
+    // France is metric; the imperial branch is kept for parity. French uses a decimal COMMA ("1,2 km").
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(feet / 50).roundToInt() * 50} pieds"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 mile" else "${frNum(miles)} miles"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} mètres"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 kilomètre" else "${frNum(km)} kilomètres"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "Dans $distancePhrase, $instruction"
+
+    override fun arrived(): String = "Vous êtes arrivé"
+
+    // expandForSpeech is left as the interface default (identity) — French road names are read natively.
+
+    private fun frNum(x: Double): String = x.toString().replace('.', ',')
 }
 
 /**
