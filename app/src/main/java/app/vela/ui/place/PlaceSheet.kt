@@ -424,17 +424,8 @@ fun PlaceSheet(
                     color = ink,
                     modifier = Modifier.weight(1f),
                 )
-                // Save + Share as compact header actions (Google-style) — frees the row below for a
-                // wide Directions button, and keeps these two evenly placed (they used to float in a
-                // variable-length action row when Call/Website were absent).
-                IconButton(onClick = onToggleSave) {
-                    Icon(
-                        if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = if (isSaved) "Saved" else "Save",
-                        tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
-                    )
-                }
-                ShareIconButton(place, dim)
+                // Header stays lean (name + ⋮ + ✕) so a long place name has room and doesn't wrap hard;
+                // Save/Share live in the scrollable action-pill row below (Google-style).
                 // Overflow: pin this place straight to Home/Work (Google-style).
                 var headerMenu by remember { mutableStateOf(false) }
                 Box {
@@ -579,33 +570,32 @@ fun PlaceSheet(
                 Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
-            // Quick-action row — a WIDE filled Directions pill (the obvious primary action, Google-
-            // style) + compact Call / Website icon buttons. Save + Share moved to the header.
+            // Quick-action row — Google-style **scrollable pills**: a highlighted Directions, then
+            // Call (showing the actual number), Website, Save, Share. Scrolls horizontally so nothing
+            // clips no matter how many are present, and it keeps the header (name) uncluttered.
             Row(
-                Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Button(
-                    onClick = onDirections,
-                    modifier = Modifier.weight(1f).height(46.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp),
-                ) {
-                    Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("Directions", fontWeight = FontWeight.Medium)
-                }
+                ActionPill(Icons.Default.Directions, "Directions", emphasized = true, onClick = onDirections)
                 place.phone?.let { ph ->
-                    FilledTonalIconButton(onClick = {
+                    ActionPill(Icons.Default.Call, ph) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
-                    }) { Icon(Icons.Default.Call, contentDescription = "Call", modifier = Modifier.size(20.dp)) }
+                    }
                 }
                 place.website?.let { site ->
-                    FilledTonalIconButton(onClick = {
+                    ActionPill(Icons.Default.Language, "Website") {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
-                    }) { Icon(Icons.Default.Language, contentDescription = "Website", modifier = Modifier.size(20.dp)) }
+                    }
                 }
+                ActionPill(
+                    if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                    if (isSaved) "Saved" else "Save",
+                    onClick = onToggleSave,
+                )
+                ShareActionPill(place)
             }
 
             // Action link (Book online / Reserve a table / Order online) — Google shows this
@@ -1852,45 +1842,30 @@ private fun AboutTab(
     }
 }
 
-/** One circular icon-button + label in the quick-action row (Google style).
- *  [emphasized] gives the primary filled treatment (used for Directions). */
+/** One Google-style action pill — a rounded chip with an icon + label, sized to its content so a row
+ *  of them scrolls horizontally. [emphasized] = the filled primary treatment (Directions). */
 @Composable
-private fun SheetAction(
-    icon: ImageVector,
-    label: String,
-    labelColor: Color,
-    emphasized: Boolean = false,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier,
+private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = false, onClick: () -> Unit) {
+    val bg = if (emphasized) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+    val fg = if (emphasized) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
+    Row(
+        Modifier
+            .clip(RoundedCornerShape(20.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (emphasized) {
-            FilledIconButton(onClick = onClick) {
-                Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
-            }
-        } else {
-            FilledTonalIconButton(onClick = onClick) {
-                Icon(icon, contentDescription = label, modifier = Modifier.size(20.dp))
-            }
-        }
-        Spacer(Modifier.height(4.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = labelColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
+        Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(6.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = fg, maxLines = 1)
     }
 }
 
 /** Share action: opens a small menu — a Google Maps link, a keyless geo: pin
  *  (opens in any maps app, incl. Vela), raw coordinates, or just the address. */
 @Composable
-private fun ShareIconButton(place: Place, tint: Color) {
+private fun ShareActionPill(place: Place) {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
     val lat = place.location.lat
@@ -1912,9 +1887,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
     }
 
     Box {
-        IconButton(onClick = { open = true }) {
-            Icon(Icons.Default.Share, contentDescription = "Share", tint = tint)
-        }
+        ActionPill(Icons.Default.Share, "Share") { open = true }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text("Google Maps link") },
