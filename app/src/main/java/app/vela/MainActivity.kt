@@ -1,5 +1,6 @@
 package app.vela
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -8,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.vela.core.data.MapLinkParser
+import app.vela.ui.AppLocale
 import app.vela.ui.VelaRoot
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.VelaTheme
@@ -20,10 +22,18 @@ class MainActivity : ComponentActivity() {
     // so a deep link handled here shows up in the UI.
     private val vm: MapViewModel by viewModels()
 
+    /** Apply the in-app language override to this Activity's resources (no-op when following the
+     *  system locale) so `stringResource` resolves in the chosen language. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(AppLocale.wrap(newBase))
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // A language change re-creates this Activity so the whole UI re-reads localized resources.
+        AppLocale.onLocaleChanged = { recreate() }
         handleIntent(intent)
         setContent {
             // Read the theme at the call site (a recomposing scope) and pass it in
