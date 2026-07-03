@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import app.vela.core.voice.VelaKokoro
 import app.vela.ui.map.MapScreen
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.settings.SettingsScreen
@@ -50,7 +51,18 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
             SettingsScreen(vm = vm, onBack = { showSettings = false })
         } else {
             MapScreen(vm = vm, onOpenSettings = { showSettings = true })
-            if (Onboarding.showDonatePrompt.value) {
+            if (Onboarding.showVoicePrompt.value) {
+                VoicePrompt(
+                    // "other TTS providers found" — since the neural voice isn't installed yet,
+                    // voiceEngines() here is exactly the phone's installed system engines.
+                    hasSystemVoice = vm.voiceEngines().isNotEmpty(),
+                    onDownload = {
+                        vm.downloadKokoro()
+                        Onboarding.dismissVoicePrompt(context)
+                    },
+                    onSkip = { Onboarding.dismissVoicePrompt(context) },
+                )
+            } else if (Onboarding.showDonatePrompt.value) {
                 DonatePrompt(
                     onDonate = {
                         runCatching {
@@ -119,5 +131,30 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
         },
         confirmButton = { TextButton(onClick = { onChoose(diag, trips) }) { Text("Save choices") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
+    )
+}
+
+/** One-time, first-run offer of Vela's on-device neural voice — recommended for the most natural
+ *  spoken directions. If the phone already has system TTS engines we say so (they can use one
+ *  instead); either way the choice is changeable in Settings → Voice. */
+@Composable
+private fun VoicePrompt(hasSystemVoice: Boolean, onDownload: () -> Unit, onSkip: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onSkip,
+        title = { Text("Spoken navigation voice") },
+        text = {
+            Text(
+                "Vela has its own high-quality voice that runs entirely on your phone — the most " +
+                    "natural spoken directions, with no account or extra app. Recommended. It's a " +
+                    "one-time ~126 MB download (wifi recommended). " +
+                    (if (hasSystemVoice) "Prefer not to? You can use a text-to-speech voice already " +
+                        "installed on your phone instead. " else "") +
+                    "You can change this any time in Settings → Voice.",
+            )
+        },
+        confirmButton = { TextButton(onClick = onDownload) { Text("Download Vela voice") } },
+        dismissButton = {
+            TextButton(onClick = onSkip) { Text(if (hasSystemVoice) "Use system voice" else "Not now") }
+        },
     )
 }
