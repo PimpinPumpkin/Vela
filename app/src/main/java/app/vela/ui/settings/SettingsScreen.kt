@@ -140,6 +140,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             )
 
             Spacer(Modifier.height(20.dp))
+            SectionTitle("Language")
+            SelectableRow(
+                label = "Follow system",
+                selected = app.vela.ui.AppLocale.language.value.isBlank(),
+                onClick = { app.vela.ui.AppLocale.set(context, "") },
+            )
+            app.vela.ui.AppLocale.SUPPORTED.forEach { code ->
+                SelectableRow(
+                    label = app.vela.ui.AppLocale.endonym(code),
+                    selected = app.vela.ui.AppLocale.language.value == code,
+                    onClick = { app.vela.ui.AppLocale.set(context, code) },
+                )
+            }
+            Hint("Sets the language for spoken turn-by-turn directions (English, French, German, Spanish, Italian, Portuguese, Dutch, Russian, Polish, Swedish, Ukrainian) — independent of your phone's system language. Pick a matching voice in Voice library below. The rest of the app's on-screen text is being translated next.")
+
+            Spacer(Modifier.height(20.dp))
             SectionTitle("Voice")
             // Vela's own on-device neural voices — offer a one-tap download for whichever isn't
             // present yet; once downloaded each shows in the engine list below (selectable). No
