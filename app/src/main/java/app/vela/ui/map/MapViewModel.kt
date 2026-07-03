@@ -1440,6 +1440,15 @@ class MapViewModel @Inject constructor(
     fun kokoroInstalled(): Boolean = VelaKokoro.isReady(appContext)
     fun piperInstalled(): Boolean = VelaPiper.isReady(appContext)
 
+    /** A previously-downloaded Kokoro is the legacy int8 build → offer an upgrade to the faster fp32. */
+    fun kokoroIsInt8(): Boolean = VelaKokoro.modelFile(appContext)?.name?.contains("int8") == true
+
+    /** Voice playground: speak arbitrary text through the currently-selected voice. */
+    fun speakText(text: String) {
+        val t = text.trim()
+        if (t.isNotEmpty()) voice.speak(t, interrupt = true)
+    }
+
     /** Download the premium neural voice (Kokoro). Kept for the onboarding prompt. */
     fun downloadKokoro() = downloadNeural(VelaKokoro.ENGINE_ID)
 
