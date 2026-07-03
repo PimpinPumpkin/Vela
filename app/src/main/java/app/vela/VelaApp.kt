@@ -3,6 +3,7 @@ package app.vela
 import android.app.Application
 import app.vela.core.diag.DiagLog
 import app.vela.diag.CrashCatcher
+import app.vela.ui.AppLocale
 import app.vela.ui.Onboarding
 import app.vela.ui.Traffic
 import app.vela.ui.Units
@@ -18,6 +19,7 @@ class VelaApp : Application() {
         super.onCreate()
         Units.init(this)
         AppTheme.init(this)
+        AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
         Traffic.init(this)
         app.vela.ui.LiveReviews.init(this)
         Onboarding.init(this)
