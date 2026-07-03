@@ -172,7 +172,15 @@ class MapViewModel @Inject constructor(
     init {
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
-        // Restore the saved voice; default to a downloaded neural voice (Kokoro preferred, else Piper).
+        // Reclaim disk from the removed Kokoro/Matcha voices (up to ~500 MB of dead model files after
+        // the Piper-only switch). Off the main thread; a no-op once the dirs are gone.
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                java.io.File(appContext.filesDir, "kokoro").deleteRecursively()
+                java.io.File(appContext.filesDir, "matcha").deleteRecursively()
+            }
+        }
+        // Restore the saved voice; default to the downloaded Piper voice.
         val savedRaw = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
             .getString("voice_engine", null)
         val savedEngine = when {
