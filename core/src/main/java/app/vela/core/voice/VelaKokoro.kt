@@ -4,28 +4,31 @@ import android.content.Context
 import java.io.File
 
 /**
- * Single source of truth for Vela's downloaded Kokoro neural voice model: where it lives and whether
- * it's usable. Shared by [VoiceGuide] (`:core`) and the installer/synth (`:app`).
+ * Single source of truth for Vela's premium Kokoro neural voice: where it lives and whether it's
+ * usable. Shared by [VoiceGuide] (`:core`) and the installer/synth (`:app`).
  *
- * The model (~126 MB, `kokoro-int8-multi-lang-v1_0`) is downloaded at runtime into `filesDir/kokoro`
- * — never bundled in the APK (that would bloat it + can't ship in an F-Droid build). Only the tiny
- * sherpa-onnx native runtime is bundled.
+ * The model is downloaded at runtime into `filesDir/kokoro` — never bundled. New downloads fetch the
+ * **fp32** multi-lang model (`kokoro-multi-lang-v1_0`, ~310 MB): counter-intuitively it's ~2× FASTER
+ * than the int8 build on ARM (int8 dynamic-quant has dequant overhead with no fast kernels) AND higher
+ * quality. We still accept an already-downloaded int8 model, so we resolve the model file by glob.
  */
 object VelaKokoro {
-    /** Synthetic engine id for the in-process neural voice — NOT a real installed TTS package, so
-     *  VoiceGuide special-cases it (vs a system engine package name). */
     const val ENGINE_ID = "vela.kokoro"
-    const val LABEL = "Vela Neural (Kokoro)"
+    const val LABEL = "Vela Neural (Kokoro) — premium"
 
     fun modelDir(context: Context): File = File(context.filesDir, "kokoro")
 
-    /** The files `OfflineTtsKokoroModelConfig` needs at minimum to synthesize English — all must be
-     *  present for the voice to be offered/selected. */
+    /** The Kokoro ONNX file actually present (fp32 `model.onnx`, or a legacy `model.int8.onnx`). */
+    fun modelFile(context: Context): File? =
+        modelDir(context).listFiles()?.firstOrNull { it.name.matches(MODEL_RE) }
+
     fun isReady(context: Context): Boolean {
         val d = modelDir(context)
-        return File(d, "model.int8.onnx").exists() &&
+        return modelFile(context) != null &&
             File(d, "voices.bin").exists() &&
             File(d, "tokens.txt").exists() &&
             File(d, "espeak-ng-data").isDirectory
     }
+
+    private val MODEL_RE = Regex("model.*\\.onnx")
 }
