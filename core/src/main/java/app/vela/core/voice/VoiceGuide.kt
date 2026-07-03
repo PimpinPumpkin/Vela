@@ -1,6 +1,7 @@
 package app.vela.core.voice
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
 import android.media.AudioManager
@@ -32,6 +33,12 @@ class VoiceGuide @Inject constructor(
     private var currentEngine: String? = null
     private val pending = ArrayDeque<Pair<String, Boolean>>()
 
+    /** Vela's in-process neural voice (Kokoro/sherpa-onnx), wired from `:app` where the native
+     *  runtime lives. When the user selects [VelaKokoro.ENGINE_ID], guidance goes here instead of
+     *  Android TextToSpeech. Null until wired / on a build without it. */
+    var neural: NeuralSynth? = null
+    private var useNeural = false
+
     /** TTS health for the UI: null = initialising, true = a usable voice is ready,
      *  false = init failed or the chosen language has no installed voice data. Lets
      *  Settings tell the user *why* it's silent instead of failing quietly. */
@@ -54,6 +61,23 @@ class VoiceGuide @Inject constructor(
      *  currently loaded — so picking a different engine in Settings actually takes
      *  effect (the old idempotent guard ignored later picks). */
     fun init(enginePackage: String? = null) {
+        // Vela's own in-process neural voice — no Android TextToSpeech involved.
+        if (enginePackage == VelaKokoro.ENGINE_ID) {
+            if (useNeural && enginePackage == currentEngine) return
+            if (tts != null) shutdown()
+            currentEngine = enginePackage
+            useNeural = true
+            ready = true // the neural synth loads + queues internally
+            working = neural != null
+            neural?.warmUp()
+            while (pending.isNotEmpty()) {
+                val (text, interrupt) = pending.removeFirst()
+                speakNow(text, interrupt)
+            }
+            return
+        }
+        useNeural = false
+        neural?.stop()
         if (tts != null && enginePackage == currentEngine) return
         if (tts != null) shutdown()
         currentEngine = enginePackage
@@ -118,8 +142,24 @@ class VoiceGuide @Inject constructor(
         }
     }
 
-    fun availableEngines(): List<VoiceEngine> =
-        tts?.engines.orEmpty().map { VoiceEngine(it.name, it.label) }
+    /** Every TTS engine the user can pick: Vela's neural voice first (when its model is downloaded),
+     *  then every system TTS engine installed on the phone. Enumerated via [android.content.pm.PackageManager]
+     *  (the TTS_SERVICE intent) so the list is complete even when no Android [TextToSpeech] instance
+     *  is active — e.g. while the neural voice is the current engine and `tts` is null. */
+    fun availableEngines(): List<VoiceEngine> {
+        val pm = context.packageManager
+        val installed = runCatching {
+            pm.queryIntentServices(Intent("android.intent.action.TTS_SERVICE"), 0)
+                .mapNotNull { it.serviceInfo }
+                .map { VoiceEngine(it.packageName, it.loadLabel(pm).toString()) }
+                .distinctBy { it.packageName }
+        }.getOrElse { tts?.engines.orEmpty().map { VoiceEngine(it.name, it.label) } }
+        return if (VelaKokoro.isReady(context)) {
+            listOf(VoiceEngine(VelaKokoro.ENGINE_ID, VelaKokoro.LABEL)) + installed
+        } else {
+            installed
+        }
+    }
 
     /** Speak [text]; [interrupt] flushes the queue (use for the imminent turn). */
     fun speak(text: String, interrupt: Boolean = false) {
@@ -132,6 +172,12 @@ class VoiceGuide @Inject constructor(
     }
 
     private fun speakNow(text: String, interrupt: Boolean) {
+        val n = neural
+        if (useNeural && n != null) {
+            requestFocus()
+            n.speak(forSpeech(text), interrupt) { abandonFocus() }
+            return
+        }
         requestFocus()
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         tts?.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
@@ -151,6 +197,7 @@ class VoiceGuide @Inject constructor(
 
     fun stop() {
         tts?.stop()
+        neural?.stop()
         abandonFocus()
     }
 
@@ -158,6 +205,7 @@ class VoiceGuide @Inject constructor(
         tts?.shutdown()
         tts = null
         ready = false
+        neural?.stop()
         abandonFocus()
     }
 
