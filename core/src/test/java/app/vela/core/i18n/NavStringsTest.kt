@@ -5,6 +5,7 @@ import app.vela.core.model.LaneSide
 import app.vela.core.model.laneGuidance
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.util.Locale
 
@@ -38,7 +39,7 @@ class NavStringsTest {
     @Test fun `registry defaults to english and switches by language`() {
         assertEquals(EnNavStrings, NavStringsRegistry.current()) // default, locale-independent
         assertEquals(FrNavStrings, NavStringsRegistry.forLanguage("fr"))
-        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("de")) // untranslated → English
+        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("ja")) // untranslated → English fallback
         NavStringsRegistry.setLocale(Locale.FRANCE)
         assertEquals(FrNavStrings, NavStringsRegistry.current())
         NavStringsRegistry.setLocale(Locale.US) // reset so other tests see English
@@ -95,5 +96,35 @@ class NavStringsTest {
         assertEquals("one twenty-eighth Street", EnNavStrings.expandForSpeech("128th St"))
         // French leaves the text — including a road abbreviation — untouched (interface default identity).
         assertEquals("Tournez sur Rue St", FrNavStrings.expandForSpeech("Tournez sur Rue St"))
+        // Other languages also leave text untouched (they use the interface default).
+        assertEquals("Biegen Sie ab auf Hauptstr", DeNavStrings.expandForSpeech("Biegen Sie ab auf Hauptstr"))
+    }
+
+    @Test fun `every registered language produces non-blank nav strings and keeps road names`() {
+        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk")
+        for (code in langs) {
+            val ns = NavStringsRegistry.forLanguage(code)
+            assertEquals("$code should map to its own NavStrings", code, ns.locale.language)
+            // Every generated string non-blank for representative maneuvers + values.
+            assertTrue("$code turn", ns.phrase("turn", "left", "Main St", null, null, null).isNotBlank())
+            assertTrue("$code exit", ns.phrase("off ramp", null, null, "Downtown", "12", null).isNotBlank())
+            assertTrue("$code roundabout", ns.phrase("roundabout", null, "Elm St", null, null, 2).isNotBlank())
+            assertTrue("$code merge", ns.phrase("merge", null, "I 5", null, null, null).isNotBlank())
+            assertTrue("$code uturn", ns.phrase("uturn", null, "Main St", null, null, null).isNotBlank())
+            assertTrue("$code dist metric near", ns.spokenDistance(150.0, false).isNotBlank())
+            assertTrue("$code dist metric far", ns.spokenDistance(2400.0, false).isNotBlank())
+            assertTrue("$code dist imperial", ns.spokenDistance(150.0, true).isNotBlank())
+            assertTrue("$code inThen", ns.inThen("X", "Y").isNotBlank())
+            assertTrue("$code arrived", ns.arrived().isNotBlank())
+            assertTrue("$code startNav", ns.startNav("Z").isNotBlank())
+            assertTrue("$code reachedStop", ns.reachedStop("Costco").isNotBlank())
+            assertTrue("$code reachedStop blank", ns.reachedStop("").isNotBlank())
+            assertTrue("$code fasterRoute", ns.fasterRoute("Z").isNotBlank())
+            assertTrue("$code voiceTest", ns.voiceTest().isNotBlank())
+            assertTrue("$code lanes plural", ns.useLanes(LaneSide.RIGHT, 2).isNotBlank())
+            assertTrue("$code lane single", ns.useLanes(LaneSide.LEFT, 1).isNotBlank())
+            // The road NAME is data — it must survive untranslated in the output.
+            assertTrue("$code keeps road name", ns.phrase("turn", "left", "Rue de Rivoli", null, null, null).contains("Rue de Rivoli"))
+        }
     }
 }
