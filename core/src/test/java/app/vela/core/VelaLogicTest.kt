@@ -276,10 +276,34 @@ class NavEngineTest {
         assertEquals("must NOT skip the loop-back turn that's only ~9 m away crow-flies", 1, s2.stepIndex)
     }
 
+    // Units are checked on a real turn's approach prompt — the DEPART maneuver is spoken by
+    // NavSession.start and skipped by the engine (advance past it first).
+    private fun turnRoute(): Route {
+        val a = LatLng(37.0000, -122.0000)
+        val turn = LatLng(37.0030, -122.0000) // ~334 m north — inside the 400 m prompt
+        val end = LatLng(37.0030, -121.9960)
+        return Route(
+            polyline = listOf(a, turn, end),
+            legs = listOf(
+                RouteLeg(
+                    distanceMeters = 700.0, durationSeconds = 60.0, durationInTrafficSeconds = null,
+                    maneuvers = listOf(
+                        Maneuver(ManeuverType.DEPART, "Head north", a, 334.0, 30.0),
+                        Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Larch Way", turn, 366.0, 30.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive", end, 0.0, 0.0),
+                    ),
+                ),
+            ),
+            distanceMeters = 700.0, durationSeconds = 60.0, durationInTrafficSeconds = null,
+        )
+    }
+
     /** Spoken prompt distances follow the Imperial setting (TTS used to always say metres). */
     @Test
     fun spokenPromptsUseImperialWhenImperial() {
-        val (_, events) = NavEngine.update(straightRoute(), NavState(), straightRoute().polyline.first(), imperial = true)
+        val r = turnRoute()
+        val (s1, _) = NavEngine.update(r, NavState(), r.polyline.first(), imperial = true) // consume DEPART
+        val (_, events) = NavEngine.update(r, s1, r.polyline.first(), imperial = true)     // ~334 m out → prompt turn
         val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
         assertTrue("a prompt should use feet/miles, got $spoken", spoken.any { it.contains("feet") || it.contains("mile") })
         assertTrue("must not say metres in imperial mode, got $spoken", spoken.none { it.contains("meter") })
@@ -287,7 +311,9 @@ class NavEngineTest {
 
     @Test
     fun spokenPromptsUseMetresWhenMetric() {
-        val (_, events) = NavEngine.update(straightRoute(), NavState(), straightRoute().polyline.first(), imperial = false)
+        val r = turnRoute()
+        val (s1, _) = NavEngine.update(r, NavState(), r.polyline.first(), imperial = false) // consume DEPART
+        val (_, events) = NavEngine.update(r, s1, r.polyline.first(), imperial = false)      // ~334 m out → prompt turn
         val spoken = events.filterIsInstance<NavEvent.Speak>().map { it.text }
         assertTrue("a prompt should use metres, got $spoken", spoken.any { it.contains("meter") })
     }
@@ -370,11 +396,15 @@ class NavReplayTest {
         val report = NavReplay.analyze(route, densify(route.polyline), imperial = true)
 
         assertTrue("should produce per-fix cards", report.cards.isNotEmpty())
-        // Every real turn (not the arrival) gets a spoken pre-turn prompt and a turn-now cue.
-        val realTurns = report.maneuvers.filter { it.type != ManeuverType.ARRIVE }
+        // Every real turn (not the DEPART — NavSession.start speaks that — nor the arrival) gets a
+        // spoken pre-turn prompt and a turn-now cue. The engine advances past the DEPART silently.
+        val realTurns = report.maneuvers.filter { it.type != ManeuverType.ARRIVE && it.type != ManeuverType.DEPART }
         assertTrue("every turn announced: ${report.summary()}", realTurns.all { it.announced })
-        assertTrue("every turn got a turn-now cue", report.maneuvers.dropLast(1).all { it.turnNowFired })
+        assertTrue("every turn got a turn-now cue", realTurns.all { it.turnNowFired })
         assertTrue("arrival should fire", report.maneuvers.last().turnNowFired)
+        // The DEPART is intentionally silent in the engine (spoken once by NavSession.start instead).
+        val depart = report.maneuvers.first { it.type == ManeuverType.DEPART }
+        assertTrue("DEPART must not be re-announced by the engine", !depart.announced)
         // The card distance tracks reality closely on a clean drive, and nothing is flagged.
         assertTrue("card error should stay small, was ${report.worstCardErrorM}", report.worstCardErrorM < 150.0)
         assertTrue("a clean drive must flag nothing:\n${report.summary()}", report.suspects.isEmpty())
