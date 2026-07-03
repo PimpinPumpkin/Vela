@@ -25,6 +25,7 @@ import javax.inject.Singleton
 @Singleton
 class PiperSynth @Inject constructor(
     @ApplicationContext private val context: Context,
+    private val calibration: app.vela.core.config.CalibrationStore,
 ) : NeuralSynth {
 
     private val worker = Executors.newSingleThreadExecutor { r ->
@@ -45,9 +46,14 @@ class PiperSynth @Inject constructor(
     /** The user's chosen speaker (persisted), clamped to the model's range. */
     private fun speakerId(): Int {
         val n = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
-            .getInt("voice_speaker", 0)
+            .getInt("voice_speaker", calibration.current().defaultVoiceSpeaker)
         return if (numSpeakers > 0) n.coerceIn(0, numSpeakers - 1) else n.coerceAtLeast(0)
     }
+
+    /** The user's chosen speech-speed multiplier (persisted; 1.0 = normal, >1 = faster), clamped. */
+    private fun speed(): Float =
+        context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .getFloat("voice_speed", 1.0f).coerceIn(0.5f, 2.0f)
 
     override fun warmUp() {
         if (tts != null || loadFailed || !VelaPiper.isReady(context)) return
@@ -85,7 +91,7 @@ class PiperSynth @Inject constructor(
             if (engine == null || myGen != generation) { onDone(); return@execute }
             try {
                 val t0 = android.os.SystemClock.elapsedRealtime()
-                val audio = engine.generate(text = text, sid = speakerId(), speed = SPEED)
+                val audio = engine.generate(text = text, sid = speakerId(), speed = speed())
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 if (myGen != generation) { onDone(); return@execute }
                 val samples = audio.samples

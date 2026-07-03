@@ -194,6 +194,19 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         vm.speakText("In a quarter mile, turn right onto Main Street, then your destination is on the left.")
                     }) { Text("Nav sample") }
                 }
+                // Speed applies to whichever voice is selected (neural + system TTS).
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        "Voice speed · ${"%.2fx".format(state.voiceSpeed)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedButton(onClick = { vm.setVoiceSpeed(-0.1f) }) { Text("−") }
+                    Spacer(Modifier.width(6.dp))
+                    OutlinedButton(onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
+                }
+                Hint("Slower or faster spoken directions — tap − / + (it speaks a sample). 1.00× is normal.")
                 // The Vela voice (libritts_r) is multi-speaker — let the user audition + pick one.
                 if (state.selectedEngine?.packageName?.startsWith("vela.") == true) {
                     Spacer(Modifier.height(10.dp))
