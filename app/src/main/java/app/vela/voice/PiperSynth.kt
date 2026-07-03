@@ -145,16 +145,21 @@ class PiperSynth @Inject constructor(
                 // length), and one-shot generation runs sentences together, so we do the pausing here.
                 // Splitting (which periods are real sentence ends vs. abbreviations) lives in :core so
                 // it's unit-tested — see SpeechText.
-                val parts = SpeechText.splitSentences(text)
+                // Break into phrase fragments (sentences + comma/semicolon clauses), synth each on its
+                // own, and splice the tagged silence after it — a firm beat at periods, a shorter one at
+                // commas (Piper reads straight through commas otherwise, running "In a quarter mile, turn
+                // right" together). The split lives in :core so it's unit-tested (see SpeechText).
+                val frags = SpeechText.speechFragments(text, PAUSE_SEC, CLAUSE_PAUSE_SEC)
                 var sampleRate = 22050
-                val chunks = ArrayList<FloatArray>(parts.size)
-                for (p in parts) {
+                val chunks = ArrayList<FloatArray>(frags.size * 2)
+                for ((frag, gapAfter) in frags) {
                     if (myGen != generation) { onDone(); return@execute }
-                    val a = engine.generate(text = p, sid = sid, speed = spd)
+                    val a = engine.generate(text = frag, sid = sid, speed = spd)
                     sampleRate = a.sampleRate
                     if (a.samples.isNotEmpty()) chunks.add(a.samples)
+                    if (gapAfter > 0f) chunks.add(FloatArray((sampleRate * gapAfter).toInt())) // spliced silence
                 }
-                val samples = joinWithGaps(chunks, sampleRate)
+                val samples = concat(chunks)
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 if (myGen != generation) { onDone(); return@execute }
                 if (samples.isNotEmpty()) {
@@ -162,7 +167,7 @@ class PiperSynth @Inject constructor(
                     at.pause(); at.flush(); at.play()
                     at.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
                 }
-                Log.i(TAG, "spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${parts.size} sent.) in ${genMs}ms")
+                Log.i(TAG, "spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${frags.size} frag.) in ${genMs}ms")
             } catch (t: Throwable) {
                 Log.e(TAG, "speak failed: ${t.message}", t)
             } finally {
@@ -171,19 +176,14 @@ class PiperSynth @Inject constructor(
         }
     }
 
-    /** Concatenate sentence audio chunks with [PAUSE_SEC]-worth of silence between (not after the
-     *  last), giving a clear beat at each period. Single chunk → returned as-is (no trailing silence). */
-    private fun joinWithGaps(chunks: List<FloatArray>, sampleRate: Int): FloatArray {
+    /** Concatenate audio + spliced-silence chunks into one buffer (the gaps are already silence chunks
+     *  inserted by the caller). Single chunk → returned as-is. */
+    private fun concat(chunks: List<FloatArray>): FloatArray {
         if (chunks.isEmpty()) return FloatArray(0)
         if (chunks.size == 1) return chunks[0]
-        val gap = (sampleRate * PAUSE_SEC).toInt()
-        val total = chunks.sumOf { it.size } + gap * (chunks.size - 1)
-        val out = FloatArray(total)
+        val out = FloatArray(chunks.sumOf { it.size })
         var pos = 0
-        for ((i, c) in chunks.withIndex()) {
-            c.copyInto(out, pos); pos += c.size
-            if (i < chunks.size - 1) pos += gap // leave zeros (silence) for the gap
-        }
+        for (c in chunks) { c.copyInto(out, pos); pos += c.size }
         return out
     }
 
@@ -232,5 +232,7 @@ class PiperSynth @Inject constructor(
         const val SPEED = 1.0f
         // Silence spliced between sentences (seconds) — a natural period beat for nav prompts.
         const val PAUSE_SEC = 0.32f
+        // Shorter beat spliced at commas/semicolons so clauses don't run together ("In a quarter mile, …").
+        const val CLAUSE_PAUSE_SEC = 0.16f
     }
 }
