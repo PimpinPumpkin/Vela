@@ -135,6 +135,7 @@ class CalibrationStore @Inject constructor(
             paths = Calibration.DEFAULT_PATHS + remotePaths,
             notices = notices,
             transformsJs = transformsJs,
+            defaultVoiceSpeaker = (o["defaultVoiceSpeaker"] as? JsonPrimitive)?.content?.toIntOrNull() ?: d.defaultVoiceSpeaker,
         )
     }.getOrNull()
 
