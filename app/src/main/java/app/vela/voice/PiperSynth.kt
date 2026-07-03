@@ -38,16 +38,23 @@ class PiperSynth @Inject constructor(
     @Volatile private var loadFailed = false
     @Volatile private var generation = 0
 
+    /** Which voice id `tts` currently holds — lets [ensureLoaded] detect a voice switch and rebuild. */
+    @Volatile private var loadedVoiceId: String? = null
+
     /** Number of speakers in the loaded model (libritts_r is multi-speaker, ~900); 0 until loaded. */
     @Volatile var numSpeakers: Int = 0
         private set
 
     override val ready: Boolean get() = tts != null
 
-    /** The user's chosen speaker (persisted), clamped to the model's range. */
+    /** The user's chosen speaker (persisted PER VOICE — libritts_r's 904 speakers are meaningless for
+     *  a single-speaker voice), clamped to the loaded model's range. Only the fleet-default voice seeds
+     *  from the remotely-configurable [Calibration.defaultVoiceSpeaker]; others default to speaker 0. */
     private fun speakerId(): Int {
-        val n = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
-            .getInt("voice_speaker", calibration.current().defaultVoiceSpeaker)
+        val prefs = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+        val id = loadedVoiceId ?: VelaPiper.effectiveVoiceId(context) ?: VelaPiper.DEFAULT_VOICE_ID
+        val seed = if (id == VelaPiper.DEFAULT_VOICE_ID) calibration.current().defaultVoiceSpeaker else 0
+        val n = prefs.getInt(VelaPiper.speakerKey(id), seed)
         return if (numSpeakers > 0) n.coerceIn(0, numSpeakers - 1) else n.coerceAtLeast(0)
     }
 
@@ -58,32 +65,62 @@ class PiperSynth @Inject constructor(
             .getFloat("voice_speed", calibration.current().defaultVoiceSpeed).coerceIn(0.5f, 2.0f)
 
     override fun warmUp() {
-        if (tts != null || loadFailed || !VelaPiper.isReady(context)) return
+        // No `tts != null` short-circuit: ensureLoaded must be able to REBUILD when the selected voice
+        // changed. It's idempotent per-voice (returns the current engine when the right voice is up), so
+        // a warm-up on the already-loaded voice is a cheap no-op.
+        if (loadFailed || !VelaPiper.isReady(context)) return
         worker.execute { ensureLoaded() }
     }
 
     private fun ensureLoaded(): OfflineTts? {
-        tts?.let { return it }
-        if (loadFailed || !VelaPiper.isReady(context)) return null
+        val r = VelaPiper.resolved(context) ?: return null // nothing usable installed
+        val cur = tts
+        if (cur != null && loadedVoiceId == r.voiceId && !loadFailed) return cur // right voice already up
+        // A switch (or first load) → (re)build. Tear the old engine down first: we ARE the single worker
+        // thread, so no generate() can be running concurrently → releasing here is safe (never a
+        // use-after-free). loadFailed resets so a previously-bad voice doesn't block a new one.
+        runCatching { cur?.release() }
+        tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false
         return try {
-            val dir = VelaPiper.modelDir(context).absolutePath
-            val vits = OfflineTtsVitsModelConfig(
-                model = "$dir/${VelaPiper.MODEL}",
-                tokens = "$dir/tokens.txt",
-                dataDir = "$dir/espeak-ng-data",
-            )
+            val vits = OfflineTtsVitsModelConfig(model = r.model, tokens = r.tokens, dataDir = r.dataDir)
             val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = 2, debug = false))
             val engine = OfflineTts(assetManager = null, config = cfg)
             numSpeakers = engine.numSpeakers()
             runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
             tts = engine
-            Log.i(TAG, "loaded ok: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
+            loadedVoiceId = r.voiceId
+            Log.i(TAG, "loaded ${r.voiceId}: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
             engine
         } catch (t: Throwable) {
             Log.e(TAG, "model load failed: ${t.message}", t)
             loadFailed = true
+            loadedVoiceId = null
             null
         }
+    }
+
+    /**
+     * Switch to the currently-selected voice (call right after changing the `voice_model` pref). The
+     * SINGLE switch trigger. Race-free: bump [generation] to abort any in-flight [speak] at its next
+     * per-sentence check, then queue teardown + rebuild on the SAME serial worker — so it runs AFTER
+     * the aborted speak returns and never frees `tts` mid-`generate()`.
+     */
+    fun reloadVoice() {
+        generation++
+        worker.execute {
+            runCatching { track?.pause(); track?.flush() }
+            runCatching { tts?.release() }
+            tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false
+            ensureLoaded()
+        }
+    }
+
+    /** Delete a voice's model dir ON the worker thread, so the unlink can't race an in-flight
+     *  `generate()` reading those files. Deleting the ACTIVE voice must call [reloadVoice]/[release]
+     *  first so the engine is off the old files before this runs. */
+    fun deleteModelDir(dir: java.io.File) {
+        generation++
+        worker.execute { runCatching { dir.deleteRecursively() } }
     }
 
     override fun speak(text: String, interrupt: Boolean, onDone: () -> Unit) {

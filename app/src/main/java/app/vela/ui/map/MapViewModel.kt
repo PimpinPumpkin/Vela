@@ -28,6 +28,8 @@ import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
+import app.vela.core.voice.PiperCatalog
+import app.vela.core.voice.PiperVoice
 import app.vela.core.voice.VelaPiper
 import app.vela.core.voice.VoiceEngine
 import app.vela.core.voice.VoiceGuide
@@ -103,6 +105,9 @@ data class MapUiState(
     val status: String? = null,
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
     val kokoroDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
+    val installedVoiceIds: Set<String> = emptySet(), // Piper voices present on disk (the voice browser)
+    val selectedVoiceId: String? = null, // the active Piper voice id (null = none installed)
+    val voiceDownloadingId: String? = null, // the ONE voice currently downloading (one-at-a-time), else null
     val voiceSpeaker: Int = 0, // chosen speaker # for the multi-speaker Vela voice (playground stepper)
     val voiceSpeed: Float = 1.0f, // spoken-directions speed multiplier (1.0 = normal, >1 = faster)
     val showPsdsTip: Boolean = false,
@@ -183,6 +188,9 @@ class MapViewModel @Inject constructor(
                 java.io.File(appContext.filesDir, "matcha").deleteRecursively()
             }
         }
+        // Relocate any pre-browser flat Piper install (filesDir/piper/*.onnx) into the per-voice subdir
+        // layout the voice browser expects — synchronous, rename-only (no re-download), crash-safe.
+        VelaPiper.migrateFlatLayoutIfNeeded(appContext)
         // Restore the saved voice; default to the downloaded Piper voice.
         val savedRaw = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
             .getString("voice_engine", null)
@@ -203,9 +211,13 @@ class MapViewModel @Inject constructor(
         val voicePrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
         val savedSpeed = voicePrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
         voice.setRate(savedSpeed) // relay the saved rate to the AOSP TTS engine at startup
+        val installedVoices = VelaPiper.installedVoiceIds(appContext)
+        val activeVoice = VelaPiper.effectiveVoiceId(appContext)
         _state.update {
             it.copy(
-                voiceSpeaker = voicePrefs.getInt("voice_speaker", calibration.current().defaultVoiceSpeaker).coerceAtLeast(0),
+                installedVoiceIds = installedVoices.toSet(),
+                selectedVoiceId = activeVoice,
+                voiceSpeaker = savedSpeakerFor(activeVoice),
                 voiceSpeed = savedSpeed,
                 recents = recentStore.recent(), saved = savedStore.saved(),
                 recentPlaces = recentPlaceStore.recent(),
@@ -1461,18 +1473,35 @@ class MapViewModel @Inject constructor(
         if (t.isNotEmpty()) voice.speak(t, interrupt = true)
     }
 
-    /** Speakers in the loaded Vela voice model (libritts_r is ~900; 0 until it loads). */
-    fun voiceSpeakerCount(): Int = piperSynth.numSpeakers
+    /** Speakers in the SELECTED Vela voice (from the catalog, so it's correct synchronously the instant
+     *  you switch — the live-loaded [PiperSynth.numSpeakers] lags a background reload). 1 for single-
+     *  speaker voices; the variant picker only shows when this is > 1. */
+    fun voiceSpeakerCount(): Int =
+        _state.value.selectedVoiceId?.let { PiperCatalog.byId(it)?.numSpeakers }
+            ?: piperSynth.numSpeakers
+
+    /** The saved (or seeded) speaker index for [id]'s per-voice key — matches [PiperSynth.speakerId].
+     *  Reads prefs straight from [appContext] (not the `settingsPrefs` property) so it's safe to call
+     *  from `init`, before that property's initializer has run. */
+    private fun savedSpeakerFor(id: String?): Int {
+        if (id == null) return 0
+        val prefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+        val seed = if (id == VelaPiper.DEFAULT_VOICE_ID) calibration.current().defaultVoiceSpeaker else 0
+        val max = PiperCatalog.byId(id)?.numSpeakers ?: 0
+        val n = prefs.getInt(VelaPiper.speakerKey(id), seed)
+        return if (max > 0) n.coerceIn(0, max - 1) else n.coerceAtLeast(0)
+    }
 
     /** Step the multi-speaker Vela voice by [delta], persist it, and speak a sample so it's heard. */
     fun stepSpeaker(delta: Int) = setSpeaker(_state.value.voiceSpeaker + delta)
 
     /** Jump the multi-speaker Vela voice straight to speaker [n] (clamped to the model's range),
-     *  persist it, and speak a sample. Lets the user type a variant number instead of stepping. */
+     *  persist it PER VOICE, and speak a sample. Lets the user type a variant number instead of stepping. */
     fun setSpeaker(n: Int) {
-        val max = piperSynth.numSpeakers
+        val id = _state.value.selectedVoiceId ?: return // no voice installed → nothing to set
+        val max = voiceSpeakerCount()
         val clamped = if (max > 0) n.coerceIn(0, max - 1) else n.coerceAtLeast(0)
-        settingsPrefs.edit().putInt("voice_speaker", clamped).apply()
+        settingsPrefs.edit().putInt(VelaPiper.speakerKey(id), clamped).apply()
         _state.update { it.copy(voiceSpeaker = clamped) }
         voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
     }
@@ -1487,23 +1516,100 @@ class MapViewModel @Inject constructor(
         voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
     }
 
-    /** Download the neural voice (Piper) into the app, then make it the active voice. */
-    fun downloadPiper() {
-        if (_state.value.kokoroDownloadPct != null) return // one at a time
-        _state.update { it.copy(kokoroDownloadPct = 0f) }
+    // ---- Voice library (the in-app Piper voice browser) --------------------------------------------
+
+    /** The browsable catalog of downloadable Piper voices. */
+    fun voiceCatalog(): List<PiperVoice> = PiperCatalog.ALL
+
+    /** Re-derive installed voices + the active selection + its speaker from disk (after any change). */
+    private fun refreshInstalledVoices() {
+        val active = VelaPiper.effectiveVoiceId(appContext)
+        _state.update {
+            it.copy(
+                installedVoiceIds = VelaPiper.installedVoiceIds(appContext).toSet(),
+                selectedVoiceId = active,
+                voiceSpeaker = savedSpeakerFor(active),
+            )
+        }
+    }
+
+    /** Download one catalog voice into its own subdir. One-at-a-time (the installer uses fixed temp
+     *  paths). Auto-activates the neural engine + selects the voice ONLY when it's the first voice ever
+     *  installed (so a user auditioning extra voices, or deliberately on a system TTS engine, isn't
+     *  hijacked off their current voice). */
+    fun downloadVoice(id: String) {
+        if (_state.value.voiceDownloadingId != null) return // serialize
+        val v = PiperCatalog.byId(id) ?: return
+        // Cheap disk pre-flight (models are 67–131 MB) — fail early with a clear message, not late.
+        if (appContext.filesDir.usableSpace < v.sizeBytes * 13 / 10) {
+            showStatus("Not enough free space for ${v.displayName} (~${v.sizeMb} MB)")
+            return
+        }
+        val firstEver = VelaPiper.installedVoiceIds(appContext).isEmpty()
+        _state.update { it.copy(voiceDownloadingId = id, kokoroDownloadPct = 0f) }
         viewModelScope.launch {
             val ok = kokoroInstaller.download(
-                KokoroInstaller.PIPER_URL, VelaPiper.modelDir(appContext), KokoroInstaller.PIPER_SIZE,
-            ) { p -> _state.update { it.copy(kokoroDownloadPct = p) } }
-            _state.update { it.copy(kokoroDownloadPct = null) }
-            if (ok && VelaPiper.isReady(appContext)) {
-                setVoiceEngine(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL))
-                showStatus("Neural voice ready — tap Test voice")
+                PiperCatalog.downloadUrl(id), VelaPiper.modelDirFor(appContext, id), v.sizeBytes,
+            ) { p -> _state.update { if (it.voiceDownloadingId == id) it.copy(kokoroDownloadPct = p) else it } }
+            // Clear the downloading state + refresh the installed set in ONE update (no "Download"
+            // flicker between finishing and appearing installed).
+            _state.update {
+                it.copy(
+                    voiceDownloadingId = null, kokoroDownloadPct = null,
+                    installedVoiceIds = VelaPiper.installedVoiceIds(appContext).toSet(),
+                    selectedVoiceId = VelaPiper.effectiveVoiceId(appContext),
+                )
+            }
+            if (ok && VelaPiper.isVoiceReady(appContext, id)) {
+                if (firstEver) selectVoice(id) else flashStatus("${v.displayName} downloaded")
             } else {
-                showStatus("Neural voice download failed")
+                showStatus("${v.displayName} download failed")
             }
         }
     }
+
+    /** Make an already-downloaded voice active: persist the pick, reload the synth (the single switch
+     *  trigger), point the engine at the neural synth, and audition a nav sample. */
+    fun selectVoice(id: String) {
+        if (!VelaPiper.isVoiceReady(appContext, id)) return
+        VelaPiper.setSelectedVoiceId(appContext, id)
+        piperSynth.reloadVoice() // THE build of the new voice (race-free; runs first on the worker)
+        setVoiceEngine(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL)) // route VoiceGuide→neural + persist engine
+        refreshInstalledVoices() // selectedVoiceId + per-voice speaker for the variant UI
+        voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true) // audition
+    }
+
+    /** Delete a downloaded voice, reclaiming its disk. Deleting the ACTIVE voice falls to another
+     *  installed voice, else to a system TTS engine. Safe mid-nav: the synth is switched off the files
+     *  (or released) before the dir is unlinked on the synth's worker thread. */
+    fun deleteVoice(id: String) {
+        val wasActive = VelaPiper.effectiveVoiceId(appContext) == id
+        val dir = VelaPiper.modelDirFor(appContext, id)
+        settingsPrefs.edit().remove(VelaPiper.speakerKey(id)).apply()
+        if (wasActive) {
+            val next = VelaPiper.installedVoiceIds(appContext).firstOrNull { it != id }
+            if (next != null) {
+                selectVoice(next) // reloads the synth onto `next` (off `id`'s files), then:
+                piperSynth.deleteModelDir(dir) // unlink `id` on the worker, after the reload
+            } else {
+                VelaPiper.clearSelectedVoice(appContext)
+                piperSynth.release() // no neural voice left → drop the engine
+                piperSynth.deleteModelDir(dir)
+                // Fall back to a system TTS engine if one is installed, else leave nav silent.
+                voiceEngines().firstOrNull { it.packageName != VelaPiper.ENGINE_ID }?.let { setVoiceEngine(it) }
+                refreshInstalledVoices()
+                flashStatus("Vela voice removed")
+            }
+        } else {
+            viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                dir.deleteRecursively()
+                withContext(kotlinx.coroutines.Dispatchers.Main) { refreshInstalledVoices() }
+            }
+        }
+    }
+
+    /** Onboarding's one-tap install — grabs the fleet-default voice and (as the first voice) activates it. */
+    fun downloadPiper() = downloadVoice(VelaPiper.DEFAULT_VOICE_ID)
 
     /** null = still initialising, true = a voice is ready, false = no usable voice. */
     fun voiceWorking(): Boolean? = voice.working

@@ -415,8 +415,11 @@ handed — no filesystem, network, or device access.
 
 - Location: AOSP `LocationManager` only — never `FusedLocationProviderClient`.
 - Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS. Plus a bundled
-  **in-process neural voice** (sherpa-onnx runtime + downloaded Kokoro model, `KokoroSynth` behind the
-  `:core` `NeuralSynth` seam), default once its model is downloaded; system engines stay selectable.
+  **in-process neural voice** (sherpa-onnx runtime + a downloaded Piper model, `PiperSynth` behind the
+  `:core` `NeuralSynth` seam), default once a model is downloaded; system engines stay selectable. Users
+  browse/download/switch **multiple** Piper voices (`PiperCatalog` in `:core`; one per `filesDir/piper/<id>/`;
+  selection in `voice_model`, per-voice speaker in `voice_speaker_<id>`; race-free `PiperSynth.reloadVoice`).
+  Model downloads use a no-`callTimeout` OkHttp client (the shared 12 s cap would abort a 67–131 MB body).
 - No GMS: no FCM/Firebase/Play Integrity/Fused. Push (if ever) = UnifiedPush; crash
   reporting = ACRA/self-hosted.
 - EU consent: pre-seed `SOCS`/`CONSENT` cookies; never let `Set-Cookie` downgrade
