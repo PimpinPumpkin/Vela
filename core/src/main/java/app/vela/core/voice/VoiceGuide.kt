@@ -198,6 +198,7 @@ class VoiceGuide @Inject constructor(
         s = Regex("\\bI-(\\d+)").replace(s) { "Interstate ${it.groupValues[1]}" }
         s = Regex("\\bUS-(\\d+)").replace(s) { "US ${it.groupValues[1]}" }
         SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
+        s = SpeechText.spokenNumbers(s) // "128th" → "one twenty-eighth", not a mangled "one hundred and 28th"
         return s
     }
 
