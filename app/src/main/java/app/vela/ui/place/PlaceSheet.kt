@@ -31,7 +31,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -422,6 +424,17 @@ fun PlaceSheet(
                     color = ink,
                     modifier = Modifier.weight(1f),
                 )
+                // Save + Share as compact header actions (Google-style) — frees the row below for a
+                // wide Directions button, and keeps these two evenly placed (they used to float in a
+                // variable-length action row when Call/Website were absent).
+                IconButton(onClick = onToggleSave) {
+                    Icon(
+                        if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (isSaved) "Saved" else "Save",
+                        tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
+                    )
+                }
+                ShareIconButton(place, dim)
                 // Overflow: pin this place straight to Home/Work (Google-style).
                 var headerMenu by remember { mutableStateOf(false) }
                 Box {
@@ -566,32 +579,33 @@ fun PlaceSheet(
                 Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
-            // Quick-action row — Directions (primary) + Call / Website / Save / Share,
-            // spread evenly across the width so the last (Share) isn't clipped.
+            // Quick-action row — a WIDE filled Directions pill (the obvious primary action, Google-
+            // style) + compact Call / Website icon buttons. Save + Share moved to the header.
             Row(
                 Modifier.fillMaxWidth().padding(top = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                SheetAction(Icons.Default.Directions, "Directions", dim, emphasized = true, modifier = Modifier.weight(1f), onClick = onDirections)
+                Button(
+                    onClick = onDirections,
+                    modifier = Modifier.weight(1f).height(46.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp),
+                ) {
+                    Icon(Icons.Default.Directions, contentDescription = null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Directions", fontWeight = FontWeight.Medium)
+                }
                 place.phone?.let { ph ->
-                    SheetAction(Icons.Default.Call, "Call", dim, modifier = Modifier.weight(1f)) {
+                    FilledTonalIconButton(onClick = {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
-                    }
+                    }) { Icon(Icons.Default.Call, contentDescription = "Call", modifier = Modifier.size(20.dp)) }
                 }
                 place.website?.let { site ->
-                    SheetAction(Icons.Default.Language, "Website", dim, modifier = Modifier.weight(1f)) {
+                    FilledTonalIconButton(onClick = {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
-                    }
+                    }) { Icon(Icons.Default.Language, contentDescription = "Website", modifier = Modifier.size(20.dp)) }
                 }
-                SheetAction(
-                    if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
-                    if (isSaved) "Saved" else "Save",
-                    dim,
-                    modifier = Modifier.weight(1f),
-                    onClick = onToggleSave,
-                )
-                ShareAction(place, dim, modifier = Modifier.weight(1f))
             }
 
             // Action link (Book online / Reserve a table / Order online) — Google shows this
@@ -1876,7 +1890,7 @@ private fun SheetAction(
 /** Share action: opens a small menu — a Google Maps link, a keyless geo: pin
  *  (opens in any maps app, incl. Vela), raw coordinates, or just the address. */
 @Composable
-private fun ShareAction(place: Place, labelColor: Color, modifier: Modifier = Modifier) {
+private fun ShareIconButton(place: Place, tint: Color) {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
     val lat = place.location.lat
@@ -1897,8 +1911,10 @@ private fun ShareAction(place: Place, labelColor: Color, modifier: Modifier = Mo
         open = false
     }
 
-    Box(modifier) {
-        SheetAction(Icons.Default.Share, "Share", labelColor) { open = true }
+    Box {
+        IconButton(onClick = { open = true }) {
+            Icon(Icons.Default.Share, contentDescription = "Share", tint = tint)
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text("Google Maps link") },
@@ -2086,11 +2102,21 @@ private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = ink,
-                modifier = Modifier.weight(1f),
+                maxLines = 1,
             )
+            Spacer(Modifier.weight(1f))
             if (!expanded) {
                 days.firstOrNull()?.let {
-                    Text(it[1], style = MaterialTheme.typography.bodyMedium, color = dim)
+                    // Just the hours in the collapsed summary — strip any " · Holiday" suffix (it's
+                    // already shown in the amber callout above) so it can't squeeze the "Hours" label.
+                    Text(
+                        it[1].substringBefore("·").trim(),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = dim,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.widthIn(max = 190.dp),
+                    )
                     Spacer(Modifier.width(6.dp))
                 }
             }
