@@ -1554,7 +1554,11 @@ class MapViewModel @Inject constructor(
         // miss a pan due to a camera-reason race). Keep the "Search this area" center = the live
         // viewport center here so the search can never bias to a stale, pre-pan location.
         mapCenter = center
-        maybeLoadAmbientPois(center, zoom)
+        // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
+        // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
+        // collider every frame.
+        val viewRadius = center.distanceTo(LatLng(north, east))
+        maybeLoadAmbientPois(center, zoom, viewRadius)
     }
 
     private var ambientJob: Job? = null
@@ -1570,7 +1574,7 @@ class MapViewModel @Inject constructor(
      * bare map only (no results / open place / nav / replay), debounced, re-queried on a real pan
      * OR zoom change.
      */
-    private fun maybeLoadAmbientPois(center: LatLng, zoom: Double) {
+    private fun maybeLoadAmbientPois(center: LatLng, zoom: Double, viewRadiusMeters: Double = 0.0) {
         val s = _state.value
         if (s.navigating || s.replaying || s.results.isNotEmpty() || s.selected != null) return
         // Zoomed out past neighbourhood level → drop the dots (and let the OSM POIs come back).
@@ -1602,7 +1606,21 @@ class MapViewModel @Inject constructor(
             // "seeing fewer results" bug: over a ~3.5 km span the deep pool's far, more-prominent places
             // filled a small cap, so a low-commercial view's own nearby shops were cut before the map
             // could even try to draw them. The collision layer already limits on-screen density.
-            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(800)) }
+            // Hand the map only the POIs NEAR the view (+ a small pan margin) and cap the count, so an
+            // old phone isn't running symbol collision over the whole ~3.5 km pool every drag frame.
+            // What's off-screen can't render anyway. `res` is already prominence-sorted, and we PRESERVE
+            // that order (the ambient layer's collision key = list index), so the anchor store still
+            // beats its in-store tenant; the margin filter is purely about coverage, the cap about the
+            // 5a's frame budget. In a low-commercial view the handful of local businesses all fit under
+            // the cap, so nothing is cut there (the "fewer results" fix stays); the cap only bites in a
+            // dense view, where the extras would collide off anyway. Fixes the 5a lag from take(800).
+            val margin = if (viewRadiusMeters > 0) viewRadiusMeters * 1.25 else Double.MAX_VALUE
+            val kept = res.asSequence()
+                .filterNot { p -> p.permanentlyClosed }
+                .filter { (it.distanceMeters ?: 0.0) <= margin }
+                .take(AMBIENT_ONSCREEN_CAP)
+                .toList()
+            _state.update { it.copy(ambientPois = kept) }
         }
     }
 
@@ -1686,5 +1704,8 @@ class MapViewModel @Inject constructor(
     private companion object {
         const val KEY_DISMISSED = "dismissed"
         const val STALE_LOCATION_MS = 12_000L // grey the dot after this long with no fix
+        // Max ambient POIs handed to the map layer. Bounds symbol-collision cost per frame so old
+        // phones (Pixel 5a) stay smooth while dragging; the collider only paints ~a few dozen anyway.
+        const val AMBIENT_ONSCREEN_CAP = 140
     }
 }
