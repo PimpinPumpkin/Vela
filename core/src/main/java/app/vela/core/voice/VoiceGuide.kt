@@ -155,11 +155,7 @@ class VoiceGuide @Inject constructor(
                 .map { VoiceEngine(it.packageName, it.loadLabel(pm).toString()) }
                 .distinctBy { it.packageName }
         }.getOrElse { tts?.engines.orEmpty().map { VoiceEngine(it.name, it.label) } }
-        val vela = buildList {
-            if (VelaKokoro.isReady(context)) add(VoiceEngine(VelaKokoro.ENGINE_ID, VelaKokoro.LABEL))
-            if (VelaMatcha.isReady(context)) add(VoiceEngine(VelaMatcha.ENGINE_ID, VelaMatcha.LABEL))
-            if (VelaPiper.isReady(context)) add(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL))
-        }
+        val vela = if (VelaPiper.isReady(context)) listOf(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL)) else emptyList()
         return vela + installed
     }
 

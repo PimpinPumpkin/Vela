@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import app.vela.core.voice.VelaKokoro
 import app.vela.ui.map.MapScreen
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.settings.SettingsScreen
@@ -57,7 +56,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                     // voiceEngines() here is exactly the phone's installed system engines.
                     hasSystemVoice = vm.voiceEngines().isNotEmpty(),
                     onDownload = {
-                        vm.downloadKokoro()
+                        vm.downloadPiper()
                         Onboarding.dismissVoicePrompt(context)
                     },
                     onSkip = { Onboarding.dismissVoicePrompt(context) },
