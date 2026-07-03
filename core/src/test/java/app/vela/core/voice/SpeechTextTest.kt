@@ -131,4 +131,36 @@ class SpeechTextTest {
     @Test fun `four-digit numbers are untouched`() {
         assertEquals("1280th", num("1280th"))
     }
+
+    // --- Clause splitting (comma / semicolon beats) ---
+
+    private fun clauses(t: String) = SpeechText.splitClauses(t)
+
+    @Test fun `comma with a space is a clause break`() {
+        assertEquals(listOf("In a quarter mile,", "turn right onto Main Street"), clauses("In a quarter mile, turn right onto Main Street"))
+    }
+
+    @Test fun `semicolon is a clause break`() {
+        assertEquals(listOf("powered by Google;", "protected by privacy"), clauses("powered by Google; protected by privacy"))
+    }
+
+    @Test fun `a grouped number is not split`() {
+        assertEquals(listOf("In 1,000 feet turn right"), clauses("In 1,000 feet turn right"))
+    }
+
+    @Test fun `no comma returns one clause`() {
+        assertEquals(listOf("Turn right onto Main Street"), clauses("Turn right onto Main Street"))
+    }
+
+    @Test fun `speechFragments tags a firm pause at periods and a short one at commas`() {
+        val frags = SpeechText.speechFragments("In a quarter mile, turn right. Then merge.", 0.32f, 0.16f)
+        assertEquals(3, frags.size)
+        assertEquals("In a quarter mile," to 0.16f, frags[0]) // comma → short beat
+        assertEquals("turn right." to 0.32f, frags[1]) // sentence end → firm beat
+        assertEquals("Then merge." to 0f, frags[2]) // last → no trailing silence
+    }
+
+    @Test fun `speechFragments leaves a single clause whole with no gap`() {
+        assertEquals(listOf("Turn right onto Main Street" to 0f), SpeechText.speechFragments("Turn right onto Main Street", 0.32f, 0.16f))
+    }
 }

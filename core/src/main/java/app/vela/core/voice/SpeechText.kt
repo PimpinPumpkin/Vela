@@ -41,6 +41,49 @@ object SpeechText {
     }
 
     /**
+     * Split [text] at CLAUSE boundaries — a comma or semicolon followed by whitespace — so a neural
+     * synth can splice a short beat there (Piper reads straight through commas otherwise, running
+     * "In a quarter mile, turn right" together). Requires the space, so a grouped number like "1,000"
+     * (comma-digit, no space) is never split. A `;` is always a break; a `,` is too (nav commas are
+     * clause boundaries). Single-fragment inputs return unchanged.
+     */
+    fun splitClauses(text: String): List<String> {
+        if (text.length < 2) return listOf(text)
+        val cuts = CLAUSE_BREAK.findAll(text).map { it.range.last + 1 }.toList()
+        if (cuts.isEmpty()) return listOf(text)
+        val parts = ArrayList<String>(cuts.size + 1)
+        var start = 0
+        for (c in cuts) { parts.add(text.substring(start, c).trim()); start = c }
+        parts.add(text.substring(start).trim())
+        return parts.filter { it.isNotEmpty() }.ifEmpty { listOf(text) }
+    }
+
+    /**
+     * The speakable fragments of [text], each tagged with the SILENCE (seconds) to splice AFTER it:
+     * a strong [sentenceGap] at sentence ends (`. ! ?`), a shorter [clauseGap] at commas/semicolons,
+     * and 0 after the final fragment. Lets the neural voice phrase a prompt naturally ("In a quarter
+     * mile, ‹beat› turn right onto Main Street. ‹beat› Then …") in one pass. Falls back to the whole
+     * text with no gap when nothing splits (so single-clause prompts pay no cost).
+     */
+    fun speechFragments(text: String, sentenceGap: Float, clauseGap: Float): List<Pair<String, Float>> {
+        val sentences = splitSentences(text)
+        val out = ArrayList<Pair<String, Float>>()
+        for ((si, sentence) in sentences.withIndex()) {
+            val clauses = splitClauses(sentence)
+            for ((ci, clause) in clauses.withIndex()) {
+                if (clause.isBlank()) continue
+                val gap = when {
+                    ci != clauses.lastIndex -> clauseGap // between clauses of the same sentence
+                    si != sentences.lastIndex -> sentenceGap // between sentences
+                    else -> 0f // the very end
+                }
+                out.add(clause to gap)
+            }
+        }
+        return out.ifEmpty { listOf(text to 0f) }
+    }
+
+    /**
      * Read 3-digit street ordinals the way people (and Google's voice) say them — "128th" → "one
      * twenty-eighth", not "one hundred and twenty-eighth", which the neural G2P mangles into a stuttery
      * "one, hundred and 28th". Only touches 3-digit ordinals (100-999); espeak reads 1-2 digit ordinals
@@ -81,6 +124,10 @@ object SpeechText {
 
     // Terminal punctuation followed by whitespace (so "0.5 mi" and a trailing "." don't match).
     private val SENTENCE_BREAK = Regex("[.!?]+\\s+")
+
+    // Comma/semicolon followed by whitespace — a clause beat. The required space means a grouped
+    // number ("1,000") is never split (comma-digit has no space).
+    private val CLAUSE_BREAK = Regex("[,;]\\s+")
 
     // A period after one of these is an abbreviation/name dot, not a sentence end — don't split on it.
     // Road-type + directional + title abbreviations AND the words forSpeech expands them into.
