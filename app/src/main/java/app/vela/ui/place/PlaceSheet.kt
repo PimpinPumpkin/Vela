@@ -1651,9 +1651,9 @@ private fun ReviewsTab(
                     Spacer(Modifier.width(10.dp))
                     Text(
                         when {
-                            found > 0 && target > 0 -> "Loading reviews… $found of ~${maxOf(target, found)}"
-                            found > 0 -> "Loading reviews… $found so far"
-                            else -> "Loading reviews… this can take half a minute"
+                            found > 0 && target > 0 -> "Reviews · $found of ~${maxOf(target, found)}"
+                            found > 0 -> "Reviews · $found so far"
+                            else -> "Gathering reviews…"
                         },
                         style = MaterialTheme.typography.bodyMedium, color = dim,
                     )
