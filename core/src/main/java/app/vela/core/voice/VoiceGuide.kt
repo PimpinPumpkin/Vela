@@ -109,7 +109,7 @@ class VoiceGuide @Inject constructor(
 
     /** Speak a sample so the user can confirm the engine actually makes sound (the
      *  only true test on their hardware — we can't hear it for them). */
-    fun test() = speak("Voice guidance is on. In a quarter mile, turn right.", interrupt = true)
+    fun test() = speak(app.vela.core.i18n.NavStringsRegistry.current().voiceTest(), interrupt = true)
 
     override fun onInit(status: Int) {
         val t = tts
