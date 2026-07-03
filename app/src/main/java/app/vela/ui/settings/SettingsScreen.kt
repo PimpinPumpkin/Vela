@@ -64,6 +64,10 @@ import app.vela.BuildConfig
 import app.vela.ui.Onboarding
 import app.vela.core.data.tiles.MapStyle
 import app.vela.ui.Units
+import androidx.compose.foundation.layout.Arrangement
+import app.vela.core.voice.PiperVoice
+import app.vela.core.voice.VoiceAccent
+import app.vela.ui.map.MapUiState
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.AppTheme
 import app.vela.ui.theme.ThemeMode
@@ -140,26 +144,19 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             // Vela's own on-device neural voices — offer a one-tap download for whichever isn't
             // present yet; once downloaded each shows in the engine list below (selectable). No
             // standalone TTS app needed. Kokoro = premium/slower, Piper = fast.
-            val dlPct = state.kokoroDownloadPct
-            if (dlPct != null) {
-                Text("Downloading neural voice… ${(dlPct * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            // A download in flight shows a compact progress line here too, so it's visible even when the
+            // Voice library (below) is collapsed. The per-voice controls live in the library.
+            state.voiceDownloadingId?.let { id ->
+                val nm = vm.voiceCatalog().firstOrNull { it.id == id }?.displayName ?: "voice"
+                val pct = state.kokoroDownloadPct ?: 0f
+                Text("Downloading $nm… ${(pct * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(progress = { dlPct }, modifier = Modifier.fillMaxWidth())
+                LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
-            } else {
-                if (!vm.piperInstalled()) {
-                    Button(onClick = { vm.downloadPiper() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Download the Vela voice · ~67 MB")
-                    }
-                    Hint("A natural on-device voice for spoken directions — no account, no standalone app, and it speaks in real time even on old phones. One-time download; wifi recommended.")
-                    Spacer(Modifier.height(8.dp))
-                } else {
-                    Spacer(Modifier.height(4.dp))
-                }
-            }
+            } ?: Spacer(Modifier.height(4.dp))
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
-                Hint("No voice available yet — download the neural voice above. (You can also install a system TTS engine and it'll appear here to pick.)")
+                Hint("No voice yet — open Voice library below to download a natural on-device voice (no account, real-time even on old phones). A system TTS engine you install will also appear here to pick.")
             } else {
                 engines.forEach { e ->
                     SelectableRow(
@@ -181,9 +178,17 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         }
                     }) { Text("System voice settings") }
                 }
-                Hint("Tap Test voice to hear it. The neural voice is recommended; you can override to any installed text-to-speech engine.")
+                Hint("Tap Test voice to hear it. The Vela voice is recommended; you can override to any installed text-to-speech engine.")
+            }
 
-                // Speed + the niche bits (playground, the 900-voice variant picker) — most people never
+            // Voice library — browse, download, switch between and remove Vela's neural voices (Piper).
+            // Auto-expanded when nothing is installed so the download path is obvious.
+            var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty()) }
+            CollapsibleSectionTitle("Voice library", voiceLibExpanded) { voiceLibExpanded = !voiceLibExpanded }
+            if (voiceLibExpanded) VoiceLibrary(vm, state)
+
+            if (engines.isNotEmpty()) {
+                // Speed + the niche bits (playground, the multi-speaker variant picker) — most people never
                 // touch these, so tuck them behind a collapsible header (collapsed by default).
                 var voiceAdvExpanded by remember { mutableStateOf(false) }
                 CollapsibleSectionTitle("Advanced voice options", voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
@@ -219,8 +224,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     OutlinedButton(onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
                 }
                 Hint("Slower or faster spoken directions — tap − / + (it speaks a sample). 1.00× is normal.")
-                // The Vela voice (libritts_r) is multi-speaker — let the user audition + pick one.
-                if (state.selectedEngine?.packageName?.startsWith("vela.") == true) {
+                // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) — let the user audition +
+                // pick a variant. Hidden for single-speaker voices (lessac/hfc/…), where it's meaningless.
+                if (state.selectedEngine?.packageName?.startsWith("vela.") == true && vm.voiceSpeakerCount() > 1) {
                     Spacer(Modifier.height(10.dp))
                     val cnt = vm.voiceSpeakerCount()
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -730,4 +736,139 @@ private fun Hint(text: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(vertical = 4.dp),
     )
+}
+
+/**
+ * The in-app Piper voice browser: the curated catalog grouped by accent, each row showing the voice's
+ * accent/gender/quality/size + a Download / Use / Delete control and inline download progress.
+ * Downloaded voices float to the top of their group; the active one is marked "In use"; ★ marks the
+ * best few for navigation. A plain Column (the catalog is small and this lives inside the Settings
+ * verticalScroll — a LazyColumn would fight it for height).
+ */
+@Composable
+private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
+    val catalog = remember { vm.voiceCatalog() }
+    val installed = state.installedVoiceIds
+    val selected = state.selectedVoiceId
+    val installedMb = catalog.filter { it.id in installed }.sumOf { it.sizeMb }
+    var confirmDeleteId by remember { mutableStateOf<String?>(null) }
+    var query by remember { mutableStateOf("") }
+
+    Spacer(Modifier.height(6.dp))
+    Hint(
+        if (installed.isEmpty())
+            "Download a natural on-device voice for spoken directions — pick one below. The ★ voices sound the most like a maps navigator (Lessac and HFC are closest to Google). One-time download; wifi recommended."
+        else
+            "Installed: $installedMb MB · ${installed.size} voice${if (installed.size == 1) "" else "s"}. Tap Use to switch (plays a sample); the trash icon frees the space.",
+    )
+    if (catalog.size > 12) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = { query = it },
+            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+            label = { Text("Search voices") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+        )
+    }
+    fun matches(v: PiperVoice) = query.isBlank() ||
+        listOf(v.displayName, v.accent.name, v.note ?: "").any { it.contains(query.trim(), ignoreCase = true) }
+
+    listOf(VoiceAccent.US to "US English", VoiceAccent.GB to "British English").forEach { (accent, title) ->
+        val group = catalog.filter { it.accent == accent && matches(it) }.sortedWith(
+            compareByDescending<PiperVoice> { it.id in installed }
+                .thenByDescending { it.id == selected }
+                .thenByDescending { it.recommended }
+                .thenBy { it.novelty }
+                .thenByDescending { it.quality.ordinal }
+                .thenBy { it.displayName },
+        )
+        if (group.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            group.forEach { v ->
+                VoiceRow(
+                    v = v,
+                    installed = v.id in installed,
+                    active = v.id == selected,
+                    downloading = state.voiceDownloadingId == v.id,
+                    downloadPct = if (state.voiceDownloadingId == v.id) state.kokoroDownloadPct ?: 0f else 0f,
+                    anyDownloading = state.voiceDownloadingId != null,
+                    onDownload = { vm.downloadVoice(v.id) },
+                    onUse = { vm.selectVoice(v.id) },
+                    onDelete = {
+                        // Confirm only when it's the last voice (guidance would lose its neural voice).
+                        if (installed.size == 1 && v.id == selected) confirmDeleteId = v.id else vm.deleteVoice(v.id)
+                    },
+                )
+            }
+        }
+    }
+
+    confirmDeleteId?.let { id ->
+        val nm = catalog.firstOrNull { it.id == id }?.displayName ?: "this voice"
+        AlertDialog(
+            onDismissRequest = { confirmDeleteId = null },
+            title = { Text("Remove $nm?") },
+            text = { Text("This is your only Vela voice. Spoken directions fall back to a system text-to-speech engine (or go silent if none is installed) until you download another.") },
+            confirmButton = { TextButton(onClick = { vm.deleteVoice(id); confirmDeleteId = null }) { Text("Remove") } },
+            dismissButton = { TextButton(onClick = { confirmDeleteId = null }) { Text("Cancel") } },
+        )
+    }
+}
+
+@Composable
+private fun VoiceRow(
+    v: PiperVoice,
+    installed: Boolean,
+    active: Boolean,
+    downloading: Boolean,
+    downloadPct: Float,
+    anyDownloading: Boolean,
+    onDownload: () -> Unit,
+    onUse: () -> Unit,
+    onDelete: () -> Unit,
+) {
+    val gender = when (v.gender) {
+        app.vela.core.voice.VoiceGender.FEMALE -> "Female"
+        app.vela.core.voice.VoiceGender.MALE -> "Male"
+        app.vela.core.voice.VoiceGender.MULTI -> "${v.numSpeakers} voices"
+        app.vela.core.voice.VoiceGender.NEUTRAL -> "Neutral"
+    }
+    Row(
+        Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    (if (v.recommended) "★ " else "") + v.displayName,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (active) FontWeight.Bold else FontWeight.Medium,
+                )
+            }
+            val sub = when {
+                downloading -> "Downloading… ${(downloadPct * 100).toInt()}%"
+                active -> "In use · ${v.accent.name} · $gender · ${v.sizeMb} MB"
+                installed -> "Downloaded · ${v.accent.name} · $gender · ${v.sizeMb} MB"
+                else -> "${v.accent.name} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB" + (v.note?.let { " · $it" } ?: "")
+            }
+            Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Spacer(Modifier.width(8.dp))
+        when {
+            downloading -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+            active -> IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Remove ${v.displayName}", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            installed -> {
+                OutlinedButton(onClick = onUse) { Text("Use") }
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Remove ${v.displayName}", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            else -> OutlinedButton(onClick = onDownload, enabled = !anyDownloading) { Text("Download") }
+        }
+    }
+    if (downloading) LinearProgressIndicator(progress = { downloadPct }, modifier = Modifier.fillMaxWidth())
 }
