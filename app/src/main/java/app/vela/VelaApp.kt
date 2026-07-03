@@ -1,6 +1,7 @@
 package app.vela
 
 import android.app.Application
+import android.content.Context
 import app.vela.core.diag.DiagLog
 import app.vela.diag.CrashCatcher
 import app.vela.ui.AppLocale
@@ -14,6 +15,13 @@ import javax.inject.Inject
 @HiltAndroidApp
 class VelaApp : Application() {
     @Inject lateinit var diag: DiagLog
+
+    /** Apply the persisted in-app language to the Application context too (no-op when following the
+     *  system), so `getString` from the ViewModel/nav-notification also localizes — resolved at launch
+     *  from the saved pref (an in-session change re-reads it on next launch). */
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(AppLocale.wrap(base))
+    }
 
     override fun onCreate() {
         super.onCreate()

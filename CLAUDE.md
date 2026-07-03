@@ -73,6 +73,22 @@ genuinely needs no doc edit, say why in the commit.
   reactive `mutableStateOf` (same shape as `ui/Units`), persisted to
   `vela_settings`, `init()`-ed in `VelaApp`; flipping it recomposes the theme and
   reloads the map style (`VelaMapView`'s styleKey carries `dark=`).
+- **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
+  holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
+  picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
+  `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. (2) **UI chrome** —
+  all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
+  the 10 translated languages (fr de es it pt nl ru pl sv uk), referenced via `stringResource`/`getString`.
+  The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale, **no-op when following
+  the system** so the default path is untouched) applied in **both** `MainActivity.attachBaseContext` (Compose
+  UI) and `VelaApp.attachBaseContext` (ViewModel/notification `getString`); changing the language calls
+  `recreate()`. (3) **Google POI content** — hl/gl on the scrape (NOT done yet — gated on decoupling the
+  open/closed + day-name detection from English text). **Dual-purpose literals stay inline on purpose** —
+  strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
+  search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
+  they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA — never
+  translated.** Adding a user-facing string means: add it to `values/strings.xml` AND all `values-<lang>/`,
+  and match the `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
 
 ## Working on the scraper
 
