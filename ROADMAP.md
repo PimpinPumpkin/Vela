@@ -4,7 +4,16 @@
 > [`SPEC.md`](SPEC.md) is **how it's built**; this file is **what's planned** and the
 > bigger bets. Keep it current — add ideas here the moment they come up.
 
-Last updated: 2026-06-30.
+Last updated: 2026-07-02.
+
+## Recently shipped
+- **In-process neural voice (Kokoro) — DONE 2026-07-02, device-verified.** Vela bundles the sherpa-onnx
+  runtime and downloads the ~126 MB Kokoro model itself (progress bar), running it in-process as the
+  default nav voice — near-Siri quality, no standalone TTS app. The old F-Droid voice-engine *installers*
+  were removed; system engines stay selectable for override. Details + the four device-only gotchas in
+  [`FEATURES.md`](FEATURES.md). **Next:** validate the arm64 `.so` load on a 16 KB-page GrapheneOS device
+  before assuming universal support; localize nav strings + wire per-language voices (the multi-lang model
+  already carries them); revisit on-demand delivery (dynamic feature) to shrink the base APK.
 
 ## North star
 

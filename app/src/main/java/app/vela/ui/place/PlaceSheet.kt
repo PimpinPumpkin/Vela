@@ -145,6 +145,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -225,12 +226,16 @@ fun PlaceSheet(
     val dismissConn = remember(place.id) {
         object : NestedScrollConnection {
             private var acc = 0f
+            // Once a downward drag collapses an expanded sheet, it must NOT also dismiss it in the
+            // SAME gesture — lift and swipe again to close. (A single long swipe used to collapse then
+            // keep accumulating past 150 and dismiss, closing an expanded sheet outright.)
+            private var collapsedThisGesture = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (available.y > 0f && bodyScroll.value == 0) {
                     acc += available.y
                     when {
-                        expandedState.value && acc > 90f -> { expandedState.value = false; acc = 0f }
-                        !expandedState.value && acc > 150f -> { acc = 0f; onCloseUpdated.value() }
+                        expandedState.value && acc > 90f -> { expandedState.value = false; acc = 0f; collapsedThisGesture = true }
+                        !expandedState.value && !collapsedThisGesture && acc > 150f -> { acc = 0f; onCloseUpdated.value() }
                     }
                     return available
                 }
@@ -243,6 +248,13 @@ fun PlaceSheet(
                 }
                 return Offset.Zero
             }
+            // The fling phase runs at the end of every drag (even at zero velocity) — use it as the
+            // gesture boundary that re-arms dismissal for the next swipe.
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                acc = 0f
+                collapsedThisGesture = false
+                return Velocity.Zero
+            }
         }
     }
     // Scroll-sync with the live reviews panel: the panel forwards boundary drags (reviews at
@@ -251,7 +263,9 @@ fun PlaceSheet(
     // past the top; expand on a push past the bottom). pull[0]/pull[1] accumulate those
     // overshoots; any real body movement resets them (same feel as dismissConn's acc).
     val scope = rememberCoroutineScope()
-    val pull = remember(place.id) { floatArrayOf(0f, 0f) }
+    // [0]=pull-down overshoot, [1]=push-up overshoot, [2]=collapsed-this-gesture guard (0/1) so one
+    // continuous down-drag collapses but can't also dismiss (matches dismissConn).
+    val pull = remember(place.id) { floatArrayOf(0f, 0f, 0f) }
     // True while the user is reading reviews "full screen" (panel engaged): set by the panel's
     // engagement signal, cleared when they drag back toward the sheet top. Hides the native
     // histogram so the panel gets the height.
@@ -264,8 +278,8 @@ fun PlaceSheet(
                 pull[1] = 0f
                 pull[0] += -leftover
                 when {
-                    expandedState.value && pull[0] > 90f -> { expandedState.value = false; reviewsEngaged.value = false; pull[0] = 0f }
-                    !expandedState.value && pull[0] > 150f -> { pull[0] = 0f; reviewsEngaged.value = false; onCloseUpdated.value() }
+                    expandedState.value && pull[0] > 90f -> { expandedState.value = false; reviewsEngaged.value = false; pull[0] = 0f; pull[2] = 1f }
+                    !expandedState.value && pull[2] == 0f && pull[0] > 150f -> { pull[0] = 0f; reviewsEngaged.value = false; onCloseUpdated.value() }
                 }
             }
             leftover > 0.5f -> { // pushing up past the body bottom
@@ -277,7 +291,7 @@ fun PlaceSheet(
         }
     }
     val onPanelOverscrollEnd: (Float) -> Unit = { velocityY ->
-        pull[0] = 0f; pull[1] = 0f
+        pull[0] = 0f; pull[1] = 0f; pull[2] = 0f
         // Disengage at GESTURE END, not per-pixel: re-inserting the header content (rating +
         // histogram + tabs) mid-drag shifts the layout right under the held finger — flicker.
         // Fires when the body walked up OR is simply at/near its top — in engaged mode the

@@ -26,6 +26,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Button
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
@@ -127,9 +129,29 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Voice")
+            // Vela's own neural voice (Kokoro, runs on-device) — offer a one-tap download when it
+            // isn't present yet; once downloaded it becomes the default and shows in the list below
+            // as "Vela Neural (Kokoro)". No standalone TTS app needed.
+            val kokoroPct = state.kokoroDownloadPct
+            if (!vm.neuralVoiceInstalled()) {
+                if (kokoroPct != null) {
+                    Text(
+                        "Downloading neural voice… ${(kokoroPct * 100).toInt()}%",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(progress = { kokoroPct }, modifier = Modifier.fillMaxWidth())
+                } else {
+                    Button(onClick = { vm.downloadKokoro() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Download neural voice (Kokoro) · ~126 MB")
+                    }
+                }
+                Hint("A high-quality, natural voice that runs entirely on your phone — no account, no standalone app. One-time download; wifi recommended.")
+                Spacer(Modifier.height(12.dp))
+            }
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
-                Hint("No text-to-speech engine on this phone, so spoken directions are silent. Install an open-source one in one tap below, then pick it here.")
+                Hint("No voice available yet — download the neural voice above. (You can also install a system TTS engine and it'll appear here to pick.)")
             } else {
                 engines.forEach { e ->
                     SelectableRow(
@@ -151,30 +173,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         }
                     }) { Text("System voice settings") }
                 }
-                Hint("Tap Test voice to hear it. Silent? The engine has no voice downloaded — open System voice settings, or add a more natural one below.")
-            }
-            // One-tap install of an open-source engine — the fix for a ROM that ships none.
-            val installable = vm.installableEngines()
-            if (installable.isNotEmpty()) {
-                Spacer(Modifier.height(8.dp))
-                Hint(if (engines.isEmpty()) "Open-source voices (from F-Droid):" else "Add a more natural voice (from F-Droid):")
-                installable.forEach { eng ->
-                    val installing = state.installingEngine == eng.pkg
-                    OutlinedButton(
-                        onClick = { vm.installVoiceEngine(eng) },
-                        enabled = state.installingEngine == null,
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        if (installing) {
-                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Downloading ${eng.label}…")
-                        } else {
-                            Text("Install ${eng.label}")
-                        }
-                    }
-                    Hint(eng.note)
-                }
+                Hint("Tap Test voice to hear it. The neural voice is recommended; you can override to any text-to-speech engine installed on your phone.")
             }
 
             Spacer(Modifier.height(20.dp))
