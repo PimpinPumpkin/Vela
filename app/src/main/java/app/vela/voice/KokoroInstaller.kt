@@ -21,8 +21,15 @@ import javax.inject.Singleton
 @Singleton
 class KokoroInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val http: OkHttpClient,
+    http: OkHttpClient,
 ) {
+    // The shared client caps a whole CALL at 12 s to bound a hung scrape — but that also kills a
+    // multi-tens-of-MB model download (it can't finish the body in 12 s). Derive a download client with
+    // NO overall call timeout; a generous per-read socket timeout still catches a truly stalled connection.
+    private val downloadHttp: OkHttpClient = http.newBuilder()
+        .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
     /** Download [url] into [destDir] (extracting the archive's single top-level folder into it), and,
      *  if given, an [extraUrl] file saved as [extraName] alongside it. [onProgress] is 0f..1f. */
     suspend fun download(
@@ -64,7 +71,7 @@ class KokoroInstaller @Inject constructor(
 
     /** Stream [url] to [out], reporting progress mapped into the [base, base+span] slice of the bar. */
     private fun stream(url: String, out: File, sizeEst: Long, base: Float, span: Float, onProgress: (Float) -> Unit): Boolean =
-        http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
+        downloadHttp.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
             val body = resp.body
             if (!resp.isSuccessful || body == null) return@use false
             val total = body.contentLength().takeIf { it > 0 } ?: sizeEst

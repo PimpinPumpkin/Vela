@@ -14,6 +14,15 @@ Last updated: 2026-07-02.
   [`FEATURES.md`](FEATURES.md). **Next:** validate the arm64 `.so` load on a 16 KB-page GrapheneOS device
   before assuming universal support; localize nav strings + wire per-language voices (the multi-lang model
   already carries them); revisit on-demand delivery (dynamic feature) to shrink the base APK.
+- **Voice browser — DONE 2026-07-03, device-verified.** Settings → Voice → **Voice library** downloads and
+  switches between ~23 curated Piper voices (Lessac, HFC Female/Male, Ryan, LibriTTS-R, GB voices, a GLaDOS
+  novelty…), each in its own `filesDir/piper/<id>/`; per-voice speaker prefs; race-free switch; in-place
+  migration of the old single-voice install. Details in [`FEATURES.md`](FEATURES.md). **Next bets:** (1)
+  host the catalog (`PiperCatalog`) on the signed `calibration.json` so new voices ship without an APK —
+  would also require **pinning the download host** (`github.com`) in the calibration allowlist so a
+  compromised bundle can't redirect a "voice" download at an attacker binary; (2) a preview-without-
+  switching ▶ (a second transient `OfflineTts`) so you can audition before committing; (3) a shared
+  `espeak-ng-data` dir across voices (~10 MB saved per voice).
 
 ## North star
 
