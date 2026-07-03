@@ -1,7 +1,6 @@
 package app.vela.voice
 
 import android.content.Context
-import app.vela.core.voice.VelaKokoro
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -14,33 +13,34 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Downloads the Kokoro neural-TTS model (~126 MB `.tar.bz2` from the sherpa-onnx `tts-models` GitHub
- * release) straight into `filesDir/kokoro`, extracting it, and reports 0f..1f progress so Settings can
- * show a real bar. Best-effort: any failure wipes the partial model so a retry starts clean.
- *
- * This is what lets Vela run the neural voice WITHOUT the standalone SherpaTTS app — Vela fetches the
- * exact model itself. The runtime that plays it (sherpa-onnx) is bundled; only the model is remote.
+ * Downloads a Vela neural-voice model (a sherpa-onnx `.tar.bz2` from the `tts-models` GitHub release)
+ * straight into a target dir under `filesDir`, extracting it, reporting 0f..1f progress. Generic over
+ * the voice (Kokoro or Piper) — pass the URL + dest dir. Best-effort: any failure wipes the partial
+ * model so a retry starts clean. This is what lets Vela run neural voices WITHOUT a standalone app.
  */
 @Singleton
 class KokoroInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
     private val http: OkHttpClient,
 ) {
-    fun isInstalled(): Boolean = VelaKokoro.isReady(context)
-
-    /** Download + extract the model. [onProgress] is the download fraction (0f..1f). Returns true
-     *  once the model is present and usable. */
-    suspend fun download(onProgress: (Float) -> Unit): Boolean = withContext(Dispatchers.IO) {
-        val dir = VelaKokoro.modelDir(context)
-        val tmp = File(context.filesDir, "kokoro.download.tmp")
-        val staging = File(context.filesDir, "kokoro.staging")
+    /** Download [url]'s model into [destDir], extracting the archive's single top-level folder into
+     *  it. [onProgress] is the download fraction (0f..1f). [sizeEst] is a fallback total when the
+     *  server omits Content-Length. Returns true once extraction completed. */
+    suspend fun download(
+        url: String,
+        destDir: File,
+        sizeEst: Long,
+        onProgress: (Float) -> Unit,
+    ): Boolean = withContext(Dispatchers.IO) {
+        val tmp = File(context.filesDir, "voice.download.tmp")
+        val staging = File(context.filesDir, "voice.staging")
         try {
             val fetched = http.newCall(
-                Request.Builder().url(MODEL_URL).header("User-Agent", "VelaMaps").build(),
+                Request.Builder().url(url).header("User-Agent", "VelaMaps").build(),
             ).execute().use { resp ->
                 val body = resp.body
                 if (!resp.isSuccessful || body == null) return@use false
-                val total = body.contentLength().takeIf { it > 0 } ?: TAR_SIZE_EST
+                val total = body.contentLength().takeIf { it > 0 } ?: sizeEst
                 body.byteStream().use { input ->
                     tmp.outputStream().use { out ->
                         val buf = ByteArray(1 shl 16)
@@ -57,17 +57,15 @@ class KokoroInstaller @Inject constructor(
             }
             if (!fetched) return@withContext false
 
-            // Extract into a staging dir, then promote the archive's single top-level folder
-            // (kokoro-int8-multi-lang-v1_0/) to be `dir` itself.
             staging.deleteRecursively(); staging.mkdirs()
             extractTarBz2(tmp, staging)
             val inner = staging.listFiles()?.firstOrNull { it.isDirectory } ?: staging
-            dir.deleteRecursively()
-            if (!inner.renameTo(dir)) inner.copyRecursively(dir, overwrite = true)
+            destDir.deleteRecursively()
+            if (!inner.renameTo(destDir)) inner.copyRecursively(destDir, overwrite = true)
             onProgress(1f)
-            VelaKokoro.isReady(context)
+            true
         } catch (t: Throwable) {
-            dir.deleteRecursively()
+            destDir.deleteRecursively()
             false
         } finally {
             tmp.delete()
@@ -95,9 +93,13 @@ class KokoroInstaller @Inject constructor(
         }
     }
 
-    private companion object {
-        const val MODEL_URL =
+    companion object {
+        // sherpa-onnx tts-models release .tar.bz2 sources + fallback sizes.
+        const val KOKORO_URL =
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_0.tar.bz2"
-        const val TAR_SIZE_EST = 131_839_838L
+        const val KOKORO_SIZE = 131_839_838L
+        const val PIPER_URL =
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_female-medium.tar.bz2"
+        const val PIPER_SIZE = 67_228_166L
     }
 }
