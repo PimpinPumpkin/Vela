@@ -3,6 +3,7 @@ package app.vela.ui
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
 import app.vela.core.voice.VelaKokoro
+import app.vela.core.voice.VelaPiper
 
 /**
  * First-run welcome + a *tasteful* one-time donation prompt.
@@ -63,7 +64,7 @@ object Onboarding {
         // brand-new install welcomeDone is still false here (welcome not seen yet) → completeWelcome
         // arms it right after the welcome screen instead.
         val voicePromptDone = p.getBoolean("voice_prompt_done", false)
-        showVoicePrompt.value = welcomeDone.value && !voicePromptDone && !VelaKokoro.isReady(context)
+        showVoicePrompt.value = welcomeDone.value && !voicePromptDone && !(VelaKokoro.isReady(context) || VelaPiper.isReady(context))
     }
 
     /** Mark the voice prompt handled so it never shows again. */
@@ -85,7 +86,7 @@ object Onboarding {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         p.edit().putBoolean("welcome_done", true).apply()
         // Right after the welcome, offer the neural voice (unless already downloaded/answered).
-        showVoicePrompt.value = !p.getBoolean("voice_prompt_done", false) && !VelaKokoro.isReady(context)
+        showVoicePrompt.value = !p.getBoolean("voice_prompt_done", false) && !(VelaKokoro.isReady(context) || VelaPiper.isReady(context))
     }
 
     /** Mark the one-time prompt as handled so it never shows again. */
