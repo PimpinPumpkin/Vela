@@ -20,10 +20,13 @@ object VelaPiper {
     const val ENGINE_ID = "vela.piper" // STABLE — do not change (VoiceGuide routing + the voice_engine pref)
     const val LABEL = "Vela voice"
 
-    /** The fleet default voice (its speaker is what [Calibration.defaultVoiceSpeaker] tunes). */
-    const val DEFAULT_VOICE_ID = "en_US-libritts_r-medium"
+    /** The fleet default voice — what onboarding downloads and a fresh install activates. HFC Female is a
+     *  bright, clear single-speaker US voice (picked by ear as the most Google-Maps-like). Remotely
+     *  overridable via [Calibration.defaultVoiceId]; a user's own pick always wins. */
+    const val DEFAULT_VOICE_ID = "en_US-hfc_female-medium"
 
-    /** The single voice the old single-model build shipped — flat under `filesDir/piper` before the browser. */
+    /** The single voice the old single-model build shipped (flat under `filesDir/piper` before the
+     *  browser) — AND the multi-speaker voice that [Calibration.defaultVoiceSpeaker] tunes (904 variants). */
     const val LEGACY_ID = "en_US-libritts_r-medium"
 
     const val PREF_MODEL = "voice_model" // String: the selected Piper voice id

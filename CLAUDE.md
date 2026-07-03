@@ -92,11 +92,14 @@ genuinely needs no doc edit, say why in the commit.
   `config/`) fetches `calibration.json` from the repo's raw URL at launch and
   adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
   provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).
-  The bundle also carries **`defaultVoiceSpeaker`** (int) and **`defaultVoiceSpeed`**
-  (float) — the default libritts_r Piper voice variant + spoken-directions speed, so
-  a favourite speaker or pace can be pushed as everyone's default with a version bump
-  + re-sign, no app release (a user's own pick still wins). Shipped defaults: speaker
-  14, speed 0.8× (calibration v8). NB the neural voice lengthens pauses at periods by
+  The bundle also carries **`defaultVoiceId`** (String — the Piper voice a fresh install
+  downloads + activates), **`defaultVoiceSpeaker`** (int — only tunes libritts_r's 904
+  variants) and **`defaultVoiceSpeed`** (float — spoken-directions speed), so a favourite
+  voice/speaker/pace can be pushed as everyone's default with a version bump + re-sign, no
+  app release (a user's own `voice_model`/`voice_speaker`/`voice_speed` pick still wins).
+  Shipped defaults (calibration **v10**): voice **HFC Female** (`en_US-hfc_female-medium`),
+  speaker 14 (libritts only), speed **0.8×** — matched in the compiled `Calibration.DEFAULT`
+  + `VelaPiper.DEFAULT_VOICE_ID`. NB the neural voice lengthens pauses at periods by
   **splitting the utterance on sentence boundaries and splicing silence in-app**
   (`PiperSynth.splitSentences`/`joinWithGaps`) — sherpa-onnx's `silenceScale` config is
   a measured no-op on the Piper/VITS path, don't reach for it. Spoken text also runs through
