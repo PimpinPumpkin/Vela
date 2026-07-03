@@ -419,18 +419,31 @@ fun PlaceSheet(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     place.name,
-                    style = MaterialTheme.typography.headlineSmall,
+                    // titleLarge (22sp) not headlineSmall (24sp) so a longer name ("Starbucks Coffee
+                    // Company") fits two lines beside the Save/Share/⋮/✕ icons instead of ellipsising.
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = ink,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
-                // Header stays lean (name + ⋮ + ✕) so a long place name has room and doesn't wrap hard;
-                // Save/Share live in the scrollable action-pill row below (Google-style).
+                // Save + Share as compact header actions (preferred look). The name has weight(1f) and
+                // wraps to 2 lines if long, so these stay put without shoving it off.
+                IconButton(onClick = onToggleSave, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (isSaved) "Saved" else "Save",
+                        tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                ShareIconButton(place, dim)
                 // Overflow: pin this place straight to Home/Work (Google-style).
                 var headerMenu by remember { mutableStateOf(false) }
                 Box {
-                    IconButton(onClick = { headerMenu = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = dim)
+                    IconButton(onClick = { headerMenu = true }, modifier = Modifier.size(40.dp)) {
+                        Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = dim, modifier = Modifier.size(20.dp))
                     }
                     DropdownMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
                         DropdownMenuItem(
@@ -443,8 +456,8 @@ fun PlaceSheet(
                         )
                     }
                 }
-                IconButton(onClick = onClose) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = dim)
+                IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Default.Close, contentDescription = "Close", tint = dim, modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -560,6 +573,41 @@ fun PlaceSheet(
                     }
                 }
             }
+            // Phone + website as their own tappable rows (Google shows the actual number / domain here,
+            // below the quick-action buttons). The action pills up top are the fast path; these show the
+            // detail.
+            place.phone?.let { ph ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
+                        val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
+                        runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                    }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Call, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(ph, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
+                }
+            }
+            place.website?.let { site ->
+                Row(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                    }.padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.Language, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        runCatching { Uri.parse(site).host?.removePrefix("www.") }.getOrNull() ?: site,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
 
             // Hours sit above the action buttons (Directions/Call/…), per request.
             // A permanently-closed POI already says so in red above — don't also
@@ -570,9 +618,9 @@ fun PlaceSheet(
                 Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
-            // Quick-action row — Google-style **scrollable pills**: a highlighted Directions, then
-            // Call (showing the actual number), Website, Save, Share. Scrolls horizontally so nothing
-            // clips no matter how many are present, and it keeps the header (name) uncluttered.
+            // Quick-action pills — a highlighted Directions + short Call / Website (the fast path;
+            // the actual number/URL live as tappable rows above, Google-style). Save/Share are in the
+            // header. Horizontally scrollable as a safety, though these three fit without scrolling.
             Row(
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -580,7 +628,7 @@ fun PlaceSheet(
             ) {
                 ActionPill(Icons.Default.Directions, "Directions", emphasized = true, onClick = onDirections)
                 place.phone?.let { ph ->
-                    ActionPill(Icons.Default.Call, ph) {
+                    ActionPill(Icons.Default.Call, "Call") {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
@@ -590,12 +638,6 @@ fun PlaceSheet(
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                     }
                 }
-                ActionPill(
-                    if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
-                    if (isSaved) "Saved" else "Save",
-                    onClick = onToggleSave,
-                )
-                ShareActionPill(place)
             }
 
             // Action link (Book online / Reserve a table / Order online) — Google shows this
@@ -1865,7 +1907,7 @@ private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = f
 /** Share action: opens a small menu — a Google Maps link, a keyless geo: pin
  *  (opens in any maps app, incl. Vela), raw coordinates, or just the address. */
 @Composable
-private fun ShareActionPill(place: Place) {
+private fun ShareIconButton(place: Place, tint: Color) {
     val context = LocalContext.current
     var open by remember { mutableStateOf(false) }
     val lat = place.location.lat
@@ -1887,7 +1929,9 @@ private fun ShareActionPill(place: Place) {
     }
 
     Box {
-        ActionPill(Icons.Default.Share, "Share") { open = true }
+        IconButton(onClick = { open = true }, modifier = Modifier.size(40.dp)) {
+            Icon(Icons.Default.Share, contentDescription = "Share", tint = tint, modifier = Modifier.size(20.dp))
+        }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
                 text = { Text("Google Maps link") },
