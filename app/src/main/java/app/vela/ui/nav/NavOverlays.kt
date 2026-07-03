@@ -44,9 +44,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import app.vela.R
 import app.vela.core.model.Lane
 import app.vela.core.model.ManeuverType
 import app.vela.ui.SheetPalette
@@ -148,7 +150,7 @@ fun ManeuverBanner(
                             modifier = Modifier.padding(top = 2.dp, bottom = 1.dp),
                         ) { signs.forEach { SignChip(it) } }
                     }
-                    Text(text.ifEmpty { "Continue" }, style = MaterialTheme.typography.bodyLarge)
+                    Text(text.ifEmpty { stringResource(R.string.nav_maneuver_continue) }, style = MaterialTheme.typography.bodyLarge)
                 }
             }
             // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
@@ -174,7 +176,7 @@ fun ManeuverBanner(
                 val nextSigns = roadSigns(nextText, nextRef)
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "then",
+                        stringResource(R.string.nav_compound_then),
                         style = MaterialTheme.typography.labelLarge,
                         color = content.copy(alpha = 0.7f),
                     )
@@ -188,7 +190,7 @@ fun ManeuverBanner(
             if (previewing) {
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "Preview — tap to resume",
+                    stringResource(R.string.nav_preview_tap_resume),
                     style = MaterialTheme.typography.labelMedium,
                     color = content.copy(alpha = 0.85f),
                 )
@@ -454,7 +456,7 @@ fun NavControls(
                 Text(
                     formatDistance(remainingDistanceMeters) +
                         " · " + formatArrivalClock(remainingSeconds) +
-                        if (offRoute) " · rerouting…" else "",
+                        if (offRoute) " · " + stringResource(R.string.nav_rerouting) else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = SheetPalette.dim(dark),
                     maxLines = 1,
@@ -468,14 +470,14 @@ fun NavControls(
                 OutlinedIconButton(onClick = onToggleVoice) {
                     Icon(
                         if (voiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                        contentDescription = if (voiceMuted) "Unmute voice guidance" else "Mute voice guidance",
+                        contentDescription = if (voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
                     )
                 }
                 OutlinedIconButton(onClick = onSteps) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = "Steps")
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps))
                 }
                 Button(onClick = onStop) {
-                    Text("End", maxLines = 1, softWrap = false)
+                    Text(stringResource(R.string.nav_end), maxLines = 1, softWrap = false)
                 }
             }
         }
@@ -504,7 +506,7 @@ fun ArrivalSummary(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.CheckCircle, contentDescription = null, modifier = Modifier.padding(end = 12.dp))
                 Column {
-                    Text("You've arrived", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.nav_arrived), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     if (destinationLabel.isNotBlank()) {
                         Text(destinationLabel, style = MaterialTheme.typography.bodyLarge)
                     }
@@ -513,7 +515,7 @@ fun ArrivalSummary(
             Spacer(Modifier.height(16.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(32.dp)) {
                 Column {
-                    Text("Trip time", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.nav_trip_time), style = MaterialTheme.typography.labelMedium)
                     Text(
                         formatDuration(tripSeconds),
                         style = MaterialTheme.typography.titleMedium,
@@ -521,7 +523,7 @@ fun ArrivalSummary(
                     )
                 }
                 Column {
-                    Text("Distance", style = MaterialTheme.typography.labelMedium)
+                    Text(stringResource(R.string.nav_distance), style = MaterialTheme.typography.labelMedium)
                     Text(
                         formatDistance(tripDistanceMeters),
                         style = MaterialTheme.typography.titleMedium,
@@ -531,7 +533,7 @@ fun ArrivalSummary(
             }
             Spacer(Modifier.height(16.dp))
             Button(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-                Text("Done")
+                Text(stringResource(R.string.nav_done))
             }
         }
     }
