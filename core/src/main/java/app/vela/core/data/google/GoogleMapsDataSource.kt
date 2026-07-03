@@ -30,6 +30,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.net.URLEncoder
+import kotlin.math.ln
 import kotlin.math.log2
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -47,6 +48,31 @@ import javax.inject.Singleton
  * they work without Play Services — good for GrapheneOS.
  */
 @Singleton
+/**
+ * How prominent a place is on the map ≈ how many people know it. Review count dominates (a Safeway has
+ * thousands, the sushi counter inside it dozens), log-compressed so a mega-chain doesn't utterly bury
+ * everything, and nudged by rating so among similarly-popular places the better-rated wins.
+ */
+internal fun ambientProminence(p: Place): Double =
+    ln((p.reviewCount ?: 0) + 1.0) * (0.6 + (p.rating ?: 3.5) / 10.0)
+
+/**
+ * Order ambient Google POIs for the browse map. Callers treat "first = wins the label slot" (the ambient
+ * layer places a lower symbol-sort-key first and drops overlapping dots), so this decides which POI shows
+ * when several collide AND which survive the take-N cap. **Prominence-first**, exact distance only as a
+ * tiebreak. This is what a map wants — the recognizable landmarks (a Safeway with 1,273 reviews, an
+ * Applebee's with 1,192) lead, and the low-signal junk the category fan-out drags in (a 0-review mobile
+ * mechanic, an adult-family-home, a road intersection) sinks to the bottom and is dropped/loses its
+ * collision. Distance-bucketing was tried and REVERTED: it floated that near-centre junk above the
+ * landmarks (device-measured). The anchor-beats-tenant case still holds (Safeway's reviews ≫ its in-store
+ * sushi counter's, so it wins their shared point).
+ */
+internal fun rankAmbientPlaces(places: List<Place>): List<Place> =
+    places.sortedWith(
+        compareByDescending<Place> { ambientProminence(it) }
+            .thenBy { it.distanceMeters ?: Double.MAX_VALUE },
+    )
+
 class GoogleMapsDataSource @Inject constructor(
     private val http: OkHttpClient,
     private val session: GoogleSession,
@@ -118,10 +144,12 @@ class GoogleMapsDataSource @Inject constructor(
                 }
             }.awaitAll().flatten()
         }
-        // Dedup by feature id (same place returned under several terms); fall back to name+coords.
-        all.distinctBy {
+        // Dedup by feature id (same place returned under several terms); fall back to name+coords,
+        // then rank for the map (locality + prominence — see rankAmbientPlaces).
+        val deduped = all.distinctBy {
             it.featureId ?: "${it.name}@${(it.location.lat * 1e4).toInt()},${(it.location.lng * 1e4).toInt()}"
         }
+        rankAmbientPlaces(deduped)
     }
 
     override suspend fun placeDetails(id: String): Place = io {
