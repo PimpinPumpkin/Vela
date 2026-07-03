@@ -200,7 +200,7 @@ class MapViewModel @Inject constructor(
         }
         neuralSynthFor(savedEngine)?.warmUp()
         val voicePrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
-        val savedSpeed = voicePrefs.getFloat("voice_speed", 1.0f)
+        val savedSpeed = voicePrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
         voice.setRate(savedSpeed) // relay the saved rate to the AOSP TTS engine at startup
         _state.update {
             it.copy(
