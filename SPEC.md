@@ -414,7 +414,9 @@ handed — no filesystem, network, or device access.
 ## 6. Degoogled constraints (hard rules — do not regress)
 
 - Location: AOSP `LocationManager` only — never `FusedLocationProviderClient`.
-- Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS.
+- Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS. Plus a bundled
+  **in-process neural voice** (sherpa-onnx runtime + downloaded Kokoro model, `KokoroSynth` behind the
+  `:core` `NeuralSynth` seam), default once its model is downloaded; system engines stay selectable.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. Push (if ever) = UnifiedPush; crash
   reporting = ACRA/self-hosted.
 - EU consent: pre-seed `SOCS`/`CONSENT` cookies; never let `Set-Cookie` downgrade
