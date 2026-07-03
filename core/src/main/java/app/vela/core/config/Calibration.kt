@@ -50,11 +50,19 @@ data class Calibration(
     // used until the user adjusts it in Settings → Voice. Also remote-pushable; a user's explicit
     // `voice_speed` pref wins. 0.8 reads as a measured, easy-to-follow nav cadence.
     val defaultVoiceSpeed: Float = DEFAULT_VOICE_SPEED,
+    // The fleet default neural voice id (a Piper voice from PiperCatalog) — what onboarding downloads
+    // and a fresh install activates. Remote-pushable via the signed bundle so a favourite voice can be
+    // made everyone's default without an app release; a user's own pick (voice_model) always wins.
+    val defaultVoiceId: String = DEFAULT_VOICE_ID,
 ) {
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
         const val DEFAULT_VOICE_SPEAKER = 14
-        const val DEFAULT_VOICE_SPEED = 0.7f
+        // 0.8× — the user's chosen nav cadence for the HFC Female default (2026-07-03).
+        const val DEFAULT_VOICE_SPEED = 0.8f
+        // HFC Female — the user's pick for the fleet default voice (2026-07-03). Kept in sync with
+        // VelaPiper.DEFAULT_VOICE_ID (the compiled fallback used where calibration isn't handy).
+        const val DEFAULT_VOICE_ID = app.vela.core.voice.VelaPiper.DEFAULT_VOICE_ID
         const val DEFAULT_PHOTOS_ENDPOINT =
             "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX&source-path=/maps&hl=en&_reqid=1&rt=c"
 
