@@ -73,7 +73,7 @@ object NavEngine {
             for (p in PROMPT_DISTANCES) {
                 if (dtn <= p && p !in spoken) {
                     spoken = spoken + p
-                    events += NavEvent.Speak("In ${spokenDistance(p.toDouble(), imperial)}, ${target.instruction}")
+                    events += NavEvent.Speak(nav().inThen(spokenDistance(p.toDouble(), imperial), target.instruction))
                     // A light "get ready" tick at the closest pre-turn prompt, so
                     // bikers/walkers feel the turn coming without looking or hearing.
                     if (p == PROMPT_DISTANCES.last()) events += NavEvent.Haptic(target.type, approaching = true)
@@ -91,7 +91,7 @@ object NavEngine {
                 spoken = emptySet()
             } else {
                 events += NavEvent.Arrived
-                events += NavEvent.Speak("You have arrived", interrupt = true)
+                events += NavEvent.Speak(nav().arrived(), interrupt = true)
                 return state.copy(
                     arrived = true,
                     distanceToNextManeuver = 0.0,
@@ -123,24 +123,12 @@ object NavEngine {
         return newState to events
     }
 
-    /** Average speed implied by the route — prefers the traffic-aware duration. */
-    /** A distance phrased for SPEECH, honouring the imperial/metric preference (the TTS used to
-     *  always say metres regardless of the Units setting). Feet under ~0.15 mi, else miles;
-     *  metres under ~1 km, else kilometres. */
-    private fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
-        val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} feet"
-        else {
-            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
-            if (miles == 1.0) "1 mile" else "$miles miles"
-        }
-    } else {
-        if (meters < 950) "${(meters / 10).roundToInt() * 10} meters"
-        else {
-            val km = (meters / 100).roundToInt() / 10.0
-            if (km == 1.0) "1 kilometer" else "$km kilometers"
-        }
-    }
+    /** The active language's nav strings (spoken frame + distance + arrival), English by default. */
+    private fun nav() = app.vela.core.i18n.NavStringsRegistry.current()
+
+    /** A distance phrased for SPEECH, honouring the imperial/metric preference — now localized via the
+     *  active [NavStrings] (English is byte-identical to the old inline logic). */
+    private fun spokenDistance(meters: Double, imperial: Boolean): String = nav().spokenDistance(meters, imperial)
 
     private fun avgSpeed(route: Route): Double {
         val dur = route.durationInTrafficSeconds ?: route.durationSeconds

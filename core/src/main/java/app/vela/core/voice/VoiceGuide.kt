@@ -193,14 +193,8 @@ class VoiceGuide @Inject constructor(
      *  "Street", "Pkwy" → "Parkway", "N" → "North", "I-80" → "Interstate 80". Google's markup
      *  (and so the on-screen banner) keeps the compact forms; this is for the spoken text only.
      *  Whole-word, so it never mangles a name that merely contains the letters. */
-    private fun forSpeech(text: String): String {
-        var s = text
-        s = Regex("\\bI-(\\d+)").replace(s) { "Interstate ${it.groupValues[1]}" }
-        s = Regex("\\bUS-(\\d+)").replace(s) { "US ${it.groupValues[1]}" }
-        SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
-        s = SpeechText.spokenNumbers(s) // "128th" → "one twenty-eighth", not a mangled "one hundred and 28th"
-        return s
-    }
+    private fun forSpeech(text: String): String =
+        app.vela.core.i18n.NavStringsRegistry.current().expandForSpeech(text)
 
     fun stop() {
         tts?.stop()
@@ -235,33 +229,5 @@ class VoiceGuide @Inject constructor(
         focusRequest = null
     }
 }
-
-/** Whole-word road abbreviation → spoken form, applied to the TTS text only (not the banner).
- *  Road-type suffixes are case-insensitive; the directionals are uppercase (as they appear in
- *  road names) and come LAST so they can't chew into a word an earlier rule expanded. */
-private val SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
-    Regex("\\bSt\\b", RegexOption.IGNORE_CASE) to "Street",
-    Regex("\\bAve\\b", RegexOption.IGNORE_CASE) to "Avenue",
-    Regex("\\bBlvd\\b", RegexOption.IGNORE_CASE) to "Boulevard",
-    Regex("\\bRd\\b", RegexOption.IGNORE_CASE) to "Road",
-    Regex("\\bDr\\b", RegexOption.IGNORE_CASE) to "Drive",
-    Regex("\\bLn\\b", RegexOption.IGNORE_CASE) to "Lane",
-    Regex("\\bCt\\b", RegexOption.IGNORE_CASE) to "Court",
-    Regex("\\bPkwy\\b", RegexOption.IGNORE_CASE) to "Parkway",
-    Regex("\\bHwy\\b", RegexOption.IGNORE_CASE) to "Highway",
-    Regex("\\bPl\\b", RegexOption.IGNORE_CASE) to "Place",
-    Regex("\\bTer\\b", RegexOption.IGNORE_CASE) to "Terrace",
-    Regex("\\bCir\\b", RegexOption.IGNORE_CASE) to "Circle",
-    Regex("\\bSq\\b", RegexOption.IGNORE_CASE) to "Square",
-    Regex("\\bTrl\\b", RegexOption.IGNORE_CASE) to "Trail",
-    Regex("\\bExpy\\b", RegexOption.IGNORE_CASE) to "Expressway",
-    Regex("\\bFwy\\b", RegexOption.IGNORE_CASE) to "Freeway",
-    Regex("\\bNE\\b") to "Northeast",
-    Regex("\\bNW\\b") to "Northwest",
-    Regex("\\bSE\\b") to "Southeast",
-    Regex("\\bSW\\b") to "Southwest",
-    Regex("\\bN\\b") to "North",
-    Regex("\\bS\\b") to "South",
-    Regex("\\bE\\b") to "East",
-    Regex("\\bW\\b") to "West",
-)
+// (Road-abbreviation → spoken-form expansion moved to EnNavStrings.expandForSpeech in core/i18n, so it's
+//  English-scoped and opt-in — other languages leave road names untouched.)
