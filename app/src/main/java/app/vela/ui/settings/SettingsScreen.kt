@@ -55,6 +55,8 @@ import app.vela.offline.OfflineMaps
 import org.maplibre.android.offline.OfflineRegion
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import app.vela.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -82,10 +84,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") },
+                title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 },
             )
@@ -97,26 +99,26 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp),
         ) {
-            SectionTitle("Appearance")
+            SectionTitle(stringResource(R.string.settings_appearance))
             SelectableRow(
-                label = "Follow system",
+                label = stringResource(R.string.settings_follow_system),
                 selected = AppTheme.mode.value == ThemeMode.SYSTEM,
                 onClick = { AppTheme.set(context, ThemeMode.SYSTEM) },
             )
             SelectableRow(
-                label = "Light",
+                label = stringResource(R.string.settings_theme_light),
                 selected = AppTheme.mode.value == ThemeMode.LIGHT,
                 onClick = { AppTheme.set(context, ThemeMode.LIGHT) },
             )
             SelectableRow(
-                label = "Dark",
+                label = stringResource(R.string.settings_theme_dark),
                 selected = AppTheme.mode.value == ThemeMode.DARK,
                 onClick = { AppTheme.set(context, ThemeMode.DARK) },
             )
-            Hint("Light/Dark applies to Vela only — it won't touch your phone's system theme.")
+            Hint(stringResource(R.string.settings_appearance_hint))
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Map style")
+            SectionTitle(stringResource(R.string.settings_map_style))
             MapStyle.values().forEach { style ->
                 SelectableRow(
                     label = style.label,
@@ -124,25 +126,25 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     onClick = { vm.setStyle(style) },
                 )
             }
-            Hint("OpenFreeMap (the default) is keyless and detailed. Protomaps needs an API key; the demo style is country outlines only.")
+            Hint(stringResource(R.string.settings_map_style_hint))
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Units")
+            SectionTitle(stringResource(R.string.settings_units))
             SelectableRow(
-                label = "Imperial (miles, feet)",
+                label = stringResource(R.string.settings_units_imperial),
                 selected = Units.imperial.value,
                 onClick = { Units.set(context, true) },
             )
             SelectableRow(
-                label = "Metric (kilometers, meters)",
+                label = stringResource(R.string.settings_units_metric),
                 selected = !Units.imperial.value,
                 onClick = { Units.set(context, false) },
             )
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Language")
+            SectionTitle(stringResource(R.string.settings_language))
             SelectableRow(
-                label = "Follow system",
+                label = stringResource(R.string.settings_follow_system),
                 selected = app.vela.ui.AppLocale.language.value.isBlank(),
                 onClick = { app.vela.ui.AppLocale.set(context, "") },
             )
@@ -153,26 +155,26 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     onClick = { app.vela.ui.AppLocale.set(context, code) },
                 )
             }
-            Hint("Sets the language for spoken turn-by-turn directions (English, French, German, Spanish, Italian, Portuguese, Dutch, Russian, Polish, Swedish, Ukrainian) — independent of your phone's system language. Pick a matching voice in Voice library below. The rest of the app's on-screen text is being translated next.")
+            Hint(stringResource(R.string.settings_language_hint))
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Voice")
+            SectionTitle(stringResource(R.string.settings_voice))
             // Vela's own on-device neural voices — offer a one-tap download for whichever isn't
             // present yet; once downloaded each shows in the engine list below (selectable). No
             // standalone TTS app needed. Kokoro = premium/slower, Piper = fast.
             // A download in flight shows a compact progress line here too, so it's visible even when the
             // Voice library (below) is collapsed. The per-voice controls live in the library.
             state.voiceDownloadingId?.let { id ->
-                val nm = vm.voiceCatalog().firstOrNull { it.id == id }?.displayName ?: "voice"
+                val nm = vm.voiceCatalog().firstOrNull { it.id == id }?.displayName ?: stringResource(R.string.settings_voice_fallback_name)
                 val pct = state.kokoroDownloadPct ?: 0f
-                Text("Downloading $nm… ${(pct * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
             } ?: Spacer(Modifier.height(4.dp))
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
-                Hint("No voice yet — open Voice library below to download a natural on-device voice (no account, real-time even on old phones). A system TTS engine you install will also appear here to pick.")
+                Hint(stringResource(R.string.settings_voice_none_hint))
             } else {
                 engines.forEach { e ->
                     SelectableRow(
@@ -183,7 +185,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 }
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { vm.testVoice() }) { Text("Test voice") }
+                    OutlinedButton(onClick = { vm.testVoice() }) { Text(stringResource(R.string.settings_voice_test)) }
                     Spacer(Modifier.width(8.dp))
                     OutlinedButton(onClick = {
                         runCatching {
@@ -192,22 +194,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                                     .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                             )
                         }
-                    }) { Text("System voice settings") }
+                    }) { Text(stringResource(R.string.settings_voice_system_settings)) }
                 }
-                Hint("Tap Test voice to hear it. The Vela voice is recommended; you can override to any installed text-to-speech engine.")
+                Hint(stringResource(R.string.settings_voice_test_hint))
             }
 
             // Voice library — browse, download, switch between and remove Vela's neural voices (Piper).
             // Auto-expanded when nothing is installed so the download path is obvious.
             var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty()) }
-            CollapsibleSectionTitle("Voice library", voiceLibExpanded) { voiceLibExpanded = !voiceLibExpanded }
+            CollapsibleSectionTitle(stringResource(R.string.settings_voice_library), voiceLibExpanded) { voiceLibExpanded = !voiceLibExpanded }
             if (voiceLibExpanded) VoiceLibrary(vm, state)
 
             if (engines.isNotEmpty()) {
                 // Speed + the niche bits (playground, the multi-speaker variant picker) — most people never
                 // touch these, so tuck them behind a collapsible header (collapsed by default).
                 var voiceAdvExpanded by remember { mutableStateOf(false) }
-                CollapsibleSectionTitle("Advanced voice options", voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
+                CollapsibleSectionTitle(stringResource(R.string.settings_voice_advanced), voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
                 if (voiceAdvExpanded) {
                 // Playground: hear the selected voice on any text (or a nav-style sample).
                 Spacer(Modifier.height(12.dp))
@@ -216,22 +218,23 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     value = tryText,
                     onValueChange = { tryText = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Try the voice on any text") },
+                    label = { Text(stringResource(R.string.settings_voice_try_label)) },
                     maxLines = 3,
                 )
                 Spacer(Modifier.height(6.dp))
+                val navSampleText = stringResource(R.string.settings_voice_nav_sample_text)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { vm.speakText(tryText) }, enabled = tryText.isNotBlank()) { Text("Speak") }
+                    OutlinedButton(onClick = { vm.speakText(tryText) }, enabled = tryText.isNotBlank()) { Text(stringResource(R.string.settings_voice_speak)) }
                     Spacer(Modifier.width(8.dp))
                     OutlinedButton(onClick = {
-                        vm.speakText("In a quarter mile, turn right onto Main Street, then your destination is on the left.")
-                    }) { Text("Nav sample") }
+                        vm.speakText(navSampleText)
+                    }) { Text(stringResource(R.string.settings_voice_nav_sample)) }
                 }
                 // Speed applies to whichever voice is selected (neural + system TTS).
                 Spacer(Modifier.height(10.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Voice speed · ${"%.2fx".format(state.voiceSpeed)}",
+                        stringResource(R.string.settings_voice_speed, "%.2fx".format(state.voiceSpeed)),
                         style = MaterialTheme.typography.bodyMedium,
                         modifier = Modifier.weight(1f),
                     )
@@ -239,7 +242,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     Spacer(Modifier.width(6.dp))
                     OutlinedButton(onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
                 }
-                Hint("Slower or faster spoken directions — tap − / + (it speaks a sample). 1.00× is normal.")
+                Hint(stringResource(R.string.settings_voice_speed_hint))
                 // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) — let the user audition +
                 // pick a variant. Hidden for single-speaker voices (lessac/hfc/…), where it's meaningless.
                 if (state.selectedEngine?.packageName?.startsWith("vela.") == true && vm.voiceSpeakerCount() > 1) {
@@ -247,7 +250,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     val cnt = vm.voiceSpeakerCount()
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            "Voice variant #${state.voiceSpeaker}" + (if (cnt > 0) " of $cnt" else ""),
+                            if (cnt > 0) stringResource(R.string.settings_voice_variant_of, state.voiceSpeaker, cnt)
+                            else stringResource(R.string.settings_voice_variant, state.voiceSpeaker),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.weight(1f),
                         )
@@ -267,7 +271,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                             value = jump,
                             onValueChange = { s -> jump = s.filter { it.isDigit() }.take(4) },
                             singleLine = true,
-                            label = { Text("Variant #") },
+                            label = { Text(stringResource(R.string.settings_voice_variant_field)) },
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Number,
                                 imeAction = ImeAction.Go,
@@ -276,22 +280,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                             modifier = Modifier.width(150.dp),
                         )
                         Spacer(Modifier.width(8.dp))
-                        OutlinedButton(onClick = goToVariant, enabled = jump.isNotBlank()) { Text("Go") }
+                        OutlinedButton(onClick = goToVariant, enabled = jump.isNotBlank()) { Text(stringResource(R.string.settings_voice_variant_go)) }
                     }
-                    Hint("This voice has hundreds of speakers — tap ◀ ▶ to audition one at a time, or type a variant number and Go to jump straight to it (it speaks a sample). Keep the one you like.")
+                    Hint(stringResource(R.string.settings_voice_variant_hint))
                 }
                 } // end "Advanced voice options"
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Navigation")
+            SectionTitle(stringResource(R.string.settings_navigation))
             val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
-            Text("Vibrate on turns", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
+            Text(stringResource(R.string.settings_vibrate_on_turns), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
             listOf(
-                TravelMode.DRIVE to "Driving",
-                TravelMode.WALK to "Walking",
-                TravelMode.BICYCLE to "Cycling",
-                TravelMode.TRANSIT to "Transit",
+                TravelMode.DRIVE to stringResource(R.string.settings_mode_driving),
+                TravelMode.WALK to stringResource(R.string.settings_mode_walking),
+                TravelMode.BICYCLE to stringResource(R.string.settings_mode_cycling),
+                TravelMode.TRANSIT to stringResource(R.string.settings_mode_transit),
             ).forEach { (mode, label) ->
                 var on by remember(mode) {
                     val default = if (!prefs.getBoolean(Haptics.KEY, true)) false else Haptics.defaultFor(mode)
@@ -311,14 +315,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     )
                 }
             }
-            Hint("Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel. Set it per travel mode (e.g. on for cycling and walking, off while driving).")
+            Hint(stringResource(R.string.settings_vibrate_hint))
 
             var keepAwake by remember { mutableStateOf(prefs.getBoolean("keep_screen_on_nav", true)) }
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Keep screen on while navigating", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_keep_screen_on), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = keepAwake,
                     onCheckedChange = {
@@ -327,42 +331,42 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     },
                 )
             }
-            Hint("Stops the display from dimming or sleeping while turn-by-turn is running, so the next turn is always visible without tapping to wake it. On by default; the screen sleeps normally again the moment you arrive or leave navigation.")
+            Hint(stringResource(R.string.settings_keep_screen_on_hint))
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Map")
+            SectionTitle(stringResource(R.string.settings_map))
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Live traffic overlay", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_live_traffic), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = app.vela.ui.Traffic.on.value,
                     onCheckedChange = { app.vela.ui.Traffic.set(context, it) },
                 )
             }
-            Hint("Shades roads by congestion while browsing the map (Google's keyless traffic tiles). Off by default — navigation already colours your route by traffic, so this is just for scanning the wider area. It's a raster overlay, so it's a touch grainy.")
+            Hint(stringResource(R.string.settings_live_traffic_hint))
 
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("“Read all reviews” button", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_read_all_reviews), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = app.vela.ui.LiveReviews.on.value,
                     onCheckedChange = { app.vela.ui.LiveReviews.set(context, it) },
                 )
             }
-            Hint("Reviews in the place sheet are always Vela's own smooth native list. This adds a “Read all reviews” button that opens Google's full reviews page FULL-SCREEN — every review (not just the first ~50), Google's server-side search, and video reviews play. Trackers/beacons are blocked, but it does run Google's page inside the app. Off = native list only, no Google page for reviews.")
+            Hint(stringResource(R.string.settings_read_all_reviews_hint))
 
             Spacer(Modifier.height(20.dp))
             // Collapsed by default — the routing-region list can be long, so don't make the user
             // scroll past all of it to reach the sections below.
             var offlineExpanded by remember { mutableStateOf(false) }
-            CollapsibleSectionTitle("Offline", offlineExpanded) { offlineExpanded = !offlineExpanded }
+            CollapsibleSectionTitle(stringResource(R.string.settings_offline), offlineExpanded) { offlineExpanded = !offlineExpanded }
             if (offlineExpanded) {
-            Hint("Using the map without signal takes two things — the map TILES you see, and the ROAD NETWORK that routes you. Saving a map area grabs both for that spot; the region list below adds the road network for anywhere you're travelling.")
-            SubHead("Map area")
+            Hint(stringResource(R.string.settings_offline_hint))
+            SubHead(stringResource(R.string.settings_offline_map_area))
             var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
             LaunchedEffect(Unit) { OfflineMaps.list(context) { regions = it } }
             OutlinedButton(
@@ -371,10 +375,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     onBack() // back to the map so the user sees the download progress
                 },
                 enabled = vm.hasViewport(),
-            ) { Text("Download the area you're viewing") }
-            Hint("Saves the open tiles for the map area you last had on screen — and the routing region around it — so it renders and navigates later with no network. Search still needs a connection.")
+            ) { Text(stringResource(R.string.settings_offline_download_viewport)) }
+            Hint(stringResource(R.string.settings_offline_download_viewport_hint))
             if (regions.isEmpty()) {
-                Hint("No areas saved yet.")
+                Hint(stringResource(R.string.settings_offline_no_areas))
             } else {
                 regions.forEach { r ->
                     Row(
@@ -387,17 +391,17 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                             modifier = Modifier.weight(1f),
                         )
                         IconButton(onClick = { OfflineMaps.delete(r) { OfflineMaps.list(context) { regions = it } } }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete this offline area")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_area))
                         }
                     }
                 }
             }
 
-            SubHead("Routing regions")
+            SubHead(stringResource(R.string.settings_routing_regions))
             LaunchedEffect(Unit) { vm.refreshRoutingRegions() }
-            Hint("The road network for a whole region (state, country…), so turn-by-turn works offline anywhere inside it — grab where you're travelling. Online still uses live traffic; this is the no-signal fallback.")
+            Hint(stringResource(R.string.settings_routing_regions_hint))
             if (state.routingRegions.isEmpty()) {
-                Hint("No regions available yet.")
+                Hint(stringResource(R.string.settings_routing_no_regions))
             } else {
                 val loc = state.myLocation
                 val covers = { r: app.vela.offline.RoutingRegion ->
@@ -427,17 +431,17 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         trailingIcon = {
                             if (routeFilter.isNotEmpty()) {
                                 IconButton(onClick = { routeFilter = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Clear filter")
+                                    Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.settings_clear_filter))
                                 }
                             }
                         },
-                        placeholder = { Text("Filter ${state.routingRegions.size} regions… (e.g. Japan, Texas)") },
+                        placeholder = { Text(stringResource(R.string.settings_routing_filter_placeholder, state.routingRegions.size)) },
                     )
                 }
                 val shown = if (routeFilter.isBlank()) ordered
                     else ordered.filter { it.name.contains(routeFilter.trim(), ignoreCase = true) }
                 if (shown.isEmpty()) {
-                    Hint("No regions match “${routeFilter.trim()}”.")
+                    Hint(stringResource(R.string.settings_routing_no_match, routeFilter.trim()))
                 }
                 shown.forEach { region ->
                     val installed = region.id in state.routingInstalledIds
@@ -451,10 +455,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                             Text(region.name, style = MaterialTheme.typography.bodyLarge)
                             Text(
                                 when {
-                                    downloading -> "Downloading… ${state.routingDownloadPct}%"
-                                    installed -> "Installed · routes offline here"
-                                    here -> "${region.sizeMb} MB · covers your location"
-                                    else -> "${region.sizeMb} MB"
+                                    downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
+                                    installed -> stringResource(R.string.settings_routing_installed)
+                                    here -> stringResource(R.string.settings_routing_size_here, region.sizeMb)
+                                    else -> stringResource(R.string.settings_routing_size, region.sizeMb)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (here && !installed && !downloading) MaterialTheme.colorScheme.primary
@@ -464,12 +468,12 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         when {
                             downloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
                             installed -> IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Remove offline routing")
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
                             }
                             else -> OutlinedButton(
                                 onClick = { vm.downloadRoutingGraph(region) },
                                 enabled = state.routingDownloadingId == null,
-                            ) { Text("Download") }
+                            ) { Text(stringResource(R.string.settings_download)) }
                         }
                     }
                 }
@@ -477,8 +481,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             } // end if (offlineExpanded)
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Saved places")
-            Hint("Back up your starred places to a file, or restore them on another device. Import merges into what you already have — it never overwrites or removes anything.")
+            SectionTitle(stringResource(R.string.settings_saved_places))
+            Hint(stringResource(R.string.settings_saved_places_hint))
             val importLauncher = rememberLauncherForActivityResult(
                 ActivityResultContracts.OpenDocument(),
             ) { uri ->
@@ -486,7 +490,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     val n = vm.importSavedFromUri(uri)
                     android.widget.Toast.makeText(
                         context,
-                        if (n > 0) "Imported $n place${if (n == 1) "" else "s"}" else "Nothing new to import",
+                        if (n > 0) "Imported $n place${if (n == 1) "" else "s"}" else context.getString(R.string.settings_import_nothing),
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                 }
@@ -495,23 +499,17 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 OutlinedButton(onClick = {
                     val intent = vm.exportSavedIntent()
                     if (intent != null) runCatching { context.startActivity(intent) }
-                    else android.widget.Toast.makeText(context, "No saved places yet", android.widget.Toast.LENGTH_SHORT).show()
-                }) { Text("Export") }
+                    else android.widget.Toast.makeText(context, context.getString(R.string.settings_no_saved_places), android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text(stringResource(R.string.settings_export)) }
                 Spacer(Modifier.width(8.dp))
                 OutlinedButton(onClick = {
                     runCatching { importLauncher.launch(arrayOf("application/json", "*/*")) }
-                }) { Text("Import") }
+                }) { Text(stringResource(R.string.settings_import)) }
             }
             Spacer(Modifier.height(8.dp))
 
-            SectionTitle("Data source & privacy")
-            Hint(
-                "Vela talks to Google's public web endpoints directly from this device — no " +
-                    "Vela backend, no Google account, no API key, and no telemetry unless you turn " +
-                    "on Diagnostics below (off by default, local-only). Each device behaves " +
-                    "like a logged-out browser; Google sees your IP, query and map area but not an " +
-                    "account. Saved places and history never leave the phone.",
-            )
+            SectionTitle(stringResource(R.string.settings_data_privacy))
+            Hint(stringResource(R.string.settings_data_privacy_hint))
             Spacer(Modifier.height(4.dp))
             OutlinedButton(onClick = {
                 runCatching {
@@ -522,23 +520,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                     )
                 }
-            }) { Text("What data Google receives") }
+            }) { Text(stringResource(R.string.settings_privacy_button)) }
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Diagnostics")
+            SectionTitle(stringResource(R.string.settings_diagnostics))
             LaunchedEffect(Unit) { vm.refreshDiagnostics() }
-            Hint(
-                "Off by default. When on, Vela keeps a short local log of what it did — your " +
-                    "searches, routes, and any “needs recalibration” hiccups — so if something " +
-                    "misbehaves you can export it and hand it to a developer. It stays on this phone and " +
-                    "is never uploaded; you pick where the export goes. Turning it off wipes the log.",
-            )
+            Hint(stringResource(R.string.settings_diagnostics_hint))
             var showDiagConsent by remember { mutableStateOf(false) }
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Share diagnostics", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_share_diagnostics), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = state.diagnosticsEnabled,
                     onCheckedChange = { on -> if (on) showDiagConsent = true else vm.setDiagnostics(false) },
@@ -550,10 +543,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     if (intent != null) runCatching { context.startActivity(intent) }
                     else android.widget.Toast.makeText(
                         context,
-                        "Nothing recorded yet — use the app, then export.",
+                        context.getString(R.string.settings_diag_nothing),
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
-                }) { Text("Export debug session") }
+                }) { Text(stringResource(R.string.settings_diag_export)) }
             }
 
             // Trip recording — more invasive than diagnostics (it's your exact routes),
@@ -569,16 +562,16 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Save my trips (for replay)", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Text(stringResource(R.string.settings_save_trips), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = state.tripRecordingEnabled,
                     onCheckedChange = { on -> if (on) showTripConsent = true else vm.setTripRecording(false) },
                 )
             }
-            Hint("Records each navigation's GPS trace on this phone so a drive can be replayed later to test turn-by-turn without driving it again. More revealing than diagnostics — it's your exact routes — and never leaves the phone.")
+            Hint(stringResource(R.string.settings_save_trips_hint))
             if (trips.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
-                Hint("Recorded trips — tap Replay to play one back on the map (3×):")
+                Hint(stringResource(R.string.settings_recorded_trips_hint))
                 trips.forEach { t ->
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 2.dp),
@@ -590,81 +583,68 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                                 java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
                                     .format(java.util.Date(t.startedAt))
                             else null
-                            Hint(listOfNotNull(recordedAt, "${t.fixCount} points").joinToString(" · "))
+                            Hint(listOfNotNull(recordedAt, stringResource(R.string.settings_trip_points, t.fixCount)).joinToString(" · "))
                         }
-                        TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text("Replay") }
+                        TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text(stringResource(R.string.settings_trip_replay)) }
                         // Share the raw trace off-device — works on release builds, so a
                         // drive can be handed over for replay/debug without a dev build.
                         TextButton(onClick = {
                             val intent = vm.exportTripIntent(t)
                             if (intent != null) runCatching { context.startActivity(intent) }
-                            else android.widget.Toast.makeText(context, "Couldn't read that trip", android.widget.Toast.LENGTH_SHORT).show()
-                        }) { Text("Share") }
+                            else android.widget.Toast.makeText(context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT).show()
+                        }) { Text(stringResource(R.string.settings_trip_share)) }
                         IconButton(onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
-                            Icon(Icons.Default.Delete, contentDescription = "Delete trip")
+                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_trip_delete))
                         }
                     }
                 }
             } else if (state.tripRecordingEnabled) {
                 Spacer(Modifier.height(4.dp))
-                Hint("No trips recorded yet — navigate somewhere with this on and it'll show up here to replay.")
+                Hint(stringResource(R.string.settings_no_trips_hint))
             }
             if (showTripConsent) {
                 AlertDialog(
                     onDismissRequest = { showTripConsent = false },
-                    title = { Text("Save your trips?") },
+                    title = { Text(stringResource(R.string.settings_trip_consent_title)) },
                     text = {
-                        Text(
-                            "Vela will record the GPS trace of each navigation on this phone, so a drive " +
-                                "can be replayed for testing without driving it again. This is more revealing " +
-                                "than diagnostics — it captures your exact routes — but it stays on the phone " +
-                                "and is never uploaded. Turn it off any time.",
-                        )
+                        Text(stringResource(R.string.settings_trip_consent_body))
                     },
-                    confirmButton = { TextButton(onClick = { vm.setTripRecording(true); showTripConsent = false }) { Text("Turn on") } },
-                    dismissButton = { TextButton(onClick = { showTripConsent = false }) { Text("Cancel") } },
+                    confirmButton = { TextButton(onClick = { vm.setTripRecording(true); showTripConsent = false }) { Text(stringResource(R.string.settings_turn_on)) } },
+                    dismissButton = { TextButton(onClick = { showTripConsent = false }) { Text(stringResource(R.string.settings_cancel)) } },
                 )
             }
             var crashReports by remember { mutableStateOf(app.vela.diag.CrashCatcher.pending(context)) }
             if (crashReports.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
-                Hint("Vela closed unexpectedly recently. Sending the crash report (stack trace) helps fix it — it's a plain text file, no personal data.")
+                Hint(stringResource(R.string.settings_crash_hint))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     OutlinedButton(onClick = {
                         app.vela.diag.CrashCatcher.shareIntent(context)?.let { runCatching { context.startActivity(it) } }
-                    }) { Text("Export crash report") }
+                    }) { Text(stringResource(R.string.settings_crash_export)) }
                     Spacer(Modifier.width(8.dp))
                     TextButton(onClick = {
                         app.vela.diag.CrashCatcher.clear(context); crashReports = emptyList()
-                    }) { Text("Discard") }
+                    }) { Text(stringResource(R.string.settings_crash_discard)) }
                 }
             }
             if (showDiagConsent) {
                 AlertDialog(
                     onDismissRequest = { showDiagConsent = false },
-                    title = { Text("Turn on diagnostics?") },
+                    title = { Text(stringResource(R.string.settings_diag_consent_title)) },
                     text = {
-                        Text(
-                            "Vela will keep a short local log of your searches, routes and any errors. " +
-                                "It never leaves the phone unless you tap Export and choose where to send " +
-                                "it. Turn it off any time to wipe the log.",
-                        )
+                        Text(stringResource(R.string.settings_diag_consent_body))
                     },
-                    confirmButton = { TextButton(onClick = { vm.setDiagnostics(true); showDiagConsent = false }) { Text("Turn on") } },
-                    dismissButton = { TextButton(onClick = { showDiagConsent = false }) { Text("Cancel") } },
+                    confirmButton = { TextButton(onClick = { vm.setDiagnostics(true); showDiagConsent = false }) { Text(stringResource(R.string.settings_turn_on)) } },
+                    dismissButton = { TextButton(onClick = { showDiagConsent = false }) { Text(stringResource(R.string.settings_cancel)) } },
                 )
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("About")
-            Hint(
-                "Vela is a degoogled maps client: open tiles for the basemap, scraped Google " +
-                    "for POIs, routing and traffic-aware ETAs, AOSP TextToSpeech for voice. GPLv3. " +
-                    "No Play Services required.",
-            )
+            SectionTitle(stringResource(R.string.settings_about))
+            Hint(stringResource(R.string.settings_about_hint))
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Support")
-            Hint("Vela is free and ad-free. If it's become useful, a donation helps keep development going — entirely optional.")
+            SectionTitle(stringResource(R.string.settings_support))
+            Hint(stringResource(R.string.settings_support_hint))
             Spacer(Modifier.height(8.dp))
             OutlinedButton(
                 onClick = {
@@ -674,13 +654,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 },
             ) {
                 Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text("Support Vela")
+                Text(stringResource(R.string.settings_support_button))
             }
 
             Spacer(Modifier.height(20.dp))
-            SectionTitle("Version")
+            SectionTitle(stringResource(R.string.settings_version))
             Text(
-                "Vela ${BuildConfig.VERSION_NAME}  (build ${BuildConfig.VERSION_CODE})",
+                stringResource(R.string.settings_version_line, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(vertical = 4.dp),
             )
@@ -716,7 +696,7 @@ private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: (
         )
         Icon(
             if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-            contentDescription = if (expanded) "Collapse" else "Expand",
+            contentDescription = if (expanded) stringResource(R.string.settings_collapse) else stringResource(R.string.settings_expand),
             tint = MaterialTheme.colorScheme.primary,
         )
     }
@@ -779,19 +759,20 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     Spacer(Modifier.height(6.dp))
     Hint(
         if (installed.isEmpty())
-            "Download a natural on-device voice for spoken directions — pick one below. The ★ voices sound the most like a maps navigator (Lessac and HFC are closest to Google). One-time download; wifi recommended."
+            stringResource(R.string.settings_voice_lib_empty_hint)
         else
             "Installed: $installedMb MB · ${installed.size} voice${if (installed.size == 1) "" else "s"}. Tap Use to switch (plays a sample); the trash icon frees the space.",
     )
     if (appLang != "en" && !hasAppLangVoice) {
-        Hint("Your app language is ${PiperCatalog.languageLabel(appLang)} — download a ${PiperCatalog.languageLabel(appLang)} voice below so spoken directions match (an English voice would mispronounce ${PiperCatalog.languageLabel(appLang)} street names).")
+        val langLabel = PiperCatalog.languageLabel(appLang)
+        Hint(stringResource(R.string.settings_voice_lib_lang_hint, langLabel, langLabel, langLabel))
     }
     if (catalog.size > 12) {
         OutlinedTextField(
             value = query,
             onValueChange = { query = it },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            label = { Text("Search voices") },
+            label = { Text(stringResource(R.string.settings_voice_search)) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
         )
@@ -836,13 +817,13 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     }
 
     confirmDeleteId?.let { id ->
-        val nm = catalog.firstOrNull { it.id == id }?.displayName ?: "this voice"
+        val nm = catalog.firstOrNull { it.id == id }?.displayName ?: stringResource(R.string.settings_voice_this_voice)
         AlertDialog(
             onDismissRequest = { confirmDeleteId = null },
-            title = { Text("Remove $nm?") },
-            text = { Text("This is your only Vela voice. Spoken directions fall back to a system text-to-speech engine (or go silent if none is installed) until you download another.") },
-            confirmButton = { TextButton(onClick = { vm.deleteVoice(id); confirmDeleteId = null }) { Text("Remove") } },
-            dismissButton = { TextButton(onClick = { confirmDeleteId = null }) { Text("Cancel") } },
+            title = { Text(stringResource(R.string.settings_voice_remove_title, nm)) },
+            text = { Text(stringResource(R.string.settings_voice_remove_body)) },
+            confirmButton = { TextButton(onClick = { vm.deleteVoice(id); confirmDeleteId = null }) { Text(stringResource(R.string.settings_voice_remove)) } },
+            dismissButton = { TextButton(onClick = { confirmDeleteId = null }) { Text(stringResource(R.string.settings_cancel)) } },
         )
     }
 }
@@ -860,10 +841,10 @@ private fun VoiceRow(
     onDelete: () -> Unit,
 ) {
     val gender = when (v.gender) {
-        app.vela.core.voice.VoiceGender.FEMALE -> "Female"
-        app.vela.core.voice.VoiceGender.MALE -> "Male"
-        app.vela.core.voice.VoiceGender.MULTI -> "${v.numSpeakers} voices"
-        app.vela.core.voice.VoiceGender.NEUTRAL -> "Neutral"
+        app.vela.core.voice.VoiceGender.FEMALE -> stringResource(R.string.settings_voice_gender_female)
+        app.vela.core.voice.VoiceGender.MALE -> stringResource(R.string.settings_voice_gender_male)
+        app.vela.core.voice.VoiceGender.MULTI -> stringResource(R.string.settings_voice_gender_multi, v.numSpeakers)
+        app.vela.core.voice.VoiceGender.NEUTRAL -> stringResource(R.string.settings_voice_gender_neutral)
     }
     Row(
         Modifier.fillMaxWidth().padding(vertical = 8.dp),
@@ -878,9 +859,9 @@ private fun VoiceRow(
                 )
             }
             val sub = when {
-                downloading -> "Downloading… ${(downloadPct * 100).toInt()}%"
-                active -> "In use · ${v.region} · $gender · ${v.sizeMb} MB"
-                installed -> "Downloaded · ${v.region} · $gender · ${v.sizeMb} MB"
+                downloading -> stringResource(R.string.settings_voice_row_downloading, (downloadPct * 100).toInt())
+                active -> stringResource(R.string.settings_voice_row_in_use, v.region, gender, v.sizeMb)
+                installed -> stringResource(R.string.settings_voice_row_downloaded, v.region, gender, v.sizeMb)
                 else -> "${v.region} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB" + (v.note?.let { " · $it" } ?: "")
             }
             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -889,15 +870,15 @@ private fun VoiceRow(
         when {
             downloading -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
             active -> IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Remove ${v.displayName}", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             installed -> {
-                OutlinedButton(onClick = onUse) { Text("Use") }
+                OutlinedButton(onClick = onUse) { Text(stringResource(R.string.settings_voice_row_use)) }
                 IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Remove ${v.displayName}", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_voice_row_remove, v.displayName), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
-            else -> OutlinedButton(onClick = onDownload, enabled = !anyDownloading) { Text("Download") }
+            else -> OutlinedButton(onClick = onDownload, enabled = !anyDownloading) { Text(stringResource(R.string.settings_download)) }
         }
     }
     if (downloading) LinearProgressIndicator(progress = { downloadPct }, modifier = Modifier.fillMaxWidth())
