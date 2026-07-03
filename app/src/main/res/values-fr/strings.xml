@@ -329,4 +329,13 @@
     <string name="navservice_notif_text_faster_available"> · itinéraire plus rapide disponible</string>
     <string name="navservice_notif_action_end">Terminer</string>
     <string name="navservice_channel_name">Navigation</string>
+    <string name="cat_restaurants">Restaurants</string>
+    <string name="cat_coffee">Café</string>
+    <string name="cat_gas">Essence</string>
+    <string name="cat_food">À manger</string>
+    <string name="cat_groceries">Épicerie</string>
+    <string name="cat_hotels">Hôtels</string>
+    <string name="cat_pharmacy">Pharmacie</string>
+    <string name="cat_atms">Distributeurs</string>
+    <string name="cat_parks">Parcs</string>
 </resources>

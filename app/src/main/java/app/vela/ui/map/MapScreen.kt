@@ -969,24 +969,27 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
 
 @Composable
 private fun CategoryChips(onPick: (String) -> Unit) {
+    // (localized label, STABLE English search query, icon) — the query is the logic key sent to Google
+    // search (works in any locale), the label is what the user sees, so the chips localize without
+    // changing what's searched.
     val categories = listOf(
-        "Restaurants" to Icons.Default.Restaurant,
-        "Coffee" to Icons.Default.LocalCafe,
-        "Gas" to Icons.Default.LocalGasStation,
-        "Groceries" to Icons.Default.LocalGroceryStore,
-        "Hotels" to Icons.Default.Hotel,
-        "Pharmacy" to Icons.Default.LocalPharmacy,
-        "ATMs" to Icons.Default.LocalAtm,
-        "Parks" to Icons.Default.Park,
+        Triple(R.string.cat_restaurants, "Restaurants", Icons.Default.Restaurant),
+        Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
+        Triple(R.string.cat_gas, "Gas", Icons.Default.LocalGasStation),
+        Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
+        Triple(R.string.cat_hotels, "Hotels", Icons.Default.Hotel),
+        Triple(R.string.cat_pharmacy, "Pharmacy", Icons.Default.LocalPharmacy),
+        Triple(R.string.cat_atms, "ATMs", Icons.Default.LocalAtm),
+        Triple(R.string.cat_parks, "Parks", Icons.Default.Park),
     )
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        categories.forEach { (label, icon) ->
+        categories.forEach { (labelRes, query, icon) ->
             ElevatedAssistChip(
-                onClick = { onPick(label) },
-                label = { Text(label) },
+                onClick = { onPick(query) },
+                label = { Text(stringResource(labelRes)) },
                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
             )
         }

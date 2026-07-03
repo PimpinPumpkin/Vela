@@ -1,6 +1,17 @@
 <resources>
     <string name="app_name">Vela Maps</string>
 
+    <!-- shared search-category chip labels (map + along-route); the search QUERY stays English in code -->
+    <string name="cat_restaurants">Restaurants</string>
+    <string name="cat_coffee">Coffee</string>
+    <string name="cat_gas">Gas</string>
+    <string name="cat_food">Food</string>
+    <string name="cat_groceries">Groceries</string>
+    <string name="cat_hotels">Hotels</string>
+    <string name="cat_pharmacy">Pharmacy</string>
+    <string name="cat_atms">ATMs</string>
+    <string name="cat_parks">Parks</string>
+
     <!-- settings: SettingsScreen.kt -->
     <string name="settings_title">Settings</string>
     <string name="settings_back">Back</string>

@@ -329,4 +329,13 @@
     <string name="navservice_notif_text_faster_available"> · snabbare rutt finns</string>
     <string name="navservice_notif_action_end">Avsluta</string>
     <string name="navservice_channel_name">Navigering</string>
+    <string name="cat_restaurants">Restauranger</string>
+    <string name="cat_coffee">Kaffe</string>
+    <string name="cat_gas">Bensin</string>
+    <string name="cat_food">Mat</string>
+    <string name="cat_groceries">Livsmedel</string>
+    <string name="cat_hotels">Hotell</string>
+    <string name="cat_pharmacy">Apotek</string>
+    <string name="cat_atms">Bankomater</string>
+    <string name="cat_parks">Parker</string>
 </resources>
