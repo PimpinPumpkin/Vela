@@ -985,16 +985,17 @@ fun DirectionsPanel(
                         Modifier.horizontalScroll(rememberScrollState()).padding(end = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
                         listOf(
-                            "Gas" to Icons.Default.LocalGasStation,
-                            "Food" to Icons.Default.Restaurant,
-                            "Coffee" to Icons.Default.LocalCafe,
-                            "Groceries" to Icons.Default.LocalGroceryStore,
-                        ).forEach { (label, icon) ->
+                            Triple(R.string.cat_gas, "Gas", Icons.Default.LocalGasStation),
+                            Triple(R.string.cat_food, "Food", Icons.Default.Restaurant),
+                            Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
+                            Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
+                        ).forEach { (labelRes, query, icon) ->
                             FilterChip(
                                 selected = false,
-                                onClick = { onSearchAlongRoute(label) },
-                                label = { Text(label) },
+                                onClick = { onSearchAlongRoute(query) },
+                                label = { Text(stringResource(labelRes)) },
                                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                             )
                         }
