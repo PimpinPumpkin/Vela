@@ -1,6 +1,7 @@
 package app.vela.ui.map
 
 import android.content.Context
+import app.vela.R
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import app.vela.core.config.CalibrationStore
@@ -488,7 +489,7 @@ class MapViewModel @Inject constructor(
                 assigningShortcut = null, selected = null, suggestions = emptyList(),
                 results = emptyList(), query = "",
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
-                status = "${kind.label} set to ${sp.name}",
+                status = appContext.getString(R.string.mapvm_shortcut_set, kind.label, sp.name),
             )
         }
         return true
@@ -519,7 +520,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
-                status = "${kind.label} set to ${sp.name}",
+                status = appContext.getString(R.string.mapvm_shortcut_set, kind.label, sp.name),
             )
         }
     }
@@ -598,16 +599,16 @@ class MapViewModel @Inject constructor(
                     it.copy(results = res.places, selected = null, status = null, searching = false)
                 }
             } catch (e: CalibrationNeededException) {
-                _state.update { it.copy(status = "Search needs recalibration: ${e.message}", searching = false) }
+                _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_needs_recalibration, e.message), searching = false) }
             } catch (e: Exception) {
                 // Network/Google failure → fall back to the offline OSM index.
                 val offline = withContext(Dispatchers.IO) {
                     runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
                 }
                 if (offline.isNotEmpty()) {
-                    _state.update { it.copy(results = offline, selected = null, status = "Offline results (no connection)", searching = false) }
+                    _state.update { it.copy(results = offline, selected = null, status = appContext.getString(R.string.mapvm_offline_results), searching = false) }
                 } else {
-                    _state.update { it.copy(status = "Search failed: ${e.message}", searching = false) }
+                    _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_failed_reason, e.message), searching = false) }
                 }
             }
         }
@@ -633,11 +634,11 @@ class MapViewModel @Inject constructor(
                         results = along,
                         selected = null,
                         searching = false,
-                        status = if (along.isEmpty()) "No \"$query\" found along your route" else null,
+                        status = if (along.isEmpty()) appContext.getString(R.string.mapvm_none_found_along_route, query) else null,
                     )
                 }
             } catch (e: Exception) {
-                _state.update { it.copy(searching = false, status = "Search failed") }
+                _state.update { it.copy(searching = false, status = appContext.getString(R.string.mapvm_search_failed)) }
             }
         }
     }
@@ -1005,7 +1006,7 @@ class MapViewModel @Inject constructor(
         reviewsJob?.cancel() // a pin never fetches reviews — free the old scrape's WebView/mutex
         _state.update {
             it.copy(
-                selected = Place(id = "pin:${location.lat},${location.lng}", name = "Dropped pin", location = location),
+                selected = Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location),
                 results = emptyList(),
                 resultsCollapsed = false,
                 showSearchThisArea = false,
@@ -1165,7 +1166,7 @@ class MapViewModel @Inject constructor(
                         routes = routes,
                         activeRoute = routes.firstOrNull(),
                         transit = emptyList(), transitLoading = false,
-                        status = if (routes.isEmpty()) "No ${mode.name.lowercase()} route found" else null,
+                        status = if (routes.isEmpty()) appContext.getString(R.string.mapvm_no_mode_route_found, mode.name.lowercase()) else null,
                     )
                 }
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
@@ -1175,9 +1176,9 @@ class MapViewModel @Inject constructor(
                 // re-applied traffic), exactly as picking an alternate does, so preview == nav.
                 if (routes.firstOrNull()?.provisional == true) selectRoute(0)
             } catch (e: CalibrationNeededException) {
-                _state.update { it.copy(status = "Directions need recalibration: ${e.message}") }
+                _state.update { it.copy(status = appContext.getString(R.string.mapvm_directions_need_recalibration, e.message)) }
             } catch (e: Exception) {
-                _state.update { it.copy(status = "Routing failed: ${e.message}") }
+                _state.update { it.copy(status = appContext.getString(R.string.mapvm_routing_failed_reason, e.message)) }
             }
         }
     }
@@ -1196,7 +1197,7 @@ class MapViewModel @Inject constructor(
                 else it.copy(
                     transit = trips,
                     transitLoading = false,
-                    status = if (trips.isEmpty()) "No transit routes found" else null,
+                    status = if (trips.isEmpty()) appContext.getString(R.string.mapvm_no_transit_routes) else null,
                 )
             }
         }
@@ -1228,12 +1229,12 @@ class MapViewModel @Inject constructor(
         // Record this trip's GPS trace for later replay, if the user opted in. Read
         // the pref directly so it works even before Settings has been opened.
         if (settingsPrefs.getBoolean("trip_recording_on", false)) {
-            tripStore.startTrip(_state.value.selected?.name ?: "Trip", dest, System.currentTimeMillis())
+            tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
             tripStore.saveRoute(route) // save the blue line + maneuvers so a replay drives THIS route
         }
         // If the phone has no voice engine, say so once instead of going silent.
         if (voice.availableEngines().isEmpty()) {
-            showStatus("No voice engine installed — add one in Settings → Voice for spoken directions")
+            showStatus(appContext.getString(R.string.mapvm_no_voice_engine))
         }
     }
 
@@ -1297,14 +1298,14 @@ class MapViewModel @Inject constructor(
      *  plays if routing fails), tearing that nav back down when the replay ends. */
     fun replayTrip(meta: app.vela.replay.TripMeta) {
         val fixes = tripStore.load(meta.id)
-        if (fixes.size < 2) { flashStatus("That trip has no track to replay"); return }
+        if (fixes.size < 2) { flashStatus(appContext.getString(R.string.mapvm_no_track_to_replay)); return }
         replayJob?.cancel()
         // A superseded replay's stale finally no-ops (the job guard fails below), so tear
         // down any nav IT auto-started here, before this new replay starts its own.
         if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
         locationJob?.cancel(); locationJob = null // pause live GPS while the trace plays
         _state.update { it.copy(replaying = true, navCameraDetached = false) }
-        flashStatus("Replaying ${meta.label} (3×)…", 3000L)
+        flashStatus(appContext.getString(R.string.mapvm_replaying, meta.label), 3000L)
         val job = viewModelScope.launch {
             try {
                 // Drive turn-by-turn during the replay without manually starting nav first.
@@ -1390,10 +1391,10 @@ class MapViewModel @Inject constructor(
             val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "application/json"
                 putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                putExtra(android.content.Intent.EXTRA_SUBJECT, "Vela saved places (${places.size})")
+                putExtra(android.content.Intent.EXTRA_SUBJECT, appContext.getString(R.string.mapvm_export_saved_subject, places.size))
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            android.content.Intent.createChooser(send, "Export saved places")
+            android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_export_saved_chooser))
                 .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
         }.getOrNull()
     }
@@ -1424,10 +1425,10 @@ class MapViewModel @Inject constructor(
             val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
                 type = "text/csv"
                 putExtra(android.content.Intent.EXTRA_STREAM, uri)
-                putExtra(android.content.Intent.EXTRA_SUBJECT, "Vela trip: ${meta.label} (${meta.fixCount} points)")
+                putExtra(android.content.Intent.EXTRA_SUBJECT, appContext.getString(R.string.mapvm_export_trip_subject, meta.label, meta.fixCount))
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
-            android.content.Intent.createChooser(send, "Share trip")
+            android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_share_trip_chooser))
                 .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
         }.getOrNull()
     }
@@ -1503,7 +1504,7 @@ class MapViewModel @Inject constructor(
         val clamped = if (max > 0) n.coerceIn(0, max - 1) else n.coerceAtLeast(0)
         settingsPrefs.edit().putInt(VelaPiper.speakerKey(id), clamped).apply()
         _state.update { it.copy(voiceSpeaker = clamped) }
-        voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
+        voice.speak(appContext.getString(R.string.mapvm_voice_sample), interrupt = true)
     }
 
     /** Adjust the spoken-directions speed by [delta] (clamped 0.5–2.0×), persist, apply, and preview. */
@@ -1513,7 +1514,7 @@ class MapViewModel @Inject constructor(
         settingsPrefs.edit().putFloat("voice_speed", s).apply()
         voice.setRate(s) // AOSP engine; the neural voice reads the voice_speed pref per utterance
         _state.update { it.copy(voiceSpeed = s) }
-        voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
+        voice.speak(appContext.getString(R.string.mapvm_voice_sample), interrupt = true)
     }
 
     // ---- Voice library (the in-app Piper voice browser) --------------------------------------------
@@ -1542,7 +1543,7 @@ class MapViewModel @Inject constructor(
         val v = PiperCatalog.byId(id) ?: return
         // Cheap disk pre-flight (models are 67–131 MB) — fail early with a clear message, not late.
         if (appContext.filesDir.usableSpace < v.sizeBytes * 13 / 10) {
-            showStatus("Not enough free space for ${v.displayName} (~${v.sizeMb} MB)")
+            showStatus(appContext.getString(R.string.mapvm_not_enough_space, v.displayName, v.sizeMb))
             return
         }
         val firstEver = VelaPiper.installedVoiceIds(appContext).isEmpty()
@@ -1561,9 +1562,9 @@ class MapViewModel @Inject constructor(
                 )
             }
             if (ok && VelaPiper.isVoiceReady(appContext, id)) {
-                if (firstEver) selectVoice(id) else flashStatus("${v.displayName} downloaded")
+                if (firstEver) selectVoice(id) else flashStatus(appContext.getString(R.string.mapvm_voice_downloaded, v.displayName))
             } else {
-                showStatus("${v.displayName} download failed")
+                showStatus(appContext.getString(R.string.mapvm_voice_download_failed, v.displayName))
             }
         }
     }
@@ -1576,7 +1577,7 @@ class MapViewModel @Inject constructor(
         piperSynth.reloadVoice() // THE build of the new voice (race-free; runs first on the worker)
         setVoiceEngine(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL)) // route VoiceGuide→neural + persist engine
         refreshInstalledVoices() // selectedVoiceId + per-voice speaker for the variant UI
-        voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true) // audition
+        voice.speak(appContext.getString(R.string.mapvm_voice_sample), interrupt = true) // audition
     }
 
     /** Delete a downloaded voice, reclaiming its disk. Deleting the ACTIVE voice falls to another
@@ -1604,7 +1605,7 @@ class MapViewModel @Inject constructor(
                 // Fall back to a system TTS engine if one is installed, else leave nav silent.
                 voiceEngines().firstOrNull { it.packageName != VelaPiper.ENGINE_ID }?.let { setVoiceEngine(it) }
                 _state.update { it.copy(installedVoiceIds = it.installedVoiceIds - id, selectedVoiceId = null) }
-                flashStatus("Vela voice removed")
+                flashStatus(appContext.getString(R.string.mapvm_vela_voice_removed))
             }
         } else {
             viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -1637,7 +1638,7 @@ class MapViewModel @Inject constructor(
             val result = voiceInstaller.installFromFDroid(engine.pkg)
             _state.update { it.copy(installingEngine = null) }
             // result == null → the system installer launched; else a status/error line.
-            flashStatus(result ?: "Opening installer for ${engine.label}…")
+            flashStatus(result ?: appContext.getString(R.string.mapvm_opening_installer, engine.label))
         }
     }
 
@@ -1778,7 +1779,7 @@ class MapViewModel @Inject constructor(
     /** Download tiles + POIs for the area the map was last showing (Google-style
      *  "download this area", but invoked from Settings → Offline maps). */
     fun downloadViewport() {
-        val v = viewport ?: run { showStatus("Open the map and pan to an area first"); return }
+        val v = viewport ?: run { showStatus(appContext.getString(R.string.mapvm_pan_to_area_first)); return }
         val (s, w, n, e, zoom) = listOf(v[0], v[1], v[2], v[3], v[4])
         val minZ = (zoom - 1).coerceIn(0.0, 15.0)
         val maxZ = (zoom + 3).coerceIn(minZ, 16.0)
@@ -1828,14 +1829,14 @@ class MapViewModel @Inject constructor(
             _state.update {
                 it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds())
             }
-            showStatus(if (ok) "Offline routing ready: ${region.name}" else "Offline routing download failed")
+            showStatus(if (ok) appContext.getString(R.string.mapvm_offline_routing_ready, region.name) else appContext.getString(R.string.mapvm_offline_routing_failed))
         }
     }
 
     fun deleteRoutingGraph(id: String) {
         routingGraphStore.delete(id)
         _state.update { it.copy(routingInstalledIds = routingGraphStore.installedIds()) }
-        showStatus("Offline routing removed")
+        showStatus(appContext.getString(R.string.mapvm_offline_routing_removed))
     }
 
     /** When a map region is downloaded for offline use, also pull its POIs from
@@ -1845,7 +1846,7 @@ class MapViewModel @Inject constructor(
             val pois = withContext(Dispatchers.IO) { OverpassPois.fetch(http, south, west, north, east) }
             if (pois.isNotEmpty()) {
                 withContext(Dispatchers.IO) { offlinePoiStore.add(pois) }
-                showStatus("Saved ${pois.size} places for offline search")
+                showStatus(appContext.getString(R.string.mapvm_saved_places_offline, pois.size))
             }
         }
     }

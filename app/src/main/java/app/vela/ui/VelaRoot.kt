@@ -22,7 +22,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.vela.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.vela.ui.map.MapScreen
 import app.vela.ui.map.MapViewModel
@@ -94,20 +96,17 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
     var trips by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Help improve Vela?") },
+        title = { Text(stringResource(R.string.root_diag_title)) },
         text = {
             Column {
-                Text(
-                    "Both stay on your phone — nothing is sent unless you export it. Change either " +
-                        "any time in Settings.",
-                )
+                Text(stringResource(R.string.root_diag_body))
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = diag, onCheckedChange = { diag = it })
                     Column(Modifier.padding(start = 4.dp)) {
-                        Text("Share diagnostics", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.root_diag_share_title), style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "A short local log of searches, routes & errors.",
+                            stringResource(R.string.root_diag_share_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -117,10 +116,9 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(checked = trips, onCheckedChange = { trips = it })
                     Column(Modifier.padding(start = 4.dp)) {
-                        Text("Save my trips", style = MaterialTheme.typography.bodyLarge)
+                        Text(stringResource(R.string.root_diag_trips_title), style = MaterialTheme.typography.bodyLarge)
                         Text(
-                            "Records your nav GPS traces so drives can be replayed for testing. More " +
-                                "revealing — your exact routes.",
+                            stringResource(R.string.root_diag_trips_desc),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -128,8 +126,8 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onChoose(diag, trips) }) { Text("Save choices") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Not now") } },
+        confirmButton = { TextButton(onClick = { onChoose(diag, trips) }) { Text(stringResource(R.string.root_diag_save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.root_not_now)) } },
     )
 }
 
@@ -140,20 +138,19 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
 private fun VoicePrompt(hasSystemVoice: Boolean, onDownload: () -> Unit, onSkip: () -> Unit) {
     AlertDialog(
         onDismissRequest = onSkip,
-        title = { Text("Spoken navigation voice") },
+        title = { Text(stringResource(R.string.root_voice_title)) },
         text = {
             Text(
-                "Vela has its own high-quality voice that runs entirely on your phone — the most " +
-                    "natural spoken directions, with no account or extra app. Recommended. It's a " +
-                    "one-time ~126 MB download (wifi recommended). " +
-                    (if (hasSystemVoice) "Prefer not to? You can use a text-to-speech voice already " +
-                        "installed on your phone instead. " else "") +
-                    "You can change this any time in Settings → Voice.",
+                stringResource(R.string.root_voice_body_intro) + " " +
+                    (if (hasSystemVoice) stringResource(R.string.root_voice_body_system) + " " else "") +
+                    stringResource(R.string.root_voice_body_outro),
             )
         },
-        confirmButton = { TextButton(onClick = onDownload) { Text("Download Vela voice") } },
+        confirmButton = { TextButton(onClick = onDownload) { Text(stringResource(R.string.root_voice_download)) } },
         dismissButton = {
-            TextButton(onClick = onSkip) { Text(if (hasSystemVoice) "Use system voice" else "Not now") }
+            TextButton(onClick = onSkip) {
+                Text(if (hasSystemVoice) stringResource(R.string.root_voice_use_system) else stringResource(R.string.root_not_now))
+            }
         },
     )
 }
