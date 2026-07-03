@@ -98,8 +98,15 @@ private const val TRAFFIC_TILES =
     "https://www.google.com/maps/vt/pb=!1m4!1m3!1i{z}!2i{x}!3i{y}!2m9!1e2!2straffic!3i999999" +
         "!4m2!1sincidents!2s1!4m2!1sincidents_text!2s1!3m8!2sen!3sus!5e1105!12m4!1e68!2m2!1sset!2sRoadmap!4e0!5m1!1e0"
 
-/** A tappable search-result pin on the map. */
-data class MapMarker(val name: String, val location: LatLng, val category: String? = null)
+/** A tappable search-result pin on the map. [prominence] (0 = unknown/low) drives the ambient dot's
+ *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
+data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0)
+
+// Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
+// setGeoJson (a full symbol re-tessellation) when they're unchanged. Nulled on style reload (the fresh
+// source is empty and must repopulate). Single map instance, so file scope is fine.
+private var lastAppliedMarkers: List<MapMarker>? = null
+private var lastAppliedAmbient: List<MapMarker>? = null
 
 /**
  * MapLibre wrapped for Compose. Three camera behaviours:
@@ -606,6 +613,8 @@ fun VelaMapView(
             map.setStyle(builder) { style ->
                 styleRef = style
                 ensureLayers(style)
+                lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
+                lastAppliedAmbient = null
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
@@ -820,18 +829,30 @@ private fun ensureLayers(style: Style) {
         style.addLayerBelow(
             SymbolLayer(AMBIENT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
-                PropertyFactory.iconSize(0.62f),
+                // Data-driven size by prominence: low-signal dots ~0.78, anchor stores (Safeway ~7,
+                // malls ~9) up to ~1.3 — bigger + more legible, Google-style, at zero per-frame CPU.
+                PropertyFactory.iconSize(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.get("prominence"),
+                        Expression.stop(0.0, 0.78f), Expression.stop(8.0, 1.3f),
+                    ),
+                ),
                 // DECLUTTER like Google: let the dots collide (hide when they'd overlap) instead of
                 // stacking. allowOverlap+ignorePlacement were TRUE, so every ambient POI drew on top
                 // of its neighbours — a pile at tight zooms. Collision + padding spaces them; more
                 // appear as you zoom in. (Sorted by rank so the prominent ones win the slot.)
                 PropertyFactory.iconAllowOverlap(false),
                 PropertyFactory.iconIgnorePlacement(false),
-                PropertyFactory.iconPadding(3f),
+                PropertyFactory.iconPadding(1.5f),
                 PropertyFactory.symbolSortKey(Expression.get("sort")),
                 PropertyFactory.textField(Expression.get("name")),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
-                PropertyFactory.textSize(11f),
+                PropertyFactory.textSize(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.get("prominence"),
+                        Expression.stop(0.0, 11f), Expression.stop(8.0, 14f),
+                    ),
+                ),
                 PropertyFactory.textOffset(arrayOf(0f, 1.1f)),
                 PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
                 PropertyFactory.textMaxWidth(7f),
@@ -839,7 +860,7 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.textAllowOverlap(false),
                 PropertyFactory.textColor("#3C4043"),
                 PropertyFactory.textHaloColor("#FFFFFF"),
-                PropertyFactory.textHaloWidth(1.2f),
+                PropertyFactory.textHaloWidth(0.9f),
             ),
             MARKERS_LAYER,
         )
@@ -1414,36 +1435,49 @@ private fun applyData(
     style.getSourceAs<GeoJsonSource>(ALT_ROUTE_SRC)?.setGeoJson(altFc)
     style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(altColor))
 
-    val markersFc = FeatureCollection.fromFeatures(
-        markers.mapIndexed { i, m ->
-            Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
-                addStringProperty("name", m.name)
-                addNumberProperty(MARKER_INDEX_PROP, i)
-            }
-        },
-    )
-    style.getSourceAs<GeoJsonSource>(MARKERS_SRC)?.setGeoJson(markersFc)
+    // Only rebuild + re-set the marker/ambient GeoJSON when the DATA actually changed. applyData runs
+    // on every recomposition (a nav mySpeed tick, a mute/theme toggle, etc.), and setGeoJson forces a
+    // full symbol-layer re-tessellation — redundant when the pins/POIs are identical. Structural
+    // equality on the data classes is enough. The style-reload path resets these holders (the fresh
+    // source is empty) so the layers always repopulate. (Big drag-smoothness win on the Pixel 5a.)
+    if (markers != lastAppliedMarkers) {
+        val markersFc = FeatureCollection.fromFeatures(
+            markers.mapIndexed { i, m ->
+                Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
+                    addStringProperty("name", m.name)
+                    addNumberProperty(MARKER_INDEX_PROP, i)
+                }
+            },
+        )
+        style.getSourceAs<GeoJsonSource>(MARKERS_SRC)?.setGeoJson(markersFc)
+        lastAppliedMarkers = markers
+    }
 
-    // Ambient Google POIs → category-dot features (icon = vela-poi-<group>, label = name).
-    val ambientFc = FeatureCollection.fromFeatures(
-        ambientPois.mapIndexed { i, m ->
-            Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
-                addStringProperty("name", m.name)
-                addStringProperty("icon", "vela-poi-${PoiIcons.groupForCategory(m.category)}")
-                addNumberProperty(AMBIENT_INDEX_PROP, i)
-                // Collision priority: the data source returns the most prominent places first, so a
-                // lower index wins its slot (MapLibre places lower symbol-sort-key first).
-                addNumberProperty("sort", i)
-            }
-        },
-    )
-    style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
-    // Google-first: while ambient Google POIs are showing, hide the OSM *business* POIs
-    // (poi_r1/r7/r20) so the layers don't duplicate. OSM transit + the whole OSM basemap stay; when
-    // there are no ambient POIs (zoomed out / offline / nav / search) the OSM POIs come back.
-    val osmPoiVis = if (ambientPois.isNotEmpty()) Property.NONE else Property.VISIBLE
-    listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
-        style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
+    // Ambient Google POIs → category-dot features (icon = vela-poi-<group>, label = name, prominence).
+    if (ambientPois != lastAppliedAmbient) {
+        val ambientFc = FeatureCollection.fromFeatures(
+            ambientPois.mapIndexed { i, m ->
+                Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
+                    addStringProperty("name", m.name)
+                    addStringProperty("icon", "vela-poi-${PoiIcons.groupForCategory(m.category)}")
+                    addNumberProperty(AMBIENT_INDEX_PROP, i)
+                    // Collision priority: the data source returns the most prominent places first, so a
+                    // lower index wins its slot (MapLibre places lower symbol-sort-key first).
+                    addNumberProperty("sort", i)
+                    // Prominence drives data-driven icon/text size on the layer (anchors read bigger).
+                    addNumberProperty("prominence", m.prominence)
+                }
+            },
+        )
+        style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
+        // Google-first: while ambient Google POIs are showing, hide the OSM *business* POIs
+        // (poi_r1/r7/r20) so the layers don't duplicate. OSM transit + the whole OSM basemap stay; when
+        // there are no ambient POIs (zoomed out / offline / nav / search) the OSM POIs come back.
+        val osmPoiVis = if (ambientPois.isNotEmpty()) Property.NONE else Property.VISIBLE
+        listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
+            style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
+        }
+        lastAppliedAmbient = ambientPois
     }
 
     // The location source: in browse mode applyData owns it (set it from the fix here);
