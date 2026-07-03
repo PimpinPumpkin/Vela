@@ -141,9 +141,15 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             } else {
                 if (!vm.kokoroInstalled()) {
                     Button(onClick = { vm.downloadKokoro() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Download Kokoro voice (premium) · ~126 MB")
+                        Text("Download Kokoro voice (premium) · ~349 MB")
                     }
-                    Hint("The most natural, highest-quality voice — but slower to speak on-device (heavy model).")
+                    Hint("The most natural, highest-quality voice. Heavy model — slower to speak on-device; Piper below is snappier for turn-by-turn.")
+                    Spacer(Modifier.height(8.dp))
+                } else if (vm.kokoroIsInt8()) {
+                    OutlinedButton(onClick = { vm.downloadKokoro() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Upgrade Kokoro to fp32 (≈2× faster) · ~349 MB")
+                    }
+                    Hint("Your Kokoro is the older int8 model — the fp32 build is about twice as fast on-device and a touch nicer. Re-downloads Kokoro.")
                     Spacer(Modifier.height(8.dp))
                 }
                 if (!vm.piperInstalled()) {
@@ -180,6 +186,24 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     }) { Text("System voice settings") }
                 }
                 Hint("Tap Test voice to hear it. The neural voice is recommended; you can override to any text-to-speech engine installed on your phone.")
+                // Playground: hear the selected voice on any text (or a nav-style sample).
+                Spacer(Modifier.height(12.dp))
+                var tryText by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = tryText,
+                    onValueChange = { tryText = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Try the voice on any text") },
+                    maxLines = 3,
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = { vm.speakText(tryText) }, enabled = tryText.isNotBlank()) { Text("Speak") }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(onClick = {
+                        vm.speakText("In a quarter mile, turn right onto Main Street, then your destination is on the left.")
+                    }) { Text("Nav sample") }
+                }
             }
 
             Spacer(Modifier.height(20.dp))
