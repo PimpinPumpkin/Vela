@@ -41,8 +41,14 @@ data class Calibration(
     // fallback. Both arrive only on a signature-verified bundle.
     val notices: List<Notice> = emptyList(),
     val transformsJs: String? = null,
+    // Default speaker number for the multi-speaker neural voice (libritts_r has 904 voices), used
+    // until the user picks one in Settings → Voice. Remotely pushable via the signed bundle, so a
+    // good-sounding speaker can be set as the default without an app release. A user's explicit pick
+    // (the `voice_speaker` pref) always wins over this.
+    val defaultVoiceSpeaker: Int = DEFAULT_VOICE_SPEAKER,
 ) {
     companion object {
+        const val DEFAULT_VOICE_SPEAKER = 0
         const val DEFAULT_PHOTOS_ENDPOINT =
             "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX&source-path=/maps&hl=en&_reqid=1&rt=c"
 
