@@ -146,7 +146,7 @@ class NavSession @Inject constructor(
         events.forEach { ev ->
             when (ev) {
                 is NavEvent.Speak -> voice.speak(ev.text, ev.interrupt)
-                is NavEvent.Haptic -> haptics.cue(ev.type, ev.approaching)
+                is NavEvent.Haptic -> haptics.cue(ev.type, ev.approaching, mode)
                 NavEvent.Arrived -> {
                     diag.record("nav", "arrived (trip ${((SystemClock.elapsedRealtime() - tripStartMs) / 1000)}s)")
                     _state.update {

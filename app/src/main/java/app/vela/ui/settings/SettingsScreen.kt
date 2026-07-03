@@ -49,6 +49,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import app.vela.core.feedback.Haptics
+import app.vela.core.model.TravelMode
 import app.vela.offline.OfflineMaps
 import org.maplibre.android.offline.OfflineRegion
 import androidx.compose.ui.Modifier
@@ -179,7 +181,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         }
                     }) { Text("System voice settings") }
                 }
-                Hint("Tap Test voice to hear it. The neural voice is recommended; you can override to any text-to-speech engine installed on your phone.")
+                Hint("Tap Test voice to hear it. The neural voice is recommended; you can override to any installed text-to-speech engine.")
+
+                // Speed + the niche bits (playground, the 900-voice variant picker) — most people never
+                // touch these, so tuck them behind a collapsible header (collapsed by default).
+                var voiceAdvExpanded by remember { mutableStateOf(false) }
+                CollapsibleSectionTitle("Advanced voice options", voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
+                if (voiceAdvExpanded) {
                 // Playground: hear the selected voice on any text (or a nav-style sample).
                 Spacer(Modifier.height(12.dp))
                 var tryText by remember { mutableStateOf("") }
@@ -250,26 +258,37 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     }
                     Hint("This voice has hundreds of speakers — tap ◀ ▶ to audition one at a time, or type a variant number and Go to jump straight to it (it speaks a sample). Keep the one you like.")
                 }
+                } // end "Advanced voice options"
             }
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Navigation")
             val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
-            var haptics by remember { mutableStateOf(prefs.getBoolean("haptics_on", true)) }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text("Vibrate on turns", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = haptics,
-                    onCheckedChange = {
-                        haptics = it
-                        prefs.edit().putBoolean("haptics_on", it).apply()
-                    },
-                )
+            Text("Vibrate on turns", style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
+            listOf(
+                TravelMode.DRIVE to "Driving",
+                TravelMode.WALK to "Walking",
+                TravelMode.BICYCLE to "Cycling",
+                TravelMode.TRANSIT to "Transit",
+            ).forEach { (mode, label) ->
+                var on by remember(mode) {
+                    mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), prefs.getBoolean(Haptics.KEY, true)))
+                }
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 12.dp, top = 2.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                    Switch(
+                        checked = on,
+                        onCheckedChange = {
+                            on = it
+                            prefs.edit().putBoolean(Haptics.keyFor(mode), it).apply()
+                        },
+                    )
+                }
             }
-            Hint("Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel while biking or walking, without looking at the screen.")
+            Hint("Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel. Set it per travel mode (e.g. on for cycling and walking, off while driving).")
 
             var keepAwake by remember { mutableStateOf(prefs.getBoolean("keep_screen_on_nav", true)) }
             Row(
