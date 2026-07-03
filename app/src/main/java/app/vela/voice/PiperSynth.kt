@@ -53,7 +53,8 @@ class PiperSynth @Inject constructor(
     private fun speakerId(): Int {
         val prefs = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
         val id = loadedVoiceId ?: VelaPiper.effectiveVoiceId(context) ?: VelaPiper.DEFAULT_VOICE_ID
-        val seed = if (id == VelaPiper.DEFAULT_VOICE_ID) calibration.current().defaultVoiceSpeaker else 0
+        // defaultVoiceSpeaker only tunes the multi-speaker libritts_r; single-speaker voices default to 0.
+        val seed = if (id == VelaPiper.LEGACY_ID) calibration.current().defaultVoiceSpeaker else 0
         val n = prefs.getInt(VelaPiper.speakerKey(id), seed)
         return if (numSpeakers > 0) n.coerceIn(0, numSpeakers - 1) else n.coerceAtLeast(0)
     }

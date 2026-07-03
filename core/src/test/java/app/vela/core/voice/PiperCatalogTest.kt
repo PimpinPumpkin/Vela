@@ -38,11 +38,18 @@ class PiperCatalogTest {
         }
     }
 
-    @Test fun `the default voice is a multi-speaker pack`() {
+    @Test fun `the default voice is in the catalog and recommended`() {
         val def = PiperCatalog.byId(VelaPiper.DEFAULT_VOICE_ID)
-        assertNotNull(def)
-        assertTrue("libritts_r is multi-speaker", def!!.multiSpeaker)
-        assertEquals(904, def.numSpeakers)
+        assertNotNull("the fleet default voice must be a catalog entry", def)
+        assertTrue("the default voice should be a recommended nav voice", def!!.recommended)
+    }
+
+    @Test fun `the speaker-seed voice is the multi-speaker pack`() {
+        // Calibration.defaultVoiceSpeaker tunes VelaPiper.LEGACY_ID (libritts_r), the 904-voice pack.
+        val seed = PiperCatalog.byId(VelaPiper.LEGACY_ID)
+        assertNotNull(seed)
+        assertTrue("libritts_r is multi-speaker", seed!!.multiSpeaker)
+        assertEquals(904, seed.numSpeakers)
     }
 
     @Test fun `sizes and speaker counts are sane`() {

@@ -1486,7 +1486,7 @@ class MapViewModel @Inject constructor(
     private fun savedSpeakerFor(id: String?): Int {
         if (id == null) return 0
         val prefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
-        val seed = if (id == VelaPiper.DEFAULT_VOICE_ID) calibration.current().defaultVoiceSpeaker else 0
+        val seed = if (id == VelaPiper.LEGACY_ID) calibration.current().defaultVoiceSpeaker else 0
         val max = PiperCatalog.byId(id)?.numSpeakers ?: 0
         val n = prefs.getInt(VelaPiper.speakerKey(id), seed)
         return if (max > 0) n.coerceIn(0, max - 1) else n.coerceAtLeast(0)
@@ -1608,8 +1608,9 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Onboarding's one-tap install — grabs the fleet-default voice and (as the first voice) activates it. */
-    fun downloadPiper() = downloadVoice(VelaPiper.DEFAULT_VOICE_ID)
+    /** Onboarding's one-tap install — grabs the fleet-default voice (remote-settable via calibration)
+     *  and, as the first voice, activates it. */
+    fun downloadPiper() = downloadVoice(calibration.current().defaultVoiceId)
 
     /** null = still initialising, true = a voice is ready, false = no usable voice. */
     fun voiceWorking(): Boolean? = voice.working
