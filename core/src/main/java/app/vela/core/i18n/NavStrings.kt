@@ -37,6 +37,18 @@ interface NavStrings {
     /** The at-arrival spoken callout — EN "You have arrived". */
     fun arrived(): String
 
+    /** Spoken when navigation begins — EN "Starting navigation. <first instruction>". */
+    fun startNav(firstInstruction: String): String
+
+    /** Spoken as each intermediate stop is passed — EN "You've reached <label>" (blank → "your stop"). */
+    fun reachedStop(label: String): String
+
+    /** Spoken when auto-switching to a faster route — EN "Taking the faster route. <first instruction>". */
+    fun fasterRoute(firstInstruction: String): String
+
+    /** The "Test voice" sample — a short nav-style phrase to hear the selected voice. */
+    fun voiceTest(): String
+
     /**
      * Expand road abbreviations + numbers so the TTS engine SAYS them ("St"→"Street", "128th"→"one
      * twenty-eighth"). English-specific, so it's **opt-in**: the default is identity, and ONLY
@@ -95,6 +107,15 @@ object EnNavStrings : NavStrings {
     override fun inThen(distancePhrase: String, instruction: String): String = "In $distancePhrase, $instruction"
 
     override fun arrived(): String = "You have arrived"
+
+    override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "You've reached $label" else "You've reached your stop"
+
+    override fun fasterRoute(firstInstruction: String): String = "Taking the faster route. $firstInstruction"
+
+    override fun voiceTest(): String = "Voice guidance is on. In a quarter mile, turn right."
 
     /** Whole-word road abbreviation → spoken form, "I-80"→"Interstate 80", and 3-digit street ordinals
      *  ("128th"→"one twenty-eighth"). Moved here from VoiceGuide.forSpeech so it's English-scoped. */
@@ -201,6 +222,15 @@ object FrNavStrings : NavStrings {
     override fun inThen(distancePhrase: String, instruction: String): String = "Dans $distancePhrase, $instruction"
 
     override fun arrived(): String = "Vous êtes arrivé"
+
+    override fun startNav(firstInstruction: String): String = "Démarrage de la navigation. $firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "Vous êtes arrivé à $label" else "Vous êtes arrivé à votre étape"
+
+    override fun fasterRoute(firstInstruction: String): String = "Itinéraire plus rapide. $firstInstruction"
+
+    override fun voiceTest(): String = "Le guidage vocal est activé. Tournez à droite dans 400 mètres."
 
     // expandForSpeech is left as the interface default (identity) — French road names are read natively.
 
