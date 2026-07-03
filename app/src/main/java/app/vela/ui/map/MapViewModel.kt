@@ -405,7 +405,7 @@ class MapViewModel @Inject constructor(
         }
         suggestJob = viewModelScope.launch {
             delay(320) // only fire once typing pauses
-            val near = _state.value.myLocation ?: mapCenter
+            val near = mapCenter ?: _state.value.myLocation // suggestions near the viewport, like search
             val res = runCatching { dataSource.search(term, near).places }.getOrDefault(emptyList())
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
                 _state.update { it.copy(suggestions = res.take(6)) }
@@ -551,7 +551,10 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun search() = runSearch(_state.value.query.trim(), _state.value.myLocation)
+    // Bias to what the user is LOOKING at (the panned viewport), Google-style — so searching after
+    // panning to another area returns results THERE, not back at your GPS location. Falls back to GPS
+    // before the map has settled a centre.
+    fun search() = runSearch(_state.value.query.trim(), mapCenter ?: _state.value.myLocation)
 
     /** Re-run the current query biased to the area the user has panned to. */
     fun searchThisArea() = runSearch(_state.value.query.trim(), mapCenter)
@@ -1565,10 +1568,28 @@ class MapViewModel @Inject constructor(
     private var ambientJob: Job? = null
     private var lastAmbientCenter: LatLng? = null
     private var lastAmbientZoom = 0.0
-    // Last full fetch, reused to repaint POIs INSTANTLY when you zoom back into an area (no empty-map
-    // gap + no OSM-POI "small then pop bigger" flash while the fresh fetch runs).
-    private var ambientCacheCenter: LatLng? = null
-    private var ambientCache: List<app.vela.core.model.Place> = emptyList()
+    // LRU (most-recent last, cap 16) of recent ambient fetches — revisiting ANY of the last ~16 areas
+    // repaints POIs INSTANTLY (the ~2 s Google floor only hits genuinely-new areas), with no empty-map
+    // gap or OSM-POI "small then pop bigger" flash. Entries expire after 30 min so a closed shop doesn't
+    // linger all session. Triple = (fetch centre, ranked places, capturedAt elapsedRealtime ms).
+    private val ambientCache = ArrayDeque<Triple<LatLng, List<app.vela.core.model.Place>, Long>>()
+
+    private fun cacheAmbient(center: LatLng, places: List<app.vela.core.model.Place>) {
+        ambientCache.removeAll { it.first.distanceTo(center) < 400.0 } // replace a near-duplicate area
+        ambientCache.addLast(Triple(center, places, android.os.SystemClock.elapsedRealtime()))
+        while (ambientCache.size > 16) ambientCache.removeFirst()
+    }
+
+    /** Freshest non-stale cached fetch whose centre is within ~900 m of [center], re-centred so its
+     *  distances are correct for the new view. Null if nothing recent+near is cached. */
+    private fun cachedAmbientNear(center: LatLng): List<app.vela.core.model.Place>? {
+        val now = android.os.SystemClock.elapsedRealtime()
+        return ambientCache
+            .filter { now - it.third < 30 * 60_000L && it.first.distanceTo(center) < 900.0 }
+            .minByOrNull { it.first.distanceTo(center) }
+            ?.second
+            ?.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
+    }
 
     /**
      * Ambient Google POIs: on a bare, zoomed-in browse map, fetch the prominent Google places for
@@ -1597,15 +1618,12 @@ class MapViewModel @Inject constructor(
         // Span ≈ viewport height: ~9 km at z14 down to ~3.5 km zoomed in (kept ≥3.5 km — tighter
         // than that returns FEWER local hits, per the live calibration).
         val span = (9000.0 / 2.0.pow(zoom - 14.0)).coerceIn(3500.0, 9000.0)
-        // Just came back into range (dots were cleared by a zoom-out) and we have a recent nearby
-        // fetch cached? Repaint it INSTANTLY (re-centred + view-filtered) so there's no empty→OSM-POI
-        // flash→ambient "small then pop bigger" while the network fetch below runs; it then refines.
+        // Any recent nearby fetch cached (e.g. an area you already visited this session)? Repaint it
+        // INSTANTLY so there's no empty→OSM-POI flash→ambient "small then pop bigger" while the network
+        // fetch below runs; the fetch then refines it.
         if (s.ambientPois.isEmpty()) {
-            ambientCacheCenter?.let { cc ->
-                if (cc.distanceTo(center) < 900.0 && ambientCache.isNotEmpty()) {
-                    val recentered = ambientCache.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
-                    _state.update { it.copy(ambientPois = keepAmbientForView(recentered, viewRadiusMeters)) }
-                }
+            cachedAmbientNear(center)?.let { cached ->
+                _state.update { it.copy(ambientPois = keepAmbientForView(cached, viewRadiusMeters)) }
             }
         }
         ambientJob = viewModelScope.launch {
@@ -1613,8 +1631,7 @@ class MapViewModel @Inject constructor(
             val res = runCatching { dataSource.nearbyPlaces(center, span) }.getOrNull() ?: return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
-            ambientCacheCenter = center
-            ambientCache = res
+            cacheAmbient(center, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
