@@ -1590,7 +1590,17 @@ class MapViewModel @Inject constructor(
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(80)) }
+            // Hand MORE POIs to the map the tighter you're zoomed in: in a small area the dots spread
+            // across the screen so few collide, so the map can render further DOWN the prominence rank
+            // (the little shops, not just the anchors) — Google-style. The ambient layer's collision still
+            // decides what actually paints; this just makes the deeper ranks available at high zoom.
+            val cap = when {
+                zoom >= 16.5 -> 260
+                zoom >= 15.5 -> 180
+                zoom >= 14.5 -> 120
+                else -> 80
+            }
+            _state.update { it.copy(ambientPois = res.filterNot { p -> p.permanentlyClosed }.take(cap)) }
         }
     }
 
