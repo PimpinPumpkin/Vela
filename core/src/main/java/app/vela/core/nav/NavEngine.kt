@@ -70,10 +70,15 @@ object NavEngine {
         // which announces itself as you approach it (Google does the same).
         val isDepart = target.type == ManeuverType.DEPART
         if (target.type != ManeuverType.ARRIVE && !isDepart) {
+            // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken at the FAR
+            // prompt only, Google-style ("…take exit 172 toward Sacramento. Use the right 2 lanes.").
+            val lane = app.vela.core.model.laneGuidance(target.lanes)
             for (p in PROMPT_DISTANCES) {
                 if (dtn <= p && p !in spoken) {
                     spoken = spoken + p
-                    events += NavEvent.Speak(nav().inThen(spokenDistance(p.toDouble(), imperial), target.instruction))
+                    var say = nav().inThen(spokenDistance(p.toDouble(), imperial), target.instruction)
+                    if (p == PROMPT_DISTANCES.first() && lane != null) say += ". " + nav().useLanes(lane.side, lane.count)
+                    events += NavEvent.Speak(say)
                     // A light "get ready" tick at the closest pre-turn prompt, so
                     // bikers/walkers feel the turn coming without looking or hearing.
                     if (p == PROMPT_DISTANCES.last()) events += NavEvent.Haptic(target.type, approaching = true)
