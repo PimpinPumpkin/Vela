@@ -329,4 +329,13 @@
     <string name="navservice_notif_text_faster_available"> · percurso mais rápido disponível</string>
     <string name="navservice_notif_action_end">Terminar</string>
     <string name="navservice_channel_name">Navegação</string>
+    <string name="cat_restaurants">Restaurantes</string>
+    <string name="cat_coffee">Café</string>
+    <string name="cat_gas">Combustível</string>
+    <string name="cat_food">Comida</string>
+    <string name="cat_groceries">Supermercados</string>
+    <string name="cat_hotels">Hotéis</string>
+    <string name="cat_pharmacy">Farmácia</string>
+    <string name="cat_atms">Caixas ATM</string>
+    <string name="cat_parks">Parques</string>
 </resources>

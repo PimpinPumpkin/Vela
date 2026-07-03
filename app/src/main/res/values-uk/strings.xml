@@ -329,4 +329,13 @@
     <string name="navservice_notif_text_faster_available"> · доступний швидший маршрут</string>
     <string name="navservice_notif_action_end">Завершити</string>
     <string name="navservice_channel_name">Навігація</string>
+    <string name="cat_restaurants">Ресторани</string>
+    <string name="cat_coffee">Кава</string>
+    <string name="cat_gas">Заправки</string>
+    <string name="cat_food">Їжа</string>
+    <string name="cat_groceries">Продукти</string>
+    <string name="cat_hotels">Готелі</string>
+    <string name="cat_pharmacy">Аптеки</string>
+    <string name="cat_atms">Банкомати</string>
+    <string name="cat_parks">Парки</string>
 </resources>
