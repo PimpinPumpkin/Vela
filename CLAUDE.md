@@ -99,7 +99,13 @@ genuinely needs no doc edit, say why in the commit.
   14, speed 0.8× (calibration v8). NB the neural voice lengthens pauses at periods by
   **splitting the utterance on sentence boundaries and splicing silence in-app**
   (`PiperSynth.splitSentences`/`joinWithGaps`) — sherpa-onnx's `silenceScale` config is
-  a measured no-op on the Piper/VITS path, don't reach for it.
+  a measured no-op on the Piper/VITS path, don't reach for it. Spoken text also runs through
+  `SpeechText.spokenNumbers` in `VoiceGuide.forSpeech` — 3-digit **street ordinals** ("128th" →
+  "one twenty-eighth") are pre-expanded so the neural G2P doesn't mangle them into "one, hundred
+  and 28th" (only 100–999; 1–2 digit + 4-digit+ are left for espeak). And `NavEngine` **does not
+  announce the DEPART maneuver** — `NavSession.start` speaks it once ("Starting navigation. Head
+  east on F St"); the engine skips it (it's at distance ≈ 0) and advances silently, else the opener
+  gets clipped by a re-announced "head out".
   **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
   `calibration.json`, **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`),
   commit `calibration.json` + `calibration.json.sig` to `main` — users pick it up on

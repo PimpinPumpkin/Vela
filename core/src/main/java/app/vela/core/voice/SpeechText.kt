@@ -40,6 +40,45 @@ object SpeechText {
         return parts.filter { it.isNotEmpty() }.ifEmpty { listOf(text) }
     }
 
+    /**
+     * Read 3-digit street ordinals the way people (and Google's voice) say them — "128th" → "one
+     * twenty-eighth", not "one hundred and twenty-eighth", which the neural G2P mangles into a stuttery
+     * "one, hundred and 28th". Only touches 3-digit ordinals (100-999); espeak reads 1-2 digit ordinals
+     * ("5th", "42nd") fine on its own, and 4-digit+ are left alone (rare in street names, and the
+     * hundreds-word convention breaks down). Whole-number only (won't touch "1.28th").
+     */
+    fun spokenNumbers(text: String): String =
+        STREET_ORDINAL.replace(text) { m ->
+            val h = m.groupValues[1].toInt()
+            val r = m.groupValues[2].toInt()
+            when {
+                r == 0 -> "${CARD[h]} hundredth"      // 100th → "one hundredth"
+                r < 10 -> "${CARD[h]} oh ${ORD1[r]}"  // 105th → "one oh fifth"
+                else -> "${CARD[h]} ${twoDigitOrdinal(r)}" // 128th → "one twenty-eighth"
+            }
+        }
+
+    private fun twoDigitOrdinal(r: Int): String = when {
+        r in 10..19 -> TEEN_ORD[r - 10]
+        r % 10 == 0 -> TENS_ORD[r / 10]
+        else -> "${TENS_CARD[r / 10]}-${ORD1[r % 10]}"
+    }
+
+    private val STREET_ORDINAL = Regex("\\b([1-9])(\\d\\d)(?:st|nd|rd|th)\\b")
+    private val CARD = arrayOf("", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine")
+    private val ORD1 = arrayOf("", "first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth")
+    private val TEEN_ORD = arrayOf(
+        "tenth", "eleventh", "twelfth", "thirteenth", "fourteenth",
+        "fifteenth", "sixteenth", "seventeenth", "eighteenth", "nineteenth",
+    )
+    private val TENS_ORD = arrayOf(
+        "", "", "twentieth", "thirtieth", "fortieth",
+        "fiftieth", "sixtieth", "seventieth", "eightieth", "ninetieth",
+    )
+    private val TENS_CARD = arrayOf(
+        "", "", "twenty", "thirty", "forty", "fifty", "sixty", "seventy", "eighty", "ninety",
+    )
+
     // Terminal punctuation followed by whitespace (so "0.5 mi" and a trailing "." don't match).
     private val SENTENCE_BREAK = Regex("[.!?]+\\s+")
 
