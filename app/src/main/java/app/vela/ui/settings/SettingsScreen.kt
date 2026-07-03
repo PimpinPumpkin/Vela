@@ -141,34 +141,15 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 LinearProgressIndicator(progress = { dlPct }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
             } else {
-                if (!vm.kokoroInstalled()) {
-                    Button(onClick = { vm.downloadKokoro() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Download Kokoro voice (premium) · ~349 MB")
-                    }
-                    Hint("The most natural, highest-quality voice. Heavy model — slower to speak on-device; Piper below is snappier for turn-by-turn.")
-                    Spacer(Modifier.height(8.dp))
-                } else if (vm.kokoroIsInt8()) {
-                    OutlinedButton(onClick = { vm.downloadKokoro() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Upgrade Kokoro to fp32 (≈2× faster) · ~349 MB")
-                    }
-                    Hint("Your Kokoro is the older int8 model — the fp32 build is about twice as fast on-device and a touch nicer. Re-downloads Kokoro.")
-                    Spacer(Modifier.height(8.dp))
-                }
                 if (!vm.piperInstalled()) {
-                    OutlinedButton(onClick = { vm.downloadPiper() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Download Piper voice (fast) · ~67 MB")
+                    Button(onClick = { vm.downloadPiper() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Download the Vela voice · ~67 MB")
                     }
-                    Hint("A lighter voice that speaks near-instantly — best for turn-by-turn; a notch below Kokoro. Runs entirely on your phone; one-time download, wifi recommended.")
+                    Hint("A natural on-device voice for spoken directions — no account, no standalone app, and it speaks in real time even on old phones. One-time download; wifi recommended.")
                     Spacer(Modifier.height(8.dp))
+                } else {
+                    Spacer(Modifier.height(4.dp))
                 }
-                if (!vm.matchaInstalled()) {
-                    OutlinedButton(onClick = { vm.downloadMatcha() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Download Matcha voice (balanced) · ~130 MB")
-                    }
-                    Hint("A newer flow-matching voice — warmer and more natural than Piper, and still realtime unlike Kokoro. The middle ground (two-part download).")
-                    Spacer(Modifier.height(8.dp))
-                }
-                if (vm.kokoroInstalled() || vm.piperInstalled() || vm.matchaInstalled()) Spacer(Modifier.height(4.dp))
             }
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
