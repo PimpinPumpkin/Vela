@@ -4,13 +4,14 @@ import android.content.Context
 import java.io.File
 
 /**
- * Vela's **fast** on-device neural voice: a Piper VITS model (`en_US-hfc_female-medium`). Runs at or
- * above realtime — the low-latency alternative to the premium-but-slow Kokoro ([VelaKokoro]). Same
- * bundled sherpa-onnx runtime, a different (VITS) model downloaded at runtime into `filesDir/piper`.
+ * Vela's on-device neural voice: a Piper VITS model (`en_US-hfc_female-medium`). Runs comfortably
+ * above realtime even on old phones (~0.56 s to synthesize a 3 s nav prompt on a Pixel 5a), which is
+ * why it's the sole neural voice — Kokoro (prettier) and Matcha were dropped as too slow / not worth
+ * the size. Bundled sherpa-onnx runtime, model downloaded at runtime into `filesDir/piper`.
  */
 object VelaPiper {
     const val ENGINE_ID = "vela.piper"
-    const val LABEL = "Vela Neural (Piper) — fast"
+    const val LABEL = "Vela voice"
     const val MODEL = "en_US-hfc_female-medium.onnx"
 
     fun modelDir(context: Context): File = File(context.filesDir, "piper")
