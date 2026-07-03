@@ -65,8 +65,8 @@ import app.vela.ui.Onboarding
 import app.vela.core.data.tiles.MapStyle
 import app.vela.ui.Units
 import androidx.compose.foundation.layout.Arrangement
+import app.vela.core.voice.PiperCatalog
 import app.vela.core.voice.PiperVoice
-import app.vela.core.voice.VoiceAccent
 import app.vela.ui.map.MapUiState
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.AppTheme
@@ -772,10 +772,12 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         )
     }
     fun matches(v: PiperVoice) = query.isBlank() ||
-        listOf(v.displayName, v.accent.name, v.note ?: "").any { it.contains(query.trim(), ignoreCase = true) }
+        listOf(v.displayName, v.region, PiperCatalog.languageLabel(v.langCode), v.note ?: "")
+            .any { it.contains(query.trim(), ignoreCase = true) }
 
-    listOf(VoiceAccent.US to "US English", VoiceAccent.GB to "British English").forEach { (accent, title) ->
-        val group = catalog.filter { it.accent == accent && matches(it) }.sortedWith(
+    // Grouped by language (English first, then by endonym) so the browser scales past English.
+    PiperCatalog.languageCodes().forEach { lang ->
+        val group = catalog.filter { it.langCode == lang && matches(it) }.sortedWith(
             compareByDescending<PiperVoice> { it.id in installed }
                 .thenByDescending { it.id == selected }
                 .thenByDescending { it.recommended }
@@ -785,7 +787,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         )
         if (group.isNotEmpty()) {
             Spacer(Modifier.height(10.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(PiperCatalog.languageLabel(lang), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
             group.forEach { v ->
                 VoiceRow(
                     v = v,
@@ -849,9 +851,9 @@ private fun VoiceRow(
             }
             val sub = when {
                 downloading -> "Downloading… ${(downloadPct * 100).toInt()}%"
-                active -> "In use · ${v.accent.name} · $gender · ${v.sizeMb} MB"
-                installed -> "Downloaded · ${v.accent.name} · $gender · ${v.sizeMb} MB"
-                else -> "${v.accent.name} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB" + (v.note?.let { " · $it" } ?: "")
+                active -> "In use · ${v.region} · $gender · ${v.sizeMb} MB"
+                installed -> "Downloaded · ${v.region} · $gender · ${v.sizeMb} MB"
+                else -> "${v.region} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB" + (v.note?.let { " · $it" } ?: "")
             }
             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
