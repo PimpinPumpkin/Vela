@@ -263,31 +263,11 @@ object RouteGeometry {
      *  gist of) — "Turn right onto 164th St SE", "Continue onto I 80", "Take exit 15 toward Sacramento".
      *  [road] is the name-or-ref of the road being entered; [dest] is a ramp's sign destination
      *  ("I-80 East: Sacramento"); [exitNo] is a ramp's exit number; [rbExit] is a roundabout exit count. */
-    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
-        val onto = if (road != null) " onto $road" else ""
-        val m = (mod ?: "").trim()
-        // Exits/ramps: say where it GOES. Prefer the sign destination, else the road it joins.
-        val toward = when {
-            dest != null -> " toward $dest"
-            road != null -> " onto $road"
-            else -> ""
-        }
-        val exitTab = if (exitNo != null) " $exitNo" else ""
-        return when (type) {
-            "depart" -> if (road != null) "Head out on $road" else "Start your route"
-            "arrive" -> "Arrive at your destination"
-            "turn", "end of road" -> ("Turn $m").trim() + onto
-            "continue", "new name" -> if (m.isNotBlank() && m != "straight") ("Bear $m").trim() + onto else "Continue$onto"
-            "merge" -> "Merge$toward"
-            "on ramp", "ramp" -> "Take the ramp$toward"
-            "off ramp" -> if (exitNo != null) "Take exit$exitTab$toward" else "Take the exit$toward"
-            "fork" -> ("Keep $m").trim() + toward
-            "roundabout", "rotary" -> if (rbExit != null) "At the roundabout, take exit $rbExit$onto" else "Enter the roundabout$onto"
-            "roundabout turn" -> ("At the roundabout, turn $m").trim() + onto
-            "uturn" -> "Make a U-turn$onto"
-            else -> if (m.isNotBlank()) ("Turn $m").trim() + onto else "Continue$onto"
-        }
-    }
+    // The instruction TEXT is localized: it delegates to the active NavStrings (English by default,
+    // byte-identical to the original template set). This is the seam that lets nav be spoken/shown in
+    // the app's language — the road/dest name passed in stays in its native local form. See core/i18n.
+    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String =
+        app.vela.core.i18n.NavStringsRegistry.current().phrase(type, mod, road, dest, exitNo, rbExit)
 
     // --- traffic-aware routing (option 3) -------------------------------------
 
