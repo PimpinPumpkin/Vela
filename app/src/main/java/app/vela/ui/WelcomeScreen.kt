@@ -29,8 +29,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import app.vela.R
 
 /** First-run welcome — what Vela is and why, then a single Get-started button. */
 @Composable
@@ -54,32 +56,32 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
             Text("Vela Maps", style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
             Text(
-                "Maps & navigation, degoogled.",
+                stringResource(R.string.welcome_tagline),
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(Modifier.height(40.dp))
             WelcomeFeature(
                 Icons.Default.VisibilityOff,
-                "No tracking",
-                "No Google account, no ads, no analytics — your searches stay on your device.",
+                stringResource(R.string.welcome_feature_no_tracking_title),
+                stringResource(R.string.welcome_feature_no_tracking_body),
             )
             WelcomeFeature(
                 Icons.Default.Place,
-                "Real places & routes",
-                "Live search, reviews, photos, transit, and traffic-aware directions.",
+                stringResource(R.string.welcome_feature_places_title),
+                stringResource(R.string.welcome_feature_places_body),
             )
             WelcomeFeature(
                 Icons.Default.Favorite,
-                "Free & open source",
-                "GPLv3, built for GrapheneOS and other de-Googled phones.",
+                stringResource(R.string.welcome_feature_open_source_title),
+                stringResource(R.string.welcome_feature_open_source_body),
             )
             Spacer(Modifier.weight(1f))
             Button(
                 onClick = onGetStarted,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) {
-                Text("Get started", style = MaterialTheme.typography.titleMedium)
+                Text(stringResource(R.string.welcome_get_started), style = MaterialTheme.typography.titleMedium)
             }
             Spacer(Modifier.height(8.dp))
         }
@@ -108,15 +110,11 @@ fun DonatePrompt(onDonate: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         icon = { Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        title = { Text("Enjoying Vela?") },
+        title = { Text(stringResource(R.string.welcome_donate_title)) },
         text = {
-            Text(
-                "Vela is free and ad-free, built on a shoestring. If it's become useful, " +
-                    "a small one-off donation helps keep it going — entirely optional, and this " +
-                    "is the only time it'll ask. There's always a Support entry in Settings too.",
-            )
+            Text(stringResource(R.string.welcome_donate_body))
         },
-        confirmButton = { TextButton(onClick = onDonate) { Text("Support Vela") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Maybe later") } },
+        confirmButton = { TextButton(onClick = onDonate) { Text(stringResource(R.string.welcome_donate_confirm)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.welcome_donate_dismiss)) } },
     )
 }
