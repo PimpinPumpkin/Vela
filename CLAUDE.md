@@ -92,9 +92,14 @@ genuinely needs no doc edit, say why in the commit.
   `config/`) fetches `calibration.json` from the repo's raw URL at launch and
   adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
   provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).
-  The bundle also carries **`defaultVoiceSpeaker`** (int) — the default libritts_r
-  Piper voice variant, so a favourite speaker can be pushed as everyone's default
-  with a version bump + re-sign, no app release (a user's own pick still wins).
+  The bundle also carries **`defaultVoiceSpeaker`** (int) and **`defaultVoiceSpeed`**
+  (float) — the default libritts_r Piper voice variant + spoken-directions speed, so
+  a favourite speaker or pace can be pushed as everyone's default with a version bump
+  + re-sign, no app release (a user's own pick still wins). Shipped defaults: speaker
+  14, speed 0.8× (calibration v8). NB the neural voice lengthens pauses at periods by
+  **splitting the utterance on sentence boundaries and splicing silence in-app**
+  (`PiperSynth.splitSentences`/`joinWithGaps`) — sherpa-onnx's `silenceScale` config is
+  a measured no-op on the Piper/VITS path, don't reach for it.
   **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
   `calibration.json`, **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`),
   commit `calibration.json` + `calibration.json.sig` to `main` — users pick it up on
