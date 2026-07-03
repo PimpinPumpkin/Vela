@@ -1455,12 +1455,15 @@ class MapViewModel @Inject constructor(
     fun voiceSpeakerCount(): Int = piperSynth.numSpeakers
 
     /** Step the multi-speaker Vela voice by [delta], persist it, and speak a sample so it's heard. */
-    fun stepSpeaker(delta: Int) {
+    fun stepSpeaker(delta: Int) = setSpeaker(_state.value.voiceSpeaker + delta)
+
+    /** Jump the multi-speaker Vela voice straight to speaker [n] (clamped to the model's range),
+     *  persist it, and speak a sample. Lets the user type a variant number instead of stepping. */
+    fun setSpeaker(n: Int) {
         val max = piperSynth.numSpeakers
-        var n = _state.value.voiceSpeaker + delta
-        n = if (max > 0) n.coerceIn(0, max - 1) else n.coerceAtLeast(0)
-        settingsPrefs.edit().putInt("voice_speaker", n).apply()
-        _state.update { it.copy(voiceSpeaker = n) }
+        val clamped = if (max > 0) n.coerceIn(0, max - 1) else n.coerceAtLeast(0)
+        settingsPrefs.edit().putInt("voice_speaker", clamped).apply()
+        _state.update { it.copy(voiceSpeaker = clamped) }
         voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
     }
 

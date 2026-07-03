@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -52,6 +54,8 @@ import org.maplibre.android.offline.OfflineRegion
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.BuildConfig
@@ -221,7 +225,30 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         Spacer(Modifier.width(6.dp))
                         OutlinedButton(onClick = { vm.stepSpeaker(1) }) { Text("▶") }
                     }
-                    Hint("This voice has hundreds of speakers — tap ◀ ▶ to hear different ones (it speaks a sample) and keep the one you like.")
+                    Spacer(Modifier.height(8.dp))
+                    // Jump straight to a variant number (904 is a lot to step through).
+                    var jump by remember { mutableStateOf("") }
+                    val goToVariant = {
+                        jump.trim().toIntOrNull()?.let { vm.setSpeaker(it) }
+                        jump = ""
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = jump,
+                            onValueChange = { s -> jump = s.filter { it.isDigit() }.take(4) },
+                            singleLine = true,
+                            label = { Text("Variant #") },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Go,
+                            ),
+                            keyboardActions = KeyboardActions(onGo = { goToVariant() }),
+                            modifier = Modifier.width(150.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(onClick = goToVariant, enabled = jump.isNotBlank()) { Text("Go") }
+                    }
+                    Hint("This voice has hundreds of speakers — tap ◀ ▶ to audition one at a time, or type a variant number and Go to jump straight to it (it speaks a sample). Keep the one you like.")
                 }
             }
 
