@@ -140,7 +140,17 @@ genuinely needs no doc edit, say why in the commit.
   with GPS speed — accel predicts between fixes, each fix measures). Collected ONLY during
   nav, written into a plain array (never compose state — sensor-rate recomposition). Missing
   sensors degrade to `a = 0` = the old constant-speed dead reckoning.
-- Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS.
+- Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS. **Plus an
+  in-process neural option (Kokoro):** Vela bundles the **sherpa-onnx** runtime (arm64 `.so`, from the
+  `tts-runtime` release AAR — gitignored, fetched in CI, NOT committed) and downloads the ~126 MB
+  `kokoro-int8-multi-lang-v1_0` model into `filesDir/kokoro`, run in-process by `app/voice/KokoroSynth`
+  (`OfflineTts`+`AudioTrack`) behind the `:core` `voice/NeuralSynth` seam (the AAR can't live in the
+  `:core` library module). Becomes the default voice once present. **Non-obvious, all device-only
+  (compiler-clean):** R8 MUST `-keep class com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original
+  name); the multi-lang model needs `lang="en"` or it native-`exit()`s; its Chinese `lexicon`/`dictDir`
+  SIGABRT on Android (omit — English uses espeak `dataDir`); and you must generate the WHOLE utterance
+  before `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT). See
+  `project_vela_kokoro_tts` memory.
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
   (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.
 - EU consent: `InMemoryCookieJar` (CoreModule) pre-seeds Google's `SOCS`/`CONSENT`
