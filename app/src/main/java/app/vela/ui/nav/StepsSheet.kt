@@ -44,6 +44,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import app.vela.R
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -88,15 +90,15 @@ fun StepsSheet(
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 14.dp, bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text("Steps", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
+                    Text(stringResource(R.string.steps_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
                     Text(
                         formatDuration(etaSeconds) + "  ·  " + formatDistance(distanceMeters) +
-                            if (hasLiveTraffic) "  ·  live traffic" else "",
+                            if (hasLiveTraffic) "  ·  " + stringResource(R.string.steps_live_traffic) else "",
                         style = MaterialTheme.typography.bodyMedium,
                         color = if (hasLiveTraffic) SheetPalette.TrafficGreen else dim,
                     )
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close steps", tint = dim) }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
             }
             LazyColumn(Modifier.heightIn(max = 360.dp)) {
                 itemsIndexed(maneuvers) { i, m ->
@@ -124,8 +126,9 @@ fun StepsSheet(
                         )
                         Spacer(Modifier.width(14.dp))
                         Column(Modifier.weight(1f)) {
+                            val continueLabel = stringResource(R.string.steps_continue)
                             Text(
-                                m.instruction.ifEmpty { "Continue" },
+                                m.instruction.ifEmpty { continueLabel },
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
                                 color = ink,

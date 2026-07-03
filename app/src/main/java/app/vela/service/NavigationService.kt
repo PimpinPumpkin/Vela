@@ -94,20 +94,31 @@ class NavigationService : Service() {
         // Google-style: lead with the distance to the next turn ("In 500 ft · Turn right
         // onto Main St") when we have it, so the collapsed notification reads at a glance.
         val title = when {
-            s.arrived -> "Arrived"
-            s.maneuverText.isEmpty() -> "Navigating"
+            s.arrived -> getString(R.string.navservice_notif_title_arrived)
+            s.maneuverText.isEmpty() -> getString(R.string.navservice_notif_title_navigating)
             s.nav.distanceToNextManeuver > 0.0 ->
-                "In ${formatDistance(s.nav.distanceToNextManeuver)} · ${s.maneuverText}"
+                getString(
+                    R.string.navservice_notif_title_in_distance,
+                    formatDistance(s.nav.distanceToNextManeuver),
+                    s.maneuverText,
+                )
             else -> s.maneuverText
         }
         val text = if (s.arrived) {
             ""
         } else {
-            "${formatDuration(s.remainingDuration)} · ${formatDistance(s.remainingDistance)}" +
+            getString(
+                R.string.navservice_notif_text_remaining,
+                formatDuration(s.remainingDuration),
+                formatDistance(s.remainingDistance),
+            ) +
                 when {
                     s.fasterRoute != null && s.fasterSavingSeconds > 0 ->
-                        " · ${formatDuration(s.fasterSavingSeconds)} faster available"
-                    s.fasterRoute != null -> " · faster route available"
+                        getString(
+                            R.string.navservice_notif_text_faster_saving,
+                            formatDuration(s.fasterSavingSeconds),
+                        )
+                    s.fasterRoute != null -> getString(R.string.navservice_notif_text_faster_available)
                     else -> ""
                 }
         }
@@ -126,7 +137,7 @@ class NavigationService : Service() {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(open)
-            .addAction(0, "End", stop)
+            .addAction(0, getString(R.string.navservice_notif_action_end), stop)
             .setCategory(NotificationCompat.CATEGORY_NAVIGATION)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
@@ -148,7 +159,11 @@ class NavigationService : Service() {
     private fun ensureChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             notificationManager().createNotificationChannel(
-                NotificationChannel(CHANNEL_ID, "Navigation", NotificationManager.IMPORTANCE_LOW),
+                NotificationChannel(
+                    CHANNEL_ID,
+                    getString(R.string.navservice_channel_name),
+                    NotificationManager.IMPORTANCE_LOW,
+                ),
             )
         }
     }

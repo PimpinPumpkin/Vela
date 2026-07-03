@@ -136,6 +136,8 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import app.vela.R
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
@@ -379,7 +381,7 @@ fun PlaceSheet(
                             FilterChip(
                                 selected = photoCat == cat,
                                 onClick = { photoCat = cat },
-                                label = { Text(cat ?: "All") },
+                                label = { Text(cat ?: stringResource(R.string.place_photo_category_all)) },
                             )
                         }
                     }
@@ -396,7 +398,7 @@ fun PlaceSheet(
                     items(shown, key = { it }) { i ->
                         AsyncImage(
                             model = place.photoUrls[i],
-                            contentDescription = "Photo ${i + 1}",
+                            contentDescription = stringResource(R.string.place_photo_number, i + 1),
                             contentScale = ContentScale.Crop,
                             modifier = Modifier
                                 .size(width = 152.dp, height = 110.dp)
@@ -433,7 +435,7 @@ fun PlaceSheet(
                 IconButton(onClick = onToggleSave, modifier = Modifier.size(40.dp)) {
                     Icon(
                         if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = if (isSaved) "Saved" else "Save",
+                        contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
                         tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
                         modifier = Modifier.size(20.dp),
                     )
@@ -443,21 +445,21 @@ fun PlaceSheet(
                 var headerMenu by remember { mutableStateOf(false) }
                 Box {
                     IconButton(onClick = { headerMenu = true }, modifier = Modifier.size(40.dp)) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "More options", tint = dim, modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.place_more_options), tint = dim, modifier = Modifier.size(20.dp))
                     }
                     DropdownMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
                         DropdownMenuItem(
-                            text = { Text("Set as Home") },
+                            text = { Text(stringResource(R.string.place_set_as_home)) },
                             onClick = { headerMenu = false; onSetShortcut(ShortcutKind.HOME) },
                         )
                         DropdownMenuItem(
-                            text = { Text("Set as Work") },
+                            text = { Text(stringResource(R.string.place_set_as_work)) },
                             onClick = { headerMenu = false; onSetShortcut(ShortcutKind.WORK) },
                         )
                     }
                 }
                 IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = "Close", tint = dim, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = dim, modifier = Modifier.size(20.dp))
                 }
             }
 
@@ -499,7 +501,7 @@ fun PlaceSheet(
                 // sent no hours/status string at all (which is what "no hours" looked
                 // like before we parsed this).
                 Text(
-                    "Permanently closed",
+                    stringResource(R.string.place_permanently_closed),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xFFD93838),
@@ -565,15 +567,15 @@ fun PlaceSheet(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                ActionPill(Icons.Default.Directions, "Directions", emphasized = true, onClick = onDirections)
+                ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
                 place.phone?.let { ph ->
-                    ActionPill(Icons.Default.Call, "Call") {
+                    ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
                 }
                 place.website?.let { site ->
-                    ActionPill(Icons.Default.Language, "Website") {
+                    ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                     }
                 }
@@ -590,9 +592,9 @@ fun PlaceSheet(
                     IconButton(onClick = {
                         val cb = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         cb.setPrimaryClip(ClipData.newPlainText("address", addr))
-                        Toast.makeText(context, "Address copied", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, context.getString(R.string.place_address_copied), Toast.LENGTH_SHORT).show()
                     }) {
-                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy address", tint = dim, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.place_copy_address), tint = dim, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -602,7 +604,7 @@ fun PlaceSheet(
             if (place.hours.isNotEmpty()) {
                 HoursSection(place.hours, ink, dim)
             } else if (place.category != null && !place.permanentlyClosed) {
-                Text("Hours not listed", style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
+                Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
             // Phone + website as their own tappable rows showing the actual number / domain — placed
@@ -708,7 +710,7 @@ fun PlaceSheet(
                 ) {
                     CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 2.dp, color = dim)
                     Spacer(Modifier.width(8.dp))
-                    Text("Loading popular times & details…", style = MaterialTheme.typography.bodySmall, color = dim)
+                    Text(stringResource(R.string.place_loading_popular_times), style = MaterialTheme.typography.bodySmall, color = dim)
                 }
             }
             // (The editorial summary + "From the owner" blurb live in the About tab.)
@@ -718,7 +720,7 @@ fun PlaceSheet(
             // this location". Tap to open one.
             if (placesHere.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
-                Text("Also at this location", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
+                Text(stringResource(R.string.place_also_at_location), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
                 placesHere.forEach { other ->
                     Row(
                         Modifier.fillMaxWidth().clickable { onOpenPlace(other) }.padding(vertical = 10.dp),
@@ -732,7 +734,7 @@ fun PlaceSheet(
                             ).joinToString("  ·  ")
                             if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Open", tint = dim, modifier = Modifier.size(18.dp))
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.place_open), tint = dim, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -741,7 +743,7 @@ fun PlaceSheet(
             // detail re-fetch (root [2][11][0]); a horizontal row of tappable cards.
             if (place.similarPlaces.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
-                Text("People also search for", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
+                Text(stringResource(R.string.place_people_also_search), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
                 Row(
                     Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -769,7 +771,7 @@ fun PlaceSheet(
     }
 
     galleryStart?.let { start ->
-        PhotoGallery(place.photoUrls, place.photoDates.map { d -> d?.let { "Photo · $it" } }, start) { galleryStart = null }
+        PhotoGallery(place.photoUrls, place.photoDates.map { d -> d?.let { context.getString(R.string.place_photo_caption, it) } }, start) { galleryStart = null }
     }
 }
 
@@ -853,7 +855,7 @@ fun DirectionsPanel(
                         )
                         if (onEditOrigin != null) {
                             Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Default.Edit, contentDescription = "Change starting point", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.place_change_start), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                         }
                     }
                     Spacer(Modifier.height(3.dp))
@@ -871,14 +873,14 @@ fun DirectionsPanel(
                                 // reorder mis-taps, and removal re-routes immediately with no undo.
                                 if (stops.size > 1) {
                                     if (i > 0) IconButton(onClick = { onMoveStop(i, -1) }, modifier = Modifier.size(36.dp)) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move stop up", tint = dim, modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.place_move_stop_up), tint = dim, modifier = Modifier.size(20.dp))
                                     }
                                     if (i < stops.size - 1) IconButton(onClick = { onMoveStop(i, 1) }, modifier = Modifier.size(36.dp)) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move stop down", tint = dim, modifier = Modifier.size(20.dp))
+                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.place_move_stop_down), tint = dim, modifier = Modifier.size(20.dp))
                                     }
                                 }
                                 IconButton(onClick = { onRemoveStop(i) }, modifier = Modifier.size(36.dp)) {
-                                    Icon(Icons.Default.Close, contentDescription = "Remove stop", tint = dim, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_remove_stop), tint = dim, modifier = Modifier.size(18.dp))
                                 }
                             }
                         }
@@ -889,7 +891,7 @@ fun DirectionsPanel(
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(8.dp))
-                                Text("Add stop", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                                Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                             }
                             Spacer(Modifier.height(3.dp))
                         }
@@ -915,24 +917,24 @@ fun DirectionsPanel(
                         )
                         if (onEditDestination != null) {
                             Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Default.Edit, contentDescription = "Change destination", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.place_change_destination), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                         }
                     }
                 }
                 IconButton(onClick = onSwap) {
-                    Icon(Icons.Default.SwapVert, contentDescription = "Swap start and destination", tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Default.SwapVert, contentDescription = stringResource(R.string.place_swap_start_destination), tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = "Close directions", tint = dim) }
+                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             AnimatedVisibility(visible = !collapsed.value) {
               Column {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
-                    TravelMode.DRIVE to "Drive",
-                    TravelMode.TRANSIT to "Transit",
-                    TravelMode.WALK to "Walk",
-                    TravelMode.BICYCLE to "Bike",
+                    TravelMode.DRIVE to stringResource(R.string.place_mode_drive),
+                    TravelMode.TRANSIT to stringResource(R.string.place_mode_transit),
+                    TravelMode.WALK to stringResource(R.string.place_mode_walk),
+                    TravelMode.BICYCLE to stringResource(R.string.place_mode_bike),
                 ).forEach { (mode, label) ->
                     FilterChip(
                         selected = currentMode == mode,
@@ -948,7 +950,7 @@ fun DirectionsPanel(
                 if (routes.isEmpty()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("Finding the best route…", style = MaterialTheme.typography.bodyMedium, color = dim)
+                        Text(stringResource(R.string.place_finding_route), style = MaterialTheme.typography.bodyMedium, color = dim)
                     }
                 } else {
                     // Fastest ETA across the alternates (list is sorted fastest-first, but take the min
@@ -967,17 +969,17 @@ fun DirectionsPanel(
                     Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                            Text("Start")
+                            Text(stringResource(R.string.place_start))
                         }
                         onSteps?.let {
                             OutlinedButton(onClick = it) {
                                 Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                                Text("Steps")
+                                Text(stringResource(R.string.place_steps))
                             }
                         }
                     }
                     Spacer(Modifier.height(14.dp))
-                    Text("Search along route", style = MaterialTheme.typography.labelMedium, color = dim)
+                    Text(stringResource(R.string.place_search_along_route), style = MaterialTheme.typography.labelMedium, color = dim)
                     Spacer(Modifier.height(6.dp))
                     Row(
                         Modifier.horizontalScroll(rememberScrollState()).padding(end = 12.dp),
@@ -1008,7 +1010,7 @@ fun DirectionsPanel(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
                 ) {
                     Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                    Text("Start")
+                    Text(stringResource(R.string.place_start))
                 }
             }
         }
@@ -1043,9 +1045,9 @@ private fun DepartTimeChooser(route: Route?, dim: Color) {
     }
 
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text("Leave now") })
-        FilterChip(selected = mode == 1, onClick = { openPicker(1) }, label = { Text("Depart at") })
-        FilterChip(selected = mode == 2, onClick = { openPicker(2) }, label = { Text("Arrive by") })
+        FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text(stringResource(R.string.place_leave_now)) })
+        FilterChip(selected = mode == 1, onClick = { openPicker(1) }, label = { Text(stringResource(R.string.place_depart_at)) })
+        FilterChip(selected = mode == 2, onClick = { openPicker(2) }, label = { Text(stringResource(R.string.place_arrive_by)) })
     }
 
     // A clock window [base+loOffset .. base+hiOffset] when we have a typical spread,
@@ -1059,17 +1061,17 @@ private fun DepartTimeChooser(route: Route?, dim: Color) {
     val hi = range?.second ?: nowDur
     val (summary, note) = when (mode) {
         1 -> picked?.let { p ->
-            "Depart ${p.format(fmt)}  ·  arrive ${window(p, lo, hi, +1)}" to
-                (if (range != null) "in typical traffic" else "based on current traffic")
+            stringResource(R.string.place_depart_arrive, p.format(fmt), window(p, lo, hi, +1)) to
+                (if (range != null) stringResource(R.string.place_in_typical_traffic) else stringResource(R.string.place_based_current_traffic))
         } ?: (null to null)
         2 -> picked?.let { p ->
             // Arrive by p → leave between p−hi and p−lo (earlier end first).
-            "Arrive by ${p.format(fmt)}  ·  leave ${window(p, hi, lo, -1)}" to
-                (if (range != null) "in typical traffic" else "based on current traffic")
+            stringResource(R.string.place_arriveby_leave, p.format(fmt), window(p, hi, lo, -1)) to
+                (if (range != null) stringResource(R.string.place_in_typical_traffic) else stringResource(R.string.place_based_current_traffic))
         } ?: (null to null)
         else -> {
-            val arrive = "Arrive ~${java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt)}"
-            arrive to (range?.let { "Usually ${formatDuration(it.first)} – ${formatDuration(it.second)}" } ?: "current traffic")
+            val arrive = stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt))
+            arrive to (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) } ?: stringResource(R.string.place_current_traffic))
         }
     }
     summary?.let {
@@ -1107,7 +1109,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                 Spacer(Modifier.width(8.dp))
                 if (deltaMin <= 0) {
                     Text(
-                        "Fastest",
+                        stringResource(R.string.place_fastest),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier
@@ -1118,7 +1120,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                 } else {
                     // "+5 min" vs the fastest — a quiet tag so the fastest still reads as primary.
                     Text(
-                        "+$deltaMin min",
+                        stringResource(R.string.place_delta_min, deltaMin),
                         style = MaterialTheme.typography.labelSmall,
                         color = dim,
                         modifier = Modifier
@@ -1130,8 +1132,8 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             }
             val sub = listOfNotNull(
                 formatDistance(r.distanceMeters),
-                r.summary?.takeIf { it.isNotBlank() }?.let { "via $it" },
-                if (r.hasLiveTraffic) "live traffic" else null,
+                r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.place_via, it) },
+                if (r.hasLiveTraffic) stringResource(R.string.place_live_traffic) else null,
             ).joinToString("  ·  ")
             Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
         }
@@ -1167,9 +1169,9 @@ private fun TransitBoard(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
-            Text("Finding transit routes…", style = MaterialTheme.typography.bodyMedium, color = dim)
+            Text(stringResource(R.string.place_finding_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
         }
-        trips.isEmpty() -> Text("No transit routes found", style = MaterialTheme.typography.bodyMedium, color = dim)
+        trips.isEmpty() -> Text(stringResource(R.string.place_no_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
         else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             trips.take(6).forEach { TransitRow(it, ink, dim, dark) }
         }
@@ -1203,7 +1205,7 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
             if (canExpand) {
                 Icon(
                     if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) "Hide steps" else "Show steps",
+                    contentDescription = if (expanded) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
                     tint = dim,
                     modifier = Modifier.padding(start = 4.dp).size(20.dp),
                 )
@@ -1248,7 +1250,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color) {
             modifier = Modifier.padding(top = 2.dp).size(18.dp),
         )
         Column {
-            Text(s.line?.name ?: "Walk", style = MaterialTheme.typography.bodyMedium, color = ink)
+            Text(s.line?.name ?: stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
             val parts = listOfNotNull(
                 if (s.departText != null && s.arriveText != null) "${s.departText} – ${s.arriveText}" else null,
                 s.durationText,
@@ -1391,7 +1393,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 }
             }
             Text(
-                "${pager.currentPage + 1} / ${urls.size}",
+                stringResource(R.string.place_gallery_counter, pager.currentPage + 1, urls.size),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White,
                 modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(12.dp),
@@ -1410,7 +1412,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 onClick = onDismiss,
                 modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(4.dp),
             ) {
-                Icon(Icons.Default.Close, contentDescription = "Close", tint = Color.White)
+                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = Color.White)
             }
         }
     }
@@ -1442,7 +1444,7 @@ private fun PanelControls(
         OutlinedTextField(
             value = query,
             onValueChange = onQuery,
-            placeholder = { Text("Search reviews", color = dim) },
+            placeholder = { Text(stringResource(R.string.place_search_reviews), color = dim) },
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = ink),
@@ -1457,7 +1459,7 @@ private fun PanelControls(
         var sortOpen by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { sortOpen = true }) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = "Sort reviews", tint = dim)
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.place_sort_reviews), tint = dim)
             }
             DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
                 listOf("Most relevant", "Newest", "Highest rating", "Lowest rating").forEach { o ->
@@ -1609,11 +1611,11 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 ) {
                     IconButton(onClick = onClose) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = ink)
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_back), tint = ink)
                     }
                     Column(Modifier.weight(1f)) {
                         Text(place.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ink, maxLines = 1)
-                        Text("Reviews", style = MaterialTheme.typography.bodySmall, color = dim)
+                        Text(stringResource(R.string.place_reviews_title), style = MaterialTheme.typography.bodySmall, color = dim)
                     }
                 }
                 app.vela.web.GoogleReviewsPanel(
@@ -1660,7 +1662,7 @@ private fun ReviewsTab(
                 RatingStars(r)
                 place.reviewCount?.let {
                     Spacer(Modifier.width(8.dp))
-                    Text("$it reviews", style = MaterialTheme.typography.bodyMedium, color = dim)
+                    Text(stringResource(R.string.place_review_count, it), style = MaterialTheme.typography.bodyMedium, color = dim)
                 }
             }
         }
@@ -1670,7 +1672,7 @@ private fun ReviewsTab(
             OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                 Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(place.reviewCount?.let { "All $it reviews · sort & search" } ?: "All reviews · sort & search")
+                Text(place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews))
             }
         }
         // Featured-review quote is only a TEASER while the real reviews are still streaming in —
@@ -1698,9 +1700,9 @@ private fun ReviewsTab(
                     Spacer(Modifier.width(10.dp))
                     Text(
                         when {
-                            found > 0 && target > 0 -> "Reviews · $found of ~${maxOf(target, found)}"
-                            found > 0 -> "Reviews · $found so far"
-                            else -> "Gathering reviews…"
+                            found > 0 && target > 0 -> stringResource(R.string.place_reviews_progress, found, maxOf(target, found))
+                            found > 0 -> stringResource(R.string.place_reviews_so_far, found)
+                            else -> stringResource(R.string.place_gathering_reviews)
                         },
                         style = MaterialTheme.typography.bodyMedium, color = dim,
                     )
@@ -1725,9 +1727,9 @@ private fun ReviewsTab(
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(10.dp))
-                Text("Couldn't load reviews. Tap to retry.", style = MaterialTheme.typography.bodyMedium, color = dim)
+                Text(stringResource(R.string.place_reviews_load_failed), style = MaterialTheme.typography.bodyMedium, color = dim)
             }
-            reviews.isEmpty() -> Text("No reviews available.", style = MaterialTheme.typography.bodyMedium, color = dim)
+            reviews.isEmpty() -> Text(stringResource(R.string.place_no_reviews), style = MaterialTheme.typography.bodyMedium, color = dim)
             else -> {
                 // Reaches here DURING loading too — partials stream in and render under the
                 // progress header above, growing until the scrape completes.
@@ -1739,12 +1741,12 @@ private fun ReviewsTab(
                     OutlinedTextField(
                         value = reviewQuery,
                         onValueChange = { reviewQuery = it },
-                        placeholder = { Text("Search reviews", color = dim) },
+                        placeholder = { Text(stringResource(R.string.place_search_reviews), color = dim) },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp)) },
                         trailingIcon = if (reviewQuery.isNotEmpty()) {
                             {
                                 Icon(
-                                    Icons.Default.Close, contentDescription = "Clear review search", tint = dim,
+                                    Icons.Default.Close, contentDescription = stringResource(R.string.place_clear_review_search), tint = dim,
                                     modifier = Modifier.size(18.dp).clip(CircleShape).clickable { reviewQuery = "" },
                                 )
                             }
@@ -1761,7 +1763,7 @@ private fun ReviewsTab(
                 }
                 if (shown.isEmpty()) {
                     Text(
-                        "No reviews mention “$q” (searching the ${reviews.size} loaded).",
+                        stringResource(R.string.place_no_reviews_mention, q, reviews.size),
                         style = MaterialTheme.typography.bodyMedium, color = dim,
                         modifier = Modifier.padding(vertical = 8.dp),
                     )
@@ -1863,7 +1865,7 @@ private fun AboutTab(
             Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(bottom = 4.dp))
         }
         ownerDescription?.let {
-            Text("From the owner", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = dim, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
+            Text(stringResource(R.string.place_from_the_owner), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Medium, color = dim, modifier = Modifier.padding(top = 8.dp, bottom = 4.dp))
             Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(bottom = 4.dp))
         }
         sections.forEach { sec ->
@@ -1922,7 +1924,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
                         type = "text/plain"
                         putExtra(Intent.EXTRA_TEXT, text)
                     },
-                    "Share place",
+                    context.getString(R.string.place_share_place),
                 ),
             )
         }
@@ -1931,26 +1933,26 @@ private fun ShareIconButton(place: Place, tint: Color) {
 
     Box {
         IconButton(onClick = { open = true }, modifier = Modifier.size(40.dp)) {
-            Icon(Icons.Default.Share, contentDescription = "Share", tint = tint, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.place_share), tint = tint, modifier = Modifier.size(20.dp))
         }
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             DropdownMenuItem(
-                text = { Text("Google Maps link") },
+                text = { Text(stringResource(R.string.place_share_gmaps_link)) },
                 onClick = { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") },
             )
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
             // degoogled-friendly way to send a pin.
             DropdownMenuItem(
-                text = { Text("Map pin (geo:)") },
+                text = { Text(stringResource(R.string.place_share_map_pin)) },
                 onClick = { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") },
             )
             DropdownMenuItem(
-                text = { Text("Coordinates") },
+                text = { Text(stringResource(R.string.place_share_coordinates)) },
                 onClick = { share("$lat, $lng") },
             )
             place.address?.let { addr ->
                 DropdownMenuItem(
-                    text = { Text("Address") },
+                    text = { Text(stringResource(R.string.place_share_address)) },
                     onClick = { share("${place.name}\n$addr") },
                 )
             }
@@ -1979,7 +1981,7 @@ private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color
     val nowOcc = if (isToday) day.hours.firstOrNull { it.hour == currentHour }?.occupancy else null
 
     Column(Modifier.fillMaxWidth().padding(top = 12.dp)) {
-        Text("Popular times", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = ink)
+        Text(stringResource(R.string.place_popular_times), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = ink)
         Row(
             Modifier.horizontalScroll(rememberScrollState()).padding(vertical = 6.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -1998,7 +2000,7 @@ private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color
             }
         }
         if (nowOcc != null) {
-            Text("${busynessLabel(nowOcc)} right now", style = MaterialTheme.typography.bodySmall, color = dim)
+            Text(stringResource(R.string.place_busyness_right_now, busynessLabel(nowOcc)), style = MaterialTheme.typography.bodySmall, color = dim)
         }
         Canvas(Modifier.fillMaxWidth().height(64.dp).padding(top = 6.dp)) {
             val hrs = day.hours
@@ -2116,7 +2118,7 @@ private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                "Hours",
+                stringResource(R.string.place_hours),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium,
                 color = ink,
@@ -2140,7 +2142,7 @@ private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
             }
             Icon(
                 if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                contentDescription = if (expanded) "Collapse hours" else "Expand hours",
+                contentDescription = if (expanded) stringResource(R.string.place_collapse_hours) else stringResource(R.string.place_expand_hours),
                 tint = dim,
             )
         }
