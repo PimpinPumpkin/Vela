@@ -754,6 +754,12 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     var confirmDeleteId by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
 
+    // The app's language — its voices are floated to the top of the browser (Google-style), and if none
+    // is installed yet we nudge the user to grab the matching voice (so nav text + voice speak the same
+    // language, not French words read by an English voice).
+    val appLang = app.vela.ui.AppLocale.effective().language
+    val hasAppLangVoice = catalog.any { it.langCode == appLang && it.id in installed }
+
     Spacer(Modifier.height(6.dp))
     Hint(
         if (installed.isEmpty())
@@ -761,6 +767,9 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         else
             "Installed: $installedMb MB · ${installed.size} voice${if (installed.size == 1) "" else "s"}. Tap Use to switch (plays a sample); the trash icon frees the space.",
     )
+    if (appLang != "en" && !hasAppLangVoice) {
+        Hint("Your app language is ${PiperCatalog.languageLabel(appLang)} — download a ${PiperCatalog.languageLabel(appLang)} voice below so spoken directions match (an English voice would mispronounce ${PiperCatalog.languageLabel(appLang)} street names).")
+    }
     if (catalog.size > 12) {
         OutlinedTextField(
             value = query,
@@ -775,8 +784,11 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         listOf(v.displayName, v.region, PiperCatalog.languageLabel(v.langCode), v.note ?: "")
             .any { it.contains(query.trim(), ignoreCase = true) }
 
-    // Grouped by language (English first, then by endonym) so the browser scales past English.
-    PiperCatalog.languageCodes().forEach { lang ->
+    // Grouped by language — the app's language first (Google-style), then English, then by endonym.
+    val langOrder = PiperCatalog.languageCodes().let { codes ->
+        if (appLang in codes) listOf(appLang) + codes.filter { it != appLang } else codes
+    }
+    langOrder.forEach { lang ->
         val group = catalog.filter { it.langCode == lang && matches(it) }.sortedWith(
             compareByDescending<PiperVoice> { it.id in installed }
                 .thenByDescending { it.id == selected }
