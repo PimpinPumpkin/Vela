@@ -71,6 +71,17 @@ jobs:
           echo "name=0.2.${{ github.run_number }}" >> "$GITHUB_OUTPUT"
           echo "code=$(( 2000 + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
 
+      - name: Fetch TTS runtime AAR
+        # sherpa-onnx neural-TTS runtime (Kokoro voice). It's a 57 MB prebuilt AAR (no Maven
+        # artifact) hosted on the fixed-tag `tts-runtime` release, gitignored out of the repo —
+        # fetch it into app/libs/ so :app can package the arm64 .so. Verify the size so a truncated
+        # download fails loud instead of producing a runtime-crashing APK.
+        run: |
+          mkdir -p app/libs
+          curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar
+          test "$(stat -c%s app/libs/sherpa-onnx-1.13.3.aar)" -gt 50000000
+
       - name: Build release APK
         env:
           VELA_KEYSTORE_PATH: ${{ runner.temp }}/vela-release.jks
