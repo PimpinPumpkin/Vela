@@ -129,25 +129,31 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
 
             Spacer(Modifier.height(20.dp))
             SectionTitle("Voice")
-            // Vela's own neural voice (Kokoro, runs on-device) — offer a one-tap download when it
-            // isn't present yet; once downloaded it becomes the default and shows in the list below
-            // as "Vela Neural (Kokoro)". No standalone TTS app needed.
-            val kokoroPct = state.kokoroDownloadPct
-            if (!vm.neuralVoiceInstalled()) {
-                if (kokoroPct != null) {
-                    Text(
-                        "Downloading neural voice… ${(kokoroPct * 100).toInt()}%",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    LinearProgressIndicator(progress = { kokoroPct }, modifier = Modifier.fillMaxWidth())
-                } else {
-                    Button(onClick = { vm.downloadKokoro() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Download neural voice (Kokoro) · ~126 MB")
-                    }
-                }
-                Hint("A high-quality, natural voice that runs entirely on your phone — no account, no standalone app. One-time download; wifi recommended.")
+            // Vela's own on-device neural voices — offer a one-tap download for whichever isn't
+            // present yet; once downloaded each shows in the engine list below (selectable). No
+            // standalone TTS app needed. Kokoro = premium/slower, Piper = fast.
+            val dlPct = state.kokoroDownloadPct
+            if (dlPct != null) {
+                Text("Downloading neural voice… ${(dlPct * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(6.dp))
+                LinearProgressIndicator(progress = { dlPct }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
+            } else {
+                if (!vm.kokoroInstalled()) {
+                    Button(onClick = { vm.downloadKokoro() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Download Kokoro voice (premium) · ~126 MB")
+                    }
+                    Hint("The most natural, highest-quality voice — but slower to speak on-device (heavy model).")
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (!vm.piperInstalled()) {
+                    OutlinedButton(onClick = { vm.downloadPiper() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Download Piper voice (fast) · ~67 MB")
+                    }
+                    Hint("A lighter voice that speaks near-instantly — best for turn-by-turn; a notch below Kokoro. Runs entirely on your phone; one-time download, wifi recommended.")
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (vm.kokoroInstalled() || vm.piperInstalled()) Spacer(Modifier.height(4.dp))
             }
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
