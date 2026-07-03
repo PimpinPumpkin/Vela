@@ -53,13 +53,15 @@ class KokoroSynth @Inject constructor(
         if (loadFailed || !VelaKokoro.isReady(context)) return null
         return try {
             val dir = VelaKokoro.modelDir(context).absolutePath
+            // Resolve the ONNX file present (fp32 model.onnx for new downloads, or a legacy int8).
+            val modelPath = VelaKokoro.modelFile(context)?.absolutePath ?: "$dir/model.onnx"
             // ENGLISH config for the multi-lang Kokoro model: model + voices + tokens + espeak-ng-data
-            // (G2P) + lang="en". The multi-lang model REQUIRES either a lexicon or a lang — omit both
+            // (G2P) + lang="en-us". The multi-lang model REQUIRES either a lexicon or a lang — omit both
             // and sherpa native-exit()s the process (an uncatchable crash). We pass lang (not lexicon):
             // passing the Chinese lexicon/dictDir instead SIGABRTs on Android (jieba/FST init). English
             // runs on espeak G2P; the model's other languages just aren't wired here.
             val kokoro = OfflineTtsKokoroModelConfig(
-                model = "$dir/model.int8.onnx",
+                model = modelPath,
                 voices = "$dir/voices.bin",
                 tokens = "$dir/tokens.txt",
                 dataDir = "$dir/espeak-ng-data",
