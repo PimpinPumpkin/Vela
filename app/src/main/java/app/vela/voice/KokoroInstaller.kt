@@ -95,9 +95,10 @@ class KokoroInstaller @Inject constructor(
 
     companion object {
         // sherpa-onnx tts-models release .tar.bz2 sources + fallback sizes.
+        // fp32 Kokoro (~2x faster on ARM than the int8 build + higher quality).
         const val KOKORO_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-int8-multi-lang-v1_0.tar.bz2"
-        const val KOKORO_SIZE = 131_839_838L
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2"
+        const val KOKORO_SIZE = 349_418_188L
         const val PIPER_URL =
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_female-medium.tar.bz2"
         const val PIPER_SIZE = 67_228_166L
