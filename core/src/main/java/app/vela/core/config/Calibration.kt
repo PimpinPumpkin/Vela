@@ -54,7 +54,7 @@ data class Calibration(
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
         const val DEFAULT_VOICE_SPEAKER = 14
-        const val DEFAULT_VOICE_SPEED = 0.8f
+        const val DEFAULT_VOICE_SPEED = 0.7f
         const val DEFAULT_PHOTOS_ENDPOINT =
             "https://www.google.com/maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX&source-path=/maps&hl=en&_reqid=1&rt=c"
 
