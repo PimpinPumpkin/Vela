@@ -56,6 +56,17 @@ class NavStringsTest {
         assertEquals("Vous êtes arrivé", FrNavStrings.arrived())
     }
 
+    @Test fun `session lines are localized`() {
+        assertEquals("Starting navigation. Head east on F St", EnNavStrings.startNav("Head east on F St"))
+        assertEquals("Démarrage de la navigation. Prenez F St", FrNavStrings.startNav("Prenez F St"))
+        assertEquals("You've reached Costco", EnNavStrings.reachedStop("Costco"))
+        assertEquals("You've reached your stop", EnNavStrings.reachedStop(""))
+        assertEquals("Vous êtes arrivé à Costco", FrNavStrings.reachedStop("Costco"))
+        assertEquals("Vous êtes arrivé à votre étape", FrNavStrings.reachedStop(""))
+        assertEquals("Taking the faster route. Turn right", EnNavStrings.fasterRoute("Turn right"))
+        assertEquals("Itinéraire plus rapide. Tournez à droite", FrNavStrings.fasterRoute("Tournez à droite"))
+    }
+
     @Test fun `expandForSpeech is English-only opt-in`() {
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
         assertEquals("one twenty-eighth Street", EnNavStrings.expandForSpeech("128th St"))
