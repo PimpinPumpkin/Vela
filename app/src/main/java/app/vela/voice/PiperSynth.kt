@@ -36,7 +36,18 @@ class PiperSynth @Inject constructor(
     @Volatile private var loadFailed = false
     @Volatile private var generation = 0
 
+    /** Number of speakers in the loaded model (libritts_r is multi-speaker, ~900); 0 until loaded. */
+    @Volatile var numSpeakers: Int = 0
+        private set
+
     override val ready: Boolean get() = tts != null
+
+    /** The user's chosen speaker (persisted), clamped to the model's range. */
+    private fun speakerId(): Int {
+        val n = context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .getInt("voice_speaker", 0)
+        return if (numSpeakers > 0) n.coerceIn(0, numSpeakers - 1) else n.coerceAtLeast(0)
+    }
 
     override fun warmUp() {
         if (tts != null || loadFailed || !VelaPiper.isReady(context)) return
@@ -55,9 +66,10 @@ class PiperSynth @Inject constructor(
             )
             val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = 2, debug = false))
             val engine = OfflineTts(assetManager = null, config = cfg)
+            numSpeakers = engine.numSpeakers()
             runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
             tts = engine
-            Log.i(TAG, "loaded ok: sampleRate=${engine.sampleRate()} speakers=${engine.numSpeakers()}")
+            Log.i(TAG, "loaded ok: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
             engine
         } catch (t: Throwable) {
             Log.e(TAG, "model load failed: ${t.message}", t)
@@ -73,7 +85,7 @@ class PiperSynth @Inject constructor(
             if (engine == null || myGen != generation) { onDone(); return@execute }
             try {
                 val t0 = android.os.SystemClock.elapsedRealtime()
-                val audio = engine.generate(text = text, sid = 0, speed = SPEED)
+                val audio = engine.generate(text = text, sid = speakerId(), speed = SPEED)
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 if (myGen != generation) { onDone(); return@execute }
                 val samples = audio.samples

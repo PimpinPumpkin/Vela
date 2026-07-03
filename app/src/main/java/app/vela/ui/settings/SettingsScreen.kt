@@ -194,6 +194,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                         vm.speakText("In a quarter mile, turn right onto Main Street, then your destination is on the left.")
                     }) { Text("Nav sample") }
                 }
+                // The Vela voice (libritts_r) is multi-speaker — let the user audition + pick one.
+                if (state.selectedEngine?.packageName?.startsWith("vela.") == true) {
+                    Spacer(Modifier.height(10.dp))
+                    val cnt = vm.voiceSpeakerCount()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            "Voice variant #${state.voiceSpeaker}" + (if (cnt > 0) " of $cnt" else ""),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedButton(onClick = { vm.stepSpeaker(-1) }) { Text("◀") }
+                        Spacer(Modifier.width(6.dp))
+                        OutlinedButton(onClick = { vm.stepSpeaker(1) }) { Text("▶") }
+                    }
+                    Hint("This voice has hundreds of speakers — tap ◀ ▶ to hear different ones (it speaks a sample) and keep the one you like.")
+                }
             }
 
             Spacer(Modifier.height(20.dp))
