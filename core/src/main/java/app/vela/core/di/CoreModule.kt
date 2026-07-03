@@ -16,6 +16,7 @@ import java.io.File
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
@@ -31,6 +32,16 @@ object CoreModule {
             .cookieJar(InMemoryCookieJar())
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(20, TimeUnit.SECONDS)
+            .callTimeout(12, TimeUnit.SECONDS) // bound a single hung scrape so it can't stall a fan-out
+            .dispatcher(
+                Dispatcher().apply {
+                    // The ambient-POI load fires ~13 parallel google.com requests; OkHttp's default
+                    // 5-per-host serialises them into ~3 rounds — the "POIs take ~10 s to load" report
+                    // (3 rounds × a slow connection). Let them all go at once → one round.
+                    maxRequestsPerHost = 24
+                    maxRequests = 64
+                },
+            )
             .build()
 
     /**
