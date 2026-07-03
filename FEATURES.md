@@ -429,6 +429,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Optional BeaconDB WiFi positioning for faster coarse fix
 
 ## Offline
+- ✅ **Settings → Offline is collapsible (2026-07-02)** — collapsed by default (tap the header to expand), so its long routing-region list doesn't force a big scroll past to reach the sections below it.
 - ✅ **Offline basemap region downloads** — **Settings → Offline → Map area → "Download the
   area you're viewing"** saves the last on-screen area's tiles/glyphs/sprites (via
   MapLibre's built-in offline store) so it renders later with **no network**; the
