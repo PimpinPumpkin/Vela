@@ -272,7 +272,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                 TravelMode.TRANSIT to "Transit",
             ).forEach { (mode, label) ->
                 var on by remember(mode) {
-                    mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), prefs.getBoolean(Haptics.KEY, true)))
+                    val default = if (!prefs.getBoolean(Haptics.KEY, true)) false else Haptics.defaultFor(mode)
+                    mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), default))
                 }
                 Row(
                     Modifier.fillMaxWidth().padding(start = 12.dp, top = 2.dp, bottom = 2.dp),
