@@ -727,7 +727,7 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
     if (state.results.isEmpty() && state.selected == null && !state.navigating &&
         !state.replaying && state.activeRoute == null
     ) {
-        state.ambientPois.map { MapMarker(it.name, it.location, it.category) }
+        state.ambientPois.map { MapMarker(it.name, it.location, it.category, app.vela.core.data.google.ambientProminence(it)) }
     } else {
         emptyList()
     }
