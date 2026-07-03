@@ -106,6 +106,22 @@ genuinely needs no doc edit, say why in the commit.
   announce the DEPART maneuver** — `NavSession.start` speaks it once ("Starting navigation. Head
   east on F St"); the engine skips it (it's at distance ≈ 0) and advances silently, else the opener
   gets clipped by a re-announced "head out".
+  **Multiple downloadable voices (voice browser, 2026-07-03).** `VelaPiper` is no longer one hardcoded
+  model — it's one engine (`ENGINE_ID = "vela.piper"`) that holds ANY of many Piper voices, each in its
+  own `filesDir/piper/<id>/` dir (`<id>.onnx` + `tokens.txt` + `espeak-ng-data/`, the sherpa
+  `vits-piper-<id>` archive layout). The **installed set is derived from the filesystem** (`installedVoiceIds`,
+  keeps only complete dirs → a partial download self-heals), the pick persists in **`voice_model`**, and
+  **speaker choice is per-voice** (`voice_speaker_<id>`; the legacy global `voice_speaker` is migrated onto
+  libritts_r). The browsable catalog is `PiperCatalog` in `:core` (pure data, unit-tested, ~23 curated
+  en_US/en_GB voices; URL = `…/tts-models/vits-piper-<id>.tar.bz2`). `PiperSynth.ensureLoaded` reloads when
+  the selected voice changes; `PiperSynth.reloadVoice()` is the SINGLE switch trigger — it bumps the
+  generation counter (aborting any in-flight utterance) then tears down + rebuilds on the same serial
+  worker, so `tts` is never freed mid-`generate()`. `MapViewModel.migrateFlatLayoutIfNeeded` (first thing
+  in `init`) relocates the old flat single-voice install in place (rename, copy-fallback, verify-gated,
+  re-runnable) — never re-downloads. **Model downloads MUST NOT use the shared OkHttp client** — its
+  `callTimeout(12s)` (scrape-bounding) aborts any 67–131 MB voice download; `KokoroInstaller` derives a
+  `downloadHttp` with `callTimeout(0)`. Settings → Voice → **Voice library** is the browser; the
+  multi-speaker variant picker (Advanced) only shows when the SELECTED catalog voice has >1 speaker.
   **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
   `calibration.json`, **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`),
   commit `calibration.json` + `calibration.json.sig` to `main` — users pick it up on
