@@ -159,7 +159,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
                     Hint("A lighter voice that speaks near-instantly — best for turn-by-turn; a notch below Kokoro. Runs entirely on your phone; one-time download, wifi recommended.")
                     Spacer(Modifier.height(8.dp))
                 }
-                if (vm.kokoroInstalled() || vm.piperInstalled()) Spacer(Modifier.height(4.dp))
+                if (!vm.matchaInstalled()) {
+                    OutlinedButton(onClick = { vm.downloadMatcha() }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Download Matcha voice (balanced) · ~130 MB")
+                    }
+                    Hint("A newer flow-matching voice — warmer and more natural than Piper, and still realtime unlike Kokoro. The middle ground (two-part download).")
+                    Spacer(Modifier.height(8.dp))
+                }
+                if (vm.kokoroInstalled() || vm.piperInstalled() || vm.matchaInstalled()) Spacer(Modifier.height(4.dp))
             }
             val engines = vm.voiceEngines()
             if (engines.isEmpty()) {
