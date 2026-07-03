@@ -1,5 +1,6 @@
 package app.vela.core.i18n
 
+import app.vela.core.model.LaneSide
 import app.vela.core.voice.SpeechText
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -48,6 +49,9 @@ interface NavStrings {
 
     /** The "Test voice" sample — a short nav-style phrase to hear the selected voice. */
     fun voiceTest(): String
+
+    /** A spoken lane recommendation — EN "Use the right 2 lanes" / "Use the left lane". */
+    fun useLanes(side: LaneSide, count: Int): String
 
     /**
      * Expand road abbreviations + numbers so the TTS engine SAYS them ("St"→"Street", "128th"→"one
@@ -116,6 +120,11 @@ object EnNavStrings : NavStrings {
     override fun fasterRoute(firstInstruction: String): String = "Taking the faster route. $firstInstruction"
 
     override fun voiceTest(): String = "Voice guidance is on. In a quarter mile, turn right."
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
+        return if (count > 1) "Use the $sideWord $count lanes" else "Use the $sideWord lane"
+    }
 
     /** Whole-word road abbreviation → spoken form, "I-80"→"Interstate 80", and 3-digit street ordinals
      *  ("128th"→"one twenty-eighth"). Moved here from VoiceGuide.forSpeech so it's English-scoped. */
@@ -231,6 +240,11 @@ object FrNavStrings : NavStrings {
     override fun fasterRoute(firstInstruction: String): String = "Itinéraire plus rapide. $firstInstruction"
 
     override fun voiceTest(): String = "Le guidage vocal est activé. Tournez à droite dans 400 mètres."
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "de gauche"; LaneSide.RIGHT -> "de droite"; LaneSide.CENTER -> "du milieu" }
+        return if (count > 1) "Empruntez les $count voies $sideWord" else "Empruntez la voie $sideWord"
+    }
 
     // expandForSpeech is left as the interface default (identity) — French road names are read natively.
 

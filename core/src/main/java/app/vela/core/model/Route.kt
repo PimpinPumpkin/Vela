@@ -29,6 +29,32 @@ data class Maneuver(
  *  for THIS maneuver ([valid] → drawn bright/highlighted; the others dimmed). */
 data class Lane(val indications: List<String>, val valid: Boolean)
 
+/** Which side of the roadway the lanes to use are on (for spoken/written lane guidance). */
+enum class LaneSide { LEFT, RIGHT, CENTER }
+
+/** A spoken-lane recommendation derived from OSRM's per-lane [Lane.valid] flags — the side the valid
+ *  lanes sit on and how many there are ("use the right 2 lanes"). */
+data class LaneGuidance(val side: LaneSide, val count: Int)
+
+/**
+ * Reduce a maneuver's [lanes] to a simple "use the <side> <n> lane(s)" hint, or null when there's
+ * nothing useful to say — fewer than 2 lanes, no valid lane, every lane valid (any lane works), or the
+ * valid lanes aren't a contiguous block at one edge (too fiddly to phrase; the arrow diagram covers it).
+ * Mirrors the bright/dim logic the banner already uses, so the spoken hint matches the arrows.
+ */
+fun laneGuidance(lanes: List<Lane>): LaneGuidance? {
+    if (lanes.size < 2) return null
+    val valid = lanes.indices.filter { lanes[it].valid }
+    if (valid.isEmpty() || valid.size == lanes.size) return null
+    if (valid.last() - valid.first() != valid.size - 1) return null // not contiguous
+    val side = when {
+        valid.first() == 0 -> LaneSide.LEFT
+        valid.last() == lanes.size - 1 -> LaneSide.RIGHT
+        else -> LaneSide.CENTER
+    }
+    return LaneGuidance(side, valid.size)
+}
+
 data class RouteLeg(
     val distanceMeters: Double,
     val durationSeconds: Double,
