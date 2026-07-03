@@ -103,4 +103,32 @@ class SpeechTextTest {
         assertEquals(listOf(""), split(""))
         assertEquals(listOf("."), split("."))
     }
+
+    // --- Street-ordinal reading (128th → "one twenty-eighth") ---
+
+    private fun num(t: String) = SpeechText.spokenNumbers(t)
+
+    @Test fun `three-digit street ordinal reads the street way`() {
+        assertEquals("Turn right onto one twenty-eighth Street", num("Turn right onto 128th Street"))
+        assertEquals("one forty-fifth Avenue", num("145th Avenue"))
+        assertEquals("two thirty-third", num("233rd"))
+    }
+
+    @Test fun `round hundred and low remainder`() {
+        assertEquals("one hundredth Street", num("100th Street"))
+        assertEquals("one oh fifth", num("105th"))
+        assertEquals("one oh first", num("101st"))
+        assertEquals("one tenth", num("110th"))
+        assertEquals("two twentieth", num("220th"))
+    }
+
+    @Test fun `one and two digit ordinals are left for espeak`() {
+        assertEquals("5th Street", num("5th Street"))
+        assertEquals("42nd", num("42nd"))
+        assertEquals("Head east on Main Street", num("Head east on Main Street"))
+    }
+
+    @Test fun `four-digit numbers are untouched`() {
+        assertEquals("1280th", num("1280th"))
+    }
 }
