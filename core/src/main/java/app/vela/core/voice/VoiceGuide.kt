@@ -61,8 +61,9 @@ class VoiceGuide @Inject constructor(
      *  currently loaded — so picking a different engine in Settings actually takes
      *  effect (the old idempotent guard ignored later picks). */
     fun init(enginePackage: String? = null) {
-        // Vela's own in-process neural voice — no Android TextToSpeech involved.
-        if (enginePackage == VelaKokoro.ENGINE_ID) {
+        // One of Vela's own in-process neural voices (vela.kokoro / vela.piper) — no Android
+        // TextToSpeech involved. The right synth is wired into [neural] by MapViewModel first.
+        if (enginePackage != null && enginePackage.startsWith("vela.")) {
             if (useNeural && enginePackage == currentEngine) return
             if (tts != null) shutdown()
             currentEngine = enginePackage
@@ -154,11 +155,11 @@ class VoiceGuide @Inject constructor(
                 .map { VoiceEngine(it.packageName, it.loadLabel(pm).toString()) }
                 .distinctBy { it.packageName }
         }.getOrElse { tts?.engines.orEmpty().map { VoiceEngine(it.name, it.label) } }
-        return if (VelaKokoro.isReady(context)) {
-            listOf(VoiceEngine(VelaKokoro.ENGINE_ID, VelaKokoro.LABEL)) + installed
-        } else {
-            installed
+        val vela = buildList {
+            if (VelaKokoro.isReady(context)) add(VoiceEngine(VelaKokoro.ENGINE_ID, VelaKokoro.LABEL))
+            if (VelaPiper.isReady(context)) add(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL))
         }
+        return vela + installed
     }
 
     /** Speak [text]; [interrupt] flushes the queue (use for the imminent turn). */

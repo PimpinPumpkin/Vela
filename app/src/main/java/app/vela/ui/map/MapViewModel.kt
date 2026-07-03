@@ -27,11 +27,14 @@ import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
+import app.vela.core.voice.NeuralSynth
 import app.vela.core.voice.VelaKokoro
+import app.vela.core.voice.VelaPiper
 import app.vela.core.voice.VoiceEngine
 import app.vela.core.voice.VoiceGuide
 import app.vela.voice.KokoroInstaller
 import app.vela.voice.KokoroSynth
+import app.vela.voice.PiperSynth
 import app.vela.voice.VoiceInstaller
 import app.vela.service.NavigationService
 import app.vela.core.model.TransitItinerary
@@ -140,6 +143,7 @@ class MapViewModel @Inject constructor(
     private val voiceInstaller: VoiceInstaller,
     private val kokoroInstaller: KokoroInstaller,
     private val kokoroSynth: KokoroSynth,
+    private val piperSynth: PiperSynth,
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
     private val recentPlaceStore: RecentPlaceStore,
@@ -172,19 +176,22 @@ class MapViewModel @Inject constructor(
     init {
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
-        // Wire Vela's in-process neural voice, then restore the saved engine — defaulting to the
-        // neural voice once its model has been downloaded (so Kokoro becomes the voice with no fuss).
-        voice.neural = kokoroSynth
+        // Restore the saved voice; default to a downloaded neural voice (Kokoro preferred, else Piper).
         val savedEngine = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
             .getString("voice_engine", null)
-            ?: if (VelaKokoro.isReady(appContext)) VelaKokoro.ENGINE_ID else null
+            ?: when {
+                VelaKokoro.isReady(appContext) -> VelaKokoro.ENGINE_ID
+                VelaPiper.isReady(appContext) -> VelaPiper.ENGINE_ID
+                else -> null
+            }
+        neuralSynthFor(savedEngine)?.let { voice.neural = it }
         voice.init(savedEngine) // null → default system TTS; also warms the engine list for Settings
         if (savedEngine != null) {
-            val label = if (savedEngine == VelaKokoro.ENGINE_ID) VelaKokoro.LABEL
-            else voice.availableEngines().firstOrNull { it.packageName == savedEngine }?.label ?: savedEngine
+            val label = velaLabel(savedEngine)
+                ?: voice.availableEngines().firstOrNull { it.packageName == savedEngine }?.label ?: savedEngine
             _state.update { it.copy(selectedEngine = VoiceEngine(savedEngine, label)) }
         }
-        if (VelaKokoro.isReady(appContext)) kokoroSynth.warmUp()
+        neuralSynthFor(savedEngine)?.warmUp()
         _state.update {
             it.copy(
                 recents = recentStore.recent(), saved = savedStore.saved(),
@@ -1407,7 +1414,20 @@ class MapViewModel @Inject constructor(
 
     fun voiceEngines(): List<VoiceEngine> = voice.availableEngines()
 
+    /** The in-process synth backing a Vela neural engine id (else null for a system TTS engine). */
+    private fun neuralSynthFor(engineId: String?): NeuralSynth? = when (engineId) {
+        VelaKokoro.ENGINE_ID -> kokoroSynth
+        VelaPiper.ENGINE_ID -> piperSynth
+        else -> null
+    }
+    private fun velaLabel(engineId: String): String? = when (engineId) {
+        VelaKokoro.ENGINE_ID -> VelaKokoro.LABEL
+        VelaPiper.ENGINE_ID -> VelaPiper.LABEL
+        else -> null
+    }
+
     fun setVoiceEngine(e: VoiceEngine) {
+        neuralSynthFor(e.packageName)?.let { voice.neural = it; it.warmUp() } // point VoiceGuide at the right synth
         voice.init(e.packageName) // re-init now so the pick applies + a test plays through it
         settingsPrefs.edit().putString("voice_engine", e.packageName).apply() // survive restart
         _state.update { it.copy(selectedEngine = e) }
@@ -1415,19 +1435,31 @@ class MapViewModel @Inject constructor(
 
     fun testVoice() = voice.test()
 
-    /** True once Vela's own neural voice model (Kokoro) is downloaded + usable. */
-    fun neuralVoiceInstalled(): Boolean = kokoroInstaller.isInstalled()
+    /** Whether a Vela neural voice model is downloaded + usable. */
+    fun neuralVoiceInstalled(): Boolean = VelaKokoro.isReady(appContext) || VelaPiper.isReady(appContext)
+    fun kokoroInstalled(): Boolean = VelaKokoro.isReady(appContext)
+    fun piperInstalled(): Boolean = VelaPiper.isReady(appContext)
 
-    /** Download Vela's neural voice model (~126 MB) into the app, then make it the active voice. */
-    fun downloadKokoro() {
+    /** Download the premium neural voice (Kokoro). Kept for the onboarding prompt. */
+    fun downloadKokoro() = downloadNeural(VelaKokoro.ENGINE_ID)
+
+    /** Download the fast neural voice (Piper). */
+    fun downloadPiper() = downloadNeural(VelaPiper.ENGINE_ID)
+
+    /** Download the given Vela neural voice model into the app, then make it the active voice. */
+    fun downloadNeural(voiceId: String) {
         if (_state.value.kokoroDownloadPct != null) return // one at a time
+        val piper = voiceId == VelaPiper.ENGINE_ID
+        val url = if (piper) KokoroInstaller.PIPER_URL else KokoroInstaller.KOKORO_URL
+        val dir = if (piper) VelaPiper.modelDir(appContext) else VelaKokoro.modelDir(appContext)
+        val size = if (piper) KokoroInstaller.PIPER_SIZE else KokoroInstaller.KOKORO_SIZE
         _state.update { it.copy(kokoroDownloadPct = 0f) }
         viewModelScope.launch {
-            val ok = kokoroInstaller.download { p -> _state.update { it.copy(kokoroDownloadPct = p) } }
+            val ok = kokoroInstaller.download(url, dir, size) { p -> _state.update { it.copy(kokoroDownloadPct = p) } }
             _state.update { it.copy(kokoroDownloadPct = null) }
-            if (ok) {
-                kokoroSynth.warmUp()
-                setVoiceEngine(VoiceEngine(VelaKokoro.ENGINE_ID, VelaKokoro.LABEL))
+            val ready = if (piper) VelaPiper.isReady(appContext) else VelaKokoro.isReady(appContext)
+            if (ok && ready) {
+                setVoiceEngine(VoiceEngine(voiceId, velaLabel(voiceId) ?: voiceId))
                 showStatus("Neural voice ready — tap Test voice")
             } else {
                 showStatus("Neural voice download failed")
