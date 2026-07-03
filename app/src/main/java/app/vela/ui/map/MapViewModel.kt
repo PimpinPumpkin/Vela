@@ -27,8 +27,11 @@ import app.vela.core.model.TravelMode
 import app.vela.core.model.distanceTo
 import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
+import app.vela.core.voice.VelaKokoro
 import app.vela.core.voice.VoiceEngine
 import app.vela.core.voice.VoiceGuide
+import app.vela.voice.KokoroInstaller
+import app.vela.voice.KokoroSynth
 import app.vela.voice.VoiceInstaller
 import app.vela.service.NavigationService
 import app.vela.core.model.TransitItinerary
@@ -98,6 +101,7 @@ data class MapUiState(
     val arrivedSeconds: Double = 0.0,
     val status: String? = null,
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
+    val kokoroDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
     val showPsdsTip: Boolean = false,
     val showSearchThisArea: Boolean = false,
     val showSteps: Boolean = false,
@@ -134,6 +138,8 @@ class MapViewModel @Inject constructor(
     private val headingProvider: app.vela.core.location.HeadingProvider,
     private val voice: VoiceGuide,
     private val voiceInstaller: VoiceInstaller,
+    private val kokoroInstaller: KokoroInstaller,
+    private val kokoroSynth: KokoroSynth,
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
     private val recentPlaceStore: RecentPlaceStore,
@@ -166,7 +172,19 @@ class MapViewModel @Inject constructor(
     init {
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
-        voice.init() // warm TTS so the engine list is ready in Settings
+        // Wire Vela's in-process neural voice, then restore the saved engine — defaulting to the
+        // neural voice once its model has been downloaded (so Kokoro becomes the voice with no fuss).
+        voice.neural = kokoroSynth
+        val savedEngine = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+            .getString("voice_engine", null)
+            ?: if (VelaKokoro.isReady(appContext)) VelaKokoro.ENGINE_ID else null
+        voice.init(savedEngine) // null → default system TTS; also warms the engine list for Settings
+        if (savedEngine != null) {
+            val label = if (savedEngine == VelaKokoro.ENGINE_ID) VelaKokoro.LABEL
+            else voice.availableEngines().firstOrNull { it.packageName == savedEngine }?.label ?: savedEngine
+            _state.update { it.copy(selectedEngine = VoiceEngine(savedEngine, label)) }
+        }
+        if (VelaKokoro.isReady(appContext)) kokoroSynth.warmUp()
         _state.update {
             it.copy(
                 recents = recentStore.recent(), saved = savedStore.saved(),
@@ -1391,10 +1409,31 @@ class MapViewModel @Inject constructor(
 
     fun setVoiceEngine(e: VoiceEngine) {
         voice.init(e.packageName) // re-init now so the pick applies + a test plays through it
+        settingsPrefs.edit().putString("voice_engine", e.packageName).apply() // survive restart
         _state.update { it.copy(selectedEngine = e) }
     }
 
     fun testVoice() = voice.test()
+
+    /** True once Vela's own neural voice model (Kokoro) is downloaded + usable. */
+    fun neuralVoiceInstalled(): Boolean = kokoroInstaller.isInstalled()
+
+    /** Download Vela's neural voice model (~126 MB) into the app, then make it the active voice. */
+    fun downloadKokoro() {
+        if (_state.value.kokoroDownloadPct != null) return // one at a time
+        _state.update { it.copy(kokoroDownloadPct = 0f) }
+        viewModelScope.launch {
+            val ok = kokoroInstaller.download { p -> _state.update { it.copy(kokoroDownloadPct = p) } }
+            _state.update { it.copy(kokoroDownloadPct = null) }
+            if (ok) {
+                kokoroSynth.warmUp()
+                setVoiceEngine(VoiceEngine(VelaKokoro.ENGINE_ID, VelaKokoro.LABEL))
+                showStatus("Neural voice ready — tap Test voice")
+            } else {
+                showStatus("Neural voice download failed")
+            }
+        }
+    }
 
     /** null = still initialising, true = a voice is ready, false = no usable voice. */
     fun voiceWorking(): Boolean? = voice.working
