@@ -329,4 +329,13 @@
     <string name="navservice_notif_text_faster_available"> · snellere route beschikbaar</string>
     <string name="navservice_notif_action_end">Beëindigen</string>
     <string name="navservice_channel_name">Navigatie</string>
+    <string name="cat_restaurants">Restaurants</string>
+    <string name="cat_coffee">Koffie</string>
+    <string name="cat_gas">Tankstations</string>
+    <string name="cat_food">Eten</string>
+    <string name="cat_groceries">Supermarkten</string>
+    <string name="cat_hotels">Hotels</string>
+    <string name="cat_pharmacy">Apotheek</string>
+    <string name="cat_atms">Geldautomaten</string>
+    <string name="cat_parks">Parken</string>
 </resources>
