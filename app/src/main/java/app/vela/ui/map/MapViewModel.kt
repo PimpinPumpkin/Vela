@@ -7,6 +7,7 @@ import app.vela.core.config.CalibrationStore
 import app.vela.core.config.Notice
 import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
+import app.vela.core.data.google.ambientProminence
 import app.vela.core.data.MapLink
 import app.vela.core.data.OfflinePoiStore
 import app.vela.core.data.RouteCorridor
@@ -1614,10 +1615,17 @@ class MapViewModel @Inject constructor(
             // 5a's frame budget. In a low-commercial view the handful of local businesses all fit under
             // the cap, so nothing is cut there (the "fewer results" fix stays); the cap only bites in a
             // dense view, where the extras would collide off anyway. Fixes the 5a lag from take(800).
-            val margin = if (viewRadiusMeters > 0) viewRadiusMeters * 1.25 else Double.MAX_VALUE
             val kept = res.asSequence()
                 .filterNot { p -> p.permanentlyClosed }
-                .filter { (it.distanceMeters ?: 0.0) <= margin }
+                .filter { p ->
+                    if (viewRadiusMeters <= 0.0) return@filter true
+                    // Prominence-weighted keep-radius: a high-prominence anchor (Safeway) survives from
+                    // farther off-centre (up to 1.6× the view) so it still shows at the edge like Google
+                    // does at ~500 ft; low-signal places only when they're actually near (1.25×).
+                    val reach = viewRadiusMeters *
+                        (1.25 + 0.35 * (ambientProminence(p) / 8.0).coerceIn(0.0, 1.0))
+                    (p.distanceMeters ?: 0.0) <= reach
+                }
                 .take(AMBIENT_ONSCREEN_CAP)
                 .toList()
             _state.update { it.copy(ambientPois = kept) }
