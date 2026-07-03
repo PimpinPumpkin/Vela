@@ -109,8 +109,8 @@ class KokoroInstaller @Inject constructor(
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2"
         const val KOKORO_SIZE = 349_418_188L
         const val PIPER_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_female-medium.tar.bz2"
-        const val PIPER_SIZE = 67_228_166L
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2"
+        const val PIPER_SIZE = 82_000_000L
         const val MATCHA_URL =
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-en_US-ljspeech.tar.bz2"
         const val MATCHA_SIZE = 76_739_916L
