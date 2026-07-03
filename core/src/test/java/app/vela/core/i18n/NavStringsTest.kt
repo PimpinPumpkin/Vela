@@ -1,10 +1,14 @@
 package app.vela.core.i18n
 
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.util.Locale
 
 class NavStringsTest {
+
+    // The registry is process-global — never leave it non-English for the other (English-asserting) nav tests.
+    @After fun resetToEnglish() = NavStringsRegistry.setLocale(Locale.ENGLISH)
 
     @Test fun `english phrases match the original osrmPhrase templates`() {
         val en = EnNavStrings
@@ -36,5 +40,26 @@ class NavStringsTest {
         assertEquals(FrNavStrings, NavStringsRegistry.current())
         NavStringsRegistry.setLocale(Locale.US) // reset so other tests see English
         assertEquals(EnNavStrings, NavStringsRegistry.current())
+    }
+
+    @Test fun `spoken distance is unit-aware and localized`() {
+        assertEquals("500 feet", EnNavStrings.spokenDistance(152.4, true))
+        assertEquals("150 meters", EnNavStrings.spokenDistance(150.0, false))
+        assertEquals("500 pieds", FrNavStrings.spokenDistance(152.4, true))
+        assertEquals("150 mètres", FrNavStrings.spokenDistance(150.0, false))
+    }
+
+    @Test fun `the frame and arrival are localized`() {
+        assertEquals("In 500 feet, Turn right", EnNavStrings.inThen("500 feet", "Turn right"))
+        assertEquals("Dans 150 mètres, Tournez à droite", FrNavStrings.inThen("150 mètres", "Tournez à droite"))
+        assertEquals("You have arrived", EnNavStrings.arrived())
+        assertEquals("Vous êtes arrivé", FrNavStrings.arrived())
+    }
+
+    @Test fun `expandForSpeech is English-only opt-in`() {
+        assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
+        assertEquals("one twenty-eighth Street", EnNavStrings.expandForSpeech("128th St"))
+        // French leaves the text — including a road abbreviation — untouched (interface default identity).
+        assertEquals("Tournez sur Rue St", FrNavStrings.expandForSpeech("Tournez sur Rue St"))
     }
 }
