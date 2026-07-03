@@ -102,6 +102,7 @@ data class MapUiState(
     val status: String? = null,
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
     val kokoroDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
+    val voiceSpeaker: Int = 0, // chosen speaker # for the multi-speaker Vela voice (playground stepper)
     val showPsdsTip: Boolean = false,
     val showSearchThisArea: Boolean = false,
     val showSteps: Boolean = false,
@@ -199,6 +200,7 @@ class MapViewModel @Inject constructor(
         neuralSynthFor(savedEngine)?.warmUp()
         _state.update {
             it.copy(
+                voiceSpeaker = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE).getInt("voice_speaker", 0),
                 recents = recentStore.recent(), saved = savedStore.saved(),
                 recentPlaces = recentPlaceStore.recent(),
                 home = shortcutStore.get(ShortcutKind.HOME), work = shortcutStore.get(ShortcutKind.WORK),
@@ -1442,6 +1444,19 @@ class MapViewModel @Inject constructor(
     fun speakText(text: String) {
         val t = text.trim()
         if (t.isNotEmpty()) voice.speak(t, interrupt = true)
+    }
+
+    /** Speakers in the loaded Vela voice model (libritts_r is ~900; 0 until it loads). */
+    fun voiceSpeakerCount(): Int = piperSynth.numSpeakers
+
+    /** Step the multi-speaker Vela voice by [delta], persist it, and speak a sample so it's heard. */
+    fun stepSpeaker(delta: Int) {
+        val max = piperSynth.numSpeakers
+        var n = _state.value.voiceSpeaker + delta
+        n = if (max > 0) n.coerceIn(0, max - 1) else n.coerceAtLeast(0)
+        settingsPrefs.edit().putInt("voice_speaker", n).apply()
+        _state.update { it.copy(voiceSpeaker = n) }
+        voice.speak("In a quarter mile, turn right onto Main Street.", interrupt = true)
     }
 
     /** Download the neural voice (Piper) into the app, then make it the active voice. */
