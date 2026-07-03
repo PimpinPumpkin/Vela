@@ -30,12 +30,33 @@ class PiperCatalogTest {
         }
     }
 
-    @Test fun `the Google-like voices the user named are present and recommended`() {
+    @Test fun `the Google-like voices the user named are present`() {
         for (id in listOf("en_US-lessac-medium", "en_US-hfc_female-medium", "en_US-libritts_r-medium")) {
-            val v = PiperCatalog.byId(id)
-            assertNotNull("$id must be in the catalog", v)
-            assertTrue("$id should be a recommended nav voice", v!!.recommended)
+            assertNotNull("$id must be in the catalog", PiperCatalog.byId(id))
         }
+        assertTrue("HFC Female (the default) is recommended", PiperCatalog.byId("en_US-hfc_female-medium")!!.recommended)
+    }
+
+    @Test fun `every language has exactly one recommended default voice`() {
+        val byLang = PiperCatalog.ALL.groupBy { it.langCode }
+        for ((lang, voices) in byLang) {
+            val recommended = voices.count { it.recommended }
+            assertEquals("language $lang must have exactly one recommended default", 1, recommended)
+            // defaultFor returns a recommended voice of that language.
+            val def = PiperCatalog.defaultFor(lang)
+            assertEquals(lang, def.langCode)
+            assertTrue(def.recommended)
+        }
+    }
+
+    @Test fun `langCode and region derive from the id`() {
+        val fr = PiperCatalog.byId("fr_FR-siwis-medium")!!
+        assertEquals("fr", fr.langCode)
+        assertEquals("FR", fr.region)
+        assertEquals("Français", PiperCatalog.languageLabel("fr"))
+        val mx = PiperCatalog.byId("es_MX-claude-high")!!
+        assertEquals("es", mx.langCode)
+        assertEquals("MX", mx.region)
     }
 
     @Test fun `the default voice is in the catalog and recommended`() {
