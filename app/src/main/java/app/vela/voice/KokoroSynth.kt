@@ -63,9 +63,14 @@ class KokoroSynth @Inject constructor(
                 voices = "$dir/voices.bin",
                 tokens = "$dir/tokens.txt",
                 dataDir = "$dir/espeak-ng-data",
-                lang = "en",
+                // "en-us" (American), NOT "en" — espeak's plain "en" is BRITISH English, and British
+                // G2P on the American af_/am_ voices makes them sound oddly accented ("Boston").
+                lang = "en-us",
             )
             val cfg = OfflineTtsConfig(
+                // Kokoro int8 is compute-heavy: ~0.4x realtime on an old Pixel 5a (Snapdragon 765G),
+                // and more threads didn't help there (memory-bound) — newer phones run it far faster.
+                // 2 intra-op threads is the sweet spot (4 gave no gain, just more power/heat).
                 model = OfflineTtsModelConfig(kokoro = kokoro, numThreads = 2, debug = false),
             )
             val engine = OfflineTts(assetManager = null, config = cfg)
@@ -94,7 +99,9 @@ class KokoroSynth @Inject constructor(
                 // as they generate) underran the AudioTrack while the model computed the first chunk —
                 // AudioFlinger dropped the track and the next write hit a dead track → SIGABRT. Nav
                 // phrases are short, so full-synth-first (~0.5-1 s) is both robust and simpler.
+                val t0 = android.os.SystemClock.elapsedRealtime()
                 val audio = engine.generate(text = text, sid = SPEAKER, speed = SPEED)
+                val genMs = android.os.SystemClock.elapsedRealtime() - t0
                 if (myGen != generation) { onDone(); return@execute }
                 val samples = audio.samples
                 if (samples.isNotEmpty()) {
@@ -103,7 +110,7 @@ class KokoroSynth @Inject constructor(
                     at.play()
                     at.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
                 }
-                Log.i(TAG, "spoke ${"%.1f".format(samples.size / 24000f)}s")
+                Log.i(TAG, "spoke ${"%.1f".format(samples.size / 24000f)}s audio in ${genMs}ms")
             } catch (t: Throwable) {
                 Log.e(TAG, "speak failed: ${t.message}", t)
             } finally {
