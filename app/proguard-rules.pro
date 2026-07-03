@@ -6,6 +6,13 @@
 # persisted nav state.
 -keepnames class app.vela.core.model.** { *; }
 
+# sherpa-onnx neural-TTS runtime (vendored AAR). Its JNI resolves the Kotlin config classes AND
+# their fields by their ORIGINAL fully-qualified names (FindClass / GetFieldID) at OfflineTts init.
+# R8 renaming/stripping them makes the native side throw ClassNotFoundError and SIGABRT the process
+# — the AAR ships no consumer rules, so we keep the whole package (classes + members) un-renamed.
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-dontwarn com.k2fsa.sherpa.onnx.**
+
 # kotlinx.serialization (also in :core consumer rules; harmless to repeat).
 -keepclasseswithmembers class **$$serializer { *; }
 -keepclassmembers class **.Companion {

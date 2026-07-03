@@ -362,8 +362,10 @@ decodes Google's geometry exactly and is covered by a reference-vector test.
   `FusedLocationProviderClient`. We cache last-known to seed an instant map and
   show a one-time PSDS tip when the cold fix is slow — on GrapheneOS, enabling
   PSDS (Settings → Location) drops TTFF from ~30s to a few seconds.
-- **Voice:** AOSP `TextToSpeech`. We enumerate installed engines and let the
-  user pick (RHVoice / eSpeak NG from F-Droid sound far better than stock Pico).
+- **Voice:** a built-in **neural voice (Kokoro)** that runs entirely on-device — Vela bundles the
+  sherpa-onnx runtime and downloads the ~126 MB model itself (one tap, progress bar), no standalone
+  app. Plus AOSP `TextToSpeech`: we enumerate the phone's installed engines so you can override to
+  any system voice.
 - **No GMS anywhere:** no Fused location, no FCM, no Firebase, no Play Integrity.
   Everything (MapLibre, OkHttp, Compose, Hilt) is pure AOSP. OrganicMaps is the
   existence proof; Vela's stack is a superset.

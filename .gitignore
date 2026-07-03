@@ -38,3 +38,6 @@ Thumbs.db
 
 # Large regenerable on-device perf-test graph (ghprobe) — not committed
 ghprobe/src/androidTest/assets/seam-graph.zip
+
+# Vendored native AAR (sherpa-onnx neural TTS runtime) — large binary, fetched out-of-band
+app/libs/*.aar
