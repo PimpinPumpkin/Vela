@@ -129,7 +129,13 @@ class GoogleMapsDataSource @Inject constructor(
         // FAN OUT across category terms + merge: one "places" query is biased to prominent food/
         // shops, so it misses whole tiers (a strip mall's plumber, nail salon, IT shop). A handful
         // of category queries roughly DOUBLES local coverage (live: 22→52 unique within 600 m).
-        val terms = listOf("places", "restaurants", "coffee", "stores", "shopping", "services", "beauty salon", "fast food")
+        val terms = listOf(
+            "places", "restaurants", "coffee", "stores", "shopping", "services", "beauty salon", "fast food",
+            // High-traffic everyday categories the food/shop-biased set above under-returns, so the map
+            // shows a Google-like MIX (a gas station, a gym, a grocer) rather than mostly restaurants.
+            // Low-signal extras are fine — the prominence sort keeps them from displacing real businesses.
+            "grocery store", "gas station", "gym", "bar", "pharmacy",
+        )
         val all = coroutineScope {
             terms.map { term ->
                 async {
@@ -137,7 +143,7 @@ class GoogleMapsDataSource @Inject constructor(
                         val pb = SearchPb.build(term, center, cal.searchPb)
                             .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
                             .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
-                            .replaceFirst(Regex("!7i\\d+"), "!7i40")
+                            .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
                         val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}"
                         SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
                     }.getOrDefault(emptyList())
