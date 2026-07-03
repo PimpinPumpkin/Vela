@@ -68,9 +68,11 @@ class KokoroSynth @Inject constructor(
                 lang = "en-us",
             )
             val cfg = OfflineTtsConfig(
-                // Kokoro int8 is compute-heavy: ~0.4x realtime on an old Pixel 5a (Snapdragon 765G),
-                // and more threads didn't help there (memory-bound) — newer phones run it far faster.
-                // 2 intra-op threads is the sweet spot (4 gave no gain, just more power/heat).
+                // Kokoro int8 runs ~0.4x realtime on CPU on ANY current phone (Pixel 5a AND Pixel 9
+                // both ~7 s for a 3 s prompt); more threads and the NNAPI provider gave no gain
+                // (NNAPI falls back to CPU for Kokoro's ops). For a fast voice, PiperSynth (~0.56 s
+                // for the same phrase) is offered alongside. NB: the int8 is ~2x SLOWER than the fp32
+                // Kokoro on ARM (dequant overhead) — the fp32 model is the future "faster Kokoro".
                 model = OfflineTtsModelConfig(kokoro = kokoro, numThreads = 2, debug = false),
             )
             val engine = OfflineTts(assetManager = null, config = cfg)
