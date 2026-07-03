@@ -96,6 +96,8 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.res.stringResource
+import app.vela.R
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -428,7 +430,7 @@ fun MapScreen(
                         state.results.isNotEmpty() && state.selected == null && state.resultsCollapsed ->
                             ElevatedAssistChip(
                                 onClick = vm::expandResults,
-                                label = { Text("${state.results.size} results") },
+                                label = { Text(stringResource(R.string.mapscreen_results_count, state.results.size)) },
                                 leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) },
                                 modifier = Modifier.padding(top = 8.dp),
                             )
@@ -462,7 +464,7 @@ fun MapScreen(
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(end = 16.dp, bottom = 132.dp),
-            ) { Icon(Icons.Default.MyLocation, contentDescription = "Re-center") }
+            ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
         }
 
         // Speedometer (Google-style) — current GPS speed, bottom-left during nav.
@@ -501,7 +503,7 @@ fun MapScreen(
                     .padding(bottom = 24.dp),
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text("Search this area")
+                Text(stringResource(R.string.mapscreen_search_this_area))
             }
         }
 
@@ -552,10 +554,10 @@ fun MapScreen(
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
             state.directionsOpen && !searchOpen -> DirectionsPanel(
-                originName = if (state.directionsReversed) (state.selected?.name ?: "Place")
-                else (state.directionsOrigin?.name ?: "Your location"),
-                destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: "Your location")
-                else (state.selected?.name ?: "Destination"),
+                originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
+                else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
+                destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
+                else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
                 // Tap the custom endpoint to route to/from somewhere other than your
                 // location — the "From" row normally, or the "To" row when reversed (that's
                 // where the editable endpoint sits). Both open the search to pick a place.
@@ -614,7 +616,7 @@ fun MapScreen(
                     .padding(bottom = 24.dp),
             ) {
                 Icon(Icons.Default.Close, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
-                Text("Stop replay")
+                Text(stringResource(R.string.mapscreen_stop_replay))
             }
         }
 
@@ -626,7 +628,7 @@ fun MapScreen(
                     .navigationBarsPadding()
                     .padding(16.dp),
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "Center on my location")
+                Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
             }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
             // niche browse-only layer, and nav now shows per-segment route traffic,
@@ -645,10 +647,9 @@ fun MapScreen(
         // --- transient surfaces --------------------------------------------
         if (state.showPsdsTip) {
             InfoCard(
-                title = "Slow GPS lock?",
-                body = "Enable PSDS in Settings → Location for a much faster fix " +
-                    "(on GrapheneOS it routes through their proxy).",
-                actionLabel = "Got it",
+                title = stringResource(R.string.mapscreen_psds_tip_title),
+                body = stringResource(R.string.mapscreen_psds_tip_body),
+                actionLabel = stringResource(R.string.mapscreen_got_it),
                 onAction = vm::dismissPsdsTip,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -658,9 +659,9 @@ fun MapScreen(
         }
         state.status?.let { msg ->
             InfoCard(
-                title = "Heads up",
+                title = stringResource(R.string.mapscreen_heads_up),
                 body = msg,
-                actionLabel = "Dismiss",
+                actionLabel = stringResource(R.string.mapscreen_dismiss),
                 onAction = vm::clearStatus,
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -830,7 +831,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     IconButton(onClick = { expandedState.value = !expandedState.value }) {
                         Icon(
                             if (expandedState.value) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = if (expandedState.value) "Shrink list" else "Expand list",
+                            contentDescription = if (expandedState.value) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
                             tint = SheetPalette.dim(dark),
                         )
                     }
@@ -847,7 +848,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     FilterChip(
                         selected = openOnly,
                         onClick = { openOnly = !openOnly },
-                        label = { Text("Open now") },
+                        label = { Text(stringResource(R.string.mapscreen_filter_open_now)) },
                         leadingIcon = if (openOnly) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
@@ -855,13 +856,13 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     FilterChip(
                         selected = topRated,
                         onClick = { topRated = !topRated },
-                        label = { Text("4.0★") },
+                        label = { Text(stringResource(R.string.mapscreen_filter_top_rated)) },
                     )
                     // Price: tap to cycle off → ≤$ → ≤$$ → ≤$$$ → ≤$$$$ → off.
                     FilterChip(
                         selected = priceMax > 0,
                         onClick = { priceMax = (priceMax + 1) % 5 },
-                        label = { Text(if (priceMax == 0) "Price" else "≤ " + "$".repeat(priceMax)) },
+                        label = { Text(if (priceMax == 0) stringResource(R.string.mapscreen_filter_price) else "≤ " + "$".repeat(priceMax)) },
                     )
                 }
             }
@@ -925,7 +926,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                     }
                     if (place.permanentlyClosed) {
                         Text(
-                            "Permanently closed",
+                            stringResource(R.string.mapscreen_permanently_closed),
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
                             color = SheetPalette.TrafficRed,
@@ -955,7 +956,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
             ) {
                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = SheetPalette.dim(dark))
                 Text(
-                    "Hide results",
+                    stringResource(R.string.mapscreen_hide_results),
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Medium,
                     color = SheetPalette.dim(dark),
@@ -1054,7 +1055,7 @@ private fun SearchEntryContent(
             SuggestionRow(
                 icon = Icons.Default.MyLocation,
                 tint = MaterialTheme.colorScheme.primary,
-                label = "Your location",
+                label = stringResource(R.string.mapscreen_your_location),
                 onClick = onUseMyLocation,
             )
             Divider()
@@ -1065,7 +1066,7 @@ private fun SearchEntryContent(
         ShortcutRow(ShortcutKind.WORK, work, onPickShortcut, onAssignShortcut, onClearShortcut)
         Divider()
         if (saved.isNotEmpty()) {
-            SectionLabel("Saved")
+            SectionLabel(stringResource(R.string.mapscreen_section_saved))
             saved.forEach { sp ->
                 SavedRow(sp, onPickSaved, onPinSavedAs, onRemoveSaved)
                 Divider()
@@ -1073,7 +1074,7 @@ private fun SearchEntryContent(
         }
         // Recently-opened places (pin icon) — one tap back to a place you just viewed.
         if (recentPlaces.isNotEmpty()) {
-            SectionLabel("Recent")
+            SectionLabel(stringResource(R.string.mapscreen_section_recent))
             recentPlaces.forEach { rp ->
                 SuggestionRow(
                     icon = Icons.Default.Place,
@@ -1085,7 +1086,7 @@ private fun SearchEntryContent(
             }
         }
         if (recents.isNotEmpty()) {
-            SectionLabel("Recent searches")
+            SectionLabel(stringResource(R.string.mapscreen_section_recent_searches))
             recents.forEach { q ->
                 SuggestionRow(
                     icon = Icons.Default.History,
@@ -1096,12 +1097,12 @@ private fun SearchEntryContent(
                 Divider()
             }
             TextButton(onClick = onClearRecents, modifier = Modifier.padding(start = 8.dp)) {
-                Text("Clear recent searches")
+                Text(stringResource(R.string.mapscreen_clear_recent_searches))
             }
         }
         if (saved.isEmpty() && recents.isEmpty() && recentPlaces.isEmpty()) {
             Text(
-                "Search for places, addresses and categories.",
+                stringResource(R.string.mapscreen_search_empty_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp),
@@ -1140,7 +1141,7 @@ private fun ShortcutRow(
         Column(Modifier.weight(1f)) {
             Text(kind.label, style = MaterialTheme.typography.bodyLarge, color = SheetPalette.ink(dark))
             Text(
-                place?.name ?: "Set ${kind.label.lowercase()} address",
+                place?.name ?: stringResource(R.string.mapscreen_set_shortcut_address, kind.label.lowercase()),
                 style = MaterialTheme.typography.bodySmall,
                 color = SheetPalette.dim(dark),
                 maxLines = 1,
@@ -1151,15 +1152,15 @@ private fun ShortcutRow(
             var menu by remember { mutableStateOf(false) }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = "Edit ${kind.label}")
+                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mapscreen_edit_shortcut, kind.label))
                 }
                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     DropdownMenuItem(
-                        text = { Text("Change") },
+                        text = { Text(stringResource(R.string.mapscreen_menu_change)) },
                         onClick = { menu = false; onAssign(kind) },
                     )
                     DropdownMenuItem(
-                        text = { Text("Remove") },
+                        text = { Text(stringResource(R.string.mapscreen_menu_remove)) },
                         onClick = { menu = false; onClear(kind) },
                     )
                 }
@@ -1189,19 +1190,19 @@ private fun SavedRow(
         var menu by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = "Saved place options")
+                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mapscreen_saved_place_options))
             }
             DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 DropdownMenuItem(
-                    text = { Text("Set as Home") },
+                    text = { Text(stringResource(R.string.mapscreen_set_as_home)) },
                     onClick = { menu = false; onPinAs(place, ShortcutKind.HOME) },
                 )
                 DropdownMenuItem(
-                    text = { Text("Set as Work") },
+                    text = { Text(stringResource(R.string.mapscreen_set_as_work)) },
                     onClick = { menu = false; onPinAs(place, ShortcutKind.WORK) },
                 )
                 DropdownMenuItem(
-                    text = { Text("Remove") },
+                    text = { Text(stringResource(R.string.mapscreen_menu_remove)) },
                     onClick = { menu = false; onRemove(place) },
                 )
             }
@@ -1225,11 +1226,11 @@ private fun AssignBanner(kind: ShortcutKind, onCancel: () -> Unit) {
         )
         Spacer(Modifier.width(12.dp))
         Text(
-            "Search for your ${kind.label.lowercase()} address",
+            stringResource(R.string.mapscreen_assign_shortcut_hint, kind.label.lowercase()),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = onCancel) { Text("Cancel") }
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.mapscreen_cancel)) }
     }
 }
 
@@ -1246,11 +1247,11 @@ private fun PickStopBanner(onCancel: () -> Unit) {
         Icon(Icons.Default.AddLocationAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(12.dp))
         Text(
-            "Choose a place to add as a stop",
+            stringResource(R.string.mapscreen_pick_stop_hint),
             style = MaterialTheme.typography.bodyMedium,
             modifier = Modifier.weight(1f),
         )
-        TextButton(onClick = onCancel) { Text("Cancel") }
+        TextButton(onClick = onCancel) { Text(stringResource(R.string.mapscreen_cancel)) }
     }
 }
 
@@ -1358,9 +1359,9 @@ private fun NoticeCard(notice: Notice, onDismiss: () -> Unit, modifier: Modifier
                 notice.url?.let { url ->
                     TextButton(onClick = {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                    }) { Text("Learn more") }
+                    }) { Text(stringResource(R.string.mapscreen_learn_more)) }
                 }
-                TextButton(onClick = onDismiss) { Text("Dismiss") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapscreen_dismiss)) }
             }
         }
     }
@@ -1386,14 +1387,14 @@ private fun FasterRouteCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Faster route", fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.mapscreen_faster_route_title), fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Saves ~${formatDuration(savingSeconds)} in current traffic",
+                    stringResource(R.string.mapscreen_faster_route_saves, formatDuration(savingSeconds)),
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            TextButton(onClick = onDismiss) { Text("No") }
-            Button(onClick = onSwitch) { Text("Switch") }
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapscreen_no)) }
+            Button(onClick = onSwitch) { Text(stringResource(R.string.mapscreen_switch)) }
         }
     }
 }
