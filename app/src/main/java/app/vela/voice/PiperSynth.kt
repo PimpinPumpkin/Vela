@@ -82,22 +82,28 @@ class PiperSynth @Inject constructor(
         // use-after-free). loadFailed resets so a previously-bad voice doesn't block a new one.
         runCatching { cur?.release() }
         tts = null; loadedVoiceId = null; numSpeakers = 0; loadFailed = false
-        return try {
-            val vits = OfflineTtsVitsModelConfig(model = r.model, tokens = r.tokens, dataDir = r.dataDir)
-            val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = 2, debug = false))
-            val engine = OfflineTts(assetManager = null, config = cfg)
-            numSpeakers = engine.numSpeakers()
-            runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
-            tts = engine
-            loadedVoiceId = r.voiceId
-            Log.i(TAG, "loaded ${r.voiceId}: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
-            engine
-        } catch (t: Throwable) {
-            Log.e(TAG, "model load failed: ${t.message}", t)
-            loadFailed = true
-            loadedVoiceId = null
-            null
+        // Two attempts: a voice loaded the instant its download/extract finishes can lose the race with
+        // the filesystem flush on some devices — the first OfflineTts load throws, and (without a retry)
+        // loadFailed sticks so the voice stays SILENT until an app restart. A brief retry heals it.
+        repeat(2) { attempt ->
+            try {
+                val vits = OfflineTtsVitsModelConfig(model = r.model, tokens = r.tokens, dataDir = r.dataDir)
+                val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = 2, debug = false))
+                val engine = OfflineTts(assetManager = null, config = cfg)
+                numSpeakers = engine.numSpeakers()
+                runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
+                tts = engine
+                loadedVoiceId = r.voiceId
+                Log.i(TAG, "loaded ${r.voiceId}: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
+                return engine
+            } catch (t: Throwable) {
+                Log.e(TAG, "model load failed (attempt ${attempt + 1}): ${t.message}", t)
+                if (attempt == 0) runCatching { Thread.sleep(200) } // let a just-written model settle, then retry
+            }
         }
+        loadFailed = true
+        loadedVoiceId = null
+        return null
     }
 
     /**
