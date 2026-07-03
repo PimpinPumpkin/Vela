@@ -157,6 +157,7 @@ class VoiceGuide @Inject constructor(
         }.getOrElse { tts?.engines.orEmpty().map { VoiceEngine(it.name, it.label) } }
         val vela = buildList {
             if (VelaKokoro.isReady(context)) add(VoiceEngine(VelaKokoro.ENGINE_ID, VelaKokoro.LABEL))
+            if (VelaMatcha.isReady(context)) add(VoiceEngine(VelaMatcha.ENGINE_ID, VelaMatcha.LABEL))
             if (VelaPiper.isReady(context)) add(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL))
         }
         return vela + installed

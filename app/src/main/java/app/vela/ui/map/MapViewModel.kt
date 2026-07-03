@@ -29,11 +29,13 @@ import app.vela.core.nav.NavSession
 import app.vela.core.nav.NavState
 import app.vela.core.voice.NeuralSynth
 import app.vela.core.voice.VelaKokoro
+import app.vela.core.voice.VelaMatcha
 import app.vela.core.voice.VelaPiper
 import app.vela.core.voice.VoiceEngine
 import app.vela.core.voice.VoiceGuide
 import app.vela.voice.KokoroInstaller
 import app.vela.voice.KokoroSynth
+import app.vela.voice.MatchaSynth
 import app.vela.voice.PiperSynth
 import app.vela.voice.VoiceInstaller
 import app.vela.service.NavigationService
@@ -144,6 +146,7 @@ class MapViewModel @Inject constructor(
     private val kokoroInstaller: KokoroInstaller,
     private val kokoroSynth: KokoroSynth,
     private val piperSynth: PiperSynth,
+    private val matchaSynth: MatchaSynth,
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
     private val recentPlaceStore: RecentPlaceStore,
@@ -181,6 +184,7 @@ class MapViewModel @Inject constructor(
             .getString("voice_engine", null)
             ?: when {
                 VelaKokoro.isReady(appContext) -> VelaKokoro.ENGINE_ID
+                VelaMatcha.isReady(appContext) -> VelaMatcha.ENGINE_ID
                 VelaPiper.isReady(appContext) -> VelaPiper.ENGINE_ID
                 else -> null
             }
@@ -1418,11 +1422,13 @@ class MapViewModel @Inject constructor(
     private fun neuralSynthFor(engineId: String?): NeuralSynth? = when (engineId) {
         VelaKokoro.ENGINE_ID -> kokoroSynth
         VelaPiper.ENGINE_ID -> piperSynth
+        VelaMatcha.ENGINE_ID -> matchaSynth
         else -> null
     }
     private fun velaLabel(engineId: String): String? = when (engineId) {
         VelaKokoro.ENGINE_ID -> VelaKokoro.LABEL
         VelaPiper.ENGINE_ID -> VelaPiper.LABEL
+        VelaMatcha.ENGINE_ID -> VelaMatcha.LABEL
         else -> null
     }
 
@@ -1436,9 +1442,11 @@ class MapViewModel @Inject constructor(
     fun testVoice() = voice.test()
 
     /** Whether a Vela neural voice model is downloaded + usable. */
-    fun neuralVoiceInstalled(): Boolean = VelaKokoro.isReady(appContext) || VelaPiper.isReady(appContext)
+    fun neuralVoiceInstalled(): Boolean =
+        VelaKokoro.isReady(appContext) || VelaPiper.isReady(appContext) || VelaMatcha.isReady(appContext)
     fun kokoroInstalled(): Boolean = VelaKokoro.isReady(appContext)
     fun piperInstalled(): Boolean = VelaPiper.isReady(appContext)
+    fun matchaInstalled(): Boolean = VelaMatcha.isReady(appContext)
 
     /** A previously-downloaded Kokoro is the legacy int8 build → offer an upgrade to the faster fp32. */
     fun kokoroIsInt8(): Boolean = VelaKokoro.modelFile(appContext)?.name?.contains("int8") == true
@@ -1455,19 +1463,32 @@ class MapViewModel @Inject constructor(
     /** Download the fast neural voice (Piper). */
     fun downloadPiper() = downloadNeural(VelaPiper.ENGINE_ID)
 
+    /** Download the balanced neural voice (Matcha). */
+    fun downloadMatcha() = downloadNeural(VelaMatcha.ENGINE_ID)
+
+    private data class DlSpec(val url: String, val dir: java.io.File, val size: Long, val extraUrl: String?, val extraName: String?)
+
+    private fun isVoiceReady(voiceId: String): Boolean = when (voiceId) {
+        VelaPiper.ENGINE_ID -> VelaPiper.isReady(appContext)
+        VelaMatcha.ENGINE_ID -> VelaMatcha.isReady(appContext)
+        else -> VelaKokoro.isReady(appContext)
+    }
+
     /** Download the given Vela neural voice model into the app, then make it the active voice. */
     fun downloadNeural(voiceId: String) {
         if (_state.value.kokoroDownloadPct != null) return // one at a time
-        val piper = voiceId == VelaPiper.ENGINE_ID
-        val url = if (piper) KokoroInstaller.PIPER_URL else KokoroInstaller.KOKORO_URL
-        val dir = if (piper) VelaPiper.modelDir(appContext) else VelaKokoro.modelDir(appContext)
-        val size = if (piper) KokoroInstaller.PIPER_SIZE else KokoroInstaller.KOKORO_SIZE
+        val spec = when (voiceId) {
+            VelaPiper.ENGINE_ID -> DlSpec(KokoroInstaller.PIPER_URL, VelaPiper.modelDir(appContext), KokoroInstaller.PIPER_SIZE, null, null)
+            VelaMatcha.ENGINE_ID -> DlSpec(KokoroInstaller.MATCHA_URL, VelaMatcha.modelDir(appContext), KokoroInstaller.MATCHA_SIZE, KokoroInstaller.VOCODER_URL, VelaMatcha.VOCODER)
+            else -> DlSpec(KokoroInstaller.KOKORO_URL, VelaKokoro.modelDir(appContext), KokoroInstaller.KOKORO_SIZE, null, null)
+        }
         _state.update { it.copy(kokoroDownloadPct = 0f) }
         viewModelScope.launch {
-            val ok = kokoroInstaller.download(url, dir, size) { p -> _state.update { it.copy(kokoroDownloadPct = p) } }
+            val ok = kokoroInstaller.download(spec.url, spec.dir, spec.size, spec.extraUrl, spec.extraName) { p ->
+                _state.update { it.copy(kokoroDownloadPct = p) }
+            }
             _state.update { it.copy(kokoroDownloadPct = null) }
-            val ready = if (piper) VelaPiper.isReady(appContext) else VelaKokoro.isReady(appContext)
-            if (ok && ready) {
+            if (ok && isVoiceReady(voiceId)) {
                 setVoiceEngine(VoiceEngine(voiceId, velaLabel(voiceId) ?: voiceId))
                 showStatus("Neural voice ready — tap Test voice")
             } else {

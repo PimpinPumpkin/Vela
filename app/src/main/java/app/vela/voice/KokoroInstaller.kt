@@ -14,54 +14,43 @@ import javax.inject.Singleton
 
 /**
  * Downloads a Vela neural-voice model (a sherpa-onnx `.tar.bz2` from the `tts-models` GitHub release)
- * straight into a target dir under `filesDir`, extracting it, reporting 0f..1f progress. Generic over
- * the voice (Kokoro or Piper) — pass the URL + dest dir. Best-effort: any failure wipes the partial
- * model so a retry starts clean. This is what lets Vela run neural voices WITHOUT a standalone app.
+ * into a target dir under `filesDir`, extracting it, reporting 0f..1f progress. Generic over the voice
+ * (Kokoro / Piper / Matcha). Matcha additionally needs a separate vocoder `.onnx` — pass [extraUrl]/
+ * [extraName] and it's fetched into the same dir. Best-effort: any failure wipes the partial model.
  */
 @Singleton
 class KokoroInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
     private val http: OkHttpClient,
 ) {
-    /** Download [url]'s model into [destDir], extracting the archive's single top-level folder into
-     *  it. [onProgress] is the download fraction (0f..1f). [sizeEst] is a fallback total when the
-     *  server omits Content-Length. Returns true once extraction completed. */
+    /** Download [url] into [destDir] (extracting the archive's single top-level folder into it), and,
+     *  if given, an [extraUrl] file saved as [extraName] alongside it. [onProgress] is 0f..1f. */
     suspend fun download(
         url: String,
         destDir: File,
         sizeEst: Long,
+        extraUrl: String? = null,
+        extraName: String? = null,
         onProgress: (Float) -> Unit,
     ): Boolean = withContext(Dispatchers.IO) {
         val tmp = File(context.filesDir, "voice.download.tmp")
         val staging = File(context.filesDir, "voice.staging")
         try {
-            val fetched = http.newCall(
-                Request.Builder().url(url).header("User-Agent", "VelaMaps").build(),
-            ).execute().use { resp ->
-                val body = resp.body
-                if (!resp.isSuccessful || body == null) return@use false
-                val total = body.contentLength().takeIf { it > 0 } ?: sizeEst
-                body.byteStream().use { input ->
-                    tmp.outputStream().use { out ->
-                        val buf = ByteArray(1 shl 16)
-                        var read = 0L
-                        var n: Int
-                        while (input.read(buf).also { n = it } >= 0) {
-                            out.write(buf, 0, n)
-                            read += n
-                            onProgress((read.toFloat() / total).coerceIn(0f, 0.98f))
-                        }
-                    }
-                }
-                true
-            }
-            if (!fetched) return@withContext false
+            // Reserve the tail of the progress bar for the vocoder when there's a two-part download.
+            val tarSpan = if (extraUrl != null) 0.55f else 0.98f
+            if (!stream(url, tmp, sizeEst, 0f, tarSpan, onProgress)) return@withContext false
 
             staging.deleteRecursively(); staging.mkdirs()
             extractTarBz2(tmp, staging)
             val inner = staging.listFiles()?.firstOrNull { it.isDirectory } ?: staging
             destDir.deleteRecursively()
             if (!inner.renameTo(destDir)) inner.copyRecursively(destDir, overwrite = true)
+
+            if (extraUrl != null && extraName != null) {
+                if (!stream(extraUrl, File(destDir, extraName), VOCODER_SIZE_EST, 0.6f, 0.38f, onProgress)) {
+                    destDir.deleteRecursively(); return@withContext false
+                }
+            }
             onProgress(1f)
             true
         } catch (t: Throwable) {
@@ -72,6 +61,27 @@ class KokoroInstaller @Inject constructor(
             staging.deleteRecursively()
         }
     }
+
+    /** Stream [url] to [out], reporting progress mapped into the [base, base+span] slice of the bar. */
+    private fun stream(url: String, out: File, sizeEst: Long, base: Float, span: Float, onProgress: (Float) -> Unit): Boolean =
+        http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
+            val body = resp.body
+            if (!resp.isSuccessful || body == null) return@use false
+            val total = body.contentLength().takeIf { it > 0 } ?: sizeEst
+            body.byteStream().use { input ->
+                out.outputStream().use { o ->
+                    val buf = ByteArray(1 shl 16)
+                    var read = 0L
+                    var n: Int
+                    while (input.read(buf).also { n = it } >= 0) {
+                        o.write(buf, 0, n)
+                        read += n
+                        onProgress((base + span * (read.toFloat() / total)).coerceIn(0f, base + span))
+                    }
+                }
+            }
+            true
+        }
 
     private fun extractTarBz2(src: File, destDir: File) {
         src.inputStream().buffered().use { fin ->
@@ -95,12 +105,18 @@ class KokoroInstaller @Inject constructor(
 
     companion object {
         // sherpa-onnx tts-models release .tar.bz2 sources + fallback sizes.
-        // fp32 Kokoro (~2x faster on ARM than the int8 build + higher quality).
         const val KOKORO_URL =
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2"
         const val KOKORO_SIZE = 349_418_188L
         const val PIPER_URL =
             "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-hfc_female-medium.tar.bz2"
         const val PIPER_SIZE = 67_228_166L
+        const val MATCHA_URL =
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-en_US-ljspeech.tar.bz2"
+        const val MATCHA_SIZE = 76_739_916L
+        // Matcha's vocoder lives in the separate vocoder-models release.
+        const val VOCODER_URL =
+            "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
+        const val VOCODER_SIZE_EST = 53_884_024L
     }
 }
