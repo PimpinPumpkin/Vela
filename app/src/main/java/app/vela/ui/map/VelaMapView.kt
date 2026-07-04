@@ -182,10 +182,11 @@ fun VelaMapView(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    // Push MapLibre's compass below the status bar (it defaults to the top-right
-    // corner, which sits *under* the status bar).
+    // Push MapLibre's compass below the status bar (it defaults to the top-right corner, which sits
+    // *under* the status bar). During NAV the full-width maneuver banner also sits at the top and painted
+    // OVER the compass — so while navigating, drop it below the banner (~112 dp: banner height + margin).
     val statusBarTopPx = WindowInsets.statusBars.getTop(density)
-    val compassTopPx = statusBarTopPx + with(density) { 8.dp.roundToPx() }
+    val compassTopPx = statusBarTopPx + with(density) { (if (navMode) 112.dp else 8.dp).roundToPx() }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
