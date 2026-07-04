@@ -52,6 +52,17 @@ class SpeedKalman {
         p = ((1 - k) * p).coerceAtLeast(P_FLOOR) // floor: never lock out future measurements
     }
 
+    /** Decay the modelled speed toward 0 during a measurement OUTAGE (no fixes > the dead-reckon
+     *  window). With no update() calls and accel ≈ 0 the filter otherwise holds its last speed
+     *  FOREVER — a parked car whose GPS went quiet kept "moving" at the braking speed. τ = 4 s:
+     *  fast enough to settle a stop, slow enough that a brief tunnel doesn't zero a real cruise
+     *  before the next fix re-measures. Uncertainty grows so the next fix pulls hard. */
+    fun decay(dt: Double, tau: Double = 4.0) {
+        if (!seeded || dt <= 0.0) return
+        speed *= kotlin.math.exp(-dt / tau)
+        p += Q_BASE * dt
+    }
+
     /** Forget everything (nav ended). The next [update] re-seeds. */
     fun reset() {
         speed = 0.0
