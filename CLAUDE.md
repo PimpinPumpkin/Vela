@@ -32,9 +32,20 @@ genuinely needs no doc edit, say why in the commit.
   format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
   cards/voice said against the plotted route from a shared trip CSV, call `TripLog.audit(csv)`
   (→ `NavReplay.Report.summary()`) or run the on-demand harness:
-  `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=<abs.csv> --info`
-  (skipped when `-DvelaTrip` is unset). It flags silent/missed turns, too-early announcements,
-  and lying card distances — built so a travel log can be analysed without knowing where it broke.
+  `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=<abs.csv> --rerun-tasks`
+  then read the report from the test-results XML `system-out`
+  (`core/build/test-results/testDebugUnitTest/*.xml`). The property passthrough lives in
+  `core/build.gradle.kts` (`tasks.withType<Test>` forwards `velaTrip`) — without it the test JVM
+  never saw `-D` and the harness silently skipped. It flags silent/missed turns, too-early
+  announcements, and lying card distances — built so a travel log can be analysed without knowing
+  where it broke. **Trips are SEGMENTED**: every route the drive used (start + each reroute/
+  faster-route swap) is its own `RP/RD/M` block, activated at the fix where it appears;
+  `TripLog.parse().segments` carries them, audit + in-app replay are segment-aware, and replays
+  are HERMETIC (`NavSession.replayMode` — no live reroute/recheck fetches, recorded swaps play
+  back via `replaySetRoute`; the map view scales the puck's clocks by `replaySpeedup`). Never
+  audit/replay a multi-block trip against a single mashed route — that was the "arrow on another
+  street / arrived mid-replay" corruption. NB replays of OLD trips faithfully play back the dirty
+  fixes the old pipeline recorded (BeaconDB teleports) — judge the engine on fresh recordings.
 - CI in `.github/workflows/ci.yml` (single workflow): every push to `main`
   builds + tests the APK (uploaded as an artifact) and publishes a **normal
   versioned GitHub release** `v0.2.<run>` (versionName `0.2.<run>`, versionCode
