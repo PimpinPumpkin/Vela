@@ -40,15 +40,15 @@ object NavEngine {
         stepIndex: Int,
         distToNext: Double,
         remaining: Double,
-        prefScale: Double,
+        approachLegM: Double, // geometric length of the leg being driven (resolved positions)
     ): Double {
         val base = route.durationSeconds
         val stepDurSum = maneuvers.sumOf { it.durationSeconds }
         if (route.polyline.size < 2 || base <= 0.0 || stepDurSum < base * 0.7) return remaining / avgSpeed(route)
         // Time to reach the target = the approach leg's own pace over what's left of it…
         val approachLeg = maneuvers.getOrNull(stepIndex - 1)
-        val approach = if (approachLeg != null && approachLeg.distanceMeters > 1.0) {
-            (distToNext / (approachLeg.distanceMeters * prefScale)).coerceIn(0.0, 1.0) * approachLeg.durationSeconds
+        val approach = if (approachLeg != null && approachLegM > 1.0) {
+            (distToNext / approachLegM).coerceIn(0.0, 1.0) * approachLeg.durationSeconds
         } else {
             distToNext / avgSpeed(route)
         }
@@ -164,26 +164,31 @@ object NavEngine {
         }
         if (!offRoute) rerouteBlocked = false
 
-        // Along-route position of each maneuver: prefix-summed step lengths refine a WINDOWED
-        // projection. The old GLOBAL projection had the same wrong-pass failure as re-acquire
-        // above — on an out-and-back route a return-leg turn projected onto the outbound pass of
-        // the same asphalt (strict-min keeps the FIRST match), so its distance read as if the turn
-        // were where you passed it OUTBOUND: "turn in 1 mile" for a turn 12 miles away. The step
-        // lengths tell us roughly where along the route each maneuver truly sits; project only
-        // within ±800 m of that estimate. Steps that don't TILE the polyline (Google's abbreviated
-        // fallback) are scaled proportionally — matching how placeManeuvers placed them — and the
-        // last-resort fallback is the ANCHORED global match (ties resolve near the estimate), so
-        // the wrong-pass bug can't sneak back in on any route source.
-        val prefix = DoubleArray(maneuvers.size)
-        for (i in 1 until maneuvers.size) prefix[i] = prefix[i - 1] + maneuvers[i - 1].distanceMeters
-        val tiledTotal = (prefix.lastOrNull() ?: 0.0) + (maneuvers.lastOrNull()?.distanceMeters ?: 0.0)
-        val prefScale = if (tiledTotal > 0.0 && total > 0.0) total / tiledTotal else 1.0
-        fun maneuverAlong(k: Int): Double {
-            val est = prefix[k] * prefScale
-            val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, est - 800.0, est + 800.0)
-            if (wd <= ON_ROUTE_M) return wm
-            return projectNearAnchor(route.polyline, cum, maneuvers[k].location, est).first
+        // Along-route position of each maneuver, resolved SEQUENTIALLY: each maneuver projects
+        // onto the polyline strictly FORWARD of the previous one (maneuvers are ordered along
+        // the route by definition — the same non-decreasing technique stopMarks uses). This is
+        // exact on reused asphalt by construction (a return-leg turn can never match its
+        // outbound twin — the previous maneuver already sits past it; the old GLOBAL projection
+        // read such a turn "in 1 mile" when it was 12 miles away), AND it is independent of the
+        // step-length metadata — a prefix-sum estimate broke on any source whose distances don't
+        // tile the polyline (Google's abbreviated fallback; old trip recordings made before via
+        // distances were folded carry km-wrong step lengths). A location that can't be found on
+        // the polyline at all (damaged data) falls back to the anchored global match.
+        val manAlong = DoubleArray(maneuvers.size)
+        run {
+            var fromM = 0.0
+            for (k in maneuvers.indices) {
+                // +0.5 nudge past the previous position: a segment ENDING exactly at fromM still
+                // overlaps the window and its (earlier) projection would win the strict-less tie.
+                val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, fromM + 0.5, total)
+                manAlong[k] = (
+                    if (wd <= ON_ROUTE_M) wm
+                    else projectNearAnchor(route.polyline, cum, maneuvers[k].location, fromM).first
+                    ).coerceAtLeast(fromM)
+                fromM = manAlong[k]
+            }
         }
+        fun maneuverAlong(k: Int): Double = manAlong[k]
 
         var spoken = state.spoken
         // Silent catch-up: fast-forward past maneuvers CLEARLY behind us. A GPS gap (tunnel,
@@ -311,11 +316,14 @@ object NavEngine {
             route.polyline.size < 2 -> loc.distanceTo(newTarget.location)
             else -> (maneuverAlong(stepIndex) - traveled).coerceAtLeast(0.0)
         }
+        // The approach leg's GEOMETRIC length (between the two resolved maneuver positions) —
+        // pro-rates the remaining-time estimate without trusting the step-length metadata.
+        val approachLegM = if (stepIndex > 0) (manAlong[stepIndex] - manAlong[stepIndex - 1]) else manAlong[stepIndex]
         val newState = state.copy(
             stepIndex = stepIndex,
             distanceToNextManeuver = distToNext,
             remainingDistance = remaining,
-            remainingDuration = remainingDuration(route, maneuvers, stepIndex, distToNext, remaining, prefScale),
+            remainingDuration = remainingDuration(route, maneuvers, stepIndex, distToNext, remaining, approachLegM),
             offRoute = offRoute,
             offRouteHits = offHits,
             spoken = spoken,
