@@ -13,6 +13,7 @@ import com.graphhopper.ResponsePath
 import com.graphhopper.config.CHProfile
 import com.graphhopper.config.Profile
 import com.graphhopper.routing.WeightingFactory
+import com.graphhopper.routing.util.EdgeFilter
 import com.graphhopper.routing.weighting.SpeedWeighting
 import com.graphhopper.util.EdgeIteratorState
 import com.graphhopper.util.GHUtility
@@ -70,6 +71,36 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             }
         }
         return emptyList()
+    }
+
+    /**
+     * The POSTED speed limit (km/h) of the road nearest ([lat],[lng]), from the OSM `maxspeed` tag baked
+     * into the graph's `max_speed` encoded value — or `null` if unknown (untagged road, no covering graph,
+     * or a graph built before `max_speed` was added). Snaps the fix to the nearest edge and reads the EV off
+     * the **base graph** (encoded values live there, not on the CH overlay), so it's CH-safe and independent
+     * of any active route — it tracks the road under the puck even off-route. Call OFF the main thread
+     * (LocationIndex snap does I/O on the mmap'd graph). Returns km/h; convert to mph at the UI boundary.
+     */
+    override fun currentRoadLimit(lat: Double, lng: Double): Double? {
+        val p = LatLng(lat, lng)
+        for (region in regions()
+            .filter { it.id !in failed && it.covers(p) }
+            .sortedBy { (it.n - it.s) * (it.e - it.w) }) {
+            val gh = hopper(region) ?: continue
+            // A graph built before max_speed was added has no such EV → getDecimalEncodedValue throws;
+            // swallow it so an un-rebuilt region degrades to "unknown", never a crash.
+            val ev = runCatching { gh.encodingManager.getDecimalEncodedValue(MAX_SPEED_EV) }.getOrNull() ?: continue
+            val snap = runCatching { gh.locationIndex.findClosest(lat, lng, EdgeFilter.ALL_EDGES) }.getOrNull() ?: continue
+            if (!snap.isValid) continue
+            // Forward direction is fine for v1 (few ways tag directional maxspeed). Per GraphHopper's
+            // OSMMaxSpeedParser: an untagged edge reads +Infinity (filtered by isFinite), EVERY value is
+            // capped at 150 km/h, AND `maxspeed=none` (derestricted) also stores exactly 150 — so 150 is
+            // ambiguous (a real 150 zone vs. derestricted). We deliberately blank on 150 (strict `< 150`):
+            // a wrong "150" on a derestricted autobahn is worse than a blank on the rare true-150 road.
+            val kmh = runCatching { snap.closestEdge.get(ev) }.getOrNull() ?: continue
+            if (kmh.isFinite() && kmh > 0.0 && kmh < 150.0) return kmh
+        }
+        return null
     }
 
     /** Drop all loaded graphs (e.g. after install/delete changes the set). Swallows the Android unmap quirk. */
@@ -179,9 +210,10 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             lat in s..n && lng in w..e
 
         private const val PROFILE = "car"
-        private const val ENCODED_VALUES = "car_access, car_average_speed, road_access"
+        private const val ENCODED_VALUES = "car_access, car_average_speed, road_access, max_speed"
         private const val SPEED_EV = "car_average_speed"
         private const val ACCESS_EV = "car_access"
+        private const val MAX_SPEED_EV = "max_speed" // OSM posted limit (km/h); == GraphHopper MaxSpeed.KEY
 
         /** GraphHopper [Instruction] sign → Vela [ManeuverType]. The first step is always a depart. */
         internal fun ghType(sign: Int, first: Boolean): ManeuverType = when {
