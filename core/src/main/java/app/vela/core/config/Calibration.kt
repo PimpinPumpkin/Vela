@@ -115,6 +115,12 @@ data class Calibration(
             "ownerDescription" to listOf(1, 154, 0, 0),
             "openStatus" to listOf(1, 203, 1, 8, 0),
             "statusRich" to listOf(1, 203, 1, 4, 0),
+            // Locale-INDEPENDENT open/closed CODE (6=open, 5=closed, 13=opening soon) — a sibling of the
+            // localized status TEXT, so open/closed survives hl=fr/de/… where the words change (verified
+            // on a real hl=fr capture 2026-07-03). Two nodes carry it: rich [4] (with the close time) and
+            // simple [8] (bare); read either. The code is at `<node>[1][0][1]`.
+            "statusCodeRich" to listOf(1, 203, 1, 4, 1, 0, 1),
+            "statusCodeSimple" to listOf(1, 203, 1, 8, 1, 0, 1),
             "status118" to listOf(1, 118, 0, 3, 1, 4, 0),
             "hours203" to listOf(1, 203, 0),
             "hours118" to listOf(1, 118, 0, 3, 0),
