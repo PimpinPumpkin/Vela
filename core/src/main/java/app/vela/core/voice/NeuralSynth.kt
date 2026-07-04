@@ -12,6 +12,12 @@ interface NeuralSynth {
     /** True once the model is loaded and it can actually produce audio. */
     val ready: Boolean
 
+    /** The language code of the currently-selected voice ("en", "ru", "fr", …), or null if unknown.
+     *  A Piper voice is a single-language model — reading another language's text through it is
+     *  gibberish — so [VoiceGuide] compares this to the language the nav text is generated in and
+     *  routes to a system TTS (or stays silent) on a mismatch. */
+    val voiceLanguage: String? get() = null
+
     /** Begin loading the model off the main thread (idempotent, cheap to call repeatedly). */
     fun warmUp()
 

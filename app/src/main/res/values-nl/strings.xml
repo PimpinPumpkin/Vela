@@ -305,6 +305,7 @@
     <string name="mapvm_no_transit_routes">Geen OV-routes gevonden</string>
     <string name="mapvm_trip_default_name">Rit</string>
     <string name="mapvm_no_voice_engine">Geen spraakengine geïnstalleerd — voeg er een toe bij Instellingen → Stem voor gesproken instructies</string>
+    <string name="mapvm_voice_lang_missing">Gesproken instructies vereisen een %1$s-stem — voeg er een toe via Instellingen → Stem</string>
     <string name="mapvm_no_track_to_replay">Die rit heeft geen spoor om te herhalen</string>
     <string name="mapvm_replaying">%1$s herhalen (3×)…</string>
     <string name="mapvm_export_saved_subject">Vela opgeslagen plaatsen (%1$d)</string>

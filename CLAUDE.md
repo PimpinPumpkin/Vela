@@ -87,7 +87,11 @@ genuinely needs no doc edit, say why in the commit.
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
-  `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. (2) **UI chrome** —
+  `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. **The chosen neural
+  voice must actually speak that language** — `VoiceGuide` guards on `NeuralSynth.voiceLanguage` and, on a
+  mismatch, falls back to a system TTS in the target language (or stays silent + fires a "get a matching voice"
+  hint) rather than reading, e.g., Russian nav text through the English Piper model (see the voice bullet under
+  Degoogled constraints). (2) **UI chrome** —
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
   the 10 translated languages (fr de es it pt nl ru pl sv uk), referenced via `stringResource`/`getString`.
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale, **no-op when following
@@ -241,6 +245,16 @@ genuinely needs no doc edit, say why in the commit.
   voice once present. **Non-obvious, all device-only (compiler-clean):** R8 MUST `-keep class
   com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original name); and you must generate the WHOLE
   utterance before `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT).
+  **A Piper voice is a SINGLE-language model** — reading another language's nav text through it is
+  gibberish (the "English voice read Russian after a language override" bug). `NeuralSynth.voiceLanguage`
+  exposes the loaded voice's lang (id prefix, `en_US-hfc_female` → "en"); `VoiceGuide.speakNow` compares it
+  to the language the nav text is GENERATED in (`NavStringsRegistry.current().locale`) and, on a mismatch,
+  routes to **Android `TextToSpeech` in the target language instead** (`speakViaSystem`, lazily creating a
+  default engine as the fallback — the system `tts` is NOT shut down when the neural voice is active). If the
+  system TTS has no voice for that language either, guidance stays **silent** (never mangles it through the
+  wrong voice) and fires `langUnavailable(lang)` → `MapViewModel` flashes a "get a &lt;language&gt; voice in
+  Settings → Voice" hint. So switching the app/system language to one whose voice isn't downloaded degrades
+  gracefully, it doesn't read the new language through the old model.
   **(History: earlier iterations bundled Kokoro (`KokoroSynth`) and Matcha; both were removed after
   on-device A/B — Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
