@@ -69,15 +69,25 @@ object NavEngine {
         // off with "a similar direction". Skip it entirely and advance silently to the first real turn,
         // which announces itself as you approach it (Google does the same).
         val isDepart = target.type == ManeuverType.DEPART
-        if (target.type != ManeuverType.ARRIVE && !isDepart) {
+        // "Continue onto the road you're ALREADY on" is redundant to SAY — you don't do anything at it —
+        // and Google stays silent on these (OSRM emits a step at every road-name change / slight bend). So
+        // suppress the VOICE for a CONTINUE whose road is unchanged from the current step; a real road-NAME
+        // change ("new name") still gets announced. The step stays on the map + in the step list either way.
+        val prevRoad = if (idx > 0) maneuvers[idx - 1].road else null
+        val redundantContinue = target.type == ManeuverType.CONTINUE && (target.road == null || target.road == prevRoad)
+        val voiceSilent = isDepart || redundantContinue
+        if (target.type != ManeuverType.ARRIVE && !voiceSilent) {
             // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken at the FAR
-            // prompt only, Google-style ("…take exit 172 toward Sacramento. Use the right 2 lanes.").
+            // prompt only, Google-style as a PREFACE ("…use the right 2 lanes to take exit 172 toward
+            // Sacramento"), so the lanes come BEFORE the maneuver, not tacked on after it.
             val lane = app.vela.core.model.laneGuidance(target.lanes)
             for (p in PROMPT_DISTANCES) {
                 if (dtn <= p && p !in spoken) {
                     spoken = spoken + p
-                    var say = nav().inThen(spokenDistance(p.toDouble(), imperial), target.instruction)
-                    if (p == PROMPT_DISTANCES.first() && lane != null) say += ". " + nav().useLanes(lane.side, lane.count)
+                    val instruction = if (p == PROMPT_DISTANCES.first() && lane != null)
+                        nav().useLanesToDo(lane.side, lane.count, target.instruction)
+                    else target.instruction
+                    val say = nav().inThen(spokenDistance(p.toDouble(), imperial), instruction)
                     events += NavEvent.Speak(say)
                     // A light "get ready" tick at the closest pre-turn prompt, so
                     // bikers/walkers feel the turn coming without looking or hearing.
@@ -88,7 +98,7 @@ object NavEngine {
 
         if (dtn <= ARRIVE_RADIUS_M) {
             if (idx < maneuvers.lastIndex) {
-                if (!isDepart) {
+                if (!voiceSilent) {
                     events += NavEvent.Speak(target.instruction, interrupt = true)
                     events += NavEvent.Haptic(target.type) // firm, direction-coded buzz at the turn
                 }
