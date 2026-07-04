@@ -370,6 +370,36 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   detaches BEFORE posting (else it stays non-swipeable) and Done clears it. *(Deferred, documented:
   backward-driving/U-turn detection, bearing-biased reroute origins, adaptive dead-reckon cadence,
   raw-vs-raw movement accumulation for speedless-chipset walking.)*
+- ✅ **Trip replay made trustworthy: segments, hermeticity, real-time-scaled puck (2026-07-04).** Auditing
+  the user's actual glitchy drive (`TripLog.audit` on the shared CSV) found the replay system itself was
+  manufacturing most of the on-screen chaos:
+  **(1) Franken-routes.** A trip records every route the drive used (start + each mid-drive switch as its
+  own `RP/RD/M` block) — but the parser grabbed the FIRST polyline and EVERY maneuver line in the file, so
+  a trip with a route switch replayed as one stitched route with two DEPART→ARRIVE runs: mid-replay
+  "arrival", card distances km wrong, the arrow matched against the wrong half. `TripLog` now parses
+  **segments** (each block + the fix index it activated at), `audit()` replays each segment against
+  exactly the fixes driven on it, and the in-app replay **swaps routes at the recorded fix positions**.
+  Live drives now also RECORD reroute/faster-route swaps as new blocks (previously only a manual nav
+  restart wrote one).
+  **(2) Live fetches during replay.** Replays ran the real reroute + faster-route recheck — a wrong turn
+  in the trace fired a LIVE OSRM fetch and swapped the route mid-replay (matching the trace against a
+  route never driven), and the recheck popped the faster-route sheet over a replay. `NavSession.replayMode`
+  makes replays hermetic: no fetches, recorded swaps only.
+  **(3) The 3× stutter.** Replays play 3× real time but the puck's dead-reckoning, blind window, easing
+  time-constants and plausibility caps all ran on the WALL clock — the puck covered ⅓ of the ground
+  between fixes and surged to catch up every fix ("stuttery arrow, pulsing mph"). The map view now runs
+  those clocks in **trace time** (`replaySpeedup`; live = 1 → formulas byte-identical), closing the
+  long-deferred nav-camera-replay item.
+  **Bonus (benefits LIVE nav too):** maneuver positions are now resolved **sequentially** — each maneuver
+  projects onto the polyline strictly FORWARD of the previous one (the stopMarks technique) — replacing
+  the step-length prefix sums entirely. Exact on reused asphalt by construction and **independent of step
+  metadata** (old recordings carry unfolded via distances; Google's fallback steps are abbreviated — both
+  used to skew the estimates). The ETA pro-rate uses the resolved geometric leg length for the same reason.
+  Also fixed: the documented `-DvelaTrip` audit harness had NEVER worked (the Gradle daemon property never
+  reached the forked test JVM — the test silently skipped); `core/build.gradle.kts` now forwards it.
+  Audit of the user's trace after the fixes: both segments track cleanly; the residual flags are artifacts
+  BAKED INTO the old recording (raw BeaconDB teleport fixes the old pipeline recorded, and a second route
+  computed from a minutes-stale origin) — the new live pipeline neither records nor feeds those.
 - ✅ **Compound maneuver preview ("… then keep right")** — the banner's secondary "then &lt;next&gt;" line
   now shows **only when the next maneuver closely follows** this one (`COMPOUND_M` ≈ 0.3 mi, `isCompoundNext`,
   2026-07-01), the way Google surfaces back-to-back turns (exit-then-merge). It used to show for *any* next
