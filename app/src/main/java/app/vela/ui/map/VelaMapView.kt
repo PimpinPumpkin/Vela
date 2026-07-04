@@ -904,7 +904,10 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             SymbolLayer("vela-housenumber", "openmaptiles").apply {
                 setSourceLayer("housenumber")
-                setMinZoom(17f)
+                // OpenFreeMap DOES serve the OMT `housenumber` source-layer (verified against the
+                // live TileJSON + z14 tiles), so this renders where OSM has `addr:housenumber`.
+                // z14 data overzooms up, so 16 is safe + shows numbers a touch earlier than 17.
+                setMinZoom(16f)
                 setProperties(
                     PropertyFactory.textField(Expression.get("housenumber")),
                     PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -1169,11 +1172,20 @@ private fun applyLight(style: Style) {
     )
     // Show footprints from neighbourhood zoom (Liberty hid them until ~z16-17, so
     // residential houses only appeared when zoomed way in; Google shows them earlier).
+    // The bundled `building` FILL layer is minzoom 13 / maxzoom 14, and MapLibre `maxzoom`
+    // is EXCLUSIVE — so `setMinZoom(14f)` alone collapsed its range to empty (14 ≤ z < 14)
+    // and the crisp flat footprints NEVER painted (only the faint building-3d extrusion
+    // showed → the "sparse residential" look). Re-open the top with setMaxZoom so the flat
+    // fill+outline draws from z14 up (overzoomed z14 tiles fill z15+).
     style.getLayer("building")?.setMinZoom(14f)
+    style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#dde1e7"),
-        PropertyFactory.fillExtrusionOpacity(0.95f),
+        PropertyFactory.fillExtrusionOpacity(0.9f),
     )
+    // Extrusions only once zoomed into a block — the flat fill+outline gives the footprint
+    // look at browse zoom, and fill-extrusion is the per-pixel-expensive part on a Pixel 5a.
+    style.getLayer("building-3d")?.setMinZoom(16f)
     // Neutralise the tan/yellow landuse fills (residential/commercial/school/…) into
     // the land — Google keeps these flat, not coloured blobs.
     val greens = setOf("park", "landcover_grass", "landcover_wood")
@@ -1254,10 +1266,12 @@ private fun applyDark(style: Style) {
         PropertyFactory.fillOutlineColor("#3f4e66"),
     )
     style.getLayer("building")?.setMinZoom(14f) // houses from neighbourhood zoom (see light path)
+    style.getLayer("building")?.setMaxZoom(24f) // re-open the maxzoom:14 clamp (see light path — was collapsing the flat fill to empty)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#323f54"),
-        PropertyFactory.fillExtrusionOpacity(0.95f),
+        PropertyFactory.fillExtrusionOpacity(0.9f),
     )
+    style.getLayer("building-3d")?.setMinZoom(16f) // extrusions only high-zoom (Pixel 5a perf)
     // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
     // retail, industrial, sand, …) must go dark too, or it stays a jarring cream
     // patch in dark mode.
