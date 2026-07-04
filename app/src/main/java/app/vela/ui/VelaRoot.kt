@@ -54,9 +54,10 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
             MapScreen(vm = vm, onOpenSettings = { showSettings = true })
             if (Onboarding.showVoicePrompt.value) {
                 VoicePrompt(
-                    // "other TTS providers found" — since the neural voice isn't installed yet,
-                    // voiceEngines() here is exactly the phone's installed system engines.
-                    hasSystemVoice = vm.voiceEngines().isNotEmpty(),
+                    // The Vela voice is recommended for EVERYONE — the same prompt regardless of
+                    // whether the phone has a system TTS engine, so every install ends up on the
+                    // same consistent voice unless they deliberately change it in Settings.
+                    sizeMb = vm.defaultVoiceSizeMb(),
                     onDownload = {
                         vm.downloadPiper()
                         Onboarding.dismissVoicePrompt(context)
@@ -131,26 +132,24 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
     )
 }
 
-/** One-time, first-run offer of Vela's on-device neural voice — recommended for the most natural
- *  spoken directions. If the phone already has system TTS engines we say so (they can use one
- *  instead); either way the choice is changeable in Settings → Voice. */
+/** One-time, first-run offer of Vela's on-device neural voice — RECOMMENDED for everyone, the same
+ *  prompt whether or not the phone has a system TTS engine (consistency: every install lands on the
+ *  same voice unless the user deliberately changes it). Skipping still leaves nav working via the
+ *  system voice if one exists; a different voice — including a system engine — is one tap away in
+ *  Settings → Voice. [sizeMb] is the actual download size of the voice that will be fetched, so the
+ *  number can never go stale. */
 @Composable
-private fun VoicePrompt(hasSystemVoice: Boolean, onDownload: () -> Unit, onSkip: () -> Unit) {
+private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit) {
     AlertDialog(
         onDismissRequest = onSkip,
         title = { Text(stringResource(R.string.root_voice_title)) },
         text = {
             Text(
-                stringResource(R.string.root_voice_body_intro) + " " +
-                    (if (hasSystemVoice) stringResource(R.string.root_voice_body_system) + " " else "") +
+                stringResource(R.string.root_voice_body_intro, sizeMb) + " " +
                     stringResource(R.string.root_voice_body_outro),
             )
         },
         confirmButton = { TextButton(onClick = onDownload) { Text(stringResource(R.string.root_voice_download)) } },
-        dismissButton = {
-            TextButton(onClick = onSkip) {
-                Text(if (hasSystemVoice) stringResource(R.string.root_voice_use_system) else stringResource(R.string.root_not_now))
-            }
-        },
+        dismissButton = { TextButton(onClick = onSkip) { Text(stringResource(R.string.root_not_now)) } },
     )
 }
