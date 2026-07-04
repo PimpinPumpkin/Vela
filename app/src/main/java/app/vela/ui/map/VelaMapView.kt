@@ -62,6 +62,19 @@ private const val ROUTE_LAYER = "vela-route"
 // Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
 // so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
 private const val ROUTE_DASH_LAYER = "vela-route-dash"
+// The AHEAD half of the nav route. During nav the driven/ahead cut is a GEOMETRY split, not a
+// gradient stop: MapLibre rasterizes line-gradient into a 256×1 LINEAR-filtered texture, so a
+// "hard" step() cut renders as a grey→blue fade of routeLength/256 metres (~39 m on a 10 km
+// route — the "gradient appears if we zoom in" bug) with the centre quantized to the nearest
+// texel. Geometry is pixel-exact at any zoom/length: ROUTE_LAYER shows the full line in
+// traversed grey underneath; this layer draws the REMAINING suffix from the puck forward
+// (frame-ticker-updated, traffic spans remapped onto the suffix).
+private const val ROUTE_AHEAD_SRC = "vela-route-ahead-src"
+private const val ROUTE_AHEAD_LAYER = "vela-route-ahead"
+// Traversed-route grey, per theme — dimmer than and distinct from the alternates' #9AA0A6 so
+// the driven tail doesn't read as another tappable route.
+private const val TRAVERSED_LIGHT = "#B9BDC2"
+private const val TRAVERSED_DARK = "#54585C"
 private const val ALT_ROUTE_SRC = "vela-alt-route-src"
 private const val ALT_ROUTE_LAYER = "vela-alt-route"
 private const val ALT_INDEX_PROP = "vela-alt-index"
@@ -107,6 +120,11 @@ data class MapMarker(val name: String, val location: LatLng, val category: Strin
 // source is empty and must repopulate). Single map instance, so file scope is fine.
 private var lastAppliedMarkers: List<MapMarker>? = null
 private var lastAppliedAmbient: List<MapMarker>? = null
+private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
+                                                       // every recomposition and re-tessellating a
+                                                       // thousands-of-vertices linestring per fix burned
+                                                       // frame budget exactly while the ticker eased the camera
+private var lastNavRouteMode = false                   // nav→browse transition clears the ahead-suffix layer once
 
 /**
  * MapLibre wrapped for Compose. Three camera behaviours:
@@ -182,7 +200,12 @@ fun VelaMapView(
     val camState = remember { doubleArrayOf(Double.NaN, 0.0, 0.0, 0.0) } // eased follow-camera [lat,lng,bearing,zoom]; lat NaN = needs re-seed
     val routeColorHolder = rememberUpdatedState(routeColor)
     val routeSpansHolder = rememberUpdatedState(routeTrafficSpans)
-    val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route gradient was last set at
+    val darkHolder = rememberUpdatedState(darkTheme)
+    val dashHolder = rememberUpdatedState(routeDashed)
+    val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
+    val lastGradNs = remember { longArrayOf(0L) }    // frame time of the last split upload (wall-clock floor)
+    val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
+                                                        // sizes the split-update throttle to sub-pixel
     // A manual pinch sets a zoom override (navUserZoom) that we keep following at; it's cleared
     // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
     // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
@@ -286,14 +309,18 @@ fun VelaMapView(
                 // Dead-reckon by INTEGRATING the live modelled speed — over THIS frame's part of
                 // the 2 s blind window since the fix (wall-clock; the window caps how far a
                 // dropped GPS signal can run the puck away down the route).
+                // Blind window = 3 s (was 2): some chipsets deliver fixes 2.5-3.5 s apart under
+                // canopy, and a 2 s cap made the puck glide-stall-lurch every cycle at exactly
+                // that cadence. 3 s still bounds a dropped-signal runaway to ~100 m at highway
+                // speed, and the decay below shaves the model right after it.
                 val sinceFix = (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0
-                val tEnd = sinceFix.coerceIn(0.0, 2.0)
-                val tStart = (sinceFix - dtRaw).coerceIn(0.0, 2.0)
+                val tEnd = sinceFix.coerceIn(0.0, 3.0)
+                val tStart = (sinceFix - dtRaw).coerceIn(0.0, 3.0)
                 if (tEnd > tStart) navPuck.reckonedM += navPuck.kalman.speed * (tEnd - tStart)
                 // Past the dead-reckon window with no accepted fix = a measurement outage: decay
                 // the modelled speed toward 0 (there's no evidence we're still moving) so the
                 // zoom/look-ahead don't ride a stale speed forever. A resumed fix re-measures.
-                if (sinceFix > 2.0) navPuck.kalman.decay(dtRaw.coerceAtMost(0.5))
+                if (sinceFix > 3.0) navPuck.kalman.decay(dtRaw.coerceAtMost(0.5))
                 val predicted = navPuck.targetM + navPuck.reckonedM
                 val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dt / 0.25f))
                 navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
@@ -340,21 +367,53 @@ fun VelaMapView(
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
                 }
-                // Keep the traversed-grey cut UNDER the arrow: update the route gradient HERE
-                // (throttled to ~1 m of progress) so it tracks the per-frame puck instead of
-                // lagging at the slower recomposition rate. The old 3 m throttle left a ~3 m coloured
-                // sliver behind the arrow — a FIXED ground distance, so it grew more obvious the further
-                // you zoomed in ("gradient before the arrow"); 1 m keeps it sub-pixel at nav zoom. Idle →
-                // no advance → no update.
-                if (routeCum.isNotEmpty() && routeCum.last() > 0.0 &&
-                    kotlin.math.abs(navPuck.progressM - lastGradM[0]) > 1.0
+                // Keep the driven/ahead cut EXACTLY under the arrow — a GEOMETRY split updated
+                // here (throttled to sub-pixel at the CURRENT zoom): the ahead layer gets the
+                // polyline suffix from the puck's progress point forward (traffic spans remapped
+                // onto the suffix) and the full line beneath is painted traversed-grey. The old
+                // line-gradient stop could never be crisp: MapLibre bakes the whole gradient
+                // into a 256-texel texture, smearing the "hard" cut into a routeLength/256-metre
+                // ramp — the zoomed-in gradient the user reported. (Dashed walk/bike lines keep
+                // their plain style — dasharray disables gradients anyway.)
+                // Throttled two ways: sub-pixel distance at the current zoom (floor 1 m) AND a
+                // 150 ms wall-clock floor — each update re-uploads the remaining-suffix
+                // LineString, and an unbounded rate burned frame budget at highway speed.
+                if (!dashHolder.value && routeCum.isNotEmpty() && routeCum.last() > 0.0 &&
+                    kotlin.math.abs(navPuck.progressM - lastGradM[0]) > (mPerPxHolder[0] * 0.75).coerceIn(1.0, 3.0) &&
+                    now - lastGradNs[0] > 150_000_000L
                 ) {
                     lastGradM[0] = navPuck.progressM
-                    val gp = (navPuck.progressM / routeCum.last()).toFloat().coerceIn(0.001f, 0.998f)
+                    lastGradNs[0] = now
                     val gInt = runCatching { android.graphics.Color.parseColor(routeColorHolder.value) }
                         .getOrDefault(ROUTE_FREEFLOW)
+                    val total = routeCum.last()
+                    val prog = navPuck.progressM.coerceIn(0.0, total)
+                    val cutIdx = indexAtMeters(routeCum, prog)
+                    val (cutPt, _) = pointAtMeters(routePolyline, routeCum, prog)
+                    val pts = ArrayList<Point>(routePolyline.size - cutIdx + 1)
+                    pts.add(Point.fromLngLat(cutPt.lng, cutPt.lat))
+                    for (i in cutIdx until routePolyline.size) {
+                        pts.add(Point.fromLngLat(routePolyline[i].lng, routePolyline[i].lat))
+                    }
+                    style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(
+                        FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts))),
+                    )
+                    // Remap the whole-route traffic-span fractions onto the suffix's 0..1.
+                    val gp = (prog / total).toFloat()
+                    val remapped = if (gp >= 0.999f) emptyList() else routeSpansHolder.value.mapNotNull { (s, e, lvl) ->
+                        val s2 = ((s - gp) / (1f - gp)).coerceIn(0f, 1f)
+                        val e2 = ((e - gp) / (1f - gp)).coerceIn(0f, 1f)
+                        if (e2 <= s2) null else Triple(s2, e2, lvl)
+                    }
+                    style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
+                        PropertyFactory.visibility(Property.VISIBLE),
+                        PropertyFactory.lineGradient(routeGradient(0f, gInt, remapped)),
+                    )
+                    val traversed = android.graphics.Color.parseColor(
+                        if (darkHolder.value) TRAVERSED_DARK else TRAVERSED_LIGHT,
+                    )
                     style.getLayer(ROUTE_LAYER)?.setProperties(
-                        PropertyFactory.lineGradient(routeGradient(gp, gInt, routeSpansHolder.value)),
+                        PropertyFactory.lineGradient(routeGradient(0f, traversed, emptyList())),
                     )
                 }
             } else {
@@ -504,7 +563,9 @@ fun VelaMapView(
                 // latitude (varies with zoom AND latitude on a Mercator map).
                 val reportScale = {
                     map.cameraPosition.target?.let { t ->
-                        scaleChanged.value(map.projection.getMetersPerPixelAtLatitude(t.latitude))
+                        val mpp = map.projection.getMetersPerPixelAtLatitude(t.latitude)
+                        mPerPxHolder[0] = mpp
+                        scaleChanged.value(mpp)
                     }
                     Unit
                 }
@@ -681,6 +742,8 @@ fun VelaMapView(
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastAppliedAmbient = null
+                lastAppliedRouteLine = null
+                lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
@@ -862,6 +925,17 @@ private fun ensureLayers(style: Style) {
             PropertyFactory.visibility(Property.NONE),
         )
         if (firstLabel != null) style.addLayerBelow(routeDash, firstLabel) else style.addLayer(routeDash)
+        // The nav ahead-suffix line (see ROUTE_AHEAD_SRC) — added after ROUTE_LAYER under the same
+        // label anchor, so it draws ON TOP of the full (traversed-grey) line during nav.
+        style.addSource(GeoJsonSource(ROUTE_AHEAD_SRC, GeoJsonOptions().withLineMetrics(true)))
+        val routeAhead = LineLayer(ROUTE_AHEAD_LAYER, ROUTE_AHEAD_SRC).withProperties(
+            PropertyFactory.lineColor("#1F6FEB"),
+            PropertyFactory.lineWidth(6f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.visibility(Property.NONE),
+        )
+        if (firstLabel != null) style.addLayerBelow(routeAhead, firstLabel) else style.addLayer(routeAhead)
     }
     // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
@@ -1346,6 +1420,13 @@ private fun cumLengths(poly: List<LatLng>): DoubleArray {
     return cum
 }
 
+/** First vertex index at or beyond [m] along the line — the ahead-suffix starts here. */
+private fun indexAtMeters(cum: DoubleArray, m: Double): Int {
+    var i = 1
+    while (i < cum.size - 1 && cum[i] < m) i++
+    return i
+}
+
 /** Point + heading at [meters] along the route. */
 private fun pointAtMeters(poly: List<LatLng>, cum: DoubleArray, meters: Double): Pair<LatLng, Float> {
     if (poly.size < 2) return (poly.firstOrNull() ?: LatLng(0.0, 0.0)) to 0f
@@ -1463,14 +1544,34 @@ private fun applyData(
     routeProgress: Float,
     navMode: Boolean,
 ) {
-    val routeFc = if (route.size >= 2) {
-        FeatureCollection.fromFeature(
-            Feature.fromGeometry(LineString.fromLngLats(route.map { Point.fromLngLat(it.lng, it.lat) })),
-        )
-    } else {
-        FeatureCollection.fromFeatures(emptyList<Feature>())
+    // Identity-gate the route geometry upload (same pattern as markers/ambient below): applyData
+    // runs on EVERY recomposition — during nav that's each fix/speedo tick — and re-tessellating
+    // a thousands-of-vertices linestring that hasn't changed burned frame budget exactly while
+    // the 60 fps ticker eased the camera.
+    if (route !== lastAppliedRouteLine) {
+        val routeFc = if (route.size >= 2) {
+            FeatureCollection.fromFeature(
+                Feature.fromGeometry(LineString.fromLngLats(route.map { Point.fromLngLat(it.lng, it.lat) })),
+            )
+        } else {
+            FeatureCollection.fromFeatures(emptyList<Feature>())
+        }
+        style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
+        // Mid-nav ROUTE SWAP (reroute / faster route): seed the ahead layer with the WHOLE new
+        // route immediately — the ticker only repaints it after the puck re-engages and moves a
+        // throttle unit, and until then the new geometry showed entirely traversed-grey with the
+        // OLD route's blue suffix ghosted on top for a second. Progress on a fresh route ≈ 0, so
+        // "everything is ahead" is the correct seed; the ticker takes over from the next engage.
+        if (navMode && !routeDashed && route.size >= 2) {
+            style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(routeFc)
+            val seedInt = runCatching { android.graphics.Color.parseColor(routeColor) }.getOrDefault(ROUTE_FREEFLOW)
+            style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
+                PropertyFactory.visibility(Property.VISIBLE),
+                PropertyFactory.lineGradient(routeGradient(0f, seedInt, trafficSpans)),
+            )
+        }
+        lastAppliedRouteLine = route
     }
-    style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
     // Route line, Google-style: the part already DRIVEN greys out behind the vehicle;
     // the part AHEAD shows live traffic PER SEGMENT — a free-flow base with amber/red
     // bands over the congested stretches (from [trafficSpans]) — or, with no live
@@ -1488,14 +1589,27 @@ private fun applyData(
             PropertyFactory.visibility(Property.VISIBLE),
             PropertyFactory.lineColor(routeInt),
         )
-    } else {
-        // Driving: the solid, traffic-coloured + traversed-grey gradient line.
+    } else if (!navMode) {
+        // Driving, not navigating (preview / route picker): the solid traffic-coloured line,
+        // no driven-grey. The nav ahead-suffix layer is cleared ONCE on the nav→browse
+        // transition so the last drive's remnant doesn't linger under previews.
         style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
         style.getLayer(ROUTE_LAYER)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
             PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
         )
+        if (lastNavRouteMode) {
+            style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+            style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        }
+    } else {
+        // NAV: the frame ticker owns the route rendering — the driven/ahead GEOMETRY split
+        // (ahead suffix on ROUTE_AHEAD_LAYER, traversed grey on ROUTE_LAYER). Writing a
+        // gradient from recomposition here would fight it once per fix.
+        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
     }
+    lastNavRouteMode = navMode && !routeDashed
 
     val altFc = FeatureCollection.fromFeatures(
         alternates.filter { it.second.size >= 2 }.map { (idx, line) ->

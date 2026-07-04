@@ -50,6 +50,18 @@ interface NavStrings {
     /** The "Test voice" sample — a short nav-style phrase to hear the selected voice. */
     fun voiceTest(): String
 
+    /** "Rerouting" — spoken when the driver leaves the route and a new one is being fetched. */
+    fun rerouting(): String = "Rerouting"
+
+    /** The faster-route OFFER ("Faster route available, saving about N minutes"). */
+    fun fasterRouteAvailable(minutes: Int): String = "Faster route available, saving about $minutes minutes"
+
+    /** A reroute landed but couldn't route through the remaining stops. */
+    fun stopsNotIncluded(): String = "Couldn't include your stops in this route. I'll keep trying."
+
+    /** Approach cue for the FINAL destination, framed by [inThen] ("In 400 meters, <this>"). */
+    fun destinationAhead(): String = "Your destination will be ahead"
+
     /** A spoken lane recommendation — EN "Use the right 2 lanes" / "Use the left lane". */
     fun useLanes(side: LaneSide, count: Int): String
 
@@ -253,6 +265,10 @@ object FrNavStrings : NavStrings {
         if (label.isNotBlank()) "Vous êtes arrivé à $label" else "Vous êtes arrivé à votre étape"
 
     override fun fasterRoute(firstInstruction: String): String = "Itinéraire plus rapide. $firstInstruction"
+    override fun rerouting(): String = "Recalcul de l'itinéraire"
+    override fun fasterRouteAvailable(minutes: Int): String = "Itinéraire plus rapide disponible, environ $minutes minutes de gagnées"
+    override fun stopsNotIncluded(): String = "Impossible d'inclure vos étapes dans cet itinéraire. Je continue d'essayer."
+    override fun destinationAhead(): String = "Votre destination sera devant vous"
 
     override fun voiceTest(): String = "Le guidage vocal est activé. Tournez à droite dans 400 mètres."
 
@@ -332,6 +348,10 @@ object DeNavStrings : NavStrings {
         if (label.isNotBlank()) "Sie haben $label erreicht" else "Sie haben Ihren Zwischenstopp erreicht"
 
     override fun fasterRoute(firstInstruction: String): String = "Schnellere Route wird genommen. $firstInstruction"
+    override fun rerouting(): String = "Route wird neu berechnet"
+    override fun fasterRouteAvailable(minutes: Int): String = "Schnellere Route verfügbar, spart etwa $minutes Minuten"
+    override fun stopsNotIncluded(): String = "Ihre Zwischenstopps konnten nicht aufgenommen werden. Ich versuche es weiter."
+    override fun destinationAhead(): String = "Ihr Ziel liegt voraus"
 
     override fun voiceTest(): String = "Die Sprachausgabe ist aktiviert. Biegen Sie in 400 Metern rechts ab."
 
@@ -436,6 +456,10 @@ object EsNavStrings : NavStrings {
         if (label.isNotBlank()) "Ha llegado a $label" else "Ha llegado a su parada"
 
     override fun fasterRoute(firstInstruction: String): String = "Tomando la ruta más rápida. $firstInstruction"
+    override fun rerouting(): String = "Recalculando la ruta"
+    override fun fasterRouteAvailable(minutes: Int): String = "Ruta más rápida disponible, ahorra unos $minutes minutos"
+    override fun stopsNotIncluded(): String = "No se pudieron incluir tus paradas en esta ruta. Seguiré intentándolo."
+    override fun destinationAhead(): String = "Tu destino estará más adelante"
 
     override fun voiceTest(): String = "La guía por voz está activada. Dentro de 400 metros, gire a la derecha."
 
@@ -523,6 +547,10 @@ object ItNavStrings : NavStrings {
         if (label.isNotBlank()) "Sei arrivato a $label" else "Sei arrivato alla tua tappa"
 
     override fun fasterRoute(firstInstruction: String): String = "Percorso più veloce. $firstInstruction"
+    override fun rerouting(): String = "Ricalcolo del percorso"
+    override fun fasterRouteAvailable(minutes: Int): String = "Percorso più veloce disponibile, risparmi circa $minutes minuti"
+    override fun stopsNotIncluded(): String = "Impossibile includere le tue tappe in questo percorso. Continuerò a provare."
+    override fun destinationAhead(): String = "La tua destinazione sarà più avanti"
 
     override fun voiceTest(): String = "La guida vocale è attiva. Tra 400 metri, svolta a destra."
 
@@ -606,6 +634,10 @@ object PtNavStrings : NavStrings {
         if (label.isNotBlank()) "Você chegou a $label" else "Você chegou à sua parada"
 
     override fun fasterRoute(firstInstruction: String): String = "Pegando a rota mais rápida. $firstInstruction"
+    override fun rerouting(): String = "Recalculando a rota"
+    override fun fasterRouteAvailable(minutes: Int): String = "Rota mais rápida disponível, economiza cerca de $minutes minutos"
+    override fun stopsNotIncluded(): String = "Não foi possível incluir suas paradas nesta rota. Vou continuar tentando."
+    override fun destinationAhead(): String = "Seu destino estará adiante"
 
     override fun voiceTest(): String = "A orientação por voz está ativada. Em 400 metros, vire à direita."
 
@@ -710,6 +742,10 @@ object NlNavStrings : NavStrings {
         if (label.isNotBlank()) "U hebt $label bereikt" else "U hebt uw tussenstop bereikt"
 
     override fun fasterRoute(firstInstruction: String): String = "Snellere route gekozen. $firstInstruction"
+    override fun rerouting(): String = "Route wordt opnieuw berekend"
+    override fun fasterRouteAvailable(minutes: Int): String = "Snellere route beschikbaar, bespaart ongeveer $minutes minuten"
+    override fun stopsNotIncluded(): String = "Je tussenstops konden niet in deze route worden opgenomen. Ik blijf het proberen."
+    override fun destinationAhead(): String = "Je bestemming ligt verderop"
 
     override fun voiceTest(): String = "Gesproken navigatie staat aan. Sla over 400 meter rechtsaf."
 
@@ -788,6 +824,10 @@ object RuNavStrings : NavStrings {
         if (label.isNotBlank()) "Вы прибыли в $label" else "Вы прибыли к остановке"
 
     override fun fasterRoute(firstInstruction: String): String = "Перехожу на более быстрый маршрут. $firstInstruction"
+    override fun rerouting(): String = "Перестроение маршрута"
+    override fun fasterRouteAvailable(minutes: Int): String = "Доступен более быстрый маршрут, экономия около $minutes минут"
+    override fun stopsNotIncluded(): String = "Не удалось включить остановки в маршрут. Продолжаю попытки."
+    override fun destinationAhead(): String = "Пункт назначения будет впереди"
 
     override fun voiceTest(): String = "Голосовые подсказки включены. Через 400 метров поверните направо."
 
@@ -946,6 +986,10 @@ object PlNavStrings : NavStrings {
         if (label.isNotBlank()) "Dotarłeś do $label" else "Dotarłeś do przystanku"
 
     override fun fasterRoute(firstInstruction: String): String = "Wybieram szybszą trasę. $firstInstruction"
+    override fun rerouting(): String = "Przeliczanie trasy"
+    override fun fasterRouteAvailable(minutes: Int): String = "Dostępna szybsza trasa, oszczędność około $minutes minut"
+    override fun stopsNotIncluded(): String = "Nie udało się uwzględnić przystanków na tej trasie. Będę próbować dalej."
+    override fun destinationAhead(): String = "Cel podróży będzie przed tobą"
 
     override fun voiceTest(): String = "Nawigacja głosowa jest włączona. Za 400 metrów skręć w prawo."
 
@@ -1067,6 +1111,10 @@ object SvNavStrings : NavStrings {
         if (label.isNotBlank()) "Du är framme vid $label" else "Du är framme vid ditt stopp"
 
     override fun fasterRoute(firstInstruction: String): String = "Byter till en snabbare rutt. $firstInstruction"
+    override fun rerouting(): String = "Räknar om rutten"
+    override fun fasterRouteAvailable(minutes: Int): String = "Snabbare rutt tillgänglig, sparar cirka $minutes minuter"
+    override fun stopsNotIncluded(): String = "Kunde inte ta med dina stopp på denna rutt. Jag fortsätter försöka."
+    override fun destinationAhead(): String = "Din destination ligger framför dig"
 
     override fun voiceTest(): String = "Röstvägledningen är på. Om 400 meter, sväng höger."
 
@@ -1153,6 +1201,10 @@ object UkNavStrings : NavStrings {
         if (label.isNotBlank()) "Ви прибули до $label" else "Ви прибули до зупинки"
 
     override fun fasterRoute(firstInstruction: String): String = "Переходимо на швидший маршрут. $firstInstruction"
+    override fun rerouting(): String = "Перебудова маршруту"
+    override fun fasterRouteAvailable(minutes: Int): String = "Доступний швидший маршрут, економія близько $minutes хвилин"
+    override fun stopsNotIncluded(): String = "Не вдалося включити зупинки в маршрут. Продовжую спроби."
+    override fun destinationAhead(): String = "Пункт призначення буде попереду"
 
     override fun voiceTest(): String = "Голосові підказки увімкнено. Через 400 метрів поверніть праворуч."
 
