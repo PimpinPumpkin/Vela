@@ -133,10 +133,16 @@ object SearchParser {
             actionUrl = field("actionUrl").str()?.takeIf { it.startsWith("http", ignoreCase = true) },
             actionLabel = field("actionLabel").str()?.trim()?.ifBlank { null }?.takeIf { it.length <= 30 },
             phone = field("phone").str(),
-            // Prefer Google's LOCALE-INDEPENDENT numeric status code (survives hl=fr/de/… where the
-            // status WORDS change), falling back to the English text match when the code is absent.
-            openNow = openFromCode(field("statusCodeRich").int() ?: field("statusCodeSimple").int())
-                ?: parseOpenNow(field("openStatus").str()),
+            // Open/closed comes from the STATUS TEXT, matched against the request language's
+            // keyword table (parseOpenNow) — the same string the user sees, so the colour can
+            // never contradict the words. The numeric "status codes" pinned 2026-07-03
+            // ([1,203,1,4,1,0,1]/[1,203,1,8,1,0,1], 6=open/5=closed/13=soon) were DISPROVEN by a
+            // live EN capture 2026-07-04: closed pharmacies carried 6 ("open") and an
+            // Open-24-hours business carried 13/4 ("closed") — they're span/style markers, not
+            // open/closed, and the French pin agreeing was a coincidence. Text is authoritative.
+            openNow = parseOpenNow(
+                field("openStatus").str() ?: field("statusRich").str() ?: field("status118").str(),
+            ),
             statusText = field("status118").str()
                 ?: field("statusRich").str()
                 ?: field("openStatus").str(),
@@ -253,24 +259,62 @@ object SearchParser {
     private fun isPermanentlyClosed(vararg status: String?): Boolean =
         status.any { it != null && it.contains("Permanently", ignoreCase = true) }
 
-    /** Google's numeric open/closed code, captured from a real hl=fr response (2026-07-03) as a
-     *  sibling of the localized status text: **6 = open, 5 = closed, 13 = opening soon**. Locale-
-     *  independent, so it's the primary open/closed signal once the scrape localizes (hl=app-locale).
-     *  Unknown codes → null → the caller falls back to the (English) text match. */
-    private fun openFromCode(code: Int?): Boolean? = when (code) {
-        6 -> true
-        5, 13 -> false
-        else -> null
-    }
+    /** Google's status strings begin with a small, stable set of words per UI language (`hl=`).
+     *  CLOSED indicators per language — matched FIRST, because in several languages the closed
+     *  form is a prefix-cousin of the open one and matching the open word first is exactly the
+     *  bug that painted a closed Starbucks green:
+     *    en "Opens 5 AM" vs "Open" · pt "Fechado" (closed) vs "Fecha às 19:00" (closes → open)
+     *    nl "Opent om 09:00" (opens → closed) vs "Open" · fr "Ouvre à 07:00" (closed) vs "Ouvert". */
+    private val CLOSED_WORDS = mapOf(
+        "en" to listOf("Closed", "Opens", "Opening", "Temporarily", "Permanently"),
+        "fr" to listOf("Fermé", "Ouvre", "Définitivement"),
+        "de" to listOf("Geschlossen", "Öffnet", "Vorübergehend", "Dauerhaft"),
+        "es" to listOf("Cerrado", "Abre"),
+        "it" to listOf("Chiuso", "Apre"),
+        "pt" to listOf("Fechado", "Abre"),
+        "nl" to listOf("Gesloten", "Opent", "Tijdelijk", "Definitief"),
+        "ru" to listOf("Закрыто", "Откроется", "Временно"),
+        "pl" to listOf("Zamknięte", "Otwarcie", "Tymczasowo"),
+        "sv" to listOf("Stängt", "Öppnar", "Tillfälligt"),
+        "uk" to listOf("Зачинено", "Відчиниться", "Тимчасово"),
+    )
 
-    /** Live status text → open/closed. "Closes 6 PM" means open now; "Closed
-     *  · Opens 7 AM" means closed. English-only — the [openFromCode] numeric is the localized path. */
-    private fun parseOpenNow(status: String?): Boolean? = when {
-        status == null -> null
-        status.startsWith("Open") || status.startsWith("Closes") -> true
-        status.startsWith("Closed") || status.startsWith("Temporarily") ||
-            status.startsWith("Permanently") -> false
-        else -> null
+    /** OPEN indicators per language: the "open" word itself plus the closes-later forms
+     *  ("Closes 9 PM" / "Ferme à 19:00" / "Closing soon" — closing LATER means open NOW). */
+    private val OPEN_WORDS = mapOf(
+        "en" to listOf("Open", "Closes", "Closing"),
+        "fr" to listOf("Ouvert", "Ferme"),
+        "de" to listOf("Geöffnet", "Schließt"),
+        "es" to listOf("Abierto", "Cierra"),
+        "it" to listOf("Aperto", "Chiude"),
+        "pt" to listOf("Aberto", "Fecha"),
+        "nl" to listOf("Geopend", "Open", "Sluit"),
+        "ru" to listOf("Открыто", "Закроется", "Закрывается"),
+        "pl" to listOf("Otwarte", "Zamknięcie"),
+        "sv" to listOf("Öppet", "Stänger"),
+        "uk" to listOf("Відчинено", "Зачиняється"),
+    )
+
+    /** Live status text → open/closed, in the language the scrape requested (`hl=` follows
+     *  [java.util.Locale.getDefault], same derivation as `GoogleMapsDataSource.localized()`).
+     *  This is the AUTHORITATIVE open/closed signal: it reads the same words the user sees, so
+     *  the status colour can never contradict the display. (The numeric status-code path was
+     *  removed 2026-07-04 — a live capture proved those ints aren't open/closed codes; see the
+     *  call site.) CLOSED words are matched before OPEN words — order is load-bearing, see
+     *  [CLOSED_WORDS]. Unknown language → the English table; no match → null (callers stay
+     *  conservative — placeStatusColor only ever greens an affirmative signal). */
+    internal fun parseOpenNow(
+        status: String?,
+        lang: String = java.util.Locale.getDefault().language.lowercase(),
+    ): Boolean? {
+        val s = status?.trim()?.ifBlank { null } ?: return null
+        val closed = CLOSED_WORDS[lang] ?: CLOSED_WORDS.getValue("en")
+        val open = OPEN_WORDS[lang] ?: OPEN_WORDS.getValue("en")
+        return when {
+            closed.any { s.startsWith(it) } -> false
+            open.any { s.startsWith(it) } -> true
+            else -> null
+        }
     }
 
     /** Weekly hours — `hours203` first, falling back to `hours118`. Both are a

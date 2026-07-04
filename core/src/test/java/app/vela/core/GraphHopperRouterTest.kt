@@ -25,6 +25,13 @@ class GraphHopperRouterTest {
         assertEquals(ManeuverType.ROUNDABOUT, GraphHopperRouteEngine.ghType(Instruction.USE_ROUNDABOUT, false))
         assertEquals(ManeuverType.ARRIVE, GraphHopperRouteEngine.ghType(Instruction.FINISH, false))
         assertEquals(ManeuverType.UTURN, GraphHopperRouteEngine.ghType(Instruction.U_TURN_UNKNOWN, false))
+        // CONTINUE is voice-silent in NavEngine — nothing carrying a real driver action may map
+        // to it. The old else-branch funnelled u-turns (±8) into CONTINUE, and a u-turn keeps its
+        // road name, so the engine's silence would have swallowed it entirely.
+        assertEquals(ManeuverType.UTURN, GraphHopperRouteEngine.ghType(Instruction.U_TURN_LEFT, false))
+        assertEquals(ManeuverType.UTURN, GraphHopperRouteEngine.ghType(Instruction.U_TURN_RIGHT, false))
+        assertEquals(ManeuverType.EXIT_ROUNDABOUT, GraphHopperRouteEngine.ghType(Instruction.LEAVE_ROUNDABOUT, false))
+        assertEquals(ManeuverType.UNKNOWN, GraphHopperRouteEngine.ghType(Instruction.FERRY, false)) // spoken, never silenced
     }
 
     @Test fun phrasesReadNaturally() {

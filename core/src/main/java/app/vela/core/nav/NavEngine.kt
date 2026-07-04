@@ -47,18 +47,42 @@ object NavEngine {
             val (wM, wD) = projectAlong(route.polyline, cum, loc, state.traveledM - 60.0, state.traveledM + 600.0)
             if (wD <= ON_ROUTE_M && state.traveledM <= total) maxOf(state.traveledM, wM)
             else {
-                val (gM, gD) = projectAlong(route.polyline, cum, loc, 0.0, total)
+                // Re-acquire globally, but prefer the candidate NEAREST our last progress: a plain
+                // nearest-perpendicular global search on a route that reuses the same asphalt
+                // (out-and-back, divided highway, cloverleaf return leg) matches the OTHER pass
+                // about half the time — teleporting `traveled` miles ahead, which the monotonic
+                // ratchet then locks in for the rest of the drive. The along-distance penalty makes
+                // any same-perpendicular tie resolve to the near pass; a genuine far re-entry still
+                // wins because nothing near the anchor matches at all.
+                val (gM, gD) = projectNearAnchor(route.polyline, cum, loc, state.traveledM)
                 if (gD <= ON_ROUTE_M) gM else state.traveledM.coerceIn(0.0, total)
             }
+        }
+
+        // Along-route position of each maneuver: prefix-summed step lengths refine a WINDOWED
+        // projection. The old GLOBAL projection had the same wrong-pass failure as re-acquire
+        // above — on an out-and-back route a return-leg turn projected onto the outbound pass of
+        // the same asphalt (strict-min keeps the FIRST match), so its distance read as if the turn
+        // were where you passed it OUTBOUND: "turn in 1 mile" for a turn 12 miles away. The step
+        // lengths tell us roughly where along the route each maneuver truly sits; project only
+        // within ±800 m of that estimate, falling back to the global match if geometry and step
+        // sums have drifted apart (never worse than the old behaviour).
+        val prefix = DoubleArray(maneuvers.size)
+        for (i in 1 until maneuvers.size) prefix[i] = prefix[i - 1] + maneuvers[i - 1].distanceMeters
+        fun maneuverAlong(k: Int): Double {
+            val est = prefix[k]
+            val (wm, wd) = projectAlong(route.polyline, cum, maneuvers[k].location, est - 800.0, est + 800.0)
+            if (wd <= ON_ROUTE_M) return wm
+            return projectAlong(route.polyline, cum, maneuvers[k].location, 0.0, total).first
         }
 
         // Distance to the CURRENT maneuver measured ALONG the route, not crow-flies. Crow-flies
         // fired the prompt + advanced the step whenever the maneuver was geographically near,
         // even if miles ahead along the road — a highway curving back near an exit announced
         // "take the exit" miles early, then skipped the real one. The maneuver sits ON the line,
-        // so project it onto the whole route and subtract how far we've travelled.
+        // so project it (window-anchored, above) and subtract how far we've travelled.
         val dtn = if (route.polyline.size < 2) loc.distanceTo(target.location)
-            else (projectAlong(route.polyline, cum, target.location, 0.0, total).first - traveled).coerceAtLeast(0.0)
+            else (maneuverAlong(idx) - traveled).coerceAtLeast(0.0)
 
         var stepIndex = idx
         var spoken = state.spoken
@@ -69,18 +93,20 @@ object NavEngine {
         // off with "a similar direction". Skip it entirely and advance silently to the first real turn,
         // which announces itself as you approach it (Google does the same).
         val isDepart = target.type == ManeuverType.DEPART
-        // "Continue onto the road you're ALREADY on" is redundant to SAY — you don't do anything at it —
-        // and Google stays silent on these (OSRM emits a step at every road-name change / slight bend). So
-        // suppress the VOICE for a CONTINUE whose road is unchanged from the current step; a real road-NAME
-        // change ("new name") still gets announced. The step stays on the map + in the step list either way.
-        val prevRoad = if (idx > 0) maneuvers[idx - 1].road else null
-        val redundantContinue = target.type == ManeuverType.CONTINUE && (target.road == null || target.road == prevRoad)
+        // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken at the FAR
+        // prompt only, Google-style as a PREFACE ("…use the right 2 lanes to take exit 172 toward
+        // Sacramento"), so the lanes come BEFORE the maneuver, not tacked on after it.
+        val lane = app.vela.core.model.laneGuidance(target.lanes)
+        // ManeuverType.CONTINUE is minted ONLY for "same physical road, keep driving straight" —
+        // OSRM continue/new-name+straight (RouteGeometry.osrmType) and GraphHopper
+        // CONTINUE_ON_STREET (ghType) — so it can never carry a turn, fork, ramp, merge or u-turn.
+        // Saying it is pure noise ("Continue onto X" when you do nothing, even when the NAME
+        // changes under you — Google stays silent there too), so drop the voice + haptics; the
+        // step stays on the map + step list. One escape hatch: if OSRM attached a valid-lane
+        // subset, the driver must POSITION ("use the left 2 lanes to stay on…") — speak those.
+        val redundantContinue = target.type == ManeuverType.CONTINUE && lane == null
         val voiceSilent = isDepart || redundantContinue
         if (target.type != ManeuverType.ARRIVE && !voiceSilent) {
-            // Lane guidance from OSRM's per-lane data (same info as the banner arrows) — spoken at the FAR
-            // prompt only, Google-style as a PREFACE ("…use the right 2 lanes to take exit 172 toward
-            // Sacramento"), so the lanes come BEFORE the maneuver, not tacked on after it.
-            val lane = app.vela.core.model.laneGuidance(target.lanes)
             for (p in PROMPT_DISTANCES) {
                 if (dtn <= p && p !in spoken) {
                     spoken = spoken + p
@@ -119,11 +145,13 @@ object NavEngine {
         val speed = avgSpeed(route)
         val newTarget = maneuvers[stepIndex]
         // Distance to the next turn measured ALONG the road, not crow-flies (which on a long
-        // curved step reads wildly wrong) — the maneuver's projection ahead of our progress.
+        // curved step reads wildly wrong) — the maneuver's window-anchored projection (see
+        // maneuverAlong above; the old forward-window-from-traveled projection could still
+        // match a LATER pass of the same asphalt and read a far turn as near) minus progress.
         val distToNext = when {
             newTarget.type == ManeuverType.ARRIVE -> remaining
             route.polyline.size < 2 -> loc.distanceTo(newTarget.location)
-            else -> (projectAlong(route.polyline, cum, newTarget.location, traveled, total).first - traveled).coerceAtLeast(0.0)
+            else -> (maneuverAlong(stepIndex) - traveled).coerceAtLeast(0.0)
         }
         val newState = state.copy(
             stepIndex = stepIndex,
@@ -216,6 +244,43 @@ object NavEngine {
             if (d < bestD) {
                 bestD = d
                 bestAlong = cum[i] + t * (cum[i + 1] - cum[i])
+            }
+        }
+        return bestAlong to bestD
+    }
+
+    /** Global projection of [p] onto [path], scored by perpendicular distance PLUS a small
+     *  penalty (2 cm per metre) of along-route distance from [anchorM] — so where the route
+     *  reuses the same asphalt (out-and-back, divided highway) and several passes tie on
+     *  perpendicular distance, the pass NEAREST the anchor wins. A far leg must be >20 m
+     *  perpendicular-closer per km of along-distance to beat a near match — impossible inside
+     *  the ON_ROUTE acceptance band, so re-acquire can no longer teleport progress onto the
+     *  return leg. Returns (metres-along-route, ACTUAL perpendicular metres of the winner). */
+    internal fun projectNearAnchor(path: List<LatLng>, cum: DoubleArray, p: LatLng, anchorM: Double): Pair<Double, Double> {
+        val total = cum.lastOrNull() ?: 0.0
+        var bestScore = Double.MAX_VALUE
+        var bestD = Double.MAX_VALUE
+        var bestAlong = anchorM.coerceIn(0.0, total)
+        val mPerDegLat = 111_320.0
+        val mPerDegLng = 111_320.0 * cos(Math.toRadians(p.lat))
+        for (i in 0 until path.size - 1) {
+            val a = path[i]
+            val b = path[i + 1]
+            val ax = (a.lng - p.lng) * mPerDegLng
+            val ay = (a.lat - p.lat) * mPerDegLat
+            val bx = (b.lng - p.lng) * mPerDegLng
+            val by = (b.lat - p.lat) * mPerDegLat
+            val dx = bx - ax
+            val dy = by - ay
+            val len2 = dx * dx + dy * dy
+            val t = if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+            val d = hypot(ax + t * dx, ay + t * dy)
+            val along = cum[i] + t * (cum[i + 1] - cum[i])
+            val score = d + 0.02 * kotlin.math.abs(along - anchorM)
+            if (score < bestScore) {
+                bestScore = score
+                bestD = d
+                bestAlong = along
             }
         }
         return bestAlong to bestD
