@@ -96,6 +96,17 @@ class SpeedKalmanTest {
         assertEquals(0.0, k.speed, 1e-9)
     }
 
+    @Test fun decaySettlesTheSpeedDuringAMeasurementOutage() {
+        val k = SpeedKalman()
+        k.update(10.0)
+        k.decay(4.0) // one time-constant with no fixes → ~10·e⁻¹; never held forever
+        assertEquals(10.0 * Math.exp(-1.0), k.speed, 1e-6)
+        // Unseeded decay is inert (no fix has ever arrived).
+        val fresh = SpeedKalman()
+        fresh.decay(10.0)
+        assertEquals(0.0, fresh.speed, 1e-9)
+    }
+
     @Test fun resetForgetsEverything() {
         val k = SpeedKalman()
         k.update(15.0)

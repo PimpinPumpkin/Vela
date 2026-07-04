@@ -21,7 +21,16 @@ class OsrmRouterTest {
         assertEquals(ManeuverType.ARRIVE, RouteGeometry.osrmType("arrive", null))
         assertEquals(ManeuverType.TURN_RIGHT, RouteGeometry.osrmType("turn", "right"))
         assertEquals(ManeuverType.SLIGHT_LEFT, RouteGeometry.osrmType("turn", "slight left"))
-        assertEquals(ManeuverType.STRAIGHT, RouteGeometry.osrmType("new name", "straight"))
+        // Same-physical-road straight-ons (name change or not) are CONTINUE — voice-silent in
+        // NavEngine ("it keeps saying continue on the road I'm already on"). Pins for the whole
+        // safety boundary of that silence:
+        assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", "straight"))
+        assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("continue", "straight"))
+        assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("continue", null))
+        assertEquals(ManeuverType.TURN_LEFT, RouteGeometry.osrmType("continue", "left"))     // 90° bend keeping the name — SPOKEN
+        assertEquals(ManeuverType.SLIGHT_RIGHT, RouteGeometry.osrmType("new name", "slight right")) // bear right at a rename — SPOKEN
+        assertEquals(ManeuverType.STRAIGHT, RouteGeometry.osrmType("turn", "straight"))      // junction where straight is a CHOICE — SPOKEN
+        assertEquals(ManeuverType.FORK_RIGHT, RouteGeometry.osrmType("fork", "straight"))    // a fork is never silenced
         assertEquals(ManeuverType.ROUNDABOUT, RouteGeometry.osrmType("roundabout", "right"))
         assertEquals(ManeuverType.RAMP_RIGHT, RouteGeometry.osrmType("on ramp", "slight right"))
         assertEquals(ManeuverType.MERGE, RouteGeometry.osrmType("merge", "left"))

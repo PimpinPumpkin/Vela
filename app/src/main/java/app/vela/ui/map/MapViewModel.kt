@@ -64,7 +64,11 @@ data class MapUiState(
     val recenterTick: Int = 0, // bumped per recenter tap so the map force-moves even if "centered"
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
-    val mySpeed: Float? = null, // metres/second, from GPS
+    val mySpeed: Float? = null, // metres/second, from GPS (spike-filtered, held briefly on speedless fixes)
+    val mySpeedRaw: Float? = null, // THIS fix's own measured speed (doppler or derived) — null when the
+                                   // fix carried none. The puck's Kalman measures ONLY from this: feeding
+                                   // it the held mySpeed re-injected a stale braking speed at high gain
+                                   // every fix, which is what kept the puck "moving" at a red light.
     val compassHeading: Float? = null, // device facing (rotation-vector sensor) — browse cone when stopped
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
     val query: String = "",
@@ -327,6 +331,7 @@ class MapViewModel @Inject constructor(
                 }
             }
             var lastFixTime = 0L
+            var lastSpeedEvidenceMs = 0L
             val posOutlierStreak = intArrayOf(0)
             locationProvider.updates().collect { loc ->
                 val rawHere = LatLng(loc.latitude, loc.longitude)
@@ -357,18 +362,36 @@ class MapViewModel @Inject constructor(
                     prev != null && movedM > 3.0 && dt >= 0.3 -> bearingBetween(prev, here)
                     else -> _state.value.myBearing
                 }
+                // Speed EVIDENCE = this fix measured it (doppler) or real movement derived it.
+                // A speedless fix (NETWORK/BeaconDB) used to hold the previous speed FOREVER —
+                // each one re-froze a stale nonzero mph through a whole stop. Hold for at most
+                // SPEED_HOLD_MS; past that, no evidence of motion = not moving, show 0.
+                val hasEvidence = loc.hasSpeed() || (prev != null && movedM > 1.0 && dt in 0.3..10.0)
+                val nowMs = android.os.SystemClock.elapsedRealtime()
+                if (hasEvidence) lastSpeedEvidenceMs = nowMs
                 val rawSpeed = when {
                     loc.hasSpeed() -> loc.speed
                     prev != null && movedM > 1.0 && dt in 0.3..10.0 -> (movedM / dt).toFloat().coerceIn(0f, 70f)
+                    nowMs - lastSpeedEvidenceMs > SPEED_HOLD_MS -> 0f
                     else -> _state.value.mySpeed
                 }
                 // Reject a single-fix speed SPIKE (a GPS glitch — "going 35, hops to 157"): no
-                // car gains >15 m/s (~33 mph) between fixes, so keep the prior speed on a jump.
+                // car gains >15 m/s (~33 mph) between CONSECUTIVE fixes. That premise only holds
+                // for a short inter-fix gap — after a ≥3 s outage the zeroer above may have set
+                // mySpeed=0, and rejecting the first real 29 m/s doppler against 0+15 would pin
+                // the readout at 0 for the rest of the drive (every subsequent fix re-fails the
+                // same check). Gap > 3 s → trust the fresh doppler outright.
                 val lastSp = _state.value.mySpeed
-                val speed = if (rawSpeed != null && lastSp != null && rawSpeed > lastSp + 15f) lastSp else rawSpeed
+                val speed = if (rawSpeed != null && lastSp != null && dt in 0.0..3.0 && rawSpeed > lastSp + 15f) lastSp else rawSpeed
                 lastFixTime = loc.time
                 _state.update {
-                    it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, showPsdsTip = false, center = it.center ?: here, myLocationStale = false)
+                    it.copy(
+                        myLocation = here, myBearing = bearing, mySpeed = speed,
+                        // The fix's OWN measurement (post spike-filter), null when it had none —
+                        // the puck Kalman's measurement stream (never the held value above).
+                        mySpeedRaw = if (hasEvidence) speed else null,
+                        showPsdsTip = false, center = it.center ?: here, myLocationStale = false,
+                    )
                 }
                 restartStaleTimer()
                 // Save the fix to the active trip (no-op unless one is recording).
@@ -397,7 +420,13 @@ class MapViewModel @Inject constructor(
     private fun restartStaleTimer() {
         staleTimerJob?.cancel()
         staleTimerJob = viewModelScope.launch {
-            delay(STALE_LOCATION_MS)
+            // With a 0 m distance filter, "no fixes at all for a few seconds" means the GPS went
+            // quiet (engine throttled / signal lost while parked) — not that we're moving. Zero
+            // the speedometer instead of freezing it at the last (braking) speed; the puck's
+            // dead-reckoning already stops at 2 s, so this keeps the readout consistent with it.
+            delay(SPEED_ZERO_MS)
+            _state.update { if ((it.mySpeed ?: 0f) != 0f) it.copy(mySpeed = 0f, mySpeedRaw = null) else it }
+            delay(STALE_LOCATION_MS - SPEED_ZERO_MS)
             _state.update { it.copy(myLocationStale = true) }
         }
     }
@@ -1349,7 +1378,16 @@ class MapViewModel @Inject constructor(
                     val rawSp = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
                     val lastSp = _state.value.mySpeed
                     val speed = if (rawSp != null && lastSp != null && rawSp > lastSp + 15f) lastSp else rawSp
-                    _state.update { it.copy(myLocation = here, myBearing = bearing, mySpeed = speed, center = here, myLocationStale = false) }
+                    _state.update {
+                        it.copy(
+                            myLocation = here, myBearing = bearing, mySpeed = speed,
+                            // Replay fixes carry the recorded doppler — feed the puck Kalman the
+                            // same way live does, or the replay puck never seeds (no gliding,
+                            // no speed-scaled zoom/gates: replays looked worse than real drives).
+                            mySpeedRaw = if (loc.hasSpeed()) speed else null,
+                            center = here, myLocationStale = false,
+                        )
+                    }
                     navSession.onLocation(here, app.vela.ui.Units.imperial.value)
                 }
             } finally {
@@ -1854,6 +1892,8 @@ class MapViewModel @Inject constructor(
     private companion object {
         const val KEY_DISMISSED = "dismissed"
         const val STALE_LOCATION_MS = 12_000L // grey the dot after this long with no fix
+        const val SPEED_HOLD_MS = 3_000L // hold a speedless-fix speed at most this long, then show 0
+        const val SPEED_ZERO_MS = 3_000L // no fixes AT ALL for this long → the car isn't moving, zero the mph
         // Max ambient POIs handed to the map layer. Bounds symbol-collision cost per frame so old
         // phones (Pixel 5a) stay smooth while dragging; the collider only paints ~a few dozen anyway.
         const val AMBIENT_ONSCREEN_CAP = 140
