@@ -82,8 +82,13 @@ genuinely needs no doc edit, say why in the commit.
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale, **no-op when following
   the system** so the default path is untouched) applied in **both** `MainActivity.attachBaseContext` (Compose
   UI) and `VelaApp.attachBaseContext` (ViewModel/notification `getString`); changing the language calls
-  `recreate()`. (3) **Google POI content** — hl/gl on the scrape (NOT done yet — gated on decoupling the
-  open/closed + day-name detection from English text). **Dual-purpose literals stay inline on purpose** —
+  `recreate()`. (3) **Google POI content** — the scrape's `hl=en` is rewritten to the app/system language
+  at request time (`GoogleMapsDataSource.localized()`, no-op for English) so categories/hours/status/price
+  come back localized. The **open/closed BOOLEAN is read from Google's locale-independent numeric status
+  CODE** (`SearchParser.openFromCode`: 6=open, 5=closed, 13=soon — paths `statusCodeRich [1,203,1,4,1,0,1]`
+  / `statusCodeSimple [1,203,1,8,1,0,1]`), NOT the localized text, with the English text match as fallback;
+  `placeStatusColor(status, openNow)` colours from that boolean. `gl` (region) still `us` — GPS-region `gl`
+  is a follow-up. **Dual-purpose literals stay inline on purpose** —
   strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
   search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
   they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA — never
