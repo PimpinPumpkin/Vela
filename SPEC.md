@@ -433,6 +433,16 @@ handed — no filesystem, network, or device access.
   browse/download/switch **multiple** Piper voices (`PiperCatalog` in `:core`; one per `filesDir/piper/<id>/`;
   selection in `voice_model`, per-voice speaker in `voice_speaker_<id>`; race-free `PiperSynth.reloadVoice`).
   Model downloads use a no-`callTimeout` OkHttp client (the shared 12 s cap would abort a ~67–115 MB body).
+- **Large downloads (voice models, routing graphs, building overlays) MUST use a derived `callTimeout(0)`
+  OkHttp client, never the shared one.** The shared client caps a *scrape* at 12 s; a big body read blows
+  through that and the call aborts mid-stream — `runCatching` swallows it and the asset silently never
+  installs. `KokoroInstaller`, `RoutingGraphStore` and `OverlayTileStore` each derive
+  `http.newBuilder().callTimeout(0).readTimeout(60s)` for the body; manifest fetches stay on the short client.
+- **Open building-footprint overlay** (Microsoft US Building Footprints, ODbL): per-region `.pmtiles` built
+  off-device by CI (tippecanoe, layer `building`, z14–z16), downloaded by `OverlayTileStore` into
+  `filesDir/overlays/<id>.pmtiles`, rendered by `VelaMapView` as a `pmtiles://file://…` `VectorSource` +
+  `FillLayer` **beneath** the OSM `building` layer (themed identically), filling only the gaps OSM never mapped.
+  Pulled alongside the area's tiles+routing on the same smallest-covering-box rule. Data, not code (GPLv3-orthogonal).
 - No GMS: no FCM/Firebase/Play Integrity/Fused. Push (if ever) = UnifiedPush; crash
   reporting = ACRA/self-hosted.
 - EU consent: pre-seed `SOCS`/`CONSENT` cookies; never let `Set-Cookie` downgrade

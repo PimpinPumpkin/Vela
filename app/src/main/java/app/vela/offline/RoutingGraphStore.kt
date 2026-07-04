@@ -42,6 +42,15 @@ class RoutingGraphStore @Inject constructor(
     private val graphsRoot = File(context.filesDir, "graphs")
     private val indexFile = File(graphsRoot, "index.json")
 
+    // Region graphs (tens–hundreds of MB) can outrun the shared client's 12s callTimeout (a scrape bound,
+    // not a download bound) on a slow link or a big region — the call aborts, runCatching eats it, the
+    // graph silently never installs. Derive an unbounded-call client for the body download (same fix as
+    // KokoroInstaller / OverlayTileStore). The manifest fetch stays on the short-timeout shared client.
+    private val downloadHttp: OkHttpClient = http.newBuilder()
+        .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     /** Region ids with a complete graph on disk. */
     fun installedIds(): Set<String> =
         readIndex().keys.filter { File(File(graphsRoot, it), "properties").exists() }.toSet()
@@ -70,7 +79,7 @@ class RoutingGraphStore @Inject constructor(
         val tmp = File(graphsRoot, "${region.id}.tmp")
         runCatching {
             tmp.deleteRecursively(); tmp.mkdirs()
-            http.newCall(Request.Builder().url(region.url).build()).execute().use { resp ->
+            downloadHttp.newCall(Request.Builder().url(region.url).build()).execute().use { resp ->
                 if (!resp.isSuccessful) error("HTTP ${resp.code}")
                 val total = resp.body!!.contentLength()
                 var lastPct = -1

@@ -31,6 +31,15 @@ class OverlayTileStore @Inject constructor(
     private val overlaysRoot = File(context.filesDir, "overlays")
     private val indexFile = File(overlaysRoot, "index.json")
 
+    // A ~200 MB PMTiles download blows past the shared client's 12s callTimeout (that bound exists to
+    // cap a hung *scrape*, not a large file) — the call aborts mid-stream, runCatching swallows it, and
+    // the overlay silently never installs. Derive an unbounded-call client for the body download, same
+    // fix KokoroInstaller uses for voice models. Manifest fetches stay on the short-timeout shared client.
+    private val downloadHttp: OkHttpClient = http.newBuilder()
+        .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
     /** id → the `.pmtiles` file, for the regions actually present on disk. */
     fun installed(): Map<String, File> =
         readIndex().keys.mapNotNull { id -> fileFor(id).takeIf { it.exists() }?.let { id to it } }.toMap()
@@ -66,7 +75,7 @@ class OverlayTileStore @Inject constructor(
         val file = fileFor(region.id)
         val tmp = File(overlaysRoot, "${region.id}.pmtiles.tmp")
         runCatching {
-            http.newCall(Request.Builder().url(region.url).build()).execute().use { resp ->
+            downloadHttp.newCall(Request.Builder().url(region.url).build()).execute().use { resp ->
                 if (!resp.isSuccessful) error("HTTP ${resp.code}")
                 val total = resp.body!!.contentLength()
                 var lastPct = -1
