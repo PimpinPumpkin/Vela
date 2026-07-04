@@ -345,18 +345,22 @@ class VoiceGuide @Inject constructor(
 
     private fun requestFocus() {
         val am = audioManager ?: return
-        // ONE request object reused for the burst (see acquire/releaseFocus) — building a fresh
-        // request per utterance is what leaked the previous one. GAIN_TRANSIENT (not …_MAY_DUCK):
-        // the driver asked for the music to drop out UNDER the voice, not just dip a little — so we
-        // take full transient focus (media pauses for the prompt) and hand it back after, instead of
-        // the OS's shallow fixed-attenuation duck. The short release-hold above keeps this from
-        // flapping the music on/off between closely-spaced prompts.
+        // ONE request object reused for the burst (see acquire/releaseFocus) — building a fresh request
+        // per utterance is what leaked the previous one. GAIN_TRANSIENT_MAY_DUCK, NOT plain GAIN_TRANSIENT:
+        // MAY_DUCK is OS-managed — the system ducks the driver's music AND auto-restores it when we abandon,
+        // bulletproof. Plain TRANSIENT PAUSES the media, and many players don't reliably auto-resume when
+        // focus is handed back ("Vela paused the music and didn't restart it"). The real cause of the
+        // earlier "not ducking enough" was the FLAPPING (focus dropped between every prompt → music popped
+        // back to full mid-turn), which the release-hold above fixes — so the duck is now continuous, which
+        // is what actually reads as "ducked", without the pause-and-never-resume risk. (Duck DEPTH is set by
+        // the OS/player and isn't tunable via the focus API; pause is the only thing deeper, and its resume
+        // is unreliable — so continuous MAY_DUCK is the safe answer.)
         val req = focusRequest ?: run {
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
-            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
                 .setAudioAttributes(attrs)
                 .setOnAudioFocusChangeListener(focusListener, focusHandler)
                 .build()
