@@ -1,0 +1,9 @@
+{
+  "_comment": "Open building-footprint overlay catalog — Microsoft US Building Footprints (ODbL), per US state, built to PMTiles by scripts/build-overlay-region.sh and hosted on the `building-overlays` GitHub release. The app renders them BENEATH the OSM building layer to fill gaps (suburbs the Microsoft->OSM import never reached). bbox = [S,W,N,E]. url = the legacy minedbuildings host (the old usbuildingdata blob was locked down 2025). Start with the West coast (the maintainer's region); the rest of the 50 states get added like the routing catalog did, incrementally, when someone needs them.",
+  "regions": [
+    { "id": "washington", "name": "Washington (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Washington.geojson.zip", "bbox": [45.54, -124.85, 49.00, -116.92] },
+    { "id": "oregon", "name": "Oregon (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Oregon.geojson.zip", "bbox": [41.99, -124.70, 46.29, -116.46] },
+    { "id": "california", "name": "California (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/California.geojson.zip", "bbox": [32.53, -124.48, 42.01, -114.13] },
+    { "id": "idaho", "name": "Idaho (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Idaho.geojson.zip", "bbox": [41.99, -117.24, 49.00, -111.04] }
+  ]
+}
