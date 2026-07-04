@@ -153,7 +153,11 @@ class PiperSynth @Inject constructor(
                 var sampleRate = 22050
                 val chunks = ArrayList<FloatArray>(frags.size * 2)
                 for ((frag, gapAfter) in frags) {
-                    if (myGen != generation) { onDone(); return@execute }
+                    // Abort paths return WITHOUT calling onDone — the finally below fires it
+                    // exactly once per speak(). The old explicit onDone()+return double-fired
+                    // (then finally again), which double-decremented VoiceGuide's audio-focus
+                    // refcount and un-ducked music over the interrupting prompt.
+                    if (myGen != generation) return@execute
                     val a = engine.generate(text = frag, sid = sid, speed = spd)
                     sampleRate = a.sampleRate
                     if (a.samples.isNotEmpty()) chunks.add(a.samples)
@@ -161,7 +165,7 @@ class PiperSynth @Inject constructor(
                 }
                 val samples = concat(chunks)
                 val genMs = android.os.SystemClock.elapsedRealtime() - t0
-                if (myGen != generation) { onDone(); return@execute }
+                if (myGen != generation) return@execute
                 if (samples.isNotEmpty()) {
                     val at = ensureTrack(sampleRate)
                     at.pause(); at.flush(); at.play()

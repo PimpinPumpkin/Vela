@@ -260,6 +260,7 @@
     <string name="root_voice_download">Transferir voz Vela</string>
     <string name="root_voice_use_system">Usar voz do sistema</string>
     <string name="nav_maneuver_continue">Continuar</string>
+    <string name="nav_gps_lost">Procurando sinal de GPS…</string>
     <string name="nav_compound_then">depois</string>
     <string name="nav_preview_tap_resume">Pré-visualização — toque para retomar</string>
     <string name="nav_rerouting">a recalcular…</string>
