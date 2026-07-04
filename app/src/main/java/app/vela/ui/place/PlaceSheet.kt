@@ -531,7 +531,7 @@ fun PlaceSheet(
                 // in the normal ink colour: "**Open** · Closes 9 PM".
                 val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
                 val annotated = buildAnnotatedString {
-                    withStyle(SpanStyle(color = placeStatusColor(status), fontWeight = FontWeight.Bold)) {
+                    withStyle(SpanStyle(color = placeStatusColor(status, place.openNow), fontWeight = FontWeight.Bold)) {
                         append(parts[0])
                     }
                     if (parts.size > 1) {
