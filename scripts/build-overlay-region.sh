@@ -26,11 +26,13 @@ unzip -q "$WORK/b.zip" -d "$WORK/geo"
 GEOJSON="$(find "$WORK/geo" -iname '*.geojson' | head -1)"
 [ -n "$GEOJSON" ] || { echo "!! no .geojson found in $URL" >&2; exit 1; }
 
-# Footprints render from neighbourhood zoom (z12) to street level (z16 — overzoomed above). Buildings are
-# dense, so drop the densest to keep tiles small; no size cap so a packed downtown tile isn't truncated.
+# Footprints render z14→z16 only (overzoomed above), matching the app's OSM `building` layer (minzoom 14)
+# — starting at z14 (not z12) drops the giant statewide low-zoom tiles that made WA balloon to 271 MB.
+# --drop-densest-as-needed + the default 500 KB tile cap keep a packed downtown tile from bloating; the
+# gap-fill overlay doesn't need every last footprint in a dense core (OSM already has those).
 echo "→ tiling with tippecanoe"
 tippecanoe -o "$WORK/$ID.pmtiles" -l building -n "Vela building overlay: $NAME" \
-  -Z12 -z16 --drop-densest-as-needed --extend-zooms-if-still-dropping --no-tile-size-limit \
+  -Z14 -z16 --drop-densest-as-needed --extend-zooms-if-still-dropping \
   --attribution "Buildings © Microsoft (ODbL)" --force "$GEOJSON"
 
 SIZE=$(( ( $(stat -f%z "$WORK/$ID.pmtiles" 2>/dev/null || stat -c%s "$WORK/$ID.pmtiles") + 1048575 ) / 1048576 ))
