@@ -84,6 +84,18 @@ genuinely needs no doc edit, say why in the commit.
   reactive `mutableStateOf` (same shape as `ui/Units`), persisted to
   `vela_settings`, `init()`-ed in `VelaApp`; flipping it recomposes the theme and
   reloads the map style (`VelaMapView`'s styleKey carries `dark=`).
+- **Basemap layer gotchas (`VelaMapView.ensureLayers`/`applyLight`/`applyDark`, OpenFreeMap Liberty).**
+  (1) **`maxzoom` is EXCLUSIVE** — the bundled `building` FILL layer is `minzoom 13 / maxzoom 14`, so
+  `setMinZoom(14f)` alone collapses its range to empty and the flat footprints never paint (you'd see only
+  the faint `building-3d` extrusion). The fill needs a matching **`setMaxZoom(24f)`** to re-open the top;
+  keep it. `building-3d` (fill-extrusion) is gated to **z16+** on purpose (the flat fill carries the
+  browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
+  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, `minZoom 16`) —
+  OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
+  coverage is OSM `addr:housenumber` (partial), not a render bug. (3) **The bundled `liberty-roboto.json`
+  pins a DATED tile path** (`.../planet/<snapshot>_pt/{z}/{x}/{y}.pbf`); OpenFreeMap eventually purges old
+  snapshots, and when it does the **whole basemap goes blank** — refresh the pinned URL (or point at the
+  undated `planet` TileJSON) periodically. Verify basemap edits on-device in **both** themes.
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
