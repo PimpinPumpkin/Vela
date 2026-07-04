@@ -104,7 +104,7 @@ object EnNavStrings : NavStrings {
             "on ramp", "ramp" -> "Take the ramp$toward"
             "off ramp" -> if (exitNo != null) "Take exit$exitTab$toward" else "Take the exit$toward"
             "fork" -> ("Keep $m").trim() + toward
-            "roundabout", "rotary" -> if (rbExit != null) "At the roundabout, take exit $rbExit$onto" else "Enter the roundabout$onto"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "At the roundabout, take exit $rbExit$onto" else "Enter the roundabout$onto"
             "roundabout turn" -> ("At the roundabout, turn $m").trim() + onto
             "uturn" -> "Make a U-turn$onto"
             else -> if (m.isNotBlank()) ("Turn $m").trim() + onto else "Continue$onto"
@@ -232,7 +232,7 @@ object FrNavStrings : NavStrings {
             "on ramp", "ramp" -> "Prenez la bretelle$vers"
             "off ramp" -> if (exitNo != null) "Prenez la sortie $exitNo$vers" else "Prenez la sortie$vers"
             "fork" -> ("Restez $m").trim() + vers
-            "roundabout", "rotary" -> if (rbExit != null) "Au rond-point, prenez la ${rbExit}e sortie$sur" else "Engagez-vous sur le rond-point$sur"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Au rond-point, prenez la ${rbExit}e sortie$sur" else "Engagez-vous sur le rond-point$sur"
             "roundabout turn" -> ("Au rond-point, tournez $m").trim() + sur
             "uturn" -> "Faites demi-tour$sur"
             else -> if (m.isNotBlank()) ("Tournez $m").trim() + sur else "Continuez$sur"
@@ -314,7 +314,7 @@ object DeNavStrings : NavStrings {
             "on ramp", "ramp" -> "Nehmen Sie die Auffahrt$richtung"
             "off ramp" -> if (exitNo != null) "Nehmen Sie die Ausfahrt $exitNo$richtung" else "Nehmen Sie die Ausfahrt$richtung"
             "fork" -> ("Halten Sie sich $m").trim() + richtung
-            "roundabout", "rotary" -> if (rbExit != null) "Nehmen Sie im Kreisverkehr die ${deOrd(rbExit)} Ausfahrt$auf" else "Fahren Sie in den Kreisverkehr ein$auf"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Nehmen Sie im Kreisverkehr die ${deOrd(rbExit)} Ausfahrt$auf" else "Fahren Sie in den Kreisverkehr ein$auf"
             "roundabout turn" -> if (m.isNotBlank()) "Biegen Sie im Kreisverkehr $m ab$auf" else "Fahren Sie im Kreisverkehr$auf"
             "uturn" -> "Bitte wenden$auf"
             else -> if (m.isNotBlank()) "Biegen Sie $m ab$auf" else "Fahren Sie geradeaus weiter$auf"
@@ -423,7 +423,7 @@ object EsNavStrings : NavStrings {
             "on ramp", "ramp" -> "Tome el acceso$hacia"
             "off ramp" -> if (exitNo != null) "Tome la salida $exitNo$hacia" else "Tome la salida$hacia"
             "fork" -> ("Manténgase $m").trim() + hacia
-            "roundabout", "rotary" -> if (rbExit != null) "En la rotonda, tome la $rbExit.ª salida$por" else "Incorpórese a la rotonda$por"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "En la rotonda, tome la $rbExit.ª salida$por" else "Incorpórese a la rotonda$por"
             "roundabout turn" -> ("En la rotonda, gire $m").trim() + por
             "uturn" -> "Haga un cambio de sentido$por"
             else -> if (m.isNotBlank()) ("Gire $m").trim() + por else "Continúe$por"
@@ -514,7 +514,7 @@ object ItNavStrings : NavStrings {
             "on ramp", "ramp" -> "Prendi la rampa$verso"
             "off ramp" -> if (exitNo != null) "Prendi l'uscita $exitNo$verso" else "Prendi l'uscita$verso"
             "fork" -> if (side.isNotBlank()) "Tieni la $side$verso" else "Prosegui$verso"
-            "roundabout", "rotary" -> if (rbExit != null) "Alla rotatoria, prendi la ${rbExit}ª uscita$su" else "Immettiti nella rotatoria$su"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Alla rotatoria, prendi la ${rbExit}ª uscita$su" else "Immettiti nella rotatoria$su"
             "roundabout turn" -> ("Alla rotatoria, svolta $m").trim() + su
             "uturn" -> "Fai inversione a U$su"
             else -> if (m.isNotBlank()) ("Svolta $m").trim() + su else "Prosegui$su"
@@ -601,7 +601,7 @@ object PtNavStrings : NavStrings {
             "on ramp", "ramp" -> "Pegue o acesso$sentido"
             "off ramp" -> if (exitNo != null) "Pegue a saída $exitNo$sentido" else "Pegue a saída$sentido"
             "fork" -> ("Mantenha-se $m").trim() + sentido
-            "roundabout", "rotary" -> if (rbExit != null) "Na rotatória, pegue a ${rbExit}ª saída$na" else "Entre na rotatória$na"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Na rotatória, pegue a ${rbExit}ª saída$na" else "Entre na rotatória$na"
             "roundabout turn" -> ("Na rotatória, vire $m").trim() + na
             "uturn" -> "Faça o retorno$na"
             else -> if (m.isNotBlank()) ("Vire $m").trim() + na else "Continue$na"
@@ -700,7 +700,7 @@ object NlNavStrings : NavStrings {
                 "links", "rechts" -> "Houd $m aan$richting"
                 else -> "Houd links aan$richting"
             }
-            "roundabout", "rotary" -> if (rbExit != null) "Neem op de rotonde de ${rbExit}e afslag$op" else "Ga de rotonde op$op"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Neem op de rotonde de ${rbExit}e afslag$op" else "Ga de rotonde op$op"
             "roundabout turn" -> when (m) {
                 "links" -> "Sla op de rotonde linksaf$deOp"
                 "rechts" -> "Sla op de rotonde rechtsaf$deOp"
@@ -791,7 +791,7 @@ object RuNavStrings : NavStrings {
             "on ramp", "ramp" -> "Выезжайте на автомагистраль$vStoronu"
             "off ramp" -> if (exitNo != null) "Съезжайте на съезде $exitNo$vStoronu" else "Уходите на съезд$vStoronu"
             "fork" -> ("Держитесь $m").trim() + vStoronu
-            "roundabout", "rotary" -> if (rbExit != null) "На кольце — ${rbOrdinal(rbExit)} съезд$na" else "Выезжайте на круговое движение$na"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "На кольце — ${rbOrdinal(rbExit)} съезд$na" else "Выезжайте на круговое движение$na"
             "roundabout turn" -> ("На кольце поверните $m").trim() + na
             "uturn" -> "Выполните разворот$na"
             else -> if (m.isNotBlank()) ("Поверните $m").trim() + na else "Продолжайте движение$na"
@@ -953,7 +953,7 @@ object PlNavStrings : NavStrings {
             "on ramp", "ramp" -> "Wjedź na łącznicę$ku"
             "off ramp" -> if (exitNo != null) "Zjedź zjazdem $exitNo$ku" else "Zjedź zjazdem$ku"
             "fork" -> ("Trzymaj się $m").trim() + ku
-            "roundabout", "rotary" -> if (rbExit != null) "Na rondzie zjedź ${rbExit}. zjazdem$w" else "Wjedź na rondo$w"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Na rondzie zjedź ${rbExit}. zjazdem$w" else "Wjedź na rondo$w"
             "roundabout turn" -> ("Na rondzie skręć $m").trim() + w
             "uturn" -> "Zawróć$w"
             else -> if (m.isNotBlank()) ("Skręć $m").trim() + w else "Jedź dalej$w"
@@ -1076,7 +1076,7 @@ object SvNavStrings : NavStrings {
             "on ramp", "ramp" -> "Ta påfarten$till"
             "off ramp" -> if (exitNo != null) "Ta avfart $exitNo$mot" else "Ta avfarten$mot"
             "fork" -> ("Håll $m").trim() + mot
-            "roundabout", "rotary" -> if (rbExit != null) "Ta ${svOrd(rbExit)} avfarten i rondellen$pa" else "Kör in i rondellen$pa"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Ta ${svOrd(rbExit)} avfarten i rondellen$pa" else "Kör in i rondellen$pa"
             "roundabout turn" -> ("Sväng $m i rondellen").trim() + pa
             "uturn" -> "Gör en U-sväng$pa"
             else -> if (m.isNotBlank()) ("Sväng $m").trim() + pa else "Fortsätt$pa"
@@ -1168,7 +1168,7 @@ object UkNavStrings : NavStrings {
             "on ramp", "ramp" -> "Виїжджайте на з'їзд$vers"
             "off ramp" -> if (exitNo != null) "З'їжджайте на з'їзд $exitNo$vers" else "З'їжджайте зі з'їзду$vers"
             "fork" -> if (keep.isNotBlank()) "Тримайтеся $keep$vers" else "Продовжуйте рух$vers"
-            "roundabout", "rotary" -> if (rbExit != null) "На кільцевій розв'язці зверніть на ${rbExit}-й з'їзд$na" else "В'їжджайте на кільцеву розв'язку$na"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "На кільцевій розв'язці зверніть на ${rbExit}-й з'їзд$na" else "В'їжджайте на кільцеву розв'язку$na"
             "roundabout turn" -> ("На кільцевій розв'язці поверніть $m").trim() + na
             "uturn" -> "Розверніться$na"
             else -> if (m.isNotBlank()) ("Поверніть $m").trim() + na else "Продовжуйте рух$na"
