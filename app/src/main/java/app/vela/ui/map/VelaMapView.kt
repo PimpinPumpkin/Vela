@@ -121,6 +121,7 @@ fun VelaMapView(
     myLocation: LatLng?,
     myBearing: Float?,
     mySpeed: Float? = null,
+    mySpeedRaw: Float? = null, // THIS fix's own measurement (null = fix had none) — Kalman feed
     compassHeading: Float? = null, // device facing (sensor); points the browse cone when stopped
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
@@ -289,6 +290,10 @@ fun VelaMapView(
                 val tEnd = sinceFix.coerceIn(0.0, 2.0)
                 val tStart = (sinceFix - dtRaw).coerceIn(0.0, 2.0)
                 if (tEnd > tStart) navPuck.reckonedM += navPuck.kalman.speed * (tEnd - tStart)
+                // Past the dead-reckon window with no accepted fix = a measurement outage: decay
+                // the modelled speed toward 0 (there's no evidence we're still moving) so the
+                // zoom/look-ahead don't ride a stale speed forever. A resumed fix re-measures.
+                if (sinceFix > 2.0) navPuck.kalman.decay(dtRaw.coerceAtMost(0.5))
                 val predicted = navPuck.targetM + navPuck.reckonedM
                 val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dt / 0.25f))
                 navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
@@ -539,9 +544,24 @@ fun VelaMapView(
             if (navPuck.engaged) {
                 // Bounded forward look-ahead, scaled with speed so a multi-second GPS gap still
                 // catches up; a small back-tolerance absorbs standstill jitter. Strictly ahead,
-                // so a self-approaching route can't pull us onto the other pass.
-                val ahead = (navPuck.speed * 8.0).coerceIn(150.0, 600.0)
-                snapToRouteWindowed(myLocation, myBearing, routePolyline, routeCum, navPuck.targetM - 25.0, navPuck.targetM + ahead)
+                // so a self-approaching route can't pull us onto the other pass. The perpendicular
+                // tolerance also scales with speed (22 m parked → ~35 m at highway speed): OSRM
+                // geometry can sit half a road-width off the driven lane on wide/divided roads,
+                // and at 70 mph a run of misses froze the puck mid-drive for 6-8 s ("glitching
+                // out"). The heading gate is SKIPPED when stopped — myBearing holds its pre-stop
+                // value through a light, and a stale bearing vetoing valid snaps right after a
+                // turn was another way the puck wedged.
+                // Size the look-ahead from the speed AT the last accepted fix, not the live
+                // (decaying) model — during a 5-8 s outage the decay would otherwise SHRINK the
+                // window exactly when the resume fix needs it big, costing a disengage cycle.
+                val aheadSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
+                val ahead = (aheadSpeed * 8.0).coerceIn(150.0, 600.0)
+                snapToRouteWindowed(
+                    myLocation,
+                    if (navPuck.kalman.speed < 1.0) null else myBearing,
+                    routePolyline, routeCum, navPuck.targetM - 25.0, navPuck.targetM + ahead,
+                    maxM = 22.0 + aheadSpeed.coerceIn(0.0, 13.0),
+                )
             } else {
                 // Not yet engaged (nav start, or the ticker just re-keyed on a reroute): one
                 // global acquisition to find where we are on this route, then forward-only.
@@ -565,32 +585,78 @@ fun VelaMapView(
             navPuck.lastFixLoc = myLocation
             val m = snap.third
             val now = android.os.SystemClock.elapsedRealtime()
+            var accepted = false
             if (!navPuck.engaged) {
                 navPuck.progressM = m; navPuck.targetM = m; navPuck.engaged = true
+                navPuck.fwdRejects = 0
+                accepted = true
             } else {
                 // Monotonic forward only: ease in a plausible advance (speed × elapsed × 2.5 +
                 // 60 m absorbs a real GPS gap), reject anything else and let dead reckoning hold.
                 val dtFix = ((now - navPuck.targetAtMs) / 1000.0).coerceIn(0.0, 10.0)
                 val maxStep = navPuck.speed.coerceAtLeast(1.0) * dtFix * 2.5 + 60.0
-                if (m - navPuck.targetM in 0.0..maxStep) navPuck.targetM = m
+                val fwd = m - navPuck.targetM
+                when {
+                    // Parked-jitter gate: at ~zero modelled speed a small forward hop is GPS
+                    // noise, not travel — don't ratchet targetM. The old code accepted EVERY
+                    // forward wobble at a red light, so the puck crept ahead, and on pull-away
+                    // the real position sat BEHIND the crept target → every fix rejected as
+                    // backward → the puck froze until the car re-drove the phantom metres
+                    // ("progression halts as if I'm not moving"). Thresholds sized for the
+                    // slowest real traveller: a stroll is ~0.9-1.4 m/s (must flow fix-by-fix),
+                    // parked doppler noise reads < ~0.4; queue-creep below even that still gets
+                    // in once it accumulates past the 8 m noise floor.
+                    fwd in 0.0..maxStep && (navPuck.kalman.speed > 0.5 || fwd > 8.0) -> {
+                        navPuck.targetM = m
+                        accepted = true
+                    }
+                    // An over-cap forward jump that PERSISTS is the new reality (a long fix gap
+                    // at speed) — accept on the 2nd consecutive one instead of deadlocking:
+                    // maxStep is computed from the (near-zero, post-stop) modelled speed, so a
+                    // genuine catch-up could exceed it every time while snaps kept succeeding,
+                    // freezing targetM for 10+ s mid-drive.
+                    fwd > maxStep -> {
+                        navPuck.fwdRejects += 1
+                        if (navPuck.fwdRejects >= 2) {
+                            navPuck.targetM = m
+                            accepted = true
+                        }
+                    }
+                    // Backward / parked-gated: hold — dead reckoning + monotonic draw cover it.
+                    // ALSO break the over-cap streak: fwdRejects means CONSECUTIVE over-cap
+                    // fixes; without this reset, two isolated multipath spikes minutes apart at
+                    // a red light (hundreds of gated jitter fixes in between) would count as
+                    // "persistent" and drive the puck ~100 m through the light.
+                    else -> navPuck.fwdRejects = 0
+                }
+                if (accepted) navPuck.fwdRejects = 0
             }
             navPuck.missCount = 0
-            navPuck.targetAtMs = now // anchor for dead reckoning
-            navPuck.reckonedM = 0.0  // fresh fix re-anchors — the integral starts over from it
-            // GPS speed is the Kalman MEASUREMENT; the accelerometer steers it between fixes
-            // (predict step in the frame ticker). navPuck.speed mirrors the filtered value.
-            navPuck.kalman.update((mySpeed ?: 0f).toDouble())
+            if (accepted) {
+                navPuck.targetAtMs = now // anchor for dead reckoning
+                navPuck.reckonedM = 0.0  // a fresh ACCEPTED fix re-anchors — the integral restarts
+                // (a REJECTED fix must NOT re-open the 2 s blind window: at a standstill that
+                // re-armed the creep every second; the old anchor stays until a fix is accepted)
+            }
+            // The fix's OWN (spike-filtered) measurement is the Kalman MEASUREMENT; the
+            // accelerometer steers between fixes (predict step in the frame ticker). Feeding the
+            // held state speed here — the old code — re-injected the stale braking speed at
+            // near-unity gain through every stop: the stuck-mph/creeping-puck bug. A doppler-less
+            // fix simply doesn't measure (predict + decay carry the model).
+            mySpeedRaw?.let { navPuck.kalman.update(it.toDouble()) }
             navPuck.speed = navPuck.kalman.speed
+            if (accepted) navPuck.speedAtAccept = navPuck.speed
         } else if (navMode && newFix && navPuck.engaged) {
             navPuck.lastFixLoc = myLocation
             // Nothing ahead on the route within tolerance: a GPS spike, or we've drifted off it.
             // HOLD — stay engaged so the ticker keeps dead-reckoning forward along the route —
             // rather than the old global re-snap that teleported the camera onto a random leg.
             // Leave targetM / targetAtMs untouched so the dead-reckoning clock keeps running from
-            // the last good fix. Only a sustained run of misses disengages, to re-acquire;
-            // NavEngine's off-route detection drives the actual reroute in the meantime.
+            // the last good fix. A short run of misses disengages to re-acquire (3, not the old 6
+            // — at 1 Hz that's still 3 s of frozen puck, and NavEngine's off-route detection
+            // (45 m × 4 hits) drives the actual reroute in the meantime).
             navPuck.missCount += 1
-            if (navPuck.missCount >= 6) navPuck.engaged = false
+            if (navPuck.missCount >= 3) navPuck.engaged = false
             navPuck.raw = myLocation
             navPuck.rawBearing = myBearing
         } else if (!navMode || !navPuck.engaged) {
@@ -1265,6 +1331,12 @@ private class NavPuck {
     var rawBearing: Float? = null
     var missCount = 0             // consecutive forward-look-ahead misses (GPS spike / off-route);
                                   // HOLD + dead-reckon through a few, then disengage to re-acquire
+    var fwdRejects = 0            // consecutive over-maxStep forward steps — a persistent one is
+                                  // the new reality (long fix gap at speed), accept it rather than
+                                  // deadlock targetM against a stale plausibility cap
+    var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
+                                  // look-ahead through an outage (the live model decays to ~0
+                                  // exactly when the resume fix needs the window big)
 }
 
 /** Cumulative along-route distance (m) at each polyline vertex (cum[0] = 0). */
