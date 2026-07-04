@@ -178,9 +178,13 @@ genuinely needs no doc edit, say why in the commit.
   generation counter (aborting any in-flight utterance) then tears down + rebuilds on the same serial
   worker, so `tts` is never freed mid-`generate()`. `MapViewModel.migrateFlatLayoutIfNeeded` (first thing
   in `init`) relocates the old flat single-voice install in place (rename, copy-fallback, verify-gated,
-  re-runnable) — never re-downloads. **Model downloads MUST NOT use the shared OkHttp client** — its
-  `callTimeout(12s)` (scrape-bounding) aborts any ~67–115 MB voice download; `KokoroInstaller` derives a
-  `downloadHttp` with `callTimeout(0)`. Settings → Voice → **Voice library** is the browser; the
+  re-runnable) — never re-downloads. **Any large download (voice model, routing graph, building overlay)
+  MUST NOT use the shared OkHttp client** — its `callTimeout(12s)` (scrape-bounding) aborts the body read
+  mid-stream, `runCatching` eats it, and the asset SILENTLY never installs (this is exactly what hid the
+  197 MB overlay for a whole debug cycle — no crash, no log, just no footprints). `KokoroInstaller`,
+  `RoutingGraphStore` and `OverlayTileStore` each derive a `downloadHttp` with `callTimeout(0)` +
+  `readTimeout(60s)` for the body; only the tiny manifest fetch stays on the shared short-timeout client.
+  Settings → Voice → **Voice library** is the browser; the
   multi-speaker variant picker (Advanced) only shows when the SELECTED catalog voice has >1 speaker.
   **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
   `calibration.json`, **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`),
@@ -407,6 +411,25 @@ genuinely needs no doc edit, say why in the commit.
   manifest test: serve a manifest+graph, `adb reverse tcp:8099 tcp:8099`, build with
   `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json` (localhost cleartext allowed by
   `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
+- **Open building-footprint overlay (`app/offline/OverlayTileStore` + `VelaMapView`, DONE 2026-07-04,
+  device-verified in the test suburb).** Fills the map's building gaps where OSM is thin (a suburb the
+  Microsoft→OSM import never reached) with **Microsoft US Building Footprints (ODbL)**. Off-device, CI bakes
+  ONE `.pmtiles` per US state (`scripts/build-overlay-region.sh` → tippecanoe `-l building -Z14 -z16
+  --drop-densest-as-needed`; `-Z14` not `-Z12` — starting at z12 ballooned WA to 271 MB, z14 → 197 MB) →
+  `building-overlays` GitHub release + `building-overlay-manifest.json`, matrix workflow
+  `.github/workflows/building-overlays.yml` (clone of the routing one, `MANIFEST_MODE=emit` +
+  `scripts/merge-overlay-manifest.sh`), catalog `tools/overlay-regions.json`. In-app: `OverlayTileStore` is a
+  single-file sibling of `RoutingGraphStore` (`filesDir/overlays/<id>.pmtiles` + `index.json`; PMTiles-magic
+  guard); `MapViewModel.downloadOverlayForArea` rides the SAME smallest-covering-box rule as routing and is
+  pulled alongside the area's tiles (silent + best-effort). Render: `VelaMapView`'s `LaunchedEffect(buildingOverlays,
+  styleRef, darkTheme)` adds a **`pmtiles://file://<abs-path>`** `VectorSource` (MapLibre 11.7+ reads pmtiles://;
+  `file://`+abs-path → `pmtiles://file:///data/…` = correct) + a `FillLayer` `setSourceLayer("building")`
+  **`addLayerBelow` the OSM `building` layer**, themed to the exact OSM building fill/outline (`#323f54`/`#3f4e66`
+  dark, `#dde1e7`/`#c4c9d1` light) so overlay footprints are indistinguishable from real OSM ones and OSM still
+  wins wherever it has data. **The load-bearing bug was NOT the render** — it was the download (see the
+  `callTimeout(0)` rule above): the 197 MB body aborted at the shared client's 12 s cap, silently. `OVERLAY_MANIFEST_URL`
+  BuildConfig overridable `-PoverlayManifestUrl=` like routing. BREAKING-ish: an overlay is DATA (ODbL), orthogonal
+  to the app's GPLv3, obligation met by tippecanoe `--attribution` + the release publishing derived tiles under ODbL.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
