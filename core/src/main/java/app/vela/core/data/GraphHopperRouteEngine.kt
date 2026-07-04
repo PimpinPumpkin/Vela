@@ -196,8 +196,15 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             sign == Instruction.KEEP_LEFT -> ManeuverType.KEEP_LEFT
             sign == Instruction.KEEP_RIGHT -> ManeuverType.KEEP_RIGHT
             sign == Instruction.USE_ROUNDABOUT -> ManeuverType.ROUNDABOUT
-            sign <= Instruction.U_TURN_UNKNOWN -> ManeuverType.UTURN // -98 and the -99/-100 u-turns
-            else -> ManeuverType.CONTINUE // CONTINUE_ON_STREET (0) + anything unmapped
+            sign == Instruction.LEAVE_ROUNDABOUT -> ManeuverType.EXIT_ROUNDABOUT
+            // ManeuverType.CONTINUE is VOICE-SILENT in NavEngine ("keep driving straight, nothing
+            // to do"), so only the true straight-on sign may map to it. The old else-branch
+            // funnelled U_TURN_LEFT(-8)/U_TURN_RIGHT(8)/FERRY(9)/PT signs into CONTINUE — a
+            // u-turn keeps its road name, so the engine's silence would have swallowed it whole.
+            sign == Instruction.U_TURN_LEFT || sign == Instruction.U_TURN_RIGHT ||
+                sign <= Instruction.U_TURN_UNKNOWN -> ManeuverType.UTURN
+            sign == Instruction.CONTINUE_ON_STREET -> ManeuverType.CONTINUE
+            else -> ManeuverType.UNKNOWN // FERRY / PT / anything new: spoken, never silenced
         }
 
         /** Synthesize the human instruction (GraphHopper ships none unless given a Translation). */
@@ -208,6 +215,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
                 ManeuverType.ARRIVE -> "Arrive at your destination"
                 ManeuverType.CONTINUE, ManeuverType.STRAIGHT -> if (road != null) "Continue onto $road" else "Continue"
                 ManeuverType.ROUNDABOUT -> if (road != null) "At the roundabout, take the exit onto $road" else "Enter the roundabout"
+                ManeuverType.EXIT_ROUNDABOUT -> if (road != null) "Exit the roundabout onto $road" else "Exit the roundabout"
                 ManeuverType.KEEP_LEFT -> "Keep left$onto"
                 ManeuverType.KEEP_RIGHT -> "Keep right$onto"
                 ManeuverType.UTURN -> "Make a U-turn$onto"

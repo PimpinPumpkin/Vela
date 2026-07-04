@@ -47,7 +47,11 @@ object NavReplay {
         val worstCardErrorM: Double,     // worst |card distance − real distance| while it was the target
         val nearestApproachM: Double,    // closest the track actually came to the turn (along-route)
     ) {
-        private val isTurn: Boolean get() = type != ManeuverType.ARRIVE && type != ManeuverType.DEPART
+        // CONTINUE is voice-silent BY DESIGN (same-road straight-on, see NavEngine's
+        // redundantContinue) — exempt it like DEPART or every intentional silence on a real
+        // trip log would be reported as "‼ SILENT (never announced)" noise.
+        private val isTurn: Boolean get() =
+            type != ManeuverType.ARRIVE && type != ManeuverType.DEPART && type != ManeuverType.CONTINUE
 
         /** Heuristics for "this maneuver's guidance and the blue line disagree" — the things that
          *  made the real-world drive wrong. Tuned to flag the field bugs without crying wolf on a

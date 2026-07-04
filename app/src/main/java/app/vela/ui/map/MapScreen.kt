@@ -259,6 +259,7 @@ fun MapScreen(
             myLocation = state.myLocation,
             myBearing = state.myBearing,
             mySpeed = state.mySpeed,
+            mySpeedRaw = state.mySpeedRaw,
             compassHeading = state.compassHeading,
             locationStale = state.myLocationStale,
             cameraTarget = state.center,

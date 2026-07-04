@@ -180,10 +180,22 @@ object RouteGeometry {
         }
         // A multi-waypoint (via) route splits into legs, inserting a spurious "arrive"+"depart" at
         // each via. Drop those so it reads as one continuous trip — keep only the first DEPART and
-        // the final ARRIVE.
+        // the final ARRIVE — but FOLD each dropped step's distance into the last kept maneuver:
+        // step distances must keep TILING the polyline. NavEngine locates each maneuver by a
+        // prefix-sum of step lengths (its wrong-pass protection), and a via-boundary DEPART
+        // carries the real via→next-turn travel — on a traffic-snapped route (~12 vias) silently
+        // dropping those shifted every later estimate kilometres short.
         val last = raw.lastIndex
-        val maneuvers = raw.filterIndexed { i, m ->
-            !(m.type == ManeuverType.DEPART && i != 0) && !(m.type == ManeuverType.ARRIVE && i != last)
+        val maneuvers = mutableListOf<Maneuver>()
+        raw.forEachIndexed { i, m ->
+            val spuriousVia = (m.type == ManeuverType.DEPART && i != 0) ||
+                (m.type == ManeuverType.ARRIVE && i != last)
+            if (!spuriousVia) {
+                maneuvers += m
+            } else if (maneuvers.isNotEmpty() && m.distanceMeters > 0.0) {
+                val prev = maneuvers.removeAt(maneuvers.lastIndex)
+                maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
+            }
         }
         if (maneuvers.size < 2) return null
         return Route(
@@ -250,7 +262,14 @@ object RouteGeometry {
             "depart" -> ManeuverType.DEPART
             "arrive" -> ManeuverType.ARRIVE
             "merge" -> ManeuverType.MERGE
-            "new name", "continue" -> byMod()
+            // "continue"/"new name" going STRAIGHT = the same physical road (possibly renamed —
+            // surface-street name changes and highway ref changes alike), no driver action →
+            // CONTINUE, which NavEngine keeps on the banner but does NOT speak (Google is silent
+            // there too). Any real bend keeps byMod(): OSRM's "continue left" is a 90° bend that
+            // keeps the name — that's a TURN_LEFT and must still be spoken. NB "turn"+"straight"
+            // below stays STRAIGHT (spoken): OSRM emits type "turn" only where an instruction is
+            // warranted (going straight is an active choice at that junction).
+            "new name", "continue" -> if (mod == null || mod == "straight") ManeuverType.CONTINUE else byMod()
             "on ramp", "off ramp", "ramp" -> if (mod?.contains("left") == true) ManeuverType.RAMP_LEFT else ManeuverType.RAMP_RIGHT
             "fork" -> if (mod?.contains("left") == true) ManeuverType.FORK_LEFT else ManeuverType.FORK_RIGHT
             "roundabout", "rotary", "roundabout turn" -> ManeuverType.ROUNDABOUT
