@@ -937,7 +937,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                             status,
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Medium,
-                            color = placeStatusColor(status),
+                            color = placeStatusColor(status, place.openNow),
                             modifier = Modifier.padding(top = 3.dp),
                         )
                     }
