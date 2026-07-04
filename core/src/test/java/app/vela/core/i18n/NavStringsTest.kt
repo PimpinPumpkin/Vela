@@ -85,6 +85,16 @@ class NavStringsTest {
         assertEquals(1, left1.count)
         assertEquals("Use the left lane", EnNavStrings.useLanes(left1.side, left1.count))
         assertEquals("Empruntez la voie de gauche", FrNavStrings.useLanes(left1.side, left1.count))
+        // Lane guidance PREFACES the maneuver (Google-style), not appended after it.
+        assertEquals(
+            "Use the right 2 lanes to take exit 172 toward Sacramento",
+            EnNavStrings.useLanesToDo(g.side, g.count, "Take exit 172 toward Sacramento"),
+        )
+        // Other languages fall back to a safe two-sentence, lanes-first form.
+        assertEquals(
+            "Empruntez les 2 voies de droite. Prenez la sortie 172",
+            FrNavStrings.useLanesToDo(g.side, g.count, "Prenez la sortie 172"),
+        )
         // nothing useful: all valid, non-contiguous, or too few lanes → null
         assertEquals(null, laneGuidance(listOf(Lane(listOf("s"), true), Lane(listOf("s"), true))))
         assertEquals(null, laneGuidance(listOf(Lane(listOf("l"), true), Lane(listOf("s"), false), Lane(listOf("r"), true))))
