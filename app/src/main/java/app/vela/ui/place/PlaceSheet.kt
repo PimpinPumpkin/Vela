@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
@@ -1393,27 +1394,39 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                     )
                 }
             }
-            Text(
-                stringResource(R.string.place_gallery_counter, pager.currentPage + 1, urls.size),
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.White,
-                modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(12.dp),
-            )
-            // Per-photo caption, rendered as-is: the POI gallery passes "Photo · May 2026", the
-            // review gallery passes "Thais Miller · 6 months ago".
-            dates.getOrNull(pager.currentPage)?.let { caption ->
+            // Controls (counter, close, caption) live in an overlay pinned to the SAFE AREA. A Dialog on
+            // Android 15+/Pixel 9 measured the black Box TALLER than the display, so a BottomCenter caption
+            // fell off-screen (the top counter, anchored at the top, was fine — that's why only the caption
+            // vanished). safeContentPadding re-anchors the overlay to the visible content area, so the
+            // caption sits just above the gesture bar on every device.
+            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
                 Text(
-                    caption,
+                    stringResource(R.string.place_gallery_counter, pager.currentPage + 1, urls.size),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White.copy(alpha = 0.85f),
-                    modifier = Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(16.dp),
+                    color = Color.White,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(12.dp),
                 )
-            }
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(4.dp),
-            ) {
-                Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = Color.White)
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = Color.White)
+                }
+                // Per-photo caption: the POI gallery passes "Photo · May 2026", the review gallery
+                // "Ele Campbell · a year ago".
+                dates.getOrNull(pager.currentPage)?.let { caption ->
+                    // Scrim pill behind the caption so white text stays readable over a BRIGHT photo
+                    // (a light-bottomed drink photo made the plain white caption invisible — the actual
+                    // "author/date doesn't show" report; the text was there, just white-on-white).
+                    Text(
+                        caption,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White,
+                        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
+                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                            .padding(horizontal = 14.dp, vertical = 7.dp),
+                    )
+                }
             }
         }
     }
