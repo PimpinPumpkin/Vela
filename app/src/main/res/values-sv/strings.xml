@@ -305,6 +305,7 @@
     <string name="mapvm_no_transit_routes">Inga kollektivrutter hittades</string>
     <string name="mapvm_trip_default_name">Resa</string>
     <string name="mapvm_no_voice_engine">Ingen röstmotor installerad – lägg till en i Inställningar → Röst för talade vägbeskrivningar</string>
+    <string name="mapvm_voice_lang_missing">Talade vägbeskrivningar kräver en %1$s-röst — lägg till en i Inställningar → Röst</string>
     <string name="mapvm_no_track_to_replay">Den resan har inget spår att spela upp</string>
     <string name="mapvm_replaying">Spelar upp %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Vela sparade platser (%1$d)</string>
