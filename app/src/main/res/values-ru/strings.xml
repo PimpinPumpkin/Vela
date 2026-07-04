@@ -260,6 +260,7 @@
     <string name="root_voice_download">Загрузить голос Vela</string>
     <string name="root_voice_use_system">Использовать системный голос</string>
     <string name="nav_maneuver_continue">Продолжайте движение</string>
+    <string name="nav_gps_lost">Поиск сигнала GPS…</string>
     <string name="nav_compound_then">затем</string>
     <string name="nav_preview_tap_resume">Предпросмотр — нажмите, чтобы продолжить</string>
     <string name="nav_rerouting">перестроение маршрута…</string>

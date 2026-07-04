@@ -100,10 +100,15 @@ object RouteGeometry {
         val total = (0 until polyline.size - 1)
             .sumOf { polyline[it].distanceTo(polyline[it + 1]) }
             .coerceAtLeast(1.0)
+        // Place each maneuver at the START of its step (cum BEFORE adding the step's distance) —
+        // a maneuver's distanceMeters is the travel AFTER it, the convention placeManeuvers/OSRM
+        // use everywhere else. Adding first put every turn one full step LATE along the line
+        // (10+ km on a highway step). The final ARRIVE pins to the end of the line.
         var cum = 0.0
-        val placed = route.maneuvers.map { m ->
+        val placed = route.maneuvers.mapIndexed { i, m ->
+            val frac = if (i == route.maneuvers.lastIndex) 1.0 else (cum / total).coerceIn(0.0, 1.0)
             cum += m.distanceMeters
-            m.copy(location = pointAlong(polyline, (cum / total).coerceIn(0.0, 1.0)))
+            m.copy(location = pointAlong(polyline, frac))
         }
         val legs = route.legs.mapIndexed { i, leg -> if (i == 0) leg.copy(maneuvers = placed) else leg }
         return route.copy(polyline = polyline, legs = legs)

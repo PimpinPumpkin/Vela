@@ -11,8 +11,14 @@ data class NavState(
     val offRoute: Boolean = false,
     val offRouteHits: Int = 0,
     val arrived: Boolean = false,
-    val spoken: Set<Int> = emptySet(), // prompt thresholds already spoken this step
+    val spoken: Set<Int> = emptySet(), // prompt band SLOTS (0=far, 1=near) already spoken this step —
+                                       // slots, not metres: the thresholds scale with live speed
     val traveledM: Double = 0.0,       // monotonic metres travelled along the route (forward-progress anchor)
+    val reacquireHits: Int = 0,        // consecutive far global re-acquire candidates — a big along-jump
+                                       // must persist before it's adopted (single outliers can't teleport)
+    val rerouteBlocked: Boolean = false, // an off-route excursion latched INSIDE the destination zone —
+                                         // the deferred reroute fires if it leaves the zone (edge-only
+                                         // suppression was a permanent silent limbo)
 )
 
 /** Side-effects the engine asks the UI layer to perform. */
