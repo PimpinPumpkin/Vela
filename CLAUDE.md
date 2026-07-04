@@ -92,10 +92,13 @@ genuinely needs no doc edit, say why in the commit.
   browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
   numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, `minZoom 16`) —
   OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
-  coverage is OSM `addr:housenumber` (partial), not a render bug. (3) **The bundled `liberty-roboto.json`
-  pins a DATED tile path** (`.../planet/<snapshot>_pt/{z}/{x}/{y}.pbf`); OpenFreeMap eventually purges old
-  snapshots, and when it does the **whole basemap goes blank** — refresh the pinned URL (or point at the
-  undated `planet` TileJSON) periodically. Verify basemap edits on-device in **both** themes.
+  coverage is OSM `addr:housenumber` (partial), not a render bug. (3) The runtime loads the style from the **LIVE** URL `MapStyle.LIBERTY.uri =
+  https://tiles.openfreemap.org/styles/liberty` (`fromUri`), and offline downloads use the same URL — both
+  **auto-follow OpenFreeMap's current tile snapshot**, so there is NO dated-path/blank-basemap risk. The
+  bundled `liberty-roboto.json` asset (which DOES pin a dated `planet/<snapshot>` path) is **parked +
+  unused** — the `asset://`/`fromJson` path in `VelaMapView` is dead code kept only as reference (a bundled
+  copy blanked the vector tiles on-device; see the project memory). Don't be misled by the stale path in
+  that asset. Verify basemap edits on-device in **both** themes.
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
@@ -360,6 +363,16 @@ genuinely needs no doc edit, say why in the commit.
   weighting), to **internal** storage (FUSE external was I/O-bound). **`SpeedWeighting` ETA gotcha:** it
   reports time as `distance_m/speed` as if `car_average_speed` (km/h) were m/s — 3.6× too fast — so the
   engine AND `graphbuilder` override `calcEdgeMillis` to `distance_m·3600/kmh`; keep them identical.
+  **Encoded values = `car_access, car_average_speed, road_access, max_speed`** — the string is byte-identical
+  in `GraphBuilder.java` and `GraphHopperRouteEngine.kt` (a mismatch fails graph load); keep it so. `max_speed`
+  (added 2026-07-04) is the OSM `maxspeed` posted limit (km/h), a **passive stored column** (`OSMMaxSpeedParser`
+  auto-registers; NOT in the weighting/CH, so it doesn't change routes) read by the speed-limit badge via
+  `GraphHopperRouteEngine.currentRoadLimit(lat,lng)` — a `LocationIndex` snap + `EdgeIteratorState.get` off the
+  **base graph** (CH-safe). **Adding/removing an encoded value is a BREAKING graph-format change**: old graphs
+  lack the EV and `getDecimalEncodedValue` THROWS — `currentRoadLimit` swallows it (badge hidden, no crash),
+  but to actually light the badge up you must **re-bake + re-host every region graph** via `routing-graphs.yml`
+  (verified: a Monaco rebuild carries `max_speed` + CH cleanly). Existing installs keep their old graphs until
+  re-downloaded (no version-discriminator yet — a manifest `schema` bump so they auto-update is a follow-up).
   **Status: DONE end-to-end, on-device verified, graphs HOSTED + multi-region.** `RoutingGraphStore` (`:app`)
   downloads region CH graphs from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=`
   for local testing) into `filesDir/graphs/<id>/`, merging each into `filesDir/graphs/index.json`
