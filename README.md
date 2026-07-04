@@ -21,7 +21,7 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 >   diverge). Selectable **alternates**, **reverse-trip swap**, **live-traffic overlay**,
 >   **search-along-route**, and depart/arrive-time planning.
 > - **Offline routing** — full turn-by-turn **on the phone** via an embedded
->   **GraphHopper** engine, from a downloadable **137-region world catalog** (all US
+>   **GraphHopper** engine, from a downloadable **135-region world catalog** (all US
 >   states, Canada, Europe, + more) hosted as GitHub release assets. Saving offline
 >   map tiles for an area grabs its routing graph too.
 > - **Navigation** — turn-by-turn with a Google-style maneuver banner: a **real
@@ -93,7 +93,7 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Public transit** | Hidden WebView reads the directions SPA's `APP_INITIALIZATION_STATE` | `app/web/WebDirectionsFetcher.kt`, `core/…/TransitParser` |
 | **Turn-by-turn routing** | **FOSSGIS OSRM** (open) — complete street-named steps incl. highway `ref`/exit/lanes; retried on blips | `core/data/RouteGeometry.kt` |
 | **Traffic ETA + jam reroute** | Google's directions overlaid on the OSRM route; re-runs OSRM through Google's path only when they diverge (option 3) | `GoogleMapsDataSource.directions`/`applyTraffic` |
-| **Offline routing** | On-device **GraphHopper** CH graphs, one per region, downloaded from a 137-region world catalog | `core/data/GraphHopperRouteEngine.kt`, `app/offline/RoutingGraphStore.kt`, `tools/routing-regions.json` |
+| **Offline routing** | On-device **GraphHopper** CH graphs, one per region, downloaded from a 135-region world catalog | `core/data/GraphHopperRouteEngine.kt`, `app/offline/RoutingGraphStore.kt`, `tools/routing-regions.json` |
 | **Navigation (banner, voice, haptics)** | Pure `NavEngine` turn logic (unit-tested) → maneuver banner (lane diagram / shields), AOSP TTS, direction-coded vibration | `core/nav/`, `app/ui/nav/`, `core/voice/`, `core/feedback/` |
 | **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor — never GMS/Fused | `core/location/` |
 | **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
@@ -364,8 +364,8 @@ decodes Google's geometry exactly and is covered by a reference-vector test.
   PSDS (Settings → Location) drops TTFF from ~30s to a few seconds.
 - **Voice:** a built-in **neural voice** that runs entirely on-device — Vela bundles the sherpa-onnx
   runtime and downloads a Piper model itself (progress bar), no standalone app. A **Voice library**
-  (Settings → Voice) lets you browse, download and switch between ~23 Piper voices (Lessac, HFC, Ryan,
-  the multi-speaker LibriTTS-R default, British voices, …) to find the read you like. Plus AOSP
+  (Settings → Voice) lets you browse, download and switch between ~40 Piper voices (Lessac, HFC, Ryan,
+  the HFC Female default, British voices, …) to find the read you like. Plus AOSP
   `TextToSpeech`: we enumerate the phone's installed engines so you can override to any system voice.
 - **No GMS anywhere:** no Fused location, no FCM, no Firebase, no Play Integrity.
   Everything (MapLibre, OkHttp, Compose, Hilt) is pure AOSP. OrganicMaps is the
@@ -416,7 +416,7 @@ without an app release.
 - [x] **Alternates**, **live-traffic overlay**, **search-along-route**, depart/arrive-time planning
 - [x] Turn-by-turn — maneuver banner (real lane diagram / exit shields / swipe-ahead), spoken + haptic guidance, **speedometer**, **re-center**, arrival summary
 - [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
-- [x] **Offline routing on-device (GraphHopper)** — a downloadable **137-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
+- [x] **Offline routing on-device (GraphHopper)** — a downloadable **135-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief
 - [x] **Offline** basemap + OSM POI index; **popular / busy times** (keyless hidden-WebView search)
 - [ ] **Predictive** (future-traffic) depart-time ETA — needs a directions-`pb` calibration

@@ -7,7 +7,7 @@
 > walk-through) and [`CLAUDE.md`](CLAUDE.md) (build rules + gotchas). When behaviour,
 > calibration, or architecture changes, **update this file in the same commit.**
 
-Last reviewed: 2026-06-18.
+Last reviewed: 2026-07-04.
 
 ---
 
@@ -59,8 +59,8 @@ Two Gradle modules, strict boundary:
   bundle, user-initiated, never auto-uploaded — the no-backend half of the telemetry plan).
   **No MapLibre or Android-UI types may leak in** (convert `LatLng` at the view edge).
 - **`:app`** — the Compose UI + MapLibre Native 11.8.0 + the foreground nav service +
-  the two hidden WebViews. Root package `app.vela`, app class `VelaApp`, config
-  `VelaConfig`.
+  the **four hidden WebViews** (photos, transit, reviews, popular-times). Root package
+  `app.vela`, app class `VelaApp`, config `VelaConfig`.
 
 ### Key seams
 - **`MapDataSource`** (`:core/data`) — the one interface the UI depends on.
@@ -220,7 +220,7 @@ at the same final dest). The panel has up/down **reorder** arrows (`moveStop`).
 on the phone via **GraphHopper** (`core/data/GraphHopperRouteEngine`, pure-JVM on ART — three workarounds:
 MMAP data-access, a Janino-free `SpeedWeighting` factory, swallowed `close()`; Contraction Hierarchies →
 ~200 ms). Region **CH graphs are built off-device** (`tools/graphbuilder`, same weighting + CH) and **hosted
-as GitHub-release assets** — a **137-region world catalog** (`tools/routing-regions.json` → a race-safe
+as GitHub-release assets** — a **135-region world catalog** (`tools/routing-regions.json` → a race-safe
 GitHub-Actions build matrix → `routing-manifest.json`). The app downloads regions into `filesDir/graphs/<id>/`
 (by picker, or bundled with an offline-tiles area download) and routes a trip on the **smallest installed
 region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
@@ -301,8 +301,12 @@ Two layers. **(1) Whole-map raster** — `/maps/vt` PNG tiles on `www.google.com
 map-version epoch); `VelaMapView.ensureTraffic` adds a `RasterLayer`. A manual toggle on
 the bare map; **off during navigation** (it washed every road). **(2) Per-segment route
 line** — the directions JSON *does* carry per-segment congestion after all
-(`route[3][5][0]`, see above); `VelaMapView.routeGradientStops` paints it onto the route
-line as Google-style colour bands over the driven-grey gradient. So during nav the route
+(`route[3][5][0]`, see above); `VelaMapView.routeGradient` supplies the per-segment
+Google-style congestion bands. During nav the driven/ahead cut is a **geometry split**, not a
+gradient stop: a traversed-grey full line under an **ahead-suffix layer** (`ROUTE_AHEAD_LAYER`/
+`ROUTE_AHEAD_SRC`) trimmed exactly at the puck, with the traffic bands remapped onto the suffix —
+MapLibre bakes line-gradients into a 256-texel texture (so a "hard" cut smears ~routeLength/256 m)
+and has no `line-trim-offset`, so geometry is the only pixel-exact cut. So during nav the route
 itself shows the traffic, not the whole map.
 
 ---
@@ -360,13 +364,22 @@ itself shows the traffic, not the whole map.
   `openDeepLink`. Sharing a place emits a keyless `geo:` pin too.
 - **Trip recording + offline nav audit**: opt-in trip recording writes each drive to a local
   CSV (`:app/replay/TripStore` does the IO); the **format is canonical in `:core`**
-  (`replay/TripLog`: `META` header, the navigated route as `RP`/`RD`/`M` lines, then
-  `lat,lng,t,bearing,speed` fixes). Saving the route means a replay drives the **exact route
-  the user navigated** (not a re-route), and `nav/NavReplay` can replay the fixes back through
-  the real `NavEngine` to **diff cards/voice against the maneuver positions** — per-maneuver
-  announce-distance / turn-now / worst card-error / nearest-approach, flagging silent turns,
-  too-early announcements and lying distances. `TripLog.audit(csv)` is the one-call entry;
-  unit-tested clean-drive + flag-logic + CSV round-trip. (Pure `:core`, Android-free.)
+  (`replay/TripLog`: `META` header, then one or more route blocks + `lat,lng,t,bearing,speed`
+  fixes). **Trips are SEGMENTED**: the start route AND every mid-drive route swap (a reroute or
+  an accepted faster route) is its OWN `RP`/`RD`/`M` block, activated at the fix where it
+  appears (`TripLog.parse().segments` → `List<RouteSegment>`). Replay/audit are segment-aware —
+  each block is diffed against exactly the fixes driven on it — so a trip that switched routes is
+  never mashed into one Franken-route. Replay is **HERMETIC**: `NavSession.replayMode` suppresses
+  all live reroute/faster-route fetches, the recorded swaps play back via `replaySetRoute`, and
+  the map view scales the puck's physics clocks by `replaySpeedup` so a fast-forwarded replay
+  glides like a live drive. `nav/NavReplay` replays the fixes back through the real `NavEngine`
+  to **diff cards/voice against the maneuver positions** — per-maneuver announce-distance /
+  turn-now / worst card-error / nearest-approach, flagging silent turns, too-early announcements
+  and lying distances. `TripLog.audit(csv)` is the one-call entry (segment-merged report), also
+  runnable on a shared CSV via `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog'
+  -DvelaTrip=<abs.csv>` (the `velaTrip` property is forwarded to the test JVM in
+  `core/build.gradle.kts`). Unit-tested clean-drive + flag-logic + CSV round-trip. (Pure `:core`,
+  Android-free.)
 
 ---
 
@@ -419,13 +432,13 @@ handed — no filesystem, network, or device access.
   `:core` `NeuralSynth` seam), default once a model is downloaded; system engines stay selectable. Users
   browse/download/switch **multiple** Piper voices (`PiperCatalog` in `:core`; one per `filesDir/piper/<id>/`;
   selection in `voice_model`, per-voice speaker in `voice_speaker_<id>`; race-free `PiperSynth.reloadVoice`).
-  Model downloads use a no-`callTimeout` OkHttp client (the shared 12 s cap would abort a 67–131 MB body).
+  Model downloads use a no-`callTimeout` OkHttp client (the shared 12 s cap would abort a ~67–115 MB body).
 - No GMS: no FCM/Firebase/Play Integrity/Fused. Push (if ever) = UnifiedPush; crash
   reporting = ACRA/self-hosted.
 - EU consent: pre-seed `SOCS`/`CONSENT` cookies; never let `Set-Cookie` downgrade
   `CONSENT` to `PENDING`.
-- The two hidden WebViews (photos, transit) run Google's JS **anonymously** — an
-  accepted, scoped tradeoff for data only a real engine is served.
+- The four hidden WebViews (photos, transit, reviews, popular-times) run Google's JS
+  **anonymously** — an accepted, scoped tradeoff for data only a real engine is served.
 
 ---
 
@@ -458,6 +471,6 @@ See **[`FEATURES.md`](FEATURES.md)** for the exhaustive, ticked list (search/pla
 reviews, photo gallery, directions + alternates + swap + depart-time +
 search-along-route, drive/walk/bike/transit, turn-by-turn with shields/lanes/voice/
 haptics/speedometer/**per-lane diagram**, traffic overlay, **offline on-device routing** (GraphHopper,
-137-region world catalog), offline basemap + POI (the offline SQLite POI index keeps OSM
+135-region world catalog), offline basemap + POI (the offline SQLite POI index keeps OSM
 address/phone/website/opening_hours, not just name+category), Home/Work shortcuts,
 saved/recent places, deep links, scale bar, in-app theme, the resilience layer above).
