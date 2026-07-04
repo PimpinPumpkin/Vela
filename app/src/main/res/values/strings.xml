@@ -335,6 +335,7 @@
     <string name="mapvm_no_transit_routes">No transit routes found</string>
     <string name="mapvm_trip_default_name">Trip</string>
     <string name="mapvm_no_voice_engine">No voice engine installed — add one in Settings → Voice for spoken directions</string>
+    <string name="mapvm_voice_lang_missing">Spoken directions need a %1$s voice — get one in Settings → Voice</string>
     <string name="mapvm_no_track_to_replay">That trip has no track to replay</string>
     <string name="mapvm_replaying">Replaying %1$s (3×)…</string> <!-- format -->
     <string name="mapvm_export_saved_subject">Vela saved places (%1$d)</string> <!-- format -->
