@@ -41,11 +41,29 @@ class VoiceGuide @Inject constructor(
     private var currentEngine: String? = null
     private val pending = ArrayDeque<Pair<String, Boolean>>()
 
-    /** Vela's in-process neural voice (Kokoro/sherpa-onnx), wired from `:app` where the native
-     *  runtime lives. When the user selects [VelaKokoro.ENGINE_ID], guidance goes here instead of
+    // System-TTS FALLBACK for language mismatch: the neural (Piper) voice is a single-language
+    // model, so when the nav text is generated in a language it can't speak (the user switched the
+    // app/system language to one whose voice isn't downloaded) we route to Android TextToSpeech in
+    // that language instead of mangling it through the wrong voice. `tts` holds EITHER the user's
+    // chosen system engine (useNeural=false) OR this lazily-created default fallback (useNeural=true).
+    private var systemReady = false
+    private var lastSystemLang: String? = null // avoid re-running setLanguage/selectBestVoice each utterance
+
+    /** Invoked with a language code when guidance CAN'T speak that language (no matching neural voice
+     *  AND the system TTS has no voice for it) — the UI surfaces a "download a &lt;language&gt; voice"
+     *  hint so nav isn't silently mute. Set by `:app`. */
+    var langUnavailable: ((String) -> Unit)? = null
+
+    /** Vela's in-process neural voice (Piper/sherpa-onnx), wired from `:app` where the native
+     *  runtime lives. When the user selects [VelaPiper.ENGINE_ID], guidance goes here instead of
      *  Android TextToSpeech. Null until wired / on a build without it. */
     var neural: NeuralSynth? = null
     private var useNeural = false
+
+    /** The language the nav text is currently GENERATED in (`NavStringsRegistry`) — the language the
+     *  chosen voice must actually be able to speak. */
+    private fun targetLang(): String =
+        app.vela.core.i18n.NavStringsRegistry.current().locale.language.ifBlank { "en" }
 
     /** TTS health for the UI: null = initialising, true = a usable voice is ready,
      *  false = init failed or the chosen language has no installed voice data. Lets
@@ -109,11 +127,12 @@ class VoiceGuide @Inject constructor(
      *  currently loaded — so picking a different engine in Settings actually takes
      *  effect (the old idempotent guard ignored later picks). */
     fun init(enginePackage: String? = null) {
-        // One of Vela's own in-process neural voices (vela.kokoro / vela.piper) — no Android
-        // TextToSpeech involved. The right synth is wired into [neural] by MapViewModel first.
+        // One of Vela's own in-process neural voices (vela.piper) — no Android TextToSpeech
+        // involved. The right synth is wired into [neural] by MapViewModel first. Do NOT shut the
+        // system `tts` down here — it stays as the fallback for languages the neural voice can't
+        // speak (see speakViaSystem); an unused instance is cheap.
         if (enginePackage != null && enginePackage.startsWith("vela.")) {
             if (useNeural && enginePackage == currentEngine) return
-            if (tts != null) shutdown()
             currentEngine = enginePackage
             useNeural = true
             ready = true // the neural synth loads + queues internally
@@ -132,11 +151,17 @@ class VoiceGuide @Inject constructor(
         currentEngine = enginePackage
         working = null
         ready = false
+        systemReady = false
+        lastSystemLang = null
         tts = if (enginePackage != null) {
             TextToSpeech(context, this, enginePackage)
         } else {
             TextToSpeech(context, this)
         }
+        attachTtsListener()
+    }
+
+    private fun attachTtsListener() {
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
             override fun onDone(utteranceId: String?) = releaseFocus()
@@ -157,21 +182,19 @@ class VoiceGuide @Inject constructor(
     override fun onInit(status: Int) {
         val t = tts
         if (status != TextToSpeech.SUCCESS || t == null) {
-            working = false // the engine itself failed to start
+            systemReady = false
+            if (!useNeural) working = false // the PRIMARY engine failed to start
             return
         }
-        val locale = Locale.getDefault()
-        val lang = if (t.isLanguageAvailable(locale) >= TextToSpeech.LANG_AVAILABLE) locale else Locale.US
-        // setLanguage returns the same availability codes; MISSING_DATA / NOT_SUPPORTED
-        // (< LANG_AVAILABLE) means the engine has no installed voice for us → silent.
-        val langResult = t.setLanguage(lang)
-        // A measured pace + neutral pitch reads more like a real nav voice than
-        // the engine default (often a touch fast/robotic on stock Pico).
+        // A measured pace + neutral pitch reads more like a real nav voice than the engine default.
+        // The LANGUAGE is set per-utterance now (speakViaSystem), keyed on the nav-text language —
+        // so a mid-drive app/system-language change is honoured and the engine never reads a
+        // language it has no voice for.
         t.setSpeechRate(speechRate)
         t.setPitch(1.0f)
-        selectBestVoice(t, lang)
-        ready = true
-        working = langResult >= TextToSpeech.LANG_AVAILABLE
+        systemReady = true
+        lastSystemLang = null // force setLanguage on the first utterance
+        if (!useNeural) { ready = true; working = true } // this system engine is the PRIMARY voice
         while (pending.isNotEmpty()) {
             val (text, interrupt) = pending.removeFirst()
             speakNow(text, interrupt)
@@ -221,8 +244,12 @@ class VoiceGuide @Inject constructor(
     }
 
     private fun speakNow(text: String, interrupt: Boolean) {
+        val t = targetLang()
         val n = neural
-        if (useNeural && n != null) {
+        // Use the neural voice ONLY when it can actually speak the target language. A single-
+        // language Piper model reading another language's text is gibberish (the "English voice
+        // read Russian" bug) — voiceLanguage==null means unknown → trust it (old behaviour).
+        if (useNeural && n != null && n.voiceLanguage.let { it == null || it == t }) {
             // The neural synth fires onDone exactly ONCE per speak() (including aborted/
             // interrupted utterances — PiperSynth's finally), so the refcount balances without
             // any interrupt special-casing. Do NOT reset the count here: the interrupted
@@ -232,11 +259,47 @@ class VoiceGuide @Inject constructor(
             n.speak(forSpeech(text), interrupt) { releaseFocus() }
             return
         }
+        speakViaSystem(text, interrupt, t)
+    }
+
+    /** Speak through Android TextToSpeech in language [t] — the user's chosen system engine, or a
+     *  lazily-created default engine when the neural voice can't cover [t]. If the system TTS has no
+     *  voice for [t] either, stay SILENT (never read [t]'s text with a non-[t] voice) and surface the
+     *  download hint. */
+    private fun speakViaSystem(text: String, interrupt: Boolean, t: String) {
+        val engine = tts ?: run { ensureSystemTts(); null }
+        if (engine == null || !systemReady) {
+            pending.addLast(text to interrupt) // drained by onInit once the fallback engine is ready
+            return
+        }
+        if (t != lastSystemLang) {
+            val avail = runCatching { engine.setLanguage(Locale(t)) }.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
+            if (avail < TextToSpeech.LANG_AVAILABLE) {
+                working = false
+                langUnavailable?.invoke(t) // "download a <language> voice" — don't mangle it through the wrong one
+                return
+            }
+            selectBestVoice(engine, Locale(t))
+            engine.setSpeechRate(speechRate)
+            engine.setPitch(1.0f)
+            lastSystemLang = t
+            working = true
+        }
         // A FLUSH stops the current utterance + drops the queue; their onStop callbacks
         // decrement, so just acquire for the new utterance.
         acquireFocus()
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-        tts?.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
+        engine.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
+    }
+
+    /** Lazily create the DEFAULT system TTS engine as the neural-mismatch fallback, without touching
+     *  the neural selection (`useNeural`/`currentEngine` stay put). Its `onInit` sets [systemReady]. */
+    private fun ensureSystemTts() {
+        if (tts != null) return
+        systemReady = false
+        lastSystemLang = null
+        tts = TextToSpeech(context, this)
+        attachTtsListener()
     }
 
     /** Expand road abbreviations so the engine SAYS them instead of spelling them: "St" →
@@ -256,6 +319,8 @@ class VoiceGuide @Inject constructor(
         tts?.shutdown()
         tts = null
         ready = false
+        systemReady = false
+        lastSystemLang = null
         neural?.stop()
         releaseAllFocus()
     }
