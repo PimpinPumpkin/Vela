@@ -20,4 +20,9 @@ interface RouteEngine {
 
     /** Best-first routes for origin→destination, or empty if unavailable/failed. Never throws. */
     fun route(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route>
+
+    /** The posted speed limit (km/h) of the road nearest ([lat],[lng]), or null if unknown. Only the
+     *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline
+     *  limit data, so the default is null. Call off the main thread. Convert to mph at the UI boundary. */
+    fun currentRoadLimit(lat: Double, lng: Double): Double? = null
 }
