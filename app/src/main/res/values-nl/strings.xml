@@ -260,6 +260,7 @@
     <string name="root_voice_download">Vela-stem downloaden</string>
     <string name="root_voice_use_system">Systeemstem gebruiken</string>
     <string name="nav_maneuver_continue">Doorgaan</string>
+    <string name="nav_gps_lost">GPS-signaal zoeken…</string>
     <string name="nav_compound_then">daarna</string>
     <string name="nav_preview_tap_resume">Voorbeeld — tik om te hervatten</string>
     <string name="nav_rerouting">route herberekenen…</string>

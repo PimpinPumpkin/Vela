@@ -290,6 +290,86 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   vanish, drifting every later estimate km short; also caught in adversarial review). Unit-tested with
   synthetic out-and-back routes (wrong-pass distance, near-pass re-acquire) + replays feed the puck Kalman
   again (`mySpeedRaw` in the replay collector).
+- ✅ **Full navigation audit + remediation (2026-07-04).** Before the next real drive, a 6-lens audit
+  (position/reroute · speed chain · route-line rendering · banner/prompt timing · engine/session · a
+  completeness critic, each benchmarked against OsmAnd/Google behaviour) produced 39 findings; the
+  confirmed ones were fixed in one pass and adversarially re-reviewed. The big ones:
+  **Position integrity:** NETWORK (BeaconDB) fixes are no longer trusted blindly — dropped outright during
+  nav, and in browse only used when GPS has been quiet ≥12 s (OsmAnd's `useOnlyGPS` discipline); they were
+  routinely 100-1000 m off and teleported the dot onto parallel streets → spurious reroute → teleport back
+  → reroute again ("GPS thinking I am somewhere else"). Inter-fix `dt` now uses the monotonic
+  `elapsedRealtimeNanos` (mixing GNSS UTC with network system-clock stamps made dt<0, which bypassed the
+  outlier filter entirely — a one-fix teleport). Coarse fixes (accuracy >50 m) update the dot but never
+  steer guidance.
+  **Rerouting:** a failed reroute fetch used to KILL rerouting for the rest of the drive (the off-route
+  event is edge-triggered and the latch never cleared) — failures now clear the latch so 4 more deviated
+  fixes naturally retry (~4 s cadence), with single-flight + a 10 s adoption cooldown + "Rerouting" spoken
+  at most every 30 s (no more reroute storms), a session-generation stamp (a late reroute can't resurrect
+  the previous destination's route into a new session), a route-identity guard on the per-fix state write
+  (the old-route progress can't be written onto a freshly swapped route → no false arrival after a
+  reroute), no reroutes while provably stationary (red-light multipath drift), no reroutes within 150 m of
+  the destination, and off-route now measured against the SAME windowed projection progress uses (being
+  near the RETURN leg of an out-and-back no longer masks a genuine exit).
+  **Guidance timing:** prompt distances scale with speed — max(400 m, v×25 s) far / max(150 m, v×8 s) near
+  / turn-now (v×2.5 s, 25-90 m); the fixed 400 m gave a 75 mph driver 12 s to cross three lanes (Google:
+  ~2 mi + 1 mi + 500 ft). City/walking behaviour is byte-identical. Short steps speak ONE prompt with the
+  TRUE distance ("In 50 meters, turn left" — it used to fire both bands back-to-back announcing the literal
+  thresholds). After a GPS gap, maneuvers passed in the tunnel advance SILENTLY (each used to replay as an
+  at-the-turn command + firm haptic, one per second). Arrival gets an approach cue ("In 400 feet, your
+  destination will be ahead" — new `NavStrings.destinationAhead`, 11 languages) and fires on PROXIMITY too
+  (crow ≤40 m of the snapped endpoint, or stationary within 50 m remaining — parking short used to never
+  arrive, then "Rerouting" fired in the lot). Lane arrows + the compound "then" row gate on a speed-scaled
+  approach distance (~30 s; the "then" row used to sit on the banner for 12 km when a merge followed a far
+  exit). The banner seeds the first turn's distance at start (no more "0 ft" flash), and a previewed step's
+  headline now shows its APPROACH distance, not the leg after it.
+  **ETA:** remaining time = the remaining STEPS' durations (pro-rated current leg, × the live-traffic
+  ratio) — it used to divide remaining distance by the whole-route average speed, reading "4 min" for a
+  15-minute downtown tail and poisoning the faster-route comparison. Faster-route offers also remember a
+  dismissal (no re-speak of the same candidate every 2 minutes) and never re-fetch while one is on screen.
+  **Speed chain:** the spike filter is now symmetric + accel-bounded (|Δv| ≤ 8 m/s²·dt + slack) against the
+  last ACCEPTED measurement with a 2-fix persistence escape — the old one-sided +15 m/s check let a doppler
+  down-glitch to 0 through at 67 mph and then rejected every real 30 m/s fix against the held 0 (speedo
+  latched at 0 until you slowed below 33 mph); shared with the replay path (which had NO escape — one
+  recorded glitch zeroed a whole replay). The no-fix zeroer moved 3 s→6 s (it fired between normal 3 s
+  canopy fixes: 56→0→56 flicker), the dead-reckon window 2 s→3 s (glide-stall-lurch at canopy cadence), the
+  DISPLAYED speed is smoothed with a stop deadband (raw 1 Hz doppler flickered 59/60/61 at cruise), and
+  speed derivation requires two GPS fixes past an accuracy-scaled floor (a BeaconDB hop minted phantom
+  16 mph readouts at red lights).
+  **Route line ("the gradient when you zoom in"):** the driven/ahead cut is now a GEOMETRY split — a
+  traversed-grey full line (theme-aware, dimmer than the alternates' grey) under an ahead-suffix layer cut
+  exactly at the puck, updated at sub-pixel granularity for the current zoom, with traffic spans remapped
+  onto the suffix. The old line-gradient stop could never be crisp: MapLibre bakes gradients into a
+  256-texel texture, smearing any "hard" cut into a routeLength/256-metre ramp (~39 m on a 10 km route,
+  hundreds of px zoomed in) — and MapLibre has no `line-trim-offset`, so geometry is the only exact cut.
+  Route geometry also uploads only when it CHANGES (it re-tessellated thousands of vertices on every
+  recomposition, ~1-2×/s during nav).
+  **Voice/audio:** audio focus is refcounted per speech burst — queued prompts used to leak one request and
+  abandon the other mid-sentence (music un-ducked OVER "Turn right onto Main St"), interrupts stranded the
+  count (no `onStop` override), and there was no focus-change listener at all (guidance talked over
+  incoming calls; it now stops speaking when a call takes focus). Session lines ("Rerouting", the
+  faster-route offer, the stops notice) now speak in all 11 languages via `NavStrings`.
+  **Lifecycle/UX:** arrival tears the foreground service down (dismissable notification; the location-typed
+  FGS + ongoing notification + 1 Hz GPS used to run FOREVER if you pocketed the phone without tapping
+  Done), and a "Searching for GPS…" chip (11 languages) shows during nav when fixes stop — the banner used
+  to freeze with a confident blue arrow and zero indication. `RouteGeometry.reposition` also placed every
+  maneuver one full step late (off-by-one vs the placeManeuvers convention) — fixed. Unit-tested
+  (`NavAuditRegressionTest`: speed-scaled prompts, single-prompt short steps, silent catch-up, proximity
+  arrival, stationary-drift no-reroute, per-step ETA, arrival approach cue). **A second adversarial
+  round then broke the first fixes and 10 more corrections landed before ship** — the important ones:
+  the destination-zone reroute guard is measured by CROW distance with a deferred-fire flag (guarding on
+  the frozen `remaining` made a turn missed near the destination a PERMANENT silent limbo — frozen
+  banner, no reroute, no arrival, while the driver left the area); the stationary floor is MODE-AWARE
+  (2 m/s classified every walker as parked → pedestrian rerouting dead + 50 m-early walking arrivals);
+  the failed-reroute latch clear moved onto the location thread (the coroutine write raced the in-flight
+  fix frame); PiperSynth's abort paths double-fired `onDone` (double-decrementing the focus refcount —
+  music un-ducked over the interrupting prompt); NETWORK fixes may paint the DOT after 12 s of GPS
+  silence even during nav (guidance stays GPS-only — a GPS-less phone deserves a coarse position, not a
+  dead app) and the GPS chip also fires when guidance is starved by sustained 50-80 m accuracy (coarse
+  fixes kept the stale timer from ever firing); the split re-upload gained a 150 ms wall-clock floor; a
+  mid-nav reroute seeds the ahead layer immediately (no grey-route flash); the arrival notification
+  detaches BEFORE posting (else it stays non-swipeable) and Done clears it. *(Deferred, documented:
+  backward-driving/U-turn detection, bearing-biased reroute origins, adaptive dead-reckon cadence,
+  raw-vs-raw movement accumulation for speedless-chipset walking.)*
 - ✅ **Compound maneuver preview ("… then keep right")** — the banner's secondary "then &lt;next&gt;" line
   now shows **only when the next maneuver closely follows** this one (`COMPOUND_M` ≈ 0.3 mi, `isCompoundNext`,
   2026-07-01), the way Google surfaces back-to-back turns (exit-then-merge). It used to show for *any* next
