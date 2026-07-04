@@ -229,13 +229,23 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   render the whole time the maneuver was next, so on a long highway leg the "be in the right lane" arrows
   sat there for miles before the exit, which read as noise. Now they surface as you approach (Google-style);
   in step-preview (swiping the step list) they always show, since you're deliberately inspecting a step.
-- ✅ **Spoken lane guidance (2026-07-03).** Vela now SAYS the lane, not just draws it — the far approach
-  prompt adds "…take exit 172 toward Sacramento. **Use the right 2 lanes**" (Google-style). It's computed
-  from the same OSRM per-lane `valid` data as the arrows (`Route.laneGuidance` reduces them to a side +
-  count when the valid lanes are a contiguous block at one edge; no hint when any lane works or the block
-  is non-contiguous — the diagram covers those). Spoken once, at the first prompt distance, so it doesn't
-  nag. Localized via `NavStrings.useLanes` (EN "Use the left lane"/"right 2 lanes", FR "Empruntez la voie
-  de gauche"/"les 2 voies de droite"). Unit-tested.
+- ✅ **Spoken lane guidance — lanes-FIRST, Google-style (2026-07-03).** Vela now SAYS the lane, not just
+  draws it, and it **prefaces** the maneuver instead of tacking it on the end: "**Use the right 2 lanes to**
+  take exit 172 toward Sacramento" (not "…take exit 172 toward Sacramento. Use the right 2 lanes"). It's
+  computed from the same OSRM per-lane `valid` data as the arrows (`Route.laneGuidance` reduces them to a
+  side + count when the valid lanes are a contiguous block at one edge; no hint when any lane works or the
+  block is non-contiguous — the diagram covers those). Spoken once, at the first (far) prompt distance, so
+  it doesn't nag. Localized via `NavStrings.useLanesToDo` — English folds it into one smooth sentence
+  ("Use the right 2 lanes to take exit 172…"), other languages fall back to a safe lanes-first two-sentence
+  form ("Empruntez les 2 voies de droite. Prenez la sortie 172") until a native grammar is hand-written.
+  Unit-tested.
+- ✅ **No more "continue on the road you're already on" (2026-07-03).** OSRM emits a `continue`/`new name`
+  maneuver whenever one road flows into the next, which made the voice nag "continue on Foo" even when Foo
+  is the road you're already driving — Google stays silent there. `NavEngine` now **suppresses the spoken
+  prompt AND the arrival cue for a redundant CONTINUE** (`redundantContinue` = a `CONTINUE` maneuver whose
+  road is null or identical to the previous maneuver's road) — same silent-advance path the DEPART already
+  uses. A genuine road-name change (Foo → Bar at a fork) still speaks, because the road differs. The banner
+  still shows every maneuver; only the redundant *voice* is dropped.
 - ✅ **Compound maneuver preview ("… then keep right")** — the banner's secondary "then &lt;next&gt;" line
   now shows **only when the next maneuver closely follows** this one (`COMPOUND_M` ≈ 0.3 mi, `isCompoundNext`,
   2026-07-01), the way Google surfaces back-to-back turns (exit-then-merge). It used to show for *any* next
