@@ -368,10 +368,20 @@ class GoogleMapsDataSource @Inject constructor(
             runCatching { routeEngine.route(a, b, mode).firstOrNull() }.getOrNull() ?: return null
         }
         val polyline = legs.flatMapIndexed { i, leg -> if (i == 0) leg.polyline else leg.polyline.drop(1) }
-        val maneuvers = legs.flatMapIndexed { i, leg ->
-            leg.maneuvers.filter { m ->
-                !(m.type == app.vela.core.model.ManeuverType.ARRIVE && i != legs.lastIndex) &&
-                    !(m.type == app.vela.core.model.ManeuverType.DEPART && i != 0)
+        // Boundary DEPART/ARRIVE steps are dropped, but their step distance is FOLDED into the
+        // last kept maneuver so step lengths keep TILING the stitched polyline — NavEngine locates
+        // each maneuver by a prefix-sum of them (same fold as parseOsrmRoute's via filter).
+        val maneuvers = mutableListOf<app.vela.core.model.Maneuver>()
+        legs.forEachIndexed { i, leg ->
+            leg.maneuvers.forEach { m ->
+                val boundary = (m.type == app.vela.core.model.ManeuverType.ARRIVE && i != legs.lastIndex) ||
+                    (m.type == app.vela.core.model.ManeuverType.DEPART && i != 0)
+                if (!boundary) {
+                    maneuvers += m
+                } else if (maneuvers.isNotEmpty() && m.distanceMeters > 0.0) {
+                    val prev = maneuvers.removeAt(maneuvers.lastIndex)
+                    maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
+                }
             }
         }
         if (polyline.size < 2 || maneuvers.size < 2) return null
@@ -484,9 +494,11 @@ class GoogleMapsDataSource @Inject constructor(
 
     /** Rewrite the endpoint's `hl=en` to the app/system language so Google returns categories, hours
      *  and open/closed status IN THE USER'S LANGUAGE (Google-Maps-style). The open/closed BOOLEAN is
-     *  read from the numeric status code (`SearchParser.openFromCode`), so it stays correct regardless.
-     *  `Locale.getDefault()` reflects the in-app language override (AppLocale sets it) or the system
-     *  locale. **No-op for English → English users are byte-for-byte unchanged.** */
+     *  parsed from that localized status text against the same language's keyword table
+     *  (`SearchParser.parseOpenNow` reads the same `Locale.getDefault()` this rewrite does), so text
+     *  and boolean can't disagree. `Locale.getDefault()` reflects the in-app language override
+     *  (AppLocale sets it) or the system locale. **No-op for English → English users are
+     *  byte-for-byte unchanged.** */
     private fun String.localized(): String {
         val lang = java.util.Locale.getDefault().language.lowercase()
         return if (lang.isBlank() || lang == "en") this else replace("hl=en", "hl=$lang")

@@ -84,10 +84,16 @@ genuinely needs no doc edit, say why in the commit.
   UI) and `VelaApp.attachBaseContext` (ViewModel/notification `getString`); changing the language calls
   `recreate()`. (3) **Google POI content** — the scrape's `hl=en` is rewritten to the app/system language
   at request time (`GoogleMapsDataSource.localized()`, no-op for English) so categories/hours/status/price
-  come back localized. The **open/closed BOOLEAN is read from Google's locale-independent numeric status
-  CODE** (`SearchParser.openFromCode`: 6=open, 5=closed, 13=soon — paths `statusCodeRich [1,203,1,4,1,0,1]`
-  / `statusCodeSimple [1,203,1,8,1,0,1]`), NOT the localized text, with the English text match as fallback;
-  `placeStatusColor(status, openNow)` colours from that boolean. `gl` (region) still `us` — GPS-region `gl`
+  come back localized. The **open/closed BOOLEAN is parsed from the localized status TEXT against a
+  per-language keyword table** (`SearchParser.parseOpenNow(status, lang)`, `lang` = the same
+  `Locale.getDefault()` that set `hl=`; CLOSED words are matched FIRST — "Opens 5 AM" / "Ouvre à 07:00" /
+  "Fechado" / "Opent om 9:00" are prefix-cousins of the open words, and open-first matching is exactly
+  what painted a closed Starbucks green). **Do NOT resurrect the numeric status-code path**
+  (`openFromCode`, paths `statusCodeRich`/`statusCodeSimple`, removed 2026-07-04): a live EN capture
+  proved those ints are span/style markers, not open/closed codes (closed pharmacies carried "open" 6,
+  an Open-24-hours place carried 13/4 and rendered red) — the hl=fr pin agreeing was a coincidence.
+  `placeStatusColor(status, openNow)` colours from the boolean and refuses to green English text that
+  literally reads closed even if fed `openNow=true`. `gl` (region) still `us` — GPS-region `gl`
   is a follow-up. **Dual-purpose literals stay inline on purpose** —
   strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
   search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
