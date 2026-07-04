@@ -18,9 +18,13 @@ import kotlin.math.roundToInt
 val StarGold = Color(0xFFF5B400)
 
 /** Google-style status colour: green when open, amber when closing/opening soon,
- *  red when closed/temporarily/permanently. */
-fun placeStatusColor(status: String): Color = when {
+ *  red when closed/temporarily/permanently. [openNow] (from Google's locale-independent
+ *  numeric status code) drives the colour so it's right in EVERY language; the English
+ *  text checks are a fallback for when the code is absent (keeps en behaviour identical). */
+fun placeStatusColor(status: String, openNow: Boolean? = null): Color = when {
     status.contains("soon", ignoreCase = true) -> Color(0xFFE8A100)
+    openNow == true -> Color(0xFF1E8E3E)
+    openNow == false -> Color(0xFFD93025)
     status.startsWith("Open") || status.startsWith("Closes") -> Color(0xFF1E8E3E)
     else -> Color(0xFFD93025)
 }
