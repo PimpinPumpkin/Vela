@@ -55,6 +55,13 @@ fun formatSpeed(metersPerSecond: Float): Pair<Int, String> =
         (metersPerSecond * 3.6).roundToInt() to "km/h"
     }
 
+/** Posted speed limit (given in km/h from OSM/GraphHopper) as a (value, unit) pair in the display
+ *  units. An mph-tagged US road round-trips exactly: 35 mph → GraphHopper's max_speed EV quantizes to
+ *  56.0 km/h → ×0.621371 = 34.8 → rounds back to 35 mph (all 25–85 mph US limits round-trip). */
+fun formatSpeedLimit(kmh: Double): Pair<Int, String> =
+    if (Units.imperial.value) (kmh * 0.621371).roundToInt() to "mph"
+    else kmh.roundToInt() to "km/h"
+
 /** Wall-clock arrival time for a trip [remainingSeconds] from now, e.g. "7:42 PM"
  *  (locale-aware 12/24-hour), the way Google shows ETA during navigation. */
 fun formatArrivalClock(remainingSeconds: Double): String {

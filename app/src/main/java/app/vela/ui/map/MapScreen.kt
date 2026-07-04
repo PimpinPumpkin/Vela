@@ -118,7 +118,12 @@ import app.vela.ui.RatingStars
 import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatSpeed
+import app.vela.ui.formatSpeedLimit
 import app.vela.ui.formatDuration
+import app.vela.ui.Units
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.sp
 import app.vela.ui.nav.ArrivalSummary
 import app.vela.ui.nav.ManeuverBanner
 import app.vela.ui.nav.NavControls
@@ -543,6 +548,20 @@ fun MapScreen(
                     Text(unit, style = MaterialTheme.typography.labelSmall, color = SheetPalette.dim(dark))
                 }
             }
+        }
+
+        // Posted speed-limit sign — sits just above the speedometer during nav, when the on-device
+        // graph knows the current road's OSM maxspeed (hidden otherwise; sparse OSM coverage = often blank).
+        if (state.navigating && state.speedLimitKmh != null) {
+            SpeedLimitSign(
+                limitKmh = state.speedLimitKmh!!,
+                speedMps = state.mySpeed,
+                imperial = Units.imperial.value,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 16.dp, bottom = 200.dp),
+            )
         }
 
         if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen) {
@@ -1449,6 +1468,57 @@ private fun FasterRouteCard(
             }
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapscreen_no)) }
             Button(onClick = onSwitch) { Text(stringResource(R.string.mapscreen_switch)) }
+        }
+    }
+}
+
+/**
+ * The posted speed-limit sign shown by the speedometer during nav — US MUTCD style (white rounded
+ * rectangle, "SPEED LIMIT" + number) in imperial units, EU/RoW style (white disc, red ring, number)
+ * in metric. The number turns red when the current GPS speed exceeds the limit by a tolerance (GPS
+ * speed is noisy, so a plain > would flap). [limitKmh] is the OSM/GraphHopper value in km/h.
+ */
+@Composable
+private fun SpeedLimitSign(
+    limitKmh: Double,
+    speedMps: Float?,
+    imperial: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val (limit, _) = formatSpeedLimit(limitKmh)
+    val speedNow = speedMps?.let { if (imperial) it * 2.236936f else it * 3.6f }
+    val tol = if (imperial) 3f else 5f
+    val over = speedNow != null && speedNow > limit + tol
+    val ink = Color(0xFF202124)
+    val numberColor = if (over) Color(0xFFD32F2F) else ink
+    if (imperial) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = Color.White,
+            shadowElevation = 4.dp,
+            border = BorderStroke(2.dp, ink),
+            modifier = modifier.width(54.dp),
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(vertical = 5.dp, horizontal = 4.dp),
+            ) {
+                Text("SPEED", color = ink, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, lineHeight = 9.sp)
+                Text("LIMIT", color = ink, fontSize = 8.sp, fontWeight = FontWeight.SemiBold, lineHeight = 9.sp)
+                Text("$limit", color = numberColor, fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
+            }
+        }
+    } else {
+        Surface(
+            shape = CircleShape,
+            color = Color.White,
+            shadowElevation = 4.dp,
+            border = BorderStroke(5.dp, Color(0xFFD32F2F)),
+            modifier = modifier.size(56.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Text("$limit", color = numberColor, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
         }
     }
 }
