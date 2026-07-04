@@ -254,7 +254,7 @@
     <string name="root_diag_save">Enregistrer les choix</string>
     <string name="root_not_now">Pas maintenant</string>
     <string name="root_voice_title">Voix de navigation</string>
-    <string name="root_voice_body_intro">Vela dispose de sa propre voix de haute qualité qui fonctionne entièrement sur votre téléphone — les instructions vocales les plus naturelles, sans compte ni application supplémentaire. Recommandée. C\'est un téléchargement unique d\'environ 126 Mo (Wi-Fi recommandé).</string>
+    <string name="root_voice_body_intro">Vela dispose de sa propre voix de haute qualité qui fonctionne entièrement sur votre téléphone — les instructions vocales les plus naturelles, sans compte ni application supplémentaire. Recommandée. C\'est un téléchargement unique d\'environ %1$d Mo (Wi-Fi recommandé).</string>
     <string name="root_voice_body_system">Vous préférez éviter ? Vous pouvez utiliser à la place une voix de synthèse vocale déjà installée sur votre téléphone.</string>
     <string name="root_voice_body_outro">Vous pouvez changer cela à tout moment dans Paramètres → Voix.</string>
     <string name="root_voice_download">Télécharger la voix Vela</string>

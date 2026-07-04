@@ -1754,10 +1754,19 @@ class MapViewModel @Inject constructor(
      *  gets a French voice + French nav text out of the box), falling back to the remote-settable fleet
      *  default (HFC) for English. As the first voice, it's activated. */
     fun downloadPiper() {
-        val lang = app.vela.ui.AppLocale.effective().language
-        val id = if (lang == "en") calibration.current().defaultVoiceId else PiperCatalog.defaultFor(lang).id
-        downloadVoice(id)
+        downloadVoice(defaultVoiceId())
     }
+
+    /** The Vela voice a fresh install downloads — the fleet default (calibration) for English,
+     *  else the app-language's recommended voice. */
+    private fun defaultVoiceId(): String {
+        val lang = app.vela.ui.AppLocale.effective().language
+        return if (lang == "en") calibration.current().defaultVoiceId else PiperCatalog.defaultFor(lang).id
+    }
+
+    /** Download size (MB) of the voice [downloadPiper] would fetch — so the onboarding prompt shows
+     *  the REAL size (it used to hardcode the long-gone 126 MB Kokoro model). */
+    fun defaultVoiceSizeMb(): Int = PiperCatalog.byId(defaultVoiceId())?.sizeMb ?: 67
 
     /** null = still initialising, true = a voice is ready, false = no usable voice. */
     fun voiceWorking(): Boolean? = voice.working
