@@ -42,6 +42,14 @@ android {
             "\"${(project.findProperty("routingManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/routing-graphs/routing-manifest.json"}\"",
         )
+        // Open building-footprint overlay (Microsoft, ODbL) PMTiles catalog — same override pattern
+        // (-PoverlayManifestUrl=http://127.0.0.1:8099/... for local testing via `adb reverse`).
+        buildConfigField(
+            "String",
+            "OVERLAY_MANIFEST_URL",
+            "\"${(project.findProperty("overlayManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/building-overlays/building-overlay-manifest.json"}\"",
+        )
     }
 
     // Real release signing comes from CI env vars; local dev falls back to the
