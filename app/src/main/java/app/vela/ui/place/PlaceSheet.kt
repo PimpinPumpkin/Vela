@@ -35,7 +35,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
@@ -1394,36 +1393,31 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                     )
                 }
             }
-            // Controls (counter, close, caption) live in an overlay pinned to the SAFE AREA. A Dialog on
-            // Android 15+/Pixel 9 measured the black Box TALLER than the display, so a BottomCenter caption
-            // fell off-screen (the top counter, anchored at the top, was fine — that's why only the caption
-            // vanished). safeContentPadding re-anchors the overlay to the visible content area, so the
-            // caption sits just above the gesture bar on every device.
-            Box(Modifier.fillMaxSize().safeDrawingPadding()) {
+            Box(Modifier.fillMaxSize()) {
                 Text(
                     stringResource(R.string.place_gallery_counter, pager.currentPage + 1, urls.size),
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color.White,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(12.dp),
+                    modifier = Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(12.dp),
                 )
                 IconButton(
                     onClick = onDismiss,
-                    modifier = Modifier.align(Alignment.TopStart).padding(4.dp),
+                    modifier = Modifier.align(Alignment.TopStart).statusBarsPadding().padding(4.dp),
                 ) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = Color.White)
                 }
-                // Per-photo caption: the POI gallery passes "Photo · May 2026", the review gallery
-                // "Ele Campbell · a year ago".
+                // Per-photo caption ("Ele Campbell · a year ago" for reviews). On Android 15/16 a Dialog's
+                // window insets read ZERO and the bottom ~nav-bar strip is CLIPPED (undrawable) — proven on a
+                // Pixel 9 — so a normal bottom caption vanished. A FIXED bottom clearance keeps it in the
+                // drawable area regardless (harmlessly a touch higher on phones with no such clip).
                 dates.getOrNull(pager.currentPage)?.let { caption ->
-                    // Scrim pill behind the caption so white text stays readable over a BRIGHT photo
-                    // (a light-bottomed drink photo made the plain white caption invisible — the actual
-                    // "author/date doesn't show" report; the text was there, just white-on-white).
                     Text(
                         caption,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White,
-                        modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp)
-                            .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(50))
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                            .padding(bottom = 88.dp, start = 16.dp, end = 16.dp)
+                            .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                     )
                 }
