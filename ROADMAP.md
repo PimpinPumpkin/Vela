@@ -7,15 +7,17 @@
 Last updated: 2026-07-02.
 
 ## Recently shipped
-- **In-process neural voice (Kokoro) — DONE 2026-07-02, device-verified.** Vela bundles the sherpa-onnx
-  runtime and downloads the ~126 MB Kokoro model itself (progress bar), running it in-process as the
-  default nav voice — near-Siri quality, no standalone TTS app. The old F-Droid voice-engine *installers*
-  were removed; system engines stay selectable for override. Details + the four device-only gotchas in
-  [`FEATURES.md`](FEATURES.md). **Next:** validate the arm64 `.so` load on a 16 KB-page GrapheneOS device
-  before assuming universal support; localize nav strings + wire per-language voices (the multi-lang model
-  already carries them); revisit on-demand delivery (dynamic feature) to shrink the base APK.
+- **In-process neural voice (Piper) — DONE, device-verified.** Vela bundles the sherpa-onnx VITS
+  runtime and downloads a **Piper** voice itself (progress bar), running it in-process as the default nav
+  voice — near-Siri quality, no standalone TTS app. Default = **HFC Female** (`en_US-hfc_female-medium`,
+  ~67 MB). The old F-Droid voice-engine *installers* were removed; system engines stay selectable for
+  override. *(Earlier iterations shipped Kokoro then Matcha; both were removed after on-device A/B —
+  Kokoro was ~0.4× realtime even on a Pixel 9. History in [`FEATURES.md`](FEATURES.md).)* **Next:**
+  validate the arm64 `.so` load on a 16 KB-page GrapheneOS device; revisit on-demand delivery (dynamic
+  feature) to shrink the base APK. *(Nav-string localization + per-language voice pairing SHIPPED — see
+  the localization entry / `FEATURES.md`.)*
 - **Voice browser — DONE 2026-07-03, device-verified.** Settings → Voice → **Voice library** downloads and
-  switches between ~23 curated Piper voices (Lessac, HFC Female/Male, Ryan, LibriTTS-R, GB voices, a GLaDOS
+  switches between ~40 curated Piper voices (Lessac, HFC Female/Male, Ryan, LibriTTS-R, GB voices, a GLaDOS
   novelty…), each in its own `filesDir/piper/<id>/`; per-voice speaker prefs; race-free switch; in-place
   migration of the old single-voice install. Details in [`FEATURES.md`](FEATURES.md). **Next bets:** (1)
   host the catalog (`PiperCatalog`) on the signed `calibration.json` so new voices ship without an APK —
@@ -38,7 +40,7 @@ journeys below under Big bets / Known-hard:
 
 - **Open router (OSRM) is now PRIMARY** — complete street-named turn-by-turn incl. **highway `ref`s /
   exit numbers / sign destinations**; Google demoted to the live-traffic overlay + jam-reroute + fallback.
-- **Offline routing on-device (GraphHopper)** — a **137-region world catalog** (all US states, Canada,
+- **Offline routing on-device (GraphHopper)** — a **135-region world catalog** (all US states, Canada,
   Europe, +) built by a race-safe CI matrix, hosted on GitHub, downloaded per region; smallest-covering
   region selection; combined map+routing area download; a location-aware, filterable picker.
 - **Navigation** — a **real per-lane diagram** (OSRM lane data), highway/exit shields on the banner,
@@ -341,7 +343,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   open-feed path is likely the pragmatic way to actually ship incidents despite its fragmentation — surfaced
   to the user with the recalibrated tradeoff. All probes removed; nothing half-built shipped.**
 - **On-device map-matching (GraphHopper) — the "Google routes, the engine names the turns" unlock.**
-  > **✅ SHIPPED as the OFFLINE ROUTER (2026-06-30)** — Phase 1 is done end-to-end + on a 137-region world
+  > **✅ SHIPPED as the OFFLINE ROUTER (2026-06-30)** — Phase 1 is done end-to-end + on a 135-region world
   > catalog (see "Recently shipped" up top, `SPEC.md` §Offline routing, `FEATURES.md`). This long entry is
   > the **engineering record of how it was un-blocked**; kept for reference. Still OPEN = **Phase 2**: use the
   > same on-device engine for *online* clean always-snap (map-match Google's polyline → replace the option-3
@@ -475,7 +477,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     12 GB-heap runner — no OOMs. *Still open (minor):* the largest single-country graphs are big downloads
     (Germany/France ≈ 1.2 GB) — optionally split giant countries into Geofabrik subregions later; cross-region
     trips (a trip must fit one region's monolithic graph). **Serverless throughout — static release assets, no
-    backend.** On-device verified end-to-end on a Pixel 5a: full 137-region picker, name filter, correct
+    backend.** On-device verified end-to-end on a Pixel 5a: full 135-region picker, name filter, correct
     location-aware ordering.
     - *bbox fix (2026-06-30):* region boxes come from `osmium fileinfo -g header.boxes` (the declared extract
       region), **not** `data.bbox` (raw node extent — outlier nodes blew Oregon's box across WA + CA, so it
