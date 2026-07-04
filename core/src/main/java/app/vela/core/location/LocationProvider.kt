@@ -66,8 +66,16 @@ class LocationProvider @Inject constructor(
      * Cold stream of fixes from GPS + NETWORK. Caller must hold
      * ACCESS_FINE_LOCATION (checked at the UI layer before collecting).
      */
+    // minDistanceM MUST stay 0: a distance filter (the old 2 m) makes LocationManager deliver
+    // NOTHING while the device is stationary — so the last fix delivered while braking (with its
+    // nonzero doppler speed) was the freshest data for an entire red light. The speedometer froze
+    // at the braking speed, the puck's Kalman never measured 0, and the dead-reckoned puck crept
+    // ahead on the stuck speed ("mph keeps going when stopped"). At 0 m the stack gets ~1 Hz
+    // fixes with doppler ≈ 0 while parked and everything settles by itself; the battery delta
+    // during active use is negligible (the GPS engine runs either way — the filter only gated
+    // CALLBACKS, not the hardware).
     @SuppressLint("MissingPermission")
-    fun updates(minIntervalMs: Long = 1_000L, minDistanceM: Float = 2f): Flow<Location> =
+    fun updates(minIntervalMs: Long = 1_000L, minDistanceM: Float = 0f): Flow<Location> =
         callbackFlow {
             val mgr = lm ?: run { close(); return@callbackFlow }
             val listener = LocationListener { loc ->

@@ -115,10 +115,13 @@ data class Calibration(
             "ownerDescription" to listOf(1, 154, 0, 0),
             "openStatus" to listOf(1, 203, 1, 8, 0),
             "statusRich" to listOf(1, 203, 1, 4, 0),
-            // Locale-INDEPENDENT open/closed CODE (6=open, 5=closed, 13=opening soon) — a sibling of the
-            // localized status TEXT, so open/closed survives hl=fr/de/… where the words change (verified
-            // on a real hl=fr capture 2026-07-03). Two nodes carry it: rich [4] (with the close time) and
-            // simple [8] (bare); read either. The code is at `<node>[1][0][1]`.
+            // RETIRED (2026-07-04) — kept only so an older installed app reading a NEWER remote
+            // bundle still finds the keys it expects. These ints were pinned from an hl=fr capture
+            // as an open/closed code (6=open/5=closed/13=soon), but a live EN capture DISPROVED
+            // that: closed pharmacies carried 6 and an Open-24-hours business carried 13/4 —
+            // they're span/style markers, and the fr agreement was a coincidence. The parser no
+            // longer reads them; open/closed is parsed from the localized status TEXT
+            // (SearchParser.parseOpenNow's per-language keyword table). Do not resurrect.
             "statusCodeRich" to listOf(1, 203, 1, 4, 1, 0, 1),
             "statusCodeSimple" to listOf(1, 203, 1, 8, 1, 0, 1),
             "status118" to listOf(1, 118, 0, 3, 1, 4, 0),
