@@ -185,6 +185,8 @@ class MapViewModel @Inject constructor(
     private var replayOwnsNav = false // a replay auto-started the nav session → tear it down on end/supersede
     private var lastRecordedRoute: app.vela.core.model.Route? = null // last route block written to the
                                                                      // active trip (route swaps append)
+    @Volatile private var lastVoiceLangHinted: String? = null // last language we told the user they lack a
+                                                              // voice for — so the hint shows once, not per prompt
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
@@ -211,6 +213,19 @@ class MapViewModel @Inject constructor(
             else -> savedRaw // a system TTS engine the user picked
         }
         neuralSynthFor(savedEngine)?.let { voice.neural = it }
+        // When guidance can't speak the app/system language (the neural voice is a different
+        // language AND no system TTS voice exists for it) — e.g. the user set the app language to
+        // Russian but only has the English voice — VoiceGuide stays silent (never mangles it) and
+        // tells us the language so we can nudge, once per language.
+        voice.langUnavailable = { lang ->
+            if (lang != lastVoiceLangHinted) {
+                lastVoiceLangHinted = lang
+                val endonym = app.vela.ui.AppLocale.endonym(lang)
+                viewModelScope.launch(Dispatchers.Main) {
+                    flashStatus(appContext.getString(R.string.mapvm_voice_lang_missing, endonym), 6000L)
+                }
+            }
+        }
         voice.init(savedEngine) // null → default system TTS; also warms the engine list for Settings
         if (savedEngine != null) {
             val label = velaLabel(savedEngine)

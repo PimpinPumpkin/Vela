@@ -305,6 +305,7 @@
     <string name="mapvm_no_transit_routes">Nie znaleziono połączeń komunikacji miejskiej</string>
     <string name="mapvm_trip_default_name">Podróż</string>
     <string name="mapvm_no_voice_engine">Nie zainstalowano silnika głosowego — dodaj go w Ustawienia → Głos, aby korzystać ze wskazówek głosowych</string>
+    <string name="mapvm_voice_lang_missing">Wskazówki głosowe wymagają głosu %1$s — dodaj go w Ustawienia → Głos</string>
     <string name="mapvm_no_track_to_replay">Ta podróż nie ma zapisu do odtworzenia</string>
     <string name="mapvm_replaying">Odtwarzanie %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Zapisane miejsca Vela (%1$d)</string>
