@@ -89,7 +89,7 @@ class GoogleMapsDataSource @Inject constructor(
         val viewport = near ?: DEFAULT_VIEWPORT
         val cal = calibration.current()
         val pb = SearchPb.build(query, viewport, cal.searchPb)
-        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}"
+        val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}".localized()
         val raw = get(url)
         // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
         // otherwise the compiled parser runs. Either way, an optional transformPlaces
@@ -144,7 +144,7 @@ class GoogleMapsDataSource @Inject constructor(
                             .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
                             .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
                             .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
-                        val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}"
+                        val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
                         SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
                     }.getOrDefault(emptyList())
                 }
@@ -481,6 +481,16 @@ class GoogleMapsDataSource @Inject constructor(
     private suspend fun <T> io(block: suspend () -> T): T = withContext(Dispatchers.IO) { block() }
 
     private fun String.enc(): String = URLEncoder.encode(this, "UTF-8")
+
+    /** Rewrite the endpoint's `hl=en` to the app/system language so Google returns categories, hours
+     *  and open/closed status IN THE USER'S LANGUAGE (Google-Maps-style). The open/closed BOOLEAN is
+     *  read from the numeric status code (`SearchParser.openFromCode`), so it stays correct regardless.
+     *  `Locale.getDefault()` reflects the in-app language override (AppLocale sets it) or the system
+     *  locale. **No-op for English → English users are byte-for-byte unchanged.** */
+    private fun String.localized(): String {
+        val lang = java.util.Locale.getDefault().language.lowercase()
+        return if (lang.isBlank() || lang == "en") this else replace("hl=en", "hl=$lang")
+    }
 
     private companion object {
         // Fallback viewport when no user location is available — search is
