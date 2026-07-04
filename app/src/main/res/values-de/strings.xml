@@ -260,6 +260,7 @@
     <string name="root_voice_download">Vela-Stimme herunterladen</string>
     <string name="root_voice_use_system">Systemstimme verwenden</string>
     <string name="nav_maneuver_continue">Weiter</string>
+    <string name="nav_gps_lost">GPS-Signal wird gesucht…</string>
     <string name="nav_compound_then">dann</string>
     <string name="nav_preview_tap_resume">Vorschau – zum Fortsetzen tippen</string>
     <string name="nav_rerouting">Route wird neu berechnet …</string>

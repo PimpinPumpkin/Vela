@@ -12,6 +12,8 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
@@ -316,7 +318,16 @@ fun MapScreen(
             val next = mans?.getOrNull(shownIdx + 1)
             ManeuverBanner(
                 text = if (previewing) (shown?.instruction.orEmpty()) else state.maneuverText,
-                distanceMeters = if (previewing) (shown?.distanceMeters ?: 0.0) else state.nav.distanceToNextManeuver,
+                // The headline distance is the APPROACH to the shown maneuver. A maneuver's own
+                // distanceMeters is the travel AFTER it (Route.kt convention) — showing it here
+                // put the leg-after on the previewed step's headline ("3.1 mi — Turn right onto
+                // Elm St" for a turn 500 ft after the previous one). The approach leg is the
+                // PREVIOUS maneuver's after-distance.
+                distanceMeters = if (previewing) {
+                    mans?.getOrNull(shownIdx - 1)?.distanceMeters ?: state.nav.distanceToNextManeuver
+                } else {
+                    state.nav.distanceToNextManeuver
+                },
                 type = shown?.type ?: ManeuverType.STRAIGHT,
                 ref = shown?.ref,
                 laneHint = shown?.laneHint,
@@ -330,6 +341,9 @@ fun MapScreen(
                 // Arrive" (ARRIVE has 0 after it) show permanently while approaching the final turn, and
                 // suppressed true exit-then-merge compounds whose merge had a long following leg.
                 nextDistanceMeters = shown?.distanceMeters,
+                // Speed-scaled approach gate for lanes + the "then" row: identity at city speeds
+                // (≤ ~60 mph), ~1 km ≈ 30 s at highway speed — Google's cadence.
+                laneShowM = maxOf(800.0, (state.mySpeed ?: 0f).toDouble() * 30.0),
                 previewing = previewing,
                 onPreviewNext = { vm.previewStep((shownIdx + 1).coerceAtMost(mans?.lastIndex ?: liveStep)) },
                 onPreviewPrev = { if (shownIdx - 1 <= liveStep) vm.clearPreview() else vm.previewStep(shownIdx - 1) },
@@ -468,10 +482,45 @@ fun MapScreen(
             ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
         }
 
-        // Speedometer (Google-style) — current GPS speed, bottom-left during nav.
+        // "Searching for GPS" chip — the banner distance/ETA freeze silently on signal loss
+        // (tunnel, garage, Location toggled off); a confident-looking frozen arrow with no hint
+        // it's stale was the audit's "GPS loss is completely invisible" finding. The dot/puck
+        // already greys via the same flag.
+        if (state.navigating && (state.myLocationStale || state.navStarved)) {
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shadowElevation = 4.dp,
+                // bottom = 200dp clears the speedo/FAB band (132-192dp); width-capped +
+                // single-line so long translations can't collide with either.
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 200.dp, start = 90.dp, end = 90.dp),
+            ) {
+                Text(
+                    stringResource(R.string.nav_gps_lost),
+                    style = MaterialTheme.typography.labelLarge,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                )
+            }
+        }
+
+        // Speedometer (Google-style) — bottom-left during nav. The DISPLAYED value is smoothed
+        // (Google shows the fused estimate, not each raw doppler sample — the raw 1 Hz readout
+        // flickered 59/60/61 at a steady cruise), with a small deadband so a stop reads a
+        // clean 0 instead of 1 mph jitter.
         val speedMps = state.mySpeed
         if (state.navigating && speedMps != null) {
-            val (value, unit) = formatSpeed(speedMps)
+            val shownSpeed by animateFloatAsState(
+                targetValue = if (speedMps < 0.4f) 0f else speedMps,
+                animationSpec = tween(durationMillis = 600),
+                label = "speedo",
+            )
+            val (value, unit) = formatSpeed(shownSpeed)
             val dark = isAppInDarkTheme()
             Surface(
                 shape = CircleShape,
