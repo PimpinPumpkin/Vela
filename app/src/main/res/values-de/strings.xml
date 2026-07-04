@@ -254,7 +254,7 @@
     <string name="root_diag_save">Auswahl speichern</string>
     <string name="root_not_now">Jetzt nicht</string>
     <string name="root_voice_title">Sprachausgabe der Navigation</string>
-    <string name="root_voice_body_intro">Vela hat eine eigene, hochwertige Stimme, die vollständig auf Ihrem Telefon läuft – die natürlichsten Ansagen, ohne Konto oder Zusatz-App. Empfohlen. Es ist ein einmaliger Download von ~126 MB (WLAN empfohlen).</string>
+    <string name="root_voice_body_intro">Vela hat eine eigene, hochwertige Stimme, die vollständig auf Ihrem Telefon läuft – die natürlichsten Ansagen, ohne Konto oder Zusatz-App. Empfohlen. Es ist ein einmaliger Download von ~%1$d MB (WLAN empfohlen).</string>
     <string name="root_voice_body_system">Lieber nicht? Sie können stattdessen eine bereits auf Ihrem Telefon installierte Text-zu-Sprache-Stimme verwenden.</string>
     <string name="root_voice_body_outro">Sie können dies jederzeit unter Einstellungen → Stimme ändern.</string>
     <string name="root_voice_download">Vela-Stimme herunterladen</string>
