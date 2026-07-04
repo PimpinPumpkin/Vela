@@ -47,6 +47,12 @@ class PiperSynth @Inject constructor(
 
     override val ready: Boolean get() = tts != null
 
+    /** Language code of the loaded (or, before load, the selected) Piper voice — Piper voice ids are
+     *  `<lang>_<REGION>-<name>` (e.g. `en_US-hfc_female-medium` → "en"), so the langCode is the id's
+     *  prefix. VoiceGuide uses this to avoid reading, say, Russian nav text through the English model. */
+    override val voiceLanguage: String?
+        get() = (loadedVoiceId ?: VelaPiper.effectiveVoiceId(context))?.substringBefore('_')
+
     /** The user's chosen speaker (persisted PER VOICE — libritts_r's 904 speakers are meaningless for
      *  a single-speaker voice), clamped to the loaded model's range. Only the fleet-default voice seeds
      *  from the remotely-configurable [Calibration.defaultVoiceSpeaker]; others default to speaker 0. */
