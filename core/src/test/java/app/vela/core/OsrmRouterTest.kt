@@ -28,10 +28,16 @@ class OsrmRouterTest {
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("continue", "straight"))
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("continue", null))
         assertEquals(ManeuverType.TURN_LEFT, RouteGeometry.osrmType("continue", "left"))     // 90° bend keeping the name — SPOKEN
-        assertEquals(ManeuverType.SLIGHT_RIGHT, RouteGeometry.osrmType("new name", "slight right")) // bear right at a rename — SPOKEN
+        // A "new name" step is a plain rename — OSRM stamps a few-degree slight bearing artifact on a
+        // straight rename node (132nd St SE → Cathcart Way), so slight left/right on a NEW NAME is still
+        // CONTINUE (silent). "continue"+slight stays a real bend (spoken) — the branch is split on purpose.
+        assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", "slight right"))
+        assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", "slight left"))
+        assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", null))
         assertEquals(ManeuverType.STRAIGHT, RouteGeometry.osrmType("turn", "straight"))      // junction where straight is a CHOICE — SPOKEN
         assertEquals(ManeuverType.FORK_RIGHT, RouteGeometry.osrmType("fork", "straight"))    // a fork is never silenced
         assertEquals(ManeuverType.ROUNDABOUT, RouteGeometry.osrmType("roundabout", "right"))
+        assertEquals(ManeuverType.EXIT_ROUNDABOUT, RouteGeometry.osrmType("exit roundabout", "straight")) // OSRM's exit step carries the exit number
         assertEquals(ManeuverType.RAMP_RIGHT, RouteGeometry.osrmType("on ramp", "slight right"))
         assertEquals(ManeuverType.MERGE, RouteGeometry.osrmType("merge", "left"))
         assertEquals(ManeuverType.UTURN, RouteGeometry.osrmType("turn", "uturn"))

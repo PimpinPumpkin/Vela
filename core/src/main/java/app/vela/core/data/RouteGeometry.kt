@@ -274,10 +274,22 @@ object RouteGeometry {
             // keeps the name — that's a TURN_LEFT and must still be spoken. NB "turn"+"straight"
             // below stays STRAIGHT (spoken): OSRM emits type "turn" only where an instruction is
             // warranted (going straight is an active choice at that junction).
-            "new name", "continue" -> if (mod == null || mod == "straight") ManeuverType.CONTINUE else byMod()
+            // A "new name" step is JUST a road rename on the same physical road — OSRM often stamps a
+            // few-degrees "slight left"/"slight right" bearing artifact on a dead-straight rename node, so
+            // treat those as straight too → CONTINUE (silent, like Google). "132nd St SE becomes Cathcart
+            // Way" going straight must NOT be announced. Keep "continue" NARROW: a "continue"+slight is more
+            // plausibly a real gentle bend that keeps its name and should stay spoken.
+            "new name" -> if (mod == null || mod == "straight" || mod == "slight left" || mod == "slight right")
+                ManeuverType.CONTINUE else byMod()
+            "continue" -> if (mod == null || mod == "straight") ManeuverType.CONTINUE else byMod()
             "on ramp", "off ramp", "ramp" -> if (mod?.contains("left") == true) ManeuverType.RAMP_LEFT else ManeuverType.RAMP_RIGHT
             "fork" -> if (mod?.contains("left") == true) ManeuverType.FORK_LEFT else ManeuverType.FORK_RIGHT
             "roundabout", "rotary", "roundabout turn" -> ManeuverType.ROUNDABOUT
+            // OSRM's TWO-STEP roundabout: an enter step ("roundabout") + an EXIT step ("exit roundabout"/
+            // "exit rotary") — and it's the exit step that carries maneuver.exit (the exit NUMBER) and the
+            // exit road name. Without this the exit step fell through to byMod() → a bland "Continue onto X"
+            // and the "take the Nth exit" was silently dropped (the reported "didn't say which exit").
+            "exit roundabout", "exit rotary" -> ManeuverType.EXIT_ROUNDABOUT
             "end of road", "turn" -> byMod()
             else -> byMod()
         }

@@ -257,6 +257,20 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   OSRM never produced CONTINUE at all; the mapping-seam version is the real one. `NavReplay`'s drive-audit
   exempts CONTINUE from its SILENT-turn flag so trip-log audits don't cry wolf on intentional silence.
   Unit-tested (mapping pins + a mock drive asserting the silent continue and the still-spoken next turn).
+  **Four more drive-reported nav fixes (2026-07-04):** (1) **straight rename no longer read out** — OSRM
+  stamps a few-degree `slight left`/`slight right` bearing artifact on a dead-straight `new name` node
+  (132nd St SE → Cathcart Way), which slipped past the null/`straight`-only CONTINUE test → spoken. `osrmType`
+  now treats slight-modified `new name` as CONTINUE too (silent); `continue`+slight stays a real bend
+  (spoken) — the branch is split on purpose, and the unit pins flipped to match. (2) **roundabout exit count
+  restored** — OSRM's TWO-STEP roundabout (`roundabout` enter + `exit roundabout`/`exit rotary` exit, the
+  latter carrying `maneuver.exit`) had the exit step unmodelled → it fell to a bland "Continue onto X" ("it
+  was considered the same road"). `osrmType` now maps the exit types to EXIT_ROUNDABOUT and `NavStrings.phrase`
+  (11 languages) phrases the exit number ("take exit N onto …"). (3) **fastest route reliably leads the
+  picker** — the sort key put traffic-inflated Google alts on a different axis than un-inflated free-flow
+  OSRM routes; now every route is normalised onto one in-traffic axis (`?: durationSeconds * gRatio`) with a
+  provisional/named tie-break. (4) **compass no longer buried under the nav card** — MapLibre's top-right
+  compass is dropped ~112 dp below the top during nav so the full-width maneuver banner stops painting over
+  it. *(Roundabout phrasing + route-sort both want one real drive to confirm against live data.)*
 - ✅ **Navigation tracking overhaul — the standstill/progress glitches (2026-07-04).** Four field bugs from
   real drives ("mph keeps going when stopped", "progression halts as if I'm not moving", "turns showing up
   12 miles early"), all traced and fixed at the mechanism:
