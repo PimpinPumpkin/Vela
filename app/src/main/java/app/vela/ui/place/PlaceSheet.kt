@@ -1416,7 +1416,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White,
                         modifier = Modifier.align(Alignment.BottomCenter)
-                            .padding(bottom = 88.dp, start = 16.dp, end = 16.dp)
+                            .padding(bottom = 120.dp, start = 16.dp, end = 16.dp)
                             .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                     )
