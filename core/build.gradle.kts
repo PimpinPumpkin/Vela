@@ -44,3 +44,10 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+// Forward the trip-audit harness property into the TEST JVM (see NavReplayTest.auditSharedTripLog):
+// `-DvelaTrip=…` on the command line sets a GRADLE-daemon property, which the forked test JVM does
+// NOT inherit — without this the documented audit command silently skipped the test every time.
+tasks.withType<Test>().configureEach {
+    System.getProperty("velaTrip")?.let { systemProperty("velaTrip", it) }
+}
