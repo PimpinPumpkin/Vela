@@ -320,7 +320,11 @@ genuinely needs no doc edit, say why in the commit.
   OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
   **sorted by live in-traffic ETA — fastest leads, Google-style.** (Earlier note that this was "impossible"
   was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real
-  per-route traffic.)
+  per-route traffic.) **Common-axis fix (2026-07-04):** the sort key MUST put every route on one axis —
+  `durationInTrafficSeconds ?: (durationSeconds * gRatio)` where `gRatio` = the top Google route's in-traffic
+  ratio (1.0 if no live traffic). The old `?: durationSeconds` compared a traffic-inflated Google alt against
+  an un-inflated free-flow OSRM route (different axes → the fastest didn't reliably lead — a real-drive bug).
+  Provisional (not-yet-named) routes are the stable tie-break so a named route leads a look-alike.
   **Alternates = GOOGLE's own alternate routes, NAME-ON-PICK (2026-06-30):** we fetch all of Google's
   routes but used only the top; `directions()` now returns the named primary + each distinct Google route
   as a **provisional** `Route` (`Route.provisional` — polyline + live ETA now, turn-by-turn deferred),
