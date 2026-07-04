@@ -53,6 +53,13 @@ interface NavStrings {
     /** A spoken lane recommendation — EN "Use the right 2 lanes" / "Use the left lane". */
     fun useLanes(side: LaneSide, count: Int): String
 
+    /** Lane guidance spoken as a PREFACE to the maneuver (Google-style: "Use the right 2 lanes to take
+     *  exit 172 toward Sacramento"), rather than appended after it. Default is a safe two-sentence,
+     *  lanes-first form that works in every language; [EnNavStrings] overrides it with the smooth
+     *  "…to <maneuver>" connective. */
+    fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + ". " + instruction
+
     /**
      * Expand road abbreviations + numbers so the TTS engine SAYS them ("St"→"Street", "128th"→"one
      * twenty-eighth"). English-specific, so it's **opt-in**: the default is identity, and ONLY
@@ -124,6 +131,14 @@ object EnNavStrings : NavStrings {
     override fun useLanes(side: LaneSide, count: Int): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
         return if (count > 1) "Use the $sideWord $count lanes" else "Use the $sideWord lane"
+    }
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
+        val lanes = if (count > 1) "the $sideWord $count lanes" else "the $sideWord lane"
+        // "Use the right 2 lanes to take exit 172 toward Sacramento" — lowercase the maneuver's first
+        // word so it reads as one sentence after the "In <distance>, " frame.
+        return "Use $lanes to " + instruction.replaceFirstChar { it.lowercaseChar() }
     }
 
     /** Whole-word road abbreviation → spoken form, "I-80"→"Interstate 80", and 3-digit street ordinals
