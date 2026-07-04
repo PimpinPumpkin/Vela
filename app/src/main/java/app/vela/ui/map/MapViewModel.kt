@@ -90,6 +90,8 @@ data class MapUiState(
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
+    val buildingOverlays: List<String> = emptyList(), // abs paths of installed open building-overlay
+                                                      // .pmtiles — rendered beneath OSM to fill gaps
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
@@ -176,6 +178,7 @@ class MapViewModel @Inject constructor(
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
     private val tripStore: app.vela.replay.TripStore,
     private val routingGraphStore: app.vela.offline.RoutingGraphStore,
+    private val overlayStore: app.vela.offline.OverlayTileStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
@@ -211,6 +214,7 @@ class MapViewModel @Inject constructor(
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
+        refreshBuildingOverlays() // surface any installed open building overlays for the map to render
         // Reclaim disk from the removed Kokoro/Matcha voices (up to ~500 MB of dead model files after
         // the Piper-only switch). Off the main thread; a no-op once the dirs are gone.
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -2087,6 +2091,27 @@ class MapViewModel @Inject constructor(
             if (region.id in routingGraphStore.installedIds() || _state.value.routingDownloadingId != null) return@launch
             downloadRoutingGraph(region) // shows its own progress + status
         }
+        downloadOverlayForArea(lat, lng) // also grab the open building-footprint overlay for this area
+    }
+
+    /** Download the open building-footprint overlay (Microsoft, ODbL) covering ([lat],[lng]) alongside the
+     *  offline map + routing for this area — fills the map's building gaps where OSM is thin. Best-effort +
+     *  silent (a background enhancement, not the reason the user tapped download). Smallest covering box wins,
+     *  same rule as routing. */
+    private fun downloadOverlayForArea(lat: Double, lng: Double) {
+        viewModelScope.launch {
+            val regions = overlayStore.manifest(app.vela.BuildConfig.OVERLAY_MANIFEST_URL)
+            val region = regions.filter { lat in it.s..it.n && lng in it.w..it.e }
+                .minByOrNull { (it.n - it.s) * (it.e - it.w) } ?: return@launch
+            if (region.id in overlayStore.installedIds()) return@launch
+            overlayStore.download(region) { }
+            refreshBuildingOverlays()
+        }
+    }
+
+    /** Push the installed overlays' `.pmtiles` paths into state so the map view renders them beneath OSM. */
+    private fun refreshBuildingOverlays() {
+        _state.update { it.copy(buildingOverlays = overlayStore.installed().values.map { f -> f.absolutePath }) }
     }
 
     // --- Offline ROUTING graphs (Settings → Offline routing) ---------------------------------
