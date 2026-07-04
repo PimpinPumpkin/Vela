@@ -305,6 +305,7 @@
     <string name="mapvm_no_transit_routes">Nenhum percurso de transportes encontrado</string>
     <string name="mapvm_trip_default_name">Viagem</string>
     <string name="mapvm_no_voice_engine">Nenhum motor de voz instalado — adicione um em Definições → Voz para indicações faladas</string>
+    <string name="mapvm_voice_lang_missing">As indicações por voz precisam de uma voz em %1$s — adicione uma em Definições → Voz</string>
     <string name="mapvm_no_track_to_replay">Essa viagem não tem traço para reproduzir</string>
     <string name="mapvm_replaying">A reproduzir %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Locais guardados do Vela (%1$d)</string>

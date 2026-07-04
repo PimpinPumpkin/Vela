@@ -305,6 +305,7 @@
     <string name="mapvm_no_transit_routes">Aucun itinéraire en transports trouvé</string>
     <string name="mapvm_trip_default_name">Trajet</string>
     <string name="mapvm_no_voice_engine">Aucun moteur vocal installé — ajoutez-en un dans Paramètres → Voix pour les instructions vocales</string>
+    <string name="mapvm_voice_lang_missing">Les instructions vocales nécessitent une voix %1$s — ajoutez-en une dans Réglages → Voix</string>
     <string name="mapvm_no_track_to_replay">Ce trajet n\'a aucune trace à rejouer</string>
     <string name="mapvm_replaying">Relecture de %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Lieux enregistrés Vela (%1$d)</string>
