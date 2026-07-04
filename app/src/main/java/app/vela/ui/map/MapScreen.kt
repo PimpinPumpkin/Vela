@@ -262,6 +262,7 @@ fun MapScreen(
             myBearing = state.myBearing,
             mySpeed = state.mySpeed,
             mySpeedRaw = state.mySpeedRaw,
+            replaySpeedup = if (state.replaying) MapViewModel.REPLAY_SPEEDUP else 1f,
             compassHeading = state.compassHeading,
             locationStale = state.myLocationStale,
             cameraTarget = state.center,
