@@ -83,6 +83,12 @@ class NavSession @Inject constructor(
     // dismissed every recheck; a similar route must beat the dismissed saving by a real margin.
     private var dismissedFasterKey: Long = 0L
     private var dismissedFasterSaving = 0.0
+    // Replay hermeticity: a trip REPLAY must be deterministic — no live reroute fetches, no
+    // faster-route rechecks (a live fetch mid-replay swapped the route and the recorded fixes
+    // were then matched against a route the driver never drove: arrow on another street, the
+    // faster-route sheet popping up over a replay). Route swaps that happened in the REAL drive
+    // are recorded in the trip and played back via [replaySetRoute].
+    @Volatile var replayMode = false
     // Multi-stop: intermediate waypoints (in travel order), each with its along-route "pass mark" so we can
     // announce "you've reached <stop>" as progress passes it, and reroute through the REMAINING ones.
     // The whole plan (stops + marks + counter + the route the marks were measured on) is guarded by
@@ -286,6 +292,7 @@ class NavSession @Inject constructor(
     // --- live re-check ------------------------------------------------------
 
     private fun maybeRecheck(loc: LatLng, nav: NavState) {
+        if (replayMode) return // hermetic replays never fetch live traffic/routes
         val now = SystemClock.elapsedRealtime()
         if (now - lastRecheckMs < RECHECK_INTERVAL_MS) return
         if (nav.offRoute || nav.remainingDistance < MIN_RECHECK_DISTANCE_M) return
@@ -340,7 +347,29 @@ class NavSession @Inject constructor(
         return h
     }
 
+    /** Adopt a route swap RECORDED in a trip being replayed (silent, no fetch) — the replay
+     *  equivalent of the reroute/faster-route adoption that happened during the real drive. */
+    fun replaySetRoute(r: Route) {
+        if (r.polyline.size < 2) return
+        synchronized(stopLock) { stops = emptyList(); stopMarks = emptyList(); passedStops = 0; planRoute = r }
+        diag.record("nav", "replay: route swap (${r.maneuvers.size} steps)")
+        _state.update {
+            it.copy(
+                route = r,
+                nav = NavState(distanceToNextManeuver = r.maneuvers.firstOrNull()?.distanceMeters ?: 0.0),
+                maneuverText = r.maneuvers.firstOrNull()?.instruction.orEmpty(),
+                remainingDistance = r.distanceMeters,
+                remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
+                fasterRoute = null,
+            )
+        }
+    }
+
     private fun reroute(loc: LatLng) {
+        if (replayMode) {
+            diag.record("nav", "replay: live reroute suppressed (recorded swaps play back instead)")
+            return
+        }
         val dest = destination ?: return
         val now = SystemClock.elapsedRealtime()
         // Single-flight + cooldown: one fetch at a time, and no re-adoption storm while GPS is

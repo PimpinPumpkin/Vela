@@ -140,6 +140,12 @@ fun VelaMapView(
     myBearing: Float?,
     mySpeed: Float? = null,
     mySpeedRaw: Float? = null, // THIS fix's own measurement (null = fix had none) — Kalman feed
+    // Trip-replay time scale (1 = live). The recorded fixes arrive speedup× faster than real time
+    // but carry REAL speeds, so all the puck's wall-clock physics (dead-reckon integration, blind
+    // window, easing time-constants, plausibility caps) must run in TRACE time or the puck reckons
+    // 1/speedup of the ground covered per fix and surges to catch up — the "stuttery arrow +
+    // pulsing mph" replay artifact. At speedup=1 every formula is byte-identical to before.
+    replaySpeedup: Float = 1f,
     compassHeading: Float? = null, // device facing (sensor); points the browse cone when stopped
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
@@ -202,6 +208,7 @@ fun VelaMapView(
     val routeSpansHolder = rememberUpdatedState(routeTrafficSpans)
     val darkHolder = rememberUpdatedState(darkTheme)
     val dashHolder = rememberUpdatedState(routeDashed)
+    val speedupHolder = rememberUpdatedState(replaySpeedup)
     val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
     val lastGradNs = remember { longArrayOf(0L) }    // frame time of the last split upload (wall-clock floor)
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
@@ -286,6 +293,13 @@ fun VelaMapView(
             val dt = dtRaw.toFloat().coerceIn(0f, 0.1f)
             lastNanos = now
             val style = styleRef ?: continue
+            // TRACE-time frame deltas: during a replay the world runs speedup× faster than the
+            // wall clock, so every physics/easing step must integrate speedup× as much time or
+            // the puck falls behind each fix and surges to catch up (the replay stutter). Live
+            // (speedup = 1) these are identical to dtRaw/dt.
+            val ts = speedupHolder.value.toDouble().coerceAtLeast(1.0)
+            val dtT = dtRaw * ts
+            val dtE = (dt * ts.toFloat()).coerceAtMost(0.3f)
             if (navPuck.engaged && routePolyline.size >= 2) {
                 // Kalman-predict the speed each frame: fold the MEASURED forward acceleration
                 // into the modelled speed, so braking kills the prediction NOW — not at the next
@@ -304,29 +318,29 @@ fun VelaMapView(
                     )
                 // Clamp the predict step (an app-pause gap shouldn't integrate minutes of stale
                 // accel); the GPS fix after the gap re-measures anyway.
-                navPuck.kalman.predict(fwd, dtRaw.coerceAtMost(0.5))
+                navPuck.kalman.predict(fwd, dtT.coerceAtMost(0.5))
                 navPuck.speed = navPuck.kalman.speed
                 // Dead-reckon by INTEGRATING the live modelled speed — over THIS frame's part of
-                // the 2 s blind window since the fix (wall-clock; the window caps how far a
-                // dropped GPS signal can run the puck away down the route).
+                // the blind window since the fix (TRACE time; the window caps how far a dropped
+                // GPS signal can run the puck away down the route).
                 // Blind window = 3 s (was 2): some chipsets deliver fixes 2.5-3.5 s apart under
                 // canopy, and a 2 s cap made the puck glide-stall-lurch every cycle at exactly
                 // that cadence. 3 s still bounds a dropped-signal runaway to ~100 m at highway
                 // speed, and the decay below shaves the model right after it.
-                val sinceFix = (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0
+                val sinceFix = (android.os.SystemClock.elapsedRealtime() - navPuck.targetAtMs) / 1000.0 * ts
                 val tEnd = sinceFix.coerceIn(0.0, 3.0)
-                val tStart = (sinceFix - dtRaw).coerceIn(0.0, 3.0)
+                val tStart = (sinceFix - dtT).coerceIn(0.0, 3.0)
                 if (tEnd > tStart) navPuck.reckonedM += navPuck.kalman.speed * (tEnd - tStart)
                 // Past the dead-reckon window with no accepted fix = a measurement outage: decay
                 // the modelled speed toward 0 (there's no evidence we're still moving) so the
                 // zoom/look-ahead don't ride a stale speed forever. A resumed fix re-measures.
-                if (sinceFix > 3.0) navPuck.kalman.decay(dtRaw.coerceAtMost(0.5))
+                if (sinceFix > 3.0) navPuck.kalman.decay(dtT.coerceAtMost(0.5))
                 val predicted = navPuck.targetM + navPuck.reckonedM
-                val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dt / 0.25f))
+                val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dtE / 0.25f))
                 navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
                 val (pt, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
                 navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) segBrg
-                    else smoothBearing(navPuck.displayBearing, segBrg, dt, 0.2f)
+                    else smoothBearing(navPuck.displayBearing, segBrg, dtE, 0.2f)
                 navPuck.drawn = pt // the camera follows this smoothed point, not the raw fix
                 setMeSource(style, pt, navPuck.displayBearing)
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
@@ -338,7 +352,7 @@ fun VelaMapView(
                 val cam = mapRef
                 if (cam != null && navFollowingHolder.value && !scaling[0]) {
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
-                    navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dt / 0.6f))
+                    navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtE / 0.6f))
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
                         else 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0)
                     if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
@@ -348,7 +362,7 @@ fun VelaMapView(
                         camState[2] = cp.bearing
                         camState[3] = if (cp.zoom > 1.0) cp.zoom else tgtZoom
                     }
-                    val k = (1f - kotlin.math.exp(-dt / 0.12f)).toDouble()
+                    val k = (1f - kotlin.math.exp(-dtE / 0.12f)).toDouble()
                     camState[0] += (pt.lat - camState[0]) * k
                     camState[1] += (pt.lng - camState[1]) * k
                     val db = ((navPuck.displayBearing.toDouble() - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
@@ -654,7 +668,10 @@ fun VelaMapView(
             } else {
                 // Monotonic forward only: ease in a plausible advance (speed × elapsed × 2.5 +
                 // 60 m absorbs a real GPS gap), reject anything else and let dead reckoning hold.
-                val dtFix = ((now - navPuck.targetAtMs) / 1000.0).coerceIn(0.0, 10.0)
+                // Elapsed measured in TRACE time (replays deliver fixes speedup× faster than the
+                // wall clock but the ground covered per fix is a full trace-second of travel).
+                val dtFix = ((now - navPuck.targetAtMs) / 1000.0 * speedupHolder.value.toDouble().coerceAtLeast(1.0))
+                    .coerceIn(0.0, 10.0)
                 val maxStep = navPuck.speed.coerceAtLeast(1.0) * dtFix * 2.5 + 60.0
                 val fwd = m - navPuck.targetM
                 when {
