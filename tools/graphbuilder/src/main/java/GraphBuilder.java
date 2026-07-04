@@ -17,7 +17,9 @@ import com.graphhopper.util.Instruction;
  * region and ships the output folder as a release asset; the app downloads + loads it.
  *
  * It MUST stay byte-for-byte config-compatible with the engine that loads the graph:
- *   - encoded values: car_access, car_average_speed, road_access
+ *   - encoded values: car_access, car_average_speed, road_access, max_speed
+ *     (max_speed = OSM `maxspeed` posted limit, km/h, stored per edge; a passive column read by the
+ *      app's speed-limit badge — NOT used for routing/CH, so it doesn't change the baked weighting)
  *   - profile: "car" (car.json custom model, metadata only)
  *   - weighting: a Janino-free SpeedWeighting + access block (ART can't run GraphHopper's Janino-
  *     compiled custom-model weighting), and **Contraction Hierarchies are prepared on that same
@@ -28,7 +30,7 @@ import com.graphhopper.util.Instruction;
  * Build region extracts with: osmium extract -b <W,S,E,N> <state>.osm.pbf -o <region>.osm.pbf
  */
 public class GraphBuilder {
-    static final String ENCODED_VALUES = "car_access, car_average_speed, road_access";
+    static final String ENCODED_VALUES = "car_access, car_average_speed, road_access, max_speed";
 
     public static void main(String[] args) {
         if (args.length < 2) {
