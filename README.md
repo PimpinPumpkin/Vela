@@ -26,8 +26,9 @@ GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 >   map tiles for an area grabs its routing graph too.
 > - **Navigation** — turn-by-turn with a Google-style maneuver banner: a **real
 >   per-lane diagram** (which lane to be in), **highway/exit shields**,
->   swipe-to-look-ahead, spoken + haptic guidance, a **speedometer**, pan-away
->   **re-center**, faster-route re-checks, and an arrival summary.
+>   swipe-to-look-ahead, spoken + haptic guidance, a **speedometer**, a
+>   **posted speed-limit sign** (OSM `maxspeed`, keyless + offline, reddens when
+>   speeding), pan-away **re-center**, faster-route re-checks, and an arrival summary.
 > - **Polish** — in-app light/dark, one consistent Google-grey UI, custom POI
 >   markers, hillshade relief, a **map scale bar**, and **offline** basemap + POI
 >   download.
