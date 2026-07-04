@@ -133,7 +133,10 @@ object SearchParser {
             actionUrl = field("actionUrl").str()?.takeIf { it.startsWith("http", ignoreCase = true) },
             actionLabel = field("actionLabel").str()?.trim()?.ifBlank { null }?.takeIf { it.length <= 30 },
             phone = field("phone").str(),
-            openNow = parseOpenNow(field("openStatus").str()),
+            // Prefer Google's LOCALE-INDEPENDENT numeric status code (survives hl=fr/de/… where the
+            // status WORDS change), falling back to the English text match when the code is absent.
+            openNow = openFromCode(field("statusCodeRich").int() ?: field("statusCodeSimple").int())
+                ?: parseOpenNow(field("openStatus").str()),
             statusText = field("status118").str()
                 ?: field("statusRich").str()
                 ?: field("openStatus").str(),
@@ -250,8 +253,18 @@ object SearchParser {
     private fun isPermanentlyClosed(vararg status: String?): Boolean =
         status.any { it != null && it.contains("Permanently", ignoreCase = true) }
 
+    /** Google's numeric open/closed code, captured from a real hl=fr response (2026-07-03) as a
+     *  sibling of the localized status text: **6 = open, 5 = closed, 13 = opening soon**. Locale-
+     *  independent, so it's the primary open/closed signal once the scrape localizes (hl=app-locale).
+     *  Unknown codes → null → the caller falls back to the (English) text match. */
+    private fun openFromCode(code: Int?): Boolean? = when (code) {
+        6 -> true
+        5, 13 -> false
+        else -> null
+    }
+
     /** Live status text → open/closed. "Closes 6 PM" means open now; "Closed
-     *  · Opens 7 AM" means closed. */
+     *  · Opens 7 AM" means closed. English-only — the [openFromCode] numeric is the localized path. */
     private fun parseOpenNow(status: String?): Boolean? = when {
         status == null -> null
         status.startsWith("Open") || status.startsWith("Closes") -> true
