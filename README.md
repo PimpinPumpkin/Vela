@@ -387,6 +387,10 @@ at **runtime**, by system theme:
   casings **faded out down the hierarchy** until the minor-road casing equals the
   land, so streets are clean white lines with **no outline** (the outlines were
   what made it look un-Google); soft-yellow motorways; bridges mirror their tier.
+- **Building footprints + house numbers** — flat grey footprints with a crisp
+  outline from neighbourhood zoom (3D extrusions at street zoom), and OSM house
+  numbers from ~z16, both keyless from the OpenFreeMap tiles. Density follows
+  OpenStreetMap coverage (dense in metros, patchy in some suburbs).
 - **Neutralised landuse** — the tan/yellow residential/commercial/school fills are
   flattened into the land (Google keeps these untinted), so no coloured blobs.
 - **Light / dark** — a light-grey-land light palette and Google's canonical night
