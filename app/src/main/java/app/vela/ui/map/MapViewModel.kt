@@ -100,6 +100,8 @@ data class MapUiState(
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val navigating: Boolean = false,
+    val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
+                                        // be resumed — drives the "Resume navigation to <label>?" prompt
     val navCameraDetached: Boolean = false,
     val voiceMuted: Boolean = false,
     val diagnosticsEnabled: Boolean = false,
@@ -189,6 +191,13 @@ class MapViewModel @Inject constructor(
     private var replayOwnsNav = false // a replay auto-started the nav session → tear it down on end/supersede
     private var lastRecordedRoute: app.vela.core.model.Route? = null // last route block written to the
                                                                      // active trip (route swaps append)
+    // Nav resume across process death: persist just the DESTINATION (+ label/mode) when nav starts, so if
+    // the OS reaps the backgrounded process mid-drive (Android-14 FGS-location limits on GrapheneOS), the
+    // next launch can offer to resume — re-fetching a FRESH route from wherever you are now. Route isn't
+    // serialized; re-routing from the current fix is simpler + handles the distance you covered while away.
+    private val navResumePrefs = appContext.getSharedPreferences("vela_nav_resume", Context.MODE_PRIVATE)
+    private var resumeDest: LatLng? = null   // stashed target for resumeNav() after maybeOfferResume()
+    private var resumeMode: TravelMode = TravelMode.DRIVE
     @Volatile private var lastVoiceLangHinted: String? = null // last language we told the user they lack a
                                                               // voice for — so the hint shows once, not per prompt
     @Volatile private var lastLimitLoc: LatLng? = null // last fix the road speed-limit was computed at —
@@ -201,6 +210,7 @@ class MapViewModel @Inject constructor(
     init {
         val seed = locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
+        maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
         // Reclaim disk from the removed Kokoro/Matcha voices (up to ~500 MB of dead model files after
         // the Piper-only switch). Off the main thread; a no-op once the dirs are gone.
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -1390,6 +1400,8 @@ class MapViewModel @Inject constructor(
         val stops = s.directionsWaypoints.map { NavSession.NavStop(it.location, it.name) }
         navSession.start(route, dest, s.selected?.name.orEmpty(), s.selectedEngine?.packageName, stops, s.travelMode)
         NavigationService.start(appContext)
+        persistNav(dest, s.selected?.name.orEmpty(), s.travelMode) // so a process-kill mid-drive can resume
+        if (_state.value.resumeNavLabel != null) _state.update { it.copy(resumeNavLabel = null) } // starting fresh clears any stale offer
         // Record this trip's GPS trace for later replay, if the user opted in. Read
         // the pref directly so it works even before Settings has been opened.
         if (settingsPrefs.getBoolean("trip_recording_on", false)) {
@@ -1407,6 +1419,7 @@ class MapViewModel @Inject constructor(
         navSession.stop()
         tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
         clearSpeedLimit() // clear the speed-limit badge for the next drive
+        clearPersistedNav() // this drive is over → don't offer to resume it next launch
         _state.update { it.copy(showSteps = false, previewStepIndex = null, navCameraDetached = false, speedLimitKmh = null) }
     }
 
@@ -1640,6 +1653,65 @@ class MapViewModel @Inject constructor(
         stopNav()
         clearSelection()
     }
+
+    // --- nav resume across process death -----------------------------------------------------------
+    /** Persist the active drive's DESTINATION so the next launch can offer to resume if the process was
+     *  reaped mid-drive. Called on start + kept fresh through a resumed session. */
+    private fun persistNav(dest: LatLng, label: String, mode: TravelMode) {
+        navResumePrefs.edit()
+            .putFloat("lat", dest.lat.toFloat()).putFloat("lng", dest.lng.toFloat())
+            .putString("label", label).putString("mode", mode.name)
+            .putLong("at", System.currentTimeMillis())
+            .apply()
+    }
+
+    /** Nav ended (stopped/arrived/dismissed) → forget the resume target so it isn't offered next launch. */
+    private fun clearPersistedNav() {
+        resumeDest = null
+        navResumePrefs.edit().clear().apply()
+        if (_state.value.resumeNavLabel != null) _state.update { it.copy(resumeNavLabel = null) }
+    }
+
+    /** On launch: a nav session persisted recently (process reaped mid-drive) → stash it + raise the
+     *  "Resume navigation?" prompt. Stale (older than [RESUME_MAX_AGE_MS], i.e. that drive is long over) →
+     *  clear it silently. Called from init. */
+    private fun maybeOfferResume() {
+        val at = navResumePrefs.getLong("at", 0L)
+        if (at == 0L) return
+        if (System.currentTimeMillis() - at > RESUME_MAX_AGE_MS) { clearPersistedNav(); return }
+        val lat = navResumePrefs.getFloat("lat", Float.NaN); val lng = navResumePrefs.getFloat("lng", Float.NaN)
+        if (lat.isNaN() || lng.isNaN()) { clearPersistedNav(); return }
+        resumeDest = LatLng(lat.toDouble(), lng.toDouble())
+        resumeMode = runCatching { TravelMode.valueOf(navResumePrefs.getString("mode", null) ?: "DRIVE") }
+            .getOrDefault(TravelMode.DRIVE)
+        _state.update { it.copy(resumeNavLabel = navResumePrefs.getString("label", "") ?: "") }
+    }
+
+    /** User tapped "Resume": re-route from the CURRENT fix to the saved destination + start nav afresh
+     *  (a fresh route handles however far you drove while the app was gone, and any traffic since). */
+    fun resumeNav() {
+        val dest = resumeDest ?: return
+        val label = _state.value.resumeNavLabel.orEmpty()
+        val mode = resumeMode
+        val origin = _state.value.myLocation
+        if (origin == null) { showStatus(appContext.getString(R.string.mapvm_resume_waiting_gps)); return }
+        _state.update { it.copy(resumeNavLabel = null) }
+        viewModelScope.launch {
+            val routes = runCatching { dataSource.directions(origin, dest, mode, emptyList()) }.getOrDefault(emptyList())
+            var route = routes.firstOrNull()
+            if (route?.provisional == true) route = nameIfNeeded(route)
+            if (route == null) { showStatus(appContext.getString(R.string.mapvm_resume_failed)); clearPersistedNav(); return@launch }
+            destination = dest
+            _state.update { it.copy(activeRoute = route, routes = routes) }
+            startLocation()
+            navSession.start(route, dest, label, _state.value.selectedEngine?.packageName, emptyList(), mode)
+            NavigationService.start(appContext)
+            persistNav(dest, label, mode) // keep it persisted through the resumed drive
+        }
+    }
+
+    /** User dismissed the resume prompt — forget it. */
+    fun dismissResume() = clearPersistedNav()
 
     fun acceptFasterRoute() = navSession.acceptFasterRoute()
 
@@ -2073,6 +2145,8 @@ class MapViewModel @Inject constructor(
         const val NAV_STARVED_MS = 10_000L // navigating without a guidance-quality fix this long → chip
         const val SPEED_LIMIT_FORGET_M = 300.0 // drive this far past the last KNOWN limit with only
                                                // untagged snaps → clear the badge (don't show a stale limit)
+        const val RESUME_MAX_AGE_MS = 60 * 60 * 1000L // a persisted nav older than this = that drive is long
+                                                      // over; don't offer to resume it on the next launch
         const val REPLAY_SPEEDUP = 3f // trip replays play this many × real time — the map view scales
                                       // the puck's dead-reckoning/easing clocks by it so replays glide
                                       // like live drives instead of surging per fix
