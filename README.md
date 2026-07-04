@@ -379,9 +379,10 @@ that reliably renders vector tiles on-device. Over it we apply a Google-like loo
 at **runtime**, by system theme:
 
 - **POI markers** — small category-coloured dots with white Material Icons
-  glyphs (food orange, shops blue, parks green, …) on a muted-grey rounded
-  pin/bubble backing with a soft shadow (Google-style, no white ring); in
-  **light** mode the POI label text is coloured by category too, like Google.
+  glyphs (food orange, shops blue, parks green, …) in front of a muted-grey
+  teardrop pin with a soft shadow (Google-style, no white ring), with the label
+  to the **left** of the icon; in **light** mode the POI label text is coloured
+  by category too, like Google.
 - **Roads, Google-style** — white road fills on a light-grey land, with the
   casings **faded out down the hierarchy** until the minor-road casing equals the
   land, so streets are clean white lines with **no outline** (the outlines were

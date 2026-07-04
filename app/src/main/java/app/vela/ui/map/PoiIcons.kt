@@ -6,9 +6,11 @@ import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.Typeface
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 
@@ -116,6 +118,9 @@ object PoiIcons {
                     // symbol-sort-key order (lower is placed first = wins the slot). So a Safeway (low
                     // rank) beats a tiny tenant inside it (high rank) instead of arbitrary tile order.
                     PropertyFactory.symbolSortKey(Expression.get("rank")),
+                    // Label to the LEFT of the icon (Google-style), matching the ambient Google POIs.
+                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_RIGHT),
+                    PropertyFactory.textOffset(arrayOf(-2.6f, 0f)),
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
@@ -137,6 +142,8 @@ object PoiIcons {
                     PropertyFactory.iconImage(icon),
                     PropertyFactory.iconSize(0.8f),
                     PropertyFactory.symbolSortKey(Expression.get("rank")),
+                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_RIGHT),
+                    PropertyFactory.textOffset(arrayOf(-2.6f, 0f)),
                 )
                 if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
                 layer.setMinZoom(16f)
@@ -164,37 +171,57 @@ object PoiIcons {
     }
 
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
-        val size = 100
-        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        // Google-style POI: a category-coloured dot with a white glyph sitting in front of a
+        // muted-grey TEARDROP/pin backing whose point extends below the dot (NO white ring), with a
+        // soft drop shadow. The dot is the BITMAP CENTRE — so with the layer's default centre anchor
+        // the dot marks the place and the grey teardrop reads as a pin behind it (no placement shift).
+        val w = 100
+        val h = 92
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
-        val cx = size / 2f
-        // Google-style POI marker: a category-coloured dot with a white glyph, sitting on a
-        // muted-grey rounded "pin" backing that peeks out below + around it (NO white ring),
-        // with a soft drop shadow so it reads as lifted off the map.
-        val dotR = size * 0.34f            // coloured dot radius
-        val dotCy = size * 0.42f           // dot nudged above centre to leave room for the grey foot
-        val backR = dotR + size * 0.06f    // grey backing a touch larger than the dot
-        val backCy = dotCy + size * 0.085f // and lower, so a grey rounded collar shows beneath the dot
-        // Soft drop shadow under the grey backing (offset down a hair, blurred).
-        canvas.drawCircle(cx, backCy + size * 0.03f, backR, Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = 0x33000000
-            maskFilter = BlurMaskFilter(size * 0.055f, BlurMaskFilter.Blur.NORMAL)
+        val cx = w / 2f
+        val bodyCy = h / 2f          // grey body + coloured dot centred → the dot IS the anchor point
+        val bodyR = w * 0.32f        // grey teardrop body radius
+        val dotR = w * 0.27f         // coloured dot (grey shows as a thin ring + the point below)
+        val tipY = h - 4f            // teardrop point near the bottom
+        // Teardrop = grey body circle unioned with a triangle down to the point (tangent sides).
+        val d = tipY - bodyCy
+        val sin = (bodyR / d).coerceAtMost(0.985f)
+        val cos = kotlin.math.sqrt(1f - sin * sin)
+        val teardrop = Path().apply {
+            addCircle(cx, bodyCy, bodyR, Path.Direction.CW)
+            op(
+                Path().apply {
+                    moveTo(cx - bodyR * sin, bodyCy + bodyR * cos)
+                    lineTo(cx, tipY)
+                    lineTo(cx + bodyR * sin, bodyCy + bodyR * cos)
+                    close()
+                },
+                Path.Op.UNION,
+            )
+        }
+        // Soft drop shadow (teardrop, nudged down a hair, blurred).
+        canvas.save()
+        canvas.translate(0f, w * 0.02f)
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x40000000
+            maskFilter = BlurMaskFilter(w * 0.05f, BlurMaskFilter.Blur.NORMAL)
         })
-        // Grey rounded pin/bubble backing (kept vertically balanced so the marker stays
-        // centre-anchored — no per-POI placement shift).
-        canvas.drawCircle(cx, backCy, backR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0A6") })
+        canvas.restore()
+        // Grey teardrop backing.
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0A6") })
         // Category-coloured dot.
-        canvas.drawCircle(cx, dotCy, dotR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(colorHex) })
+        canvas.drawCircle(cx, bodyCy, dotR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(colorHex) })
         // White Material glyph centred on the dot.
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = tf
             color = Color.WHITE
-            textSize = size * 0.42f
+            textSize = w * 0.32f
             textAlign = Paint.Align.CENTER
         }
         val glyph = String(Character.toChars(codepoint))
         val fm = text.fontMetrics
-        canvas.drawText(glyph, cx, dotCy - (fm.ascent + fm.descent) / 2f, text)
+        canvas.drawText(glyph, cx, bodyCy - (fm.ascent + fm.descent) / 2f, text)
         return bmp
     }
 }
