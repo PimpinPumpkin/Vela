@@ -364,17 +364,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   count (no `onStop` override), and there was no focus-change listener at all (guidance talked over
   incoming calls; it now stops speaking when a call takes focus). Session lines ("Rerouting", the
   faster-route offer, the stops notice) now speak in all 11 languages via `NavStrings`.
-  **Stronger, steadier ducking (2026-07-04, user: "not ducking enough, and it didn't reliably duck every
-  time"):** two fixes. (1) **`AUDIOFOCUS_GAIN_TRANSIENT` instead of `…_MAY_DUCK`** — the OS's MAY_DUCK is a
-  shallow fixed dip; full transient focus makes the driver's music **pause** under the prompt so the voice is
-  clear (device-verified: the focus request is now `req=2`, was `req=3`). (2) **A ~1.5 s focus-hold** on
-  release (`FOCUS_HOLD_MS`, `Handler`-debounced) instead of abandoning the instant a prompt ends — so a
-  compound prompt ("In 500 ft … turn right") or an interrupt flushing the previous one keeps the audio ducked
-  **continuously** across the gap instead of snapping music back to full between them (the "didn't reliably
-  duck" flap); a new prompt within the window reuses the still-held focus (device-verified: two back-to-back
-  prompts made ONE focus request, not two + an abandon). The request result is now checked (`focusHeld`) so a
-  FAILED grant is known rather than Vela speaking over full-volume audio blind. *(If pause-during-prompt is
-  too aggressive, `AUDIOFOCUS_GAIN_TRANSIENT` → `…_MAY_DUCK` is a one-line dial-back to the shallower duck.)*
+  **Steadier ducking (2026-07-04, user: "not ducking enough, and it didn't reliably duck every time"):** the
+  root cause was **flapping** — focus was abandoned the instant each prompt ended, so the driver's music
+  snapped back to full volume between (and within) closely-spaced prompts, reading as weak/unreliable
+  ducking. Fix: a **~1.5 s focus-hold** on release (`FOCUS_HOLD_MS`, `Handler`-debounced) instead of
+  abandoning immediately — a compound prompt ("In 500 ft … turn right") or an interrupt flushing the previous
+  one now keeps the audio ducked **continuously** across the gap; a new prompt within the window reuses the
+  still-held focus (device-verified: two back-to-back prompts made ONE focus request, not two + an abandon).
+  The request result is checked (`focusHeld`) so a FAILED grant is known rather than speaking over full-volume
+  audio blind. **Stays on `AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`** (OS-managed duck + **auto-restore**): a brief
+  detour to plain `GAIN_TRANSIENT` (pause the music entirely, for a deeper drop) was reverted — many players
+  pause on transient loss but **don't reliably auto-resume** when focus is handed back ("Vela paused the music
+  and didn't restart it"). Duck DEPTH is set by the OS/player, not tunable via the focus API; the continuous
+  hold is what actually makes it read as ducked.
   **Lifecycle/UX:** arrival tears the foreground service down (dismissable notification; the location-typed
   FGS + ongoing notification + 1 Hz GPS used to run FOREVER if you pocketed the phone without tapping
   Done), and a "Searching for GPS…" chip (11 languages) shows during nav when fixes stop — the banner used
