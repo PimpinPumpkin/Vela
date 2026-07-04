@@ -2,6 +2,7 @@ package app.vela.ui.map
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BlurMaskFilter
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -163,22 +164,37 @@ object PoiIcons {
     }
 
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
-        val size = 84
+        val size = 100
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val cx = size / 2f
-        val r = size / 2f - 5f
-        canvas.drawCircle(cx, cx, r + 3f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
-        canvas.drawCircle(cx, cx, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(colorHex) })
+        // Google-style POI marker: a category-coloured dot with a white glyph, sitting on a
+        // muted-grey rounded "pin" backing that peeks out below + around it (NO white ring),
+        // with a soft drop shadow so it reads as lifted off the map.
+        val dotR = size * 0.34f            // coloured dot radius
+        val dotCy = size * 0.42f           // dot nudged above centre to leave room for the grey foot
+        val backR = dotR + size * 0.06f    // grey backing a touch larger than the dot
+        val backCy = dotCy + size * 0.085f // and lower, so a grey rounded collar shows beneath the dot
+        // Soft drop shadow under the grey backing (offset down a hair, blurred).
+        canvas.drawCircle(cx, backCy + size * 0.03f, backR, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x33000000
+            maskFilter = BlurMaskFilter(size * 0.055f, BlurMaskFilter.Blur.NORMAL)
+        })
+        // Grey rounded pin/bubble backing (kept vertically balanced so the marker stays
+        // centre-anchored — no per-POI placement shift).
+        canvas.drawCircle(cx, backCy, backR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0A6") })
+        // Category-coloured dot.
+        canvas.drawCircle(cx, dotCy, dotR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(colorHex) })
+        // White Material glyph centred on the dot.
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = tf
             color = Color.WHITE
-            textSize = size * 0.5f
+            textSize = size * 0.42f
             textAlign = Paint.Align.CENTER
         }
         val glyph = String(Character.toChars(codepoint))
         val fm = text.fontMetrics
-        canvas.drawText(glyph, cx, cx - (fm.ascent + fm.descent) / 2f, text)
+        canvas.drawText(glyph, cx, dotCy - (fm.ascent + fm.descent) / 2f, text)
         return bmp
     }
 }
