@@ -189,7 +189,26 @@ genuinely needs no doc edit, say why in the commit.
 
 ## Degoogled constraints (hard rules)
 
-- Location: AOSP `LocationManager` only — never `FusedLocationProviderClient`.
+- Location: AOSP `LocationManager` only — never `FusedLocationProviderClient`. **Fix discipline
+  (2026-07-04 audit, don't regress):** NETWORK (BeaconDB) fixes are DROPPED during nav and used in
+  browse only when GPS has been quiet ≥12 s (`NETWORK_FIX_QUIET_MS`, OsmAnd's `useOnlyGPS` pattern) —
+  they're 100-1000 m off and teleported the dot/reroutes; inter-fix `dt` comes from
+  `loc.elapsedRealtimeNanos` (monotonic — `loc.time` mixes GNSS UTC with the network system clock and
+  a negative dt bypassed the outlier gate); fixes with accuracy >50 m never feed `NavSession`; the
+  `minDistanceM=0f` registration MUST stay 0 (a distance filter starves fixes at a standstill — the
+  frozen-speedo/creeping-puck bug). Measured speeds pass a SYMMETRIC accel-bounded gate against the
+  last ACCEPTED value (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) — one-sided
+  spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+- Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
+  `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
+  the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
+  no rerouting within 150 m of the destination or while stationary, off-route measured on the
+  windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
+  latch-clear-on-failure (a failed fetch must NOT kill rerouting — the event is edge-triggered), and
+  ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed). The route line's
+  driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a traversed-grey full line) —
+  MapLibre bakes line-gradients into a 256-texel texture, so a gradient stop can never render a crisp
+  cut and there is no `line-trim-offset` in MapLibre; don't "simplify" it back to a gradient.
 - Heading (browse-cone facing direction when stopped, where GPS course is noise): raw
   `SensorManager` `TYPE_ROTATION_VECTOR` (`core/location/HeadingProvider`) — a plain
   Android sensor, not GMS. **Navigation never uses it** (the nav heading comes from the

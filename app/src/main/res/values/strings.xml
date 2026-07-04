@@ -282,6 +282,7 @@
 
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">Continue</string>
+    <string name="nav_gps_lost">Searching for GPS…</string>
     <string name="nav_compound_then">then</string>
     <string name="nav_preview_tap_resume">Preview — tap to resume</string>
     <string name="nav_rerouting">rerouting…</string>

@@ -260,6 +260,7 @@
     <string name="root_voice_download">Hämta Vela-röst</string>
     <string name="root_voice_use_system">Använd systemröst</string>
     <string name="nav_maneuver_continue">Fortsätt</string>
+    <string name="nav_gps_lost">Söker GPS-signal…</string>
     <string name="nav_compound_then">sedan</string>
     <string name="nav_preview_tap_resume">Förhandsvisning – tryck för att återuppta</string>
     <string name="nav_rerouting">beräknar ny rutt…</string>

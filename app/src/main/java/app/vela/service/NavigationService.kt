@@ -77,10 +77,29 @@ class NavigationService : Service() {
             observing = true
             navSession.state
                 .onEach { s ->
-                    if (!s.navigating && !s.arrived) {
-                        teardown()
-                    } else {
-                        runCatching { notificationManager().notify(NOTIF_ID, buildNotification()) }
+                    when {
+                        !s.navigating && !s.arrived -> teardown()
+                        s.arrived -> {
+                            // Arrival is TERMINAL for the service: the old `!navigating &&
+                            // !arrived` condition kept the location-typed FGS, the ongoing
+                            // notification and 1 Hz GPS alive INDEFINITELY if the driver
+                            // pocketed the phone without tapping Done. DETACH FIRST, then post
+                            // the dismissable arrival notification — posting before the detach
+                            // lets the system re-stamp FLAG_FOREGROUND_SERVICE onto the record
+                            // and it stays non-swipeable on older APIs.
+                            runCatching { stopForeground(STOP_FOREGROUND_DETACH) }
+                            runCatching {
+                                notificationManager().notify(
+                                    NOTIF_ID,
+                                    buildNotification().also {
+                                        it.flags = it.flags and
+                                            (Notification.FLAG_ONGOING_EVENT or Notification.FLAG_FOREGROUND_SERVICE).inv()
+                                    },
+                                )
+                            }
+                            stopSelf()
+                        }
+                        else -> runCatching { notificationManager().notify(NOTIF_ID, buildNotification()) }
                     }
                 }
                 .launchIn(scope)
@@ -153,6 +172,9 @@ class NavigationService : Service() {
 
     private fun teardown() {
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
+        // Also clear a DETACHED arrival notification (the arrived branch posts one dismissable —
+        // tapping Done in-app must not leave it stranded in the shade).
+        runCatching { notificationManager().cancel(NOTIF_ID) }
         stopSelf()
     }
 
