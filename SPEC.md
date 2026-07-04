@@ -470,7 +470,9 @@ handed — no filesystem, network, or device access.
 See **[`FEATURES.md`](FEATURES.md)** for the exhaustive, ticked list (search/places,
 reviews, photo gallery, directions + alternates + swap + depart-time +
 search-along-route, drive/walk/bike/transit, turn-by-turn with shields/lanes/voice/
-haptics/speedometer/**per-lane diagram**, traffic overlay, **offline on-device routing** (GraphHopper,
+haptics/speedometer/**per-lane diagram**/**posted speed-limit sign** (OSM `maxspeed` via the on-device
+GraphHopper graph's `max_speed` encoded value — keyless, offline, base-graph snap so it's CH-safe;
+Google gates limits behind the paid Roads API), traffic overlay, **offline on-device routing** (GraphHopper,
 135-region world catalog), offline basemap + POI (the offline SQLite POI index keeps OSM
 address/phone/website/opening_hours, not just name+category), Home/Work shortcuts,
 saved/recent places, deep links, scale bar, in-app theme, the resilience layer above).

@@ -589,7 +589,25 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - 🟡 **Periodic live re-routing** — every ~2 min while underway, re-check
   traffic; if a meaningfully faster route exists, announce it and offer to
   switch (this iteration)
-- ⬜ Speed limits / speed-camera + hazard alerts (lane guidance ✅ done above)
+- 🟡 **Posted speed-limit badge (app-side done 2026-07-04; needs the graph re-bake to light up).** During
+  nav a Google-style speed-limit sign shows by the speedometer — **US MUTCD** style (white rounded rect,
+  "SPEED LIMIT" + number) in imperial, **EU/RoW** (white disc + red ring) in metric, and the number reddens
+  when you exceed the limit + a tolerance (GPS speed is noisy). Source is **OSM `maxspeed`, keyless + offline**
+  — not Google (Google gates posted limits behind the paid Roads API; they're absent from the keyless
+  payloads). Read from the **on-device GraphHopper graph Vela already ships**: `max_speed` was added to the
+  graph's encoded values (`GraphBuilder`/`GraphHopperRouteEngine`, byte-identical), and `currentRoadLimit(lat,lng)`
+  snaps the live fix to the nearest edge and reads it off the **base graph** — CH-safe (encoded values aren't
+  on the CH overlay), route-independent (tracks the road under the puck even off-route), off the main thread,
+  distance-gated + single-flighted per fix (`MapViewModel.updateSpeedLimit`); a sustained untagged stretch
+  clears a stale limit rather than showing it forever. **Crash-safe by construction** (every GraphHopper call
+  is `runCatching`-wrapped): a graph built before `max_speed` simply hides the badge — no crash, no routing
+  regression — so existing installs are unaffected. **Adversarially reviewed** (GH 11 decompiled: US mph
+  round-trips exactly; 150 km/h deliberately blanked since GraphHopper stores both a real 150 zone and a
+  derestricted road as 150). Verified: a Monaco graph rebuilds cleanly with `max_speed` + CH. **Coverage =
+  OSM `maxspeed` (partial)** — strong on highways/EU/urban, sparse on US residential. **Remaining to light it
+  up for everyone: re-bake + re-host the region graphs with `max_speed` (CI), then a fresh region download
+  shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up).
+- ⬜ Speed-camera + hazard alerts (lane guidance ✅ done above)
 - ⬜ Android Auto (needs GMS — likely out of scope)
 - ✅ **Arrival / trip summary** — on reaching the destination, a "You've arrived"
   card replaces the nav controls with the trip's total time and distance (and the
