@@ -88,6 +88,15 @@ class VoiceGuide @Inject constructor(
     // to full volume exactly while "Turn right onto Main St" was being spoken over it.
     private val focusLock = Any()
     private var activeUtterances = 0
+    @Volatile private var focusHeld = false // do we currently hold audio focus? (so a new prompt during
+                                            // the release-hold window doesn't needlessly re-request)
+    private val focusHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    // Abandon focus a beat AFTER the last prompt ends (see releaseFocus) rather than instantly, so the
+    // driver's music stays ducked CONTINUOUSLY across closely-spaced prompts instead of snapping back to
+    // full between them — the "didn't reliably duck / not ducking enough" bug.
+    private val abandonFocusRunnable = Runnable {
+        synchronized(focusLock) { if (activeUtterances == 0) abandonFocus() }
+    }
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
         // A phone call / VOIP taking focus must SILENCE guidance — the old request had no
         // listener at all, so Vela kept announcing turns over ringing and active calls. The
@@ -95,6 +104,7 @@ class VoiceGuide @Inject constructor(
         if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             tts?.stop()
             neural?.stop()
+            focusHandler.removeCallbacks(abandonFocusRunnable)
             synchronized(focusLock) {
                 activeUtterances = 0
                 abandonFocus() // inside the lock — atomic with a racing acquire's count+request
@@ -103,20 +113,28 @@ class VoiceGuide @Inject constructor(
     }
 
     private fun acquireFocus() {
+        focusHandler.removeCallbacks(abandonFocusRunnable) // cancel a pending release — keep the duck continuous
         synchronized(focusLock) {
             activeUtterances += 1
-            if (activeUtterances == 1) requestFocus()
+            if (!focusHeld) requestFocus() // still held from the last prompt? don't re-request
         }
     }
 
     private fun releaseFocus() {
         synchronized(focusLock) {
             if (activeUtterances > 0) activeUtterances -= 1
-            if (activeUtterances == 0) abandonFocus()
+            if (activeUtterances == 0) {
+                // Hold focus for a short tail so a compound prompt ("In 500 ft … turn right") or an
+                // interrupt flushing the previous one keeps the music ducked across the gap. A new
+                // acquire within FOCUS_HOLD_MS cancels this and reuses the still-held focus.
+                focusHandler.removeCallbacks(abandonFocusRunnable)
+                focusHandler.postDelayed(abandonFocusRunnable, FOCUS_HOLD_MS)
+            }
         }
     }
 
     private fun releaseAllFocus() {
+        focusHandler.removeCallbacks(abandonFocusRunnable)
         synchronized(focusLock) {
             activeUtterances = 0
             abandonFocus()
@@ -328,25 +346,38 @@ class VoiceGuide @Inject constructor(
     private fun requestFocus() {
         val am = audioManager ?: return
         // ONE request object reused for the burst (see acquire/releaseFocus) — building a fresh
-        // request per utterance is what leaked the previous one.
+        // request per utterance is what leaked the previous one. GAIN_TRANSIENT (not …_MAY_DUCK):
+        // the driver asked for the music to drop out UNDER the voice, not just dip a little — so we
+        // take full transient focus (media pauses for the prompt) and hand it back after, instead of
+        // the OS's shallow fixed-attenuation duck. The short release-hold above keeps this from
+        // flapping the music on/off between closely-spaced prompts.
         val req = focusRequest ?: run {
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
                 .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                 .build()
-            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
                 .setAudioAttributes(attrs)
-                .setOnAudioFocusChangeListener(focusListener, android.os.Handler(android.os.Looper.getMainLooper()))
+                .setOnAudioFocusChangeListener(focusListener, focusHandler)
                 .build()
                 .also { focusRequest = it }
         }
-        am.requestAudioFocus(req)
+        // Track whether we actually got focus — a FAILED request means the media app never ducked
+        // (Vela used to speak over full-volume audio and never know); GRANTED or DELAYED both hold.
+        focusHeld = am.requestAudioFocus(req) != AudioManager.AUDIOFOCUS_REQUEST_FAILED
     }
 
     private fun abandonFocus() {
+        focusHeld = false
         val am = audioManager ?: return
         focusRequest?.let { am.abandonAudioFocusRequest(it) }
         focusRequest = null
+    }
+
+    private companion object {
+        // Keep audio focus this long after the last prompt so back-to-back prompts don't flap the
+        // driver's music on/off between them. Short enough that music resumes promptly after a cluster.
+        const val FOCUS_HOLD_MS = 1500L
     }
 }
 // (Road-abbreviation → spoken-form expansion moved to EnNavStrings.expandForSpeech in core/i18n, so it's
