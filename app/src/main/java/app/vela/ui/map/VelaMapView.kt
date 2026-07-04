@@ -1010,8 +1010,11 @@ private fun ensureLayers(style: Style) {
                         Expression.stop(0.0, 11f), Expression.stop(8.0, 14f),
                     ),
                 ),
-                PropertyFactory.textOffset(arrayOf(0f, 1.1f)),
-                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                // Label to the LEFT of the icon (Google-style), not under it. Anchor the text's
+                // right edge and push it left of the marker; the offset is in ems so it tracks the
+                // prominence-scaled text size and clears the dot across the size range.
+                PropertyFactory.textOffset(arrayOf(-2.7f, 0f)),
+                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_RIGHT),
                 PropertyFactory.textMaxWidth(7f),
                 PropertyFactory.textOptional(true),
                 PropertyFactory.textAllowOverlap(false),
