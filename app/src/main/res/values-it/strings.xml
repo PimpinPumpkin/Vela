@@ -254,7 +254,7 @@
     <string name="root_diag_save">Salva scelte</string>
     <string name="root_not_now">Non ora</string>
     <string name="root_voice_title">Voce per la navigazione</string>
-    <string name="root_voice_body_intro">Vela ha una voce di alta qualità che funziona interamente sul telefono: le indicazioni vocali più naturali, senza account né app aggiuntive. Consigliata. È un download una tantum di ~126 MB (consigliato il Wi-Fi).</string>
+    <string name="root_voice_body_intro">Vela ha una voce di alta qualità che funziona interamente sul telefono: le indicazioni vocali più naturali, senza account né app aggiuntive. Consigliata. È un download una tantum di ~%1$d MB (consigliato il Wi-Fi).</string>
     <string name="root_voice_body_system">Preferisci di no? Puoi invece usare una voce di sintesi vocale già installata sul telefono.</string>
     <string name="root_voice_body_outro">Puoi modificarlo in qualsiasi momento in Impostazioni → Voce.</string>
     <string name="root_voice_download">Scarica voce Vela</string>
