@@ -78,6 +78,9 @@ fun ManeuverBanner(
     nextType: ManeuverType? = null,
     nextRef: String? = null,
     nextDistanceMeters: Double? = null,
+    // Approach gate for lane arrows AND the compound "then" row — speed-scaled by the caller
+    // (max(800 m, v×30 s)): a 75 mph exit needs the lanes ~1 km out, a city turn at 800 m.
+    laneShowM: Double = LANE_SHOW_M,
     previewing: Boolean = false,
     onPreviewNext: () -> Unit = {},
     onPreviewPrev: () -> Unit = {},
@@ -159,7 +162,7 @@ fun ManeuverBanner(
             // otherwise the arrows sit there for miles telling you to "be in the right lane" for an exit
             // way ahead, which is just noise. The distance gate covers BOTH paths (the count-based hint
             // was just as noisy). In step-preview (swiping ahead) always show, since you're inspecting a step.
-            if (previewing || distanceMeters <= LANE_SHOW_M) {
+            if (previewing || distanceMeters <= laneShowM) {
                 if (lanes.isNotEmpty()) {
                     Spacer(Modifier.height(10.dp))
                     LaneDiagram(lanes, type)
@@ -169,9 +172,13 @@ fun ManeuverBanner(
                 }
             }
             // Compound "then <next>" preview — only when the next maneuver CLOSELY follows this one
-            // (Google shows it only for back-to-back turns like "exit, then keep right"). Showing it for a
-            // maneuver miles ahead is the same noise as lanes-too-early. Includes the next step's shield.
-            if (nextText != null && nextType != null && isCompoundNext(nextDistanceMeters)) {
+            // (Google shows it only for back-to-back turns like "exit, then keep right") AND we're
+            // actually APPROACHING this one: gated on the gap alone, an exit 12 km ahead with a merge
+            // 300 m after it kept "then ⤵ Merge onto I-80 E" on the banner for the whole 12 km — the
+            // same noise the lane gate was added to kill. Preview always shows (inspecting a step).
+            if (nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
+                (previewing || distanceMeters <= laneShowM)
+            ) {
                 Spacer(Modifier.height(8.dp))
                 val nextSigns = roadSigns(nextText, nextRef)
                 Row(verticalAlignment = Alignment.CenterVertically) {

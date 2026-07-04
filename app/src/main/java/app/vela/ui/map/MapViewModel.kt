@@ -69,6 +69,9 @@ data class MapUiState(
                                    // fix carried none. The puck's Kalman measures ONLY from this: feeding
                                    // it the held mySpeed re-injected a stale braking speed at high gain
                                    // every fix, which is what kept the puck "moving" at a red light.
+    val navStarved: Boolean = false, // navigating but guidance hasn't received a usable (GPS, ≤50 m
+                                     // accuracy) fix in a while — drives the "Searching for GPS" chip
+                                     // when coarse fixes keep the ordinary stale timer from firing
     val compassHeading: Float? = null, // device facing (rotation-vector sensor) — browse cone when stopped
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
     val query: String = "",
@@ -330,66 +333,93 @@ class MapViewModel @Inject constructor(
                     }
                 }
             }
-            var lastFixTime = 0L
+            var lastFixRtNanos = 0L
+            var lastGpsMs = 0L
             var lastSpeedEvidenceMs = 0L
+            var lastNavFedMs = android.os.SystemClock.elapsedRealtime()
+            var prevWasGps = false
             val posOutlierStreak = intArrayOf(0)
             locationProvider.updates().collect { loc ->
+                val nowMs = android.os.SystemClock.elapsedRealtime()
+                val isGps = loc.provider == android.location.LocationManager.GPS_PROVIDER
+                // Provider gating, OsmAnd-style (useOnlyGPS): a NETWORK (BeaconDB wifi/cell) fix
+                // is routinely 100-1000 m off — trusted blindly it teleported the dot onto a
+                // parallel street, fired a spurious reroute, then teleported back when GPS
+                // recovered ("GPS thinking I am somewhere else"). A network fix may paint the
+                // DOT only when GPS has been quiet a while (cold start / garage / dead antenna —
+                // a GPS-less phone still deserves a coarse position), and it NEVER steers
+                // guidance: the navSession feed below is GPS-only.
+                if (!isGps) {
+                    if (nowMs - lastGpsMs < NETWORK_FIX_QUIET_MS && lastGpsMs > 0L) return@collect
+                } else {
+                    lastGpsMs = nowMs
+                }
                 val rawHere = LatLng(loc.latitude, loc.longitude)
                 val prev = _state.value.myLocation
-                val dt = if (lastFixTime > 0L) (loc.time - lastFixTime) / 1000.0 else -1.0
+                // Inter-fix dt from the MONOTONIC boot clock: loc.time mixes GNSS UTC (GPS fixes)
+                // with the system clock (NETWORK fixes), and an out-of-order timestamp made
+                // dt<0 — which sanePosition treated as "first fix" and re-anchored to a raw
+                // outlier with no gating at all (a one-fix mid-drive teleport). Mock providers
+                // on old APIs can leave elapsedRealtimeNanos at 0 — fall back to loc.time then.
+                val fixRtNanos = if (loc.elapsedRealtimeNanos != 0L) loc.elapsedRealtimeNanos else loc.time * 1_000_000L
+                val dt = if (lastFixRtNanos > 0L) (fixRtNanos - lastFixRtNanos) / 1e9 else -1.0
+                if (lastFixRtNanos > 0L && dt <= 0.0) return@collect // duplicate/reordered delivery — drop it
                 // Drop outlier leaps + hold the dot when parked (see sanePosition).
                 val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
                 val movedM = prev?.distanceTo(here) ?: 0.0
-                // A long inter-fix gap while navigating is where the dead-reckon (capped 2 s)
-                // carries the puck — log it (opt-in, no-op otherwise) so a tuning trace shows
-                // where GPS dropped and for how long.
+                // A long inter-fix gap while navigating is where the dead-reckon carries the
+                // puck — log it (opt-in, no-op otherwise) so a tuning trace shows where GPS
+                // dropped and for how long.
                 if (dt > 3.0 && _state.value.navigating) {
                     diag.record(
                         "gps",
                         String.format(java.util.Locale.US, "fix gap %.1fs while navigating", dt),
-                        String.format(java.util.Locale.US, "puck dead-reckons (<=2s) at %.0f m/s", _state.value.mySpeed ?: 0f),
+                        String.format(java.util.Locale.US, "puck dead-reckons at %.0f m/s", _state.value.mySpeed ?: 0f),
                     )
                 }
                 // Prefer the fix's own bearing/speed; otherwise DERIVE them from movement.
-                // Some fixes omit bearing/speed (cold start, just-started-moving, certain
-                // chipsets/ROMs/mock providers) — without a heading the nav puck can't point
-                // and dead-reckoning can't run. Only derive on real movement, so a standstill's
-                // GPS jitter doesn't spin the marker; and require a sane inter-fix gap (>=0.3 s)
-                // so a GPS+NETWORK burst arriving ~together can't divide by a near-zero dt into
-                // an absurd speed. Keep the last good value otherwise.
+                // Derivation needs two GPS fixes and real movement past an ACCURACY-scaled noise
+                // floor — deriving across a GPS→NETWORK pair minted phantom 16 mph readouts at a
+                // red light from a 30 m BeaconDB hop (and re-armed the puck's creep).
+                val accFloor = maxOf(3.0, (if (loc.hasAccuracy()) loc.accuracy else 10f) * 0.7).toFloat()
+                val canDerive = prev != null && prevWasGps && isGps && movedM > accFloor && dt in 0.3..10.0
                 val bearing = when {
                     loc.hasBearing() && loc.speed > 0.5f -> loc.bearing
-                    prev != null && movedM > 3.0 && dt >= 0.3 -> bearingBetween(prev, here)
+                    canDerive && movedM > 3.0 -> bearingBetween(prev!!, here)
                     else -> _state.value.myBearing
                 }
-                // Speed EVIDENCE = this fix measured it (doppler) or real movement derived it.
-                // A speedless fix (NETWORK/BeaconDB) used to hold the previous speed FOREVER —
-                // each one re-froze a stale nonzero mph through a whole stop. Hold for at most
-                // SPEED_HOLD_MS; past that, no evidence of motion = not moving, show 0.
-                val hasEvidence = loc.hasSpeed() || (prev != null && movedM > 1.0 && dt in 0.3..10.0)
-                val nowMs = android.os.SystemClock.elapsedRealtime()
+                // Speed EVIDENCE = this fix measured it (doppler) or real GPS movement derived it.
+                // A speedless fix used to hold the previous speed FOREVER — each one re-froze a
+                // stale nonzero mph through a whole stop. Hold at most SPEED_HOLD_MS; past that,
+                // no evidence of motion = not moving, show 0.
+                val hasEvidence = loc.hasSpeed() || canDerive
                 if (hasEvidence) lastSpeedEvidenceMs = nowMs
                 val rawSpeed = when {
                     loc.hasSpeed() -> loc.speed
-                    prev != null && movedM > 1.0 && dt in 0.3..10.0 -> (movedM / dt).toFloat().coerceIn(0f, 70f)
+                    canDerive -> (movedM / dt).toFloat().coerceIn(0f, 70f)
                     nowMs - lastSpeedEvidenceMs > SPEED_HOLD_MS -> 0f
                     else -> _state.value.mySpeed
                 }
-                // Reject a single-fix speed SPIKE (a GPS glitch — "going 35, hops to 157"): no
-                // car gains >15 m/s (~33 mph) between CONSECUTIVE fixes. That premise only holds
-                // for a short inter-fix gap — after a ≥3 s outage the zeroer above may have set
-                // mySpeed=0, and rejecting the first real 29 m/s doppler against 0+15 would pin
-                // the readout at 0 for the rest of the drive (every subsequent fix re-fails the
-                // same check). Gap > 3 s → trust the fresh doppler outright.
-                val lastSp = _state.value.mySpeed
-                val speed = if (rawSpeed != null && lastSp != null && dt in 0.0..3.0 && rawSpeed > lastSp + 15f) lastSp else rawSpeed
-                lastFixTime = loc.time
+                // Plausibility-gate the measured speed (shared with replay): symmetric and
+                // accel-bounded — the old one-sided +15 m/s check let a single doppler down-glitch
+                // to 0 through at 67 mph, then REJECTED every real 30 m/s fix against the held 0
+                // (the speedo-latched-at-0 lockout). The gate compares against the last ACCEPTED
+                // measurement and yields to a persistent change on the 2nd consecutive fix.
+                val measured = if (hasEvidence && rawSpeed != null) gateMeasuredSpeed(rawSpeed, dt) else null
+                val speed = when {
+                    measured != null -> measured
+                    hasEvidence -> _state.value.mySpeed // one-off glitch rejected: hold the shown value
+                    else -> rawSpeed                    // held / timed-out-to-0 path from above
+                }
+                lastFixRtNanos = fixRtNanos
+                prevWasGps = isGps
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,
-                        // The fix's OWN measurement (post spike-filter), null when it had none —
-                        // the puck Kalman's measurement stream (never the held value above).
-                        mySpeedRaw = if (hasEvidence) speed else null,
+                        // The fix's OWN accepted measurement, null when it had none (or the gate
+                        // rejected it) — the puck Kalman's measurement stream must never see a
+                        // held display value or a rejected glitch.
+                        mySpeedRaw = measured,
                         showPsdsTip = false, center = it.center ?: here, myLocationStale = false,
                     )
                 }
@@ -398,9 +428,46 @@ class MapViewModel @Inject constructor(
                 tripStore.record(loc)
                 // Drive turn-by-turn from here so navigation works even if the
                 // foreground NavigationService can't start (Android-14 FGS-location
-                // restrictions / GrapheneOS). No-op unless a session is active.
-                navSession.onLocation(here, app.vela.ui.Units.imperial.value)
+                // restrictions / GrapheneOS). No-op unless a session is active. GUIDANCE IS
+                // GPS-ONLY, and a coarse fix (accuracy worse than ~50 m) updates the dot but
+                // must not steer it — OsmAnd's ACCURACY_FOR_ROUTING does the same. When
+                // guidance is starved of usable fixes for a while (urban canyon at 60-80 m
+                // accuracy for minutes), SAY so — the frozen banner used to be indistinguishable
+                // from working nav (the stale timer never fires while coarse fixes keep coming).
+                if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
+                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
+                    lastNavFedMs = nowMs
+                    if (_state.value.navStarved) _state.update { it.copy(navStarved = false) }
+                } else if (_state.value.navigating && nowMs - lastNavFedMs > NAV_STARVED_MS && !_state.value.navStarved) {
+                    _state.update { it.copy(navStarved = true) }
+                }
             }
+        }
+    }
+
+    // Speed plausibility-gate state: the baseline is the last ACCEPTED measurement — never a
+    // held/zeroed display value (comparing against state.mySpeed is what created the
+    // speedo-latched-at-0 lockout: the zeroer wrote 0 as the baseline and every real 30 m/s
+    // doppler was then "a spike" forever).
+    private var speedGateBase: Float? = null
+    private var speedGateStreak = 0
+
+    /** Gate a MEASURED speed (doppler or derived): symmetric (up AND down — a one-fix doppler
+     *  glitch to 0 at 67 mph is as bogus as a hop to 157), accel-bounded (|Δv| ≤ 8 m/s² × dt +
+     *  slack, matching SpeedKalman.MAX_ACCEL), and self-healing — the 2nd consecutive
+     *  out-of-band fix is the new reality (hard brake, replay jump) and is accepted. Returns the
+     *  accepted measurement, or null when this fix's value is rejected (hold the display,
+     *  don't feed the Kalman). Shared by the live and replay collectors. */
+    private fun gateMeasuredSpeed(raw: Float, dt: Double): Float? {
+        val base = speedGateBase
+        val bound = (8.0 * dt.coerceIn(0.5, 3.0) + 5.0).toFloat()
+        return if (base != null && dt > 0.0 && dt <= 3.0 && kotlin.math.abs(raw - base) > bound && speedGateStreak == 0) {
+            speedGateStreak = 1
+            null
+        } else {
+            speedGateStreak = 0
+            speedGateBase = raw
+            raw
         }
     }
 
@@ -1373,22 +1440,23 @@ class MapViewModel @Inject constructor(
                     // doesn't jump the dot / distance / mph on replay either.
                     val here = sanePosition(rawHere, prev, _state.value.mySpeed, dt, posOutlierStreak)
                     val bearing = if (loc.hasBearing() && loc.speed > 0.5f) loc.bearing else _state.value.myBearing
-                    // Same single-fix spike reject as live GPS — recorded traces carry the raw
-                    // glitches, so a 35→157 mph hop in the trace doesn't show on replay either.
-                    val rawSp = if (loc.hasSpeed()) loc.speed else _state.value.mySpeed
-                    val lastSp = _state.value.mySpeed
-                    val speed = if (rawSp != null && lastSp != null && rawSp > lastSp + 15f) lastSp else rawSp
+                    // Same symmetric plausibility gate as live GPS — recorded traces carry the raw
+                    // glitches (35→157 hops AND one-fix dropouts to 0), and the old one-sided
+                    // filter here had no escape at all: one recorded down-glitch latched the
+                    // whole rest of the replay at 0 (dead Kalman, camera pinned zoomed-in).
+                    val measured = if (loc.hasSpeed()) gateMeasuredSpeed(loc.speed, dt.coerceAtLeast(0.0)) else null
+                    val speed = measured ?: _state.value.mySpeed
                     _state.update {
                         it.copy(
                             myLocation = here, myBearing = bearing, mySpeed = speed,
                             // Replay fixes carry the recorded doppler — feed the puck Kalman the
                             // same way live does, or the replay puck never seeds (no gliding,
                             // no speed-scaled zoom/gates: replays looked worse than real drives).
-                            mySpeedRaw = if (loc.hasSpeed()) speed else null,
+                            mySpeedRaw = measured,
                             center = here, myLocationStale = false,
                         )
                     }
-                    navSession.onLocation(here, app.vela.ui.Units.imperial.value)
+                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
                 }
             } finally {
                 // Only the current replay tears down: a superseded one was already stopped
@@ -1893,7 +1961,12 @@ class MapViewModel @Inject constructor(
         const val KEY_DISMISSED = "dismissed"
         const val STALE_LOCATION_MS = 12_000L // grey the dot after this long with no fix
         const val SPEED_HOLD_MS = 3_000L // hold a speedless-fix speed at most this long, then show 0
-        const val SPEED_ZERO_MS = 3_000L // no fixes AT ALL for this long → the car isn't moving, zero the mph
+        const val SPEED_ZERO_MS = 6_000L // no fixes AT ALL for this long → zero the mph. Two full cycles
+                                         // of the worst normal chipset cadence (~3 s under canopy) — at
+                                         // 3 s the zeroer fired BETWEEN ordinary fixes (56→0→56 flicker)
+        const val NETWORK_FIX_QUIET_MS = 12_000L // use a NETWORK fix (dot only) when GPS has been quiet
+                                                 // this long (OsmAnd's NOT_SWITCH_TO_NETWORK window)
+        const val NAV_STARVED_MS = 10_000L // navigating without a guidance-quality fix this long → chip
         // Max ambient POIs handed to the map layer. Bounds symbol-collision cost per frame so old
         // phones (Pixel 5a) stay smooth while dragging; the collider only paints ~a few dozen anyway.
         const val AMBIENT_ONSCREEN_CAP = 140

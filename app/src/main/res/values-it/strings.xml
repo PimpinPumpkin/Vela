@@ -260,6 +260,7 @@
     <string name="root_voice_download">Scarica voce Vela</string>
     <string name="root_voice_use_system">Usa voce di sistema</string>
     <string name="nav_maneuver_continue">Prosegui</string>
+    <string name="nav_gps_lost">Ricerca del segnale GPS…</string>
     <string name="nav_compound_then">poi</string>
     <string name="nav_preview_tap_resume">Anteprima — tocca per riprendere</string>
     <string name="nav_rerouting">ricalcolo…</string>

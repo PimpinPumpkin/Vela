@@ -64,6 +64,46 @@ class VoiceGuide @Inject constructor(
 
     private val audioManager: AudioManager? = context.getSystemService()
     private var focusRequest: AudioFocusRequest? = null
+    // Audio focus is held for the whole speech BURST, refcounted per utterance. The old
+    // per-utterance request/abandon pair broke on queued prompts: speak(B) overwrote A's
+    // request (leaking it), then A's onDone abandoned B's — the driver's music snapped back
+    // to full volume exactly while "Turn right onto Main St" was being spoken over it.
+    private val focusLock = Any()
+    private var activeUtterances = 0
+    private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
+        // A phone call / VOIP taking focus must SILENCE guidance — the old request had no
+        // listener at all, so Vela kept announcing turns over ringing and active calls. The
+        // next scheduled prompt re-fires naturally once the call releases focus.
+        if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
+            tts?.stop()
+            neural?.stop()
+            synchronized(focusLock) {
+                activeUtterances = 0
+                abandonFocus() // inside the lock — atomic with a racing acquire's count+request
+            }
+        }
+    }
+
+    private fun acquireFocus() {
+        synchronized(focusLock) {
+            activeUtterances += 1
+            if (activeUtterances == 1) requestFocus()
+        }
+    }
+
+    private fun releaseFocus() {
+        synchronized(focusLock) {
+            if (activeUtterances > 0) activeUtterances -= 1
+            if (activeUtterances == 0) abandonFocus()
+        }
+    }
+
+    private fun releaseAllFocus() {
+        synchronized(focusLock) {
+            activeUtterances = 0
+            abandonFocus()
+        }
+    }
 
     /** Initialise, or **re-initialise** if [enginePackage] differs from the engine
      *  currently loaded — so picking a different engine in Settings actually takes
@@ -99,10 +139,13 @@ class VoiceGuide @Inject constructor(
         }
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
-            override fun onDone(utteranceId: String?) = abandonFocus()
+            override fun onDone(utteranceId: String?) = releaseFocus()
+            // QUEUE_FLUSH fires onStop (not onDone) for the flushed utterance — without this
+            // override every interrupt stranded a refcount and focus never released.
+            override fun onStop(utteranceId: String?, interrupted: Boolean) = releaseFocus()
             @Deprecated("deprecated") override fun onError(utteranceId: String?) {
                 working = false // the engine accepted text but couldn't synthesise it
-                abandonFocus()
+                releaseFocus()
             }
         })
     }
@@ -180,11 +223,18 @@ class VoiceGuide @Inject constructor(
     private fun speakNow(text: String, interrupt: Boolean) {
         val n = neural
         if (useNeural && n != null) {
-            requestFocus()
-            n.speak(forSpeech(text), interrupt) { abandonFocus() }
+            // The neural synth fires onDone exactly ONCE per speak() (including aborted/
+            // interrupted utterances — PiperSynth's finally), so the refcount balances without
+            // any interrupt special-casing. Do NOT reset the count here: the interrupted
+            // utterance's own onDone is still in flight and a reset would double-count it,
+            // abandoning focus while the interrupting prompt speaks.
+            acquireFocus()
+            n.speak(forSpeech(text), interrupt) { releaseFocus() }
             return
         }
-        requestFocus()
+        // A FLUSH stops the current utterance + drops the queue; their onStop callbacks
+        // decrement, so just acquire for the new utterance.
+        acquireFocus()
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
         tts?.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
     }
@@ -199,7 +249,7 @@ class VoiceGuide @Inject constructor(
     fun stop() {
         tts?.stop()
         neural?.stop()
-        abandonFocus()
+        releaseAllFocus()
     }
 
     fun shutdown() {
@@ -207,19 +257,24 @@ class VoiceGuide @Inject constructor(
         tts = null
         ready = false
         neural?.stop()
-        abandonFocus()
+        releaseAllFocus()
     }
 
     private fun requestFocus() {
         val am = audioManager ?: return
-        val attrs = AudioAttributes.Builder()
-            .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
-            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-            .build()
-        val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
-            .setAudioAttributes(attrs)
-            .build()
-        focusRequest = req
+        // ONE request object reused for the burst (see acquire/releaseFocus) — building a fresh
+        // request per utterance is what leaked the previous one.
+        val req = focusRequest ?: run {
+            val attrs = AudioAttributes.Builder()
+                .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                .build()
+            AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                .setAudioAttributes(attrs)
+                .setOnAudioFocusChangeListener(focusListener, android.os.Handler(android.os.Looper.getMainLooper()))
+                .build()
+                .also { focusRequest = it }
+        }
         am.requestAudioFocus(req)
     }
 
