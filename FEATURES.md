@@ -271,6 +271,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   provisional/named tie-break. (4) **compass no longer buried under the nav card** — MapLibre's top-right
   compass is dropped ~112 dp below the top during nav so the full-width maneuver banner stops painting over
   it. *(Roundabout phrasing + route-sort both want one real drive to confirm against live data.)*
+- ✅ **Nav survives a process kill — "Resume navigation?" (2026-07-04).** On GrapheneOS the Android-14
+  FGS-location restriction can stop the foreground service from holding the nav process alive, so the OS
+  reaps it mid-drive and you reopen into plain browse mode (route line gone, arrow pointing by compass
+  instead of heading-up — a real drive report). Fix: `startNav` persists the **destination** (+ label/mode) to
+  a `vela_nav_resume` pref; on the next launch `MapViewModel.maybeOfferResume` raises a **"Resume navigation
+  to &lt;place&gt;?"** card (Resume / Dismiss) if that drive is recent (`RESUME_MAX_AGE_MS` = 60 min), and
+  **Resume re-routes from your CURRENT fix** to the saved destination and restarts nav — a fresh route that
+  accounts for however far you drove while the app was gone (and any traffic since), rather than restoring a
+  stale line. Cleared on stop/arrival. Only the destination is persisted (no Route serialization). **Device-
+  verified on a Pixel 5a:** start nav → `am force-stop` (simulating the reap) → relaunch → the "Resume
+  navigation to Safeway?" card appears; Resume re-routes + resumes. *(The other restart symptom — the map not
+  re-plotting a still-live route on a mere Activity recreate — is moot here since the session is rebuilt from
+  the current fix.)*
 - ✅ **Navigation tracking overhaul — the standstill/progress glitches (2026-07-04).** Four field bugs from
   real drives ("mph keeps going when stopped", "progression halts as if I'm not moving", "turns showing up
   12 miles early"), all traced and fixed at the mechanism:

@@ -577,6 +577,38 @@ fun MapScreen(
             }
         }
 
+        // Resume-navigation prompt — a drive was cut off by a process-kill (GrapheneOS reaping the
+        // backgrounded nav process); offer to pick it back up (re-routes from the current fix).
+        if (state.resumeNavLabel != null && !state.navigating && state.selected == null && !searchOpen) {
+            val dark = isAppInDarkTheme()
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = SheetPalette.bg(dark),
+                contentColor = SheetPalette.ink(dark),
+                shadowElevation = 6.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(16.dp)
+                    .fillMaxWidth(),
+            ) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(
+                        stringResource(
+                            R.string.mapscreen_resume_nav,
+                            state.resumeNavLabel!!.ifBlank { stringResource(R.string.mapscreen_your_destination) },
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Row(Modifier.align(Alignment.End).padding(top = 8.dp)) {
+                        TextButton(onClick = vm::dismissResume) { Text(stringResource(R.string.mapscreen_dismiss)) }
+                        Spacer(Modifier.width(8.dp))
+                        Button(onClick = vm::resumeNav) { Text(stringResource(R.string.mapscreen_resume)) }
+                    }
+                }
+            }
+        }
+
         // --- bottom overlay: arrival summary / nav controls / place sheet ---
         when {
             state.arrived && !state.replaying -> ArrivalSummary(
@@ -690,7 +722,7 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.selected == null && !searchOpen) {
+        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null) {
             FloatingActionButton(
                 onClick = vm::recenter,
                 modifier = Modifier
