@@ -274,7 +274,7 @@
     <string name="root_diag_save">Save choices</string>
     <string name="root_not_now">Not now</string>
     <string name="root_voice_title">Spoken navigation voice</string>
-    <string name="root_voice_body_intro">Vela has its own high-quality voice that runs entirely on your phone — the most natural spoken directions, with no account or extra app. Recommended. It\'s a one-time ~126 MB download (wifi recommended).</string>
+    <string name="root_voice_body_intro">Vela has its own high-quality voice that runs entirely on your phone — the most natural spoken directions, with no account or extra app. Recommended. It\'s a one-time ~%1$d MB download (wifi recommended).</string>
     <string name="root_voice_body_system">Prefer not to? You can use a text-to-speech voice already installed on your phone instead.</string>
     <string name="root_voice_body_outro">You can change this any time in Settings → Voice.</string>
     <string name="root_voice_download">Download Vela voice</string>

@@ -254,7 +254,7 @@
     <string name="root_diag_save">Keuzes opslaan</string>
     <string name="root_not_now">Niet nu</string>
     <string name="root_voice_title">Gesproken navigatiestem</string>
-    <string name="root_voice_body_intro">Vela heeft een eigen stem van hoge kwaliteit die volledig op uw telefoon draait — de meest natuurlijke gesproken instructies, zonder account of extra app. Aanbevolen. Het is een eenmalige download van ~126 MB (wifi aanbevolen).</string>
+    <string name="root_voice_body_intro">Vela heeft een eigen stem van hoge kwaliteit die volledig op uw telefoon draait — de meest natuurlijke gesproken instructies, zonder account of extra app. Aanbevolen. Het is een eenmalige download van ~%1$d MB (wifi aanbevolen).</string>
     <string name="root_voice_body_system">Liever niet? U kunt in plaats daarvan een tekst-naar-spraak-stem gebruiken die al op uw telefoon is geïnstalleerd.</string>
     <string name="root_voice_body_outro">U kunt dit op elk moment wijzigen bij Instellingen → Stem.</string>
     <string name="root_voice_download">Vela-stem downloaden</string>

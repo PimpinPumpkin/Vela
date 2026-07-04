@@ -153,22 +153,24 @@ genuinely needs no doc edit, say why in the commit.
   `vits-piper-<id>` archive layout). The **installed set is derived from the filesystem** (`installedVoiceIds`,
   keeps only complete dirs → a partial download self-heals), the pick persists in **`voice_model`**, and
   **speaker choice is per-voice** (`voice_speaker_<id>`; the legacy global `voice_speaker` is migrated onto
-  libritts_r). The browsable catalog is `PiperCatalog` in `:core` (pure data, unit-tested, ~23 curated
-  en_US/en_GB voices; URL = `…/tts-models/vits-piper-<id>.tar.bz2`). `PiperSynth.ensureLoaded` reloads when
+  libritts_r). The browsable catalog is `PiperCatalog` in `:core` (pure data, unit-tested, ~40 curated
+  voices across 11 languages — en_US/en_GB plus the 10 i18n languages; URL = `…/tts-models/vits-piper-<id>.tar.bz2`). `PiperSynth.ensureLoaded` reloads when
   the selected voice changes; `PiperSynth.reloadVoice()` is the SINGLE switch trigger — it bumps the
   generation counter (aborting any in-flight utterance) then tears down + rebuilds on the same serial
   worker, so `tts` is never freed mid-`generate()`. `MapViewModel.migrateFlatLayoutIfNeeded` (first thing
   in `init`) relocates the old flat single-voice install in place (rename, copy-fallback, verify-gated,
   re-runnable) — never re-downloads. **Model downloads MUST NOT use the shared OkHttp client** — its
-  `callTimeout(12s)` (scrape-bounding) aborts any 67–131 MB voice download; `KokoroInstaller` derives a
+  `callTimeout(12s)` (scrape-bounding) aborts any ~67–115 MB voice download; `KokoroInstaller` derives a
   `downloadHttp` with `callTimeout(0)`. Settings → Voice → **Voice library** is the browser; the
   multi-speaker variant picker (Advanced) only shows when the SELECTED catalog voice has >1 speaker.
   **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
   `calibration.json`, **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`),
   commit `calibration.json` + `calibration.json.sig` to `main` — users pick it up on
-  their next launch (raw.githubusercontent caches ~5 min). Keep
-  `Calibration.DEFAULT` (the compiled fallback) and `calibration.json` in sync when
-  you cut an actual release. **Phase 2 (done): the search parser's positional
+  their next launch (raw.githubusercontent caches ~5 min). Keep the compiled
+  `Calibration.DEFAULT`'s field VALUES (paths, endpoints, voice defaults) in sync with
+  `calibration.json` when you cut a release — but `DEFAULT.version` intentionally STAYS `1` (the
+  remote bundle's higher `version` must always win the adopt-if-newer check; the shipped
+  `calibration.json` is at v10, `DEFAULT.version` at 1 — that gap is by design, not drift). **Phase 2 (done): the search parser's positional
   field-index paths are remote too** — the `paths` object in `calibration.json`
   (`name`, `address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays,
   relative to a result entry whose place node is `[1]`; `results`/`single` are
@@ -231,16 +233,18 @@ genuinely needs no doc edit, say why in the commit.
   nav, written into a plain array (never compose state — sensor-rate recomposition). Missing
   sensors degrade to `a = 0` = the old constant-speed dead reckoning.
 - Voice: AOSP `TextToSpeech`, engine-selectable — never hard-depend on Google TTS. **Plus an
-  in-process neural option (Kokoro):** Vela bundles the **sherpa-onnx** runtime (arm64 `.so`, from the
-  `tts-runtime` release AAR — gitignored, fetched in CI, NOT committed) and downloads the ~126 MB
-  `kokoro-int8-multi-lang-v1_0` model into `filesDir/kokoro`, run in-process by `app/voice/KokoroSynth`
-  (`OfflineTts`+`AudioTrack`) behind the `:core` `voice/NeuralSynth` seam (the AAR can't live in the
-  `:core` library module). Becomes the default voice once present. **Non-obvious, all device-only
-  (compiler-clean):** R8 MUST `-keep class com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original
-  name); the multi-lang model needs `lang="en"` or it native-`exit()`s; its Chinese `lexicon`/`dictDir`
-  SIGABRT on Android (omit — English uses espeak `dataDir`); and you must generate the WHOLE utterance
-  before `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT). See
-  `project_vela_kokoro_tts` memory.
+  in-process neural option (Piper):** Vela bundles the **sherpa-onnx** runtime (arm64 `.so`, from the
+  `tts-runtime` release AAR — gitignored, fetched in CI, NOT committed) and downloads a **Piper VITS**
+  voice into `filesDir/piper/<id>/`, run in-process by `app/voice/PiperSynth` (sherpa `OfflineTts` +
+  `AudioTrack`) behind the `:core` `voice/NeuralSynth` seam (the AAR can't live in the `:core` library
+  module). The default is **HFC Female** (`en_US-hfc_female-medium`, ~67 MB); it becomes the default
+  voice once present. **Non-obvious, all device-only (compiler-clean):** R8 MUST `-keep class
+  com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original name); and you must generate the WHOLE
+  utterance before `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT).
+  **(History: earlier iterations bundled Kokoro (`KokoroSynth`) and Matcha; both were removed after
+  on-device A/B — Kokoro was ~0.4× realtime even on a Pixel 9. `MapViewModel` reclaims their old model
+  dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
+  is that historical record, not the current design.)**
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
   (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.
 - EU consent: `InMemoryCookieJar` (CoreModule) pre-seeds Google's `SOCS`/`CONSENT`
