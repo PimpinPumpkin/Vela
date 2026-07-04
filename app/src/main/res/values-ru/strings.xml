@@ -305,6 +305,7 @@
     <string name="mapvm_no_transit_routes">Маршруты транспорта не найдены</string>
     <string name="mapvm_trip_default_name">Поездка</string>
     <string name="mapvm_no_voice_engine">Голосовой движок не установлен — добавьте его в «Настройки → Голос» для голосовых подсказок</string>
+    <string name="mapvm_voice_lang_missing">Для голосовых подсказок нужен голос «%1$s» — добавьте его в Настройки → Голос</string>
     <string name="mapvm_no_track_to_replay">У этой поездки нет трека для воспроизведения</string>
     <string name="mapvm_replaying">Воспроизведение %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Сохранённые места Vela (%1$d)</string>
