@@ -183,6 +183,8 @@ class MapViewModel @Inject constructor(
     private var staleTimerJob: Job? = null
     private var replayJob: Job? = null
     private var replayOwnsNav = false // a replay auto-started the nav session → tear it down on end/supersede
+    private var lastRecordedRoute: app.vela.core.model.Route? = null // last route block written to the
+                                                                     // active trip (route swaps append)
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
@@ -247,6 +249,17 @@ class MapViewModel @Inject constructor(
                 // so the later Done → stopNav → finishTrip is a harmless no-op.
                 val justArrived = ns.arrived && !_state.value.arrived
                 val navStarted = ns.navigating && !_state.value.navigating
+                // Record LIVE route swaps (reroute / accepted faster route) into the active trip
+                // as a new RP/RD/M block at the current fix position — without this the saved trip
+                // held only the start route while the drive continued on another, and a replay/
+                // audit diffed the trace against a route the driver wasn't on ("arrow on another
+                // street"). TripLog parses the blocks as segments; replay swaps at the same spot.
+                val nsRoute = ns.route
+                if (ns.navigating && nsRoute != null && nsRoute !== lastRecordedRoute) {
+                    if (lastRecordedRoute != null) tripStore.saveRoute(nsRoute)
+                    lastRecordedRoute = nsRoute
+                }
+                if (!ns.navigating) lastRecordedRoute = null
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
@@ -1409,8 +1422,17 @@ class MapViewModel @Inject constructor(
                 // cards/voice replay identically and any divergence is real, not a re-route
                 // artifact; fall back to a fresh route for older trips that predate route-saving.
                 // Best-effort (the replay still plays if both fail), skipped if nav's already active.
+                // Segment-aware: the trip records every route the drive actually used (start +
+                // each reroute/faster-route swap as its own RP/RD/M block). The replay starts on
+                // the FIRST route and swaps at the recorded fix positions — HERMETICALLY: no live
+                // fetches (replayMode suppresses reroute + the faster-route recheck; a live fetch
+                // used to swap the route mid-replay and match the trace against a route the
+                // driver never drove — arrow on another street, faster-route sheet over a replay).
+                val segments = tripStore.rawCsv(meta.id)
+                    ?.let { app.vela.core.replay.TripLog.parse(it).segments }
+                    .orEmpty()
                 if (!navSession.state.value.navigating) {
-                    val saved = tripStore.loadRoute(meta.id)
+                    val saved = segments.firstOrNull()?.route
                     val route = saved ?: meta.dest?.let { d ->
                         val from = LatLng(fixes.first().lat, fixes.first().lng)
                         runCatching { dataSource.directions(from, d, TravelMode.DRIVE) }.getOrNull()?.firstOrNull()
@@ -1424,14 +1446,20 @@ class MapViewModel @Inject constructor(
                         // bug). Wire the neural synth too, in case the pick changed since launch.
                         val engine = _state.value.selectedEngine?.packageName
                         neuralSynthFor(engine)?.let { voice.neural = it }
+                        navSession.replayMode = true
                         navSession.start(route, dest, meta.label, engine)
                         replayOwnsNav = true
                     }
                 }
+                val swapAt = segments.drop(1).associateBy({ it.fromPoint }, { it.route })
                 val pts = fixes.map { app.vela.core.location.ReplayFix(it.lat, it.lng, it.t, it.bearing, it.speed) }
                 var lastReplayT = 0L
+                var fixIdx = 0
                 val posOutlierStreak = intArrayOf(0)
-                locationProvider.replay(pts, speedup = 3f).collect { loc ->
+                locationProvider.replay(pts, speedup = REPLAY_SPEEDUP).collect { loc ->
+                    // Play back the drive's own route swaps at the fix where they happened.
+                    swapAt[fixIdx]?.let { if (replayOwnsNav) navSession.replaySetRoute(it) }
+                    fixIdx += 1
                     val rawHere = LatLng(loc.latitude, loc.longitude)
                     val prev = _state.value.myLocation
                     val dt = if (lastReplayT > 0L) (loc.time - lastReplayT) / 1000.0 else -1.0
@@ -1463,6 +1491,7 @@ class MapViewModel @Inject constructor(
                 // above, so this stale finally (job guard false) no-ops.
                 if (replayJob === coroutineContext[Job]) {
                     replayJob = null
+                    navSession.replayMode = false
                     if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
                     _state.update { it.copy(replaying = false) }
                     startLocation() // resume live GPS
@@ -1957,7 +1986,7 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    private companion object {
+    companion object {
         const val KEY_DISMISSED = "dismissed"
         const val STALE_LOCATION_MS = 12_000L // grey the dot after this long with no fix
         const val SPEED_HOLD_MS = 3_000L // hold a speedless-fix speed at most this long, then show 0
@@ -1967,6 +1996,9 @@ class MapViewModel @Inject constructor(
         const val NETWORK_FIX_QUIET_MS = 12_000L // use a NETWORK fix (dot only) when GPS has been quiet
                                                  // this long (OsmAnd's NOT_SWITCH_TO_NETWORK window)
         const val NAV_STARVED_MS = 10_000L // navigating without a guidance-quality fix this long → chip
+        const val REPLAY_SPEEDUP = 3f // trip replays play this many × real time — the map view scales
+                                      // the puck's dead-reckoning/easing clocks by it so replays glide
+                                      // like live drives instead of surging per fix
         // Max ambient POIs handed to the map layer. Bounds symbol-collision cost per frame so old
         // phones (Pixel 5a) stay smooth while dragging; the collider only paints ~a few dozen anyway.
         const val AMBIENT_ONSCREEN_CAP = 140
