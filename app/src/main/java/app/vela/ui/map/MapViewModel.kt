@@ -69,6 +69,9 @@ data class MapUiState(
                                    // fix carried none. The puck's Kalman measures ONLY from this: feeding
                                    // it the held mySpeed re-injected a stale braking speed at high gain
                                    // every fix, which is what kept the puck "moving" at a red light.
+    val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via GraphHopper),
+                                       // km/h; null = unknown/untagged/no offline graph → badge hidden.
+                                       // Converted to the display unit at the badge.
     val navStarved: Boolean = false, // navigating but guidance hasn't received a usable (GPS, ≤50 m
                                      // accuracy) fix in a while — drives the "Searching for GPS" chip
                                      // when coarse fixes keep the ordinary stale timer from firing
@@ -171,6 +174,7 @@ class MapViewModel @Inject constructor(
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
     private val tripStore: app.vela.replay.TripStore,
     private val routingGraphStore: app.vela.offline.RoutingGraphStore,
+    private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
 ) : ViewModel() {
 
@@ -187,6 +191,11 @@ class MapViewModel @Inject constructor(
                                                                      // active trip (route swaps append)
     @Volatile private var lastVoiceLangHinted: String? = null // last language we told the user they lack a
                                                               // voice for — so the hint shows once, not per prompt
+    @Volatile private var lastLimitLoc: LatLng? = null // last fix the road speed-limit was computed at —
+                                                       // the snap is only re-run after moving ~a road-segment
+    @Volatile private var lastLimitHitLoc: LatLng? = null // last fix that RESOLVED a limit — drives the
+                                                          // "forget a stale limit after driving far off it" clear
+    private var limitJob: Job? = null // single-flight the off-thread maxspeed snap
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
@@ -465,6 +474,7 @@ class MapViewModel @Inject constructor(
                 if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
                     navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
                     lastNavFedMs = nowMs
+                    updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
                     if (_state.value.navStarved) _state.update { it.copy(navStarved = false) }
                 } else if (_state.value.navigating && nowMs - lastNavFedMs > NAV_STARVED_MS && !_state.value.navStarved) {
                     _state.update { it.copy(navStarved = true) }
@@ -523,6 +533,36 @@ class MapViewModel @Inject constructor(
             _state.update { if ((it.mySpeed ?: 0f) != 0f) it.copy(mySpeed = 0f, mySpeedRaw = null) else it }
             delay(STALE_LOCATION_MS - SPEED_ZERO_MS)
             _state.update { it.copy(myLocationStale = true) }
+        }
+    }
+
+    /**
+     * Update the posted speed-limit badge for the road under the puck (OSM `maxspeed` from the on-device
+     * GraphHopper graph). Cheap-gated: the snap is only re-run once you've moved ~a road segment ([here] >
+     * ~18 m from the last computed fix), single-flighted ([limitJob]), and off the main thread. `null`
+     * (untagged road / no offline graph / pre-`max_speed` graph) hides the badge; a stale non-null is kept
+     * until a new road resolves so it doesn't flicker off between snaps.
+     */
+    private fun updateSpeedLimit(here: LatLng) {
+        val last = lastLimitLoc
+        if (last != null && last.distanceTo(here) < 18.0) return
+        if (limitJob?.isActive == true) return
+        lastLimitLoc = here
+        limitJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            val kmh = runCatching { routeEngine.currentRoadLimit(here.lat, here.lng) }.getOrNull()
+            if (kmh != null) {
+                lastLimitHitLoc = here
+                if (kmh != _state.value.speedLimitKmh) _state.update { it.copy(speedLimitKmh = kmh) }
+            } else if (_state.value.speedLimitKmh != null) {
+                // Untagged snap. Keep the last limit across a brief gap between tagged segments, but
+                // CLEAR it once we've driven far past where it was last resolved — else turning off a
+                // tagged 45 onto an untagged residential street would show a stale 45 forever (worse
+                // than blank, since it actively misinforms).
+                val hit = lastLimitHitLoc
+                if (hit == null || hit.distanceTo(here) > SPEED_LIMIT_FORGET_M) {
+                    _state.update { it.copy(speedLimitKmh = null) }
+                }
+            }
         }
     }
 
@@ -1366,7 +1406,16 @@ class MapViewModel @Inject constructor(
         NavigationService.stop(appContext)
         navSession.stop()
         tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
-        _state.update { it.copy(showSteps = false, previewStepIndex = null, navCameraDetached = false) }
+        clearSpeedLimit() // clear the speed-limit badge for the next drive
+        _state.update { it.copy(showSteps = false, previewStepIndex = null, navCameraDetached = false, speedLimitKmh = null) }
+    }
+
+    /** Reset the speed-limit badge + its throttle state (shared by nav-stop and replay-teardown so the
+     *  next drive/replay starts clean — else a stale limit could flash near the last drive's end point). */
+    private fun clearSpeedLimit() {
+        limitJob?.cancel()
+        lastLimitLoc = null
+        lastLimitHitLoc = null
     }
 
     /** User panned the map during navigation → detach the follow-camera so they
@@ -1500,6 +1549,7 @@ class MapViewModel @Inject constructor(
                         )
                     }
                     navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
+                    updateSpeedLimit(here) // posted-limit badge during replay too (local graph read)
                 }
             } finally {
                 // Only the current replay tears down: a superseded one was already stopped
@@ -1508,7 +1558,8 @@ class MapViewModel @Inject constructor(
                     replayJob = null
                     navSession.replayMode = false
                     if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
-                    _state.update { it.copy(replaying = false) }
+                    clearSpeedLimit() // mirror stopNav — don't leak the replay's last limit into the next drive
+                    _state.update { it.copy(replaying = false, speedLimitKmh = null) }
                     startLocation() // resume live GPS
                 }
             }
@@ -2020,6 +2071,8 @@ class MapViewModel @Inject constructor(
         const val NETWORK_FIX_QUIET_MS = 12_000L // use a NETWORK fix (dot only) when GPS has been quiet
                                                  // this long (OsmAnd's NOT_SWITCH_TO_NETWORK window)
         const val NAV_STARVED_MS = 10_000L // navigating without a guidance-quality fix this long → chip
+        const val SPEED_LIMIT_FORGET_M = 300.0 // drive this far past the last KNOWN limit with only
+                                               // untagged snaps → clear the badge (don't show a stale limit)
         const val REPLAY_SPEEDUP = 3f // trip replays play this many × real time — the map view scales
                                       // the puck's dead-reckoning/easing clocks by it so replays glide
                                       // like live drives instead of surging per fix
