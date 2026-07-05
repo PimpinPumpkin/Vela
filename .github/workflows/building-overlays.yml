@@ -1,8 +1,9 @@
-# Build open building-footprint OVERLAYS (Microsoft US Building Footprints, ODbL) as PMTiles for many
-# US states in parallel and publish them to the `building-overlays` release — the app renders them
-# BENEATH the OSM building layer to fill gaps where OSM lacks footprints. Sibling of routing-graphs.yml.
+# Build open building-footprint OVERLAYS (Microsoft, ODbL) as PMTiles for many regions in parallel and
+# publish them to the `building-overlays` release — the app renders them BENEATH the OSM building layer to
+# fill gaps where OSM lacks footprints. Sibling of routing-graphs.yml. Two data sources, per catalog row's
+# `source`: us-legacy (a US state's .geojson.zip) or ms-global (a world country's quadkey GeoJSONL).
 #
-# Run from Actions → "Build building overlays" → pass `ids` (e.g. "washington oregon") or tick `all`.
+# Run from Actions → "Build building overlays" → pass `ids` (e.g. "washington andorra") or tick `all`.
 # Regions come from tools/overlay-regions.json — add a line there to build something not listed.
 #
 # Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.pmtiles + a manifest
@@ -42,11 +43,12 @@ jobs:
           ALL: ${{ inputs.all }}
         run: |
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
-          # each matrix row carries id/name/url + bbox as a "S,W,N,E" string (the build script's 4th arg)
+          # each matrix row carries id/name/source/url/location + bbox as a "S,W,N,E" string. source picks
+          # the build path: us-legacy (a .geojson.zip at url) or ms-global (country from `location`, url="-").
           sel=$(jq -c --argjson ids "$ids_json" --argjson all "${ALL:-false}" '
             [ .regions[]
               | select( $all or (($ids|length) > 0 and ((.id as $rid | $ids | index($rid)) != null)) )
-              | {id, name, url, bbox: (.bbox | map(tostring) | join(","))} ]
+              | {id, name, source: (.source // "us-legacy"), url: (.url // "-"), location: (.location // ""), bbox: (.bbox | map(tostring) | join(","))} ]
           ' tools/overlay-regions.json)
           n=$(printf '%s' "$sel" | jq 'length')
           echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
@@ -59,7 +61,7 @@ jobs:
           gh release view building-overlays --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create building-overlays --repo "$GITHUB_REPOSITORY" --prerelease \
               --title "Open building overlays" \
-              --notes "Microsoft US Building Footprints (ODbL) as PMTiles for Vela's gap-fill building overlay. Data assets, not a code release. Buildings © Microsoft, licensed ODbL."
+              --notes "Microsoft Building Footprints (US + Global ML, ODbL) as PMTiles for Vela's gap-fill building overlay. Data assets, not a code release. Buildings © Microsoft, licensed ODbL."
 
   build:
     needs: prep
@@ -83,6 +85,8 @@ jobs:
           VELA_REPO: ${{ github.repository }}
           MANIFEST_MODE: emit
           ENTRY_OUT: ${{ matrix.id }}.json
+          SOURCE: ${{ matrix.source }}
+          LOCATION: ${{ matrix.location }}
         run: bash scripts/build-overlay-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.url }}" "${{ matrix.bbox }}"
       - uses: actions/upload-artifact@v4
         with:
