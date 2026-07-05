@@ -473,7 +473,13 @@ genuinely needs no doc edit, say why in the commit.
   guard). **The overlay STREAMS online — no download needed to see houses (2026-07-05).** `refreshBuildingOverlays`
   runs on every camera-idle (`onViewport`) and emits, per view, a list of full `pmtiles://` URIs: a
   **`pmtiles://file://<abs-path>`** for any DOWNLOADED region (offline), and **`pmtiles://https://…<region>.pmtiles`**
-  for the smallest-covering region in view that ISN'T downloaded — MapLibre 11.7+ reads that hosted archive by
+  for the covering regions in view that AREN'T downloaded — the **UNION of up to the 3 smallest covering
+  boxes, NOT just the single smallest (2026-07-06)**: a neighbour's rectangular bbox can spill across an
+  irregular border AND be smaller — Kansas's box crosses the Missouri River, covers all of NW Missouri
+  (St Joseph) and beats Missouri's box, but kansas.pmtiles is EMPTY east of the river, so the old
+  single-pick rendered NO footprints there (probed: the doll-museum z15 tile has 413 features in
+  missouri.pmtiles vs 36 river-bank scraps in kansas's; the data was never the problem). Streaming the
+  union lets whichever archive has the data paint; an empty region's range requests cost ~nothing — MapLibre 11.7+ reads that hosted archive by
   **HTTP range requests** (verified: GitHub release assets 302→release-assets host with `accept-ranges: bytes`,
   MapLibre follows the redirect), fetching only the visible tiles, so footprints appear as you pan. The manual
   **`MapViewModel.downloadOverlayForArea`** (still smallest-covering-box, pulled alongside the area's tiles) is now
@@ -518,8 +524,9 @@ genuinely needs no doc edit, say why in the commit.
   `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, grey +
   white halo, **minZoom 17.5** (in lockstep with the basemap `vela-housenumber` layer — Google shows house numbers only at true street level ~z17.5-18; 16 carpeted the 200-400 ft views, user 2026-07-06) —
   inserted below `vela-controls` (see the LAYER ORDER warning below). **Streams online exactly like buildings**
-  (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → smallest-covering region's
-  `pmtiles://https://…` URI; reuses `overlayStore.manifest()` which is manifest-URL-agnostic).
+  (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → the union of up to the 3
+  smallest covering regions' `pmtiles://https://…` URIs — same spilled-bbox shadowing fix as the building
+  overlay, see above; reuses `overlayStore.manifest()` which is manifest-URL-agnostic).
   **⚠️ LAYER ORDER (2026-07-06, device-verified fix):** the addr layers are inserted **BELOW `vela-controls`**
   (→ below the ambient POI icons), NOT `addLayer`/top — MapLibre places symbols TOPMOST-FIRST, so numbers
   stacked above the ambient layer grabbed collision boxes before the business icons placed and **EVICTED them
