@@ -1518,6 +1518,10 @@ class MapViewModel @Inject constructor(
         // ~seconds into the replay and flip myLocationStale=true, briefly greying the replay puck / hiding
         // its arrow until the next trace fix clears it. The replay collector sets stale=false per fix.
         staleTimerJob?.cancel(); staleTimerJob = null
+        // The user's real position BEFORE the trace took over — restored on teardown so exiting the replay
+        // snaps the dot back off the trace's end point to (approximately) where they are; the resumed live
+        // GPS refines it on the next fix.
+        val resumeLoc = _state.value.myLocation
         _state.update { it.copy(replaying = true, navCameraDetached = false) }
         flashStatus(appContext.getString(R.string.mapvm_replaying, meta.label), 3000L)
         val job = viewModelScope.launch {
@@ -1598,9 +1602,27 @@ class MapViewModel @Inject constructor(
                 if (replayJob === coroutineContext[Job]) {
                     replayJob = null
                     navSession.replayMode = false
+                    val ownedNav = replayOwnsNav
                     if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
                     clearSpeedLimit() // mirror stopNav — don't leak the replay's last limit into the next drive
-                    _state.update { it.copy(replaying = false, speedLimitKmh = null) }
+                    _state.update {
+                        if (ownedNav) {
+                            // The replay owned the route + drove the dot. Tear BOTH down: drop the replayed
+                            // blue line (the navSession→state observer keeps activeRoute once nav stops, so it
+                            // must be nulled here or the line stayed drawn), clear the step preview, and snap
+                            // the dot/camera back to the user's real pre-replay location off the trace's end.
+                            it.copy(
+                                replaying = false, speedLimitKmh = null,
+                                routes = emptyList(), activeRoute = null, directionsOpen = false,
+                                showSteps = false, previewStepIndex = null,
+                                myLocation = resumeLoc ?: it.myLocation,
+                                center = resumeLoc ?: it.center,
+                            )
+                        } else {
+                            // Replay rode an already-active nav session — leave its route/location alone.
+                            it.copy(replaying = false, speedLimitKmh = null)
+                        }
+                    }
                     startLocation() // resume live GPS
                 }
             }
