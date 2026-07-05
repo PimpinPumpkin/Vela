@@ -56,6 +56,8 @@
     <string name="settings_vibrate_hint">Direction-coded buzzes at each turn — distinct for left vs right — so you can follow a route by feel. Set it per travel mode (e.g. on for cycling and walking, off while driving).</string>
     <string name="settings_keep_screen_on">Keep screen on while navigating</string>
     <string name="settings_keep_screen_on_hint">Stops the display from dimming or sleeping while turn-by-turn is running, so the next turn is always visible without tapping to wake it. On by default; the screen sleeps normally again the moment you arrive or leave navigation.</string>
+    <string name="settings_traffic_lights">Traffic-light guidance</string>
+    <string name="settings_traffic_lights_hint">Adds Google-style landmark cues to spoken directions — \"pass the traffic light, then turn left\" — using open OpenStreetMap signal data (keyless), fetched once when you start a drive. Only added when it helps (one or two lights right before a surface-street turn). Off by default; English only for now, and coverage follows how well signals are mapped in your area.</string>
     <string name="settings_map">Map</string>
     <string name="settings_live_traffic">Live traffic overlay</string>
     <string name="settings_live_traffic_hint">Shades roads by congestion while browsing the map (Google\'s keyless traffic tiles). Off by default — navigation already colours your route by traffic, so this is just for scanning the wider area. It\'s a raster overlay, so it\'s a touch grainy.</string>

@@ -29,6 +29,11 @@ interface NavStrings {
      */
     fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String
 
+    /** Landmark lead-in "Pass the traffic light" / "Pass N traffic lights" for Google-style guidance, prepended
+     *  to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
+     *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
+    fun passLights(count: Int): String = ""
+
     /** A distance phrased for SPEECH, honouring the imperial/metric preference — "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
@@ -128,6 +133,8 @@ object EnNavStrings : NavStrings {
     }
 
     override fun inThen(distancePhrase: String, instruction: String): String = "In $distancePhrase, $instruction"
+
+    override fun passLights(count: Int): String = if (count <= 1) "Pass the traffic light" else "Pass $count traffic lights"
 
     override fun arrived(): String = "You have arrived"
 
