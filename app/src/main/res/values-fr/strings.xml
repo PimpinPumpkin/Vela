@@ -340,4 +340,10 @@
     <string name="cat_pharmacy">Pharmacie</string>
     <string name="cat_atms">Distributeurs</string>
     <string name="cat_parks">Parcs</string>
+    <!-- Resume-navigation prompt (persisted nav session) -->
+    <string name="mapscreen_resume_nav">Reprendre la navigation vers %1$s ?</string> <!-- format -->
+    <string name="mapscreen_resume">Reprendre</string>
+    <string name="mapscreen_your_destination">votre destination</string>
+    <string name="mapvm_resume_waiting_gps">En attente du GPS pour reprendre la navigation…</string>
+    <string name="mapvm_resume_failed">Impossible de reprendre la navigation</string>
 </resources>
