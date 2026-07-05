@@ -135,6 +135,11 @@ class GoogleMapsDataSource @Inject constructor(
             // shows a Google-like MIX (a gas station, a gym, a grocer) rather than mostly restaurants.
             // Low-signal extras are fine — the prominence sort keeps them from displacing real businesses.
             "grocery store", "gas station", "gym", "bar", "pharmacy",
+            // Civic/green POIs (schools, parks) — these render as edu/park icons (PoiIcons.groupForCategory
+            // maps "…school"→edu, "…park"→park) but were never in the fan-out, so at z14+ browse (ambient
+            // active → the OSM poi layers are hidden) they showed from NEITHER source. Their few reviews keep
+            // their prominence low, so they surface in quiet/residential views without crowding businesses.
+            "school", "park",
         )
         val all = coroutineScope {
             terms.map { term ->
