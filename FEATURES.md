@@ -681,10 +681,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   opening hours** (from the `addr:*` / `phone` / `website` / `opening_hours` tags) —
   so an offline place sheet isn't just a name on a pin (sparser than Google, but real)
 - ✅ **Open building-footprint overlay (Microsoft US Building Footprints, ODbL — 2026-07-04, device-verified).**
-  Downloading a map area also pulls that region's **building overlay** — Microsoft's ~130 M US footprints,
-  baked off-device into a per-state `.pmtiles` archive by CI (`scripts/build-overlay-region.sh` → tippecanoe
+  Downloading a map area also pulls that region's **building overlay** — Microsoft building footprints,
+  baked off-device into a per-region `.pmtiles` archive by CI (`scripts/build-overlay-region.sh` → tippecanoe
   `-l building -Z14 -z16`, published to the `building-overlays` GitHub release + a signed-shape manifest,
-  matrix workflow `.github/workflows/building-overlays.yml`). The app's `OverlayTileStore` (a single-file
+  matrix workflow `.github/workflows/building-overlays.yml`). **World catalog (`tools/overlay-regions.json`, 250
+  regions):** 51 US states + DC (Microsoft US Building Footprints, one `.geojson.zip` each) **plus ~199 world
+  countries** (Microsoft Global ML Building Footprints, quadkey GeoJSONL from `global-buildings/dataset-links.csv`)
+  — one build script, two sources, chosen per catalog row. Only the four un-hostable giants (India/Brazil/Russia/
+  Indonesia, whose PMTiles would exceed GitHub's 2 GB/asset limit) are deferred to a sub-national-split follow-up.
+  The app's `OverlayTileStore` (a single-file
   sibling of `RoutingGraphStore`) downloads it into `filesDir/overlays/<id>.pmtiles`; `VelaMapView` adds a
   `pmtiles://file://…` `VectorSource` + a `FillLayer` **beneath** the OSM `building` layer (themed to the same
   fill/outline as OSM), so footprints only fill the **gaps** where OSM is thin — a suburb the Microsoft→OSM

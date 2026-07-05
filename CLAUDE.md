@@ -430,6 +430,17 @@ genuinely needs no doc edit, say why in the commit.
   `callTimeout(0)` rule above): the 197 MB body aborted at the shared client's 12 s cap, silently. `OVERLAY_MANIFEST_URL`
   BuildConfig overridable `-PoverlayManifestUrl=` like routing. BREAKING-ish: an overlay is DATA (ODbL), orthogonal
   to the app's GPLv3, obligation met by tippecanoe `--attribution` + the release publishing derived tiles under ODbL.
+  **World catalog (`tools/overlay-regions.json`, 250 regions):** TWO Microsoft sources picked by each row's
+  `source`, both handled by the ONE build script (`SOURCE` env): **`us-legacy`** = a US state's single
+  `.geojson.zip` (Microsoft US Building Footprints, 51 states+DC); **`ms-global`** = a world country's
+  quadkey-partitioned GeoJSONL from Microsoft's **Global ML Building Footprints** (`global-buildings/dataset-links.csv`
+  → `awk` the country's `Location` rows → curl+gunzip each `.csv.gz` into one ndjson → tippecanoe `-P`; ~199
+  countries). Country **bboxes are the union of the dataset's own z9 quadkey tiles** (self-consistent with where
+  footprints exist); US-state bboxes are Geofabrik extract bounds. **Excluded as single files** (PMTiles would blow
+  past GitHub's 2 GB/asset limit → need sub-national splitting, a follow-up): the whole-US aggregate + **India,
+  Brazil, Russia, Indonesia**; continental aggregates + duplicate Locations (CzechRepublic→Czechia,
+  DemocraticRepublicoftheCongo→CongoDRC) dropped. The app/manifest are source-AGNOSTIC — the emitted manifest row is
+  always `{id,name,url(asset),sizeMb,bbox}`, so no app change was needed to add countries.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
