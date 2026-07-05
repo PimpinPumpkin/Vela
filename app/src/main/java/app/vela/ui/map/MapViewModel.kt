@@ -1384,15 +1384,24 @@ class MapViewModel @Inject constructor(
 
     fun startNav() {
         val route = _state.value.activeRoute ?: return
-        // If they hit Start before a picked alternate finished naming, name it first, then launch.
-        if (route.provisional) {
-            viewModelScope.launch {
-                val named = nameIfNeeded(route)
-                _state.update { it.copy(activeRoute = named) }
-                launchNav(named)
-            }
-        } else {
-            launchNav(route)
+        viewModelScope.launch {
+            // If they hit Start before a picked alternate finished naming, name it first.
+            val named = if (route.provisional) nameIfNeeded(route).also { _state.update { s -> s.copy(activeRoute = it) } } else route
+            // Optional Google-style "pass the light, then turn" landmark clauses (off by default) — fetch the
+            // route's traffic signals once + fold the clauses into its turns before the session starts.
+            val enriched = enrichLightsIfEnabled(named)
+            if (enriched !== named) _state.update { it.copy(activeRoute = enriched) }
+            launchNav(enriched)
+        }
+    }
+
+    /** Fold traffic-light landmark clauses into [route]'s turns if Settings → Navigation has it on (else no-op,
+     *  no network). Best-effort + IO; a fetch miss just leaves the route unchanged. */
+    private suspend fun enrichLightsIfEnabled(route: app.vela.core.model.Route): app.vela.core.model.Route {
+        if (!settingsPrefs.getBoolean("nav_traffic_lights", false)) return route
+        return kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            val signals = app.vela.core.data.OverpassTrafficSignals.fetchAlong(http, route.polyline)
+            app.vela.core.data.RouteGeometry.enrichWithLights(route, signals)
         }
     }
 
