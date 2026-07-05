@@ -4,6 +4,7 @@ import app.vela.core.data.RouteGeometry
 import app.vela.core.model.LatLng
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Route
+import app.vela.core.model.RouteLeg
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -92,6 +93,33 @@ class OsrmRouterTest {
 
     private fun man(t: ManeuverType, dist: Double) =
         app.vela.core.model.Maneuver(t, "x", LatLng(0.0, 0.0), dist, 0.0)
+
+    // ~150 m eastbound line; DEPART at the start, TURN_LEFT at the end (so a signal on the approach counts).
+    private fun straightRoute(): Route {
+        val poly = (0..4).map { LatLng(38.5, -122.0 + it * 0.0005) }
+        val mans = listOf(
+            app.vela.core.model.Maneuver(ManeuverType.DEPART, "Head east", poly[0], 150.0, 0.0),
+            app.vela.core.model.Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Main Street", poly[4], 0.0, 0.0),
+        )
+        return Route(poly, listOf(RouteLeg(150.0, 0.0, null, mans)), 150.0, 0.0, null)
+    }
+
+    @Test fun lightGuidanceAddsClauseForOneSignalBeforeATurn() {
+        val onApproach = LatLng(38.5, -122.0 + 0.001) // sits on the driven line, before the turn
+        val out = RouteGeometry.enrichWithLights(straightRoute(), listOf(onApproach))
+        val turn = out.legs[0].maneuvers.last()
+        assertTrue("clause prepended", turn.instruction.startsWith("Pass the traffic light, then turn left"))
+    }
+
+    @Test fun lightGuidanceStaysSilentWhenItDoesntHelp() {
+        val turnOf = { signals: List<LatLng> -> RouteGeometry.enrichWithLights(straightRoute(), signals).legs[0].maneuvers.last().instruction }
+        // no signals → unchanged
+        assertEquals("Turn left onto Main Street", turnOf(emptyList()))
+        // a signal ~1 km off the route → not counted → unchanged
+        assertEquals("Turn left onto Main Street", turnOf(listOf(LatLng(38.51, -122.0))))
+        // 3+ signals on the approach → "pass 4 lights" is unhelpful, Google-style → unchanged
+        assertEquals("Turn left onto Main Street", turnOf((1..3).map { LatLng(38.5, -122.0 + it * 0.0004) }))
+    }
 
     @Test fun exitRampForkMergeFoldsToOne() {
         val out = RouteGeometry.consolidateExits(listOf(

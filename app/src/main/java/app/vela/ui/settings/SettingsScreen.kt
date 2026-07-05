@@ -333,6 +333,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
             Hint(stringResource(R.string.settings_keep_screen_on_hint))
 
+            var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_traffic_lights), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = trafficLights,
+                    onCheckedChange = {
+                        trafficLights = it
+                        prefs.edit().putBoolean("nav_traffic_lights", it).apply()
+                    },
+                )
+            }
+            Hint(stringResource(R.string.settings_traffic_lights_hint))
+
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_map))
             Row(
