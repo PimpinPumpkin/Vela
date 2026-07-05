@@ -275,9 +275,13 @@ genuinely needs no doc edit, say why in the commit.
   directions fetch (~1-3 s); but the U-turn outlasts the fetch, and by the time it lands the driver has
   rejoined the ORIGINAL line and the engine cleared the `offRoute` latch — yet `reroute()` adopted the fresh
   route anyway, yanking a self-corrected driver onto a different path. Now `reroute()` captures `fromRoute` and,
-  before adopting, discards the result if `route === fromRoute && !nav.offRoute` (back on course) — Google's
-  "you're back on course, carry on". Self-healing (a re-deviation re-fires the edge; no cooldown charged).
-  Wants a real-drive U-turn capture to verify end-to-end. (4) **Traffic incidents** — re-investigated + DEFERRED
+  before adopting, discards the result if the driver is SOLIDLY back on it — `route === fromRoute &&
+  nav.onRouteStreak >= BACK_ON_COURSE_HITS(2)` — Google's "you're back on course, carry on". **NOT bare
+  `!offRoute`**: an adversarial review showed the offRoute latch clears on a SINGLE grazing fix (and `offDist`
+  can match a parallel/overlapping leg), so one spurious graze would kill a legit missed-turn reroute. So
+  `NavState.onRouteStreak` (consecutive on-corridor+moving fixes, computed in `NavEngine` beside `offRouteHits`,
+  reset the instant off) gates it — a graze can't reach 2, a real rejoin does. Self-healing (a re-deviation
+  re-fires the edge; no cooldown charged). Threshold tunable from a real-drive U-turn capture. (4) **Traffic incidents** — re-investigated + DEFERRED
   (user, 2026-07-05): no keyless real-time source (Google keyless response carries none; incident tiles are
   proprietary binary; OSM has only stale roadworks; DOT/511 needs a token + is per-state). Congestion colouring
   already shows where it's slow. See ROADMAP.
