@@ -120,6 +120,23 @@ class NavContinueSilenceTest {
         assertTrue("a turn-bay continue is silent", spoken.isEmpty())
     }
 
+    @Test fun `a continue past an UNMARKED off lane stays silent`() {
+        // The OSRM "none" trap: an off lane with NO painted arrow is emitted as indication "none", which
+        // means "no dedicated indication" — NOT "continues straight". This is the equally-real form of the
+        // turn-bay above (an unmarked outer lane), and must stay silent too. (Regression for the bug where
+        // continueHasGenuineFork treated "none" as straight-ish and re-spoke exactly this case.)
+        val route = continueRoute(lanes = listOf(
+            Lane(listOf("none"), false),
+            Lane(listOf("straight"), true),
+            Lane(listOf("straight"), true),
+        ))
+        val state = NavEngine.update(route, NavState(), route.polyline.first()).first
+        val spoken = (0..3).fold(state to emptyList<NavEvent>()) { (st, _), i ->
+            NavEngine.update(route, st, LatLng(37.0040 - i * 0.0006, -122.0000))
+        }.second.filterIsInstance<NavEvent.Speak>()
+        assertTrue("an unmarked-off-lane continue is silent", spoken.isEmpty())
+    }
+
     /** Out-and-back: 1.1 km north, U-turn, 1.1 km back south on the SAME line. The return-leg
      *  turn (at 2 km along, ~200 m from home) is geometrically identical to the outbound point
      *  at ~200 m. Just past the turnaround it becomes the target — the old global projection

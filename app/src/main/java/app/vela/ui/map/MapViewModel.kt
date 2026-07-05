@@ -2206,6 +2206,9 @@ class MapViewModel @Inject constructor(
             delay(350)
             val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
             val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+            // null = FETCH FAILED (fetchControlsInBox returns null on network/non-2xx, empty list only on a
+            // real empty area) or the job was cancelled — either way DON'T cache the box, so the next viewport
+            // retries instead of stamping a padded "no controls here" that blanks the layer until the box edge.
             val res = runCatching {
                 withContext(Dispatchers.IO) {
                     app.vela.core.data.OverpassTrafficSignals.fetchControlsInBox(http, s, w, n, e)
