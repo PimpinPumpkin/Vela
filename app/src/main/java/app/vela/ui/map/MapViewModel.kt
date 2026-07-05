@@ -2179,10 +2179,18 @@ class MapViewModel @Inject constructor(
                 runCatching {
                     val man = overlayManifestCache
                         ?: overlayStore.manifest(app.vela.BuildConfig.OVERLAY_MANIFEST_URL).also { overlayManifestCache = it }
+                    // Stream the UNION of covering regions (smallest-first, capped), not just the single
+                    // smallest: a neighbour's rectangular bbox can spill across an irregular border AND be
+                    // smaller — Kansas's box crosses the Missouri River, covers all of NW Missouri (St Joseph)
+                    // and beats Missouri's box, but kansas.pmtiles is EMPTY east of the river → no footprints
+                    // (probed: the doll-museum tile has 413 features in missouri.pmtiles, 36 river-bank scraps
+                    // in kansas's). With both streamed, whichever archive has the data paints; the empty one's
+                    // range requests cost ~nothing. Cap 3 bounds pathological corner overlaps.
                     man.filter { c.lat in it.s..it.n && c.lng in it.w..it.e }
-                        .minByOrNull { (it.n - it.s) * (it.e - it.w) } // smallest covering box = the specific region/chunk
-                        ?.takeIf { it.id !in installed.keys }          // downloaded? use the local file, don't stream
-                        ?.let { uris.add("pmtiles://${it.url}") }       // else stream it over HTTP range requests
+                        .sortedBy { (it.n - it.s) * (it.e - it.w) }
+                        .take(3)
+                        .filter { it.id !in installed.keys }        // downloaded? the local file already covers it
+                        .forEach { uris.add("pmtiles://${it.url}") } // else stream over HTTP range requests
                 }
             }
             val distinct = uris.distinct()
@@ -2205,9 +2213,13 @@ class MapViewModel @Inject constructor(
             runCatching {
                 val man = addressManifestCache
                     ?: overlayStore.manifest(app.vela.BuildConfig.ADDRESS_MANIFEST_URL).also { addressManifestCache = it }
+                // UNION of covering regions, same rule (and reason) as refreshBuildingOverlays: a spilled
+                // rectangular bbox from a neighbour state (Kansas over NW Missouri) can be the smallest cover
+                // while its archive is empty there — stream up to the 3 smallest covers so the one with data wins.
                 val list = man.filter { c.lat in it.s..it.n && c.lng in it.w..it.e }
-                    .minByOrNull { (it.n - it.s) * (it.e - it.w) }
-                    ?.let { listOf("pmtiles://${it.url}") } ?: emptyList()
+                    .sortedBy { (it.n - it.s) * (it.e - it.w) }
+                    .take(3)
+                    .map { "pmtiles://${it.url}" }
                 if (list != _state.value.addressOverlays) _state.update { it.copy(addressOverlays = list) }
             }
         }
