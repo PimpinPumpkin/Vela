@@ -102,6 +102,24 @@ class NavContinueSilenceTest {
         )
     }
 
+    @Test fun `a continue past a plain turn bay stays silent`() {
+        // 3 lanes; the LEFT lane is a left-turn bay (invalid, marked only "left"), the two right lanes
+        // sail straight through. laneGuidance sees a valid subset → non-null, but the off lane offers no
+        // straight/slight onward path, so it's a turn bay at an intersection, not a fork. You do nothing
+        // to continue onto Oak Ave — Google says nothing, and neither should we (the reported "it tells me
+        // to use the lanes to continue when the only thing that changes is the road's name").
+        val route = continueRoute(lanes = listOf(
+            Lane(listOf("left"), false),
+            Lane(listOf("straight"), true),
+            Lane(listOf("straight"), true),
+        ))
+        val state = NavEngine.update(route, NavState(), route.polyline.first()).first
+        val spoken = (0..3).fold(state to emptyList<NavEvent>()) { (st, _), i ->
+            NavEngine.update(route, st, LatLng(37.0040 - i * 0.0006, -122.0000))
+        }.second.filterIsInstance<NavEvent.Speak>()
+        assertTrue("a turn-bay continue is silent", spoken.isEmpty())
+    }
+
     /** Out-and-back: 1.1 km north, U-turn, 1.1 km back south on the SAME line. The return-leg
      *  turn (at 2 km along, ~200 m from home) is geometrically identical to the outbound point
      *  at ~200 m. Just past the turnaround it becomes the target — the old global projection
