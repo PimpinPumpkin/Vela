@@ -142,6 +142,16 @@ object NavEngine {
             else -> state.offRouteHits + 1
         }
         val offRoute = offHits >= OFF_ROUTE_HITS
+        // Consecutive on-corridor+moving fixes — the SUSTAINED "back on the line" signal. offRoute clears
+        // on ONE fix within OFF_ROUTE_M, which is too weak to justify abandoning an in-flight reroute (a
+        // single spurious graze on a parallel/overlapping leg would kill a legitimate reroute). This counts
+        // UP only while genuinely on-corridor and moving, and resets the instant we're off — so NavSession's
+        // back-on-course discard can require a real, multi-fix rejoin, not a one-frame coincidence.
+        val onRouteStreak = when {
+            offDist > OFF_ROUTE_M -> 0
+            !moving -> state.onRouteStreak
+            else -> state.onRouteStreak + 1
+        }
         // No rerouting in the destination zone (parked 50 m short of the snapped endpoint is an
         // ARRIVAL, not off-route) — but the zone is measured by CROW distance to the endpoint,
         // never by `remaining`: the progress hold freezes `remaining` the moment you leave the
@@ -334,6 +344,7 @@ object NavEngine {
             remainingDuration = remainingDuration(route, maneuvers, stepIndex, distToNext, remaining, approachLegM),
             offRoute = offRoute,
             offRouteHits = offHits,
+            onRouteStreak = onRouteStreak,
             spoken = spoken,
             traveledM = traveled,
             reacquireHits = reacquireHits,
