@@ -314,6 +314,7 @@ fun MapScreen(
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
+            trafficControls = state.trafficControls,
             navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
