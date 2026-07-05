@@ -38,15 +38,26 @@ if [ "$SOURCE" = "ms-global" ]; then
   awk -F, -v loc="$LOCATION" '$1==loc{print $3}' "$WORK/dl.csv" > "$WORK/urls.txt"
   N=$(wc -l < "$WORK/urls.txt" | tr -d ' ')
   [ "$N" -gt 0 ] || { echo "!! no quadkeys for LOCATION='$LOCATION' in dataset-links.csv" >&2; exit 1; }
-  echo "→ $N quadkey file(s); downloading + decompressing → GeoJSONL"
-  GEOJSON="$WORK/$ID.geojsonl"; : > "$GEOJSON"; i=0
-  while IFS= read -r u; do
-    i=$((i+1))
-    # --retry: a big country is thousands of quadkeys; one transient blip shouldn't fail the whole build.
-    curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors "$u" | gzip -dc >> "$GEOJSON" \
-      || { echo "!! failed quadkey $i/$N: $u" >&2; exit 1; }
-    [ $((i % 50)) -eq 0 ] && echo "  …$i/$N"
-  done < "$WORK/urls.txt"
+  echo "→ $N quadkey file(s); downloading 8-wide + decompressing → GeoJSONL"
+  mkdir -p "$WORK/parts"; export WORK
+  # Download each quadkey to its OWN part, IN PARALLEL — a big country is thousands of quadkeys and one
+  # curl-at-a-time took ~8 min even for Austria. curl -o (so its exit reflects HTTP status) + --retry
+  # (a transient blip among thousands shouldn't fail the build). The file is keyed by the unique quadkey.
+  dl_qk() {
+    local u="$1" qk
+    qk=$(printf '%s' "$u" | sed -n 's|.*quadkey=\([0-9A-Za-z]*\)/.*|\1|p'); [ -n "$qk" ] || qk=$(printf '%s' "$u" | cksum | cut -d' ' -f1)
+    curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors "$u" -o "$WORK/parts/$qk.gz" \
+      && gzip -dc "$WORK/parts/$qk.gz" > "$WORK/parts/$qk.geojsonl" && rm -f "$WORK/parts/$qk.gz"
+  }
+  export -f dl_qk
+  xargs -P 8 -I{} bash -c 'dl_qk "$@"' _ {} < "$WORK/urls.txt" || true
+  got=$(find "$WORK/parts" -name '*.geojsonl' | wc -l | tr -d ' ')
+  [ "$got" -eq "$N" ] || { echo "!! only $got/$N quadkeys downloaded for $LOCATION (a hard 404, not a blip)" >&2; exit 1; }
+  # Concatenate, deleting each part as it's appended so PEAK disk stays ~1× the decompressed size — a big
+  # country decompresses to many GB; keeping every part AND a full combined copy would blow the runner's disk.
+  echo "→ concatenating $got parts → GeoJSONL"
+  GEOJSON="$WORK/$ID.geojsonl"; : > "$GEOJSON"
+  while IFS= read -r p; do cat "$p" >> "$GEOJSON"; rm -f "$p"; done < <(find "$WORK/parts" -name '*.geojsonl' | sort)
   TIPPE_P="-P"
 else
   echo "→ us-legacy: downloading $URL"
