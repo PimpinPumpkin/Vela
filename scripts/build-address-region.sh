@@ -18,17 +18,39 @@ REPO="${VELA_REPO:-PimpinPumpkin/Vela}"
 TAG="address-overlays"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
-# Resolve the source's CURRENT job id (job ids rotate each data refresh, so we can't hardcode a URL).
-echo "→ resolving OpenAddresses job for $SRC"
-JOB="$(curl -fsSL "https://batch.openaddresses.io/api/data?source=${SRC}&layer=addresses" \
-  | jq -r 'map(select(.source=="'"$SRC"'" and .layer=="addresses")) | (max_by(.job).job // empty)')"
-[ -n "$JOB" ] || { echo "!! no OpenAddresses address job for source '$SRC'" >&2; exit 1; }
-GEOJSON_URL="https://v2.openaddresses.io/batch-prod/job/${JOB}/source.geojson.gz"
-echo "→ job $JOB → $GEOJSON_URL"
-
-echo "→ downloading + decompressing → GeoJSONL"
-curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors "$GEOJSON_URL" | gzip -dc > "$WORK/$ID.geojsonl"
-LINES=$(wc -l < "$WORK/$ID.geojsonl" | tr -d ' ')
+# Resolve the source's CURRENT job id(s) (job ids rotate each data refresh, so we can't hardcode a URL). A
+# source ending in `/*` (e.g. "us/ca/*") AGGREGATES every OpenAddresses address source under that prefix —
+# for states with no single `statewide` source, we fold all their county/city sources into one PMTiles.
+GEOJSON="$WORK/$ID.geojsonl"
+if [[ "$SRC" == */\* ]]; then
+  PREFIX="${SRC%\*}" # "us/ca/"
+  echo "→ aggregating every OpenAddresses address source under $PREFIX"
+  curl -fsSL "https://batch.openaddresses.io/api/data?layer=addresses" \
+    | jq -r --arg p "$PREFIX" '.[] | select(.layer=="addresses" and (.source|startswith($p))) | "\(.job)"' \
+    | sort -u > "$WORK/jobs.txt"
+  N=$(wc -l < "$WORK/jobs.txt" | tr -d ' ')
+  [ "$N" -gt 0 ] || { echo "!! no OpenAddresses address sources under '$PREFIX'" >&2; exit 1; }
+  echo "→ $N source(s); downloading 8-wide → GeoJSONL"
+  mkdir -p "$WORK/parts"; export WORK
+  # download each source's geojson.gz to its own part in parallel, keyed by job id (best-effort per source)
+  xargs -P 8 -I{} bash -c '
+      j="{}"
+      curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors "https://v2.openaddresses.io/batch-prod/job/$j/source.geojson.gz" \
+        | gzip -dc > "$WORK/parts/$j.geojsonl" 2>/dev/null || rm -f "$WORK/parts/$j.geojsonl"
+    ' < "$WORK/jobs.txt"
+  : > "$GEOJSON"
+  # concat (append-and-delete → peak disk ~1×); a source that failed just contributes nothing
+  find "$WORK/parts" -name '*.geojsonl' | while IFS= read -r p; do cat "$p" >> "$GEOJSON"; rm -f "$p"; done
+else
+  echo "→ resolving OpenAddresses job for $SRC"
+  JOB="$(curl -fsSL "https://batch.openaddresses.io/api/data?source=${SRC}&layer=addresses" \
+    | jq -r 'map(select(.source=="'"$SRC"'" and .layer=="addresses")) | (max_by(.job).job // empty)')"
+  [ -n "$JOB" ] || { echo "!! no OpenAddresses address job for source '$SRC'" >&2; exit 1; }
+  echo "→ job $JOB → source.geojson.gz"
+  curl -fsSL --retry 4 --retry-delay 2 --retry-all-errors \
+    "https://v2.openaddresses.io/batch-prod/job/${JOB}/source.geojson.gz" | gzip -dc > "$GEOJSON"
+fi
+LINES=$(wc -l < "$GEOJSON" | tr -d ' ')
 [ "$LINES" -gt 0 ] || { echo "!! empty address data for $SRC" >&2; exit 1; }
 echo "→ $LINES address points"
 
