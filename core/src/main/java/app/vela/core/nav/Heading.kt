@@ -36,6 +36,14 @@ object Heading {
         if (instruction.isBlank() || HAS_CARDINAL.containsMatchIn(instruction)) return instruction
         val card = initialCardinal(polyline) ?: return instruction
         return when {
+            // OSRM-primary routing phrases DEPART as "Head out on <road>" (osrmPhrase) — swap the whole
+            // "out on" for the cardinal. Without this branch it fell to the bare-"Head" rewrite below,
+            // which doubled the words into "Head east on OUT ON <road>" — the reported "it says head
+            // out on out on twice when starting navigation". Checked longest-form-first on purpose.
+            instruction.startsWith("Head out on", ignoreCase = true) ->
+                instruction.replaceFirst(Regex("^Head out on", RegexOption.IGNORE_CASE), "Head $card on")
+            instruction.startsWith("Head out", ignoreCase = true) ->
+                instruction.replaceFirst(Regex("^Head out", RegexOption.IGNORE_CASE), "Head $card")
             instruction.startsWith("Head toward", ignoreCase = true) ->
                 instruction.replaceFirst(Regex("^Head toward", RegexOption.IGNORE_CASE), "Head $card on")
             instruction.startsWith("Head on", ignoreCase = true) ->
