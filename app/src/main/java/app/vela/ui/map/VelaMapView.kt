@@ -178,6 +178,7 @@ fun VelaMapView(
     onAmbientTap: (index: Int) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
+    navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
@@ -187,9 +188,17 @@ fun VelaMapView(
     val density = LocalDensity.current
     // Push MapLibre's compass below the status bar (it defaults to the top-right corner, which sits
     // *under* the status bar). During NAV the full-width maneuver banner also sits at the top and painted
-    // OVER the compass — so while navigating, drop it below the banner (~112 dp: banner height + margin).
+    // OVER the compass — so while navigating, drop it below the banner. The banner's height VARIES (lane
+    // guidance + a "then" row make it much taller), so a fixed guess couldn't clear it; MapScreen measures
+    // the banner's actual bottom edge ([navBannerBottomPx]) and we sit the compass 8 dp under that. Fall back
+    // to a generous fixed offset until the first measurement lands (or if it's somehow 0).
     val statusBarTopPx = WindowInsets.statusBars.getTop(density)
-    val compassTopPx = statusBarTopPx + with(density) { (if (navMode) 112.dp else 8.dp).roundToPx() }
+    val gap8Px = with(density) { 8.dp.roundToPx() }
+    val compassTopPx = when {
+        navMode && navBannerBottomPx > 0 -> navBannerBottomPx + gap8Px
+        navMode -> statusBarTopPx + with(density) { 176.dp.roundToPx() }
+        else -> statusBarTopPx + gap8Px
+    }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
