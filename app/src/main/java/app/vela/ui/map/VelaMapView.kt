@@ -1107,11 +1107,18 @@ private fun ensureLayers(style: Style) {
                         Expression.stop(0.0, 11f), Expression.stop(8.0, 14f),
                     ),
                 ),
-                // Label to the LEFT of the icon (Google-style), not under it. Anchor the text's
-                // right edge and push it left of the marker; the offset is in ems so it tracks the
-                // prominence-scaled text size and clears the dot across the size range.
-                PropertyFactory.textOffset(arrayOf(-2.7f, 0f)),
-                PropertyFactory.textAnchor(Property.TEXT_ANCHOR_RIGHT),
+                // Google-style label placement. PREFER just to the LEFT of the icon; when that would
+                // collide with a neighbour, FALL BACK to sitting UNDER the icon — text-variable-anchor
+                // picks the first anchor (right = text left of point, top = text below point) that fits,
+                // and hides the label (textOptional) only if neither does. The radial offset is the
+                // centre→text-edge gap in ems; 2.0 sits the label closer than the old fixed -2.7 x-offset
+                // (which read too far left) while still clearing the dot. justify=auto so the left form
+                // right-justifies and the under form centres. (Tune the 2.0 from a device glance.)
+                PropertyFactory.textVariableAnchor(
+                    arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                ),
+                PropertyFactory.textRadialOffset(2.0f),
+                PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                 PropertyFactory.textMaxWidth(7f),
                 PropertyFactory.textOptional(true),
                 PropertyFactory.textAllowOverlap(false),
