@@ -87,6 +87,10 @@ private const val MARKER_INDEX_PROP = "vela-marker-index"
 // "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
 private const val AMBIENT_SRC = "vela-ambient-src"
 private const val AMBIENT_LAYER = "vela-ambient"
+private const val CONTROLS_SRC = "vela-controls-src" // OSM traffic lights + stop signs drawn at high zoom
+private const val CONTROLS_LAYER = "vela-controls"
+private const val SIGNAL_IMG = "vela-signal"
+private const val STOP_IMG = "vela-stop"
 private const val AMBIENT_INDEX_PROP = "vela-ambient-index"
 private const val ME_SRC = "vela-me-src"
 private const val ME_LAYER = "vela-me"
@@ -121,6 +125,7 @@ data class MapMarker(val name: String, val location: LatLng, val category: Strin
 // source is empty and must repopulate). Single map instance, so file scope is fine.
 private var lastAppliedMarkers: List<MapMarker>? = null
 private var lastAppliedAmbient: List<MapMarker>? = null
+private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
                                                        // thousands-of-vertices linestring per fix burned
@@ -178,6 +183,7 @@ fun VelaMapView(
     onAmbientTap: (index: Int) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
+    trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
@@ -833,16 +839,17 @@ fun VelaMapView(
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastAppliedAmbient = null
+                lastAppliedControls = null
                 lastAppliedRouteLine = null
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(style, trafficOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(it, trafficOn)
             }
         }
@@ -1107,6 +1114,27 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.textHaloWidth(0.9f),
             ),
             MARKERS_LAYER,
+        )
+    }
+    // Traffic controls (OSM `highway=traffic_signals`/`stop`): non-interactive icons drawn at high zoom
+    // BENEATH the POI dots + pins. Two images keyed by the feature "icon" prop; collision (allowOverlap
+    // false) keeps a dense grid of lights legible instead of a pile. minZoom matches the fetch gate.
+    if (style.getImage(SIGNAL_IMG) == null) style.addImage(SIGNAL_IMG, trafficLightBitmap())
+    if (style.getImage(STOP_IMG) == null) style.addImage(STOP_IMG, stopSignBitmap())
+    if (style.getSource(CONTROLS_SRC) == null) {
+        style.addSource(GeoJsonSource(CONTROLS_SRC))
+        style.addLayerBelow(
+            SymbolLayer(CONTROLS_LAYER, CONTROLS_SRC).apply {
+                setMinZoom(16f)
+                setProperties(
+                    PropertyFactory.iconImage(Expression.get("icon")),
+                    PropertyFactory.iconSize(0.55f),
+                    PropertyFactory.iconAllowOverlap(false),
+                    PropertyFactory.iconIgnorePlacement(false),
+                    PropertyFactory.iconPadding(2f),
+                )
+            },
+            AMBIENT_LAYER,
         )
     }
     if (style.getSource(ME_SRC) == null) {
@@ -1652,6 +1680,7 @@ private fun applyData(
     altColor: String,
     markers: List<MapMarker>,
     ambientPois: List<MapMarker>,
+    trafficControls: List<app.vela.core.data.TrafficControl>,
     me: LatLng?,
     bearing: Float?,
     meStale: Boolean,
@@ -1781,6 +1810,20 @@ private fun applyData(
         lastAppliedAmbient = ambientPois
     }
 
+    // Traffic controls (lights + stop signs) → icon features. Identity-gated like markers/ambient so a
+    // nav speedo tick doesn't re-tessellate them. Empty list clears the source (e.g. zoomed back out).
+    if (trafficControls != lastAppliedControls) {
+        val controlsFc = FeatureCollection.fromFeatures(
+            trafficControls.map { ctl ->
+                Feature.fromGeometry(Point.fromLngLat(ctl.loc.lng, ctl.loc.lat)).apply {
+                    addStringProperty("icon", if (ctl.stop) STOP_IMG else SIGNAL_IMG)
+                }
+            },
+        )
+        style.getSourceAs<GeoJsonSource>(CONTROLS_SRC)?.setGeoJson(controlsFc)
+        lastAppliedControls = trafficControls
+    }
+
     // The location source: in browse mode applyData owns it (set it from the fix here);
     // in NAV the per-frame motion-model ticker owns it (smooth glide), so don't fight it —
     // except to CLEAR it when there's no fix.
@@ -1904,5 +1947,50 @@ private fun pinBitmap(): Bitmap {
     canvas.drawPath(tail, red)
     canvas.drawCircle(cx, headCy, headR, red)
     canvas.drawCircle(cx, headCy, headR * 0.40f, white)
+    return bmp
+}
+
+/** A small traffic-light housing (white-rimmed dark rounded rect + red/amber/green dots) for the
+ *  map-drawn signal layer. Sized to read as a recognisable stoplight at a ~0.55 icon scale, z16+. */
+private fun trafficLightBitmap(): Bitmap {
+    val w = 30
+    val h = 60
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    val body = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF263238.toInt() }
+    c.drawRoundRect(1f, 1f, w - 1f, h - 1f, 8f, 8f, white) // white rim for contrast on any basemap
+    c.drawRoundRect(3f, 3f, w - 3f, h - 3f, 6f, 6f, body)  // dark housing
+    val cx = w / 2f
+    val r = 6f
+    c.drawCircle(cx, h * 0.26f, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFE53935.toInt() })
+    c.drawCircle(cx, h * 0.50f, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFB300.toInt() })
+    c.drawCircle(cx, h * 0.74f, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF43A047.toInt() })
+    return bmp
+}
+
+/** A small red stop-sign octagon (white rim + "STOP") for the map-drawn stop layer. */
+private fun stopSignBitmap(): Bitmap {
+    val s = 46
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val cx = s / 2f
+    val cy = s / 2f
+    fun octagon(radius: Float) = Path().apply {
+        for (k in 0 until 8) {
+            val a = Math.toRadians(22.5 + k * 45)
+            val x = cx + radius * Math.cos(a).toFloat()
+            val y = cy + radius * Math.sin(a).toFloat()
+            if (k == 0) moveTo(x, y) else lineTo(x, y)
+        }
+        close()
+    }
+    c.drawPath(octagon(cx - 1f), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }) // rim
+    c.drawPath(octagon(cx - 4f), Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFD32F2F.toInt() }) // red field
+    val label = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFFFFF.toInt(); textSize = 11f; textAlign = Paint.Align.CENTER
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+    }
+    c.drawText("STOP", cx, cy + 4f, label)
     return bmp
 }
