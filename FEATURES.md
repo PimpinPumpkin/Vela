@@ -680,8 +680,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   index now **keeps the POI detail** OSM carries — **address, phone, website and
   opening hours** (from the `addr:*` / `phone` / `website` / `opening_hours` tags) —
   so an offline place sheet isn't just a name on a pin (sparser than Google, but real)
-- ✅ **Open building-footprint overlay (Microsoft US Building Footprints, ODbL — 2026-07-04, device-verified).**
-  Downloading a map area also pulls that region's **building overlay** — Microsoft building footprints,
+- ✅ **Open building-footprint overlay (Microsoft, ODbL — 2026-07-04, device-verified).** Fills the map's
+  building gaps where OSM is thin (a suburb the Microsoft→OSM import never reached, e.g. Silver Firs). **Online it
+  STREAMS automatically — no download to see houses (2026-07-05):** the overlay is a PMTiles archive, so MapLibre
+  reads the region-in-view straight from its hosted URL via HTTP range requests (only the visible tiles, a few KB),
+  and footprints appear as you pan — verified device-side against downtown + suburban Reno streamed from
+  `nevada.pmtiles`. Downloading a map area still saves that region's **building overlay** for **offline** use
+  (renders from the local file with no signal); the overlay is Microsoft building footprints,
   baked off-device into a per-region `.pmtiles` archive by CI (`scripts/build-overlay-region.sh` → tippecanoe
   `-l building -Z14 -z16`, published to the `building-overlays` GitHub release + a signed-shape manifest,
   matrix workflow `.github/workflows/building-overlays.yml`). **World catalog (`tools/overlay-regions.json`, 250

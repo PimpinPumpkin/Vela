@@ -90,7 +90,7 @@ data class MapUiState(
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
-    val buildingOverlays: List<String> = emptyList(), // abs paths of installed open building-overlay
+    val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
@@ -1963,6 +1963,7 @@ class MapViewModel @Inject constructor(
         // miss a pan due to a camera-reason race). Keep the "Search this area" center = the live
         // viewport center here so the search can never bias to a stale, pre-pan location.
         mapCenter = center
+        refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -2109,9 +2110,36 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Push the installed overlays' `.pmtiles` paths into state so the map view renders them beneath OSM. */
-    private fun refreshBuildingOverlays() {
-        _state.update { it.copy(buildingOverlays = overlayStore.installed().values.map { f -> f.absolutePath }) }
+    @Volatile
+    private var overlayManifestCache: List<app.vela.offline.RoutingRegion>? = null
+
+    /**
+     * Compute the building-footprint overlay sources for the map to render BENEATH OSM, as full `pmtiles://`
+     * URIs. Downloaded regions render from their local file (offline-safe); the region covering the CURRENT
+     * VIEW that isn't downloaded is STREAMED straight from its hosted `.pmtiles` over HTTP — PMTiles range
+     * requests fetch only the visible tiles (a few KB), so footprints appear as you pan with **no download**
+     * (the manual download is now only for going fully offline). Called on every camera-idle ([center] = the
+     * view centre) so the streamed region follows the map; a failed fetch when offline is harmless (MapLibre
+     * just shows no tiles, and any downloaded local overlay still renders). De-duped so panning within one
+     * region doesn't churn the map sources.
+     */
+    private fun refreshBuildingOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        viewModelScope.launch {
+            val installed = overlayStore.installed() // id -> local .pmtiles File
+            val uris = installed.values.map { "pmtiles://file://${it.absolutePath}" }.toMutableList()
+            center?.let { c ->
+                runCatching {
+                    val man = overlayManifestCache
+                        ?: overlayStore.manifest(app.vela.BuildConfig.OVERLAY_MANIFEST_URL).also { overlayManifestCache = it }
+                    man.filter { c.lat in it.s..it.n && c.lng in it.w..it.e }
+                        .minByOrNull { (it.n - it.s) * (it.e - it.w) } // smallest covering box = the specific region/chunk
+                        ?.takeIf { it.id !in installed.keys }          // downloaded? use the local file, don't stream
+                        ?.let { uris.add("pmtiles://${it.url}") }       // else stream it over HTTP range requests
+                }
+            }
+            val distinct = uris.distinct()
+            if (distinct != _state.value.buildingOverlays) _state.update { it.copy(buildingOverlays = distinct) }
+        }
     }
 
     // --- Offline ROUTING graphs (Settings → Offline routing) ---------------------------------

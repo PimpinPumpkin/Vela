@@ -420,14 +420,24 @@ genuinely needs no doc edit, say why in the commit.
   `.github/workflows/building-overlays.yml` (clone of the routing one, `MANIFEST_MODE=emit` +
   `scripts/merge-overlay-manifest.sh`), catalog `tools/overlay-regions.json`. In-app: `OverlayTileStore` is a
   single-file sibling of `RoutingGraphStore` (`filesDir/overlays/<id>.pmtiles` + `index.json`; PMTiles-magic
-  guard); `MapViewModel.downloadOverlayForArea` rides the SAME smallest-covering-box rule as routing and is
-  pulled alongside the area's tiles (silent + best-effort). Render: `VelaMapView`'s `LaunchedEffect(buildingOverlays,
-  styleRef, darkTheme)` adds a **`pmtiles://file://<abs-path>`** `VectorSource` (MapLibre 11.7+ reads pmtiles://;
-  `file://`+abs-path → `pmtiles://file:///data/…` = correct) + a `FillLayer` `setSourceLayer("building")`
-  **`addLayerBelow` the OSM `building` layer**, themed to the exact OSM building fill/outline (`#323f54`/`#3f4e66`
-  dark, `#dde1e7`/`#c4c9d1` light) so overlay footprints are indistinguishable from real OSM ones and OSM still
-  wins wherever it has data. **The load-bearing bug was NOT the render** — it was the download (see the
-  `callTimeout(0)` rule above): the 197 MB body aborted at the shared client's 12 s cap, silently. `OVERLAY_MANIFEST_URL`
+  guard). **The overlay STREAMS online — no download needed to see houses (2026-07-05).** `refreshBuildingOverlays`
+  runs on every camera-idle (`onViewport`) and emits, per view, a list of full `pmtiles://` URIs: a
+  **`pmtiles://file://<abs-path>`** for any DOWNLOADED region (offline), and **`pmtiles://https://…<region>.pmtiles`**
+  for the smallest-covering region in view that ISN'T downloaded — MapLibre 11.7+ reads that hosted archive by
+  **HTTP range requests** (verified: GitHub release assets 302→release-assets host with `accept-ranges: bytes`,
+  MapLibre follows the redirect), fetching only the visible tiles, so footprints appear as you pan. The manual
+  **`MapViewModel.downloadOverlayForArea`** (still smallest-covering-box, pulled alongside the area's tiles) is now
+  ONLY for going fully offline. Render: `VelaMapView`'s `LaunchedEffect(buildingOverlays, styleRef, darkTheme)`
+  adds each URI as a `VectorSource` (used verbatim — the URI already carries `pmtiles://file://` or
+  `pmtiles://https://`) + a `FillLayer` `setSourceLayer("building")` **`addLayerBelow` the OSM `building` layer**,
+  themed to the exact OSM building fill/outline (`#323f54`/`#3f4e66` dark, `#dde1e7`/`#c4c9d1` light) so overlay
+  footprints are indistinguishable from real OSM ones and OSM still wins wherever it has data. `buildingOverlays`
+  is de-duped so panning within one region doesn't churn the map sources. **The load-bearing DOWNLOAD bug was NOT
+  the render** — it was the `callTimeout(0)` rule above: the 197 MB body aborted at the shared client's 12 s cap,
+  silently (that only ever mattered for the offline download; streaming reads a few KB/tile). Device-verified:
+  Silver Firs from the local file + downtown/suburban Reno (Nevada, not downloaded) streamed from the hosted
+  `nevada.pmtiles` (131 range requests, no PMTiles errors). NB GitHub release hosting works but isn't a CDN — a
+  real deployment should host the PMTiles behind a CDN for snappier range reads. `OVERLAY_MANIFEST_URL`
   BuildConfig overridable `-PoverlayManifestUrl=` like routing. BREAKING-ish: an overlay is DATA (ODbL), orthogonal
   to the app's GPLv3, obligation met by tippecanoe `--attribution` + the release publishing derived tiles under ODbL.
   **World catalog (`tools/overlay-regions.json`, 250 regions):** TWO Microsoft sources picked by each row's
