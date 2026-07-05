@@ -16,6 +16,10 @@ data class NavState(
     val traveledM: Double = 0.0,       // monotonic metres travelled along the route (forward-progress anchor)
     val reacquireHits: Int = 0,        // consecutive far global re-acquire candidates — a big along-jump
                                        // must persist before it's adopted (single outliers can't teleport)
+    val onRouteStreak: Int = 0,        // consecutive on-corridor+moving fixes — the SUSTAINED "back on the
+                                       // line" signal (offRoute clears on ONE grazing fix, too weak to
+                                       // abandon a reroute on; NavSession's back-on-course discard gates on
+                                       // this instead so a single spurious graze can't kill a real reroute)
     val rerouteBlocked: Boolean = false, // an off-route excursion latched INSIDE the destination zone —
                                          // the deferred reroute fires if it leaves the zone (edge-only
                                          // suppression was a permanent silent limbo)
