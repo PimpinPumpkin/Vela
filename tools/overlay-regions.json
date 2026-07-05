@@ -1,9 +1,3040 @@
 {
-  "_comment": "Open building-footprint overlay catalog — Microsoft US Building Footprints (ODbL), per US state, built to PMTiles by scripts/build-overlay-region.sh and hosted on the `building-overlays` GitHub release. The app renders them BENEATH the OSM building layer to fill gaps (suburbs the Microsoft->OSM import never reached). bbox = [S,W,N,E]. url = the legacy minedbuildings host (the old usbuildingdata blob was locked down 2025). Start with the West coast (the maintainer's region); the rest of the 50 states get added like the routing catalog did, incrementally, when someone needs them.",
+  "_comment": "Open building-footprint overlay catalog. TWO Microsoft sources (both ODbL): source='us-legacy' = a US state from Microsoft US Building Footprints (one .geojson.zip at `url`); source='ms-global' = a country from Microsoft's Global ML Building Footprints (quadkey GeoJSONL selected by `location` from global-buildings/dataset-links.csv). Built to PMTiles by scripts/build-overlay-region.sh (SOURCE env picks the path), hosted on the `building-overlays` GitHub release, rendered BENEATH the OSM building layer to fill gaps. bbox=[S,W,N,E] (US states from Geofabrik extract bounds; countries from the union of the dataset's quadkey tiles). big=true is a size hint. EXCLUDED as single files (PMTiles would exceed GitHub's 2 GB/asset): India, Brazil, Russia, Indonesia, and the whole-US 'UnitedStates' aggregate (the US is covered per-state) — these want sub-national splitting, a follow-up. Continental aggregates + duplicate Locations (CzechRepublic→Czechia, DemocraticRepublicoftheCongo→CongoDRC) are dropped.",
   "regions": [
-    { "id": "washington", "name": "Washington (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Washington.geojson.zip", "bbox": [45.54, -124.85, 49.00, -116.92] },
-    { "id": "oregon", "name": "Oregon (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Oregon.geojson.zip", "bbox": [41.99, -124.70, 46.29, -116.46] },
-    { "id": "california", "name": "California (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/California.geojson.zip", "bbox": [32.53, -124.48, 42.01, -114.13] },
-    { "id": "idaho", "name": "Idaho (state)", "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Idaho.geojson.zip", "bbox": [41.99, -117.24, 49.00, -111.04] }
+    {
+      "id": "alabama",
+      "name": "Alabama (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Alabama.geojson.zip",
+      "bbox": [
+        29.955,
+        -88.484,
+        35.009,
+        -84.883
+      ]
+    },
+    {
+      "id": "alaska",
+      "name": "Alaska (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Alaska.geojson.zip",
+      "bbox": [
+        49.809,
+        -180.0,
+        72.988,
+        180.0
+      ]
+    },
+    {
+      "id": "arizona",
+      "name": "Arizona (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Arizona.geojson.zip",
+      "bbox": [
+        31.327,
+        -114.822,
+        37.006,
+        -109.044
+      ]
+    },
+    {
+      "id": "arkansas",
+      "name": "Arkansas (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Arkansas.geojson.zip",
+      "bbox": [
+        33.004,
+        -94.622,
+        36.516,
+        -89.64
+      ]
+    },
+    {
+      "id": "california",
+      "name": "California (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/California.geojson.zip",
+      "bbox": [
+        32.482,
+        -125.894,
+        42.016,
+        -114.129
+      ],
+      "big": true
+    },
+    {
+      "id": "colorado",
+      "name": "Colorado (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Colorado.geojson.zip",
+      "bbox": [
+        36.989,
+        -109.063,
+        41.004,
+        -102.035
+      ]
+    },
+    {
+      "id": "connecticut",
+      "name": "Connecticut (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Connecticut.geojson.zip",
+      "bbox": [
+        40.964,
+        -73.729,
+        42.052,
+        -71.785
+      ]
+    },
+    {
+      "id": "delaware",
+      "name": "Delaware (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Delaware.geojson.zip",
+      "bbox": [
+        38.45,
+        -75.79,
+        39.843,
+        -74.984
+      ]
+    },
+    {
+      "id": "district-of-columbia",
+      "name": "District of Columbia (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/DistrictofColumbia.geojson.zip",
+      "bbox": [
+        38.791,
+        -77.12,
+        38.996,
+        -76.909
+      ]
+    },
+    {
+      "id": "florida",
+      "name": "Florida (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Florida.geojson.zip",
+      "bbox": [
+        24.2,
+        -88.469,
+        31.003,
+        -79.437
+      ],
+      "big": true
+    },
+    {
+      "id": "georgia",
+      "name": "Georgia (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Georgia.geojson.zip",
+      "bbox": [
+        30.354,
+        -85.607,
+        35.004,
+        -80.743
+      ]
+    },
+    {
+      "id": "hawaii",
+      "name": "Hawaii (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Hawaii.geojson.zip",
+      "bbox": [
+        15.921,
+        -179.599,
+        29.021,
+        -142.651
+      ]
+    },
+    {
+      "id": "idaho",
+      "name": "Idaho (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Idaho.geojson.zip",
+      "bbox": [
+        41.983,
+        -117.246,
+        49.008,
+        -111.043
+      ]
+    },
+    {
+      "id": "illinois",
+      "name": "Illinois (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Illinois.geojson.zip",
+      "bbox": [
+        36.967,
+        -91.516,
+        42.509,
+        -87.493
+      ],
+      "big": true
+    },
+    {
+      "id": "indiana",
+      "name": "Indiana (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Indiana.geojson.zip",
+      "bbox": [
+        37.769,
+        -88.103,
+        41.763,
+        -84.78
+      ]
+    },
+    {
+      "id": "iowa",
+      "name": "Iowa (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Iowa.geojson.zip",
+      "bbox": [
+        40.373,
+        -96.643,
+        43.502,
+        -90.136
+      ]
+    },
+    {
+      "id": "kansas",
+      "name": "Kansas (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Kansas.geojson.zip",
+      "bbox": [
+        36.991,
+        -102.053,
+        40.004,
+        -94.589
+      ]
+    },
+    {
+      "id": "kentucky",
+      "name": "Kentucky (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Kentucky.geojson.zip",
+      "bbox": [
+        36.493,
+        -89.581,
+        39.148,
+        -81.955
+      ]
+    },
+    {
+      "id": "louisiana",
+      "name": "Louisiana (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Louisiana.geojson.zip",
+      "bbox": [
+        28.145,
+        -94.044,
+        33.02,
+        -88.667
+      ]
+    },
+    {
+      "id": "maine",
+      "name": "Maine (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Maine.geojson.zip",
+      "bbox": [
+        42.854,
+        -71.089,
+        47.462,
+        -66.872
+      ]
+    },
+    {
+      "id": "maryland",
+      "name": "Maryland (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Maryland.geojson.zip",
+      "bbox": [
+        37.884,
+        -79.489,
+        39.727,
+        -74.954
+      ]
+    },
+    {
+      "id": "massachusetts",
+      "name": "Massachusetts (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Massachusetts.geojson.zip",
+      "bbox": [
+        40.883,
+        -73.511,
+        42.888,
+        -68.734
+      ]
+    },
+    {
+      "id": "michigan",
+      "name": "Michigan (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Michigan.geojson.zip",
+      "bbox": [
+        41.694,
+        -90.42,
+        48.35,
+        -82.069
+      ],
+      "big": true
+    },
+    {
+      "id": "minnesota",
+      "name": "Minnesota (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Minnesota.geojson.zip",
+      "bbox": [
+        43.499,
+        -97.25,
+        49.407,
+        -89.486
+      ]
+    },
+    {
+      "id": "mississippi",
+      "name": "Mississippi (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Mississippi.geojson.zip",
+      "bbox": [
+        30.042,
+        -91.659,
+        35.001,
+        -88.093
+      ]
+    },
+    {
+      "id": "missouri",
+      "name": "Missouri (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Missouri.geojson.zip",
+      "bbox": [
+        35.995,
+        -95.778,
+        40.617,
+        -89.089
+      ]
+    },
+    {
+      "id": "montana",
+      "name": "Montana (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Montana.geojson.zip",
+      "bbox": [
+        44.356,
+        -116.052,
+        49.008,
+        -104.035
+      ]
+    },
+    {
+      "id": "nebraska",
+      "name": "Nebraska (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Nebraska.geojson.zip",
+      "bbox": [
+        40.0,
+        -104.058,
+        43.002,
+        -95.307
+      ]
+    },
+    {
+      "id": "nevada",
+      "name": "Nevada (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Nevada.geojson.zip",
+      "bbox": [
+        35.001,
+        -120.007,
+        42.004,
+        -114.038
+      ]
+    },
+    {
+      "id": "new-hampshire",
+      "name": "New Hampshire (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewHampshire.geojson.zip",
+      "bbox": [
+        42.697,
+        -72.559,
+        45.31,
+        -70.487
+      ]
+    },
+    {
+      "id": "new-jersey",
+      "name": "New Jersey (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewJersey.geojson.zip",
+      "bbox": [
+        38.754,
+        -75.579,
+        41.358,
+        -73.679
+      ]
+    },
+    {
+      "id": "new-mexico",
+      "name": "New Mexico (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewMexico.geojson.zip",
+      "bbox": [
+        31.33,
+        -109.05,
+        37.002,
+        -102.998
+      ]
+    },
+    {
+      "id": "new-york",
+      "name": "New York (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewYork.geojson.zip",
+      "bbox": [
+        40.439,
+        -79.765,
+        45.018,
+        -71.661
+      ],
+      "big": true
+    },
+    {
+      "id": "north-carolina",
+      "name": "North Carolina (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NorthCarolina.geojson.zip",
+      "bbox": [
+        33.13,
+        -84.322,
+        36.59,
+        -73.74
+      ],
+      "big": true
+    },
+    {
+      "id": "north-dakota",
+      "name": "North Dakota (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NorthDakota.geojson.zip",
+      "bbox": [
+        45.934,
+        -104.053,
+        49.017,
+        -96.553
+      ]
+    },
+    {
+      "id": "ohio",
+      "name": "Ohio (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Ohio.geojson.zip",
+      "bbox": [
+        38.401,
+        -84.822,
+        42.336,
+        -80.505
+      ],
+      "big": true
+    },
+    {
+      "id": "oklahoma",
+      "name": "Oklahoma (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Oklahoma.geojson.zip",
+      "bbox": [
+        33.613,
+        -103.008,
+        37.005,
+        -94.43
+      ]
+    },
+    {
+      "id": "oregon",
+      "name": "Oregon (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Oregon.geojson.zip",
+      "bbox": [
+        41.963,
+        -126.388,
+        46.303,
+        -116.454
+      ]
+    },
+    {
+      "id": "pennsylvania",
+      "name": "Pennsylvania (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Pennsylvania.geojson.zip",
+      "bbox": [
+        39.664,
+        -80.523,
+        42.516,
+        -74.688
+      ],
+      "big": true
+    },
+    {
+      "id": "rhode-island",
+      "name": "Rhode Island (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/RhodeIsland.geojson.zip",
+      "bbox": [
+        40.999,
+        -71.915,
+        42.019,
+        -71.064
+      ]
+    },
+    {
+      "id": "south-carolina",
+      "name": "South Carolina (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/SouthCarolina.geojson.zip",
+      "bbox": [
+        32.03,
+        -83.356,
+        35.218,
+        -78.519
+      ]
+    },
+    {
+      "id": "south-dakota",
+      "name": "South Dakota (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/SouthDakota.geojson.zip",
+      "bbox": [
+        42.477,
+        -104.059,
+        45.948,
+        -96.436
+      ]
+    },
+    {
+      "id": "tennessee",
+      "name": "Tennessee (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Tennessee.geojson.zip",
+      "bbox": [
+        34.983,
+        -90.313,
+        36.681,
+        -81.644
+      ]
+    },
+    {
+      "id": "texas",
+      "name": "Texas (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Texas.geojson.zip",
+      "bbox": [
+        25.696,
+        -106.649,
+        36.521,
+        -93.019
+      ],
+      "big": true
+    },
+    {
+      "id": "utah",
+      "name": "Utah (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Utah.geojson.zip",
+      "bbox": [
+        36.996,
+        -114.056,
+        42.003,
+        -109.039
+      ]
+    },
+    {
+      "id": "vermont",
+      "name": "Vermont (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Vermont.geojson.zip",
+      "bbox": [
+        42.725,
+        -73.439,
+        45.023,
+        -71.465
+      ]
+    },
+    {
+      "id": "virginia",
+      "name": "Virginia (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Virginia.geojson.zip",
+      "bbox": [
+        36.538,
+        -83.678,
+        39.469,
+        -74.298
+      ],
+      "big": true
+    },
+    {
+      "id": "washington",
+      "name": "Washington (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Washington.geojson.zip",
+      "bbox": [
+        45.539,
+        -126.742,
+        49.007,
+        -116.912
+      ]
+    },
+    {
+      "id": "west-virginia",
+      "name": "West Virginia (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/WestVirginia.geojson.zip",
+      "bbox": [
+        37.199,
+        -82.65,
+        40.646,
+        -77.714
+      ]
+    },
+    {
+      "id": "wisconsin",
+      "name": "Wisconsin (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Wisconsin.geojson.zip",
+      "bbox": [
+        42.489,
+        -92.891,
+        47.415,
+        -86.2
+      ]
+    },
+    {
+      "id": "wyoming",
+      "name": "Wyoming (state)",
+      "source": "us-legacy",
+      "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Wyoming.geojson.zip",
+      "bbox": [
+        40.983,
+        -111.058,
+        45.012,
+        -103.941
+      ]
+    },
+    {
+      "id": "abyei",
+      "name": "Abyei",
+      "source": "ms-global",
+      "location": "Abyei",
+      "bbox": [
+        9.102,
+        27.422,
+        10.488,
+        29.531
+      ]
+    },
+    {
+      "id": "afghanistan",
+      "name": "Afghanistan",
+      "source": "ms-global",
+      "location": "Afghanistan",
+      "bbox": [
+        28.922,
+        60.469,
+        38.273,
+        75.234
+      ]
+    },
+    {
+      "id": "albania",
+      "name": "Albania",
+      "source": "ms-global",
+      "location": "Albania",
+      "bbox": [
+        39.368,
+        18.984,
+        43.069,
+        21.094
+      ]
+    },
+    {
+      "id": "algeria",
+      "name": "Algeria",
+      "source": "ms-global",
+      "location": "Algeria",
+      "bbox": [
+        18.646,
+        -9.141,
+        37.16,
+        12.656
+      ]
+    },
+    {
+      "id": "andorra",
+      "name": "Andorra",
+      "source": "ms-global",
+      "location": "Andorra",
+      "bbox": [
+        42.033,
+        1.406,
+        43.069,
+        2.109
+      ]
+    },
+    {
+      "id": "angola",
+      "name": "Angola",
+      "source": "ms-global",
+      "location": "Angola",
+      "bbox": [
+        -18.646,
+        11.25,
+        -4.215,
+        24.609
+      ]
+    },
+    {
+      "id": "anguilla",
+      "name": "Anguilla",
+      "source": "ms-global",
+      "location": "Anguilla",
+      "bbox": [
+        17.979,
+        -63.281,
+        18.646,
+        -62.578
+      ]
+    },
+    {
+      "id": "antiguaand-barbuda",
+      "name": "Antigua and Barbuda",
+      "source": "ms-global",
+      "location": "AntiguaandBarbuda",
+      "bbox": [
+        16.636,
+        -62.578,
+        17.979,
+        -61.172
+      ]
+    },
+    {
+      "id": "argentina",
+      "name": "Argentina",
+      "source": "ms-global",
+      "location": "Argentina",
+      "bbox": [
+        -55.379,
+        -73.828,
+        -21.289,
+        -53.438
+      ],
+      "big": true
+    },
+    {
+      "id": "armenia",
+      "name": "Armenia",
+      "source": "ms-global",
+      "location": "Armenia",
+      "bbox": [
+        38.823,
+        42.891,
+        41.509,
+        47.109
+      ]
+    },
+    {
+      "id": "aruba",
+      "name": "Aruba",
+      "source": "ms-global",
+      "location": "Aruba",
+      "bbox": [
+        11.867,
+        -70.312,
+        13.24,
+        -69.609
+      ]
+    },
+    {
+      "id": "australia",
+      "name": "Australia",
+      "source": "ms-global",
+      "location": "Australia",
+      "bbox": [
+        -44.088,
+        105.469,
+        -9.102,
+        159.609
+      ],
+      "big": true
+    },
+    {
+      "id": "austria",
+      "name": "Austria",
+      "source": "ms-global",
+      "location": "Austria",
+      "bbox": [
+        46.073,
+        9.141,
+        49.382,
+        17.578
+      ]
+    },
+    {
+      "id": "azerbaijan",
+      "name": "Azerbaijan",
+      "source": "ms-global",
+      "location": "Azerbaijan",
+      "bbox": [
+        38.273,
+        44.297,
+        42.033,
+        50.625
+      ]
+    },
+    {
+      "id": "bahrain",
+      "name": "Bahrain",
+      "source": "ms-global",
+      "location": "Bahrain",
+      "bbox": [
+        25.165,
+        49.922,
+        26.431,
+        51.328
+      ]
+    },
+    {
+      "id": "bangladesh",
+      "name": "Bangladesh",
+      "source": "ms-global",
+      "location": "Bangladesh",
+      "bbox": [
+        19.973,
+        87.891,
+        27.059,
+        92.812
+      ],
+      "big": true
+    },
+    {
+      "id": "barbados",
+      "name": "Barbados",
+      "source": "ms-global",
+      "location": "Barbados",
+      "bbox": [
+        12.555,
+        -59.766,
+        13.923,
+        -59.062
+      ]
+    },
+    {
+      "id": "belarus",
+      "name": "Belarus",
+      "source": "ms-global",
+      "location": "Belarus",
+      "bbox": [
+        51.179,
+        23.203,
+        56.17,
+        33.047
+      ]
+    },
+    {
+      "id": "belgium",
+      "name": "Belgium",
+      "source": "ms-global",
+      "location": "Belgium",
+      "bbox": [
+        49.382,
+        2.109,
+        51.618,
+        7.031
+      ]
+    },
+    {
+      "id": "belize",
+      "name": "Belize",
+      "source": "ms-global",
+      "location": "Belize",
+      "bbox": [
+        15.284,
+        -89.297,
+        18.646,
+        -87.188
+      ]
+    },
+    {
+      "id": "benin",
+      "name": "Benin",
+      "source": "ms-global",
+      "location": "Benin",
+      "bbox": [
+        5.616,
+        0.703,
+        12.555,
+        4.219
+      ]
+    },
+    {
+      "id": "bhutan",
+      "name": "Bhutan",
+      "source": "ms-global",
+      "location": "Bhutan",
+      "bbox": [
+        26.431,
+        88.594,
+        28.922,
+        92.812
+      ]
+    },
+    {
+      "id": "bolivia",
+      "name": "Bolivia",
+      "source": "ms-global",
+      "location": "Bolivia",
+      "bbox": [
+        -23.241,
+        -70.312,
+        -9.102,
+        -56.953
+      ]
+    },
+    {
+      "id": "bonaire",
+      "name": "Bonaire",
+      "source": "ms-global",
+      "location": "Bonaire",
+      "bbox": [
+        11.867,
+        -68.906,
+        17.979,
+        -62.578
+      ]
+    },
+    {
+      "id": "bosniaand-herzegovina",
+      "name": "Bosnia and Herzegovina",
+      "source": "ms-global",
+      "location": "BosniaandHerzegovina",
+      "bbox": [
+        42.553,
+        15.469,
+        45.583,
+        19.688
+      ]
+    },
+    {
+      "id": "botswana",
+      "name": "Botswana",
+      "source": "ms-global",
+      "location": "Botswana",
+      "bbox": [
+        -27.059,
+        19.688,
+        -17.309,
+        29.531
+      ]
+    },
+    {
+      "id": "british-virgin-islands",
+      "name": "British Virgin Islands",
+      "source": "ms-global",
+      "location": "BritishVirginIslands",
+      "bbox": [
+        17.979,
+        -65.391,
+        19.311,
+        -63.984
+      ]
+    },
+    {
+      "id": "brunei",
+      "name": "Brunei",
+      "source": "ms-global",
+      "location": "Brunei",
+      "bbox": [
+        3.513,
+        113.906,
+        5.616,
+        116.016
+      ]
+    },
+    {
+      "id": "bulgaria",
+      "name": "Bulgaria",
+      "source": "ms-global",
+      "location": "Bulgaria",
+      "bbox": [
+        40.98,
+        21.797,
+        44.59,
+        28.828
+      ]
+    },
+    {
+      "id": "burkina-faso",
+      "name": "Burkina Faso",
+      "source": "ms-global",
+      "location": "BurkinaFaso",
+      "bbox": [
+        9.102,
+        -5.625,
+        15.284,
+        2.812
+      ]
+    },
+    {
+      "id": "burundi",
+      "name": "Burundi",
+      "source": "ms-global",
+      "location": "Burundi",
+      "bbox": [
+        -4.916,
+        28.828,
+        -2.109,
+        30.938
+      ]
+    },
+    {
+      "id": "cambodia",
+      "name": "Cambodia",
+      "source": "ms-global",
+      "location": "Cambodia",
+      "bbox": [
+        9.796,
+        101.953,
+        15.284,
+        108.281
+      ]
+    },
+    {
+      "id": "cameroon",
+      "name": "Cameroon",
+      "source": "ms-global",
+      "location": "Cameroon",
+      "bbox": [
+        1.406,
+        8.438,
+        13.24,
+        16.172
+      ]
+    },
+    {
+      "id": "canada",
+      "name": "Canada",
+      "source": "ms-global",
+      "location": "Canada",
+      "bbox": [
+        41.509,
+        -141.328,
+        74.776,
+        -52.031
+      ],
+      "big": true
+    },
+    {
+      "id": "cayman-islands",
+      "name": "Cayman Islands",
+      "source": "ms-global",
+      "location": "CaymanIslands",
+      "bbox": [
+        18.646,
+        -81.562,
+        19.973,
+        -79.453
+      ]
+    },
+    {
+      "id": "central-african-republic",
+      "name": "Central African Republic",
+      "source": "ms-global",
+      "location": "CentralAfricanRepublic",
+      "bbox": [
+        2.109,
+        14.062,
+        11.178,
+        28.125
+      ]
+    },
+    {
+      "id": "chad",
+      "name": "Chad",
+      "source": "ms-global",
+      "location": "Chad",
+      "bbox": [
+        7.014,
+        13.359,
+        23.886,
+        24.609
+      ]
+    },
+    {
+      "id": "chile",
+      "name": "Chile",
+      "source": "ms-global",
+      "location": "Chile",
+      "bbox": [
+        -56.17,
+        -75.938,
+        -17.309,
+        -66.094
+      ]
+    },
+    {
+      "id": "colombia",
+      "name": "Colombia",
+      "source": "ms-global",
+      "location": "Colombia",
+      "bbox": [
+        -4.916,
+        -82.266,
+        13.923,
+        -66.797
+      ]
+    },
+    {
+      "id": "comoros",
+      "name": "Comoros",
+      "source": "ms-global",
+      "location": "Comoros",
+      "bbox": [
+        -12.555,
+        42.891,
+        -11.178,
+        45.0
+      ]
+    },
+    {
+      "id": "congo-drc",
+      "name": "Congo DRC",
+      "source": "ms-global",
+      "location": "CongoDRC",
+      "bbox": [
+        -13.923,
+        11.953,
+        5.616,
+        31.641
+      ]
+    },
+    {
+      "id": "costa-rica",
+      "name": "Costa Rica",
+      "source": "ms-global",
+      "location": "CostaRica",
+      "bbox": [
+        4.916,
+        -87.188,
+        11.178,
+        -82.266
+      ]
+    },
+    {
+      "id": "croatia",
+      "name": "Croatia",
+      "source": "ms-global",
+      "location": "Croatia",
+      "bbox": [
+        42.033,
+        13.359,
+        46.559,
+        19.688
+      ]
+    },
+    {
+      "id": "cuba",
+      "name": "Cuba",
+      "source": "ms-global",
+      "location": "Cuba",
+      "bbox": [
+        19.311,
+        -85.078,
+        23.241,
+        -73.828
+      ]
+    },
+    {
+      "id": "curacao",
+      "name": "Curacao",
+      "source": "ms-global",
+      "location": "Curacao",
+      "bbox": [
+        11.867,
+        -69.609,
+        12.555,
+        -68.203
+      ]
+    },
+    {
+      "id": "cyprus",
+      "name": "Cyprus",
+      "source": "ms-global",
+      "location": "Cyprus",
+      "bbox": [
+        34.307,
+        31.641,
+        36.031,
+        35.156
+      ]
+    },
+    {
+      "id": "czechia",
+      "name": "Czechia",
+      "source": "ms-global",
+      "location": "Czechia",
+      "bbox": [
+        48.458,
+        11.953,
+        51.179,
+        18.281
+      ]
+    },
+    {
+      "id": "denmark",
+      "name": "Denmark",
+      "source": "ms-global",
+      "location": "Denmark",
+      "bbox": [
+        54.162,
+        7.734,
+        58.078,
+        15.469
+      ]
+    },
+    {
+      "id": "djibouti",
+      "name": "Djibouti",
+      "source": "ms-global",
+      "location": "Djibouti",
+      "bbox": [
+        10.488,
+        41.484,
+        13.24,
+        43.594
+      ]
+    },
+    {
+      "id": "dominica",
+      "name": "Dominica",
+      "source": "ms-global",
+      "location": "Dominica",
+      "bbox": [
+        14.605,
+        -61.875,
+        15.961,
+        -61.172
+      ]
+    },
+    {
+      "id": "dominican-republic",
+      "name": "Dominican Republic",
+      "source": "ms-global",
+      "location": "DominicanRepublic",
+      "bbox": [
+        17.309,
+        -72.422,
+        19.973,
+        -68.203
+      ]
+    },
+    {
+      "id": "ecuador",
+      "name": "Ecuador",
+      "source": "ms-global",
+      "location": "Ecuador",
+      "bbox": [
+        -5.616,
+        -81.562,
+        2.109,
+        -74.531
+      ]
+    },
+    {
+      "id": "egypt",
+      "name": "Egypt",
+      "source": "ms-global",
+      "location": "Egypt",
+      "bbox": [
+        21.943,
+        24.609,
+        31.952,
+        37.266
+      ],
+      "big": true
+    },
+    {
+      "id": "el-salvador",
+      "name": "El Salvador",
+      "source": "ms-global",
+      "location": "ElSalvador",
+      "bbox": [
+        12.555,
+        -90.703,
+        14.605,
+        -87.188
+      ]
+    },
+    {
+      "id": "equatorial-guinea",
+      "name": "Equatorial Guinea",
+      "source": "ms-global",
+      "location": "EquatorialGuinea",
+      "bbox": [
+        0.703,
+        8.438,
+        4.215,
+        11.953
+      ]
+    },
+    {
+      "id": "eritrea",
+      "name": "Eritrea",
+      "source": "ms-global",
+      "location": "Eritrea",
+      "bbox": [
+        11.867,
+        35.859,
+        16.636,
+        43.594
+      ]
+    },
+    {
+      "id": "estonia",
+      "name": "Estonia",
+      "source": "ms-global",
+      "location": "Estonia",
+      "bbox": [
+        57.327,
+        21.797,
+        59.889,
+        28.828
+      ]
+    },
+    {
+      "id": "ethiopia",
+      "name": "Ethiopia",
+      "source": "ms-global",
+      "location": "Ethiopia",
+      "bbox": [
+        2.811,
+        32.344,
+        15.284,
+        48.516
+      ],
+      "big": true
+    },
+    {
+      "id": "fyromakedonija",
+      "name": "FYROMakedonija",
+      "source": "ms-global",
+      "location": "FYROMakedonija",
+      "bbox": [
+        40.447,
+        20.391,
+        42.553,
+        23.203
+      ]
+    },
+    {
+      "id": "faroe-islands",
+      "name": "Faroe Islands",
+      "source": "ms-global",
+      "location": "FaroeIslands",
+      "bbox": [
+        61.27,
+        -7.734,
+        62.593,
+        -5.625
+      ]
+    },
+    {
+      "id": "finland",
+      "name": "Finland",
+      "source": "ms-global",
+      "location": "Finland",
+      "bbox": [
+        59.534,
+        18.984,
+        70.14,
+        31.641
+      ]
+    },
+    {
+      "id": "france",
+      "name": "France",
+      "source": "ms-global",
+      "location": "France",
+      "bbox": [
+        40.98,
+        -5.625,
+        51.179,
+        9.844
+      ],
+      "big": true
+    },
+    {
+      "id": "french-guiana",
+      "name": "French Guiana",
+      "source": "ms-global",
+      "location": "FrenchGuiana",
+      "bbox": [
+        2.811,
+        -54.844,
+        6.315,
+        -51.328
+      ]
+    },
+    {
+      "id": "gabon",
+      "name": "Gabon",
+      "source": "ms-global",
+      "location": "Gabon",
+      "bbox": [
+        -4.215,
+        8.438,
+        2.811,
+        14.766
+      ]
+    },
+    {
+      "id": "gaza-strip",
+      "name": "Gaza Strip",
+      "source": "ms-global",
+      "location": "GazaStrip",
+      "bbox": [
+        30.751,
+        33.75,
+        31.952,
+        35.156
+      ]
+    },
+    {
+      "id": "georgia",
+      "name": "Georgia",
+      "source": "ms-global",
+      "location": "Georgia",
+      "bbox": [
+        40.98,
+        39.375,
+        43.58,
+        47.109
+      ]
+    },
+    {
+      "id": "germany",
+      "name": "Germany",
+      "source": "ms-global",
+      "location": "Germany",
+      "bbox": [
+        47.04,
+        5.625,
+        55.379,
+        15.469
+      ],
+      "big": true
+    },
+    {
+      "id": "ghana",
+      "name": "Ghana",
+      "source": "ms-global",
+      "location": "Ghana",
+      "bbox": [
+        4.215,
+        -3.516,
+        11.178,
+        1.406
+      ]
+    },
+    {
+      "id": "golan-heights",
+      "name": "Golan Heights",
+      "source": "ms-global",
+      "location": "GolanHeights",
+      "bbox": [
+        32.547,
+        35.156,
+        33.724,
+        36.562
+      ]
+    },
+    {
+      "id": "golan-heights-subdistrict",
+      "name": "Golan Heights Subdistrict",
+      "source": "ms-global",
+      "location": "GolanHeightsSubdistrict",
+      "bbox": [
+        32.547,
+        35.156,
+        33.724,
+        36.562
+      ]
+    },
+    {
+      "id": "greece",
+      "name": "Greece",
+      "source": "ms-global",
+      "location": "Greece",
+      "bbox": [
+        34.307,
+        18.984,
+        42.033,
+        30.234
+      ]
+    },
+    {
+      "id": "grenada",
+      "name": "Grenada",
+      "source": "ms-global",
+      "location": "Grenada",
+      "bbox": [
+        11.867,
+        -61.875,
+        12.555,
+        -61.172
+      ]
+    },
+    {
+      "id": "guadeloupe",
+      "name": "Guadeloupe",
+      "source": "ms-global",
+      "location": "Guadeloupe",
+      "bbox": [
+        15.284,
+        -61.875,
+        16.636,
+        -60.469
+      ]
+    },
+    {
+      "id": "guatemala",
+      "name": "Guatemala",
+      "source": "ms-global",
+      "location": "Guatemala",
+      "bbox": [
+        13.24,
+        -92.812,
+        17.979,
+        -87.891
+      ]
+    },
+    {
+      "id": "guinea",
+      "name": "Guinea",
+      "source": "ms-global",
+      "location": "Guinea",
+      "bbox": [
+        7.014,
+        -15.469,
+        13.24,
+        -7.031
+      ]
+    },
+    {
+      "id": "guinea-bissau",
+      "name": "Guinea-Bissau",
+      "source": "ms-global",
+      "location": "Guinea-Bissau",
+      "bbox": [
+        10.488,
+        -16.875,
+        13.24,
+        -13.359
+      ]
+    },
+    {
+      "id": "guyana",
+      "name": "Guyana",
+      "source": "ms-global",
+      "location": "Guyana",
+      "bbox": [
+        2.109,
+        -61.875,
+        8.407,
+        -56.953
+      ]
+    },
+    {
+      "id": "haiti",
+      "name": "Haiti",
+      "source": "ms-global",
+      "location": "Haiti",
+      "bbox": [
+        17.979,
+        -74.531,
+        20.633,
+        -71.016
+      ]
+    },
+    {
+      "id": "honduras",
+      "name": "Honduras",
+      "source": "ms-global",
+      "location": "Honduras",
+      "bbox": [
+        12.555,
+        -90.0,
+        17.979,
+        -82.969
+      ]
+    },
+    {
+      "id": "hungary",
+      "name": "Hungary",
+      "source": "ms-global",
+      "location": "Hungary",
+      "bbox": [
+        45.583,
+        15.469,
+        48.922,
+        23.203
+      ]
+    },
+    {
+      "id": "iceland",
+      "name": "Iceland",
+      "source": "ms-global",
+      "location": "Iceland",
+      "bbox": [
+        63.234,
+        -24.609,
+        66.792,
+        -13.359
+      ]
+    },
+    {
+      "id": "iran",
+      "name": "Iran",
+      "source": "ms-global",
+      "location": "Iran",
+      "bbox": [
+        25.165,
+        43.594,
+        39.91,
+        63.984
+      ],
+      "big": true
+    },
+    {
+      "id": "iraq",
+      "name": "Iraq",
+      "source": "ms-global",
+      "location": "Iraq",
+      "bbox": [
+        28.922,
+        38.672,
+        37.719,
+        49.219
+      ]
+    },
+    {
+      "id": "ireland",
+      "name": "Ireland",
+      "source": "ms-global",
+      "location": "Ireland",
+      "bbox": [
+        51.179,
+        -10.547,
+        55.777,
+        -5.625
+      ]
+    },
+    {
+      "id": "isleof-man",
+      "name": "Isle of Man",
+      "source": "ms-global",
+      "location": "IsleofMan",
+      "bbox": [
+        53.749,
+        -4.922,
+        54.572,
+        -4.219
+      ]
+    },
+    {
+      "id": "israel",
+      "name": "Israel",
+      "source": "ms-global",
+      "location": "Israel",
+      "bbox": [
+        28.922,
+        33.75,
+        33.724,
+        35.859
+      ]
+    },
+    {
+      "id": "italy",
+      "name": "Italy",
+      "source": "ms-global",
+      "location": "Italy",
+      "bbox": [
+        36.598,
+        6.328,
+        47.517,
+        18.984
+      ],
+      "big": true
+    },
+    {
+      "id": "ivory-coast",
+      "name": "Ivory Coast",
+      "source": "ms-global",
+      "location": "IvoryCoast",
+      "bbox": [
+        4.215,
+        -9.141,
+        11.178,
+        -2.109
+      ]
+    },
+    {
+      "id": "jamaica",
+      "name": "Jamaica",
+      "source": "ms-global",
+      "location": "Jamaica",
+      "bbox": [
+        17.309,
+        -78.75,
+        18.646,
+        -75.938
+      ]
+    },
+    {
+      "id": "japan",
+      "name": "Japan",
+      "source": "ms-global",
+      "location": "Japan",
+      "bbox": [
+        24.527,
+        126.562,
+        45.583,
+        146.25
+      ],
+      "big": true
+    },
+    {
+      "id": "jordan",
+      "name": "Jordan",
+      "source": "ms-global",
+      "location": "Jordan",
+      "bbox": [
+        28.922,
+        34.453,
+        33.138,
+        39.375
+      ]
+    },
+    {
+      "id": "kazakhstan",
+      "name": "Kazakhstan",
+      "source": "ms-global",
+      "location": "Kazakhstan",
+      "bbox": [
+        40.447,
+        46.406,
+        55.379,
+        87.188
+      ]
+    },
+    {
+      "id": "kenya",
+      "name": "Kenya",
+      "source": "ms-global",
+      "location": "Kenya",
+      "bbox": [
+        -4.916,
+        33.75,
+        5.616,
+        42.188
+      ],
+      "big": true
+    },
+    {
+      "id": "kingdomof-saudi-arabia",
+      "name": "Kingdom of Saudi Arabia",
+      "source": "ms-global",
+      "location": "KingdomofSaudiArabia",
+      "bbox": [
+        15.961,
+        34.453,
+        32.547,
+        54.844
+      ]
+    },
+    {
+      "id": "kosovo",
+      "name": "Kosovo",
+      "source": "ms-global",
+      "location": "Kosovo",
+      "bbox": [
+        41.509,
+        19.688,
+        43.58,
+        21.797
+      ]
+    },
+    {
+      "id": "kuwait",
+      "name": "Kuwait",
+      "source": "ms-global",
+      "location": "Kuwait",
+      "bbox": [
+        28.304,
+        46.406,
+        30.145,
+        48.516
+      ]
+    },
+    {
+      "id": "kyrgyzstan",
+      "name": "Kyrgyzstan",
+      "source": "ms-global",
+      "location": "Kyrgyzstan",
+      "bbox": [
+        39.368,
+        68.906,
+        43.58,
+        79.453
+      ]
+    },
+    {
+      "id": "laos",
+      "name": "Laos",
+      "source": "ms-global",
+      "location": "Laos",
+      "bbox": [
+        13.24,
+        99.844,
+        22.594,
+        108.281
+      ]
+    },
+    {
+      "id": "latvia",
+      "name": "Latvia",
+      "source": "ms-global",
+      "location": "Latvia",
+      "bbox": [
+        55.379,
+        20.391,
+        58.448,
+        28.828
+      ]
+    },
+    {
+      "id": "lebanon",
+      "name": "Lebanon",
+      "source": "ms-global",
+      "location": "Lebanon",
+      "bbox": [
+        32.547,
+        34.453,
+        34.886,
+        37.266
+      ]
+    },
+    {
+      "id": "lesotho",
+      "name": "Lesotho",
+      "source": "ms-global",
+      "location": "Lesotho",
+      "bbox": [
+        -30.751,
+        26.719,
+        -28.304,
+        29.531
+      ]
+    },
+    {
+      "id": "liberia",
+      "name": "Liberia",
+      "source": "ms-global",
+      "location": "Liberia",
+      "bbox": [
+        4.215,
+        -11.953,
+        9.102,
+        -7.031
+      ]
+    },
+    {
+      "id": "libya",
+      "name": "Libya",
+      "source": "ms-global",
+      "location": "Libya",
+      "bbox": [
+        19.311,
+        9.141,
+        33.724,
+        25.312
+      ]
+    },
+    {
+      "id": "liechtenstein",
+      "name": "Liechtenstein",
+      "source": "ms-global",
+      "location": "Liechtenstein",
+      "bbox": [
+        47.04,
+        9.141,
+        47.517,
+        9.844
+      ]
+    },
+    {
+      "id": "lithuania",
+      "name": "Lithuania",
+      "source": "ms-global",
+      "location": "Lithuania",
+      "bbox": [
+        53.749,
+        20.391,
+        56.559,
+        26.719
+      ]
+    },
+    {
+      "id": "luxembourg",
+      "name": "Luxembourg",
+      "source": "ms-global",
+      "location": "Luxembourg",
+      "bbox": [
+        49.382,
+        5.625,
+        50.289,
+        7.031
+      ]
+    },
+    {
+      "id": "madagascar",
+      "name": "Madagascar",
+      "source": "ms-global",
+      "location": "Madagascar",
+      "bbox": [
+        -25.8,
+        42.891,
+        -11.867,
+        50.625
+      ]
+    },
+    {
+      "id": "malawi",
+      "name": "Malawi",
+      "source": "ms-global",
+      "location": "Malawi",
+      "bbox": [
+        -17.309,
+        32.344,
+        -9.102,
+        36.562
+      ]
+    },
+    {
+      "id": "malaysia",
+      "name": "Malaysia",
+      "source": "ms-global",
+      "location": "Malaysia",
+      "bbox": [
+        0.703,
+        99.141,
+        7.711,
+        119.531
+      ]
+    },
+    {
+      "id": "maldives",
+      "name": "Maldives",
+      "source": "ms-global",
+      "location": "Maldives",
+      "bbox": [
+        -0.703,
+        72.422,
+        7.014,
+        73.828
+      ]
+    },
+    {
+      "id": "mali",
+      "name": "Mali",
+      "source": "ms-global",
+      "location": "Mali",
+      "bbox": [
+        9.796,
+        -12.656,
+        25.165,
+        4.922
+      ]
+    },
+    {
+      "id": "malta",
+      "name": "Malta",
+      "source": "ms-global",
+      "location": "Malta",
+      "bbox": [
+        35.461,
+        14.062,
+        36.598,
+        14.766
+      ]
+    },
+    {
+      "id": "martinique",
+      "name": "Martinique",
+      "source": "ms-global",
+      "location": "Martinique",
+      "bbox": [
+        13.923,
+        -61.875,
+        15.284,
+        -60.469
+      ]
+    },
+    {
+      "id": "mauritania",
+      "name": "Mauritania",
+      "source": "ms-global",
+      "location": "Mauritania",
+      "bbox": [
+        14.605,
+        -17.578,
+        27.684,
+        -4.922
+      ]
+    },
+    {
+      "id": "mauritius",
+      "name": "Mauritius",
+      "source": "ms-global",
+      "location": "Mauritius",
+      "bbox": [
+        -20.633,
+        56.953,
+        -7.014,
+        73.125
+      ]
+    },
+    {
+      "id": "mayotte",
+      "name": "Mayotte",
+      "source": "ms-global",
+      "location": "Mayotte",
+      "bbox": [
+        -13.24,
+        45.0,
+        -12.555,
+        45.703
+      ]
+    },
+    {
+      "id": "mexico",
+      "name": "Mexico",
+      "source": "ms-global",
+      "location": "Mexico",
+      "bbox": [
+        13.923,
+        -117.422,
+        33.138,
+        -86.484
+      ],
+      "big": true
+    },
+    {
+      "id": "moldova",
+      "name": "Moldova",
+      "source": "ms-global",
+      "location": "Moldova",
+      "bbox": [
+        45.089,
+        26.016,
+        48.922,
+        30.234
+      ]
+    },
+    {
+      "id": "monaco",
+      "name": "Monaco",
+      "source": "ms-global",
+      "location": "Monaco",
+      "bbox": [
+        43.58,
+        7.031,
+        44.088,
+        7.734
+      ]
+    },
+    {
+      "id": "mongolia",
+      "name": "Mongolia",
+      "source": "ms-global",
+      "location": "Mongolia",
+      "bbox": [
+        42.553,
+        90.703,
+        52.052,
+        117.422
+      ]
+    },
+    {
+      "id": "montenegro",
+      "name": "Montenegro",
+      "source": "ms-global",
+      "location": "Montenegro",
+      "bbox": [
+        41.509,
+        18.281,
+        43.58,
+        20.391
+      ]
+    },
+    {
+      "id": "montserrat",
+      "name": "Montserrat",
+      "source": "ms-global",
+      "location": "Montserrat",
+      "bbox": [
+        16.636,
+        -62.578,
+        17.309,
+        -61.875
+      ]
+    },
+    {
+      "id": "morocco",
+      "name": "Morocco",
+      "source": "ms-global",
+      "location": "Morocco",
+      "bbox": [
+        20.633,
+        -17.578,
+        36.031,
+        -1.406
+      ]
+    },
+    {
+      "id": "mozambique",
+      "name": "Mozambique",
+      "source": "ms-global",
+      "location": "Mozambique",
+      "bbox": [
+        -27.059,
+        29.531,
+        -9.796,
+        41.484
+      ]
+    },
+    {
+      "id": "myanmar",
+      "name": "Myanmar",
+      "source": "ms-global",
+      "location": "Myanmar",
+      "bbox": [
+        9.796,
+        92.109,
+        28.922,
+        101.25
+      ]
+    },
+    {
+      "id": "namibia",
+      "name": "Namibia",
+      "source": "ms-global",
+      "location": "Namibia",
+      "bbox": [
+        -29.535,
+        11.25,
+        -16.636,
+        25.312
+      ]
+    },
+    {
+      "id": "nepal",
+      "name": "Nepal",
+      "source": "ms-global",
+      "location": "Nepal",
+      "bbox": [
+        25.8,
+        79.453,
+        30.751,
+        88.594
+      ]
+    },
+    {
+      "id": "netherlands",
+      "name": "Netherlands",
+      "source": "ms-global",
+      "location": "Netherlands",
+      "bbox": [
+        50.736,
+        2.812,
+        53.749,
+        7.734
+      ]
+    },
+    {
+      "id": "nicaragua",
+      "name": "Nicaragua",
+      "source": "ms-global",
+      "location": "Nicaragua",
+      "bbox": [
+        10.488,
+        -87.891,
+        15.284,
+        -82.969
+      ]
+    },
+    {
+      "id": "niger",
+      "name": "Niger",
+      "source": "ms-global",
+      "location": "Niger",
+      "bbox": [
+        11.178,
+        0.0,
+        23.886,
+        16.172
+      ]
+    },
+    {
+      "id": "nigeria",
+      "name": "Nigeria",
+      "source": "ms-global",
+      "location": "Nigeria",
+      "bbox": [
+        4.215,
+        2.109,
+        13.923,
+        14.766
+      ],
+      "big": true
+    },
+    {
+      "id": "norway",
+      "name": "Norway",
+      "source": "ms-global",
+      "location": "Norway",
+      "bbox": [
+        57.704,
+        4.219,
+        71.301,
+        31.641
+      ]
+    },
+    {
+      "id": "pakistan",
+      "name": "Pakistan",
+      "source": "ms-global",
+      "location": "Pakistan",
+      "bbox": [
+        23.241,
+        60.469,
+        37.16,
+        78.75
+      ],
+      "big": true
+    },
+    {
+      "id": "panama",
+      "name": "Panama",
+      "source": "ms-global",
+      "location": "Panama",
+      "bbox": [
+        7.014,
+        -82.969,
+        9.796,
+        -76.641
+      ]
+    },
+    {
+      "id": "paraguay",
+      "name": "Paraguay",
+      "source": "ms-global",
+      "location": "Paraguay",
+      "bbox": [
+        -27.684,
+        -63.281,
+        -18.646,
+        -54.141
+      ]
+    },
+    {
+      "id": "peru",
+      "name": "Peru",
+      "source": "ms-global",
+      "location": "Peru",
+      "bbox": [
+        -18.646,
+        -81.562,
+        0.0,
+        -68.203
+      ]
+    },
+    {
+      "id": "philippines",
+      "name": "Philippines",
+      "source": "ms-global",
+      "location": "Philippines",
+      "bbox": [
+        4.215,
+        116.719,
+        19.973,
+        127.266
+      ],
+      "big": true
+    },
+    {
+      "id": "poland",
+      "name": "Poland",
+      "source": "ms-global",
+      "location": "Poland",
+      "bbox": [
+        48.922,
+        14.062,
+        54.978,
+        24.609
+      ],
+      "big": true
+    },
+    {
+      "id": "portugal",
+      "name": "Portugal",
+      "source": "ms-global",
+      "location": "Portugal",
+      "bbox": [
+        32.547,
+        -17.578,
+        42.553,
+        -5.625
+      ]
+    },
+    {
+      "id": "puerto-rico",
+      "name": "Puerto Rico",
+      "source": "ms-global",
+      "location": "PuertoRico",
+      "bbox": [
+        17.309,
+        -67.5,
+        18.646,
+        -64.688
+      ]
+    },
+    {
+      "id": "republicof-yemen",
+      "name": "Republic of Yemen",
+      "source": "ms-global",
+      "location": "RepublicofYemen",
+      "bbox": [
+        11.867,
+        41.484,
+        17.979,
+        53.438
+      ]
+    },
+    {
+      "id": "republicofthe-congo",
+      "name": "Republicof the Congo",
+      "source": "ms-global",
+      "location": "RepublicoftheCongo",
+      "bbox": [
+        -4.916,
+        10.547,
+        4.215,
+        18.984
+      ]
+    },
+    {
+      "id": "reunion",
+      "name": "Reunion",
+      "source": "ms-global",
+      "location": "Reunion",
+      "bbox": [
+        -21.943,
+        54.844,
+        -20.633,
+        56.25
+      ]
+    },
+    {
+      "id": "romania",
+      "name": "Romania",
+      "source": "ms-global",
+      "location": "Romania",
+      "bbox": [
+        43.58,
+        19.688,
+        48.458,
+        30.234
+      ],
+      "big": true
+    },
+    {
+      "id": "rwanda",
+      "name": "Rwanda",
+      "source": "ms-global",
+      "location": "Rwanda",
+      "bbox": [
+        -3.513,
+        28.828,
+        -0.703,
+        30.938
+      ]
+    },
+    {
+      "id": "saint-barthlemy",
+      "name": "Saint Barthlemy",
+      "source": "ms-global",
+      "location": "SaintBarthlemy",
+      "bbox": [
+        17.309,
+        -63.281,
+        17.979,
+        -62.578
+      ]
+    },
+    {
+      "id": "saint-helena-ascensionand-tristanda-cunha",
+      "name": "Saint Helena Ascension and Tristan da Cunha",
+      "source": "ms-global",
+      "location": "SaintHelenaAscensionandTristandaCunha",
+      "bbox": [
+        -37.16,
+        -12.656,
+        -15.284,
+        -5.625
+      ]
+    },
+    {
+      "id": "saint-lucia",
+      "name": "Saint Lucia",
+      "source": "ms-global",
+      "location": "SaintLucia",
+      "bbox": [
+        13.24,
+        -61.172,
+        14.605,
+        -60.469
+      ]
+    },
+    {
+      "id": "san-marino",
+      "name": "San Marino",
+      "source": "ms-global",
+      "location": "SanMarino",
+      "bbox": [
+        43.58,
+        11.953,
+        44.088,
+        12.656
+      ]
+    },
+    {
+      "id": "senegal",
+      "name": "Senegal",
+      "source": "ms-global",
+      "location": "Senegal",
+      "bbox": [
+        11.867,
+        -17.578,
+        17.309,
+        -11.953
+      ]
+    },
+    {
+      "id": "serbia",
+      "name": "Serbia",
+      "source": "ms-global",
+      "location": "Serbia",
+      "bbox": [
+        42.033,
+        18.281,
+        46.559,
+        23.203
+      ]
+    },
+    {
+      "id": "seychelles",
+      "name": "Seychelles",
+      "source": "ms-global",
+      "location": "Seychelles",
+      "bbox": [
+        -9.796,
+        46.406,
+        -4.215,
+        56.25
+      ]
+    },
+    {
+      "id": "sierra-leone",
+      "name": "Sierra Leone",
+      "source": "ms-global",
+      "location": "SierraLeone",
+      "bbox": [
+        6.315,
+        -13.359,
+        10.488,
+        -9.844
+      ]
+    },
+    {
+      "id": "singapore",
+      "name": "Singapore",
+      "source": "ms-global",
+      "location": "Singapore",
+      "bbox": [
+        0.703,
+        103.359,
+        2.109,
+        104.766
+      ]
+    },
+    {
+      "id": "slovakia",
+      "name": "Slovakia",
+      "source": "ms-global",
+      "location": "Slovakia",
+      "bbox": [
+        47.517,
+        16.172,
+        49.838,
+        23.203
+      ]
+    },
+    {
+      "id": "slovenia",
+      "name": "Slovenia",
+      "source": "ms-global",
+      "location": "Slovenia",
+      "bbox": [
+        45.089,
+        13.359,
+        47.04,
+        16.875
+      ]
+    },
+    {
+      "id": "so-tomand-prncipe",
+      "name": "So Tom and Prncipe",
+      "source": "ms-global",
+      "location": "SoTomandPrncipe",
+      "bbox": [
+        -0.703,
+        6.328,
+        0.703,
+        7.031
+      ]
+    },
+    {
+      "id": "somalia",
+      "name": "Somalia",
+      "source": "ms-global",
+      "location": "Somalia",
+      "bbox": [
+        -2.109,
+        40.781,
+        11.867,
+        48.516
+      ]
+    },
+    {
+      "id": "south-africa",
+      "name": "South Africa",
+      "source": "ms-global",
+      "location": "SouthAfrica",
+      "bbox": [
+        -34.886,
+        16.172,
+        -21.943,
+        33.047
+      ],
+      "big": true
+    },
+    {
+      "id": "south-sudan",
+      "name": "South Sudan",
+      "source": "ms-global",
+      "location": "SouthSudan",
+      "bbox": [
+        2.811,
+        23.203,
+        12.555,
+        36.562
+      ]
+    },
+    {
+      "id": "spain",
+      "name": "Spain",
+      "source": "ms-global",
+      "location": "Spain",
+      "bbox": [
+        27.684,
+        -16.875,
+        44.088,
+        3.516
+      ]
+    },
+    {
+      "id": "sri-lanka",
+      "name": "Sri Lanka",
+      "source": "ms-global",
+      "location": "SriLanka",
+      "bbox": [
+        6.315,
+        79.453,
+        9.796,
+        81.562
+      ]
+    },
+    {
+      "id": "st-kittsand-nevis",
+      "name": "St Kitts and Nevis",
+      "source": "ms-global",
+      "location": "StKittsandNevis",
+      "bbox": [
+        16.636,
+        -63.281,
+        17.979,
+        -61.875
+      ]
+    },
+    {
+      "id": "st-martin",
+      "name": "St Martin",
+      "source": "ms-global",
+      "location": "StMartin",
+      "bbox": [
+        17.979,
+        -63.281,
+        18.646,
+        -62.578
+      ]
+    },
+    {
+      "id": "st-vincentandthe-grenadines",
+      "name": "St Vincentand the Grenadines",
+      "source": "ms-global",
+      "location": "StVincentandtheGrenadines",
+      "bbox": [
+        11.867,
+        -61.875,
+        13.923,
+        -60.469
+      ]
+    },
+    {
+      "id": "stateof-qatar",
+      "name": "State of Qatar",
+      "source": "ms-global",
+      "location": "StateofQatar",
+      "bbox": [
+        23.886,
+        50.625,
+        26.431,
+        52.031
+      ]
+    },
+    {
+      "id": "sudan",
+      "name": "Sudan",
+      "source": "ms-global",
+      "location": "Sudan",
+      "bbox": [
+        9.102,
+        21.797,
+        22.594,
+        38.672
+      ]
+    },
+    {
+      "id": "sultanateof-oman",
+      "name": "Sultanate of Oman",
+      "source": "ms-global",
+      "location": "SultanateofOman",
+      "bbox": [
+        16.636,
+        52.734,
+        26.431,
+        59.766
+      ]
+    },
+    {
+      "id": "suriname",
+      "name": "Suriname",
+      "source": "ms-global",
+      "location": "Suriname",
+      "bbox": [
+        2.811,
+        -57.656,
+        6.315,
+        -53.438
+      ]
+    },
+    {
+      "id": "svalbard",
+      "name": "Svalbard",
+      "source": "ms-global",
+      "location": "Svalbard",
+      "bbox": [
+        76.352,
+        9.844,
+        80.873,
+        28.828
+      ]
+    },
+    {
+      "id": "swaziland",
+      "name": "Swaziland",
+      "source": "ms-global",
+      "location": "Swaziland",
+      "bbox": [
+        -27.684,
+        30.234,
+        -25.165,
+        32.344
+      ]
+    },
+    {
+      "id": "sweden",
+      "name": "Sweden",
+      "source": "ms-global",
+      "location": "Sweden",
+      "bbox": [
+        54.978,
+        10.547,
+        68.911,
+        24.609
+      ]
+    },
+    {
+      "id": "switzerland",
+      "name": "Switzerland",
+      "source": "ms-global",
+      "location": "Switzerland",
+      "bbox": [
+        45.583,
+        5.625,
+        47.99,
+        10.547
+      ]
+    },
+    {
+      "id": "syria",
+      "name": "Syria",
+      "source": "ms-global",
+      "location": "Syria",
+      "bbox": [
+        31.952,
+        35.156,
+        37.719,
+        42.891
+      ]
+    },
+    {
+      "id": "tajikistan",
+      "name": "Tajikistan",
+      "source": "ms-global",
+      "location": "Tajikistan",
+      "bbox": [
+        36.598,
+        66.797,
+        41.509,
+        75.234
+      ]
+    },
+    {
+      "id": "tanzania",
+      "name": "Tanzania",
+      "source": "ms-global",
+      "location": "Tanzania",
+      "bbox": [
+        -11.867,
+        28.828,
+        -0.703,
+        40.781
+      ],
+      "big": true
+    },
+    {
+      "id": "thailand",
+      "name": "Thailand",
+      "source": "ms-global",
+      "location": "Thailand",
+      "bbox": [
+        4.916,
+        97.031,
+        20.633,
+        106.172
+      ],
+      "big": true
+    },
+    {
+      "id": "the-bahamas",
+      "name": "The Bahamas",
+      "source": "ms-global",
+      "location": "TheBahamas",
+      "bbox": [
+        20.633,
+        -79.453,
+        27.684,
+        -72.422
+      ]
+    },
+    {
+      "id": "the-gambia",
+      "name": "The Gambia",
+      "source": "ms-global",
+      "location": "TheGambia",
+      "bbox": [
+        12.555,
+        -16.875,
+        13.923,
+        -14.062
+      ]
+    },
+    {
+      "id": "timor-leste",
+      "name": "Timor-Leste",
+      "source": "ms-global",
+      "location": "Timor-Leste",
+      "bbox": [
+        -9.796,
+        123.75,
+        -7.711,
+        127.969
+      ]
+    },
+    {
+      "id": "togo",
+      "name": "Togo",
+      "source": "ms-global",
+      "location": "Togo",
+      "bbox": [
+        5.616,
+        -0.703,
+        11.178,
+        2.109
+      ]
+    },
+    {
+      "id": "trinidadand-tobago",
+      "name": "Trinidad and Tobago",
+      "source": "ms-global",
+      "location": "TrinidadandTobago",
+      "bbox": [
+        9.796,
+        -62.578,
+        11.867,
+        -60.469
+      ]
+    },
+    {
+      "id": "tunisia",
+      "name": "Tunisia",
+      "source": "ms-global",
+      "location": "Tunisia",
+      "bbox": [
+        30.145,
+        7.031,
+        37.719,
+        11.953
+      ]
+    },
+    {
+      "id": "turkey",
+      "name": "Turkey",
+      "source": "ms-global",
+      "location": "Turkey",
+      "bbox": [
+        35.461,
+        25.312,
+        42.553,
+        45.0
+      ],
+      "big": true
+    },
+    {
+      "id": "turkmenistan",
+      "name": "Turkmenistan",
+      "source": "ms-global",
+      "location": "Turkmenistan",
+      "bbox": [
+        34.886,
+        52.031,
+        43.069,
+        66.797
+      ]
+    },
+    {
+      "id": "turksand-caicos-islands",
+      "name": "Turks and Caicos Islands",
+      "source": "ms-global",
+      "location": "TurksandCaicosIslands",
+      "bbox": [
+        20.633,
+        -73.125,
+        22.594,
+        -71.016
+      ]
+    },
+    {
+      "id": "usvirgin-islands",
+      "name": "USVirgin Islands",
+      "source": "ms-global",
+      "location": "USVirginIslands",
+      "bbox": [
+        17.309,
+        -65.391,
+        18.646,
+        -63.984
+      ]
+    },
+    {
+      "id": "uganda",
+      "name": "Uganda",
+      "source": "ms-global",
+      "location": "Uganda",
+      "bbox": [
+        -2.109,
+        29.531,
+        4.215,
+        35.156
+      ]
+    },
+    {
+      "id": "ukraine",
+      "name": "Ukraine",
+      "source": "ms-global",
+      "location": "Ukraine",
+      "bbox": [
+        44.088,
+        21.797,
+        52.483,
+        40.781
+      ],
+      "big": true
+    },
+    {
+      "id": "united-arab-emirates",
+      "name": "United Arab Emirates",
+      "source": "ms-global",
+      "location": "UnitedArabEmirates",
+      "bbox": [
+        22.594,
+        51.328,
+        26.431,
+        56.953
+      ]
+    },
+    {
+      "id": "united-kingdom",
+      "name": "United Kingdom",
+      "source": "ms-global",
+      "location": "UnitedKingdom",
+      "bbox": [
+        49.838,
+        -8.438,
+        60.93,
+        2.109
+      ],
+      "big": true
+    },
+    {
+      "id": "uruguay",
+      "name": "Uruguay",
+      "source": "ms-global",
+      "location": "Uruguay",
+      "bbox": [
+        -35.461,
+        -58.359,
+        -30.751,
+        -52.734
+      ]
+    },
+    {
+      "id": "uzbekistan",
+      "name": "Uzbekistan",
+      "source": "ms-global",
+      "location": "Uzbekistan",
+      "bbox": [
+        37.16,
+        55.547,
+        45.583,
+        73.125
+      ]
+    },
+    {
+      "id": "venezuela",
+      "name": "Venezuela",
+      "source": "ms-global",
+      "location": "Venezuela",
+      "bbox": [
+        0.703,
+        -73.828,
+        12.555,
+        -59.766
+      ]
+    },
+    {
+      "id": "vietnam",
+      "name": "Vietnam",
+      "source": "ms-global",
+      "location": "Vietnam",
+      "bbox": [
+        8.407,
+        101.953,
+        23.886,
+        109.688
+      ],
+      "big": true
+    },
+    {
+      "id": "west-bank",
+      "name": "West Bank",
+      "source": "ms-global",
+      "location": "WestBank",
+      "bbox": [
+        30.751,
+        34.453,
+        33.138,
+        35.859
+      ]
+    },
+    {
+      "id": "zambia",
+      "name": "Zambia",
+      "source": "ms-global",
+      "location": "Zambia",
+      "bbox": [
+        -18.646,
+        21.797,
+        -7.711,
+        33.75
+      ]
+    },
+    {
+      "id": "zimbabwe",
+      "name": "Zimbabwe",
+      "source": "ms-global",
+      "location": "Zimbabwe",
+      "bbox": [
+        -22.594,
+        24.609,
+        -15.284,
+        33.75
+      ]
+    },
+    {
+      "id": "le-saint-martin",
+      "name": "le Saint-Martin",
+      "source": "ms-global",
+      "location": "leSaint-Martin",
+      "bbox": [
+        17.979,
+        -63.281,
+        18.646,
+        -62.578
+      ]
+    }
   ]
 }
