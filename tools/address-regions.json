@@ -1,6 +1,17 @@
 {
-  "_comment": "Open house-number overlay catalog \u2014 OpenAddresses address POINTS, per US state, built to PMTiles by scripts/build-address-region.sh (resolves the source's current OpenAddresses job) and hosted on the `address-overlays` GitHub release. The app STREAMS them and renders the `number` field as a house-number SymbolLayer where OSM lacks addr:housenumber. Only states with an OpenAddresses `statewide` address source are listed (42); county-only states + world countries are a follow-up (aggregate the per-county sources). bbox=[S,W,N,E] (Geofabrik state bounds; PR hand-set). source = the OpenAddresses source path.",
+  "_comment": "Open house-number overlay catalog \u2014 OpenAddresses address POINTS, per US state, built to PMTiles by scripts/build-address-region.sh (resolves the source's current OpenAddresses job) and hosted on the `address-overlays` GitHub release. The app STREAMS them and renders the `number` field as a house-number SymbolLayer where OSM lacks addr:housenumber. Only states with an OpenAddresses `statewide` address source are listed (42); county-only states use source='us/<st>/*' \u2192 build-address-region.sh aggregates every OpenAddresses source under that prefix. World countries are a follow-up. bbox=[S,W,N,E] (Geofabrik state bounds; PR hand-set). source = the OpenAddresses source path.",
   "regions": [
+    {
+      "id": "alabama",
+      "name": "Alabama (state)",
+      "source": "us/al/*",
+      "bbox": [
+        29.955,
+        -88.484,
+        35.009,
+        -84.883
+      ]
+    },
     {
       "id": "alaska",
       "name": "Alaska (state)",
@@ -33,6 +44,18 @@
         36.516,
         -89.64
       ]
+    },
+    {
+      "id": "california",
+      "name": "California (state)",
+      "source": "us/ca/*",
+      "bbox": [
+        32.482,
+        -125.894,
+        42.016,
+        -114.129
+      ],
+      "big": true
     },
     {
       "id": "colorado",
@@ -90,6 +113,29 @@
       ]
     },
     {
+      "id": "georgia",
+      "name": "Georgia (state)",
+      "source": "us/ga/*",
+      "bbox": [
+        30.354,
+        -85.607,
+        35.004,
+        -80.743
+      ],
+      "big": true
+    },
+    {
+      "id": "hawaii",
+      "name": "Hawaii (state)",
+      "source": "us/hi/*",
+      "bbox": [
+        15.921,
+        -179.599,
+        29.021,
+        -142.651
+      ]
+    },
+    {
       "id": "idaho",
       "name": "Idaho (state)",
       "source": "us/id/statewide",
@@ -99,6 +145,18 @@
         49.008,
         -111.043
       ]
+    },
+    {
+      "id": "illinois",
+      "name": "Illinois (state)",
+      "source": "us/il/*",
+      "bbox": [
+        36.967,
+        -91.516,
+        42.509,
+        -87.493
+      ],
+      "big": true
     },
     {
       "id": "indiana",
@@ -142,6 +200,17 @@
         -89.581,
         39.148,
         -81.955
+      ]
+    },
+    {
+      "id": "louisiana",
+      "name": "Louisiana (state)",
+      "source": "us/la/*",
+      "bbox": [
+        28.145,
+        -94.044,
+        33.02,
+        -88.667
       ]
     },
     {
@@ -200,6 +269,17 @@
       ]
     },
     {
+      "id": "mississippi",
+      "name": "Mississippi (state)",
+      "source": "us/ms/*",
+      "bbox": [
+        30.042,
+        -91.659,
+        35.001,
+        -88.093
+      ]
+    },
+    {
       "id": "missouri",
       "name": "Missouri (state)",
       "source": "us/mo/statewide",
@@ -230,6 +310,17 @@
         -104.058,
         43.002,
         -95.307
+      ]
+    },
+    {
+      "id": "nevada",
+      "name": "Nevada (state)",
+      "source": "us/nv/*",
+      "bbox": [
+        35.001,
+        -120.007,
+        42.004,
+        -114.038
       ]
     },
     {
@@ -310,6 +401,17 @@
       ]
     },
     {
+      "id": "oklahoma",
+      "name": "Oklahoma (state)",
+      "source": "us/ok/*",
+      "bbox": [
+        33.613,
+        -103.008,
+        37.005,
+        -94.43
+      ]
+    },
+    {
       "id": "oregon",
       "name": "Oregon (state)",
       "source": "us/or/statewide",
@@ -319,6 +421,18 @@
         46.303,
         -116.454
       ]
+    },
+    {
+      "id": "pennsylvania",
+      "name": "Pennsylvania (state)",
+      "source": "us/pa/*",
+      "bbox": [
+        39.664,
+        -80.523,
+        42.516,
+        -74.688
+      ],
+      "big": true
     },
     {
       "id": "puerto-rico",
