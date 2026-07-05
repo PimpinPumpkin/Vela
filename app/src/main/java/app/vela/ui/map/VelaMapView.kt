@@ -176,7 +176,7 @@ fun VelaMapView(
     onMarkerTap: (index: Int) -> Unit,
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
-    buildingOverlays: List<String> = emptyList(), // abs paths of installed open building-overlay .pmtiles
+    buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
@@ -267,11 +267,13 @@ fun VelaMapView(
         }
     }
 
-    // Open building-footprint overlays (Microsoft, ODbL — PMTiles from OverlayTileStore): render each
-    // installed region's footprints in a fill layer BENEATH the OSM `building` layer, so it only fills GAPS
-    // where OSM is thin (a suburb the Microsoft→OSM import missed) — OSM draws on top where it has data.
-    // Keyed on styleRef so it re-adds after a style reload, and on darkTheme so the fill matches the themed
-    // OSM building colour (indistinguishable from a real OSM footprint). MapLibre 11.7+ reads pmtiles://.
+    // Open building-footprint overlays (Microsoft, ODbL — PMTiles): render each region's footprints in a fill
+    // layer BENEATH the OSM `building` layer, so it only fills GAPS where OSM is thin (a suburb the Microsoft→OSM
+    // import missed) — OSM draws on top where it has data. Each entry is a full `pmtiles://` URI: `file://` for a
+    // downloaded region (offline), or `https://` for the region in view that isn't downloaded — MapLibre 11.7+
+    // streams that one via PMTiles HTTP range requests, fetching only the visible tiles, so footprints appear
+    // with no download. Keyed on styleRef (re-add after a style reload) + darkTheme (fill matches the themed OSM
+    // building colour, indistinguishable from a real OSM footprint).
     LaunchedEffect(buildingOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
         style.layers.filter { it.id.startsWith("vela-ovl-") }.forEach { runCatching { style.removeLayer(it) } }
@@ -279,10 +281,10 @@ fun VelaMapView(
         val fill = if (darkTheme) "#323f54" else "#dde1e7" // == the OSM building fill (applyLight/applyDark)
         val line = if (darkTheme) "#3f4e66" else "#c4c9d1"
         val below = style.getLayer("building")?.id // beneath OSM buildings so they win wherever OSM has them
-        buildingOverlays.forEachIndexed { i, path ->
+        buildingOverlays.forEachIndexed { i, uri ->
             runCatching {
                 val srcId = "vela-ovl-src-$i"
-                style.addSource(VectorSource(srcId, "pmtiles://file://$path"))
+                style.addSource(VectorSource(srcId, uri)) // uri already carries pmtiles://file:// or pmtiles://https://
                 val layer = FillLayer("vela-ovl-$i", srcId).apply {
                     setSourceLayer("building") // the tippecanoe layer name (build-overlay-region.sh: -l building)
                     setMinZoom(14f)
