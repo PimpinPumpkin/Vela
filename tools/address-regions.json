@@ -1,0 +1,467 @@
+{
+  "_comment": "Open house-number overlay catalog \u2014 OpenAddresses address POINTS, per US state, built to PMTiles by scripts/build-address-region.sh (resolves the source's current OpenAddresses job) and hosted on the `address-overlays` GitHub release. The app STREAMS them and renders the `number` field as a house-number SymbolLayer where OSM lacks addr:housenumber. Only states with an OpenAddresses `statewide` address source are listed (42); county-only states + world countries are a follow-up (aggregate the per-county sources). bbox=[S,W,N,E] (Geofabrik state bounds; PR hand-set). source = the OpenAddresses source path.",
+  "regions": [
+    {
+      "id": "alaska",
+      "name": "Alaska (state)",
+      "source": "us/ak/statewide",
+      "bbox": [
+        49.809,
+        -180.0,
+        72.988,
+        180.0
+      ]
+    },
+    {
+      "id": "arizona",
+      "name": "Arizona (state)",
+      "source": "us/az/statewide",
+      "bbox": [
+        31.327,
+        -114.822,
+        37.006,
+        -109.044
+      ]
+    },
+    {
+      "id": "arkansas",
+      "name": "Arkansas (state)",
+      "source": "us/ar/statewide",
+      "bbox": [
+        33.004,
+        -94.622,
+        36.516,
+        -89.64
+      ]
+    },
+    {
+      "id": "colorado",
+      "name": "Colorado (state)",
+      "source": "us/co/statewide",
+      "bbox": [
+        36.989,
+        -109.063,
+        41.004,
+        -102.035
+      ]
+    },
+    {
+      "id": "connecticut",
+      "name": "Connecticut (state)",
+      "source": "us/ct/statewide",
+      "bbox": [
+        40.964,
+        -73.729,
+        42.052,
+        -71.785
+      ]
+    },
+    {
+      "id": "delaware",
+      "name": "Delaware (state)",
+      "source": "us/de/statewide",
+      "bbox": [
+        38.45,
+        -75.79,
+        39.843,
+        -74.984
+      ]
+    },
+    {
+      "id": "district-of-columbia",
+      "name": "District of Columbia (state)",
+      "source": "us/dc/statewide",
+      "bbox": [
+        38.791,
+        -77.12,
+        38.996,
+        -76.909
+      ]
+    },
+    {
+      "id": "florida",
+      "name": "Florida (state)",
+      "source": "us/fl/statewide",
+      "bbox": [
+        24.2,
+        -88.469,
+        31.003,
+        -79.437
+      ]
+    },
+    {
+      "id": "idaho",
+      "name": "Idaho (state)",
+      "source": "us/id/statewide",
+      "bbox": [
+        41.983,
+        -117.246,
+        49.008,
+        -111.043
+      ]
+    },
+    {
+      "id": "indiana",
+      "name": "Indiana (state)",
+      "source": "us/in/statewide",
+      "bbox": [
+        37.769,
+        -88.103,
+        41.763,
+        -84.78
+      ]
+    },
+    {
+      "id": "iowa",
+      "name": "Iowa (state)",
+      "source": "us/ia/statewide",
+      "bbox": [
+        40.373,
+        -96.643,
+        43.502,
+        -90.136
+      ]
+    },
+    {
+      "id": "kansas",
+      "name": "Kansas (state)",
+      "source": "us/ks/statewide",
+      "bbox": [
+        36.991,
+        -102.053,
+        40.004,
+        -94.589
+      ]
+    },
+    {
+      "id": "kentucky",
+      "name": "Kentucky (state)",
+      "source": "us/ky/statewide",
+      "bbox": [
+        36.493,
+        -89.581,
+        39.148,
+        -81.955
+      ]
+    },
+    {
+      "id": "maine",
+      "name": "Maine (state)",
+      "source": "us/me/statewide",
+      "bbox": [
+        42.854,
+        -71.089,
+        47.462,
+        -66.872
+      ]
+    },
+    {
+      "id": "maryland",
+      "name": "Maryland (state)",
+      "source": "us/md/statewide",
+      "bbox": [
+        37.884,
+        -79.489,
+        39.727,
+        -74.954
+      ]
+    },
+    {
+      "id": "massachusetts",
+      "name": "Massachusetts (state)",
+      "source": "us/ma/statewide",
+      "bbox": [
+        40.883,
+        -73.511,
+        42.888,
+        -68.734
+      ]
+    },
+    {
+      "id": "michigan",
+      "name": "Michigan (state)",
+      "source": "us/mi/statewide",
+      "bbox": [
+        41.694,
+        -90.42,
+        48.35,
+        -82.069
+      ]
+    },
+    {
+      "id": "minnesota",
+      "name": "Minnesota (state)",
+      "source": "us/mn/statewide",
+      "bbox": [
+        43.499,
+        -97.25,
+        49.407,
+        -89.486
+      ]
+    },
+    {
+      "id": "missouri",
+      "name": "Missouri (state)",
+      "source": "us/mo/statewide",
+      "bbox": [
+        35.995,
+        -95.778,
+        40.617,
+        -89.089
+      ]
+    },
+    {
+      "id": "montana",
+      "name": "Montana (state)",
+      "source": "us/mt/statewide",
+      "bbox": [
+        44.356,
+        -116.052,
+        49.008,
+        -104.035
+      ]
+    },
+    {
+      "id": "nebraska",
+      "name": "Nebraska (state)",
+      "source": "us/ne/statewide",
+      "bbox": [
+        40.0,
+        -104.058,
+        43.002,
+        -95.307
+      ]
+    },
+    {
+      "id": "new-hampshire",
+      "name": "New Hampshire (state)",
+      "source": "us/nh/statewide",
+      "bbox": [
+        42.697,
+        -72.559,
+        45.31,
+        -70.487
+      ]
+    },
+    {
+      "id": "new-jersey",
+      "name": "New Jersey (state)",
+      "source": "us/nj/statewide",
+      "bbox": [
+        38.754,
+        -75.579,
+        41.358,
+        -73.679
+      ]
+    },
+    {
+      "id": "new-mexico",
+      "name": "New Mexico (state)",
+      "source": "us/nm/statewide",
+      "bbox": [
+        31.33,
+        -109.05,
+        37.002,
+        -102.998
+      ]
+    },
+    {
+      "id": "new-york",
+      "name": "New York (state)",
+      "source": "us/ny/statewide",
+      "bbox": [
+        40.439,
+        -79.765,
+        45.018,
+        -71.661
+      ]
+    },
+    {
+      "id": "north-carolina",
+      "name": "North Carolina (state)",
+      "source": "us/nc/statewide",
+      "bbox": [
+        33.13,
+        -84.322,
+        36.59,
+        -73.74
+      ]
+    },
+    {
+      "id": "north-dakota",
+      "name": "North Dakota (state)",
+      "source": "us/nd/statewide",
+      "bbox": [
+        45.934,
+        -104.053,
+        49.017,
+        -96.553
+      ]
+    },
+    {
+      "id": "ohio",
+      "name": "Ohio (state)",
+      "source": "us/oh/statewide",
+      "bbox": [
+        38.401,
+        -84.822,
+        42.336,
+        -80.505
+      ]
+    },
+    {
+      "id": "oregon",
+      "name": "Oregon (state)",
+      "source": "us/or/statewide",
+      "bbox": [
+        41.963,
+        -126.388,
+        46.303,
+        -116.454
+      ]
+    },
+    {
+      "id": "puerto-rico",
+      "name": "Puerto Rico",
+      "source": "us/pr/statewide",
+      "bbox": [
+        17.88,
+        -67.95,
+        18.52,
+        -65.22
+      ]
+    },
+    {
+      "id": "rhode-island",
+      "name": "Rhode Island (state)",
+      "source": "us/ri/statewide",
+      "bbox": [
+        40.999,
+        -71.915,
+        42.019,
+        -71.064
+      ]
+    },
+    {
+      "id": "south-carolina",
+      "name": "South Carolina (state)",
+      "source": "us/sc/statewide",
+      "bbox": [
+        32.03,
+        -83.356,
+        35.218,
+        -78.519
+      ]
+    },
+    {
+      "id": "south-dakota",
+      "name": "South Dakota (state)",
+      "source": "us/sd/statewide",
+      "bbox": [
+        42.477,
+        -104.059,
+        45.948,
+        -96.436
+      ]
+    },
+    {
+      "id": "tennessee",
+      "name": "Tennessee (state)",
+      "source": "us/tn/statewide",
+      "bbox": [
+        34.983,
+        -90.313,
+        36.681,
+        -81.644
+      ]
+    },
+    {
+      "id": "texas",
+      "name": "Texas (state)",
+      "source": "us/tx/statewide",
+      "bbox": [
+        25.696,
+        -106.649,
+        36.521,
+        -93.019
+      ]
+    },
+    {
+      "id": "utah",
+      "name": "Utah (state)",
+      "source": "us/ut/statewide",
+      "bbox": [
+        36.996,
+        -114.056,
+        42.003,
+        -109.039
+      ]
+    },
+    {
+      "id": "vermont",
+      "name": "Vermont (state)",
+      "source": "us/vt/statewide",
+      "bbox": [
+        42.725,
+        -73.439,
+        45.023,
+        -71.465
+      ]
+    },
+    {
+      "id": "virginia",
+      "name": "Virginia (state)",
+      "source": "us/va/statewide",
+      "bbox": [
+        36.538,
+        -83.678,
+        39.469,
+        -74.298
+      ]
+    },
+    {
+      "id": "washington",
+      "name": "Washington (state)",
+      "source": "us/wa/statewide",
+      "bbox": [
+        45.539,
+        -126.742,
+        49.007,
+        -116.912
+      ]
+    },
+    {
+      "id": "west-virginia",
+      "name": "West Virginia (state)",
+      "source": "us/wv/statewide",
+      "bbox": [
+        37.199,
+        -82.65,
+        40.646,
+        -77.714
+      ]
+    },
+    {
+      "id": "wisconsin",
+      "name": "Wisconsin (state)",
+      "source": "us/wi/statewide",
+      "bbox": [
+        42.489,
+        -92.891,
+        47.415,
+        -86.2
+      ]
+    },
+    {
+      "id": "wyoming",
+      "name": "Wyoming (state)",
+      "source": "us/wy/statewide",
+      "bbox": [
+        40.983,
+        -111.058,
+        45.012,
+        -103.941
+      ]
+    }
+  ]
+}
