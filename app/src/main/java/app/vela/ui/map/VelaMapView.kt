@@ -313,20 +313,30 @@ fun VelaMapView(
 
     // House-number labels from the open ADDRESS overlay (OpenAddresses PMTiles of points): a SymbolLayer of the
     // `number` field, STREAMED for the region in view — fills in house numbers where OSM has no `addr:housenumber`
-    // (the same gap the building overlay fills for footprints). Placed ON TOP (addLayer) so numbers read over the
-    // building fills; matched to the basemap `vela-housenumber` style (Noto Sans 10, grey + white halo). minZoom 17
-    // so numbers only appear zoomed right in (Google-style) and collision thins dense blocks.
+    // (the same gap the building overlay fills for footprints). Matched to the basemap `vela-housenumber` style
+    // (Noto Sans 10, grey + white halo). minZoom 16 so numbers only appear zoomed right in (Google-style) and
+    // collision thins dense blocks. INSERTED BELOW the traffic-controls layer (which sits below the ambient POI
+    // icons) — NOT addLayer/top: MapLibre places symbols TOPMOST-LAYER-FIRST, so numbers stacked above the
+    // ambient layer grabbed their collision boxes before the business icons placed, EVICTING them at z16+
+    // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
+    // neighbours survived because the prominence-scaled big icons collide the most). Below the icons, numbers
+    // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
     LaunchedEffect(addressOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
         style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { runCatching { style.removeLayer(it) } }
         style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { runCatching { style.removeSource(it) } }
+        // The overlay statewide data covers what OSM has too — hide the basemap number layer while the overlay
+        // is active, or the SAME address renders twice at a slight offset (device-seen: "5611" / "5607" doubled).
+        style.getLayer("vela-housenumber")?.setProperties(
+            PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE),
+        )
         val txt = if (darkTheme) "#9aa0a6" else "#8a8a8a"
         val halo = if (darkTheme) "#1b2432" else "#ffffff"
         addressOverlays.forEachIndexed { i, uri ->
             runCatching {
                 val srcId = "vela-addr-src-$i"
                 style.addSource(VectorSource(srcId, uri))
-                style.addLayer(
+                val layer =
                     SymbolLayer("vela-addr-$i", srcId).apply {
                         setSourceLayer("address") // tippecanoe layer name (build-address-region.sh: -l address)
                         setMinZoom(16f) // match the basemap vela-housenumber layer; numbers appear at street-ish zoom, collision thins dense blocks
@@ -338,8 +348,12 @@ fun VelaMapView(
                             PropertyFactory.textHaloColor(halo),
                             PropertyFactory.textHaloWidth(1f),
                         )
-                    },
-                )
+                    }
+                if (style.getLayer(CONTROLS_LAYER) != null) {
+                    style.addLayerBelow(layer, CONTROLS_LAYER) // below controls → below ambient icons (see above)
+                } else {
+                    style.addLayer(layer) // controls layer missing (defensive) — top is better than absent
+                }
             }
         }
     }
