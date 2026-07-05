@@ -235,10 +235,14 @@ object NavEngine {
         // step stays on the map + step list. STRAIGHT is the same "no driver action" case — OSRM
         // stamps a dead-straight rename / straight-through as "turn"+"straight" (→ STRAIGHT), and a
         // spoken "go straight" while the road just renames under you is exactly the reported noise;
-        // silence it too. One escape hatch for BOTH: if OSRM attached a valid-lane subset, the driver
-        // must POSITION ("use the left 2 lanes to stay on…") — speak those (lane != null).
+        // silence it too. One escape hatch for BOTH: only when the lanes show a GENUINE fork — an off
+        // lane that ALSO goes straight-ish, i.e. a parallel road you'd drift onto ("use the left 2 lanes
+        // to stay on I-80") — do we speak (continueHasGenuineFork). A plain turn bay at an intersection
+        // (an off lane marked only left/right) is NOT a fork: you sail straight through, Google stays
+        // silent, and so do we — the reported "it says use the lanes to continue when only the name changes".
         val redundantContinue =
-            (target.type == ManeuverType.CONTINUE || target.type == ManeuverType.STRAIGHT) && lane == null
+            (target.type == ManeuverType.CONTINUE || target.type == ManeuverType.STRAIGHT) &&
+                !app.vela.core.model.continueHasGenuineFork(target.lanes)
         val voiceSilent = isDepart || redundantContinue
 
         // Approach prompts, SPEED-SCALED (Google/OsmAnd scale announcements with speed — the fixed
