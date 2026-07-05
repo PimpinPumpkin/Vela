@@ -704,6 +704,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   routing; best-effort + silent (a background enhancement). **Fixed en route:** the 197 MB download was
   silently aborting at the shared OkHttp client's 12 s `callTimeout` (a scrape bound) → `OverlayTileStore` **and**
   `RoutingGraphStore` now use a derived `callTimeout(0)` download client (the same fix voice models already had).
+- ✅ **Open house-number overlay (OpenAddresses — 2026-07-05, device-verified).** The Microsoft footprints have
+  geometry but no addresses, so house numbers come from a **second streamed overlay**: **OpenAddresses** address
+  POINTS (per-source open/government licences) baked into a per-state `.pmtiles` and rendered as a `SymbolLayer`
+  of the `number` field ON TOP of the footprints, matched to the basemap `vela-housenumber` style
+  (Noto Sans, grey + white halo, minZoom 16 so numbers appear as you zoom toward a street, collision thins dense
+  blocks). Streams online exactly like the building overlay (`pmtiles://https://…`, HTTP range requests — no
+  download). **Device-verified: real Silver Firs house numbers (13713, 13801, 14008, 14216…) render over the
+  footprints** — filling the exact gap where OSM has no `addr:housenumber`. WA hosted; a CI pipeline
+  (`scripts/build-address-region.sh`, `tools/address-regions.json`) fans out the 42 US states with an
+  OpenAddresses statewide source, same pattern as the building overlay.
 - ⬜ Offline routing (embedded Valhalla / routing graph) — the heavy native lift
 - ⬜ Region downloads as portable PMTiles + historical traffic
 

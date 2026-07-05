@@ -457,6 +457,23 @@ genuinely needs no doc edit, say why in the commit.
   / `chunk`) and dispatch is **one group at a time** (`-f group=world`); run-level concurrency is OFF so groups
   build concurrently, only the merge job serialises. The app/manifest are source-AGNOSTIC — the emitted manifest
   row is always `{id,name,url(asset),sizeMb,bbox}`, so no app change was needed for countries OR chunks.
+- **Open house-number overlay (`VelaMapView` + `scripts/build-address-region.sh`, DONE 2026-07-05,
+  device-verified in Silver Firs).** Microsoft footprints have geometry but **no addresses**, so house numbers
+  come from a SECOND overlay: **OpenAddresses** address POINTS → per-state `.pmtiles` (`-l address`, keep the
+  `number` prop) → `address-overlays` GitHub release + `address-overlay-manifest.json` (`ADDRESS_MANIFEST_URL`,
+  `-PaddressManifestUrl=`). Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
+  → its current `job` → `https://v2.openaddresses.io/batch-prod/job/<job>/source.geojson.gz` (GeoJSONL of Points
+  with `number`/`street`; **42 US states have a `statewide` source**, the rest are county-only). Render:
+  `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
+  `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, grey +
+  white halo, **minZoom 16** (matches the basemap `vela-housenumber` layer; collision thins dense blocks) —
+  placed ON TOP (addLayer) so numbers read over the building fills. **Streams online exactly like buildings**
+  (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → smallest-covering region's
+  `pmtiles://https://…` URI; reuses `overlayStore.manifest()` which is manifest-URL-agnostic). **NOT** the
+  building overlay (different data + a Symbol not Fill layer + its own release/manifest). CI:
+  `.github/workflows/address-overlays.yml` (clone of building-overlays), catalog `tools/address-regions.json`.
+  **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves in new
+  suburbs** — verified real Silver Firs numbers (13713, 13801, 14008…) rendered over the MS footprints.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
