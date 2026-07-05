@@ -62,7 +62,7 @@ object PoiIcons {
         "lodging" to listOf("lodging"),
         "fuel" to listOf("fuel"),
         "parking" to listOf("parking", "bicycle_parking"),
-        "park" to listOf("park", "garden", "nature_reserve", "golf", "pitch", "playground", "dog_park", "picnic_site"),
+        "park" to listOf("park", "garden", "nature_reserve", "national_park", "golf", "pitch", "playground", "dog_park", "picnic_site"),
         "health" to listOf("hospital", "pharmacy", "doctors", "dentist", "veterinary", "clinic"),
         "edu" to listOf("school", "college", "university", "library", "kindergarten"),
         "civic" to listOf("bank", "atm", "post", "police", "fire_station", "town_hall", "courthouse", "place_of_worship", "cemetery", "community_centre"),
