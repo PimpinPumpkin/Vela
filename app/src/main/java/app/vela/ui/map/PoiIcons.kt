@@ -118,9 +118,16 @@ object PoiIcons {
                     // symbol-sort-key order (lower is placed first = wins the slot). So a Safeway (low
                     // rank) beats a tiny tenant inside it (high rank) instead of arbitrary tile order.
                     PropertyFactory.symbolSortKey(Expression.get("rank")),
-                    // Label to the LEFT of the icon (Google-style), matching the ambient Google POIs.
-                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_RIGHT),
-                    PropertyFactory.textOffset(arrayOf(-2.6f, 0f)),
+                    // Label placement MATCHES the ambient Google-POI layer exactly (variable anchor:
+                    // prefer left-of-icon at a tight 1.4-em gap, fall back to under-icon on collision).
+                    // These OSM layers show whenever ambient ISN'T (fresh area pre-fetch, offline, nav,
+                    // search) — the old fixed -2.6 offset here was the "state where labels are too far
+                    // from the icon until they re-render" (the re-render = ambient taking over).
+                    PropertyFactory.textVariableAnchor(
+                        arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                    ),
+                    PropertyFactory.textRadialOffset(1.4f),
+                    PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
@@ -142,8 +149,12 @@ object PoiIcons {
                     PropertyFactory.iconImage(icon),
                     PropertyFactory.iconSize(0.8f),
                     PropertyFactory.symbolSortKey(Expression.get("rank")),
-                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_RIGHT),
-                    PropertyFactory.textOffset(arrayOf(-2.6f, 0f)),
+                    // Same tight variable-anchor placement as the poi_r* layers above / the ambient layer.
+                    PropertyFactory.textVariableAnchor(
+                        arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                    ),
+                    PropertyFactory.textRadialOffset(1.4f),
+                    PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                 )
                 if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
                 layer.setMinZoom(16f)
