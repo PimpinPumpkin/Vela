@@ -98,9 +98,13 @@ class PiperSynth @Inject constructor(
                 // stop consonants land cleanly most of the time but occasionally drop/soften ("left"→"lef",
                 // "turn"→"durn"). Calmer sampling hews closer to the model's mean prediction, so consonants
                 // come out consistently; the small loss of prosodic variety is a good trade for nav clarity.
+                // 0.5/0.6 helped ("seems a little better") but t-drops persisted → stepped to 0.45/0.55
+                // (2026-07-06). Go lower only carefully — too calm turns the voice flat/robotic; the floor
+                // of this lever is the model itself (a crisper-consonant voice from the library is the
+                // next escalation, e.g. lessac/ryan-high).
                 val vits = OfflineTtsVitsModelConfig(
                     model = r.model, tokens = r.tokens, dataDir = r.dataDir,
-                    noiseScale = 0.5f, noiseScaleW = 0.6f,
+                    noiseScale = 0.45f, noiseScaleW = 0.55f,
                 )
                 val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = 2, debug = false))
                 val engine = OfflineTts(assetManager = null, config = cfg)

@@ -136,7 +136,10 @@ object EnNavStrings : NavStrings {
 
     override fun passLights(count: Int): String = if (count <= 1) "Pass the traffic light" else "Pass $count traffic lights"
 
-    override fun arrived(): String = "You have arrived"
+    // Trailing SEMICOLON on purpose (spoken-only string — NavEngine Speak, never displayed): bare text
+    // gives the Piper voice no final prosody contour and the callout ended oddly; the user A/B'd
+    // punctuation and the semicolon's contour sounds best (period OK, semicolon better). 2026-07-06.
+    override fun arrived(): String = "You have arrived;"
 
     override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
 
