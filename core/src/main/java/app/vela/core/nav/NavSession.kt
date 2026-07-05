@@ -387,6 +387,9 @@ class NavSession @Inject constructor(
         // (that used to silently drop your remaining stops on any off-route wobble).
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         val gen = sessionGen
+        // The route we were following when we went off-route. If the driver returns to THIS line while
+        // we're fetching (see the back-on-course check below), we abandon the reroute rather than swap.
+        val fromRoute = _state.value.route
         rerouteJob = scope.launch {
             // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
             // current route rather than swapping to a truncated/wrong one. (Guard unchanged: the route still
@@ -394,6 +397,19 @@ class NavSession @Inject constructor(
             val r = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }) }
                 .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it
+            // BACK ON COURSE: while we were fetching (~1-3 s), did the driver return to the ORIGINAL route?
+            // A U-turn (or any wobble) fires RerouteNeeded, but by the time the fetch lands the driver has
+            // often completed it and rejoined the planned line — the engine cleared the offRoute latch
+            // (offHits back to 0 ⟺ a clean on-route fix). Swapping in a fresh route now would yank a driver
+            // who already self-corrected onto a different path. So if the route hasn't otherwise changed and
+            // we're no longer off-route, discard this reroute and carry on (Google's "you're back on course").
+            // If the driver is still off, offRoute is still latched and we adopt r as before. Self-healing:
+            // a momentary line-cross that clears then re-deviates simply re-fires RerouteNeeded on the next
+            // rising edge (no cooldown charged — we return before lastRerouteAdoptMs is stamped).
+            if (_state.value.route === fromRoute && !_state.value.nav.offRoute) {
+                diag.record("nav", "reroute discarded — driver back on the original route (self-corrected)")
+                return@launch
+            }
             if (r == null) {
                 // FAILED (dead spot / OSRM 5xx / truncated result). The old code returned silently
                 // and rerouting was DEAD for the rest of the excursion: RerouteNeeded is
