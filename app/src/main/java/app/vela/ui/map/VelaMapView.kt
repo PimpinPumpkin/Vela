@@ -727,7 +727,13 @@ fun VelaMapView(
         // Browse cone points the device-facing compass (sensor) when we have it — a stopped
         // phone has no GPS course, so this is the only honest "which way am I facing". Nav is
         // unaffected: there `snap.second` (the road heading) wins, and off-route falls to myBearing.
+        // Off-route/no-course fallback while NAVIGATING: use the engaged puck's own route-derived
+        // heading (the ticker seeds displayBearing from the road segment) so the ARROW still renders.
+        // This is the replay fix: recorded traces often carry no per-fix bearing (no doppler at low
+        // speed / older devices), so `myBearing` is null and, with no snap, displayBearing went null —
+        // which hid the arrow and left only the dot. The puck always has a route bearing when engaged.
         val displayBearing = snap?.second ?: (if (!navMode) compassHeading else null) ?: myBearing
+            ?: (if (navMode && navPuck.engaged) navPuck.displayBearing.takeIf { !it.isNaN() } else null)
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
         // Gated on the fix being NEW (identity — the ViewModel makes a fresh LatLng per fix and
         // recompositions re-pass the same instance): this block runs in a recomposing scope, and
