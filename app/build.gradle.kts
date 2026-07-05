@@ -50,6 +50,14 @@ android {
             "\"${(project.findProperty("overlayManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/building-overlays/building-overlay-manifest.json"}\"",
         )
+        // Open house-number (address-point) overlay (OpenAddresses) PMTiles catalog — same override pattern
+        // (-PaddressManifestUrl=…). Rendered as a SymbolLayer of house numbers where OSM lacks addr:housenumber.
+        buildConfigField(
+            "String",
+            "ADDRESS_MANIFEST_URL",
+            "\"${(project.findProperty("addressManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/address-overlays/address-overlay-manifest.json"}\"",
+        )
     }
 
     // Real release signing comes from CI env vars; local dev falls back to the
