@@ -324,11 +324,16 @@ genuinely needs no doc edit, say why in the commit.
   OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is now
   **sorted by live in-traffic ETA — fastest leads, Google-style.** (Earlier note that this was "impossible"
   was wrong: it's only true for the OSRM-only alts, which share `gTop`'s ratio; Google's alts carry real
-  per-route traffic.) **Common-axis fix (2026-07-04):** the sort key MUST put every route on one axis —
-  `durationInTrafficSeconds ?: (durationSeconds * gRatio)` where `gRatio` = the top Google route's in-traffic
-  ratio (1.0 if no live traffic). The old `?: durationSeconds` compared a traffic-inflated Google alt against
-  an un-inflated free-flow OSRM route (different axes → the fastest didn't reliably lead — a real-drive bug).
-  Provisional (not-yet-named) routes are the stable tie-break so a named route leads a look-alike.
+  per-route traffic.) **Sort key = the EXACT value the picker shows (2026-07-05, supersedes the earlier
+  `* gRatio` "common-axis" attempt):** `compareBy({ durationInTrafficSeconds ?: durationSeconds }, { provisional })`.
+  `RouteOption` displays `durationInTrafficSeconds ?: durationSeconds` and tags the min-SHOWN route "Fastest", so
+  the sort MUST use the same expression — else (as `* gRatio` did) the top/selected route and the "Fastest"-tagged
+  route diverge and the fastest-shown route isn't at the top (a real-drive bug, fixed). The axis is already fair
+  without the fudge factor: PRIMARY routes go through `applyTraffic` (their `durationInTrafficSeconds` = free-flow
+  × the top Google route's ratio) and Google's alternates carry their own per-route `duration_in_traffic`, so a
+  route only falls back to raw `durationSeconds` when there's genuinely no traffic signal for it — and then
+  sorting/showing that free-flow time is self-consistent. Do NOT bake an estimate onto `durationInTrafficSeconds`
+  to "fix the axis" — `Route.hasLiveTraffic` keys off its nullness. Provisional routes are the stable tie-break.
   **Alternates = GOOGLE's own alternate routes, NAME-ON-PICK (2026-06-30):** we fetch all of Google's
   routes but used only the top; `directions()` now returns the named primary + each distinct Google route
   as a **provisional** `Route` (`Route.provisional` — polyline + live ETA now, turn-by-turn deferred),
