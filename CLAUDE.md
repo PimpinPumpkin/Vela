@@ -519,7 +519,15 @@ genuinely needs no doc edit, say why in the commit.
   white halo, **minZoom 16** (matches the basemap `vela-housenumber` layer; collision thins dense blocks) —
   placed ON TOP (addLayer) so numbers read over the building fills. **Streams online exactly like buildings**
   (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → smallest-covering region's
-  `pmtiles://https://…` URI; reuses `overlayStore.manifest()` which is manifest-URL-agnostic). **NOT** the
+  `pmtiles://https://…` URI; reuses `overlayStore.manifest()` which is manifest-URL-agnostic).
+  **⚠️ LAYER ORDER (2026-07-06, device-verified fix):** the addr layers are inserted **BELOW `vela-controls`**
+  (→ below the ambient POI icons), NOT `addLayer`/top — MapLibre places symbols TOPMOST-FIRST, so numbers
+  stacked above the ambient layer grabbed collision boxes before the business icons placed and **EVICTED them
+  at z16+** (the "Applebee's icon disappears on zoom-in" bug: reproduced on the 5710 building — big
+  prominence-scaled icons collide the most; small neighbours survived). Below the icons, numbers place last
+  and yield — Google's behaviour. Also: while the overlay is active the basemap `vela-housenumber` layer is
+  hidden (visibility NONE in the same LaunchedEffect) — both drew the SAME address at a slight offset
+  (device-seen doubled "5611"/"5607"). **NOT** the
   building overlay (different data + a Symbol not Fill layer + its own release/manifest). CI:
   `.github/workflows/address-overlays.yml` (clone of building-overlays), catalog `tools/address-regions.json`.
   **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves in new
