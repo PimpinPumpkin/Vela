@@ -687,9 +687,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   matrix workflow `.github/workflows/building-overlays.yml`). **World catalog (`tools/overlay-regions.json`, 250
   regions):** 51 US states + DC (Microsoft US Building Footprints, one `.geojson.zip` each) **plus ~199 world
   countries** (Microsoft Global ML Building Footprints, quadkey GeoJSONL from `global-buildings/dataset-links.csv`)
-  — one build script, two sources, chosen per catalog row. Only the four un-hostable giants (India/Brazil/Russia/
-  Indonesia, whose PMTiles would exceed GitHub's 2 GB/asset limit) are deferred to a sub-national-split follow-up.
-  The app's `OverlayTileStore` (a single-file
+  — one build script, two sources, chosen per catalog row. **Big countries (>1500 MB, incl. India/Brazil/Russia/
+  Germany/Japan/…18 of them) are split into sub-national CHUNKS by quadkey prefix** (India → 24 pieces), each with
+  its own bbox so the app's smallest-covering-box rule downloads just the piece covering you — keeping every file
+  under GitHub's 2 GB limit and downloadable in reasonable sizes (361 total regions, dispatched by `group` since
+  that's over GitHub's 256-job matrix cap). The app's `OverlayTileStore` (a single-file
   sibling of `RoutingGraphStore`) downloads it into `filesDir/overlays/<id>.pmtiles`; `VelaMapView` adds a
   `pmtiles://file://…` `VectorSource` + a `FillLayer` **beneath** the OSM `building` layer (themed to the same
   fill/outline as OSM), so footprints only fill the **gaps** where OSM is thin — a suburb the Microsoft→OSM
