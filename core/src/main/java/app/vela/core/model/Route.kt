@@ -55,6 +55,25 @@ fun laneGuidance(lanes: List<Lane>): LaneGuidance? {
     return LaneGuidance(side, valid.size)
 }
 
+/**
+ * For a CONTINUE/STRAIGHT maneuver, whether the lanes represent a GENUINE fork worth announcing —
+ * an "off" (invalid) lane that itself offers a straight/slight onward path, i.e. a parallel road you
+ * could accidentally follow ("use the left 2 lanes to stay on I-80"). This is the case Google DOES
+ * voice. It is FALSE for a plain turn bay at an intersection (an off lane marked only left/right/uturn):
+ * you're sailing straight through, the turn lane is irrelevant, and Google stays silent — exactly the
+ * "it says use the lanes to continue when nothing changes but the name" report. Requires a real valid
+ * subset ([laneGuidance] != null) AND at least one off lane pointing straight-ish. When there are no
+ * lanes, or every lane continues, [laneGuidance] is null → false → the continue is silenced.
+ */
+fun continueHasGenuineFork(lanes: List<Lane>): Boolean {
+    if (laneGuidance(lanes) == null) return false
+    return lanes.any { lane ->
+        !lane.valid && lane.indications.any { ind ->
+            ind == "straight" || ind == "none" || ind == "through" || ind.startsWith("slight")
+        }
+    }
+}
+
 data class RouteLeg(
     val distanceMeters: Double,
     val durationSeconds: Double,
