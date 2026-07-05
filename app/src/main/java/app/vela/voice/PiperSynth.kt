@@ -184,6 +184,26 @@ class PiperSynth @Inject constructor(
                     val at = ensureTrack(sampleRate)
                     at.pause(); at.flush(); at.play()
                     at.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+                    // DRAIN before finishing: WRITE_BLOCKING returns while the track buffer's tail
+                    // (~1 s — bufferSize is sampleRate*4 bytes = 1 s of float mono) is still PLAYING,
+                    // and the NEXT queued prompt's pause+flush would chop it — the "spoken directions
+                    // partially stacking" bug (the end of one direction swallowed as the next began,
+                    // worst at nav start where the opener + first approach prompt queue back-to-back).
+                    // Wait until the audio truly ends, then leave a short breath between prompts
+                    // (Google finishes the sentence, beat, then speaks the next). INTERRUPTS STAY
+                    // INSTANT: an interrupting speak bumps [generation] and this loop bails within
+                    // ~30 ms — the urgent prompt then flushes the tail exactly as before. onDone
+                    // (audio-focus release) also now fires at the REAL end of audio, so music no
+                    // longer un-ducks over the last words.
+                    val deadline = android.os.SystemClock.elapsedRealtime() +
+                        (samples.size.toLong() * 1000L / sampleRate) + 1000L
+                    while (myGen == generation &&
+                        runCatching { at.playbackHeadPosition }.getOrDefault(samples.size) < samples.size &&
+                        android.os.SystemClock.elapsedRealtime() < deadline
+                    ) {
+                        Thread.sleep(30)
+                    }
+                    if (myGen == generation) Thread.sleep(INTER_PROMPT_GAP_MS)
                 }
                 Log.i(TAG, "spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${frags.size} frag.) in ${genMs}ms")
             } catch (t: Throwable) {
@@ -252,5 +272,8 @@ class PiperSynth @Inject constructor(
         const val PAUSE_SEC = 0.32f
         // Shorter beat spliced at commas/semicolons so clauses don't run together ("In a quarter mile, …").
         const val CLAUSE_PAUSE_SEC = 0.16f
+        // Breath between BACK-TO-BACK prompts (after the drain): consecutive directions don't butt
+        // against each other. Skipped when an interrupting prompt is waiting (generation moved).
+        const val INTER_PROMPT_GAP_MS = 350L
     }
 }
