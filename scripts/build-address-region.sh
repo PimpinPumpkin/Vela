@@ -54,11 +54,16 @@ LINES=$(wc -l < "$GEOJSON" | tr -d ' ')
 [ "$LINES" -gt 0 ] || { echo "!! empty address data for $SRC" >&2; exit 1; }
 echo "→ $LINES address points"
 
-# House numbers only need high zoom (rendered at minZoom 16, tiles overzoom above). Keep ONLY the `number`
-# attribute (`-y number`) so the tiles stay small; --drop-densest-as-needed bounds a packed downtown tile.
+# House numbers render only at z>=17.5 (VelaMapView minZoom — Google street-level parity), so bake
+# -Z16 -z17: the app never requests tiles below 16 (dead pyramid weight), and maxzoom 17 quarters the
+# per-tile point count vs the old -z16 — at maxzoom tippecanoe keeps EVERY point, and overzooming a
+# dense urban z16 tile at a z17.5+ view handed MapLibre thousands of symbols to collide per frame
+# (the "lag when the house numbers load" report; the tile FETCH is lazy, the PLACEMENT was the cost).
+# Keep ONLY the `number` attribute (`-y number`) so the tiles stay small; --drop-densest-as-needed
+# bounds a packed tile below maxzoom.
 echo "→ tiling with tippecanoe"
 tippecanoe -o "$WORK/$ID.pmtiles" -l address -n "Vela address overlay: $NAME" \
-  -Z14 -z16 -y number --drop-densest-as-needed --extend-zooms-if-still-dropping -P \
+  -Z16 -z17 -y number --drop-densest-as-needed --extend-zooms-if-still-dropping -P \
   --attribution "Addresses © OpenAddresses contributors" --force "$WORK/$ID.geojsonl"
 
 SIZE=$(( ( $(stat -f%z "$WORK/$ID.pmtiles" 2>/dev/null || stat -c%s "$WORK/$ID.pmtiles") + 1048575 ) / 1048576 ))
