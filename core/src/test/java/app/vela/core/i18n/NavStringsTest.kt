@@ -56,7 +56,9 @@ class NavStringsTest {
     @Test fun `the frame and arrival are localized`() {
         assertEquals("In 500 feet, Turn right", EnNavStrings.inThen("500 feet", "Turn right"))
         assertEquals("Dans 150 mètres, Tournez à droite", FrNavStrings.inThen("150 mètres", "Tournez à droite"))
-        assertEquals("You have arrived", EnNavStrings.arrived())
+        // EN carries a trailing semicolon ON PURPOSE — spoken-only string; the punctuation shapes the
+        // Piper voice's final prosody contour (user A/B'd: semicolon > period > bare). See EnNavStrings.
+        assertEquals("You have arrived;", EnNavStrings.arrived())
         assertEquals("Vous êtes arrivé", FrNavStrings.arrived())
     }
 
