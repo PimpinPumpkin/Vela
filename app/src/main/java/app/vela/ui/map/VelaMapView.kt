@@ -1111,13 +1111,13 @@ private fun ensureLayers(style: Style) {
                 // collide with a neighbour, FALL BACK to sitting UNDER the icon — text-variable-anchor
                 // picks the first anchor (right = text left of point, top = text below point) that fits,
                 // and hides the label (textOptional) only if neither does. The radial offset is the
-                // centre→text-edge gap in ems; 2.0 sits the label closer than the old fixed -2.7 x-offset
-                // (which read too far left) while still clearing the dot. justify=auto so the left form
-                // right-justifies and the under form centres. (Tune the 2.0 from a device glance.)
+                // centre→text-edge gap in ems; 1.4 sits the label right up against the dot (was 2.7 → 2.0 →
+                // 1.4 across "too far" reports) while still clearing it. justify=auto so the left form
+                // right-justifies and the under form centres. (Tune from a device glance if it crowds the dot.)
                 PropertyFactory.textVariableAnchor(
                     arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
                 ),
-                PropertyFactory.textRadialOffset(2.0f),
+                PropertyFactory.textRadialOffset(1.4f),
                 PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                 PropertyFactory.textMaxWidth(7f),
                 PropertyFactory.textOptional(true),
