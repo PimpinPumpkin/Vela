@@ -1,10 +1,11 @@
 {
-  "_comment": "Open building-footprint overlay catalog. TWO Microsoft sources (both ODbL): source='us-legacy' = a US state from Microsoft US Building Footprints (one .geojson.zip at `url`); source='ms-global' = a country from Microsoft's Global ML Building Footprints (quadkey GeoJSONL selected by `location` from global-buildings/dataset-links.csv). Built to PMTiles by scripts/build-overlay-region.sh (SOURCE env picks the path), hosted on the `building-overlays` GitHub release, rendered BENEATH the OSM building layer to fill gaps. bbox=[S,W,N,E] (US states from Geofabrik extract bounds; countries from the union of the dataset's quadkey tiles). big=true is a size hint. EXCLUDED as single files (PMTiles would exceed GitHub's 2 GB/asset): India, Brazil, Russia, Indonesia, and the whole-US 'UnitedStates' aggregate (the US is covered per-state) — these want sub-national splitting, a follow-up. Continental aggregates + duplicate Locations (CzechRepublic→Czechia, DemocraticRepublicoftheCongo→CongoDRC) are dropped.",
+  "_comment": "Open building-footprint overlay catalog. Microsoft, ODbL. source: us-legacy (US state .geojson.zip) or ms-global (world country quadkey GeoJSONL via global-buildings/dataset-links.csv, selected by `location`; `qkprefix` selects a sub-national CHUNK). Big countries (>1500MB compressed source) are split into quadkey-prefix chunks each <=~1500MB so they fit CI + host under GitHub's 2GB/asset limit + download in reasonable pieces — the app's smallest-covering-box rule picks the chunk covering the user's area (no app change). bbox=[S,W,N,E] (US=Geofabrik bounds; countries/chunks=union of the dataset's z9 quadkey tiles). `group` (us|world|chunk) keeps each dispatch under GitHub's 256-job matrix cap. Built by scripts/build-overlay-region.sh (SOURCE + QKPREFIX env), workflow building-overlays.yml (pass `group`).",
   "regions": [
     {
       "id": "alabama",
       "name": "Alabama (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Alabama.geojson.zip",
       "bbox": [
         29.955,
@@ -17,6 +18,7 @@
       "id": "alaska",
       "name": "Alaska (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Alaska.geojson.zip",
       "bbox": [
         49.809,
@@ -29,6 +31,7 @@
       "id": "arizona",
       "name": "Arizona (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Arizona.geojson.zip",
       "bbox": [
         31.327,
@@ -41,6 +44,7 @@
       "id": "arkansas",
       "name": "Arkansas (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Arkansas.geojson.zip",
       "bbox": [
         33.004,
@@ -53,6 +57,7 @@
       "id": "california",
       "name": "California (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/California.geojson.zip",
       "bbox": [
         32.482,
@@ -66,6 +71,7 @@
       "id": "colorado",
       "name": "Colorado (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Colorado.geojson.zip",
       "bbox": [
         36.989,
@@ -78,6 +84,7 @@
       "id": "connecticut",
       "name": "Connecticut (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Connecticut.geojson.zip",
       "bbox": [
         40.964,
@@ -90,6 +97,7 @@
       "id": "delaware",
       "name": "Delaware (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Delaware.geojson.zip",
       "bbox": [
         38.45,
@@ -102,6 +110,7 @@
       "id": "district-of-columbia",
       "name": "District of Columbia (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/DistrictofColumbia.geojson.zip",
       "bbox": [
         38.791,
@@ -114,6 +123,7 @@
       "id": "florida",
       "name": "Florida (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Florida.geojson.zip",
       "bbox": [
         24.2,
@@ -127,6 +137,7 @@
       "id": "georgia",
       "name": "Georgia (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Georgia.geojson.zip",
       "bbox": [
         30.354,
@@ -139,6 +150,7 @@
       "id": "hawaii",
       "name": "Hawaii (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Hawaii.geojson.zip",
       "bbox": [
         15.921,
@@ -151,6 +163,7 @@
       "id": "idaho",
       "name": "Idaho (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Idaho.geojson.zip",
       "bbox": [
         41.983,
@@ -163,6 +176,7 @@
       "id": "illinois",
       "name": "Illinois (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Illinois.geojson.zip",
       "bbox": [
         36.967,
@@ -176,6 +190,7 @@
       "id": "indiana",
       "name": "Indiana (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Indiana.geojson.zip",
       "bbox": [
         37.769,
@@ -188,6 +203,7 @@
       "id": "iowa",
       "name": "Iowa (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Iowa.geojson.zip",
       "bbox": [
         40.373,
@@ -200,6 +216,7 @@
       "id": "kansas",
       "name": "Kansas (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Kansas.geojson.zip",
       "bbox": [
         36.991,
@@ -212,6 +229,7 @@
       "id": "kentucky",
       "name": "Kentucky (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Kentucky.geojson.zip",
       "bbox": [
         36.493,
@@ -224,6 +242,7 @@
       "id": "louisiana",
       "name": "Louisiana (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Louisiana.geojson.zip",
       "bbox": [
         28.145,
@@ -236,6 +255,7 @@
       "id": "maine",
       "name": "Maine (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Maine.geojson.zip",
       "bbox": [
         42.854,
@@ -248,6 +268,7 @@
       "id": "maryland",
       "name": "Maryland (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Maryland.geojson.zip",
       "bbox": [
         37.884,
@@ -260,6 +281,7 @@
       "id": "massachusetts",
       "name": "Massachusetts (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Massachusetts.geojson.zip",
       "bbox": [
         40.883,
@@ -272,6 +294,7 @@
       "id": "michigan",
       "name": "Michigan (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Michigan.geojson.zip",
       "bbox": [
         41.694,
@@ -285,6 +308,7 @@
       "id": "minnesota",
       "name": "Minnesota (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Minnesota.geojson.zip",
       "bbox": [
         43.499,
@@ -297,6 +321,7 @@
       "id": "mississippi",
       "name": "Mississippi (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Mississippi.geojson.zip",
       "bbox": [
         30.042,
@@ -309,6 +334,7 @@
       "id": "missouri",
       "name": "Missouri (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Missouri.geojson.zip",
       "bbox": [
         35.995,
@@ -321,6 +347,7 @@
       "id": "montana",
       "name": "Montana (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Montana.geojson.zip",
       "bbox": [
         44.356,
@@ -333,6 +360,7 @@
       "id": "nebraska",
       "name": "Nebraska (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Nebraska.geojson.zip",
       "bbox": [
         40.0,
@@ -345,6 +373,7 @@
       "id": "nevada",
       "name": "Nevada (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Nevada.geojson.zip",
       "bbox": [
         35.001,
@@ -357,6 +386,7 @@
       "id": "new-hampshire",
       "name": "New Hampshire (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewHampshire.geojson.zip",
       "bbox": [
         42.697,
@@ -369,6 +399,7 @@
       "id": "new-jersey",
       "name": "New Jersey (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewJersey.geojson.zip",
       "bbox": [
         38.754,
@@ -381,6 +412,7 @@
       "id": "new-mexico",
       "name": "New Mexico (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewMexico.geojson.zip",
       "bbox": [
         31.33,
@@ -393,6 +425,7 @@
       "id": "new-york",
       "name": "New York (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NewYork.geojson.zip",
       "bbox": [
         40.439,
@@ -406,6 +439,7 @@
       "id": "north-carolina",
       "name": "North Carolina (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NorthCarolina.geojson.zip",
       "bbox": [
         33.13,
@@ -419,6 +453,7 @@
       "id": "north-dakota",
       "name": "North Dakota (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/NorthDakota.geojson.zip",
       "bbox": [
         45.934,
@@ -431,6 +466,7 @@
       "id": "ohio",
       "name": "Ohio (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Ohio.geojson.zip",
       "bbox": [
         38.401,
@@ -444,6 +480,7 @@
       "id": "oklahoma",
       "name": "Oklahoma (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Oklahoma.geojson.zip",
       "bbox": [
         33.613,
@@ -456,6 +493,7 @@
       "id": "oregon",
       "name": "Oregon (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Oregon.geojson.zip",
       "bbox": [
         41.963,
@@ -468,6 +506,7 @@
       "id": "pennsylvania",
       "name": "Pennsylvania (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Pennsylvania.geojson.zip",
       "bbox": [
         39.664,
@@ -481,6 +520,7 @@
       "id": "rhode-island",
       "name": "Rhode Island (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/RhodeIsland.geojson.zip",
       "bbox": [
         40.999,
@@ -493,6 +533,7 @@
       "id": "south-carolina",
       "name": "South Carolina (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/SouthCarolina.geojson.zip",
       "bbox": [
         32.03,
@@ -505,6 +546,7 @@
       "id": "south-dakota",
       "name": "South Dakota (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/SouthDakota.geojson.zip",
       "bbox": [
         42.477,
@@ -517,6 +559,7 @@
       "id": "tennessee",
       "name": "Tennessee (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Tennessee.geojson.zip",
       "bbox": [
         34.983,
@@ -529,6 +572,7 @@
       "id": "texas",
       "name": "Texas (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Texas.geojson.zip",
       "bbox": [
         25.696,
@@ -542,6 +586,7 @@
       "id": "utah",
       "name": "Utah (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Utah.geojson.zip",
       "bbox": [
         36.996,
@@ -554,6 +599,7 @@
       "id": "vermont",
       "name": "Vermont (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Vermont.geojson.zip",
       "bbox": [
         42.725,
@@ -566,6 +612,7 @@
       "id": "virginia",
       "name": "Virginia (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Virginia.geojson.zip",
       "bbox": [
         36.538,
@@ -579,6 +626,7 @@
       "id": "washington",
       "name": "Washington (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Washington.geojson.zip",
       "bbox": [
         45.539,
@@ -591,6 +639,7 @@
       "id": "west-virginia",
       "name": "West Virginia (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/WestVirginia.geojson.zip",
       "bbox": [
         37.199,
@@ -603,6 +652,7 @@
       "id": "wisconsin",
       "name": "Wisconsin (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Wisconsin.geojson.zip",
       "bbox": [
         42.489,
@@ -615,6 +665,7 @@
       "id": "wyoming",
       "name": "Wyoming (state)",
       "source": "us-legacy",
+      "group": "us",
       "url": "https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Wyoming.geojson.zip",
       "bbox": [
         40.983,
@@ -628,6 +679,7 @@
       "name": "Abyei",
       "source": "ms-global",
       "location": "Abyei",
+      "group": "world",
       "bbox": [
         9.102,
         27.422,
@@ -640,6 +692,7 @@
       "name": "Afghanistan",
       "source": "ms-global",
       "location": "Afghanistan",
+      "group": "world",
       "bbox": [
         28.922,
         60.469,
@@ -652,6 +705,7 @@
       "name": "Albania",
       "source": "ms-global",
       "location": "Albania",
+      "group": "world",
       "bbox": [
         39.368,
         18.984,
@@ -664,6 +718,7 @@
       "name": "Algeria",
       "source": "ms-global",
       "location": "Algeria",
+      "group": "world",
       "bbox": [
         18.646,
         -9.141,
@@ -676,6 +731,7 @@
       "name": "Andorra",
       "source": "ms-global",
       "location": "Andorra",
+      "group": "world",
       "bbox": [
         42.033,
         1.406,
@@ -688,6 +744,7 @@
       "name": "Angola",
       "source": "ms-global",
       "location": "Angola",
+      "group": "world",
       "bbox": [
         -18.646,
         11.25,
@@ -700,6 +757,7 @@
       "name": "Anguilla",
       "source": "ms-global",
       "location": "Anguilla",
+      "group": "world",
       "bbox": [
         17.979,
         -63.281,
@@ -712,6 +770,7 @@
       "name": "Antigua and Barbuda",
       "source": "ms-global",
       "location": "AntiguaandBarbuda",
+      "group": "world",
       "bbox": [
         16.636,
         -62.578,
@@ -724,6 +783,7 @@
       "name": "Argentina",
       "source": "ms-global",
       "location": "Argentina",
+      "group": "world",
       "bbox": [
         -55.379,
         -73.828,
@@ -737,6 +797,7 @@
       "name": "Armenia",
       "source": "ms-global",
       "location": "Armenia",
+      "group": "world",
       "bbox": [
         38.823,
         42.891,
@@ -749,6 +810,7 @@
       "name": "Aruba",
       "source": "ms-global",
       "location": "Aruba",
+      "group": "world",
       "bbox": [
         11.867,
         -70.312,
@@ -761,6 +823,7 @@
       "name": "Australia",
       "source": "ms-global",
       "location": "Australia",
+      "group": "world",
       "bbox": [
         -44.088,
         105.469,
@@ -774,6 +837,7 @@
       "name": "Austria",
       "source": "ms-global",
       "location": "Austria",
+      "group": "world",
       "bbox": [
         46.073,
         9.141,
@@ -786,6 +850,7 @@
       "name": "Azerbaijan",
       "source": "ms-global",
       "location": "Azerbaijan",
+      "group": "world",
       "bbox": [
         38.273,
         44.297,
@@ -798,6 +863,7 @@
       "name": "Bahrain",
       "source": "ms-global",
       "location": "Bahrain",
+      "group": "world",
       "bbox": [
         25.165,
         49.922,
@@ -806,23 +872,41 @@
       ]
     },
     {
-      "id": "bangladesh",
-      "name": "Bangladesh",
+      "id": "bangladesh-12",
+      "name": "Bangladesh (part 1/2)",
       "source": "ms-global",
       "location": "Bangladesh",
+      "qkprefix": "12",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        19.973,
+        21.289,
         87.891,
         27.059,
+        90.0
+      ]
+    },
+    {
+      "id": "bangladesh-13",
+      "name": "Bangladesh (part 2/2)",
+      "source": "ms-global",
+      "location": "Bangladesh",
+      "qkprefix": "13",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        19.973,
+        90.0,
+        25.8,
         92.812
-      ],
-      "big": true
+      ]
     },
     {
       "id": "barbados",
       "name": "Barbados",
       "source": "ms-global",
       "location": "Barbados",
+      "group": "world",
       "bbox": [
         12.555,
         -59.766,
@@ -835,6 +919,7 @@
       "name": "Belarus",
       "source": "ms-global",
       "location": "Belarus",
+      "group": "world",
       "bbox": [
         51.179,
         23.203,
@@ -847,6 +932,7 @@
       "name": "Belgium",
       "source": "ms-global",
       "location": "Belgium",
+      "group": "world",
       "bbox": [
         49.382,
         2.109,
@@ -859,6 +945,7 @@
       "name": "Belize",
       "source": "ms-global",
       "location": "Belize",
+      "group": "world",
       "bbox": [
         15.284,
         -89.297,
@@ -871,6 +958,7 @@
       "name": "Benin",
       "source": "ms-global",
       "location": "Benin",
+      "group": "world",
       "bbox": [
         5.616,
         0.703,
@@ -883,6 +971,7 @@
       "name": "Bhutan",
       "source": "ms-global",
       "location": "Bhutan",
+      "group": "world",
       "bbox": [
         26.431,
         88.594,
@@ -895,6 +984,7 @@
       "name": "Bolivia",
       "source": "ms-global",
       "location": "Bolivia",
+      "group": "world",
       "bbox": [
         -23.241,
         -70.312,
@@ -907,6 +997,7 @@
       "name": "Bonaire",
       "source": "ms-global",
       "location": "Bonaire",
+      "group": "world",
       "bbox": [
         11.867,
         -68.906,
@@ -919,6 +1010,7 @@
       "name": "Bosnia and Herzegovina",
       "source": "ms-global",
       "location": "BosniaandHerzegovina",
+      "group": "world",
       "bbox": [
         42.553,
         15.469,
@@ -931,6 +1023,7 @@
       "name": "Botswana",
       "source": "ms-global",
       "location": "Botswana",
+      "group": "world",
       "bbox": [
         -27.059,
         19.688,
@@ -939,10 +1032,236 @@
       ]
     },
     {
+      "id": "brazil-0",
+      "name": "Brazil (part 1/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "0",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        0.0,
+        -70.312,
+        4.215,
+        -50.625
+      ]
+    },
+    {
+      "id": "brazil-2100",
+      "name": "Brazil (part 2/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "2100",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -11.178,
+        -74.531,
+        0.0,
+        -67.5
+      ]
+    },
+    {
+      "id": "brazil-21010",
+      "name": "Brazil (part 3/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21010",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -11.178,
+        -67.5,
+        0.0,
+        -56.25
+      ]
+    },
+    {
+      "id": "brazil-21011",
+      "name": "Brazil (part 4/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21011",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -11.178,
+        -56.25,
+        0.0,
+        -45.0
+      ]
+    },
+    {
+      "id": "brazil-21012",
+      "name": "Brazil (part 5/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21012",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -21.943,
+        -65.391,
+        -11.178,
+        -56.25
+      ]
+    },
+    {
+      "id": "brazil-21013",
+      "name": "Brazil (part 6/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21013",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -21.943,
+        -56.25,
+        -11.178,
+        -45.0
+      ]
+    },
+    {
+      "id": "brazil-21030",
+      "name": "Brazil (part 7/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21030",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -30.145,
+        -58.359,
+        -21.943,
+        -56.25
+      ]
+    },
+    {
+      "id": "brazil-210310",
+      "name": "Brazil (part 8/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "210310",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -27.059,
+        -56.25,
+        -21.943,
+        -50.625
+      ]
+    },
+    {
+      "id": "brazil-210311",
+      "name": "Brazil (part 9/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "210311",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -27.059,
+        -50.625,
+        -21.943,
+        -45.0
+      ]
+    },
+    {
+      "id": "brazil-210312",
+      "name": "Brazil (part 10/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "210312",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -31.952,
+        -55.547,
+        -27.059,
+        -50.625
+      ]
+    },
+    {
+      "id": "brazil-210313",
+      "name": "Brazil (part 11/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "210313",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -31.354,
+        -50.625,
+        -27.059,
+        -47.812
+      ]
+    },
+    {
+      "id": "brazil-21033",
+      "name": "Brazil (part 12/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21033",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -34.307,
+        -54.141,
+        -31.952,
+        -51.328
+      ]
+    },
+    {
+      "id": "brazil-21100",
+      "name": "Brazil (part 13/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21100",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -11.178,
+        -45.0,
+        -2.109,
+        -34.453
+      ]
+    },
+    {
+      "id": "brazil-21102",
+      "name": "Brazil (part 14/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "21102",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -21.943,
+        -45.0,
+        -11.178,
+        -36.562
+      ]
+    },
+    {
+      "id": "brazil-2112",
+      "name": "Brazil (part 15/15)",
+      "source": "ms-global",
+      "location": "Brazil",
+      "qkprefix": "2112",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -23.886,
+        -45.0,
+        -21.943,
+        -40.781
+      ]
+    },
+    {
       "id": "british-virgin-islands",
       "name": "British Virgin Islands",
       "source": "ms-global",
       "location": "BritishVirginIslands",
+      "group": "world",
       "bbox": [
         17.979,
         -65.391,
@@ -955,6 +1274,7 @@
       "name": "Brunei",
       "source": "ms-global",
       "location": "Brunei",
+      "group": "world",
       "bbox": [
         3.513,
         113.906,
@@ -967,6 +1287,7 @@
       "name": "Bulgaria",
       "source": "ms-global",
       "location": "Bulgaria",
+      "group": "world",
       "bbox": [
         40.98,
         21.797,
@@ -979,6 +1300,7 @@
       "name": "Burkina Faso",
       "source": "ms-global",
       "location": "BurkinaFaso",
+      "group": "world",
       "bbox": [
         9.102,
         -5.625,
@@ -991,6 +1313,7 @@
       "name": "Burundi",
       "source": "ms-global",
       "location": "Burundi",
+      "group": "world",
       "bbox": [
         -4.916,
         28.828,
@@ -1003,6 +1326,7 @@
       "name": "Cambodia",
       "source": "ms-global",
       "location": "Cambodia",
+      "group": "world",
       "bbox": [
         9.796,
         101.953,
@@ -1015,6 +1339,7 @@
       "name": "Cameroon",
       "source": "ms-global",
       "location": "Cameroon",
+      "group": "world",
       "bbox": [
         1.406,
         8.438,
@@ -1027,6 +1352,7 @@
       "name": "Canada",
       "source": "ms-global",
       "location": "Canada",
+      "group": "world",
       "bbox": [
         41.509,
         -141.328,
@@ -1040,6 +1366,7 @@
       "name": "Cayman Islands",
       "source": "ms-global",
       "location": "CaymanIslands",
+      "group": "world",
       "bbox": [
         18.646,
         -81.562,
@@ -1052,6 +1379,7 @@
       "name": "Central African Republic",
       "source": "ms-global",
       "location": "CentralAfricanRepublic",
+      "group": "world",
       "bbox": [
         2.109,
         14.062,
@@ -1064,6 +1392,7 @@
       "name": "Chad",
       "source": "ms-global",
       "location": "Chad",
+      "group": "world",
       "bbox": [
         7.014,
         13.359,
@@ -1076,6 +1405,7 @@
       "name": "Chile",
       "source": "ms-global",
       "location": "Chile",
+      "group": "world",
       "bbox": [
         -56.17,
         -75.938,
@@ -1088,6 +1418,7 @@
       "name": "Colombia",
       "source": "ms-global",
       "location": "Colombia",
+      "group": "world",
       "bbox": [
         -4.916,
         -82.266,
@@ -1100,6 +1431,7 @@
       "name": "Comoros",
       "source": "ms-global",
       "location": "Comoros",
+      "group": "world",
       "bbox": [
         -12.555,
         42.891,
@@ -1112,6 +1444,7 @@
       "name": "Congo DRC",
       "source": "ms-global",
       "location": "CongoDRC",
+      "group": "world",
       "bbox": [
         -13.923,
         11.953,
@@ -1124,6 +1457,7 @@
       "name": "Costa Rica",
       "source": "ms-global",
       "location": "CostaRica",
+      "group": "world",
       "bbox": [
         4.916,
         -87.188,
@@ -1136,6 +1470,7 @@
       "name": "Croatia",
       "source": "ms-global",
       "location": "Croatia",
+      "group": "world",
       "bbox": [
         42.033,
         13.359,
@@ -1148,6 +1483,7 @@
       "name": "Cuba",
       "source": "ms-global",
       "location": "Cuba",
+      "group": "world",
       "bbox": [
         19.311,
         -85.078,
@@ -1160,6 +1496,7 @@
       "name": "Curacao",
       "source": "ms-global",
       "location": "Curacao",
+      "group": "world",
       "bbox": [
         11.867,
         -69.609,
@@ -1172,6 +1509,7 @@
       "name": "Cyprus",
       "source": "ms-global",
       "location": "Cyprus",
+      "group": "world",
       "bbox": [
         34.307,
         31.641,
@@ -1184,6 +1522,7 @@
       "name": "Czechia",
       "source": "ms-global",
       "location": "Czechia",
+      "group": "world",
       "bbox": [
         48.458,
         11.953,
@@ -1196,6 +1535,7 @@
       "name": "Denmark",
       "source": "ms-global",
       "location": "Denmark",
+      "group": "world",
       "bbox": [
         54.162,
         7.734,
@@ -1208,6 +1548,7 @@
       "name": "Djibouti",
       "source": "ms-global",
       "location": "Djibouti",
+      "group": "world",
       "bbox": [
         10.488,
         41.484,
@@ -1220,6 +1561,7 @@
       "name": "Dominica",
       "source": "ms-global",
       "location": "Dominica",
+      "group": "world",
       "bbox": [
         14.605,
         -61.875,
@@ -1232,6 +1574,7 @@
       "name": "Dominican Republic",
       "source": "ms-global",
       "location": "DominicanRepublic",
+      "group": "world",
       "bbox": [
         17.309,
         -72.422,
@@ -1244,6 +1587,7 @@
       "name": "Ecuador",
       "source": "ms-global",
       "location": "Ecuador",
+      "group": "world",
       "bbox": [
         -5.616,
         -81.562,
@@ -1256,6 +1600,7 @@
       "name": "Egypt",
       "source": "ms-global",
       "location": "Egypt",
+      "group": "world",
       "bbox": [
         21.943,
         24.609,
@@ -1269,6 +1614,7 @@
       "name": "El Salvador",
       "source": "ms-global",
       "location": "ElSalvador",
+      "group": "world",
       "bbox": [
         12.555,
         -90.703,
@@ -1281,6 +1627,7 @@
       "name": "Equatorial Guinea",
       "source": "ms-global",
       "location": "EquatorialGuinea",
+      "group": "world",
       "bbox": [
         0.703,
         8.438,
@@ -1293,6 +1640,7 @@
       "name": "Eritrea",
       "source": "ms-global",
       "location": "Eritrea",
+      "group": "world",
       "bbox": [
         11.867,
         35.859,
@@ -1305,6 +1653,7 @@
       "name": "Estonia",
       "source": "ms-global",
       "location": "Estonia",
+      "group": "world",
       "bbox": [
         57.327,
         21.797,
@@ -1317,6 +1666,7 @@
       "name": "Ethiopia",
       "source": "ms-global",
       "location": "Ethiopia",
+      "group": "world",
       "bbox": [
         2.811,
         32.344,
@@ -1330,6 +1680,7 @@
       "name": "FYROMakedonija",
       "source": "ms-global",
       "location": "FYROMakedonija",
+      "group": "world",
       "bbox": [
         40.447,
         20.391,
@@ -1342,6 +1693,7 @@
       "name": "Faroe Islands",
       "source": "ms-global",
       "location": "FaroeIslands",
+      "group": "world",
       "bbox": [
         61.27,
         -7.734,
@@ -1354,6 +1706,7 @@
       "name": "Finland",
       "source": "ms-global",
       "location": "Finland",
+      "group": "world",
       "bbox": [
         59.534,
         18.984,
@@ -1362,23 +1715,101 @@
       ]
     },
     {
-      "id": "france",
-      "name": "France",
+      "id": "france-0",
+      "name": "France (part 1/6)",
       "source": "ms-global",
       "location": "France",
+      "qkprefix": "0",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        42.553,
+        -5.625,
+        49.838,
+        0.0
+      ]
+    },
+    {
+      "id": "france-12020",
+      "name": "France (part 2/6)",
+      "source": "ms-global",
+      "location": "France",
+      "qkprefix": "12020",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        48.922,
+        0.0,
+        51.179,
+        8.438
+      ]
+    },
+    {
+      "id": "france-120220",
+      "name": "France (part 3/6)",
+      "source": "ms-global",
+      "location": "France",
+      "qkprefix": "120220",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        45.089,
+        0.0,
+        48.922,
+        5.625
+      ]
+    },
+    {
+      "id": "france-120221",
+      "name": "France (part 4/6)",
+      "source": "ms-global",
+      "location": "France",
+      "qkprefix": "120221",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        45.089,
+        5.625,
+        48.922,
+        8.438
+      ]
+    },
+    {
+      "id": "france-120222",
+      "name": "France (part 5/6)",
+      "source": "ms-global",
+      "location": "France",
+      "qkprefix": "120222",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        42.033,
+        0.0,
+        45.089,
+        5.625
+      ]
+    },
+    {
+      "id": "france-120223",
+      "name": "France (part 6/6)",
+      "source": "ms-global",
+      "location": "France",
+      "qkprefix": "120223",
+      "group": "chunk",
+      "big": true,
       "bbox": [
         40.98,
-        -5.625,
-        51.179,
+        5.625,
+        45.089,
         9.844
-      ],
-      "big": true
+      ]
     },
     {
       "id": "french-guiana",
       "name": "French Guiana",
       "source": "ms-global",
       "location": "FrenchGuiana",
+      "group": "world",
       "bbox": [
         2.811,
         -54.844,
@@ -1391,6 +1822,7 @@
       "name": "Gabon",
       "source": "ms-global",
       "location": "Gabon",
+      "group": "world",
       "bbox": [
         -4.215,
         8.438,
@@ -1403,6 +1835,7 @@
       "name": "Gaza Strip",
       "source": "ms-global",
       "location": "GazaStrip",
+      "group": "world",
       "bbox": [
         30.751,
         33.75,
@@ -1415,6 +1848,7 @@
       "name": "Georgia",
       "source": "ms-global",
       "location": "Georgia",
+      "group": "world",
       "bbox": [
         40.98,
         39.375,
@@ -1423,23 +1857,86 @@
       ]
     },
     {
-      "id": "germany",
-      "name": "Germany",
+      "id": "germany-120201",
+      "name": "Germany (part 1/5)",
       "source": "ms-global",
       "location": "Germany",
+      "qkprefix": "120201",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        52.483,
+        6.328,
+        55.379,
+        11.25
+      ]
+    },
+    {
+      "id": "germany-120203",
+      "name": "Germany (part 2/5)",
+      "source": "ms-global",
+      "location": "Germany",
+      "qkprefix": "120203",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        48.922,
+        5.625,
+        52.483,
+        11.25
+      ]
+    },
+    {
+      "id": "germany-12021",
+      "name": "Germany (part 3/5)",
+      "source": "ms-global",
+      "location": "Germany",
+      "qkprefix": "12021",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        48.922,
+        11.25,
+        54.978,
+        15.469
+      ]
+    },
+    {
+      "id": "germany-12022",
+      "name": "Germany (part 4/5)",
+      "source": "ms-global",
+      "location": "Germany",
+      "qkprefix": "12022",
+      "group": "chunk",
+      "big": true,
       "bbox": [
         47.04,
-        5.625,
-        55.379,
-        15.469
-      ],
-      "big": true
+        7.031,
+        48.922,
+        11.25
+      ]
+    },
+    {
+      "id": "germany-12023",
+      "name": "Germany (part 5/5)",
+      "source": "ms-global",
+      "location": "Germany",
+      "qkprefix": "12023",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        47.04,
+        11.25,
+        48.922,
+        14.062
+      ]
     },
     {
       "id": "ghana",
       "name": "Ghana",
       "source": "ms-global",
       "location": "Ghana",
+      "group": "world",
       "bbox": [
         4.215,
         -3.516,
@@ -1452,6 +1949,7 @@
       "name": "Golan Heights",
       "source": "ms-global",
       "location": "GolanHeights",
+      "group": "world",
       "bbox": [
         32.547,
         35.156,
@@ -1464,6 +1962,7 @@
       "name": "Golan Heights Subdistrict",
       "source": "ms-global",
       "location": "GolanHeightsSubdistrict",
+      "group": "world",
       "bbox": [
         32.547,
         35.156,
@@ -1476,6 +1975,7 @@
       "name": "Greece",
       "source": "ms-global",
       "location": "Greece",
+      "group": "world",
       "bbox": [
         34.307,
         18.984,
@@ -1488,6 +1988,7 @@
       "name": "Grenada",
       "source": "ms-global",
       "location": "Grenada",
+      "group": "world",
       "bbox": [
         11.867,
         -61.875,
@@ -1500,6 +2001,7 @@
       "name": "Guadeloupe",
       "source": "ms-global",
       "location": "Guadeloupe",
+      "group": "world",
       "bbox": [
         15.284,
         -61.875,
@@ -1512,6 +2014,7 @@
       "name": "Guatemala",
       "source": "ms-global",
       "location": "Guatemala",
+      "group": "world",
       "bbox": [
         13.24,
         -92.812,
@@ -1524,6 +2027,7 @@
       "name": "Guinea",
       "source": "ms-global",
       "location": "Guinea",
+      "group": "world",
       "bbox": [
         7.014,
         -15.469,
@@ -1536,6 +2040,7 @@
       "name": "Guinea-Bissau",
       "source": "ms-global",
       "location": "Guinea-Bissau",
+      "group": "world",
       "bbox": [
         10.488,
         -16.875,
@@ -1548,6 +2053,7 @@
       "name": "Guyana",
       "source": "ms-global",
       "location": "Guyana",
+      "group": "world",
       "bbox": [
         2.109,
         -61.875,
@@ -1560,6 +2066,7 @@
       "name": "Haiti",
       "source": "ms-global",
       "location": "Haiti",
+      "group": "world",
       "bbox": [
         17.979,
         -74.531,
@@ -1572,6 +2079,7 @@
       "name": "Honduras",
       "source": "ms-global",
       "location": "Honduras",
+      "group": "world",
       "bbox": [
         12.555,
         -90.0,
@@ -1584,6 +2092,7 @@
       "name": "Hungary",
       "source": "ms-global",
       "location": "Hungary",
+      "group": "world",
       "bbox": [
         45.583,
         15.469,
@@ -1596,6 +2105,7 @@
       "name": "Iceland",
       "source": "ms-global",
       "location": "Iceland",
+      "group": "world",
       "bbox": [
         63.234,
         -24.609,
@@ -1604,10 +2114,506 @@
       ]
     },
     {
+      "id": "india-12310",
+      "name": "India (part 1/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "12310",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        31.952,
+        72.422,
+        37.16,
+        78.75
+      ]
+    },
+    {
+      "id": "india-12311",
+      "name": "India (part 2/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "12311",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        31.952,
+        78.75,
+        36.031,
+        80.859
+      ]
+    },
+    {
+      "id": "india-123120",
+      "name": "India (part 3/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "123120",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        27.059,
+        68.906,
+        29.535,
+        73.125
+      ]
+    },
+    {
+      "id": "india-1231210",
+      "name": "India (part 4/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231210",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        29.535,
+        73.125,
+        31.952,
+        75.938
+      ]
+    },
+    {
+      "id": "india-1231211",
+      "name": "India (part 5/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231211",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        29.535,
+        75.938,
+        31.952,
+        78.75
+      ]
+    },
+    {
+      "id": "india-1231212",
+      "name": "India (part 6/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231212",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        27.059,
+        73.125,
+        29.535,
+        75.938
+      ]
+    },
+    {
+      "id": "india-1231213",
+      "name": "India (part 7/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231213",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        27.059,
+        75.938,
+        29.535,
+        78.75
+      ]
+    },
+    {
+      "id": "india-123122",
+      "name": "India (part 8/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "123122",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        68.203,
+        27.059,
+        73.125
+      ]
+    },
+    {
+      "id": "india-1231230",
+      "name": "India (part 9/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231230",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        24.527,
+        73.125,
+        27.059,
+        75.938
+      ]
+    },
+    {
+      "id": "india-1231231",
+      "name": "India (part 10/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231231",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        24.527,
+        75.938,
+        27.059,
+        78.75
+      ]
+    },
+    {
+      "id": "india-1231232",
+      "name": "India (part 11/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231232",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        73.125,
+        24.527,
+        75.938
+      ]
+    },
+    {
+      "id": "india-1231233",
+      "name": "India (part 12/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231233",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        75.938,
+        24.527,
+        78.75
+      ]
+    },
+    {
+      "id": "india-123130",
+      "name": "India (part 13/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "123130",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        27.059,
+        78.75,
+        31.952,
+        84.375
+      ]
+    },
+    {
+      "id": "india-123131",
+      "name": "India (part 14/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "123131",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        27.059,
+        84.375,
+        28.304,
+        89.297
+      ]
+    },
+    {
+      "id": "india-1231320",
+      "name": "India (part 15/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231320",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        24.527,
+        78.75,
+        27.059,
+        81.562
+      ]
+    },
+    {
+      "id": "india-1231321",
+      "name": "India (part 16/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231321",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        24.527,
+        81.562,
+        27.059,
+        84.375
+      ]
+    },
+    {
+      "id": "india-1231322",
+      "name": "India (part 17/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231322",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        78.75,
+        24.527,
+        81.562
+      ]
+    },
+    {
+      "id": "india-1231323",
+      "name": "India (part 18/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231323",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        81.562,
+        24.527,
+        84.375
+      ]
+    },
+    {
+      "id": "india-1231330",
+      "name": "India (part 19/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231330",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        24.527,
+        84.375,
+        27.059,
+        87.188
+      ]
+    },
+    {
+      "id": "india-1231331",
+      "name": "India (part 20/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231331",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        24.527,
+        87.188,
+        27.059,
+        90.0
+      ]
+    },
+    {
+      "id": "india-1231332",
+      "name": "India (part 21/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231332",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        84.375,
+        24.527,
+        87.188
+      ]
+    },
+    {
+      "id": "india-1231333",
+      "name": "India (part 22/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1231333",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        87.188,
+        24.527,
+        89.297
+      ]
+    },
+    {
+      "id": "india-1233",
+      "name": "India (part 23/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "1233",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        7.711,
+        68.906,
+        21.943,
+        88.594
+      ]
+    },
+    {
+      "id": "india-13",
+      "name": "India (part 24/24)",
+      "source": "ms-global",
+      "location": "India",
+      "qkprefix": "13",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        11.178,
+        90.0,
+        29.535,
+        97.031
+      ]
+    },
+    {
+      "id": "indonesia-1",
+      "name": "Indonesia (part 1/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "1",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        0.0,
+        94.922,
+        6.315,
+        131.484
+      ]
+    },
+    {
+      "id": "indonesia-31000",
+      "name": "Indonesia (part 2/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "31000",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -3.513,
+        97.734,
+        0.0,
+        101.25
+      ]
+    },
+    {
+      "id": "indonesia-310010",
+      "name": "Indonesia (part 3/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "310010",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -5.616,
+        101.25,
+        0.0,
+        106.875
+      ]
+    },
+    {
+      "id": "indonesia-310011",
+      "name": "Indonesia (part 4/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "310011",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -4.215,
+        106.875,
+        0.0,
+        112.5
+      ]
+    },
+    {
+      "id": "indonesia-310012",
+      "name": "Indonesia (part 5/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "310012",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -7.711,
+        104.062,
+        -5.616,
+        106.875
+      ]
+    },
+    {
+      "id": "indonesia-3100130",
+      "name": "Indonesia (part 6/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "3100130",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -8.407,
+        106.875,
+        -5.616,
+        109.688
+      ]
+    },
+    {
+      "id": "indonesia-3100131",
+      "name": "Indonesia (part 7/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "3100131",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -8.407,
+        109.688,
+        -5.616,
+        112.5
+      ]
+    },
+    {
+      "id": "indonesia-3101",
+      "name": "Indonesia (part 8/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "3101",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -11.178,
+        112.5,
+        0.0,
+        135.0
+      ]
+    },
+    {
+      "id": "indonesia-311",
+      "name": "Indonesia (part 9/9)",
+      "source": "ms-global",
+      "location": "Indonesia",
+      "qkprefix": "311",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -4.215,
+        135.0,
+        0.0,
+        141.328
+      ]
+    },
+    {
       "id": "iran",
       "name": "Iran",
       "source": "ms-global",
       "location": "Iran",
+      "group": "world",
       "bbox": [
         25.165,
         43.594,
@@ -1621,6 +2627,7 @@
       "name": "Iraq",
       "source": "ms-global",
       "location": "Iraq",
+      "group": "world",
       "bbox": [
         28.922,
         38.672,
@@ -1633,6 +2640,7 @@
       "name": "Ireland",
       "source": "ms-global",
       "location": "Ireland",
+      "group": "world",
       "bbox": [
         51.179,
         -10.547,
@@ -1645,6 +2653,7 @@
       "name": "Isle of Man",
       "source": "ms-global",
       "location": "IsleofMan",
+      "group": "world",
       "bbox": [
         53.749,
         -4.922,
@@ -1657,6 +2666,7 @@
       "name": "Israel",
       "source": "ms-global",
       "location": "Israel",
+      "group": "world",
       "bbox": [
         28.922,
         33.75,
@@ -1665,23 +2675,41 @@
       ]
     },
     {
-      "id": "italy",
-      "name": "Italy",
+      "id": "italy-120",
+      "name": "Italy (part 1/2)",
       "source": "ms-global",
       "location": "Italy",
+      "qkprefix": "120",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        36.598,
+        40.98,
         6.328,
         47.517,
+        17.578
+      ]
+    },
+    {
+      "id": "italy-122",
+      "name": "Italy (part 2/2)",
+      "source": "ms-global",
+      "location": "Italy",
+      "qkprefix": "122",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        36.598,
+        7.734,
+        40.98,
         18.984
-      ],
-      "big": true
+      ]
     },
     {
       "id": "ivory-coast",
       "name": "Ivory Coast",
       "source": "ms-global",
       "location": "IvoryCoast",
+      "group": "world",
       "bbox": [
         4.215,
         -9.141,
@@ -1694,6 +2722,7 @@
       "name": "Jamaica",
       "source": "ms-global",
       "location": "Jamaica",
+      "group": "world",
       "bbox": [
         17.309,
         -78.75,
@@ -1702,23 +2731,161 @@
       ]
     },
     {
-      "id": "japan",
-      "name": "Japan",
+      "id": "japan-131",
+      "name": "Japan (part 1/10)",
       "source": "ms-global",
       "location": "Japan",
+      "qkprefix": "131",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        24.527,
-        126.562,
+        40.98,
+        139.219,
         45.583,
         146.25
-      ],
-      "big": true
+      ]
+    },
+    {
+      "id": "japan-132",
+      "name": "Japan (part 2/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "132",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        25.8,
+        126.562,
+        36.598,
+        135.0
+      ]
+    },
+    {
+      "id": "japan-133000",
+      "name": "Japan (part 3/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "133000",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        36.598,
+        136.406,
+        40.98,
+        140.625
+      ]
+    },
+    {
+      "id": "japan-133001",
+      "name": "Japan (part 4/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "133001",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        36.598,
+        140.625,
+        40.98,
+        142.734
+      ]
+    },
+    {
+      "id": "japan-1330020",
+      "name": "Japan (part 5/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "1330020",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        34.307,
+        135.0,
+        36.598,
+        137.812
+      ]
+    },
+    {
+      "id": "japan-1330021",
+      "name": "Japan (part 6/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "1330021",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        34.307,
+        137.812,
+        36.598,
+        140.625
+      ]
+    },
+    {
+      "id": "japan-1330022",
+      "name": "Japan (part 7/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "1330022",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        33.138,
+        135.0,
+        34.307,
+        137.109
+      ]
+    },
+    {
+      "id": "japan-1330023",
+      "name": "Japan (part 8/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "1330023",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        32.547,
+        139.219,
+        34.307,
+        139.922
+      ]
+    },
+    {
+      "id": "japan-133003",
+      "name": "Japan (part 9/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "133003",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        35.461,
+        140.625,
+        36.598,
+        141.328
+      ]
+    },
+    {
+      "id": "japan-13302",
+      "name": "Japan (part 10/10)",
+      "source": "ms-global",
+      "location": "Japan",
+      "qkprefix": "13302",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        24.527,
+        140.625,
+        27.059,
+        142.734
+      ]
     },
     {
       "id": "jordan",
       "name": "Jordan",
       "source": "ms-global",
       "location": "Jordan",
+      "group": "world",
       "bbox": [
         28.922,
         34.453,
@@ -1731,6 +2898,7 @@
       "name": "Kazakhstan",
       "source": "ms-global",
       "location": "Kazakhstan",
+      "group": "world",
       "bbox": [
         40.447,
         46.406,
@@ -1743,6 +2911,7 @@
       "name": "Kenya",
       "source": "ms-global",
       "location": "Kenya",
+      "group": "world",
       "bbox": [
         -4.916,
         33.75,
@@ -1756,6 +2925,7 @@
       "name": "Kingdom of Saudi Arabia",
       "source": "ms-global",
       "location": "KingdomofSaudiArabia",
+      "group": "world",
       "bbox": [
         15.961,
         34.453,
@@ -1768,6 +2938,7 @@
       "name": "Kosovo",
       "source": "ms-global",
       "location": "Kosovo",
+      "group": "world",
       "bbox": [
         41.509,
         19.688,
@@ -1780,6 +2951,7 @@
       "name": "Kuwait",
       "source": "ms-global",
       "location": "Kuwait",
+      "group": "world",
       "bbox": [
         28.304,
         46.406,
@@ -1792,6 +2964,7 @@
       "name": "Kyrgyzstan",
       "source": "ms-global",
       "location": "Kyrgyzstan",
+      "group": "world",
       "bbox": [
         39.368,
         68.906,
@@ -1804,6 +2977,7 @@
       "name": "Laos",
       "source": "ms-global",
       "location": "Laos",
+      "group": "world",
       "bbox": [
         13.24,
         99.844,
@@ -1816,6 +2990,7 @@
       "name": "Latvia",
       "source": "ms-global",
       "location": "Latvia",
+      "group": "world",
       "bbox": [
         55.379,
         20.391,
@@ -1828,6 +3003,7 @@
       "name": "Lebanon",
       "source": "ms-global",
       "location": "Lebanon",
+      "group": "world",
       "bbox": [
         32.547,
         34.453,
@@ -1840,6 +3016,7 @@
       "name": "Lesotho",
       "source": "ms-global",
       "location": "Lesotho",
+      "group": "world",
       "bbox": [
         -30.751,
         26.719,
@@ -1852,6 +3029,7 @@
       "name": "Liberia",
       "source": "ms-global",
       "location": "Liberia",
+      "group": "world",
       "bbox": [
         4.215,
         -11.953,
@@ -1864,6 +3042,7 @@
       "name": "Libya",
       "source": "ms-global",
       "location": "Libya",
+      "group": "world",
       "bbox": [
         19.311,
         9.141,
@@ -1876,6 +3055,7 @@
       "name": "Liechtenstein",
       "source": "ms-global",
       "location": "Liechtenstein",
+      "group": "world",
       "bbox": [
         47.04,
         9.141,
@@ -1888,6 +3068,7 @@
       "name": "Lithuania",
       "source": "ms-global",
       "location": "Lithuania",
+      "group": "world",
       "bbox": [
         53.749,
         20.391,
@@ -1900,6 +3081,7 @@
       "name": "Luxembourg",
       "source": "ms-global",
       "location": "Luxembourg",
+      "group": "world",
       "bbox": [
         49.382,
         5.625,
@@ -1912,6 +3094,7 @@
       "name": "Madagascar",
       "source": "ms-global",
       "location": "Madagascar",
+      "group": "world",
       "bbox": [
         -25.8,
         42.891,
@@ -1924,6 +3107,7 @@
       "name": "Malawi",
       "source": "ms-global",
       "location": "Malawi",
+      "group": "world",
       "bbox": [
         -17.309,
         32.344,
@@ -1936,6 +3120,7 @@
       "name": "Malaysia",
       "source": "ms-global",
       "location": "Malaysia",
+      "group": "world",
       "bbox": [
         0.703,
         99.141,
@@ -1948,6 +3133,7 @@
       "name": "Maldives",
       "source": "ms-global",
       "location": "Maldives",
+      "group": "world",
       "bbox": [
         -0.703,
         72.422,
@@ -1960,6 +3146,7 @@
       "name": "Mali",
       "source": "ms-global",
       "location": "Mali",
+      "group": "world",
       "bbox": [
         9.796,
         -12.656,
@@ -1972,6 +3159,7 @@
       "name": "Malta",
       "source": "ms-global",
       "location": "Malta",
+      "group": "world",
       "bbox": [
         35.461,
         14.062,
@@ -1984,6 +3172,7 @@
       "name": "Martinique",
       "source": "ms-global",
       "location": "Martinique",
+      "group": "world",
       "bbox": [
         13.923,
         -61.875,
@@ -1996,6 +3185,7 @@
       "name": "Mauritania",
       "source": "ms-global",
       "location": "Mauritania",
+      "group": "world",
       "bbox": [
         14.605,
         -17.578,
@@ -2008,6 +3198,7 @@
       "name": "Mauritius",
       "source": "ms-global",
       "location": "Mauritius",
+      "group": "world",
       "bbox": [
         -20.633,
         56.953,
@@ -2020,6 +3211,7 @@
       "name": "Mayotte",
       "source": "ms-global",
       "location": "Mayotte",
+      "group": "world",
       "bbox": [
         -13.24,
         45.0,
@@ -2028,23 +3220,86 @@
       ]
     },
     {
-      "id": "mexico",
-      "name": "Mexico",
+      "id": "mexico-0230",
+      "name": "Mexico (part 1/5)",
       "source": "ms-global",
       "location": "Mexico",
+      "qkprefix": "0230",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        13.923,
+        28.304,
         -117.422,
         33.138,
+        -112.5
+      ]
+    },
+    {
+      "id": "mexico-0231",
+      "name": "Mexico (part 2/5)",
+      "source": "ms-global",
+      "location": "Mexico",
+      "qkprefix": "0231",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        21.943,
+        -112.5,
+        31.952,
+        -97.031
+      ]
+    },
+    {
+      "id": "mexico-02330",
+      "name": "Mexico (part 3/5)",
+      "source": "ms-global",
+      "location": "Mexico",
+      "qkprefix": "02330",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        17.309,
+        -106.172,
+        21.943,
+        -101.25
+      ]
+    },
+    {
+      "id": "mexico-02331",
+      "name": "Mexico (part 4/5)",
+      "source": "ms-global",
+      "location": "Mexico",
+      "qkprefix": "02331",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        13.923,
+        -101.25,
+        21.943,
+        -90.0
+      ]
+    },
+    {
+      "id": "mexico-03",
+      "name": "Mexico (part 5/5)",
+      "source": "ms-global",
+      "location": "Mexico",
+      "qkprefix": "03",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        17.979,
+        -90.0,
+        21.943,
         -86.484
-      ],
-      "big": true
+      ]
     },
     {
       "id": "moldova",
       "name": "Moldova",
       "source": "ms-global",
       "location": "Moldova",
+      "group": "world",
       "bbox": [
         45.089,
         26.016,
@@ -2057,6 +3312,7 @@
       "name": "Monaco",
       "source": "ms-global",
       "location": "Monaco",
+      "group": "world",
       "bbox": [
         43.58,
         7.031,
@@ -2069,6 +3325,7 @@
       "name": "Mongolia",
       "source": "ms-global",
       "location": "Mongolia",
+      "group": "world",
       "bbox": [
         42.553,
         90.703,
@@ -2081,6 +3338,7 @@
       "name": "Montenegro",
       "source": "ms-global",
       "location": "Montenegro",
+      "group": "world",
       "bbox": [
         41.509,
         18.281,
@@ -2093,6 +3351,7 @@
       "name": "Montserrat",
       "source": "ms-global",
       "location": "Montserrat",
+      "group": "world",
       "bbox": [
         16.636,
         -62.578,
@@ -2105,6 +3364,7 @@
       "name": "Morocco",
       "source": "ms-global",
       "location": "Morocco",
+      "group": "world",
       "bbox": [
         20.633,
         -17.578,
@@ -2117,6 +3377,7 @@
       "name": "Mozambique",
       "source": "ms-global",
       "location": "Mozambique",
+      "group": "world",
       "bbox": [
         -27.059,
         29.531,
@@ -2129,6 +3390,7 @@
       "name": "Myanmar",
       "source": "ms-global",
       "location": "Myanmar",
+      "group": "world",
       "bbox": [
         9.796,
         92.109,
@@ -2141,6 +3403,7 @@
       "name": "Namibia",
       "source": "ms-global",
       "location": "Namibia",
+      "group": "world",
       "bbox": [
         -29.535,
         11.25,
@@ -2153,6 +3416,7 @@
       "name": "Nepal",
       "source": "ms-global",
       "location": "Nepal",
+      "group": "world",
       "bbox": [
         25.8,
         79.453,
@@ -2165,6 +3429,7 @@
       "name": "Netherlands",
       "source": "ms-global",
       "location": "Netherlands",
+      "group": "world",
       "bbox": [
         50.736,
         2.812,
@@ -2177,6 +3442,7 @@
       "name": "Nicaragua",
       "source": "ms-global",
       "location": "Nicaragua",
+      "group": "world",
       "bbox": [
         10.488,
         -87.891,
@@ -2189,6 +3455,7 @@
       "name": "Niger",
       "source": "ms-global",
       "location": "Niger",
+      "group": "world",
       "bbox": [
         11.178,
         0.0,
@@ -2197,23 +3464,116 @@
       ]
     },
     {
-      "id": "nigeria",
-      "name": "Nigeria",
+      "id": "nigeria-12220",
+      "name": "Nigeria (part 1/7)",
       "source": "ms-global",
       "location": "Nigeria",
+      "qkprefix": "12220",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        4.215,
-        2.109,
+        11.178,
+        2.812,
+        13.923,
+        11.25
+      ]
+    },
+    {
+      "id": "nigeria-12221",
+      "name": "Nigeria (part 2/7)",
+      "source": "ms-global",
+      "location": "Nigeria",
+      "qkprefix": "12221",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        11.178,
+        11.25,
         13.923,
         14.766
-      ],
-      "big": true
+      ]
+    },
+    {
+      "id": "nigeria-122220",
+      "name": "Nigeria (part 3/7)",
+      "source": "ms-global",
+      "location": "Nigeria",
+      "qkprefix": "122220",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        5.616,
+        2.109,
+        11.178,
+        5.625
+      ]
+    },
+    {
+      "id": "nigeria-122221",
+      "name": "Nigeria (part 4/7)",
+      "source": "ms-global",
+      "location": "Nigeria",
+      "qkprefix": "122221",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        5.616,
+        5.625,
+        11.178,
+        11.25
+      ]
+    },
+    {
+      "id": "nigeria-122222",
+      "name": "Nigeria (part 5/7)",
+      "source": "ms-global",
+      "location": "Nigeria",
+      "qkprefix": "122222",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        4.215,
+        4.922,
+        5.616,
+        5.625
+      ]
+    },
+    {
+      "id": "nigeria-122223",
+      "name": "Nigeria (part 6/7)",
+      "source": "ms-global",
+      "location": "Nigeria",
+      "qkprefix": "122223",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        4.215,
+        5.625,
+        5.616,
+        9.141
+      ]
+    },
+    {
+      "id": "nigeria-12223",
+      "name": "Nigeria (part 7/7)",
+      "source": "ms-global",
+      "location": "Nigeria",
+      "qkprefix": "12223",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        6.315,
+        11.25,
+        11.178,
+        14.062
+      ]
     },
     {
       "id": "norway",
       "name": "Norway",
       "source": "ms-global",
       "location": "Norway",
+      "group": "world",
       "bbox": [
         57.704,
         4.219,
@@ -2222,23 +3582,86 @@
       ]
     },
     {
-      "id": "pakistan",
-      "name": "Pakistan",
+      "id": "pakistan-1230",
+      "name": "Pakistan (part 1/5)",
       "source": "ms-global",
       "location": "Pakistan",
+      "qkprefix": "1230",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        23.241,
+        23.886,
         60.469,
+        31.354,
+        67.5
+      ]
+    },
+    {
+      "id": "pakistan-12310",
+      "name": "Pakistan (part 2/5)",
+      "source": "ms-global",
+      "location": "Pakistan",
+      "qkprefix": "12310",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        31.952,
+        68.906,
         37.16,
         78.75
-      ],
-      "big": true
+      ]
+    },
+    {
+      "id": "pakistan-123120",
+      "name": "Pakistan (part 3/5)",
+      "source": "ms-global",
+      "location": "Pakistan",
+      "qkprefix": "123120",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        27.059,
+        67.5,
+        31.952,
+        73.125
+      ]
+    },
+    {
+      "id": "pakistan-123121",
+      "name": "Pakistan (part 4/5)",
+      "source": "ms-global",
+      "location": "Pakistan",
+      "qkprefix": "123121",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        28.922,
+        73.125,
+        31.952,
+        75.234
+      ]
+    },
+    {
+      "id": "pakistan-123122",
+      "name": "Pakistan (part 5/5)",
+      "source": "ms-global",
+      "location": "Pakistan",
+      "qkprefix": "123122",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        23.241,
+        67.5,
+        27.059,
+        71.719
+      ]
     },
     {
       "id": "panama",
       "name": "Panama",
       "source": "ms-global",
       "location": "Panama",
+      "group": "world",
       "bbox": [
         7.014,
         -82.969,
@@ -2251,6 +3674,7 @@
       "name": "Paraguay",
       "source": "ms-global",
       "location": "Paraguay",
+      "group": "world",
       "bbox": [
         -27.684,
         -63.281,
@@ -2263,6 +3687,7 @@
       "name": "Peru",
       "source": "ms-global",
       "location": "Peru",
+      "group": "world",
       "bbox": [
         -18.646,
         -81.562,
@@ -2275,6 +3700,7 @@
       "name": "Philippines",
       "source": "ms-global",
       "location": "Philippines",
+      "group": "world",
       "bbox": [
         4.215,
         116.719,
@@ -2288,6 +3714,7 @@
       "name": "Poland",
       "source": "ms-global",
       "location": "Poland",
+      "group": "world",
       "bbox": [
         48.922,
         14.062,
@@ -2301,6 +3728,7 @@
       "name": "Portugal",
       "source": "ms-global",
       "location": "Portugal",
+      "group": "world",
       "bbox": [
         32.547,
         -17.578,
@@ -2313,6 +3741,7 @@
       "name": "Puerto Rico",
       "source": "ms-global",
       "location": "PuertoRico",
+      "group": "world",
       "bbox": [
         17.309,
         -67.5,
@@ -2325,6 +3754,7 @@
       "name": "Republic of Yemen",
       "source": "ms-global",
       "location": "RepublicofYemen",
+      "group": "world",
       "bbox": [
         11.867,
         41.484,
@@ -2337,6 +3767,7 @@
       "name": "Republicof the Congo",
       "source": "ms-global",
       "location": "RepublicoftheCongo",
+      "group": "world",
       "bbox": [
         -4.916,
         10.547,
@@ -2349,6 +3780,7 @@
       "name": "Reunion",
       "source": "ms-global",
       "location": "Reunion",
+      "group": "world",
       "bbox": [
         -21.943,
         54.844,
@@ -2361,6 +3793,7 @@
       "name": "Romania",
       "source": "ms-global",
       "location": "Romania",
+      "group": "world",
       "bbox": [
         43.58,
         19.688,
@@ -2370,10 +3803,191 @@
       "big": true
     },
     {
+      "id": "russia-10",
+      "name": "Russia (part 1/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "10",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        66.513,
+        28.125,
+        69.9,
+        88.594
+      ]
+    },
+    {
+      "id": "russia-11",
+      "name": "Russia (part 2/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "11",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        66.513,
+        99.844,
+        68.911,
+        152.578
+      ]
+    },
+    {
+      "id": "russia-1201",
+      "name": "Russia (part 3/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "1201",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        55.777,
+        26.719,
+        66.231,
+        45.0
+      ]
+    },
+    {
+      "id": "russia-1202",
+      "name": "Russia (part 4/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "1202",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        54.162,
+        18.984,
+        55.379,
+        22.5
+      ]
+    },
+    {
+      "id": "russia-12030",
+      "name": "Russia (part 5/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "12030",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        51.618,
+        22.5,
+        55.777,
+        33.75
+      ]
+    },
+    {
+      "id": "russia-12031",
+      "name": "Russia (part 6/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "12031",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        48.922,
+        33.75,
+        55.777,
+        45.0
+      ]
+    },
+    {
+      "id": "russia-12033",
+      "name": "Russia (part 7/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "12033",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        42.553,
+        36.562,
+        48.922,
+        45.0
+      ]
+    },
+    {
+      "id": "russia-1210",
+      "name": "Russia (part 8/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "1210",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        55.777,
+        45.0,
+        66.513,
+        67.5
+      ]
+    },
+    {
+      "id": "russia-1211",
+      "name": "Russia (part 9/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "1211",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        55.777,
+        68.203,
+        65.658,
+        90.0
+      ]
+    },
+    {
+      "id": "russia-1212",
+      "name": "Russia (part 10/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "1212",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        40.98,
+        45.0,
+        55.777,
+        67.5
+      ]
+    },
+    {
+      "id": "russia-1213",
+      "name": "Russia (part 11/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "1213",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        48.922,
+        67.5,
+        55.777,
+        89.297
+      ]
+    },
+    {
+      "id": "russia-13",
+      "name": "Russia (part 12/12)",
+      "source": "ms-global",
+      "location": "Russia",
+      "qkprefix": "13",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        42.033,
+        90.0,
+        66.513,
+        167.344
+      ]
+    },
+    {
       "id": "rwanda",
       "name": "Rwanda",
       "source": "ms-global",
       "location": "Rwanda",
+      "group": "world",
       "bbox": [
         -3.513,
         28.828,
@@ -2386,6 +4000,7 @@
       "name": "Saint Barthlemy",
       "source": "ms-global",
       "location": "SaintBarthlemy",
+      "group": "world",
       "bbox": [
         17.309,
         -63.281,
@@ -2398,6 +4013,7 @@
       "name": "Saint Helena Ascension and Tristan da Cunha",
       "source": "ms-global",
       "location": "SaintHelenaAscensionandTristandaCunha",
+      "group": "world",
       "bbox": [
         -37.16,
         -12.656,
@@ -2410,6 +4026,7 @@
       "name": "Saint Lucia",
       "source": "ms-global",
       "location": "SaintLucia",
+      "group": "world",
       "bbox": [
         13.24,
         -61.172,
@@ -2422,6 +4039,7 @@
       "name": "San Marino",
       "source": "ms-global",
       "location": "SanMarino",
+      "group": "world",
       "bbox": [
         43.58,
         11.953,
@@ -2434,6 +4052,7 @@
       "name": "Senegal",
       "source": "ms-global",
       "location": "Senegal",
+      "group": "world",
       "bbox": [
         11.867,
         -17.578,
@@ -2446,6 +4065,7 @@
       "name": "Serbia",
       "source": "ms-global",
       "location": "Serbia",
+      "group": "world",
       "bbox": [
         42.033,
         18.281,
@@ -2458,6 +4078,7 @@
       "name": "Seychelles",
       "source": "ms-global",
       "location": "Seychelles",
+      "group": "world",
       "bbox": [
         -9.796,
         46.406,
@@ -2470,6 +4091,7 @@
       "name": "Sierra Leone",
       "source": "ms-global",
       "location": "SierraLeone",
+      "group": "world",
       "bbox": [
         6.315,
         -13.359,
@@ -2482,6 +4104,7 @@
       "name": "Singapore",
       "source": "ms-global",
       "location": "Singapore",
+      "group": "world",
       "bbox": [
         0.703,
         103.359,
@@ -2494,6 +4117,7 @@
       "name": "Slovakia",
       "source": "ms-global",
       "location": "Slovakia",
+      "group": "world",
       "bbox": [
         47.517,
         16.172,
@@ -2506,6 +4130,7 @@
       "name": "Slovenia",
       "source": "ms-global",
       "location": "Slovenia",
+      "group": "world",
       "bbox": [
         45.089,
         13.359,
@@ -2518,6 +4143,7 @@
       "name": "So Tom and Prncipe",
       "source": "ms-global",
       "location": "SoTomandPrncipe",
+      "group": "world",
       "bbox": [
         -0.703,
         6.328,
@@ -2530,6 +4156,7 @@
       "name": "Somalia",
       "source": "ms-global",
       "location": "Somalia",
+      "group": "world",
       "bbox": [
         -2.109,
         40.781,
@@ -2538,23 +4165,56 @@
       ]
     },
     {
-      "id": "south-africa",
-      "name": "South Africa",
+      "id": "south-africa-3002",
+      "name": "South Africa (part 1/3)",
       "source": "ms-global",
       "location": "SouthAfrica",
+      "qkprefix": "3002",
+      "group": "chunk",
+      "big": true,
       "bbox": [
         -34.886,
         16.172,
+        -24.527,
+        22.5
+      ]
+    },
+    {
+      "id": "south-africa-30030",
+      "name": "South Africa (part 2/3)",
+      "source": "ms-global",
+      "location": "SouthAfrica",
+      "qkprefix": "30030",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -31.952,
+        22.5,
         -21.943,
         33.047
-      ],
-      "big": true
+      ]
+    },
+    {
+      "id": "south-africa-30032",
+      "name": "South Africa (part 3/3)",
+      "source": "ms-global",
+      "location": "SouthAfrica",
+      "qkprefix": "30032",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        -34.307,
+        22.5,
+        -31.952,
+        29.531
+      ]
     },
     {
       "id": "south-sudan",
       "name": "South Sudan",
       "source": "ms-global",
       "location": "SouthSudan",
+      "group": "world",
       "bbox": [
         2.811,
         23.203,
@@ -2567,6 +4227,7 @@
       "name": "Spain",
       "source": "ms-global",
       "location": "Spain",
+      "group": "world",
       "bbox": [
         27.684,
         -16.875,
@@ -2579,6 +4240,7 @@
       "name": "Sri Lanka",
       "source": "ms-global",
       "location": "SriLanka",
+      "group": "world",
       "bbox": [
         6.315,
         79.453,
@@ -2591,6 +4253,7 @@
       "name": "St Kitts and Nevis",
       "source": "ms-global",
       "location": "StKittsandNevis",
+      "group": "world",
       "bbox": [
         16.636,
         -63.281,
@@ -2603,6 +4266,7 @@
       "name": "St Martin",
       "source": "ms-global",
       "location": "StMartin",
+      "group": "world",
       "bbox": [
         17.979,
         -63.281,
@@ -2615,6 +4279,7 @@
       "name": "St Vincentand the Grenadines",
       "source": "ms-global",
       "location": "StVincentandtheGrenadines",
+      "group": "world",
       "bbox": [
         11.867,
         -61.875,
@@ -2627,6 +4292,7 @@
       "name": "State of Qatar",
       "source": "ms-global",
       "location": "StateofQatar",
+      "group": "world",
       "bbox": [
         23.886,
         50.625,
@@ -2639,6 +4305,7 @@
       "name": "Sudan",
       "source": "ms-global",
       "location": "Sudan",
+      "group": "world",
       "bbox": [
         9.102,
         21.797,
@@ -2651,6 +4318,7 @@
       "name": "Sultanate of Oman",
       "source": "ms-global",
       "location": "SultanateofOman",
+      "group": "world",
       "bbox": [
         16.636,
         52.734,
@@ -2663,6 +4331,7 @@
       "name": "Suriname",
       "source": "ms-global",
       "location": "Suriname",
+      "group": "world",
       "bbox": [
         2.811,
         -57.656,
@@ -2675,6 +4344,7 @@
       "name": "Svalbard",
       "source": "ms-global",
       "location": "Svalbard",
+      "group": "world",
       "bbox": [
         76.352,
         9.844,
@@ -2687,6 +4357,7 @@
       "name": "Swaziland",
       "source": "ms-global",
       "location": "Swaziland",
+      "group": "world",
       "bbox": [
         -27.684,
         30.234,
@@ -2699,6 +4370,7 @@
       "name": "Sweden",
       "source": "ms-global",
       "location": "Sweden",
+      "group": "world",
       "bbox": [
         54.978,
         10.547,
@@ -2711,6 +4383,7 @@
       "name": "Switzerland",
       "source": "ms-global",
       "location": "Switzerland",
+      "group": "world",
       "bbox": [
         45.583,
         5.625,
@@ -2723,6 +4396,7 @@
       "name": "Syria",
       "source": "ms-global",
       "location": "Syria",
+      "group": "world",
       "bbox": [
         31.952,
         35.156,
@@ -2735,6 +4409,7 @@
       "name": "Tajikistan",
       "source": "ms-global",
       "location": "Tajikistan",
+      "group": "world",
       "bbox": [
         36.598,
         66.797,
@@ -2747,6 +4422,7 @@
       "name": "Tanzania",
       "source": "ms-global",
       "location": "Tanzania",
+      "group": "world",
       "bbox": [
         -11.867,
         28.828,
@@ -2756,23 +4432,71 @@
       "big": true
     },
     {
-      "id": "thailand",
-      "name": "Thailand",
+      "id": "thailand-13220",
+      "name": "Thailand (part 1/4)",
       "source": "ms-global",
       "location": "Thailand",
+      "qkprefix": "13220",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        4.916,
+        11.178,
         97.031,
         20.633,
+        101.25
+      ]
+    },
+    {
+      "id": "thailand-13221",
+      "name": "Thailand (part 2/4)",
+      "source": "ms-global",
+      "location": "Thailand",
+      "qkprefix": "13221",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        11.178,
+        101.25,
+        19.973,
         106.172
-      ],
-      "big": true
+      ]
+    },
+    {
+      "id": "thailand-13222",
+      "name": "Thailand (part 3/4)",
+      "source": "ms-global",
+      "location": "Thailand",
+      "qkprefix": "13222",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        4.916,
+        97.734,
+        11.178,
+        101.25
+      ]
+    },
+    {
+      "id": "thailand-13223",
+      "name": "Thailand (part 4/4)",
+      "source": "ms-global",
+      "location": "Thailand",
+      "qkprefix": "13223",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        5.616,
+        101.25,
+        7.014,
+        102.656
+      ]
     },
     {
       "id": "the-bahamas",
       "name": "The Bahamas",
       "source": "ms-global",
       "location": "TheBahamas",
+      "group": "world",
       "bbox": [
         20.633,
         -79.453,
@@ -2785,6 +4509,7 @@
       "name": "The Gambia",
       "source": "ms-global",
       "location": "TheGambia",
+      "group": "world",
       "bbox": [
         12.555,
         -16.875,
@@ -2797,6 +4522,7 @@
       "name": "Timor-Leste",
       "source": "ms-global",
       "location": "Timor-Leste",
+      "group": "world",
       "bbox": [
         -9.796,
         123.75,
@@ -2809,6 +4535,7 @@
       "name": "Togo",
       "source": "ms-global",
       "location": "Togo",
+      "group": "world",
       "bbox": [
         5.616,
         -0.703,
@@ -2821,6 +4548,7 @@
       "name": "Trinidad and Tobago",
       "source": "ms-global",
       "location": "TrinidadandTobago",
+      "group": "world",
       "bbox": [
         9.796,
         -62.578,
@@ -2833,6 +4561,7 @@
       "name": "Tunisia",
       "source": "ms-global",
       "location": "Tunisia",
+      "group": "world",
       "bbox": [
         30.145,
         7.031,
@@ -2841,23 +4570,41 @@
       ]
     },
     {
-      "id": "turkey",
-      "name": "Turkey",
+      "id": "turkey-120",
+      "name": "Turkey (part 1/2)",
       "source": "ms-global",
       "location": "Turkey",
+      "qkprefix": "120",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        40.98,
+        26.016,
+        42.553,
+        43.594
+      ]
+    },
+    {
+      "id": "turkey-122",
+      "name": "Turkey (part 2/2)",
+      "source": "ms-global",
+      "location": "Turkey",
+      "qkprefix": "122",
+      "group": "chunk",
+      "big": true,
       "bbox": [
         35.461,
         25.312,
-        42.553,
+        40.98,
         45.0
-      ],
-      "big": true
+      ]
     },
     {
       "id": "turkmenistan",
       "name": "Turkmenistan",
       "source": "ms-global",
       "location": "Turkmenistan",
+      "group": "world",
       "bbox": [
         34.886,
         52.031,
@@ -2870,6 +4617,7 @@
       "name": "Turks and Caicos Islands",
       "source": "ms-global",
       "location": "TurksandCaicosIslands",
+      "group": "world",
       "bbox": [
         20.633,
         -73.125,
@@ -2882,6 +4630,7 @@
       "name": "USVirgin Islands",
       "source": "ms-global",
       "location": "USVirginIslands",
+      "group": "world",
       "bbox": [
         17.309,
         -65.391,
@@ -2894,6 +4643,7 @@
       "name": "Uganda",
       "source": "ms-global",
       "location": "Uganda",
+      "group": "world",
       "bbox": [
         -2.109,
         29.531,
@@ -2902,23 +4652,86 @@
       ]
     },
     {
-      "id": "ukraine",
-      "name": "Ukraine",
+      "id": "ukraine-1202",
+      "name": "Ukraine (part 1/5)",
       "source": "ms-global",
       "location": "Ukraine",
+      "qkprefix": "1202",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        44.088,
+        47.99,
         21.797,
+        49.382,
+        22.5
+      ]
+    },
+    {
+      "id": "ukraine-12030",
+      "name": "Ukraine (part 2/5)",
+      "source": "ms-global",
+      "location": "Ukraine",
+      "qkprefix": "12030",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        48.922,
+        22.5,
+        52.483,
+        33.75
+      ]
+    },
+    {
+      "id": "ukraine-12031",
+      "name": "Ukraine (part 3/5)",
+      "source": "ms-global",
+      "location": "Ukraine",
+      "qkprefix": "12031",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        48.922,
+        33.75,
         52.483,
         40.781
-      ],
-      "big": true
+      ]
+    },
+    {
+      "id": "ukraine-12032",
+      "name": "Ukraine (part 4/5)",
+      "source": "ms-global",
+      "location": "Ukraine",
+      "qkprefix": "12032",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        44.088,
+        22.5,
+        48.922,
+        33.75
+      ]
+    },
+    {
+      "id": "ukraine-12033",
+      "name": "Ukraine (part 5/5)",
+      "source": "ms-global",
+      "location": "Ukraine",
+      "qkprefix": "12033",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        44.088,
+        33.75,
+        48.922,
+        40.078
+      ]
     },
     {
       "id": "united-arab-emirates",
       "name": "United Arab Emirates",
       "source": "ms-global",
       "location": "UnitedArabEmirates",
+      "group": "world",
       "bbox": [
         22.594,
         51.328,
@@ -2927,23 +4740,101 @@
       ]
     },
     {
-      "id": "united-kingdom",
-      "name": "United Kingdom",
+      "id": "united-kingdom-0311",
+      "name": "United Kingdom (part 1/6)",
       "source": "ms-global",
       "location": "UnitedKingdom",
+      "qkprefix": "0311",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        55.777,
+        -7.734,
+        60.93,
+        -0.703
+      ]
+    },
+    {
+      "id": "united-kingdom-031310",
+      "name": "United Kingdom (part 2/6)",
+      "source": "ms-global",
+      "location": "UnitedKingdom",
+      "qkprefix": "031310",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        53.749,
+        -8.438,
+        55.777,
+        -5.625
+      ]
+    },
+    {
+      "id": "united-kingdom-031311",
+      "name": "United Kingdom (part 3/6)",
+      "source": "ms-global",
+      "location": "UnitedKingdom",
+      "qkprefix": "031311",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        52.483,
+        -5.625,
+        55.777,
+        0.0
+      ]
+    },
+    {
+      "id": "united-kingdom-031312",
+      "name": "United Kingdom (part 4/6)",
+      "source": "ms-global",
+      "location": "UnitedKingdom",
+      "qkprefix": "031312",
+      "group": "chunk",
+      "big": true,
       "bbox": [
         49.838,
-        -8.438,
-        60.93,
+        -6.328,
+        50.289,
+        -5.625
+      ]
+    },
+    {
+      "id": "united-kingdom-031313",
+      "name": "United Kingdom (part 5/6)",
+      "source": "ms-global",
+      "location": "UnitedKingdom",
+      "qkprefix": "031313",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        49.838,
+        -5.625,
+        52.483,
+        0.0
+      ]
+    },
+    {
+      "id": "united-kingdom-1",
+      "name": "United Kingdom (part 6/6)",
+      "source": "ms-global",
+      "location": "UnitedKingdom",
+      "qkprefix": "1",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        50.736,
+        0.0,
+        54.162,
         2.109
-      ],
-      "big": true
+      ]
     },
     {
       "id": "uruguay",
       "name": "Uruguay",
       "source": "ms-global",
       "location": "Uruguay",
+      "group": "world",
       "bbox": [
         -35.461,
         -58.359,
@@ -2956,6 +4847,7 @@
       "name": "Uzbekistan",
       "source": "ms-global",
       "location": "Uzbekistan",
+      "group": "world",
       "bbox": [
         37.16,
         55.547,
@@ -2968,6 +4860,7 @@
       "name": "Venezuela",
       "source": "ms-global",
       "location": "Venezuela",
+      "group": "world",
       "bbox": [
         0.703,
         -73.828,
@@ -2976,23 +4869,56 @@
       ]
     },
     {
-      "id": "vietnam",
-      "name": "Vietnam",
+      "id": "vietnam-1320",
+      "name": "Vietnam (part 1/3)",
       "source": "ms-global",
       "location": "Vietnam",
+      "qkprefix": "1320",
+      "group": "chunk",
+      "big": true,
       "bbox": [
-        8.407,
+        21.943,
         101.953,
         23.886,
+        107.578
+      ]
+    },
+    {
+      "id": "vietnam-13221",
+      "name": "Vietnam (part 2/3)",
+      "source": "ms-global",
+      "location": "Vietnam",
+      "qkprefix": "13221",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        11.178,
+        102.656,
+        21.943,
         109.688
-      ],
-      "big": true
+      ]
+    },
+    {
+      "id": "vietnam-13223",
+      "name": "Vietnam (part 3/3)",
+      "source": "ms-global",
+      "location": "Vietnam",
+      "qkprefix": "13223",
+      "group": "chunk",
+      "big": true,
+      "bbox": [
+        8.407,
+        103.359,
+        11.178,
+        108.984
+      ]
     },
     {
       "id": "west-bank",
       "name": "West Bank",
       "source": "ms-global",
       "location": "WestBank",
+      "group": "world",
       "bbox": [
         30.751,
         34.453,
@@ -3005,6 +4931,7 @@
       "name": "Zambia",
       "source": "ms-global",
       "location": "Zambia",
+      "group": "world",
       "bbox": [
         -18.646,
         21.797,
@@ -3017,6 +4944,7 @@
       "name": "Zimbabwe",
       "source": "ms-global",
       "location": "Zimbabwe",
+      "group": "world",
       "bbox": [
         -22.594,
         24.609,
@@ -3029,6 +4957,7 @@
       "name": "le Saint-Martin",
       "source": "ms-global",
       "location": "leSaint-Martin",
+      "group": "world",
       "bbox": [
         17.979,
         -63.281,
