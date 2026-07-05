@@ -1006,7 +1006,14 @@ private fun ensureLayers(style: Style) {
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
-        val firstLabel = style.layers.firstOrNull { it is SymbolLayer }?.id
+        // The route must draw ABOVE road + BRIDGE geometry (else a bridge paints over it — the "blue line
+        // vanishes on a bridge" bug) but BELOW text labels. In Liberty the FIRST symbol layer is
+        // `road_one_way_arrow` (idx ~61), which sits BELOW the `bridge_*` layers (~63-82) — anchoring there
+        // hid the route on bridges. Anchor instead to the first symbol AFTER the last bridge (a real label),
+        // falling back to the first symbol / top if a style has no bridge layers.
+        val lastBridge = style.layers.indexOfLast { it.id.startsWith("bridge_") }
+        val firstLabel = (if (lastBridge >= 0) style.layers.drop(lastBridge + 1) else style.layers)
+            .firstOrNull { it is SymbolLayer }?.id
         if (firstLabel != null) style.addLayerBelow(routeLine, firstLabel) else style.addLayer(routeLine)
         // The dashed foot/bike variant (hidden until a walk/bike route is shown). Round caps +
         // a short on/off pattern read as Google's walking dots.

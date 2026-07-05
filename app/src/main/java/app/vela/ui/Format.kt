@@ -30,7 +30,8 @@ object Units {
 fun formatDistance(meters: Double): String =
     if (Units.imperial.value) {
         val feet = meters * 3.28084
-        if (feet < 1000) "${feet.roundToInt()} ft"
+        // Google-style feet: 50 ft steps at/above 100 ft, 10 ft steps below (min 10, never "0 ft").
+        if (feet < 1000) "${if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50} ft"
         else String.format(Locale.US, "%.1f mi", meters / 1609.344)
     } else {
         if (meters < 1000) "${meters.roundToInt()} m"
