@@ -32,9 +32,12 @@ object OverpassPois {
         limit: Int = 1500,
     ): List<Place> = try {
         val bbox = "$south,$west,$north,$east"
+        // amenity covers schools/hospitals/etc.; leisure covers parks/playgrounds; boundary=national_park
+        // catches big parks tagged as a boundary rather than leisure=park (they'd otherwise be missed).
         val query = "[out:json][timeout:25];" +
             "(node[amenity][name]($bbox);node[shop][name]($bbox);node[tourism][name]($bbox);" +
-            "node[\"public_transport\"][name]($bbox);node[leisure][name]($bbox););out $limit;"
+            "node[\"public_transport\"][name]($bbox);node[leisure][name]($bbox);" +
+            "node[boundary=national_park][name]($bbox););out $limit;"
         val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
         val req = Request.Builder()
             .url(url)
@@ -55,7 +58,7 @@ object OverpassPois {
         val lat = (el["lat"] as? JsonPrimitive)?.doubleOrNull ?: return null
         val lng = (el["lon"] as? JsonPrimitive)?.doubleOrNull ?: return null
         fun tag(k: String) = (tags[k] as? JsonPrimitive)?.contentOrNull
-        val category = tag("amenity") ?: tag("shop") ?: tag("tourism") ?: tag("leisure") ?: tag("public_transport")
+        val category = tag("amenity") ?: tag("shop") ?: tag("tourism") ?: tag("leisure") ?: tag("public_transport") ?: tag("boundary")
         // Keep the useful OSM detail tags too, so offline POIs aren't just a name on a
         // pin — address (addr:*), phone, website and opening_hours where mapped.
         val street = listOfNotNull(tag("addr:housenumber"), tag("addr:street")).joinToString(" ").ifBlank { null }
