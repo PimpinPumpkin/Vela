@@ -1,0 +1,114 @@
+# Build open HOUSE-NUMBER overlays (OpenAddresses address points) as PMTiles for US states in parallel and
+# publish them to the `address-overlays` release — the app STREAMS them and renders the `number` field as a
+# house-number SymbolLayer where OSM lacks addr:housenumber. Sibling of building-overlays.yml (footprints).
+#
+# Run from Actions → "Build address overlays" → pass `ids` (e.g. "washington oregon") or tick `all`.
+# Regions come from tools/address-regions.json (the 42 US states with an OpenAddresses statewide source).
+#
+# Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.pmtiles + a manifest
+# *entry* artifact. One final `merge` job folds every entry into address-overlay-manifest.json in a single
+# upload. Only the merge job serialises (its own concurrency group) so parallel runs can't clobber it.
+name: Build address overlays
+
+on:
+  workflow_dispatch:
+    inputs:
+      ids:
+        description: "Space/comma-separated region ids (e.g. 'washington oregon'). Blank + all=true builds the whole catalog."
+        type: string
+        default: "washington"
+      all:
+        description: "Build every region in tools/address-regions.json (ignores 'ids')"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # create/upload assets on the address-overlays release
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          IDS: ${{ inputs.ids }}
+          ALL: ${{ inputs.all }}
+        run: |
+          ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          # each matrix row carries id/name/source + bbox as a "S,W,N,E" string (the build script's 4 args)
+          sel=$(jq -c --argjson ids "$ids_json" --argjson all "${ALL:-false}" '
+            [ .regions[]
+              | select( $all or (($ids|length) > 0 and ((.id as $rid | $ids | index($rid)) != null)) )
+              | {id, name, source, bbox: (.bbox | map(tostring) | join(","))} ]
+          ' tools/address-regions.json)
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched ids='$IDS' all='$ALL'"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+      - name: Ensure the catalog release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view address-overlays --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create address-overlays --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Open address (house-number) overlays" \
+              --notes "OpenAddresses address points as PMTiles for Vela's house-number labels. Data assets, not a code release. Addresses © OpenAddresses contributors, per-source open licences."
+
+  build:
+    needs: prep
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tippecanoe + tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libsqlite3-dev zlib1g-dev jq
+          git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j"$(nproc)"
+          sudo make -C /tmp/tippecanoe install
+      - name: Build ${{ matrix.id }} PMTiles + upload + emit entry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+          MANIFEST_MODE: emit
+          ENTRY_OUT: ${{ matrix.id }}.json
+        run: bash scripts/build-address-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.source }}" "${{ matrix.bbox }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.id }}
+          path: ${{ matrix.id }}.json
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: address-overlays-manifest-merge
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - uses: actions/download-artifact@v4
+        with:
+          path: entries
+          pattern: entry-*
+          merge-multiple: true
+      - name: Merge entries into address-overlay-manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(entries/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          echo "merging ${#files[@]} entr(y/ies)"
+          bash scripts/merge-address-manifest.sh entries
