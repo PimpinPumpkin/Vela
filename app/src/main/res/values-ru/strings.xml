@@ -340,4 +340,10 @@
     <string name="cat_pharmacy">Аптеки</string>
     <string name="cat_atms">Банкоматы</string>
     <string name="cat_parks">Парки</string>
+    <!-- Resume-navigation prompt (persisted nav session) -->
+    <string name="mapscreen_resume_nav">Возобновить навигацию до %1$s?</string> <!-- format -->
+    <string name="mapscreen_resume">Возобновить</string>
+    <string name="mapscreen_your_destination">пункта назначения</string>
+    <string name="mapvm_resume_waiting_gps">Ожидание GPS для возобновления навигации…</string>
+    <string name="mapvm_resume_failed">Не удалось возобновить навигацию</string>
 </resources>
