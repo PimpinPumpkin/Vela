@@ -10,10 +10,13 @@
 #     scripts/build-overlay-region.sh washington "Washington (state)" \
 #       https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Washington.geojson.zip \
 #       "45.54,-124.85,49.00,-116.92"
-#   SOURCE=ms-global LOCATION=<Name> — a COUNTRY from Microsoft's Global ML Building Footprints
-#     (quadkey-partitioned GeoJSONL under global-buildings/, listed in dataset-links.csv). The 3rd arg
-#     (URL) is ignored — pass "-"; LOCATION is the dataset's Location column (spaces stripped, e.g. "Andorra"):
+#   SOURCE=ms-global LOCATION=<Name> [QKPREFIX=<prefix>] — a COUNTRY (or a sub-national CHUNK of one) from
+#     Microsoft's Global ML Building Footprints (quadkey-partitioned GeoJSONL under global-buildings/, listed
+#     in dataset-links.csv). The 3rd arg (URL) is ignored — pass "-"; LOCATION is the dataset's Location column
+#     (spaces stripped, e.g. "Andorra"). QKPREFIX (optional) builds only the quadkeys whose key starts with it,
+#     so a giant country is split into buildable/hostable pieces (the app picks the chunk covering the user):
 #     SOURCE=ms-global LOCATION=Andorra scripts/build-overlay-region.sh andorra "Andorra" - "42.42,1.41,42.66,1.79"
+#     SOURCE=ms-global LOCATION=India QKPREFIX=13 scripts/build-overlay-region.sh india-13 "India (part)" - "<bbox>"
 #
 # Needs: gh (authenticated), tippecanoe, jq, unzip, curl, gzip. LICENSE: Microsoft Building Footprints is
 # ODbL — a DATA licence orthogonal to the app's GPLv3 (same as the OSM tiles). Obligation met by the
@@ -33,11 +36,13 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 TIPPE_P=""
 if [ "$SOURCE" = "ms-global" ]; then
   LOCATION="${LOCATION:?ms-global needs LOCATION (the dataset-links.csv Location column)}"
-  echo "→ ms-global: listing $LOCATION quadkeys from dataset-links.csv"
+  QKPREFIX="${QKPREFIX:-}" # a sub-national CHUNK builds only the quadkeys whose key starts with this prefix
+  echo "→ ms-global: listing $LOCATION quadkeys${QKPREFIX:+ under prefix $QKPREFIX} from dataset-links.csv"
   curl -fsSL "https://minedbuildings.z5.web.core.windows.net/global-buildings/dataset-links.csv" -o "$WORK/dl.csv"
-  awk -F, -v loc="$LOCATION" '$1==loc{print $3}' "$WORK/dl.csv" > "$WORK/urls.txt"
+  # $1=Location, $2=QuadKey, $3=Url. Empty prefix → the whole country; a prefix → just that chunk's quadkeys.
+  awk -F, -v loc="$LOCATION" -v pfx="$QKPREFIX" '$1==loc && (pfx=="" || index($2,pfx)==1){print $3}' "$WORK/dl.csv" > "$WORK/urls.txt"
   N=$(wc -l < "$WORK/urls.txt" | tr -d ' ')
-  [ "$N" -gt 0 ] || { echo "!! no quadkeys for LOCATION='$LOCATION' in dataset-links.csv" >&2; exit 1; }
+  [ "$N" -gt 0 ] || { echo "!! no quadkeys for LOCATION='$LOCATION' prefix='$QKPREFIX' in dataset-links.csv" >&2; exit 1; }
   echo "→ $N quadkey file(s); downloading 8-wide + decompressing → GeoJSONL"
   mkdir -p "$WORK/parts"; export WORK
   # Download each quadkey to its OWN part, IN PARALLEL — a big country is thousands of quadkeys and one
