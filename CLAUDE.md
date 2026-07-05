@@ -436,11 +436,17 @@ genuinely needs no doc edit, say why in the commit.
   quadkey-partitioned GeoJSONL from Microsoft's **Global ML Building Footprints** (`global-buildings/dataset-links.csv`
   → `awk` the country's `Location` rows → curl+gunzip each `.csv.gz` into one ndjson → tippecanoe `-P`; ~199
   countries). Country **bboxes are the union of the dataset's own z9 quadkey tiles** (self-consistent with where
-  footprints exist); US-state bboxes are Geofabrik extract bounds. **Excluded as single files** (PMTiles would blow
-  past GitHub's 2 GB/asset limit → need sub-national splitting, a follow-up): the whole-US aggregate + **India,
-  Brazil, Russia, Indonesia**; continental aggregates + duplicate Locations (CzechRepublic→Czechia,
-  DemocraticRepublicoftheCongo→CongoDRC) dropped. The app/manifest are source-AGNOSTIC — the emitted manifest row is
-  always `{id,name,url(asset),sizeMb,bbox}`, so no app change was needed to add countries.
+  footprints exist); US-state bboxes are Geofabrik extract bounds. **Big countries are CHUNKED** (>1500 MB
+  compressed source → India, Brazil, Russia, Germany, Japan, …18 of them): the catalog splits each into
+  sub-national pieces by **quadkey PREFIX** (`qkprefix`; adaptive recursive split until each chunk ≤ ~1500 MB —
+  India → 24 pieces), the build script's awk filters the country's rows to that prefix, and each chunk gets its
+  own union bbox so the **app's smallest-covering-box rule picks the piece covering the user** (no app change,
+  and it fits CI disk + hosts under GitHub's 2 GB/asset limit). Only the whole-US aggregate + continental
+  aggregates + duplicate Locations (CzechRepublic→Czechia, DemocraticRepublicoftheCongo→CongoDRC) are dropped.
+  The catalog is 361 regions — **over GitHub's 256-job matrix cap** — so each row carries a `group` (`us` / `world`
+  / `chunk`) and dispatch is **one group at a time** (`-f group=world`); run-level concurrency is OFF so groups
+  build concurrently, only the merge job serialises. The app/manifest are source-AGNOSTIC — the emitted manifest
+  row is always `{id,name,url(asset),sizeMb,bbox}`, so no app change was needed for countries OR chunks.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
