@@ -255,7 +255,7 @@ genuinely needs no doc edit, say why in the commit.
   they still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested. (3) **Feet steps**
   — `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round feet Google-style: 50 ft at/above
   100 ft, 10 ft below. (4) **Voice K/C** — `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) →
-  "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. (5) **Traffic-light landmarks
+  "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. (6) **Continue/straight lane silence** — a CONTINUE/STRAIGHT speaks its lane preface ONLY for a GENUINE fork (an "off" lane that itself goes straight-ish, e.g. "use the left 2 lanes to stay on I-80"); a plain turn bay at an intersection (off lane marked only left/right) while you sail straight through is silenced (`Route.continueHasGenuineFork` gates `NavEngine`'s escape hatch) — Google stays silent there and the road-just-renames case had been over-speaking. (5) **Traffic-light landmarks
   ("pass the light, then turn") — NOT built, feasible + planned:** OSM `highway=traffic_signals` is keyless via
   Overpass (verified dense: 300 in a small Sacramento bbox), mirror `OverpassPois`; count signals between the
   vehicle and the next turn along the polyline; add a clause in `NavStrings`. Needs a real-drive calibration of
