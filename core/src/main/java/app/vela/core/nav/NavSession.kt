@@ -399,15 +399,17 @@ class NavSession @Inject constructor(
             if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it
             // BACK ON COURSE: while we were fetching (~1-3 s), did the driver return to the ORIGINAL route?
             // A U-turn (or any wobble) fires RerouteNeeded, but by the time the fetch lands the driver has
-            // often completed it and rejoined the planned line — the engine cleared the offRoute latch
-            // (offHits back to 0 ⟺ a clean on-route fix). Swapping in a fresh route now would yank a driver
-            // who already self-corrected onto a different path. So if the route hasn't otherwise changed and
-            // we're no longer off-route, discard this reroute and carry on (Google's "you're back on course").
-            // If the driver is still off, offRoute is still latched and we adopt r as before. Self-healing:
-            // a momentary line-cross that clears then re-deviates simply re-fires RerouteNeeded on the next
-            // rising edge (no cooldown charged — we return before lastRerouteAdoptMs is stamped).
-            if (_state.value.route === fromRoute && !_state.value.nav.offRoute) {
-                diag.record("nav", "reroute discarded — driver back on the original route (self-corrected)")
+            // often completed it and rejoined the planned line. Swapping in a fresh route then yanks a driver
+            // who already self-corrected onto a different path — so if the route hasn't otherwise changed and
+            // we're solidly back on the line, discard this reroute and carry on (Google's "you're back on
+            // course"). SUSTAINED, not one fix: offRoute clears on a SINGLE grazing fix within OFF_ROUTE_M,
+            // which a spurious graze on a parallel/overlapping leg trips — so gate on onRouteStreak (N
+            // consecutive on-corridor+moving fixes), NOT bare !offRoute, or a real missed-turn reroute could
+            // be wrongly abandoned. Still off / only grazed → adopt r as before. Self-healing: a re-deviation
+            // re-fires RerouteNeeded on the next rising edge (no cooldown charged — we return before adopt).
+            val backNav = _state.value.nav
+            if (_state.value.route === fromRoute && !backNav.offRoute && backNav.onRouteStreak >= BACK_ON_COURSE_HITS) {
+                diag.record("nav", "reroute discarded — driver solidly back on the original route (streak ${backNav.onRouteStreak})")
                 return@launch
             }
             if (r == null) {
@@ -462,6 +464,10 @@ class NavSession @Inject constructor(
         const val FASTER_THRESHOLD_S = 90.0        // only offer if it saves real time
         const val REROUTE_COOLDOWN_MS = 10_000L    // min gap between ADOPTED reroutes (no reroute storms)
         const val REROUTE_SPEAK_MIN_MS = 30_000L   // "Rerouting" spoken at most this often (retries are silent)
+        const val BACK_ON_COURSE_HITS = 2          // consecutive on-corridor fixes before an in-flight reroute
+                                                   // is abandoned as "back on course" — >1 so a single grazing
+                                                   // fix can't kill a legitimate missed-turn reroute (tune from
+                                                   // a real u-turn capture; 2 filters grazes, catches rejoins)
         // A reroute/faster candidate must actually END near the destination — a truncated or wrong route
         // (its last point miles from dest) is the "10 min away, wrong final step" bug; never swap to it.
         const val REACH_TOLERANCE_M = 500.0

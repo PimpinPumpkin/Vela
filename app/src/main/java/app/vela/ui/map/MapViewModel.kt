@@ -1514,6 +1514,10 @@ class MapViewModel @Inject constructor(
         // down any nav IT auto-started here, before this new replay starts its own.
         if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
         locationJob?.cancel(); locationJob = null // pause live GPS while the trace plays
+        // Also kill any pending stale-location timer armed by the last live fix — otherwise it can fire
+        // ~seconds into the replay and flip myLocationStale=true, briefly greying the replay puck / hiding
+        // its arrow until the next trace fix clears it. The replay collector sets stale=false per fix.
+        staleTimerJob?.cancel(); staleTimerJob = null
         _state.update { it.copy(replaying = true, navCameraDetached = false) }
         flashStatus(appContext.getString(R.string.mapvm_replaying, meta.label), 3000L)
         val job = viewModelScope.launch {
