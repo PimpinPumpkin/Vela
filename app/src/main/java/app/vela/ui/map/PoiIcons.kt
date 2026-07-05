@@ -87,8 +87,8 @@ object PoiIcons {
             any("hotel", "motel", "inn", "lodging", "resort", "hostel", "bed & breakfast") -> "lodging"
             any("hospital", "clinic", "pharmacy", "drugstore", "dentist", "doctor", "medical", "health",
                 "veterinar", "urgent care", "physician", "chiropract", "optometr") -> "health"
+            any("parking", "parking garage", "parking lot") -> "parking" // before "park" — "parking".contains("park")
             any("park", "garden", "trail", "playground", "campground", "nature") -> "park"
-            any("parking", "parking garage", "parking lot") -> "parking"
             any("school", "university", "college", "academy", "education", "library", "kindergarten", "preschool") -> "edu"
             any("museum", "theater", "theatre", "gallery", "cinema", "movie", "art ", "cultural", "historical", "aquarium", "zoo") -> "culture"
             any("gym", "fitness", "stadium", "sport", "golf", "bowling", "yoga", "arena", "athletic", "climbing") -> "sport"
