@@ -271,7 +271,12 @@ genuinely needs no doc edit, say why in the commit.
   callback / MapScreen effect re-started the live collector mid-replay and its real fixes overwrote
   `myLocation`+`center`. Fixed with two guards: `startLocation()` no-ops while `replaying`, and the live
   collector drops every fix while `replaying` (belt-and-suspenders). Replay's `finally` still resumes live GPS
-  once `replaying=false`. (3) **U-turn / back-on-course** — a U-turn strays >45 m → `RerouteNeeded` → async
+  once `replaying=false`. (2b) **Replay teardown** (stop or natural end) — the blue line stayed drawn and the
+  dot stuck at the trace's end point. The `navSession→state` observer keeps `activeRoute` once nav stops
+  (`else it.activeRoute`), so the `finally` must explicitly null `activeRoute`/`routes`/`directionsOpen`/step
+  preview; and it now snaps `myLocation`/`center` back to the user's real PRE-replay location (`resumeLoc`,
+  captured in `replayTrip`) so the dot leaves the trace end — resumed live GPS refines it on the next fix.
+  Gated on `ownedNav` (a replay riding an already-active nav leaves that route/location alone). (3) **U-turn / back-on-course** — a U-turn strays >45 m → `RerouteNeeded` → async
   directions fetch (~1-3 s); but the U-turn outlasts the fetch, and by the time it lands the driver has
   rejoined the ORIGINAL line and the engine cleared the `offRoute` latch — yet `reroute()` adopted the fresh
   route anyway, yanking a self-corrected driver onto a different path. Now `reroute()` captures `fromRoute` and,
