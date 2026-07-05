@@ -2250,7 +2250,17 @@ class MapViewModel @Inject constructor(
                 }
             }.getOrNull() ?: return@launch
             controlsBox = doubleArrayOf(s, w, n, e)
-            _state.update { it.copy(trafficControls = res) }
+            // Cap what's HANDED to the map (nearest to the box center wins): a dense metro's padded box can
+            // carry 1000+ signals/stop signs, and MapLibre re-collides every handed symbol per drag frame —
+            // the same budget-GPU lesson as the ambient-POI cap (don't hand it the whole pool). 400 covers
+            // the padded box everywhere reasonable; beyond that the excess would collide off anyway.
+            val cLat0 = (s + n) / 2; val cLng0 = (w + e) / 2
+            val lngScale = kotlin.math.cos(Math.toRadians(cLat0))
+            val kept = if (res.size <= CONTROLS_ONSCREEN_CAP) res else res.sortedBy {
+                val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
+                dLat * dLat + dLng * dLng
+            }.take(CONTROLS_ONSCREEN_CAP)
+            _state.update { it.copy(trafficControls = kept) }
         }
     }
 
@@ -2301,6 +2311,9 @@ class MapViewModel @Inject constructor(
     companion object {
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
+        const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
+                                              // dense metro's padded box can carry 1000+, and every handed
+                                              // symbol is re-collided per drag frame (budget-GPU jank)
         const val STALE_LOCATION_MS = 12_000L // grey the dot after this long with no fix
         const val SPEED_HOLD_MS = 3_000L // hold a speedless-fix speed at most this long, then show 0
         const val SPEED_ZERO_MS = 6_000L // no fixes AT ALL for this long → zero the mph. Two full cycles
