@@ -367,6 +367,11 @@ class MapViewModel @Inject constructor(
 
     fun startLocation() {
         if (locationJob != null) return
+        // Don't resurrect the live GPS collector mid-replay: replayTrip cancels+nulls locationJob so the
+        // trace owns the puck, but a permission callback / MapScreen effect can re-call startLocation while
+        // replaying — and a real fix would then overwrite myLocation+center, snapping the puck back to the
+        // user's actual position. Replay's own `finally` calls startLocation() again once replaying=false.
+        if (_state.value.replaying) return
         locationJob = viewModelScope.launch {
             launch {
                 delay(8_000)
@@ -393,6 +398,10 @@ class MapViewModel @Inject constructor(
             var prevWasGps = false
             val posOutlierStreak = intArrayOf(0)
             locationProvider.updates().collect { loc ->
+                // Belt-and-suspenders with the startLocation guard: if this collector was already in
+                // flight when a replay began (cancel hadn't landed yet), drop every real fix while the
+                // trace is playing so it can't snap the puck back to the user's actual location.
+                if (_state.value.replaying) return@collect
                 val nowMs = android.os.SystemClock.elapsedRealtime()
                 val isGps = loc.provider == android.location.LocationManager.GPS_PROVIDER
                 // Provider gating, OsmAnd-style (useOnlyGPS): a NETWORK (BeaconDB wifi/cell) fix
