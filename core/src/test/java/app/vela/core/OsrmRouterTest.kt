@@ -89,4 +89,35 @@ class OsrmRouterTest {
         // a 3-point line has exactly one interior point → one via, no crash
         assertEquals(1, RouteGeometry.sampleVias((0..2).map { LatLng(47.0 + it * 0.01, -122.0) }).size)
     }
+
+    private fun man(t: ManeuverType, dist: Double) =
+        app.vela.core.model.Maneuver(t, "x", LatLng(0.0, 0.0), dist, 0.0)
+
+    @Test fun exitRampForkMergeFoldsToOne() {
+        val out = RouteGeometry.consolidateExits(listOf(
+            man(ManeuverType.RAMP_RIGHT, 120.0), // exit ramp, 120 m to the fork
+            man(ManeuverType.FORK_RIGHT, 30.0),  // keep right, 30 m to the merge
+            man(ManeuverType.MERGE, 200.0),      // merge, 200 m to the next turn
+            man(ManeuverType.TURN_LEFT, 50.0),   // a genuine later turn
+        ))
+        assertEquals(2, out.size) // [folded exit, turn]
+        assertEquals(ManeuverType.RAMP_RIGHT, out[0].type)
+        assertEquals(350.0, out[0].distanceMeters, 1e-9) // 120+30+200 — still tiles the polyline
+        assertEquals(ManeuverType.TURN_LEFT, out[1].type)
+    }
+
+    @Test fun isolatedRampAndFarForkAreNotFolded() {
+        // ramp then a normal turn → untouched
+        assertEquals(2, RouteGeometry.consolidateExits(listOf(
+            man(ManeuverType.RAMP_RIGHT, 100.0), man(ManeuverType.TURN_LEFT, 50.0),
+        )).size)
+        // ramp then a fork 900 m later (> EXIT_COMPLEX_GAP_M) → a real separate decision, NOT folded
+        assertEquals(3, RouteGeometry.consolidateExits(listOf(
+            man(ManeuverType.RAMP_RIGHT, 900.0), man(ManeuverType.FORK_RIGHT, 40.0), man(ManeuverType.ARRIVE, 0.0),
+        )).size)
+        // a bare fork with no preceding ramp (a real highway split) → NOT folded
+        assertEquals(2, RouteGeometry.consolidateExits(listOf(
+            man(ManeuverType.FORK_LEFT, 100.0), man(ManeuverType.TURN_RIGHT, 50.0),
+        )).size)
+    }
 }

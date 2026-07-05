@@ -41,6 +41,9 @@ import okhttp3.Request
 object RouteGeometry {
     private const val OSRM_BASE = "https://routing.openstreetmap.de"
     private const val OSRM_TRIES = 3 // FOSSGIS community server blips on mobile; a miss = nameless Google fallback
+    // Max gap (m) between an exit ramp and a following fork/merge for them to count as ONE exit complex
+    // (consolidateExits). Generous enough for a long ramp, short enough that a genuine km-away fork isn't folded.
+    private const val EXIT_COMPLEX_GAP_M = 500.0
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The FOSSGIS OSRM backend for each mode. Transit has none → null geometry. */
@@ -202,6 +205,8 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
             }
         }
+        val consolidated = consolidateExits(maneuvers)
+        maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
             polyline = poly,
@@ -211,6 +216,39 @@ object RouteGeometry {
             durationInTrafficSeconds = null, // filled by the Google traffic overlay
             summary = maneuvers.filter { it.road != null }.maxByOrNull { it.distanceMeters }?.road,
         )
+    }
+
+    /** Fold an EXIT / interchange complex into ONE maneuver. OSRM splits a single user action (leave the
+     *  highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires
+     *  its OWN spoken prompt seconds apart ("Take exit 15" … "Keep right" … "Merge onto I-90") — the reported
+     *  "it told me related instructions over and over." Google says it once. Fold a ramp's IMMEDIATELY-
+     *  following, SHORT-gapped FORK/MERGE run into the ramp: keep the ramp instruction ("Take exit 15
+     *  toward …"), SUM the distances so the step lengths still tile the polyline (NavEngine locates each
+     *  maneuver by a prefix-sum of step distances), and drop the redundant follow-ups. It stops at the first
+     *  real turn / next ramp / continue / arrive, and at a > [EXIT_COMPLEX_GAP_M] gap, so a genuine later
+     *  decision (a fork to a different highway a km on) is never swallowed. */
+    internal fun consolidateExits(list: List<Maneuver>): List<Maneuver> {
+        val out = mutableListOf<Maneuver>()
+        var i = 0
+        while (i < list.size) {
+            val m = list[i]
+            if (m.type == ManeuverType.RAMP_LEFT || m.type == ManeuverType.RAMP_RIGHT) {
+                var j = i + 1
+                var folded = m.distanceMeters
+                while (j < list.size &&
+                    (list[j].type == ManeuverType.FORK_LEFT || list[j].type == ManeuverType.FORK_RIGHT ||
+                        list[j].type == ManeuverType.MERGE) &&
+                    list[j - 1].distanceMeters < EXIT_COMPLEX_GAP_M
+                ) {
+                    folded += list[j].distanceMeters
+                    j++
+                }
+                if (j > i + 1) { out += m.copy(distanceMeters = folded); i = j; continue }
+            }
+            out += m
+            i++
+        }
+        return out
     }
 
     private fun osrmStep(s: JsonObject): Maneuver? {
