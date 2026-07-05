@@ -314,21 +314,21 @@ class GoogleMapsDataSource @Inject constructor(
                 // only when you PICK one to drive ([nameRoute]) — so the picker loads fast and we never snap a
                 // route you don't take. Google's routes already carry duration_in_traffic + congestion spans.
                 val googleAlts = google.drop(1).filter { it.polyline.size >= 5 }.map { it.copy(provisional = true) }
-                // Rank by live in-traffic ETA so the FASTEST-right-now route leads (Google-style). Each
-                // Google alternate carries its OWN duration_in_traffic (parseRoute reads summary[10][0][0]
-                // per route in root[0][1]); an OSRM/other route without one is put on the SAME axis by
-                // scaling its free-flow by the top Google route's in-traffic ratio (1.0 if no live traffic)
-                // — else the old `?: durationSeconds` sorted a traffic-inflated Google alt against an
-                // un-inflated free-flow OSRM route (different axes → the fastest didn't reliably lead).
-                val gRatio = gTop?.let { g ->
-                    g.durationInTrafficSeconds?.takeIf { g.durationSeconds > 0 }?.div(g.durationSeconds)
-                }?.coerceIn(0.5, 4.0) ?: 1.0
+                // Rank by live in-traffic ETA so the FASTEST-right-now route leads (Google-style), sorting by
+                // the EXACT value the picker shows (`durationInTrafficSeconds ?: durationSeconds`, RouteOption)
+                // so the top/selected route is always the one the picker tags "Fastest" — otherwise the sort
+                // and the displayed times disagree and the fastest-shown route isn't at the top (the bug).
+                // The traffic axis is already fair without a fudge factor: PRIMARY routes are run through
+                // applyTraffic above (their durationInTrafficSeconds = free-flow × the top Google route's
+                // in-traffic ratio), and Google's own alternates carry their real per-route duration_in_traffic
+                // — so a route only falls back to raw durationSeconds when there's genuinely no traffic signal
+                // for it, and then showing/sorting that free-flow time is the honest, self-consistent fallback.
                 // Dedupe by path (keeps the fastest of look-alikes) + cap so the picker stays short.
                 dedupeRoutes(
                     (listOf(primary.first()) + googleAlts + primary.drop(1))
                         .sortedWith(
                             compareBy(
-                                { it.durationInTrafficSeconds ?: (it.durationSeconds * gRatio) },
+                                { it.durationInTrafficSeconds ?: it.durationSeconds },
                                 { it.provisional }, // stable tie-break: a fully-named route leads over a provisional look-alike
                             ),
                         ),

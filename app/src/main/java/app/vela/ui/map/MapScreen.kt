@@ -89,7 +89,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -201,6 +204,9 @@ fun MapScreen(
     // we can't rely on clearFocus() to close it; pick-mode is reset explicitly instead).
     val searchOpen = searchFocused || state.pickingOrigin || state.pickingStop
     var metersPerPixel by remember { mutableStateOf(0.0) }
+    // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
+    // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
+    var navBannerBottomPx by remember { mutableStateOf(0) }
     val focusManager = LocalFocusManager.current
 
     // Back peels one layer at a time — steps → navigation → route preview →
@@ -308,6 +314,7 @@ fun MapScreen(
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
+            navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
@@ -359,7 +366,9 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(12.dp),
+                    .padding(12.dp)
+                    // Report the banner's bottom edge so the compass can drop just below it (any height).
+                    .onGloballyPositioned { navBannerBottomPx = (it.positionInRoot().y + it.size.height).roundToInt() },
             )
         } else {
             // While the search box is focused the whole thing becomes a full-screen
