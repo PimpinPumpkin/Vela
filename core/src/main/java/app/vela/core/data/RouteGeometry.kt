@@ -44,6 +44,10 @@ object RouteGeometry {
     // Max gap (m) between an exit ramp and a following fork/merge for them to count as ONE exit complex
     // (consolidateExits). Generous enough for a long ramp, short enough that a genuine km-away fork isn't folded.
     private const val EXIT_COMPLEX_GAP_M = 500.0
+    // Traffic-light landmark guidance (enrichWithLights): a light must be within this far BEFORE the turn (a
+    // block or two — "pass the light, then turn"), and within this far of the driven line to count as on-route.
+    private const val LIGHT_APPROACH_M = 400.0
+    private const val LIGHT_SNAP_M = 25.0
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The FOSSGIS OSRM backend for each mode. Transit has none → null geometry. */
@@ -249,6 +253,44 @@ object RouteGeometry {
             i++
         }
         return out
+    }
+
+    /**
+     * Prepend a Google-style landmark clause ("Pass the traffic light, then turn left onto 5th Ave") to a
+     * turn when 1–2 traffic signals sit on the road just before it. Deliberately CONSERVATIVE — Google only
+     * says it when it helps: ONLY plain surface-street turns (not ramps/merges/roundabouts/continues), ONLY
+     * when 1–2 signals fall within ~[LIGHT_APPROACH_M] before the turn AND within ~[LIGHT_SNAP_M] of the driven
+     * line (a light on a parallel street doesn't count), and NEVER for 0 or 3+ (nobody narrates "pass 4
+     * lights"). Called from the app ONLY when the toggle is on and only for the route being driven. [signals]
+     * = OverpassTrafficSignals.fetchAlong. Best-effort: empty signals or no match → route returned unchanged.
+     */
+    fun enrichWithLights(route: Route, signals: List<LatLng>): Route {
+        val poly = route.polyline
+        if (signals.isEmpty() || poly.size < 2) return route
+        val nav = app.vela.core.i18n.NavStringsRegistry.current()
+        fun nearestIdx(p: LatLng): Int {
+            var best = 0; var bd = Double.MAX_VALUE
+            for (i in poly.indices) { val d = poly[i].distanceTo(p); if (d < bd) { bd = d; best = i } }
+            return best
+        }
+        val legs = route.legs.map { leg ->
+            val idx = leg.maneuvers.map { nearestIdx(it.location) }
+            val newMans = leg.maneuvers.mapIndexed { i, m ->
+                if (i == 0 || (m.type != ManeuverType.TURN_LEFT && m.type != ManeuverType.TURN_RIGHT)) return@mapIndexed m
+                val toIdx = idx[i]; val fromIdx = idx[i - 1]
+                if (toIdx <= fromIdx) return@mapIndexed m
+                // Walk BACK from the turn along the line up to LIGHT_APPROACH_M, collecting the approach points.
+                val approach = ArrayList<LatLng>()
+                var acc = 0.0; var k = toIdx
+                while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k]); acc += poly[k].distanceTo(poly[k - 1]); k-- }
+                val count = signals.count { s -> approach.any { it.distanceTo(s) < LIGHT_SNAP_M } }
+                val lead = if (count in 1..2) nav.passLights(count) else ""
+                if (lead.isBlank()) m
+                else m.copy(instruction = "$lead, then " + m.instruction.replaceFirstChar { it.lowercaseChar() })
+            }
+            leg.copy(maneuvers = newMans)
+        }
+        return route.copy(legs = legs)
     }
 
     private fun osrmStep(s: JsonObject): Maneuver? {
