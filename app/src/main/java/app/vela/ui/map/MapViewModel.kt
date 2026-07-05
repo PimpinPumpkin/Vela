@@ -93,6 +93,7 @@ data class MapUiState(
     val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
     val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
+    val trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights+stop signs drawn at high zoom
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
@@ -1975,6 +1976,7 @@ class MapViewModel @Inject constructor(
         mapCenter = center
         refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
         refreshAddressOverlays(center) // + house-number labels for that region
+        refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -2176,6 +2178,44 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    private var controlsJob: Job? = null
+    private var controlsBox: DoubleArray? = null // [s,w,n,e] of the last fetched (padded) box
+
+    /**
+     * Traffic lights + stop signs drawn on the map (OSM `highway=traffic_signals`/`stop` via Overpass),
+     * gated to close zoom (z >= [CONTROLS_MIN_ZOOM]) so they don't clutter the browse map. The controls are
+     * STATIC, so we fetch a box padded 50% beyond the viewport and REUSE it while the center stays inside its
+     * inner half — panning/driving through the box triggers no refetch (spares the fair-use Overpass server);
+     * only nearing the box edge refetches. Single-flight + a short settle so a flick doesn't scrape.
+     */
+    private fun refreshTrafficControls(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        if (zoom < CONTROLS_MIN_ZOOM) {
+            controlsBox = null
+            controlsJob?.cancel()
+            if (_state.value.trafficControls.isNotEmpty()) _state.update { it.copy(trafficControls = emptyList()) }
+            return
+        }
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        controlsBox?.let { b ->
+            val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+            // Still comfortably inside the cached box → the drawn set already covers the view, do nothing.
+            if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+        }
+        controlsJob?.cancel()
+        controlsJob = viewModelScope.launch {
+            delay(350)
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+            val res = runCatching {
+                withContext(Dispatchers.IO) {
+                    app.vela.core.data.OverpassTrafficSignals.fetchControlsInBox(http, s, w, n, e)
+                }
+            }.getOrNull() ?: return@launch
+            controlsBox = doubleArrayOf(s, w, n, e)
+            _state.update { it.copy(trafficControls = res) }
+        }
+    }
+
     // --- Offline ROUTING graphs (Settings → Offline routing) ---------------------------------
 
     /** Reflect what's installed + fetch the manifest of downloadable region graphs. */
@@ -2222,6 +2262,7 @@ class MapViewModel @Inject constructor(
 
     companion object {
         const val KEY_DISMISSED = "dismissed"
+        const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
         const val STALE_LOCATION_MS = 12_000L // grey the dot after this long with no fix
         const val SPEED_HOLD_MS = 3_000L // hold a speedless-fix speed at most this long, then show 0
         const val SPEED_ZERO_MS = 6_000L // no fixes AT ALL for this long → zero the mph. Two full cycles
