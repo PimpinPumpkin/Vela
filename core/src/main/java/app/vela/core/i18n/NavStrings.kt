@@ -114,7 +114,7 @@ object EnNavStrings : NavStrings {
     // Feet under ~0.15 mi, else miles; metres under ~1 km, else kilometres (unchanged from NavEngine).
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} feet"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} feet"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 mile" else "$miles miles"
@@ -159,6 +159,10 @@ object EnNavStrings : NavStrings {
         var s = text
         s = Regex("\\bI-(\\d+)").replace(s) { "Interstate ${it.groupValues[1]}" }
         s = Regex("\\bUS-(\\d+)").replace(s) { "US ${it.groupValues[1]}" }
+        // State/province highway refs (CA-99, SR-99, WA-520, …) → "State Route N". Reading the bare 2-letter
+        // code (e.g. "CA") makes espeak's G2P mangle the K/C onset — a cause of the "the K/T sounds off
+        // sometimes" bug. Runs AFTER I-/US- so those keep their spoken forms (US- is already de-hyphenated).
+        s = Regex("\\b[A-Z]{2}-(\\d+)").replace(s) { "State Route ${it.groupValues[1]}" }
         EN_SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
         s = SpeechText.spokenNumbers(s) // "128th" → "one twenty-eighth", not a mangled "one hundred and 28th"
         return s
@@ -242,7 +246,7 @@ object FrNavStrings : NavStrings {
     // France is metric; the imperial branch is kept for parity. French uses a decimal COMMA ("1,2 km").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} pieds"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} pieds"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 mile" else "${frNum(miles)} miles"
@@ -325,7 +329,7 @@ object DeNavStrings : NavStrings {
     // Unit words are DATIVE, because the phrase is almost always spoken inside inThen ("In 400 Metern, …").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} Fuß"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} Fuß"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 Meile" else "${deNum(miles)} Meilen"
@@ -433,7 +437,7 @@ object EsNavStrings : NavStrings {
     // Spain is metric; the imperial branch is kept for parity. Spanish uses a decimal COMMA ("1,2 km").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} pies"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} pies"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 milla" else "${esNum(miles)} millas"
@@ -524,7 +528,7 @@ object ItNavStrings : NavStrings {
     // Italy is metric; the imperial branch is kept for parity. Italian uses a decimal COMMA ("1,2 km").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} piedi"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} piedi"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 miglio" else "${itNum(miles)} miglia"
@@ -611,7 +615,7 @@ object PtNavStrings : NavStrings {
     // Brazil is metric; the imperial branch is kept for parity. Portuguese uses a decimal COMMA ("1,2 km").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} pés"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} pés"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 milha" else "${ptNum(miles)} milhas"
@@ -719,7 +723,7 @@ object NlNavStrings : NavStrings {
     // Nederland is metrisch; de imperiale tak blijft voor pariteit. Nederlands gebruikt een decimale KOMMA ("1,2 km").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} voet"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} voet"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 mijl" else "${nlNum(miles)} mijl"
@@ -801,7 +805,7 @@ object RuNavStrings : NavStrings {
     // Russia is metric; the imperial branch is kept for parity. Russian uses a decimal COMMA ("1,2 км").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) ruFeet((feet / 50).roundToInt() * 50)
+        if (feet < 800) ruFeet((if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50))
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             ruMiles(miles)
@@ -963,7 +967,7 @@ object PlNavStrings : NavStrings {
     // Poland is metric; the imperial branch is kept for parity. Polish uses a decimal COMMA ("1,2 km").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} stóp"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} stóp"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 mila" else "${plNum(miles)} ${plUnit(miles, "mila", "mile", "mil", "mili")}"
@@ -1088,7 +1092,7 @@ object SvNavStrings : NavStrings {
     // "engelsk mil"; "mil" is invariant in the plural ("två engelska mil").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} fot"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} fot"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             if (miles == 1.0) "1 engelsk mil" else "${svNum(miles)} engelska mil"
@@ -1178,7 +1182,7 @@ object UkNavStrings : NavStrings {
     // Ukraine is metric; the imperial branch is kept for parity. Ukrainian uses a decimal COMMA ("1,2 км").
     override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
         val feet = meters * 3.28084
-        if (feet < 800) "${(feet / 50).roundToInt() * 50} футів"
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} футів"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
             "${ukNum(miles)} ${ukPlural(miles, "миля", "милі", "миль")}"
