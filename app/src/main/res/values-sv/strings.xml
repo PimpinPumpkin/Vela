@@ -340,4 +340,10 @@
     <string name="cat_pharmacy">Apotek</string>
     <string name="cat_atms">Bankomater</string>
     <string name="cat_parks">Parker</string>
+    <!-- Resume-navigation prompt (persisted nav session) -->
+    <string name="mapscreen_resume_nav">Återuppta navigering till %1$s?</string> <!-- format -->
+    <string name="mapscreen_resume">Återuppta</string>
+    <string name="mapscreen_your_destination">ditt mål</string>
+    <string name="mapvm_resume_waiting_gps">Väntar på GPS för att återuppta navigeringen…</string>
+    <string name="mapvm_resume_failed">Kunde inte återuppta navigeringen</string>
 </resources>
