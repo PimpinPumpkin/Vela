@@ -261,6 +261,26 @@ genuinely needs no doc edit, say why in the commit.
   vehicle and the next turn along the polyline; add a clause in `NavStrings`. Needs a real-drive calibration of
   the snap threshold + how many lights to mention, so ship it OFF by default. The neural voice's occasional
   attack-clip at sentence starts is a model-level Piper limit, separate from the CA-99 fix.
+- Nav fixes (2026-07-05, round 2): (1) **Replay arrow** — the replay puck showed only the DOT, never the
+  directional arrow. The arrow's visibility keys on the `displayBearing` passed to `applyData`
+  (`VelaMapView` ~730), which prefers snap/compass/`myBearing`; recorded traces often carry no per-fix bearing,
+  so with no route snap it went null and hid the arrow. Now falls back to the engaged puck's OWN route-derived
+  heading (`navPuck.displayBearing`, seeded from the road segment by the motion ticker) while navigating.
+  (2) **Replay GPS snap-back** — the puck kept jumping from the trace to the user's REAL GPS. `replayTrip`
+  cancels+nulls `locationJob`, but `startLocation()` is guarded only by `locationJob != null`, so a permission
+  callback / MapScreen effect re-started the live collector mid-replay and its real fixes overwrote
+  `myLocation`+`center`. Fixed with two guards: `startLocation()` no-ops while `replaying`, and the live
+  collector drops every fix while `replaying` (belt-and-suspenders). Replay's `finally` still resumes live GPS
+  once `replaying=false`. (3) **U-turn / back-on-course** — a U-turn strays >45 m → `RerouteNeeded` → async
+  directions fetch (~1-3 s); but the U-turn outlasts the fetch, and by the time it lands the driver has
+  rejoined the ORIGINAL line and the engine cleared the `offRoute` latch — yet `reroute()` adopted the fresh
+  route anyway, yanking a self-corrected driver onto a different path. Now `reroute()` captures `fromRoute` and,
+  before adopting, discards the result if `route === fromRoute && !nav.offRoute` (back on course) — Google's
+  "you're back on course, carry on". Self-healing (a re-deviation re-fires the edge; no cooldown charged).
+  Wants a real-drive U-turn capture to verify end-to-end. (4) **Traffic incidents** — re-investigated + DEFERRED
+  (user, 2026-07-05): no keyless real-time source (Google keyless response carries none; incident tiles are
+  proprietary binary; OSM has only stale roadworks; DOT/511 needs a token + is per-state). Congestion colouring
+  already shows where it's slow. See ROADMAP.
 - Heading (browse-cone facing direction when stopped, where GPS course is noise): raw
   `SensorManager` `TYPE_ROTATION_VECTOR` (`core/location/HeadingProvider`) — a plain
   Android sensor, not GMS. **Navigation never uses it** (the nav heading comes from the
