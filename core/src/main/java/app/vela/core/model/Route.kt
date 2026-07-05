@@ -68,9 +68,12 @@ fun laneGuidance(lanes: List<Lane>): LaneGuidance? {
 fun continueHasGenuineFork(lanes: List<Lane>): Boolean {
     if (laneGuidance(lanes) == null) return false
     return lanes.any { lane ->
-        !lane.valid && lane.indications.any { ind ->
-            ind == "straight" || ind == "none" || ind == "through" || ind.startsWith("slight")
-        }
+        // Only an EXPLICIT straight/slight arrow on an off lane signals a parallel onward path. OSRM's
+        // "none" means the lane has NO painted arrow (its API's own wording), NOT "continues straight" — a
+        // plain turn bay or an unmarked outer lane is commonly emitted as "none", and treating it as
+        // straight-ish would re-speak the exact turn-bay case this gate silences. ("through" is never
+        // emitted — OSRM normalises the OSM `turn:lanes` value `through` to `straight` — so it's omitted.)
+        !lane.valid && lane.indications.any { ind -> ind == "straight" || ind.startsWith("slight") }
     }
 }
 
