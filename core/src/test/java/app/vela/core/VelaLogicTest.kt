@@ -136,6 +136,34 @@ class NavEngineTest {
         assertEquals(0, back.offRouteHits)
     }
 
+    /** The back-on-course discriminator for the reroute-abandon: offRoute clears on a SINGLE grazing
+     *  fix, which is too weak to abandon an in-flight reroute on (a spurious graze on a parallel leg would
+     *  kill a real missed-turn reroute). onRouteStreak requires a SUSTAINED rejoin. */
+    @Test
+    fun onRouteStreakNeedsSustainedRejoinNotOneGraze() {
+        val route = straightRoute()
+        val offPoint = LatLng(37.0050, -121.9955)
+        val onLine = LatLng(37.0050, -122.0000)
+        var state = NavState()
+        repeat(6) { state = NavEngine.update(route, state, offPoint).first }
+        assertTrue("off-route after repeated off fixes", state.offRoute)
+        assertEquals("off the line → streak is 0", 0, state.onRouteStreak)
+
+        // ONE fix back on the line clears the offRoute latch, but it's a single graze — streak = 1, below
+        // the back-on-course threshold (2), so NavSession must NOT abandon a reroute on it yet.
+        state = NavEngine.update(route, state, onLine).first
+        assertTrue("one on-line fix clears the latch", !state.offRoute)
+        assertEquals("but one fix is not a sustained rejoin", 1, state.onRouteStreak)
+
+        // A second consecutive on-line fix → solidly back on course (streak reaches the threshold).
+        state = NavEngine.update(route, state, onLine).first
+        assertEquals(2, state.onRouteStreak)
+
+        // A single off fix immediately resets the streak — a graze can never accumulate to the threshold.
+        state = NavEngine.update(route, state, offPoint).first
+        assertEquals(0, state.onRouteStreak)
+    }
+
     /** Reaching a non-final maneuver advances the step but must NOT mark arrival —
      *  only the final ARRIVE maneuver does. */
     @Test
