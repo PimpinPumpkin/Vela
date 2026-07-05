@@ -232,9 +232,13 @@ object NavEngine {
         // CONTINUE_ON_STREET (ghType) — so it can never carry a turn, fork, ramp, merge or u-turn.
         // Saying it is pure noise ("Continue onto X" when you do nothing, even when the NAME
         // changes under you — Google stays silent there too), so drop the voice + haptics; the
-        // step stays on the map + step list. One escape hatch: if OSRM attached a valid-lane
-        // subset, the driver must POSITION ("use the left 2 lanes to stay on…") — speak those.
-        val redundantContinue = target.type == ManeuverType.CONTINUE && lane == null
+        // step stays on the map + step list. STRAIGHT is the same "no driver action" case — OSRM
+        // stamps a dead-straight rename / straight-through as "turn"+"straight" (→ STRAIGHT), and a
+        // spoken "go straight" while the road just renames under you is exactly the reported noise;
+        // silence it too. One escape hatch for BOTH: if OSRM attached a valid-lane subset, the driver
+        // must POSITION ("use the left 2 lanes to stay on…") — speak those (lane != null).
+        val redundantContinue =
+            (target.type == ManeuverType.CONTINUE || target.type == ManeuverType.STRAIGHT) && lane == null
         val voiceSilent = isDepart || redundantContinue
 
         // Approach prompts, SPEED-SCALED (Google/OsmAnd scale announcements with speed — the fixed
