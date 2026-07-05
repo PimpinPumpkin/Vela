@@ -495,6 +495,18 @@ genuinely needs no doc edit, say why in the commit.
   `.github/workflows/address-overlays.yml` (clone of building-overlays), catalog `tools/address-regions.json`.
   **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves in new
   suburbs** — verified real Silver Firs numbers (13713, 13801, 14008…) rendered over the MS footprints.
+- **Traffic lights + stop signs drawn on the map (`OverpassTrafficSignals.fetchControlsInBox` + `VelaMapView`,
+  2026-07-05).** OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
+  non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath** the POI dots
+  + pins, `minZoom 16` + collision so a dense grid stays legible. Data is keyless Overpass (sibling of the
+  `fetchAlong` nav-landmark fetch + `OverpassPois`), fetched by `MapViewModel.refreshTrafficControls` from
+  `onViewport` **only at z ≥ `CONTROLS_MIN_ZOOM` (16)**. Controls are STATIC, so it fetches a box padded 50%
+  beyond the viewport and **reuses it while the center stays in the inner half** (`controlsBox`) — panning/driving
+  through an area triggers no refetch, sparing the fair-use Overpass server; only nearing the box edge refetches
+  (single-flight + 350 ms settle). The layer/updater are identity-gated like markers/ambient (`lastAppliedControls`)
+  so a nav speedo tick doesn't re-tessellate them. No app setting (zoom-gated); no PMTiles/CI (live Overpass, unlike
+  the building/address overlays). NB the `TRAFFIC_*` constants in `VelaMapView` are a DIFFERENT thing — Google's
+  live-traffic raster overlay; the controls use `CONTROLS_*`. Needs a real-drive glance to confirm density/size feel.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
