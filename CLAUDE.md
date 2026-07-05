@@ -245,6 +245,22 @@ genuinely needs no doc edit, say why in the commit.
   driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a traversed-grey full line) —
   MapLibre bakes line-gradients into a 256-texel texture, so a gradient stop can never render a crisp
   cut and there is no `line-trim-offset` in MapLibre; don't "simplify" it back to a gradient.
+- Nav drive-report fixes (2026-07-05): (1) **Route line z-order** — the route line inserts BELOW the first
+  symbol layer, but Liberty's first symbol is `road_one_way_arrow` (~idx 61) which sits UNDER the `bridge_*`
+  layers (~63-82) → bridges painted over the route on bridges (it "vanished"). `VelaMapView.ensureLayers`
+  anchors instead to the first symbol AFTER the last `bridge_*` layer (a real label), so the route draws above
+  all road+bridge geometry, still below text. (2) **Exit consolidation** — OSRM splits one exit into ramp +
+  fork/merge steps, each spoken separately ("Take exit 15"…"Keep right"…"Merge"). `RouteGeometry.consolidateExits`
+  folds a ramp's immediately-following, <500 m-gapped FORK/MERGE run into the ramp maneuver (sums distances so
+  they still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested. (3) **Feet steps**
+  — `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round feet Google-style: 50 ft at/above
+  100 ft, 10 ft below. (4) **Voice K/C** — `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) →
+  "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. (5) **Traffic-light landmarks
+  ("pass the light, then turn") — NOT built, feasible + planned:** OSM `highway=traffic_signals` is keyless via
+  Overpass (verified dense: 300 in a small Sacramento bbox), mirror `OverpassPois`; count signals between the
+  vehicle and the next turn along the polyline; add a clause in `NavStrings`. Needs a real-drive calibration of
+  the snap threshold + how many lights to mention, so ship it OFF by default. The neural voice's occasional
+  attack-clip at sentence starts is a model-level Piper limit, separate from the CA-99 fix.
 - Heading (browse-cone facing direction when stopped, where GPS course is noise): raw
   `SensorManager` `TYPE_ROTATION_VECTOR` (`core/location/HeadingProvider`) — a plain
   Android sensor, not GMS. **Navigation never uses it** (the nav heading comes from the
