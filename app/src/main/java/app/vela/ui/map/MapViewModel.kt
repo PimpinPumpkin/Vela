@@ -91,6 +91,7 @@ data class MapUiState(
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
     val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
+    val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
@@ -1964,6 +1965,7 @@ class MapViewModel @Inject constructor(
         // viewport center here so the search can never bias to a stale, pre-pan location.
         mapCenter = center
         refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
+        refreshAddressOverlays(center) // + house-number labels for that region
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -2139,6 +2141,29 @@ class MapViewModel @Inject constructor(
             }
             val distinct = uris.distinct()
             if (distinct != _state.value.buildingOverlays) _state.update { it.copy(buildingOverlays = distinct) }
+        }
+    }
+
+    @Volatile
+    private var addressManifestCache: List<app.vela.offline.RoutingRegion>? = null
+
+    /**
+     * House-number (address-point) overlay, streamed for the region in view — footprints get their numbers
+     * where OSM has no `addr:housenumber` (OpenAddresses data as a PMTiles of points; rendered as a
+     * SymbolLayer of numbers at high zoom). Streaming-only for now (a few KB of tiles per view, no download);
+     * reuses `overlayStore.manifest` (manifest-URL-agnostic) against `ADDRESS_MANIFEST_URL`. De-duped.
+     */
+    private fun refreshAddressOverlays(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        val c = center ?: return
+        viewModelScope.launch {
+            runCatching {
+                val man = addressManifestCache
+                    ?: overlayStore.manifest(app.vela.BuildConfig.ADDRESS_MANIFEST_URL).also { addressManifestCache = it }
+                val list = man.filter { c.lat in it.s..it.n && c.lng in it.w..it.e }
+                    .minByOrNull { (it.n - it.s) * (it.e - it.w) }
+                    ?.let { listOf("pmtiles://${it.url}") } ?: emptyList()
+                if (list != _state.value.addressOverlays) _state.update { it.copy(addressOverlays = list) }
+            }
         }
     }
 

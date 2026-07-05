@@ -307,6 +307,7 @@ fun MapScreen(
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
+            addressOverlays = state.addressOverlays,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,

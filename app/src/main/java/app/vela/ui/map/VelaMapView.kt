@@ -177,6 +177,7 @@ fun VelaMapView(
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
+    addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
@@ -291,6 +292,39 @@ fun VelaMapView(
                     setProperties(PropertyFactory.fillColor(fill), PropertyFactory.fillOutlineColor(line))
                 }
                 if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
+            }
+        }
+    }
+
+    // House-number labels from the open ADDRESS overlay (OpenAddresses PMTiles of points): a SymbolLayer of the
+    // `number` field, STREAMED for the region in view — fills in house numbers where OSM has no `addr:housenumber`
+    // (the same gap the building overlay fills for footprints). Placed ON TOP (addLayer) so numbers read over the
+    // building fills; matched to the basemap `vela-housenumber` style (Noto Sans 10, grey + white halo). minZoom 17
+    // so numbers only appear zoomed right in (Google-style) and collision thins dense blocks.
+    LaunchedEffect(addressOverlays, styleRef, darkTheme) {
+        val style = styleRef ?: return@LaunchedEffect
+        style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { runCatching { style.removeLayer(it) } }
+        style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { runCatching { style.removeSource(it) } }
+        val txt = if (darkTheme) "#9aa0a6" else "#8a8a8a"
+        val halo = if (darkTheme) "#1b2432" else "#ffffff"
+        addressOverlays.forEachIndexed { i, uri ->
+            runCatching {
+                val srcId = "vela-addr-src-$i"
+                style.addSource(VectorSource(srcId, uri))
+                style.addLayer(
+                    SymbolLayer("vela-addr-$i", srcId).apply {
+                        setSourceLayer("address") // tippecanoe layer name (build-address-region.sh: -l address)
+                        setMinZoom(16f) // match the basemap vela-housenumber layer; numbers appear at street-ish zoom, collision thins dense blocks
+                        setProperties(
+                            PropertyFactory.textField(Expression.get("number")),
+                            PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                            PropertyFactory.textSize(10f),
+                            PropertyFactory.textColor(txt),
+                            PropertyFactory.textHaloColor(halo),
+                            PropertyFactory.textHaloWidth(1f),
+                        )
+                    },
+                )
             }
         }
     }
