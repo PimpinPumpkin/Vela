@@ -33,11 +33,14 @@ object OverpassPois {
     ): List<Place> = try {
         val bbox = "$south,$west,$north,$east"
         // amenity covers schools/hospitals/etc.; leisure covers parks/playgrounds; boundary=national_park
-        // catches big parks tagged as a boundary rather than leisure=park (they'd otherwise be missed).
+        // catches big parks tagged as a boundary rather than leisure=park. National parks are AREAS
+        // (relations/closed ways), essentially never standalone nodes, so that clause is `nwr` (not `node`)
+        // and the whole query uses `out center` so each way/relation carries a representative point (a no-op
+        // for the nodes, which already have lat/lon) — toPlace reads `center` when top-level lat/lon is absent.
         val query = "[out:json][timeout:25];" +
             "(node[amenity][name]($bbox);node[shop][name]($bbox);node[tourism][name]($bbox);" +
             "node[\"public_transport\"][name]($bbox);node[leisure][name]($bbox);" +
-            "node[boundary=national_park][name]($bbox););out $limit;"
+            "nwr[boundary=national_park][name]($bbox););out center $limit;"
         val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
         val req = Request.Builder()
             .url(url)
@@ -55,8 +58,13 @@ object OverpassPois {
     private fun toPlace(el: JsonObject): Place? {
         val tags = el["tags"]?.jsonObject ?: return null
         val name = (tags["name"] as? JsonPrimitive)?.contentOrNull ?: return null
-        val lat = (el["lat"] as? JsonPrimitive)?.doubleOrNull ?: return null
-        val lng = (el["lon"] as? JsonPrimitive)?.doubleOrNull ?: return null
+        // Nodes carry lat/lon directly; ways/relations (from `out center`, e.g. a national-park boundary)
+        // carry a representative point under `center` instead.
+        val center = el["center"]?.jsonObject
+        val lat = (el["lat"] as? JsonPrimitive)?.doubleOrNull
+            ?: (center?.get("lat") as? JsonPrimitive)?.doubleOrNull ?: return null
+        val lng = (el["lon"] as? JsonPrimitive)?.doubleOrNull
+            ?: (center?.get("lon") as? JsonPrimitive)?.doubleOrNull ?: return null
         fun tag(k: String) = (tags[k] as? JsonPrimitive)?.contentOrNull
         val category = tag("amenity") ?: tag("shop") ?: tag("tourism") ?: tag("leisure") ?: tag("public_transport") ?: tag("boundary")
         // Keep the useful OSM detail tags too, so offline POIs aren't just a name on a
