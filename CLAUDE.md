@@ -517,7 +517,7 @@ genuinely needs no doc edit, say why in the commit.
   `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
   `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, grey +
   white halo, **minZoom 16** (matches the basemap `vela-housenumber` layer; collision thins dense blocks) —
-  placed ON TOP (addLayer) so numbers read over the building fills. **Streams online exactly like buildings**
+  inserted below `vela-controls` (see the LAYER ORDER warning below). **Streams online exactly like buildings**
   (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → smallest-covering region's
   `pmtiles://https://…` URI; reuses `overlayStore.manifest()` which is manifest-URL-agnostic).
   **⚠️ LAYER ORDER (2026-07-06, device-verified fix):** the addr layers are inserted **BELOW `vela-controls`**
