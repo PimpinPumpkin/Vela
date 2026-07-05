@@ -93,7 +93,15 @@ class PiperSynth @Inject constructor(
         // loadFailed sticks so the voice stays SILENT until an app restart. A brief retry heals it.
         repeat(2) { attempt ->
             try {
-                val vits = OfflineTtsVitsModelConfig(model = r.model, tokens = r.tokens, dataDir = r.dataDir)
+                // Lower the VITS noise scales below the library defaults (noiseScale 0.667, noiseScaleW 0.8).
+                // Those defaults make synthesis STOCHASTIC — the same phrase varies run to run, which is why
+                // stop consonants land cleanly most of the time but occasionally drop/soften ("left"→"lef",
+                // "turn"→"durn"). Calmer sampling hews closer to the model's mean prediction, so consonants
+                // come out consistently; the small loss of prosodic variety is a good trade for nav clarity.
+                val vits = OfflineTtsVitsModelConfig(
+                    model = r.model, tokens = r.tokens, dataDir = r.dataDir,
+                    noiseScale = 0.5f, noiseScaleW = 0.6f,
+                )
                 val cfg = OfflineTtsConfig(model = OfflineTtsModelConfig(vits = vits, numThreads = 2, debug = false))
                 val engine = OfflineTts(assetManager = null, config = cfg)
                 numSpeakers = engine.numSpeakers()
