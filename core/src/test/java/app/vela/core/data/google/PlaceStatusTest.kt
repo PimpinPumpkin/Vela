@@ -44,6 +44,21 @@ class PlaceStatusTest {
         assertEquals(null, SearchParser.parseOpenNow("Hours may vary", "en")) // no affirmative signal → null
     }
 
+    /** Owner-set temporary closure → first-class flag (the place-sheet banner + hours suppression;
+     *  the "Tee Sud" resilience ask — when the owner DOES tell Google, Vela must be loud about it).
+     *  Multilingual CONTAINS matching: several languages put the closed word first. */
+    @Test fun `temporary closure is detected across languages, and only when present`() {
+        assertEquals(true, SearchParser.isTemporarilyClosed("Temporarily closed"))
+        assertEquals(true, SearchParser.isTemporarilyClosed(null, "Temporarily closed")) // any status slot
+        assertEquals(true, SearchParser.isTemporarilyClosed("Fermé temporairement"))
+        assertEquals(true, SearchParser.isTemporarilyClosed("Vorübergehend geschlossen"))
+        assertEquals(true, SearchParser.isTemporarilyClosed("Временно закрыто"))
+        assertEquals(false, SearchParser.isTemporarilyClosed("Closed ⋅ Opens 7 AM"))
+        assertEquals(false, SearchParser.isTemporarilyClosed("Open ⋅ Closes 9 PM"))
+        assertEquals(false, SearchParser.isTemporarilyClosed("Permanently closed"))
+        assertEquals(false, SearchParser.isTemporarilyClosed(null, null))
+    }
+
     @Test fun `localized - closed-first ordering disarms every prefix-cousin collision`() {
         // pt: "Fechado" (closed) is a PREFIX-EXTENSION of "Fecha" (closes → open) — closed wins.
         assertEquals(false, SearchParser.parseOpenNow("Fechado ⋅ Abre às 9:00", "pt"))
