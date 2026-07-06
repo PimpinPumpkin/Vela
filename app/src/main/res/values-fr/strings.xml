@@ -132,6 +132,7 @@
     <string name="place_set_as_work">Définir comme Travail</string>
     <string name="place_close">Fermer</string>
     <string name="place_permanently_closed">Définitivement fermé</string>
+    <string name="place_temporarily_closed">Fermé temporairement</string>
     <string name="place_address_copied">Adresse copiée</string>
     <string name="place_copy_address">Copier l\'adresse</string>
     <string name="place_directions">Itinéraire</string>
