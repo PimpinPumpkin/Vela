@@ -132,6 +132,7 @@
     <string name="place_set_as_work">Establecer como Trabajo</string>
     <string name="place_close">Cerrar</string>
     <string name="place_permanently_closed">Cerrado permanentemente</string>
+    <string name="place_temporarily_closed">Cerrado temporalmente</string>
     <string name="place_address_copied">Dirección copiada</string>
     <string name="place_copy_address">Copiar dirección</string>
     <string name="place_directions">Cómo llegar</string>

@@ -152,6 +152,13 @@ object SearchParser {
             permanentlyClosed = field("closedFlag").int() == 1 || isPermanentlyClosed(
                 field("status118").str(), field("statusRich").str(), field("openStatus").str(),
             ),
+            // Owner-set TEMPORARY closure (the "Tee Sud" resilience ask): when an owner marks the
+            // business temporarily closed, Google replaces the status text with "Temporarily closed"
+            // (localized) — surface it first-class so the UI can banner it and suppress the now-
+            // misleading weekly hours, instead of quietly relying on the red status colour alone.
+            temporarilyClosed = isTemporarilyClosed(
+                field("status118").str(), field("statusRich").str(), field("openStatus").str(),
+            ),
             hours = parseHours(entry, paths),
             photoUrls = parsePhotos(entry, paths),
             featuredReview = field("featuredReview").str()
@@ -258,6 +265,19 @@ object SearchParser {
      *  → a dead POI. Kept in search results but hidden from the map and labelled. */
     private fun isPermanentlyClosed(vararg status: String?): Boolean =
         status.any { it != null && it.contains("Permanently", ignoreCase = true) }
+
+    /** Owner-set TEMPORARY closure, matched across the request languages' status wording
+     *  ("Temporarily closed" / "Fermé temporairement" / "Vorübergehend geschlossen" …). CONTAINS,
+     *  not startsWith — several languages put the closed word first ("Fermé temporairement").
+     *  The words are distinctive enough that no `hl` gating is needed. Unlike permanent closure,
+     *  a temp-closed place STAYS on the map — the UI banners it instead. */
+    private val TEMP_CLOSED_WORDS = listOf(
+        "Temporarily", "temporairement", "Vorübergehend", "temporalmente", "temporaneamente",
+        "temporariamente", "Tijdelijk", "Временно", "Tymczasowo", "Tillfälligt", "Тимчасово",
+    )
+
+    internal fun isTemporarilyClosed(vararg status: String?): Boolean =
+        status.any { s -> s != null && TEMP_CLOSED_WORDS.any { s.contains(it, ignoreCase = true) } }
 
     /** Google's status strings begin with a small, stable set of words per UI language (`hl=`).
      *  CLOSED indicators per language — matched FIRST, because in several languages the closed
