@@ -132,6 +132,7 @@
     <string name="place_set_as_work">Зробити роботою</string>
     <string name="place_close">Закрити</string>
     <string name="place_permanently_closed">Закрито назавжди</string>
+    <string name="place_temporarily_closed">Тимчасово зачинено</string>
     <string name="place_address_copied">Адресу скопійовано</string>
     <string name="place_copy_address">Копіювати адресу</string>
     <string name="place_directions">Маршрут</string>

@@ -240,6 +240,23 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
 
 ## Known-hard / blocked
 
+- **Owner updates / local posts in the place sheet** *(investigated 2026-07-06, the "Tee Sud Thai"
+  case — deferred pending a calibration sample)*. Ground truth from the live probe: a restaurant
+  physically closed (paper sign on the door) during its listed hours carried **NO closure signal
+  anywhere in Google's data** — no temporarily-closed status, no owner post; even google.com/maps
+  showed plain hours ("Closed · Opens 11:30 AM Tue"), and its active "Order pickup online"
+  integration keeps the profile looking operational. **No app can be resilient to a paper sign the
+  owner never enters into any system.** What we CAN do (and shipped): first-class
+  `Place.temporarilyClosed` (multilingual status-text match) → place-sheet banner + hours
+  suppression, so when an owner DOES set the formal closure Vela is loud about it. The remaining
+  piece — owner POSTS ("closed for renovation until…") — has a discovered keyless-family endpoint,
+  **`/maps/preview/localposts?…&pb=…`** (found in the place page's endpoint table next to
+  `/maps/preview/place`), but its `pb` grammar needs a live capture from a business that actually
+  has owner posts; none found in a bounded hunt (posts are rare + Google demotes temp-closed places
+  in search). Revisit when we encounter one — capture the RPC via devtools/Claude-in-Chrome, then
+  it's the standard calibration pipeline. The full-screen reviews panel (live Google profile) shows
+  Updates already when they exist.
+
 - ~~Busy / popular times~~ — **DONE keyless 2026-06-19** (the 2026-06-18 "login-gated"
   conclusion was *wrong*). The histogram is place node `[84]`; the keyless **OkHttp**
   `/search` is bot-degraded (TLS-fingerprint, like photos/transit) and strips it, which

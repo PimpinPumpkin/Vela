@@ -508,6 +508,18 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+            if (place.temporarilyClosed && !place.permanentlyClosed) {
+                // Owner-set temporary closure — banner it like Google does, and suppress the ordinary
+                // status/hours lines below (an "Opens 11:30 AM Tue" under a temp-closure reads as if the
+                // place will open then, which is exactly the misleading state the closure overrides).
+                Text(
+                    stringResource(R.string.place_temporarily_closed),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFD93838),
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
             // Google's live status STRING is PRIMARY: it's the only source that knows an owner-set
             // "closed today" (the weekly hours now carry holiday overrides, but not ad-hoc closures).
             // Only when Google gives NO status do we fall back to an Open/Closed computed from the weekly
@@ -526,7 +538,7 @@ fun PlaceSheet(
             }
             val statusLine = place.statusText
                 ?: computedStatus?.let { (if (it.open) "Open" else "Closed") + " · " + it.detail }
-            statusLine?.takeIf { !place.permanentlyClosed }?.let { status ->
+            statusLine?.takeIf { !place.permanentlyClosed && !place.temporarilyClosed }?.let { status ->
                 // Google colours the status word (Open/Closed) and keeps the time
                 // in the normal ink colour: "**Open** · Closes 9 PM".
                 val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
@@ -546,7 +558,7 @@ fun PlaceSheet(
             val holiday = remember(place.hours, nowMinute) {
                 upcomingHoliday(place.hours, nowMinute.toLocalDate())
             }
-            if (!place.permanentlyClosed) holiday?.let { h ->
+            if (!place.permanentlyClosed && !place.temporarilyClosed) holiday?.let { h ->
                 Text(
                     buildAnnotatedString {
                         withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = Color(0xFFE0A63C))) {
