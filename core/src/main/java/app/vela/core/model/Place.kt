@@ -22,6 +22,9 @@ data class Place(
     val openNow: Boolean? = null,
     val statusText: String? = null, // Google's own status, e.g. "Open · Closes 9 PM"
     val permanentlyClosed: Boolean = false, // dead POI — still searchable, hidden from the map
+    val temporarilyClosed: Boolean = false, // owner-set temporary closure — STAYS on the map, but the UI
+                                            // banners it and suppresses the (now-misleading) weekly hours,
+                                            // Google-style ("resilient when the owner updates the notice")
 
     val hours: List<String> = emptyList(),
     val photoUrls: List<String> = emptyList(),

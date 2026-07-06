@@ -132,6 +132,7 @@
     <string name="place_set_as_work">Instellen als Werk</string>
     <string name="place_close">Sluiten</string>
     <string name="place_permanently_closed">Permanent gesloten</string>
+    <string name="place_temporarily_closed">Tijdelijk gesloten</string>
     <string name="place_address_copied">Adres gekopieerd</string>
     <string name="place_copy_address">Adres kopiëren</string>
     <string name="place_directions">Route</string>
