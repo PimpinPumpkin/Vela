@@ -150,6 +150,7 @@
     <string name="place_set_as_work">Set as Work</string>
     <string name="place_close">Close</string>
     <string name="place_permanently_closed">Permanently closed</string>
+    <string name="place_temporarily_closed">Temporarily closed</string>
     <string name="place_address_copied">Address copied</string>
     <string name="place_copy_address">Copy address</string>
     <string name="place_directions">Directions</string>
