@@ -4,7 +4,7 @@ A degoogled maps & navigation client for Android — *what NewPipe is to YouTube
 for Google Maps.* Open vector tiles for the basemap, the device itself scraping
 Google's public web endpoints (per-user, no backend) for the things only Google
 does well: POI quality, routing, and **traffic-aware ETAs**. Built to run on
-GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
+GrapheneOS and other no-GMS ROMs.
 
 ## Install
 
