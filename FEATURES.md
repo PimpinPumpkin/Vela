@@ -280,8 +280,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   to &lt;place&gt;?"** card (Resume / Dismiss) if that drive is recent (`RESUME_MAX_AGE_MS` = 60 min), and
   **Resume re-routes from your CURRENT fix** to the saved destination and restarts nav — a fresh route that
   accounts for however far you drove while the app was gone (and any traffic since), rather than restoring a
-  stale line. Cleared on stop/arrival. Only the destination is persisted (no Route serialization). **Device-
-  verified on a Pixel 5a:** start nav → `am force-stop` (simulating the reap) → relaunch → the "Resume
+  stale line. Cleared on stop AND on **arrival** (the arrival branch now clears the resume pref too, so a
+  completed drive isn't offered for resume next launch — audit 2026-07-06). The 60-min freshness window is
+  **heartbeated every 5 min while driving** (`NAV_HEARTBEAT_MS`), so it measures time since the interruption,
+  not since nav start — a >60-min drive can still be resumed (before, the timestamp was written once at start
+  and a long drive fell outside the window). Only the destination is persisted (no Route serialization).
+  **Device-verified on a Pixel 5a:** start nav → `am force-stop` (simulating the reap) → relaunch → the "Resume
   navigation to Safeway?" card appears; Resume re-routes + resumes. *(The other restart symptom — the map not
   re-plotting a still-live route on a mere Activity recreate — is moot here since the session is rebuilt from
   the current fix.)*
