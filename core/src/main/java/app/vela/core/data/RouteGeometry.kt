@@ -313,11 +313,15 @@ object RouteGeometry {
                 val approach = ArrayList<LatLng>()
                 var acc = 0.0; var k = toIdx
                 while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k]); acc += poly[k].distanceTo(poly[k - 1]); k-- }
-                // A signal AT the turn intersection itself is the one you're turning at, not one you "pass"
-                // first (the walk starts at poly[toIdx], the turn vertex) — exclude it by distance to the turn.
+                // A signal belonging to the turn's OWN junction is the one you're turning at, not one you
+                // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex — the SAME
+                // radius the clustering below treats as one physical junction (one signal per approach can
+                // sit 25-30 m before the junction-center vertex, so LIGHT_SNAP_M=25 was too tight and let
+                // the turn's own light through; audit 2026-07-07). LIGHT_SNAP_M stays the on-the-driven-line
+                // snap tolerance.
                 val turnPt = poly[toIdx]
                 val matched = signals.filter { s ->
-                    turnPt.distanceTo(s) >= LIGHT_SNAP_M && approach.any { it.distanceTo(s) < LIGHT_SNAP_M }
+                    turnPt.distanceTo(s) >= LIGHT_CLUSTER_M && approach.any { it.distanceTo(s) < LIGHT_SNAP_M }
                 }
                 // Cluster the matched nodes: OSM maps one traffic_signals node per approach/carriageway at a
                 // junction, so counting raw nodes would say "pass 2 lights" for one physical intersection.
