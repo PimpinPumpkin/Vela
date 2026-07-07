@@ -212,7 +212,7 @@ object RouteGeometry {
                 maneuvers += prev.copy(distanceMeters = prev.distanceMeters + m.distanceMeters)
             }
         }
-        val consolidated = consolidateExits(maneuvers)
+        val consolidated = foldRenames(consolidateExits(maneuvers))
         maneuvers.clear(); maneuvers.addAll(consolidated)
         if (maneuvers.size < 2) return null
         return Route(
@@ -254,6 +254,33 @@ object RouteGeometry {
             }
             out += m
             i++
+        }
+        return out
+    }
+
+    /** Fold a pure-rename CONTINUE into the PRECEDING maneuver so it never becomes its own banner card / step.
+     *  OSRM emits a `continue`/`new name` step wherever the road merely renames under you ("132nd St SE
+     *  becomes Cathcart Way") — NavEngine already SILENCES its voice, but it still surfaced as a "Continue
+     *  onto X" card, which reads as noise when there's no decision to make (Google shows nothing there, just
+     *  the next real turn — user 2026-07-06). Drop it and add its distance/time to the previous step so the
+     *  step lengths still tile the polyline (NavEngine locates each maneuver by a prefix-sum of step
+     *  distances). A CONTINUE that is a GENUINE fork (lanes show an off-lane that also goes straight, "use the
+     *  left 2 lanes to stay on I-80") is KEPT — it's a real decision and IS spoken. Never folds the first
+     *  maneuver, and STRAIGHT (a junction straight-through, a real intersection) is intentionally left alone. */
+    internal fun foldRenames(list: List<Maneuver>): List<Maneuver> {
+        val out = mutableListOf<Maneuver>()
+        for (m in list) {
+            val redundant = m.type == ManeuverType.CONTINUE &&
+                !app.vela.core.model.continueHasGenuineFork(m.lanes)
+            if (redundant && out.isNotEmpty()) {
+                val prev = out.removeAt(out.lastIndex)
+                out += prev.copy(
+                    distanceMeters = prev.distanceMeters + m.distanceMeters,
+                    durationSeconds = prev.durationSeconds + m.durationSeconds,
+                )
+            } else {
+                out += m
+            }
         }
         return out
     }

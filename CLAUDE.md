@@ -282,7 +282,13 @@ genuinely needs no doc edit, say why in the commit.
   all road+bridge geometry, still below text. (2) **Exit consolidation** — OSRM splits one exit into ramp +
   fork/merge steps, each spoken separately ("Take exit 15"…"Keep right"…"Merge"). `RouteGeometry.consolidateExits`
   folds a ramp's immediately-following, <500 m-gapped FORK/MERGE run into the ramp maneuver (sums distances so
-  they still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested. (3) **Feet steps**
+  they still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested. **Sibling
+  `RouteGeometry.foldRenames` (2026-07-06)** folds a pure-rename CONTINUE (OSRM `continue`/`new name` going
+  straight, no genuine fork — "132nd St SE becomes Cathcart Way") into the PRECEDING maneuver so it's not its own
+  banner card / step at all — NavEngine already SILENCED its voice, but it still showed a silly "Continue onto X"
+  card where Google shows nothing (user report). Applied on BOTH routers (OSRM `parseOsrmRoute` + GraphHopper
+  `toRoute`); a genuine-fork CONTINUE (`continueHasGenuineFork`, spoken) and STRAIGHT (a junction straight-through)
+  are left alone. Unit-tested. (3) **Feet steps**
   — `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round feet Google-style: 50 ft at/above
   100 ft, 10 ft below. (4) **Voice K/C** — `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) →
   "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. (6) **Continue/straight lane silence** — a CONTINUE/STRAIGHT speaks its lane preface ONLY for a GENUINE fork (an "off" lane whose OWN indication is an explicit `straight`/`slight*` arrow, e.g. "use the left 2 lanes to stay on I-80"); a plain turn bay at an intersection (off lane marked only `left`/`right`, OR **`none`** = OSRM's "no painted arrow" sentinel, which is NOT "goes straight") while you sail straight through is silenced (`Route.continueHasGenuineFork` gates `NavEngine`'s escape hatch; it matches only `straight`/`slight*` on an off lane — `none`/`through` are excluded) — Google stays silent there and the road-just-renames case had been over-speaking. (5) **Traffic-light landmarks
@@ -585,7 +591,11 @@ genuinely needs no doc edit, say why in the commit.
 - **Traffic lights + stop signs drawn on the map (`OverpassTrafficSignals.fetchControlsInBox` + `VelaMapView`,
   2026-07-05).** OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
   non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath** the POI dots
-  + pins, `minZoom 16` + collision so a dense grid stays legible. Data is keyless Overpass (sibling of the
+  + pins, `minZoom 16`. **Icon sizing/visibility (2026-07-06, device-verified in downtown Davis):** `iconSize`
+  is a zoom-interpolated expression (~0.75 at z15.5 → 1.05 at z17 → 1.5 at z19) — the flat 0.55 was too small to
+  spot, especially tilted in nav; and `iconAllowOverlap(true)`+`iconIgnorePlacement(true)` so they ALWAYS draw
+  (controls are sparse — one per junction — and the earlier collision-off-below-POIs was culling them away on the
+  browse map, so the user couldn't see them; Google shows all of them at street zoom). Data is keyless Overpass (sibling of the
   `fetchAlong` nav-landmark fetch + `OverpassPois`), fetched by `MapViewModel.refreshTrafficControls` from
   `onViewport` **only at z ≥ `CONTROLS_MIN_ZOOM` (16)**. Controls are STATIC, so it fetches a box padded 50%
   beyond the viewport and **reuses it while the center stays in the inner half** (`controlsBox`) — panning/driving

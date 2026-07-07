@@ -139,6 +139,23 @@ class OsrmRouterTest {
         assertTrue("clustered to one light", turn.instruction.startsWith("Pass the traffic light, then turn left"))
     }
 
+    @Test fun pureRenameContinueIsFoldedIntoThePreviousStep() {
+        // A "132nd St SE becomes Cathcart Way" rename (CONTINUE, no genuine fork) must NOT be its own
+        // banner card — Google shows nothing there, just the next real turn (user 2026-07-06). It folds
+        // into the preceding step, summing distance so the polyline still tiles.
+        val out = RouteGeometry.foldRenames(listOf(
+            man(ManeuverType.DEPART, 200.0),
+            man(ManeuverType.CONTINUE, 500.0), // pure rename — folds away
+            man(ManeuverType.TURN_LEFT, 80.0),
+            man(ManeuverType.ARRIVE, 0.0),
+        ))
+        assertEquals(3, out.size) // CONTINUE gone
+        assertEquals(ManeuverType.DEPART, out[0].type)
+        assertEquals(700.0, out[0].distanceMeters, 1e-9) // 200 + 500 — still tiles to the turn
+        assertEquals(ManeuverType.TURN_LEFT, out[1].type)
+        assertEquals(ManeuverType.ARRIVE, out[2].type)
+    }
+
     @Test fun exitRampForkMergeFoldsToOne() {
         val out = RouteGeometry.consolidateExits(listOf(
             man(ManeuverType.RAMP_RIGHT, 120.0), // exit ramp, 120 m to the fork
