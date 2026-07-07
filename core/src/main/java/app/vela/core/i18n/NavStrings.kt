@@ -710,8 +710,15 @@ object NlNavStrings : NavStrings {
             "merge" -> "Voeg in$richting"
             "on ramp", "ramp" -> "Neem de oprit$richting"
             "off ramp" -> if (exitNo != null) "Neem afrit $exitNo$richting" else "Neem de afrit$richting"
-            "fork" -> when (m) {
-                "links", "rechts" -> "Houd $m aan$richting"
+            // Derive the SIDE from the full modWord — OSRM forks are almost always "slight left"/
+            // "slight right" (→ "schuin naar links/rechts"), which the old exact match on
+            // "links"/"rechts" missed, falling to a hardcoded "Houd links aan" — KEEP-LEFT guidance
+            // at a keep-RIGHT freeway split (audit 2026-07-06, safety bug). endsWith covers the
+            // plain/schuin/scherp forms; a straight fork says "Ga rechtdoor" instead of a made-up left.
+            "fork" -> when {
+                m.endsWith("links") -> "Houd links aan$richting"
+                m.endsWith("rechts") -> "Houd rechts aan$richting"
+                m == "rechtdoor" -> "Ga rechtdoor$richting"
                 else -> "Houd links aan$richting"
             }
             "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "Neem op de rotonde de ${rbExit}e afslag$op" else "Ga de rotonde op$op"
@@ -1195,13 +1202,13 @@ object UkNavStrings : NavStrings {
         if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} футів"
         else {
             val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
-            "${ukNum(miles)} ${ukPlural(miles, "миля", "милі", "миль")}"
+            "${ukNum(miles)} ${ukPlural(miles, "миля", "милі", "миль", "милі")}"
         }
     } else {
         if (meters < 950) "${(meters / 10).roundToInt() * 10} метрів"
         else {
             val km = (meters / 100).roundToInt() / 10.0
-            "${ukNum(km)} ${ukPlural(km, "кілометр", "кілометри", "кілометрів")}"
+            "${ukNum(km)} ${ukPlural(km, "кілометр", "кілометри", "кілометрів", "кілометра")}"
         }
     }
 
@@ -1237,8 +1244,11 @@ object UkNavStrings : NavStrings {
 
     // Ukrainian 3-form plural: one / few (2-4) / many (0, 5-20, …). Non-integers (decimals) take
     // the genitive-singular "few" form — spoken "1,2 кілометра", "5,5 милі".
-    private fun ukPlural(x: Double, one: String, few: String, many: String): String {
-        if (x != x.toLong().toDouble()) return few
+    // 4th param = the GENITIVE-SINGULAR form for fractional values ("1,2 кілометрА"), the same
+    // 4-form shape as plUnit — the old 3-form version returned the nominative-plural `few`
+    // ("кілометри") for decimals, which is wrong Ukrainian (audit 2026-07-06; RU/PL had it right).
+    private fun ukPlural(x: Double, one: String, few: String, many: String, gsg: String): String {
+        if (x != x.toLong().toDouble()) return gsg
         val n = x.toLong()
         val mod100 = (n % 100).toInt()
         val mod10 = (n % 10).toInt()

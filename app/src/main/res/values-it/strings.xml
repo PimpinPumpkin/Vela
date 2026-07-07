@@ -133,6 +133,8 @@
     <string name="place_close">Chiudi</string>
     <string name="place_permanently_closed">Chiuso definitivamente</string>
     <string name="place_temporarily_closed">Chiuso temporaneamente</string>
+    <string name="settings_traffic_lights">Indicazioni con semafori</string>
+    <string name="settings_traffic_lights_hint">Dice «supera il semaforo, poi svolta» agli incroci con semaforo (voce solo in inglese per ora)</string>
     <string name="place_address_copied">Indirizzo copiato</string>
     <string name="place_copy_address">Copia indirizzo</string>
     <string name="place_directions">Indicazioni</string>
