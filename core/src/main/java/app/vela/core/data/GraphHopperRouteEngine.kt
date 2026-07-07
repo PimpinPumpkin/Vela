@@ -240,25 +240,33 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
         }
 
         /** Synthesize the human instruction (GraphHopper ships none unless given a Translation). */
+        /** Instruction text for an offline GraphHopper maneuver. Delegates to the ACTIVE language's
+         *  [app.vela.core.i18n.NavStrings] table (like OSRM's [RouteGeometry.osrmPhrase]) by mapping each
+         *  [ManeuverType] back to the OSRM (type, mod) token pair — so offline routes localize through the
+         *  same 11 tables, with zero new translations (audit 2026-07-06: this used to hardcode English, so
+         *  offline routes were never localized unlike the OSRM path). English output is byte-identical to
+         *  the old literals for the shipped cases. */
         internal fun ghPhrase(type: ManeuverType, road: String?): String {
-            val onto = road?.let { " onto $it" } ?: ""
-            return when (type) {
-                ManeuverType.DEPART -> if (road != null) "Head out on $road" else "Head out"
-                ManeuverType.ARRIVE -> "Arrive at your destination"
-                ManeuverType.CONTINUE, ManeuverType.STRAIGHT -> if (road != null) "Continue onto $road" else "Continue"
-                ManeuverType.ROUNDABOUT -> if (road != null) "At the roundabout, take the exit onto $road" else "Enter the roundabout"
-                ManeuverType.EXIT_ROUNDABOUT -> if (road != null) "Exit the roundabout onto $road" else "Exit the roundabout"
-                ManeuverType.KEEP_LEFT -> "Keep left$onto"
-                ManeuverType.KEEP_RIGHT -> "Keep right$onto"
-                ManeuverType.UTURN -> "Make a U-turn$onto"
-                ManeuverType.TURN_LEFT -> "Turn left$onto"
-                ManeuverType.TURN_RIGHT -> "Turn right$onto"
-                ManeuverType.SLIGHT_LEFT -> "Slight left$onto"
-                ManeuverType.SLIGHT_RIGHT -> "Slight right$onto"
-                ManeuverType.SHARP_LEFT -> "Sharp left$onto"
-                ManeuverType.SHARP_RIGHT -> "Sharp right$onto"
-                else -> if (road != null) "Continue onto $road" else "Continue"
+            val (t, mod) = when (type) {
+                ManeuverType.DEPART -> "depart" to null
+                ManeuverType.ARRIVE -> "arrive" to null
+                ManeuverType.CONTINUE, ManeuverType.STRAIGHT -> "continue" to "straight"
+                ManeuverType.TURN_LEFT -> "turn" to "left"
+                ManeuverType.TURN_RIGHT -> "turn" to "right"
+                ManeuverType.SLIGHT_LEFT -> "turn" to "slight left"
+                ManeuverType.SLIGHT_RIGHT -> "turn" to "slight right"
+                ManeuverType.SHARP_LEFT -> "turn" to "sharp left"
+                ManeuverType.SHARP_RIGHT -> "turn" to "sharp right"
+                ManeuverType.UTURN -> "uturn" to null
+                ManeuverType.MERGE -> "merge" to null
+                ManeuverType.FORK_LEFT, ManeuverType.KEEP_LEFT -> "fork" to "left"
+                ManeuverType.FORK_RIGHT, ManeuverType.KEEP_RIGHT -> "fork" to "right"
+                ManeuverType.RAMP_LEFT, ManeuverType.RAMP_RIGHT -> "ramp" to null
+                ManeuverType.ROUNDABOUT -> "roundabout" to null
+                ManeuverType.EXIT_ROUNDABOUT -> "exit roundabout" to null
+                ManeuverType.UNKNOWN -> "continue" to null
             }
+            return app.vela.core.i18n.NavStringsRegistry.current().phrase(t, mod, road, null, null, null)
         }
     }
 }
