@@ -1268,9 +1268,10 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     if (dark) applyDark(style) else applyLight(style)
     PoiIcons.applyToLiberty(style, dark)
-    // Ambient Google-POI labels track the OSM POI label theming (light-grey in dark, dark-grey in light).
+    // Ambient Google-POI labels match the ICON's category colour, Google-style — saturated in light,
+    // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
-        PropertyFactory.textColor(if (dark) "#C8CDD4" else "#3C4043"),
+        PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
     )
     // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
