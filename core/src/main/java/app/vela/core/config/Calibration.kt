@@ -48,7 +48,8 @@ data class Calibration(
     val defaultVoiceSpeaker: Int = DEFAULT_VOICE_SPEAKER,
     // Default spoken-directions speed multiplier (1.0 = normal, <1 = slower/clearer, >1 = faster),
     // used until the user adjusts it in Settings → Voice. Also remote-pushable; a user's explicit
-    // `voice_speed` pref wins. 0.8 reads as a measured, easy-to-follow nav cadence.
+    // `voice_speed` pref wins. 0.72 — a touch slower than 0.8 for cleaner consonant articulation on the
+    // neural voice (dropped final T/D reads worse at speed; user 2026-07-06). Settings slider goes to 0.5.
     val defaultVoiceSpeed: Float = DEFAULT_VOICE_SPEED,
     // The fleet default neural voice id (a Piper voice from PiperCatalog) — what onboarding downloads
     // and a fresh install activates. Remote-pushable via the signed bundle so a favourite voice can be
@@ -58,8 +59,8 @@ data class Calibration(
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
         const val DEFAULT_VOICE_SPEAKER = 14
-        // 0.8× — the user's chosen nav cadence for the HFC Female default (2026-07-03).
-        const val DEFAULT_VOICE_SPEED = 0.8f
+        // 0.72× — calmer nav cadence + cleaner consonant articulation (0.8 → 0.72, 2026-07-06).
+        const val DEFAULT_VOICE_SPEED = 0.72f
         // HFC Female — the user's pick for the fleet default voice (2026-07-03). Kept in sync with
         // VelaPiper.DEFAULT_VOICE_ID (the compiled fallback used where calibration isn't handy).
         const val DEFAULT_VOICE_ID = app.vela.core.voice.VelaPiper.DEFAULT_VOICE_ID
