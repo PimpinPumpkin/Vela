@@ -139,4 +139,34 @@ class NavStringsTest {
             assertTrue("$code keeps road name", ns.phrase("turn", "left", "Rue de Rivoli", null, null, null).contains("Rue de Rivoli"))
         }
     }
+
+    /** OSRM forks are almost always "slight left"/"slight right" — EVERY language's fork phrase must
+     *  come out on the correct SIDE for those (the Dutch exact-match on "links"/"rechts" fell to a
+     *  hardcoded keep-LEFT at a keep-RIGHT freeway split — a safety bug, audit 2026-07-06). */
+    @Test fun `fork guidance keeps the correct side for slight modifiers in every language`() {
+        val sideWords = mapOf(
+            "en" to ("left" to "right"), "fr" to ("gauche" to "droite"), "de" to ("links" to "rechts"),
+            "es" to ("izquierda" to "derecha"), "it" to ("sinistra" to "destra"), "pt" to ("esquerda" to "direita"),
+            "nl" to ("links" to "rechts"), "ru" to ("лев" to "прав"), "pl" to ("lew" to "praw"),
+            "sv" to ("vänster" to "höger"), "uk" to ("лів" to "прав"),
+        )
+        for ((code, words) in sideWords) {
+            val ns = NavStringsRegistry.forLanguage(code)
+            val (l, r) = words
+            val keepRight = ns.phrase("fork", "slight right", "I 80", null, null, null).lowercase()
+            val keepLeft = ns.phrase("fork", "slight left", "I 80", null, null, null).lowercase()
+            assertTrue("$code slight-right fork must mention '$r' (was: $keepRight)", keepRight.contains(r))
+            assertTrue("$code slight-right fork must NOT read as left (was: $keepRight)", !keepRight.contains(l) || l == r)
+            assertTrue("$code slight-left fork must mention '$l' (was: $keepLeft)", keepLeft.contains(l))
+        }
+    }
+
+    /** Ukrainian fractional distances take the GENITIVE SINGULAR ("1,2 кілометра"), not the
+     *  nominative plural the old 3-form ukPlural returned ("кілометри") — RU/PL had this right. */
+    @Test fun `ukrainian fractional km uses genitive singular`() {
+        val uk = NavStringsRegistry.forLanguage("uk")
+        assertTrue(uk.spokenDistance(1200.0, imperial = false).contains("кілометра"))
+        assertTrue(uk.spokenDistance(3000.0, imperial = false).contains("кілометри"))
+        assertTrue(uk.spokenDistance(5000.0, imperial = false).contains("кілометрів"))
+    }
 }
