@@ -1818,7 +1818,7 @@ private fun applyData(
             ambientPois.mapIndexed { i, m ->
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                     addStringProperty("name", m.name)
-                    addStringProperty("icon", "vela-poi-${PoiIcons.groupForCategory(m.category)}")
+                    addStringProperty("icon", "vela-poi-${PoiIcons.groupFor(m.name, m.category)}")
                     addNumberProperty(AMBIENT_INDEX_PROP, i)
                     // Collision priority: the data source returns the most prominent places first, so a
                     // lower index wins its slot (MapLibre places lower symbol-sort-key first).

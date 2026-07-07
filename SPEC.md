@@ -295,6 +295,16 @@ listings within 35 m, picks the most-reviewed **only when it clearly dominates**
 (`canonical.reviews >= 2·nearest.reviews + 5`) so co-located-but-distinct shops aren't
 wrongly merged; "Also at this location" lists the others.
 
+**Ambient POI icon = category, with a NAME fallback** (`PoiIcons.groupFor(name, category)`).
+Google's keyless data sometimes returns a generic administrative category
+("Non-profit organization", "Establishment") that themes to the grey `default` teardrop even
+though the place is really a gym/church/school — and the OSM basemap POI *does* classify it, so
+the grey ambient dot flipped to a themed OSM icon the moment the ambient layer cleared on select
+(the "grey a YMCA on the map, orange weight 'YMCA' when I tap it" inconsistency —
+the OSM `leisure=sports_centre` twin showing through). When the category resolves to `default` the
+NAME breaks the tie ("…YMCA"→sport, "…Church"→civic, "…Elementary"→edu, conservatively), so the
+ambient dot gets the same icon Google and the OSM POI give it. Category stays authoritative.
+
 ### Traffic overlay
 Two layers. **(1) Whole-map raster** — `/maps/vt` PNG tiles on `www.google.com`
 (public, keyless, not bot-gated; the `incidents` params carry the data, NOT the
