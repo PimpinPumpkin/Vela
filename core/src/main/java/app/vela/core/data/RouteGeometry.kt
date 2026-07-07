@@ -48,6 +48,9 @@ object RouteGeometry {
     // block or two — "pass the light, then turn"), and within this far of the driven line to count as on-route.
     private const val LIGHT_APPROACH_M = 400.0
     private const val LIGHT_SNAP_M = 25.0
+    // One physical junction is often several OSM nodes (one traffic_signals node per approach/carriageway,
+    // ~15-30 m apart) — cluster matched signals within this radius so we count INTERSECTIONS, not nodes.
+    private const val LIGHT_CLUSTER_M = 30.0
     private val json = Json { ignoreUnknownKeys = true }
 
     /** The FOSSGIS OSRM backend for each mode. Transit has none → null geometry. */
@@ -283,7 +286,17 @@ object RouteGeometry {
                 val approach = ArrayList<LatLng>()
                 var acc = 0.0; var k = toIdx
                 while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k]); acc += poly[k].distanceTo(poly[k - 1]); k-- }
-                val count = signals.count { s -> approach.any { it.distanceTo(s) < LIGHT_SNAP_M } }
+                // A signal AT the turn intersection itself is the one you're turning at, not one you "pass"
+                // first (the walk starts at poly[toIdx], the turn vertex) — exclude it by distance to the turn.
+                val turnPt = poly[toIdx]
+                val matched = signals.filter { s ->
+                    turnPt.distanceTo(s) >= LIGHT_SNAP_M && approach.any { it.distanceTo(s) < LIGHT_SNAP_M }
+                }
+                // Cluster the matched nodes: OSM maps one traffic_signals node per approach/carriageway at a
+                // junction, so counting raw nodes would say "pass 2 lights" for one physical intersection.
+                val clusters = ArrayList<LatLng>()
+                for (s in matched) if (clusters.none { it.distanceTo(s) < LIGHT_CLUSTER_M }) clusters.add(s)
+                val count = clusters.size
                 val lead = if (count in 1..2) nav.passLights(count) else ""
                 if (lead.isBlank()) m
                 else m.copy(instruction = "$lead, then " + m.instruction.replaceFirstChar { it.lowercaseChar() })
