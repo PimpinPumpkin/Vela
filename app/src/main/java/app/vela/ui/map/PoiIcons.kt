@@ -91,13 +91,50 @@ object PoiIcons {
             any("park", "garden", "trail", "playground", "campground", "nature") -> "park"
             any("school", "university", "college", "academy", "education", "library", "kindergarten", "preschool") -> "edu"
             any("museum", "theater", "theatre", "gallery", "cinema", "movie", "art ", "cultural", "historical", "aquarium", "zoo") -> "culture"
-            any("gym", "fitness", "stadium", "sport", "golf", "bowling", "yoga", "arena", "athletic", "climbing") -> "sport"
+            any("gym", "fitness", "stadium", "sport", "golf", "bowling", "yoga", "arena", "athletic",
+                "climbing", "recreation cent", "rec cent", "ice rink", "skating") -> "sport"
             any("station", "transit", "airport", "bus ", "train", "subway", "metro", "light rail", "ferry") -> "transit"
             any("bank", "atm", "credit union", "post office", "police", "fire station", "city hall",
-                "courthouse", "church", "mosque", "temple", "synagogue", "place of worship", "cemetery", "government") -> "civic"
+                "courthouse", "church", "mosque", "temple", "synagogue", "place of worship", "cemetery",
+                "government", "community cent") -> "civic"
             any("store", "shop", "grocery", "supermarket", "market", "mall", "retail", "boutique", "outlet",
                 "dealer", "salon", "barber", "hardware", "florist", "laundr", "jewelr", "furniture", "pharmacy",
                 "auto parts", "tire", "nail", "spa") -> "shop"
+            else -> "default"
+        }
+    }
+
+    /** Best dot group for a Google place — its category FIRST, then a NAME fallback. Google's keyless
+     *  data sometimes returns a generic administrative category ("Non-profit organization",
+     *  "Establishment", "Corporate office") that themes to [default] even though the place is really a
+     *  gym, church, or school — and the OSM basemap DOES classify it (so the grey ambient dot turns into
+     *  a themed OSM icon the moment the ambient layer clears on select, the "grey on the map / orange
+     *  weight when I tap it" YMCA inconsistency). When the category is inconclusive, the NAME usually
+     *  carries the real signal ("…YMCA", "…Community Church", "…Elementary"), so the ambient dot gets the
+     *  SAME icon Google and our OSM POIs give it. Category stays authoritative; the name only breaks a
+     *  [default] tie. */
+    fun groupFor(name: String?, category: String?): String {
+        val byCat = groupForCategory(category)
+        if (byCat != "default") return byCat
+        return groupForName(name)
+    }
+
+    /** Category group inferred from a place NAME alone — only strong, unambiguous signals, used as the
+     *  fallback in [groupFor] when the category didn't resolve. Conservative on purpose (a café named
+     *  "The Gym" is a rarity; a place literally named "…YMCA" is a gym) so it can't mis-theme a place
+     *  whose category was simply missing. */
+    private fun groupForName(name: String?): String {
+        val n = name?.lowercase() ?: return "default"
+        fun any(vararg k: String) = k.any { it in n }
+        return when {
+            any("ymca", "ywca", "crossfit", " gym", "fitness", "athletic club", "health club", "rec center", "recreation center") -> "sport"
+            any("church", "chapel", "cathedral", "parish", " mosque", "synagogue", "temple", "gurdwara",
+                "kingdom hall", "ministries", "worship center") -> "civic"
+            any("elementary", "middle school", "high school", " academy", "university", " college",
+                "montessori", "preschool", "day school") -> "edu"
+            any("hospital", "medical center", "medical centre", " clinic", "pharmacy", "urgent care",
+                "dental", "dentist") -> "health"
+            any(" museum", "theatre", " theater", "art gallery") -> "culture"
             else -> "default"
         }
     }
