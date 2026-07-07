@@ -135,6 +135,8 @@
     <string name="place_temporarily_closed">Временно закрыто</string>
     <string name="settings_traffic_lights">Подсказки по светофорам</string>
     <string name="settings_traffic_lights_hint">«Проедьте светофор, затем поверните» на перекрёстках со светофорами (голос пока только на английском)</string>
+    <string name="settings_demo_drive">Симуляция поездки (демо)</string>
+    <string name="settings_demo_drive_hint">Для демонстраций, скриншотов и тестов: нажатие «Начать» ведёт по маршруту как смоделированный GPS-трек вместо вашего реального местоположения — навигация работает где угодно. Выключите для настоящей навигации.</string>
     <string name="place_address_copied">Адрес скопирован</string>
     <string name="place_copy_address">Скопировать адрес</string>
     <string name="place_directions">Маршрут</string>
