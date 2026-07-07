@@ -203,6 +203,8 @@
     <string name="place_share_gmaps_link">Link Google Maps</string>
     <string name="place_share_map_pin">Pinezka mapy (geo:)</string>
     <string name="place_share_coordinates">Współrzędne</string>
+    <string name="place_copy_coordinates">Kopiuj współrzędne</string>
+    <string name="place_coordinates_copied">Skopiowano współrzędne</string>
     <string name="place_share_address">Adres</string>
     <string name="place_popular_times">Popularne godziny</string>
     <string name="place_busyness_right_now">%1$s w tej chwili</string>
