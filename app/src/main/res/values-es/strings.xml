@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Borrar búsqueda de reseñas</string>
     <string name="place_no_reviews_mention">Ninguna reseña menciona «%1$s» (buscando en las %2$d cargadas).</string>
     <string name="place_back">Atrás</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Reseñas</string>
     <string name="place_from_the_owner">Del propietario</string>
     <string name="place_share_place">Compartir lugar</string>

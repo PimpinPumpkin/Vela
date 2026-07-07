@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Wyczyść wyszukiwanie opinii</string>
     <string name="place_no_reviews_mention">Żadna opinia nie wspomina o „%1$s” (przeszukano %2$d wczytanych).</string>
     <string name="place_back">Wstecz</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Opinie</string>
     <string name="place_from_the_owner">Od właściciela</string>
     <string name="place_share_place">Udostępnij miejsce</string>
