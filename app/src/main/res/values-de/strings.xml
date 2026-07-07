@@ -135,8 +135,8 @@
     <string name="place_temporarily_closed">Vorübergehend geschlossen</string>
     <string name="settings_traffic_lights">Ampel-Hinweise</string>
     <string name="settings_traffic_lights_hint">„Fahren Sie an der Ampel vorbei, dann abbiegen“ an Ampelkreuzungen (Ansagen vorerst nur auf Englisch)</string>
-    <string name="map_voice_downloading">Stimme %1$s wird heruntergeladen · %2$d %%</string>
-    <string name="map_voice_downloading_fallback_name">Vela</string>
+    <string name="map_voice_downloading">Vela-Stimme wird heruntergeladen · %1$d %%</string>
+    <string name="map_voice_installing">Vela-Stimme wird installiert…</string>
     <string name="settings_demo_drive">Fahrt simulieren (Demo)</string>
     <string name="settings_demo_drive_hint">Für Demos, Screenshots und Tests: Mit Start wird die geplante Route als simulierte GPS-Spur statt deiner echten Position gefahren — Navigation funktioniert überall. Zum echten Navigieren ausschalten.</string>
     <string name="place_address_copied">Adresse kopiert</string>
