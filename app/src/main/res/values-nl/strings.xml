@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Recensiezoekopdracht wissen</string>
     <string name="place_no_reviews_mention">Geen recensies vermelden “%1$s” (van de %2$d geladen).</string>
     <string name="place_back">Terug</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Recensies</string>
     <string name="place_from_the_owner">Van de eigenaar</string>
     <string name="place_share_place">Plaats delen</string>
