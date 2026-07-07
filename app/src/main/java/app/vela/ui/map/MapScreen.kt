@@ -885,11 +885,29 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
             }
         }
     }
+    // Sort: 0 = relevance (Google's order), 1 = rating, 2 = distance. Tapping the chip cycles.
+    var sortMode by remember { mutableStateOf(0) }
     // Google-style filters: currently open, 4.0★+, and price (≤ the chosen level).
+    // "Open now" falls back to the WEEKLY HOURS when Google sent no live status (openNow == null) —
+    // the multi-result response often omits the status string, and dropping those places made the
+    // filter read as broken ("open places disappear"); the place sheet already computes the same
+    // fallback. A place with no status AND no parseable hours still drops (can't confirm open).
+    val nowForHours = remember(openOnly) { java.time.LocalDateTime.now() }
     val shown = results
-        .let { list -> if (openOnly) list.filter { it.openNow == true } else list }
+        .let { list ->
+            if (!openOnly) list else list.filter { p ->
+                p.openNow ?: (app.vela.core.util.OpeningHours.statusAt(p.hours, nowForHours)?.open == true)
+            }
+        }
         .let { list -> if (topRated) list.filter { (it.rating ?: 0.0) >= 4.0 } else list }
         .let { list -> if (priceMax > 0) list.filter { (it.priceLevel ?: Int.MAX_VALUE) <= priceMax } else list }
+        .let { list ->
+            when (sortMode) {
+                1 -> list.sortedByDescending { it.rating ?: -1.0 }
+                2 -> list.sortedBy { it.distanceMeters ?: Double.MAX_VALUE }
+                else -> list
+            }
+        }
     // Same fixed sheet grey as the place sheet, not the wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
     Card(
@@ -977,6 +995,20 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         selected = priceMax > 0,
                         onClick = { priceMax = (priceMax + 1) % 5 },
                         label = { Text(if (priceMax == 0) stringResource(R.string.mapscreen_filter_price) else "≤ " + "$".repeat(priceMax)) },
+                    )
+                    // Sort: tap to cycle relevance (Google's order) → rating → distance.
+                    FilterChip(
+                        selected = sortMode > 0,
+                        onClick = { sortMode = (sortMode + 1) % 3 },
+                        label = {
+                            Text(
+                                when (sortMode) {
+                                    1 -> stringResource(R.string.mapscreen_sort_rating)
+                                    2 -> stringResource(R.string.mapscreen_sort_distance)
+                                    else -> stringResource(R.string.mapscreen_sort)
+                                },
+                            )
+                        },
                     )
                 }
             }
@@ -1105,6 +1137,11 @@ private fun CategoryChips(onPick: (String) -> Unit) {
                 onClick = { onPick(query) },
                 label = { Text(stringResource(labelRes)) },
                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                // MONOCHROME glyphs (user 2026-07-06): the M3 default tints the leading icon with the
+                // theme primary (teal), Google's chips are single-ink — icon matches the label colour.
+                colors = androidx.compose.material3.AssistChipDefaults.elevatedAssistChipColors(
+                    leadingIconContentColor = MaterialTheme.colorScheme.onSurface,
+                ),
             )
         }
     }
