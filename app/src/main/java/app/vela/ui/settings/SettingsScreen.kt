@@ -54,6 +54,8 @@ import app.vela.core.model.TravelMode
 import app.vela.offline.OfflineMaps
 import org.maplibre.android.offline.OfflineRegion
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.vela.R
@@ -76,11 +78,27 @@ import app.vela.ui.theme.ThemeMode
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
+fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = false) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // System back should return to the map, not fall through and exit the app.
     BackHandler(onBack = onBack)
+    // When arriving from the onboarding "set up offline" prompt we open expanded and
+    // scroll straight to the Offline section (it sits well below the fold).
+    val scrollState = rememberScrollState()
+    var viewportTopY by remember { mutableStateOf<Float?>(null) }
+    var offlineSectionY by remember { mutableStateOf<Float?>(null) }
+    var didAutoScroll by remember { mutableStateOf(false) }
+    LaunchedEffect(openOffline, viewportTopY, offlineSectionY) {
+        if (openOffline && !didAutoScroll) {
+            val top = viewportTopY
+            val sec = offlineSectionY
+            if (top != null && sec != null) {
+                didAutoScroll = true
+                scrollState.animateScrollTo((scrollState.value + (sec - top)).toInt().coerceAtLeast(0))
+            }
+        }
+    }
     Scaffold(
         topBar = {
             TopAppBar(
@@ -96,7 +114,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
         Column(
             Modifier
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
+                .onGloballyPositioned { viewportTopY = it.positionInRoot().y }
+                .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
         ) {
             SectionTitle(stringResource(R.string.settings_appearance))
@@ -391,10 +410,11 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
             Hint(stringResource(R.string.settings_read_all_reviews_hint))
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(20.dp).onGloballyPositioned { offlineSectionY = it.positionInRoot().y })
             // Collapsed by default — the routing-region list can be long, so don't make the user
-            // scroll past all of it to reach the sections below.
-            var offlineExpanded by remember { mutableStateOf(false) }
+            // scroll past all of it to reach the sections below. Opens expanded when the onboarding
+            // offline prompt sent us here.
+            var offlineExpanded by remember { mutableStateOf(openOffline) }
             CollapsibleSectionTitle(stringResource(R.string.settings_offline), offlineExpanded) { offlineExpanded = !offlineExpanded }
             if (offlineExpanded) {
             Hint(stringResource(R.string.settings_offline_hint))

@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">Du kan ändra detta när som helst i Inställningar → Röst.</string>
     <string name="root_voice_download">Hämta Vela-röst</string>
     <string name="root_voice_use_system">Använd systemröst</string>
+    <string name="root_offline_title">Offlinekartor</string>
+    <string name="root_offline_body">Vela hämtar platser, sökning och vägbeskrivningar från Google, så utan signal fungerar bara områden du har laddat ner. Ställ in ett område nu så att du är täckt när du tappar täckning.</string>
+    <string name="root_offline_setup">Ställ in offline</string>
     <string name="nav_maneuver_continue">Fortsätt</string>
     <string name="nav_gps_lost">Söker GPS-signal…</string>
     <string name="nav_compound_then">sedan</string>
