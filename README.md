@@ -6,6 +6,16 @@ Google's public web endpoints (per-user, no backend) for the things only Google
 does well: POI quality, routing, and **traffic-aware ETAs**. Built to run on
 GrapheneOS and other no-GMS ROMs, distributed via F-Droid.
 
+## Install
+
+[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela)
+
+Tap the badge (or add the repo URL `https://github.com/PimpinPumpkin/Vela` in
+**[Obtainium](https://github.com/ImranR98/Obtainium)**) and it auto-tracks every
+signed `v0.2.<run>` release — no Play Store, no account. Or grab the APK straight
+from [Releases](https://github.com/PimpinPumpkin/Vela/releases). F-Droid submission
+is planned.
+
 > Status: **a genuinely usable day-to-day maps app.** Calibrated against live
 > captures and verified end-to-end on-device:
 >
@@ -429,8 +439,8 @@ without an app release.
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief
 - [x] **Offline** basemap + OSM POI index; **popular / busy times** (keyless hidden-WebView search)
 - [ ] **Predictive** (future-traffic) depart-time ETA — needs a directions-`pb` calibration
-- [ ] Rank shown routes by live-traffic ETA (not just OSRM free-flow order); optional offline highway refs
-- [ ] Street-level imagery (Mapillary / KartaView; needs a free token)
+- [x] Rank shown routes by live-traffic ETA (each Google alternate carries its own `duration_in_traffic`, fastest-shown leads) · [ ] optional offline highway refs
+- [x] Street View — a place-sheet pill opens Google’s keyless pano in the browser (in-app WebGL panos render black) · [ ] embedded Mapillary/KartaView tiles (need a token)
 - [ ] F-Droid submission + reproducible build
 
 ## A note on the name
