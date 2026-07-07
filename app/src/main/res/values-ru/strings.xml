@@ -133,6 +133,8 @@
     <string name="place_close">Закрыть</string>
     <string name="place_permanently_closed">Закрыто навсегда</string>
     <string name="place_temporarily_closed">Временно закрыто</string>
+    <string name="settings_traffic_lights">Подсказки по светофорам</string>
+    <string name="settings_traffic_lights_hint">«Проедьте светофор, затем поверните» на перекрёстках со светофорами (голос пока только на английском)</string>
     <string name="place_address_copied">Адрес скопирован</string>
     <string name="place_copy_address">Скопировать адрес</string>
     <string name="place_directions">Маршрут</string>
