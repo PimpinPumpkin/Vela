@@ -211,6 +211,7 @@
     <string name="place_clear_review_search">Clear review search</string>
     <string name="place_no_reviews_mention">No reviews mention “%1$s” (searching the %2$d loaded).</string> <!-- format -->
     <string name="place_back">Back</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Reviews</string>
     <string name="place_from_the_owner">From the owner</string>
     <string name="place_share_place">Share place</string>
