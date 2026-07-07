@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Cancella ricerca recensioni</string>
     <string name="place_no_reviews_mention">Nessuna recensione menziona “%1$s” (ricerca tra le %2$d caricate).</string>
     <string name="place_back">Indietro</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Recensioni</string>
     <string name="place_from_the_owner">Dal proprietario</string>
     <string name="place_share_place">Condividi luogo</string>

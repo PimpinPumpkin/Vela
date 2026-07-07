@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Rezensionssuche löschen</string>
     <string name="place_no_reviews_mention">Keine Rezension erwähnt „%1$s“ (durchsucht werden die %2$d geladenen).</string>
     <string name="place_back">Zurück</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Rezensionen</string>
     <string name="place_from_the_owner">Vom Inhaber</string>
     <string name="place_share_place">Ort teilen</string>
