@@ -208,6 +208,16 @@ fun MapScreen(
     // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
     // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
     var navBannerBottomPx by remember { mutableStateOf(0) }
+    // Measured height of the nav BOTTOM bar (ETA + End) → everything stacked above it (speedometer,
+    // speed-limit sign, re-center FAB, GPS-lost chip) offsets from the REAL height instead of a fixed
+    // 132dp guess. The bar grows with the system font size, and at a larger font scale the fixed offset
+    // left the speedo half-covered by the bar (GitHub issue #2). Falls back to the old constant until
+    // the first layout pass measures it.
+    var navBarHeightPx by remember { mutableStateOf(0) }
+    val navBarClearance = with(LocalDensity.current) {
+        // bar height + its 16dp bottom padding + a 16dp gap — reproduces the old 132dp at default font scale
+        if (navBarHeightPx > 0) navBarHeightPx.toDp() + 32.dp else 132.dp
+    }
     val focusManager = LocalFocusManager.current
 
     // Back peels one layer at a time — steps → navigation → route preview →
@@ -497,7 +507,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = 16.dp, bottom = 132.dp),
+                    .padding(end = 16.dp, bottom = navBarClearance),
             ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
         }
 
@@ -511,12 +521,12 @@ fun MapScreen(
                 color = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
                 shadowElevation = 4.dp,
-                // bottom = 200dp clears the speedo/FAB band (132-192dp); width-capped +
+                // Clears the speedo/FAB band above the MEASURED bar; width-capped +
                 // single-line so long translations can't collide with either.
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 200.dp, start = 90.dp, end = 90.dp),
+                    .padding(bottom = navBarClearance + 68.dp, start = 90.dp, end = 90.dp),
             ) {
                 Text(
                     stringResource(R.string.nav_gps_lost),
@@ -549,7 +559,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = 132.dp)
+                    .padding(start = 16.dp, bottom = navBarClearance)
                     .size(60.dp),
             ) {
                 Column(
@@ -573,7 +583,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = 200.dp),
+                    .padding(start = 16.dp, bottom = navBarClearance + 68.dp), // above the 60dp speedo + 8dp gap
             )
         }
 
@@ -660,7 +670,10 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
+                    // padding + gap back. Everything stacked above the bar keys off this.
+                    .onGloballyPositioned { navBarHeightPx = it.size.height },
             )
 
             // Tapping "Directions" opens a dedicated panel (popup) — mode tabs, the
@@ -802,11 +815,7 @@ fun MapScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (downloadingVoiceId != null) {
-                    VoiceDownloadCard(
-                        name = app.vela.core.voice.PiperCatalog.byId(downloadingVoiceId)?.displayName
-                            ?: stringResource(R.string.map_voice_downloading_fallback_name),
-                        pct = state.kokoroDownloadPct ?: 0f,
-                    )
+                    VoiceDownloadCard(installing = state.voiceInstalling, pct = state.kokoroDownloadPct ?: 0f)
                 }
                 state.notices.forEach { n ->
                     NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
@@ -1506,7 +1515,7 @@ private fun InfoCard(
  *  includes the extract phase (KokoroInstaller maps untar into the tail), so it no longer parks at
  *  ~98% while the archive unpacks. */
 @Composable
-private fun VoiceDownloadCard(name: String, pct: Float, modifier: Modifier = Modifier) {
+private fun VoiceDownloadCard(installing: Boolean, pct: Float, modifier: Modifier = Modifier) {
     Card(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -1516,14 +1525,21 @@ private fun VoiceDownloadCard(name: String, pct: Float, modifier: Modifier = Mod
     ) {
         Column(Modifier.fillMaxWidth().padding(16.dp)) {
             Text(
-                stringResource(R.string.map_voice_downloading, name, (pct * 100).toInt()),
+                if (installing) stringResource(R.string.map_voice_installing)
+                else stringResource(R.string.map_voice_downloading, (pct * 100).toInt()),
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(8.dp))
-            androidx.compose.material3.LinearProgressIndicator(
-                progress = { pct.coerceIn(0f, 1f) },
-                modifier = Modifier.fillMaxWidth(),
-            )
+            // Determinate while downloading; the unpack step can't report a meaningful %, so it goes
+            // indeterminate under the "Installing…" label rather than crawling a frozen-looking bar.
+            if (installing) {
+                androidx.compose.material3.LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            } else {
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { pct.coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
         }
     }
 }
