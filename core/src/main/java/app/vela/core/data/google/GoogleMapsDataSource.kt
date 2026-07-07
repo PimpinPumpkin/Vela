@@ -517,7 +517,11 @@ class GoogleMapsDataSource @Inject constructor(
      *  byte-for-byte unchanged.** */
     private fun String.localized(): String {
         val lang = java.util.Locale.getDefault().language.lowercase()
-        return if (lang.isBlank() || lang == "en") this else replace("hl=en", "hl=$lang")
+        // Only rewrite to a language the STATUS parser can read (SearchParser.STATUS_LANGS). For any
+        // other locale, keep hl=en: an unparseable status string leaves openNow null forever and the
+        // UI can't colour open/closed — English status text the English table handles is the safer
+        // fallback than localized-but-unparseable (audit 2026-07-06).
+        return if (lang == "en" || lang !in SearchParser.STATUS_LANGS) this else replace("hl=en", "hl=$lang")
     }
 
     private companion object {
