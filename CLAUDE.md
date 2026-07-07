@@ -171,7 +171,7 @@ genuinely needs no doc edit, say why in the commit.
   variants) and **`defaultVoiceSpeed`** (float — spoken-directions speed), so a favourite
   voice/speaker/pace can be pushed as everyone's default with a version bump + re-sign, no
   app release (a user's own `voice_model`/`voice_speaker`/`voice_speed` pick still wins).
-  Shipped defaults (calibration **v11**): voice **HFC Female** (`en_US-hfc_female-medium`),
+  Shipped defaults (calibration **v12**): voice **HFC Female** (`en_US-hfc_female-medium`),
   speaker 14 (libritts only), speed **0.72×** (lowered from 0.8 on 2026-07-06 for cleaner consonant
   articulation) — matched in the compiled `Calibration.DEFAULT`
   + `VelaPiper.DEFAULT_VOICE_ID`. NB the neural voice lengthens pauses at periods by
@@ -222,7 +222,7 @@ genuinely needs no doc edit, say why in the commit.
   `Calibration.DEFAULT`'s field VALUES (paths, endpoints, voice defaults) in sync with
   `calibration.json` when you cut a release — but `DEFAULT.version` intentionally STAYS `1` (the
   remote bundle's higher `version` must always win the adopt-if-newer check; the shipped
-  `calibration.json` is at v11, `DEFAULT.version` at 1 — that gap is by design, not drift). **Phase 2 (done): the search parser's positional
+  `calibration.json` is at v12, `DEFAULT.version` at 1 — that gap is by design, not drift). **Phase 2 (done): the search parser's positional
   field-index paths are remote too** — the `paths` object in `calibration.json`
   (`name`, `address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays,
   relative to a result entry whose place node is `[1]`; `results`/`single` are

@@ -135,6 +135,8 @@
     <string name="place_temporarily_closed">Tijdelijk gesloten</string>
     <string name="settings_traffic_lights">Stoplicht-aanwijzingen</string>
     <string name="settings_traffic_lights_hint">"Rijd het stoplicht voorbij en sla dan af" bij kruispunten met verkeerslichten (voorlopig alleen Engelse spraak)</string>
+    <string name="map_voice_downloading">Stem %1$s wordt gedownload · %2$d %%</string>
+    <string name="map_voice_downloading_fallback_name">Vela</string>
     <string name="settings_demo_drive">Rijden simuleren (demo)</string>
     <string name="settings_demo_drive_hint">Voor demo’s, schermafbeeldingen en tests: op Start tikken rijdt de route als een gesimuleerd gps-spoor in plaats van je echte locatie — navigatie werkt overal. Zet uit om echt te navigeren.</string>
     <string name="place_address_copied">Adres gekopieerd</string>
