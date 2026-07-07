@@ -40,6 +40,8 @@ class GraphHopperRouterTest {
         assertEquals("Head out on Elm St", GraphHopperRouteEngine.ghPhrase(ManeuverType.DEPART, "Elm St"))
         assertEquals("Make a U-turn onto Oak Ave", GraphHopperRouteEngine.ghPhrase(ManeuverType.UTURN, "Oak Ave"))
         assertEquals("Arrive at your destination", GraphHopperRouteEngine.ghPhrase(ManeuverType.ARRIVE, null))
+        // Roundabouts thread the exit number so they read "take exit N", not the generic "Enter the roundabout".
+        assertEquals("At the roundabout, take exit 2 onto Elm St", GraphHopperRouteEngine.ghPhrase(ManeuverType.ROUNDABOUT, "Elm St", 2))
     }
 
     /** Multi-region: a trip routes on the first installed region whose box covers BOTH endpoints. */
