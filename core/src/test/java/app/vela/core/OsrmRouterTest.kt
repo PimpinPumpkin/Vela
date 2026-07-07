@@ -121,6 +121,24 @@ class OsrmRouterTest {
         assertEquals("Turn left onto Main Street", turnOf((1..3).map { LatLng(47.0, -122.0 + it * 0.0004) }))
     }
 
+    @Test fun lightAtTheTurnVertexItselfIsNotCounted() {
+        // A signal exactly at the turn intersection is the one you turn AT, not one to "pass" first
+        // (the approach walk starts at poly[toIdx], the turn vertex) — exclude it (audit 2026-07-06).
+        val atTurn = LatLng(47.0, -122.0 + 0.002) // poly[4], the TURN_LEFT vertex
+        val turn = RouteGeometry.enrichWithLights(straightRoute(), listOf(atTurn)).legs[0].maneuvers.last()
+        assertEquals("Turn left onto Main Street", turn.instruction)
+    }
+
+    @Test fun lightsAtOneJunctionClusterToASingleIntersection() {
+        // OSM maps one traffic_signals node per approach/carriageway at a junction (~20 m apart); they must
+        // count as ONE intersection, not "pass 2 lights" (audit 2026-07-06). The 3-signal silence test above
+        // uses ~30.4 m spacing, which stays UN-clustered at the strict < 30 m radius, so it still passes.
+        val a = LatLng(47.0, -122.0 + 0.001)
+        val b = LatLng(47.0, -122.0 + 0.00125) // ~19 m from a, same physical junction
+        val turn = RouteGeometry.enrichWithLights(straightRoute(), listOf(a, b)).legs[0].maneuvers.last()
+        assertTrue("clustered to one light", turn.instruction.startsWith("Pass the traffic light, then turn left"))
+    }
+
     @Test fun exitRampForkMergeFoldsToOne() {
         val out = RouteGeometry.consolidateExits(listOf(
             man(ManeuverType.RAMP_RIGHT, 120.0), // exit ramp, 120 m to the fork

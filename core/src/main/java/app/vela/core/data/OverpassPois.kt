@@ -32,14 +32,16 @@ object OverpassPois {
         limit: Int = 1500,
     ): List<Place> = try {
         val bbox = "$south,$west,$north,$east"
-        // amenity covers schools/hospitals/etc.; leisure covers parks/playgrounds; boundary=national_park
-        // catches big parks tagged as a boundary rather than leisure=park. National parks are AREAS
-        // (relations/closed ways), essentially never standalone nodes, so that clause is `nwr` (not `node`)
-        // and the whole query uses `out center` so each way/relation carries a representative point (a no-op
-        // for the nodes, which already have lat/lon) — toPlace reads `center` when top-level lat/lon is absent.
+        // leisure/amenity/tourism are the categories OSM overwhelmingly maps as AREAS (a park/playground,
+        // a school/hospital campus, a museum/zoo footprint), so those clauses are `nwr` — the old `node`-only
+        // query silently dropped every area-mapped park (the common tagging for leisure=park) from the offline
+        // index (audit 2026-07-06). shop/public_transport stay `node` (storefronts + stops are point-tagged,
+        // bounding the extra Overpass load). boundary=national_park catches big parks tagged as a boundary.
+        // `out center` gives every way/relation a representative point (a no-op for nodes, which already have
+        // lat/lon) — toPlace reads `center` when top-level lat/lon is absent.
         val query = "[out:json][timeout:25];" +
-            "(node[amenity][name]($bbox);node[shop][name]($bbox);node[tourism][name]($bbox);" +
-            "node[\"public_transport\"][name]($bbox);node[leisure][name]($bbox);" +
+            "(nwr[amenity][name]($bbox);node[shop][name]($bbox);nwr[tourism][name]($bbox);" +
+            "node[\"public_transport\"][name]($bbox);nwr[leisure][name]($bbox);" +
             "nwr[boundary=national_park][name]($bbox););out center $limit;"
         val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
         val req = Request.Builder()
