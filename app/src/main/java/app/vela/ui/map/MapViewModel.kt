@@ -126,6 +126,7 @@ data class MapUiState(
     val installedVoiceIds: Set<String> = emptySet(), // Piper voices present on disk (the voice browser)
     val selectedVoiceId: String? = null, // the active Piper voice id (null = none installed)
     val voiceDownloadingId: String? = null, // the ONE voice currently downloading (one-at-a-time), else null
+    val voiceInstalling: Boolean = false,   // download done, unpacking the archive (the map card shows "Installing…")
     val voiceSpeaker: Int = 0, // chosen speaker # for the multi-speaker Vela voice (playground stepper)
     val voiceSpeed: Float = 1.0f, // spoken-directions speed multiplier (1.0 = normal, >1 = faster)
     val showPsdsTip: Boolean = false,
@@ -333,7 +334,10 @@ class MapViewModel @Inject constructor(
                 }
                 if (justArrived) {
                     tripStore.finishTrip()
-                    clearPersistedNav() // drive completed → don't offer to resume it next launch (audit 2026-07-06).
+                    // Don't touch the resume pref on a REPLAY/DEMO arrival — those never persisted one, and a
+                    // real drive could be paused underneath (a replay riding an active nav); only a genuine
+                    // live arrival should clear it (audit 2026-07-07).
+                    if (!_state.value.replaying) clearPersistedNav()
                     // NavEvent.Arrived fires only at the FINAL destination, so this is safe for multi-stop trips.
                     diag.record(
                         "nav",
@@ -1985,16 +1989,17 @@ class MapViewModel @Inject constructor(
             return
         }
         val firstEver = VelaPiper.installedVoiceIds(appContext).isEmpty()
-        _state.update { it.copy(voiceDownloadingId = id, kokoroDownloadPct = 0f) }
+        _state.update { it.copy(voiceDownloadingId = id, kokoroDownloadPct = 0f, voiceInstalling = false) }
         viewModelScope.launch {
             val ok = kokoroInstaller.download(
                 PiperCatalog.downloadUrl(id), VelaPiper.modelDirFor(appContext, id), v.sizeBytes,
+                onExtracting = { _state.update { if (it.voiceDownloadingId == id) it.copy(voiceInstalling = true) else it } },
             ) { p -> _state.update { if (it.voiceDownloadingId == id) it.copy(kokoroDownloadPct = p) else it } }
             // Clear the downloading state + refresh the installed set in ONE update (no "Download"
             // flicker between finishing and appearing installed).
             _state.update {
                 it.copy(
-                    voiceDownloadingId = null, kokoroDownloadPct = null,
+                    voiceDownloadingId = null, kokoroDownloadPct = null, voiceInstalling = false,
                     installedVoiceIds = VelaPiper.installedVoiceIds(appContext).toSet(),
                     selectedVoiceId = VelaPiper.effectiveVoiceId(appContext),
                 )

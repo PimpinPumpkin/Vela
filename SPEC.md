@@ -32,9 +32,10 @@ Services** (GrapheneOS / no-GMS ROMs), distributed via F-Droid/Obtainium, GPLv3.
   built to be **re-calibrated and even hot-patched without an app update** (§5).
 
 ### Non-goals
-- Street View (panorama tiles are key-gated), photo author/date (not in the photos
-  RPC), turn-by-turn *offline* routing (heavy native engine), account sync. See
-  `FEATURES.md` "Known debts."
+- In-app Street View panos (WebGL renders black in a WebView; a pill opens Google’s
+  keyless pano in the browser instead), account sync. (Turn-by-turn *offline* routing
+  and photo author/date, once non-goals, are now DONE — GraphHopper + the reviews DOM
+  scrape.) See `FEATURES.md` "Known debts."
 - **Popular/busy times — DONE keyless (2026-06-19), not a non-goal.** Earlier I wrongly
   ruled it sign-in-gated: the histogram (`[84]`) is stripped from the keyless **OkHttp**
   search (bot-degraded, like photos/transit), but a **warmed hidden WebView's same-origin
@@ -196,8 +197,8 @@ lands *on* a turn is encoded as a via arrive/depart, not a turn — **~1-in-10 n
 **only LEAD with the snapped route when it earns it** — its live in-traffic ETA must be within
 `SNAP_ETA_MARGIN` (×1.2) of OSRM's free-flow best, so a divergent-but-not-actually-faster snap steps
 aside for OSRM's clean route instead of being forced to the top (the `directions` diag logs `gEta`/`osrmFF`
-to tune this from real side-by-side data). A true per-alternate re-rank isn't possible — Google returns one
-live-traffic figure, so the overlay scales every route by the same ratio and can't reorder the alternates. The
+to tune this from real side-by-side data). Per-alternate re-rank IS done (2026-07-01): each Google alternate in `root[0][1]` carries its OWN
+`duration_in_traffic`, so the list is sorted by live in-traffic ETA — the fastest-shown route leads. The
 cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** — now shipped as
 the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
 
