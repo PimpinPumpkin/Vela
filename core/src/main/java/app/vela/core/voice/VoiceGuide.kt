@@ -47,6 +47,10 @@ class VoiceGuide @Inject constructor(
     // that language instead of mangling it through the wrong voice. `tts` holds EITHER the user's
     // chosen system engine (useNeural=false) OR this lazily-created default fallback (useNeural=true).
     private var systemReady = false
+    // Set when the system-TTS engine's onInit FAILED — so speakViaSystem stops queueing into `pending`
+    // forever (unbounded growth + a stale backlog that a later successful init would replay). Reset on a
+    // successful init.
+    private var systemInitFailed = false
     private var lastSystemLang: String? = null // avoid re-running setLanguage/selectBestVoice each utterance
 
     /** Invoked with a language code when guidance CAN'T speak that language (no matching neural voice
@@ -201,7 +205,10 @@ class VoiceGuide @Inject constructor(
         val t = tts
         if (status != TextToSpeech.SUCCESS || t == null) {
             systemReady = false
+            systemInitFailed = true
             if (!useNeural) working = false // the PRIMARY engine failed to start
+            pending.clear() // nothing can speak the backlog — drop it instead of replaying it on a later init
+            if (useNeural) langUnavailable?.invoke(targetLang()) // fallback engine dead → "download a <lang> voice"
             return
         }
         // A measured pace + neutral pitch reads more like a real nav voice than the engine default.
@@ -211,6 +218,7 @@ class VoiceGuide @Inject constructor(
         t.setSpeechRate(speechRate)
         t.setPitch(1.0f)
         systemReady = true
+        systemInitFailed = false
         lastSystemLang = null // force setLanguage on the first utterance
         if (!useNeural) { ready = true; working = true } // this system engine is the PRIMARY voice
         while (pending.isNotEmpty()) {
@@ -287,7 +295,8 @@ class VoiceGuide @Inject constructor(
     private fun speakViaSystem(text: String, interrupt: Boolean, t: String) {
         val engine = tts ?: run { ensureSystemTts(); null }
         if (engine == null || !systemReady) {
-            pending.addLast(text to interrupt) // drained by onInit once the fallback engine is ready
+            if (systemInitFailed) langUnavailable?.invoke(t) // init already failed — don't queue into a void forever
+            else pending.addLast(text to interrupt) // drained by onInit once the fallback engine is ready
             return
         }
         if (t != lastSystemLang) {
@@ -307,7 +316,14 @@ class VoiceGuide @Inject constructor(
         // decrement, so just acquire for the new utterance.
         acquireFocus()
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-        engine.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
+        val result = engine.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
+        if (result == TextToSpeech.ERROR) {
+            // The utterance was never enqueued, so NONE of the onDone/onStop/onError callbacks that
+            // release focus will ever fire for it — roll back the acquire here or music stays ducked
+            // forever (audit 2026-07-06). Also surface the dead engine like the onError path does.
+            releaseFocus()
+            working = false
+        }
     }
 
     /** Lazily create the DEFAULT system TTS engine as the neural-mismatch fallback, without touching
