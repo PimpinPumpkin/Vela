@@ -1156,9 +1156,22 @@ private fun ensureLayers(style: Style) {
                 setMinZoom(16f)
                 setProperties(
                     PropertyFactory.iconImage(Expression.get("icon")),
-                    PropertyFactory.iconSize(0.55f),
-                    PropertyFactory.iconAllowOverlap(false),
-                    PropertyFactory.iconIgnorePlacement(false),
+                    // Zoom-scaled so they read at nav zoom (~16-17.5) and grow as you zoom in — the flat 0.55
+                    // was too small to spot, especially tilted in nav (user 2026-07-06 wanted them bigger).
+                    PropertyFactory.iconSize(
+                        Expression.interpolate(
+                            Expression.linear(), Expression.zoom(),
+                            Expression.stop(15.5f, 0.75f),
+                            Expression.stop(17f, 1.05f),
+                            Expression.stop(19f, 1.5f),
+                        ),
+                    ),
+                    // Traffic controls are SPARSE (one per junction) — draw them all instead of letting the
+                    // denser POI layer collide them away, so they're actually visible on the browse map too
+                    // (Google shows all of them at street zoom). This reverses the earlier "collision keeps a
+                    // dense grid legible" — the user wants to see them, and at z16+ junctions are well-separated.
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true),
                     PropertyFactory.iconPadding(2f),
                 )
             },
