@@ -111,7 +111,11 @@ genuinely needs no doc edit, say why in the commit.
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
-  `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. **The chosen neural
+  `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. **BOTH routers feed
+  it:** `RouteGeometry.osrmPhrase` (online OSRM) AND `GraphHopperRouteEngine.ghPhrase` (offline) map their
+  maneuvers to the OSRM `(type, mod)` token pair and call `NavStringsRegistry.current().phrase(...)`, so
+  offline routes localize through the same 11 tables (ghPhrase used to hardcode English — audit 2026-07-06).
+  **The chosen neural
   voice must actually speak that language** — `VoiceGuide` guards on `NeuralSynth.voiceLanguage` and, on a
   mismatch, falls back to a system TTS in the target language (or stays silent + fires a "get a matching voice"
   hint) rather than reading, e.g., Russian nav text through the English Piper model (see the voice bullet under
@@ -278,11 +282,15 @@ genuinely needs no doc edit, say why in the commit.
   — `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round feet Google-style: 50 ft at/above
   100 ft, 10 ft below. (4) **Voice K/C** — `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) →
   "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. (6) **Continue/straight lane silence** — a CONTINUE/STRAIGHT speaks its lane preface ONLY for a GENUINE fork (an "off" lane whose OWN indication is an explicit `straight`/`slight*` arrow, e.g. "use the left 2 lanes to stay on I-80"); a plain turn bay at an intersection (off lane marked only `left`/`right`, OR **`none`** = OSRM's "no painted arrow" sentinel, which is NOT "goes straight") while you sail straight through is silenced (`Route.continueHasGenuineFork` gates `NavEngine`'s escape hatch; it matches only `straight`/`slight*` on an off lane — `none`/`through` are excluded) — Google stays silent there and the road-just-renames case had been over-speaking. (5) **Traffic-light landmarks
-  ("pass the light, then turn") — NOT built, feasible + planned:** OSM `highway=traffic_signals` is keyless via
-  Overpass (verified dense: 300 in a small Sacramento bbox), mirror `OverpassPois`; count signals between the
-  vehicle and the next turn along the polyline; add a clause in `NavStrings`. Needs a real-drive calibration of
-  the snap threshold + how many lights to mention, so ship it OFF by default. The neural voice's occasional
-  attack-clip at sentence starts is a model-level Piper limit, separate from the CA-99 fix.
+  ("pass the light, then turn") — BUILT (Settings → Navigation → "Traffic-light guidance", OFF by default,
+  English-only):** `RouteGeometry.enrichWithLights` folds a "pass the light, then …" clause into a surface-street
+  TURN when 1–2 signals fall on the approach (`NavStrings.passLights`); signals from `OverpassTrafficSignals.fetchAlong`
+  (keyless Overpass). **Two audit-2026-07-06 refinements (unit-tested):** it EXCLUDES a signal AT the turn vertex
+  itself (that's the light you turn at, not one you pass first — `distanceTo(turnPt) >= LIGHT_SNAP_M`), and it
+  CLUSTERS matched signals within `LIGHT_CLUSTER_M` (30 m) before counting, because OSM maps one `traffic_signals`
+  node per approach/carriageway at a junction — raw-node counting said "pass 2 lights" for one intersection. Still
+  needs a real-drive calibration of the thresholds. The neural voice's occasional attack-clip at sentence starts is
+  a model-level Piper limit, separate from the CA-99 fix.
 - Nav fixes (2026-07-05, round 2): (1) **Replay arrow** — the replay puck showed only the DOT, never the
   directional arrow. The arrow's visibility keys on the `displayBearing` passed to `applyData`
   (`VelaMapView` ~730), which prefers snap/compass/`myBearing`; recorded traces often carry no per-fix bearing,
