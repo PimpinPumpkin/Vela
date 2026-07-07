@@ -226,6 +226,9 @@
     <string name="mapscreen_filter_open_now">Nu open</string>
     <string name="mapscreen_filter_top_rated">4,0★</string>
     <string name="mapscreen_filter_price">Prijs</string>
+    <string name="mapscreen_sort">Sorteren</string>
+    <string name="mapscreen_sort_rating">Sortering: Beoordeling</string>
+    <string name="mapscreen_sort_distance">Sortering: Afstand</string>
     <string name="mapscreen_permanently_closed">Permanent gesloten</string>
     <string name="mapscreen_hide_results">Resultaten verbergen</string>
     <string name="mapscreen_section_saved">Opgeslagen</string>
