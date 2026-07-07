@@ -22,6 +22,19 @@ class JsTransformsTest {
         assertNull(JsSandbox.run("function broken( { not js", "broken", "x"))
     }
 
+    // The JUnit timeout is a safety net: if the kill switch ever regressed, the test FAILS
+    // (separate watchdog thread) instead of hanging the whole suite forever.
+    @Test(timeout = 15_000) fun infiniteLoopIsKilledAndFallsBackToNull() {
+        // A pushed transforms.js with a runaway loop must NOT hang the calling search forever
+        // (it would also block every later transform via synchronized(this)). The wall-clock
+        // instruction observer throws → runCatching(Throwable) → null → compiled-Kotlin fallback.
+        val start = System.nanoTime()
+        val out = JsSandbox.run("function transformPlaces(j){ while(true){} return j; }", "transformPlaces", "[]")
+        val elapsedMs = (System.nanoTime() - start) / 1_000_000
+        assertNull(out)
+        org.junit.Assert.assertTrue("killed after ${elapsedMs}ms, expected well under 15s", elapsedMs < 10_000)
+    }
+
     @Test fun sandboxExposesNoJava() {
         // The whole safety argument: initSafeStandardObjects must NOT expose `java`/
         // `Packages`, so fetched code can't reach the host. The reference throws → null.

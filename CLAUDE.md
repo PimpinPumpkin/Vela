@@ -123,7 +123,11 @@ genuinely needs no doc edit, say why in the commit.
   UI) and `VelaApp.attachBaseContext` (ViewModel/notification `getString`); changing the language calls
   `recreate()`. (3) **Google POI content** — the scrape's `hl=en` is rewritten to the app/system language
   at request time (`GoogleMapsDataSource.localized()`, no-op for English) so categories/hours/status/price
-  come back localized. The **open/closed BOOLEAN is parsed from the localized status TEXT against a
+  come back localized. **The rewrite is GATED to `SearchParser.STATUS_LANGS` (= the 11 keyword-table
+  languages, keyed off `CLOSED_WORDS`)** — for any OTHER locale the scrape stays `hl=en`, because a
+  status string in a language `parseOpenNow` can't read leaves openNow null forever and the UI can't
+  colour open/closed; English text the English table handles is the safer fallback (audit 2026-07-06).
+  The **open/closed BOOLEAN is parsed from the localized status TEXT against a
   per-language keyword table** (`SearchParser.parseOpenNow(status, lang)`, `lang` = the same
   `Locale.getDefault()` that set `hl=`; CLOSED words are matched FIRST — "Opens 5 AM" / "Ouvre à 07:00" /
   "Fechado" / "Opent om 9:00" are prefix-cousins of the open words, and open-first matching is exactly
@@ -207,7 +211,12 @@ genuinely needs no doc edit, say why in the commit.
   (`name`, `address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays,
   relative to a result entry whose place node is `[1]`; `results`/`single` are
   root-relative). So a "Google moved field X to a new index" fix is also just an
-  edit + version bump.
+  edit + version bump. **All three result-shape gates now follow `paths.name`** — `singleResultEntry`,
+  `atThisPlaceEntries` and `findResultsArray` wrap the candidate as `[null, node]` and validate through
+  `pathOf(paths,"name")` instead of a hard-coded `at(11)`, so a `paths.name` recalibration reaches the
+  single-result / address-snap / fallback paths too (they used to silently keep dropping results at the
+  old index). And the WebView details/popular-times path (`PopularTimesParser.parse`) threads the LIVE
+  `cal.paths` through `SearchParser.parse`/`parsePopularTimes` rather than pinning `DEFAULT_PATHS` (audit 2026-07-06).
 - **Signed channel (mandatory).** The bundle is **ECDSA-P256/SHA-256 signed**
   (`calibration.json.sig`, detached, base64) and the app verifies it against the
   **public key pinned in `CalibrationStore.PINNED_PUBLIC_KEY`** before adopting —
@@ -223,7 +232,11 @@ genuinely needs no doc edit, say why in the commit.
   app update. Rides the same signed channel.
 - **Phase 3 (done): remote parse *logic*** via `transformsJs` — a signed JS bundle
   run in a **Rhino sandbox** (`JsSandbox`, interpreted/`optimizationLevel=-1` for ART,
-  `initSafeStandardObjects` so it can't reach Java/IO; `org.mozilla:rhino-runtime`,
+  `initSafeStandardObjects` so it can't reach Java/IO; a private `ContextFactory` arms Rhino's
+  instruction observer as a **2 s wall-clock kill switch** — a runaway `while(true)` in a pushed
+  `transforms.js` throws an `Error` (which JS can't `catch`) → the `runCatching` becomes the
+  compiled-Kotlin fallback, so it can't hang search or, via `synchronized(this)`, wedge every later
+  transform (audit 2026-07-06, unit-tested); `org.mozilla:rhino-runtime`,
   R8-keep in `core/consumer-rules.pro`). `JsTransforms` exposes two search hooks —
   `parseSearch(rawResponse)` (full re-parse of a reshaped response) and
   `transformPlaces(placesJson)` (post-process) — over the flat `PlaceJson` contract;
