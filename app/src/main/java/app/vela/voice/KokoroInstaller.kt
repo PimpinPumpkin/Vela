@@ -43,18 +43,22 @@ class KokoroInstaller @Inject constructor(
         val tmp = File(context.filesDir, "voice.download.tmp")
         val staging = File(context.filesDir, "voice.staging")
         try {
-            // Reserve the tail of the progress bar for the vocoder when there's a two-part download.
-            val tarSpan = if (extraUrl != null) 0.55f else 0.98f
+            // The bar is download + EXTRACTION: bunzip2+untar of a ~67 MB archive is seconds of CPU, and
+            // mapping the download to ~98% left the bar visibly frozen there while it ran (the "hangs at
+            // 98%" report, 2026-07-07). Reserve a real slice for the extract (and the vocoder when the
+            // voice is a two-part download) so the bar keeps moving to the end.
+            val tarSpan = if (extraUrl != null) 0.52f else 0.90f
+            val extractSpan = 0.09f
             if (!stream(url, tmp, sizeEst, 0f, tarSpan, onProgress)) return@withContext false
 
             staging.deleteRecursively(); staging.mkdirs()
-            extractTarBz2(tmp, staging)
+            extractTarBz2(tmp, staging) { frac -> onProgress(tarSpan + extractSpan * frac) }
             val inner = staging.listFiles()?.firstOrNull { it.isDirectory } ?: staging
             destDir.deleteRecursively()
             if (!inner.renameTo(destDir)) inner.copyRecursively(destDir, overwrite = true)
 
             if (extraUrl != null && extraName != null) {
-                if (!stream(extraUrl, File(destDir, extraName), VOCODER_SIZE_EST, 0.6f, 0.38f, onProgress)) {
+                if (!stream(extraUrl, File(destDir, extraName), VOCODER_SIZE_EST, 0.62f, 0.36f, onProgress)) {
                     destDir.deleteRecursively(); return@withContext false
                 }
             }
@@ -90,8 +94,21 @@ class KokoroInstaller @Inject constructor(
             true
         }
 
-    private fun extractTarBz2(src: File, destDir: File) {
-        src.inputStream().buffered().use { fin ->
+    /** Extract [src] into [destDir], reporting 0f..1f progress as the fraction of the COMPRESSED file
+     *  consumed — cheap (a counter on the file stream) and monotonic, which is all a bar needs. */
+    private fun extractTarBz2(src: File, destDir: File, onProgress: (Float) -> Unit = {}) {
+        val totalCompressed = src.length().coerceAtLeast(1L)
+        var consumed = 0L
+        val counting = object : java.io.FilterInputStream(src.inputStream().buffered()) {
+            override fun read(): Int = super.read().also { if (it >= 0) bump(1) }
+            override fun read(b: ByteArray, off: Int, len: Int): Int =
+                super.read(b, off, len).also { if (it > 0) bump(it) }
+            fun bump(n: Int) {
+                consumed += n
+                onProgress((consumed.toFloat() / totalCompressed).coerceIn(0f, 1f))
+            }
+        }
+        counting.use { fin ->
             BZip2CompressorInputStream(fin).use { bz ->
                 TarArchiveInputStream(bz).use { tar ->
                     var entry = tar.nextEntry

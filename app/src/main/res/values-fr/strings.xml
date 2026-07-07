@@ -135,6 +135,8 @@
     <string name="place_temporarily_closed">Fermé temporairement</string>
     <string name="settings_traffic_lights">Guidage aux feux tricolores</string>
     <string name="settings_traffic_lights_hint">Annonce « passez le feu, puis tournez » aux intersections à feux (annonces en anglais pour l’instant)</string>
+    <string name="map_voice_downloading">Téléchargement de la voix %1$s · %2$d %%</string>
+    <string name="map_voice_downloading_fallback_name">Vela</string>
     <string name="settings_demo_drive">Simuler la conduite (démo)</string>
     <string name="settings_demo_drive_hint">Pour les démos, captures d’écran et tests : appuyer sur Démarrer parcourt l’itinéraire comme une trace GPS simulée au lieu de votre position réelle — la navigation fonctionne partout. Désactivez pour naviguer réellement.</string>
     <string name="place_address_copied">Adresse copiée</string>
