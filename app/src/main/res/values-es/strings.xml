@@ -226,6 +226,9 @@
     <string name="mapscreen_filter_open_now">Abierto ahora</string>
     <string name="mapscreen_filter_top_rated">4,0★</string>
     <string name="mapscreen_filter_price">Precio</string>
+    <string name="mapscreen_sort">Ordenar</string>
+    <string name="mapscreen_sort_rating">Orden: Valoración</string>
+    <string name="mapscreen_sort_distance">Orden: Distancia</string>
     <string name="mapscreen_permanently_closed">Cerrado permanentemente</string>
     <string name="mapscreen_hide_results">Ocultar resultados</string>
     <string name="mapscreen_section_saved">Guardados</string>

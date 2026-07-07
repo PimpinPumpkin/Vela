@@ -226,6 +226,9 @@
     <string name="mapscreen_filter_open_now">Відкрито зараз</string>
     <string name="mapscreen_filter_top_rated">4.0★</string>
     <string name="mapscreen_filter_price">Ціна</string>
+    <string name="mapscreen_sort">Сортування</string>
+    <string name="mapscreen_sort_rating">Сортування: Рейтинг</string>
+    <string name="mapscreen_sort_distance">Сортування: Відстань</string>
     <string name="mapscreen_permanently_closed">Закрито назавжди</string>
     <string name="mapscreen_hide_results">Сховати результати</string>
     <string name="mapscreen_section_saved">Збережені</string>
