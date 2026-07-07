@@ -204,6 +204,7 @@ class MapViewModel @Inject constructor(
     private val navResumePrefs = appContext.getSharedPreferences("vela_nav_resume", Context.MODE_PRIVATE)
     private var resumeDest: LatLng? = null   // stashed target for resumeNav() after maybeOfferResume()
     private var resumeMode: TravelMode = TravelMode.DRIVE
+    private var lastNavHeartbeatMs = 0L       // last time we refreshed the persisted-nav "at" timestamp (see NAV_HEARTBEAT_MS)
     @Volatile private var lastVoiceLangHinted: String? = null // last language we told the user they lack a
                                                               // voice for — so the hint shows once, not per prompt
     @Volatile private var lastLimitLoc: LatLng? = null // last fix the road speed-limit was computed at —
@@ -320,8 +321,20 @@ class MapViewModel @Inject constructor(
                 // what the nav engine did — the tuning signal that pairs with the raw GPS trip
                 // trace. Rides the existing opt-in; never uploaded.
                 if (navStarted) diag.record("nav", "start → ${ns.destinationLabel.ifBlank { "destination" }}")
+                // Heartbeat the resume timestamp while a REAL drive is under way (skip replay/demo, which
+                // don't persist) so the resume window measures time since the INTERRUPTION, not since nav
+                // start — else a drive longer than RESUME_MAX_AGE_MS could never be resumed (audit 2026-07-06).
+                if (ns.navigating && !_state.value.replaying && navResumePrefs.contains("lat")) {
+                    val now = System.currentTimeMillis()
+                    if (now - lastNavHeartbeatMs > NAV_HEARTBEAT_MS) {
+                        lastNavHeartbeatMs = now
+                        navResumePrefs.edit().putLong("at", now).apply()
+                    }
+                }
                 if (justArrived) {
                     tripStore.finishTrip()
+                    clearPersistedNav() // drive completed → don't offer to resume it next launch (audit 2026-07-06).
+                    // NavEvent.Arrived fires only at the FINAL destination, so this is safe for multi-stop trips.
                     diag.record(
                         "nav",
                         "arrived → ${ns.destinationLabel.ifBlank { "destination" }}",
@@ -576,6 +589,8 @@ class MapViewModel @Inject constructor(
         lastLimitLoc = here
         limitJob = viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             val kmh = runCatching { routeEngine.currentRoadLimit(here.lat, here.lng) }.getOrNull()
+            coroutineContext.ensureActive() // cancelled mid-snap by clearSpeedLimit (stopNav/replay teardown)?
+                                            // throw rather than resurrect the badge the teardown just cleared (audit 2026-07-06)
             if (kmh != null) {
                 lastLimitHitLoc = here
                 if (kmh != _state.value.speedLimitKmh) _state.update { it.copy(speedLimitKmh = kmh) }
@@ -593,6 +608,15 @@ class MapViewModel @Inject constructor(
     }
 
     private var suggestJob: Job? = null
+    // Single-flight the search so a slow earlier query can't land AFTER (and overwrite) a newer query's
+    // results. Shared by runSearch + searchAlongRoute so a plain and an along-route search cancel each
+    // other (audit 2026-07-06). Both cancel it and rethrow CancellationException before their generic catch,
+    // else the cancelled coroutine would run the offline-fallback/error state update.
+    private var searchJob: Job? = null
+    // Single-flight directions so a late reply can't overwrite newer state / resurrect a route the user
+    // backed out of. Each route() supersedes the previous; a directionsOpen/mode guard is the belt-and-
+    // suspenders for the back-out (audit 2026-07-06). Cancelled by clearRoute/clearSelection.
+    private var routeJob: Job? = null
 
     /** As the user types, fetch live place suggestions (debounced) so the search
      *  page shows real matches — name + address — to tap, like Google's
@@ -781,7 +805,8 @@ class MapViewModel @Inject constructor(
         // so the first place page skips the cold start).
         viewModelScope.launch { runCatching { webPopularTimes.prewarm() } }
         runCatching { webPhotos.warm() }
-        viewModelScope.launch {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
             _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false) }
             try {
                 val res = dataSource.search(q, near)
@@ -791,6 +816,8 @@ class MapViewModel @Inject constructor(
                     // "Destination" with stale routes (the from-here edit cleared where you were going).
                     it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false)
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e // superseded by a newer search — don't run the fallback/error update on a dead job
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_needs_recalibration, e.message), searching = false) }
             } catch (e: Exception) {
@@ -815,7 +842,8 @@ class MapViewModel @Inject constructor(
         if (route == null || route.size < 2) { runSearch(query, _state.value.myLocation); return }
         suggestJob?.cancel()
         recentStore.add(query)
-        viewModelScope.launch {
+        searchJob?.cancel()
+        searchJob = viewModelScope.launch {
             _state.update {
                 it.copy(query = query, searching = true, directionsOpen = false, suggestions = emptyList(), resultsCollapsed = false, recents = recentStore.recent())
             }
@@ -830,6 +858,8 @@ class MapViewModel @Inject constructor(
                         status = if (along.isEmpty()) appContext.getString(R.string.mapvm_none_found_along_route, query) else null,
                     )
                 }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e // superseded — don't run the error update on a dead job
             } catch (e: Exception) {
                 _state.update { it.copy(searching = false, status = appContext.getString(R.string.mapvm_search_failed)) }
             }
@@ -1051,6 +1081,7 @@ class MapViewModel @Inject constructor(
 
     fun clearSelection() {
         reviewsJob?.cancel() // free the scrape WebView/mutex — nothing is reading its result now
+        routeJob?.cancel() // a directions fetch in flight must not resurrect routes after we clear them
         _state.update {
             it.copy(
                 selected = null, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, loadingDetails = false,
@@ -1066,6 +1097,7 @@ class MapViewModel @Inject constructor(
      *  keep the place selected (so back peels one layer at a time). */
     fun clearRoute() {
         destination = null
+        routeJob?.cancel() // an in-flight directions fetch must not repopulate the route we're backing out of
         _state.update {
             it.copy(
                 routes = emptyList(), activeRoute = null, directionsOpen = false,
@@ -1103,9 +1135,13 @@ class MapViewModel @Inject constructor(
         // Tapping a POI brings it to the FRONT — close the directions chooser so the place sheet
         // isn't loaded invisibly underneath it (it's gated on !directionsOpen). Google does the same.
         reviewsJob?.cancel() // the old place's scrape holds the WebView/mutex — free it for this one
+        // Capture the placeholder so the async resolve can gate on FULL equality (name AND location) — two
+        // same-named POIs tapped in quick succession (a chain's two branches) otherwise let the slower
+        // resolve for the first hijack the second's sheet, since the old gate matched name only (audit 2026-07-06).
+        val placeholder = Place(id = "poi:" + name.hashCode(), name = name, location = location)
         _state.update {
             it.copy(
-                selected = Place(id = "poi:" + name.hashCode(), name = name, location = location),
+                selected = placeholder,
                 results = emptyList(),
                 center = location,
                 placesHere = emptyList(),
@@ -1148,7 +1184,7 @@ class MapViewModel @Inject constructor(
                 pick to results
             }.getOrNull()
             val full = resolved?.first
-            if (full != null && _state.value.selected?.name == name) {
+            if (full != null && _state.value.selected == placeholder) {
                 _state.update { it.copy(selected = full, placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
                 fetchPhotos(full)
@@ -1351,9 +1387,14 @@ class MapViewModel @Inject constructor(
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }
-        viewModelScope.launch {
+        // Guard: this reply is only applied if directions is still open for the SAME mode (the user hasn't
+        // backed out or switched away while it was fetching). Mirrors routeTransit's stale-load guard.
+        fun stillWanted() = _state.value.directionsOpen && _state.value.travelMode == mode
+        routeJob?.cancel()
+        routeJob = viewModelScope.launch {
             try {
                 val routes = dataSource.directions(origin, dest, mode, stops)
+                if (!stillWanted()) return@launch // backed out / switched mode mid-fetch — don't resurrect it
                 _state.update {
                     it.copy(
                         routes = routes,
@@ -1368,10 +1409,12 @@ class MapViewModel @Inject constructor(
                 // wrong turns/ETA that only "corrected" when Start named it. Name it NOW (OSRM snap +
                 // re-applied traffic), exactly as picking an alternate does, so preview == nav.
                 if (routes.firstOrNull()?.provisional == true) selectRoute(0)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e // superseded by a newer route()/cleared — don't touch state on a dead job
             } catch (e: CalibrationNeededException) {
-                _state.update { it.copy(status = appContext.getString(R.string.mapvm_directions_need_recalibration, e.message)) }
+                if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_directions_need_recalibration, e.message)) }
             } catch (e: Exception) {
-                _state.update { it.copy(status = appContext.getString(R.string.mapvm_routing_failed_reason, e.message)) }
+                if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_routing_failed_reason, e.message)) }
             }
         }
     }
@@ -1503,9 +1546,13 @@ class MapViewModel @Inject constructor(
     }
 
     fun stopNav() {
-        // A demo drive owns nav through the replay job — "End" cancels it; the job's finally tears the
-        // session down + resumes live GPS (so demo behaves like real nav, no separate "Stop replay" pill).
-        if (_state.value.demoDriving) { replayJob?.cancel(); return }
+        // A replay OR a demo drive owns nav through the replay job — "End" (and the back gesture, which
+        // also routes here) must end the REPLAY, not run live-nav teardown: stopReplay cancels replayJob
+        // whose finally does the full owned-nav teardown (replayMode off, navSession.stop, route/dot/camera
+        // restore, live-GPS resume) and never clears a real drive's persisted resume prefs. Covers demo
+        // (demoDriving ⟹ replaying && replayOwnsNav). Was demoDriving-only, so a recorded-trip replay's End
+        // ran live teardown and left the replay job running (audit 2026-07-06).
+        if (_state.value.replaying && replayOwnsNav) { stopReplay(); return }
         NavigationService.stop(appContext)
         navSession.stop()
         tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
@@ -1785,6 +1832,7 @@ class MapViewModel @Inject constructor(
     /** Nav ended (stopped/arrived/dismissed) → forget the resume target so it isn't offered next launch. */
     private fun clearPersistedNav() {
         resumeDest = null
+        lastNavHeartbeatMs = 0L // next drive's heartbeat starts fresh
         navResumePrefs.edit().clear().apply()
         if (_state.value.resumeNavLabel != null) _state.update { it.copy(resumeNavLabel = null) }
     }
@@ -2405,6 +2453,9 @@ class MapViewModel @Inject constructor(
                                                // untagged snaps → clear the badge (don't show a stale limit)
         const val RESUME_MAX_AGE_MS = 60 * 60 * 1000L // a persisted nav older than this = that drive is long
                                                       // over; don't offer to resume it on the next launch
+        const val NAV_HEARTBEAT_MS = 5 * 60 * 1000L   // refresh the resume timestamp this often WHILE driving,
+                                                      // so RESUME_MAX_AGE_MS measures time since the interruption
+                                                      // (not since nav START) — else a >60 min drive can never resume
         const val REPLAY_SPEEDUP = 3f // trip replays play this many × real time — the map view scales
                                       // the puck's dead-reckoning/easing clocks by it so replays glide
                                       // like live drives instead of surging per fix
