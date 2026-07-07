@@ -187,7 +187,22 @@ class PiperSynth @Inject constructor(
                 if (samples.isNotEmpty()) {
                     val at = ensureTrack(sampleRate)
                     at.pause(); at.flush(); at.play()
-                    at.write(samples, 0, samples.size, AudioTrack.WRITE_BLOCKING)
+                    // Write in ~200 ms chunks with a generation check between them, so an INTERRUPT
+                    // (turn-now / rerouting / stop-nav / call-silencing bumps `generation`) takes effect
+                    // within ~200 ms instead of blocking for the whole utterance (audit 2026-07-06: a
+                    // single WRITE_BLOCKING of the full buffer defeated interrupt for up to utterance
+                    // length). Safe against the streaming-SIGABRT rule — the whole utterance is already
+                    // generated (`samples`), so back-to-back chunk writes keep the buffer full and can't
+                    // underrun; the inter-chunk gap is one int comparison. On abort, pause+flush kills the
+                    // buffered tail immediately so the urgent prompt isn't preceded by stale audio.
+                    val writeChunk = sampleRate / 5 // ~200 ms of float mono frames
+                    var off = 0
+                    while (off < samples.size) {
+                        if (myGen != generation) { runCatching { at.pause(); at.flush() }; return@execute }
+                        val n = minOf(writeChunk, samples.size - off)
+                        at.write(samples, off, n, AudioTrack.WRITE_BLOCKING)
+                        off += n
+                    }
                     // DRAIN before finishing: WRITE_BLOCKING returns while the track buffer's tail
                     // (~1 s — bufferSize is sampleRate*4 bytes = 1 s of float mono) is still PLAYING,
                     // and the NEXT queued prompt's pause+flush would chop it — the "spoken directions

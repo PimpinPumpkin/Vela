@@ -48,13 +48,19 @@ class WebDirectionsFetcher @Inject constructor(
     private val main = Handler(Looper.getMainLooper())
     // One WebView, one navigation at a time — each request replaces the page.
     private val mutex = Mutex()
-    @Volatile private var result: CompletableDeferred<String>? = null
+    // Per-request id (WebPhotoFetcher's pattern): a previous, timed-out page's still-running poller
+    // (the EXTRACT setTimeout loop runs up to ~7 s) must NOT complete a NEWER request's deferred with
+    // the old route's payload. The script bakes its request id in, and only that id's deferred is
+    // completed (audit 2026-07-06).
+    private val seq = java.util.concurrent.atomic.AtomicLong()
+    private val pending = java.util.concurrent.ConcurrentHashMap<String, CompletableDeferred<String>>()
+    @Volatile private var currentId: String = "" // the id of the page being loaded now — baked into its EXTRACT
     @Volatile private var webView: WebView? = null
 
     private inner class Bridge {
         @JavascriptInterface
-        fun onResult(payload: String) {
-            result?.complete(payload)
+        fun onResult(id: String, payload: String) {
+            pending.remove(id)?.complete(payload) // a stale page's id is already gone → no-op
         }
     }
 
@@ -64,22 +70,23 @@ class WebDirectionsFetcher @Inject constructor(
         val url = "https://www.google.com/maps/dir/" +
             "${origin.lat},${origin.lng}/${destination.lat},${destination.lng}" +
             "/data=!4m2!4m1!3e3?hl=en&gl=us"
+        val id = seq.incrementAndGet().toString()
         val deferred = CompletableDeferred<String>()
-        result = deferred
+        pending[id] = deferred
         val raw = try {
             withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
-                load(url)
+                load(url, id)
                 deferred.await()
             }
         } finally {
-            result = null
+            pending.remove(id)
         }
         if (raw.isNullOrEmpty()) emptyList()
         else runCatching { TransitParser.parse(raw) }.getOrDefault(emptyList())
     }
 
     @SuppressLint("SetJavaScriptEnabled")
-    private suspend fun load(url: String) = withContext(Dispatchers.Main) {
+    private suspend fun load(url: String, id: String) = withContext(Dispatchers.Main) {
         val wv = webView ?: WebView(context).also {
             it.settings.javaScriptEnabled = true
             it.settings.domStorageEnabled = true
@@ -92,12 +99,15 @@ class WebDirectionsFetcher @Inject constructor(
                     return scheme != null && scheme != "https" && scheme != "http"
                 }
                 override fun onPageFinished(view: WebView?, u: String?) {
-                    // Let the SPA settle, then read the server-rendered state.
-                    main.postDelayed({ view?.evaluateJavascript(EXTRACT, null) }, SETTLE_MS)
+                    // Bake THIS page's request id into the extractor so its (possibly late) poller can only
+                    // complete its own deferred, never a newer request's.
+                    val idNow = currentId
+                    main.postDelayed({ view?.evaluateJavascript(extract(idNow), null) }, SETTLE_MS)
                 }
             }
             webView = it
         }
+        currentId = id
         wv.loadUrl(url)
     }
 
@@ -111,7 +121,7 @@ class WebDirectionsFetcher @Inject constructor(
          *  itinerary payload, so we take the LONGEST and require it to be
          *  substantial (the stub appears first). The SPA fills it a beat after
          *  page-finish, so we poll for up to ~7 s. */
-        val EXTRACT = """
+        fun extract(id: String) = """
             (function(){
               var tries = 0;
               function findBest(){
@@ -126,9 +136,9 @@ class WebDirectionsFetcher @Inject constructor(
               }
               function attempt(){
                 var best = findBest();
-                if (best && best.length > 5000){ VelaBridge.onResult(best.slice(0, 1500000)); return; }
+                if (best && best.length > 5000){ VelaBridge.onResult('$id', best.slice(0, 1500000)); return; }
                 if (tries++ < 12) setTimeout(attempt, 600);
-                else VelaBridge.onResult(best ? best.slice(0, 1500000) : "");
+                else VelaBridge.onResult('$id', best ? best.slice(0, 1500000) : "");
               }
               attempt();
             })();
