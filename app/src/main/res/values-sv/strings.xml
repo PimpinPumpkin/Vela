@@ -226,6 +226,9 @@
     <string name="mapscreen_filter_open_now">Öppet nu</string>
     <string name="mapscreen_filter_top_rated">4,0★</string>
     <string name="mapscreen_filter_price">Pris</string>
+    <string name="mapscreen_sort">Sortera</string>
+    <string name="mapscreen_sort_rating">Sortering: Betyg</string>
+    <string name="mapscreen_sort_distance">Sortering: Avstånd</string>
     <string name="mapscreen_permanently_closed">Permanent stängt</string>
     <string name="mapscreen_hide_results">Dölj resultat</string>
     <string name="mapscreen_section_saved">Sparade</string>
