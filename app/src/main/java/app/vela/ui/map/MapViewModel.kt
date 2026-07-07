@@ -785,7 +785,10 @@ class MapViewModel @Inject constructor(
             try {
                 val res = dataSource.search(q, near)
                 _state.update {
-                    it.copy(results = res.places, selected = null, status = null, searching = false)
+                    // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
+                    // else typing the origin query wiped the "To" and the panel showed an empty
+                    // "Destination" with stale routes (the from-here edit cleared where you were going).
+                    it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false)
                 }
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_needs_recalibration, e.message), searching = false) }
@@ -795,7 +798,7 @@ class MapViewModel @Inject constructor(
                     runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
                 }
                 if (offline.isNotEmpty()) {
-                    _state.update { it.copy(results = offline, selected = null, status = appContext.getString(R.string.mapvm_offline_results), searching = false) }
+                    _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false) }
                 } else {
                     _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_failed_reason, e.message), searching = false) }
                 }
