@@ -164,7 +164,7 @@ object EnNavStrings : NavStrings {
     }
 
     /** Whole-word road abbreviation → spoken form, "I-80"→"Interstate 80", and 3-digit street ordinals
-     *  ("128th"→"one twenty-eighth"). Moved here from VoiceGuide.forSpeech so it's English-scoped. */
+     *  ("128th"→"one twenty eighth"). Moved here from VoiceGuide.forSpeech so it's English-scoped. */
     override fun expandForSpeech(text: String): String {
         var s = text
         s = Regex("\\bI-(\\d+)").replace(s) { "Interstate ${it.groupValues[1]}" }
@@ -174,7 +174,7 @@ object EnNavStrings : NavStrings {
         // sometimes" bug. Runs AFTER I-/US- so those keep their spoken forms (US- is already de-hyphenated).
         s = Regex("\\b[A-Z]{2}-(\\d+)").replace(s) { "State Route ${it.groupValues[1]}" }
         EN_SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
-        s = SpeechText.spokenNumbers(s) // "128th" → "one twenty-eighth", not a mangled "one hundred and 28th"
+        s = SpeechText.spokenNumbers(s) // "128th" → "one twenty eighth" (space, not hyphen — the compound got a mushy -ty), not a mangled "one hundred and 28th"
         return s
     }
 }

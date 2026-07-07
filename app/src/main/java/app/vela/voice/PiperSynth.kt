@@ -176,7 +176,14 @@ class PiperSynth @Inject constructor(
                     // (then finally again), which double-decremented VoiceGuide's audio-focus
                     // refcount and un-ducked music over the interrupting prompt.
                     if (myGen != generation) return@execute
-                    val a = engine.generate(text = frag, sid = sid, speed = spd)
+                    // Every fragment gets TERMINAL PUNCTUATION before synthesis: a bare-ending
+                    // fragment ("turn left") gives the model no final prosody contour, so it trails
+                    // off and swallows the last consonant — the real-drive "lef" instead of "left"
+                    // (user 2026-07-06). The semicolon contour was A/B'd best on this voice (see
+                    // EnNavStrings.arrived, the same finding for the arrival callout). Punctuation
+                    // is language-neutral, so this is safe for every Piper voice.
+                    val fragText = if (frag.lastOrNull()?.isLetterOrDigit() == true) "$frag;" else frag
+                    val a = engine.generate(text = fragText, sid = sid, speed = spd)
                     sampleRate = a.sampleRate
                     if (a.samples.isNotEmpty()) chunks.add(a.samples)
                     if (gapAfter > 0f) chunks.add(FloatArray((sampleRate * gapAfter).toInt())) // spliced silence
