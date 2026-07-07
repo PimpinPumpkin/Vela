@@ -179,7 +179,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
 
     private fun toRoute(path: ResponsePath): Route {
         val poly = path.points.let { pts -> (0 until pts.size()).map { LatLng(pts.getLat(it), pts.getLon(it)) } }
-        val maneuvers = path.instructions.mapIndexed { i, ins ->
+        val rawManeuvers = path.instructions.mapIndexed { i, ins ->
             val type = ghType(ins.sign, first = i == 0)
             val road = ins.name?.takeIf { it.isNotBlank() }
             val at = ins.points.let { if (it.size() > 0) LatLng(it.getLat(0), it.getLon(0)) else poly.firstOrNull() ?: LatLng(0.0, 0.0) }
@@ -192,6 +192,8 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
                 road = road,
             )
         }
+        // Fold pure-rename CONTINUE steps out of the card/step list too (same as the OSRM path).
+        val maneuvers = RouteGeometry.foldRenames(rawManeuvers)
         return Route(
             polyline = poly,
             legs = listOf(RouteLeg(path.distance, path.time / 1000.0, null, maneuvers)),
