@@ -9,10 +9,10 @@ import app.vela.core.data.google.SearchPb
  * [DEFAULT]; [CalibrationStore] fetches a newer version from the public repo at
  * runtime so a fix lands without an app update ("push out the scraping").
  *
- * Phase 1 covers pb templates + endpoints. The positional field-index paths the
- * parsers read (`[1][39]`, `[1][10]`, …) are still compiled in — externalising
- * those is a later phase. A change that needs genuinely new parsing *logic*
- * still needs an app release; this only fixes path/pb/endpoint drift.
+ * Phase 1 covers pb templates + endpoints; Phase 2 externalised the positional field-index paths
+ * the parsers read (the `paths` object — `[1][39]`, `[1][10]`, …), so a moved field is also just an
+ * edit + version bump. Genuinely new parsing *logic* still needs an app release (or a signed
+ * transforms.js, phase 3); this fixes path/pb/endpoint drift.
  */
 data class Calibration(
     val version: Int,
@@ -48,8 +48,7 @@ data class Calibration(
     val defaultVoiceSpeaker: Int = DEFAULT_VOICE_SPEAKER,
     // Default spoken-directions speed multiplier (1.0 = normal, <1 = slower/clearer, >1 = faster),
     // used until the user adjusts it in Settings → Voice. Also remote-pushable; a user's explicit
-    // `voice_speed` pref wins. 0.72 — a touch slower than 0.8 for cleaner consonant articulation on the
-    // neural voice (dropped final T/D reads worse at speed; user 2026-07-06). Settings slider goes to 0.5.
+    // `voice_speed` pref wins. 0.8 is the user's preferred nav cadence. Settings slider goes to 0.5.
     val defaultVoiceSpeed: Float = DEFAULT_VOICE_SPEED,
     // The fleet default neural voice id (a Piper voice from PiperCatalog) — what onboarding downloads
     // and a fresh install activates. Remote-pushable via the signed bundle so a favourite voice can be
@@ -59,8 +58,9 @@ data class Calibration(
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
         const val DEFAULT_VOICE_SPEAKER = 14
-        // 0.72× — calmer nav cadence + cleaner consonant articulation (0.8 → 0.72, 2026-07-06).
-        const val DEFAULT_VOICE_SPEED = 0.72f
+        // 0.8× — the user's preferred nav cadence. (Briefly 0.72 on 2026-07-06 for consonant clarity,
+        // reverted 2026-07-07 — the fragment-punctuation + 132nd fixes handle articulation directly.)
+        const val DEFAULT_VOICE_SPEED = 0.8f
         // HFC Female — the user's pick for the fleet default voice (2026-07-03). Kept in sync with
         // VelaPiper.DEFAULT_VOICE_ID (the compiled fallback used where calibration isn't handy).
         const val DEFAULT_VOICE_ID = app.vela.core.voice.VelaPiper.DEFAULT_VOICE_ID
