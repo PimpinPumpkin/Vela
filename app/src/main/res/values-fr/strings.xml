@@ -203,6 +203,8 @@
     <string name="place_share_gmaps_link">Lien Google Maps</string>
     <string name="place_share_map_pin">Repère sur la carte (geo:)</string>
     <string name="place_share_coordinates">Coordonnées</string>
+    <string name="place_copy_coordinates">Copier les coordonnées</string>
+    <string name="place_coordinates_copied">Coordonnées copiées</string>
     <string name="place_share_address">Adresse</string>
     <string name="place_popular_times">Heures d\'affluence</string>
     <string name="place_busyness_right_now">%1$s en ce moment</string>

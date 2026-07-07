@@ -203,6 +203,8 @@
     <string name="place_share_gmaps_link">Google Maps-link</string>
     <string name="place_share_map_pin">Kaartspeld (geo:)</string>
     <string name="place_share_coordinates">Coördinaten</string>
+    <string name="place_copy_coordinates">Coördinaten kopiëren</string>
+    <string name="place_coordinates_copied">Coördinaten gekopieerd</string>
     <string name="place_share_address">Adres</string>
     <string name="place_popular_times">Drukke tijden</string>
     <string name="place_busyness_right_now">%1$s op dit moment</string>

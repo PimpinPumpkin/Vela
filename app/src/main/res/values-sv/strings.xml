@@ -203,6 +203,8 @@
     <string name="place_share_gmaps_link">Google Maps-länk</string>
     <string name="place_share_map_pin">Kartnål (geo:)</string>
     <string name="place_share_coordinates">Koordinater</string>
+    <string name="place_copy_coordinates">Kopiera koordinater</string>
+    <string name="place_coordinates_copied">Koordinater kopierade</string>
     <string name="place_share_address">Adress</string>
     <string name="place_popular_times">Populära tider</string>
     <string name="place_busyness_right_now">%1$s just nu</string>

@@ -67,6 +67,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsBoat
@@ -496,6 +497,34 @@ fun PlaceSheet(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.padding(top = 2.dp),
                 )
+            }
+            // Dropped-pin coordinates — when a tapped/held point did NOT snap to a street address (an
+            // arbitrary spot, a bare road, or a failed reverse-geocode), surface the lat/lng PROMINENTLY
+            // right under the name, Google-style, alongside the road name we already carry in the address
+            // row below. A house-numbered snap ("123 F St") or a real business POI shows its address
+            // instead, so this doesn't clutter those. Tappable to copy. Detect the snap by the name's
+            // first token being a pure-digit house number (a numbered street like "128th St" keeps its
+            // "th", so it reads as unsnapped and correctly shows coordinates).
+            val isDroppedPin = place.id.startsWith("pin:")
+            val snappedToAddress = place.name.substringBefore(' ')
+                .let { it.isNotEmpty() && it.all(Char::isDigit) } && place.name.contains(' ')
+            if (isDroppedPin && !snappedToAddress) {
+                val coords = "%.5f, %.5f".format(Locale.US, place.location.lat, place.location.lng)
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = null, tint = dim, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(coords, style = MaterialTheme.typography.bodyLarge, color = ink, modifier = Modifier.weight(1f))
+                    IconButton(onClick = {
+                        val cb = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                        cb.setPrimaryClip(ClipData.newPlainText("coordinates", coords))
+                        Toast.makeText(context, context.getString(R.string.place_coordinates_copied), Toast.LENGTH_SHORT).show()
+                    }) {
+                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.place_copy_coordinates), tint = dim, modifier = Modifier.size(18.dp))
+                    }
+                }
             }
             if (place.permanentlyClosed) {
                 // Dead POI — call it out clearly (Google-style red) even when Google
