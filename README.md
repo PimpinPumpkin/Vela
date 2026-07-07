@@ -16,6 +16,16 @@ signed `v0.2.<run>` release — no Play Store, no account. Or grab the APK strai
 from [Releases](https://github.com/PimpinPumpkin/Vela/releases). F-Droid submission
 is planned.
 
+## Why a degoogled app uses Google
+
+A phone without Google Play Services cannot run Google Maps, and the open map
+datasets fall well short on search, reviews, hours, and live traffic. So Vela is
+a thin client over Google's public web endpoints. It asks them the same way a
+logged-out browser does, once per user, with no account, no shared API key, and
+no server in the middle. NewPipe does the same for YouTube. There are no ads, and
+your searches, saved places, and history stay on the phone. If you run GrapheneOS
+or another no-GMS ROM, this gets you working maps back.
+
 > Status: **a genuinely usable day-to-day maps app.** Calibrated against live
 > captures and verified end-to-end on-device:
 >
