@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Rensa recensionssökning</string>
     <string name="place_no_reviews_mention">Inga recensioner nämner ”%1$s” (söker bland de %2$d inlästa).</string>
     <string name="place_back">Tillbaka</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Recensioner</string>
     <string name="place_from_the_owner">Från ägaren</string>
     <string name="place_share_place">Dela plats</string>

@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Очистить поиск по отзывам</string>
     <string name="place_no_reviews_mention">Ни один отзыв не упоминает «%1$s» (поиск по %2$d загруженным).</string>
     <string name="place_back">Назад</string>
+    <string name="place_street_view">Просмотр улиц</string>
     <string name="place_reviews_title">Отзывы</string>
     <string name="place_from_the_owner">От владельца</string>
     <string name="place_share_place">Поделиться местом</string>
