@@ -46,6 +46,15 @@ genuinely needs no doc edit, say why in the commit.
   audit/replay a multi-block trip against a single mashed route — that was the "arrow on another
   street / arrived mid-replay" corruption. NB replays of OLD trips faithfully play back the dirty
   fixes the old pipeline recorded (BeaconDB teleports) — judge the engine on fresh recordings.
+- **Demo / simulate-driving mode** (Settings → Navigation, off by default, pref `demo_drive` in
+  `vela_settings`). Drives a planned route as a SYNTHETIC GPS trace so nav can be shown/tested
+  **anywhere** with no real fix — this is how the Davis `docs/screenshots/05-navigation.png` was shot
+  while the phone was elsewhere. `DemoTrace.fromRoute(polyline)` (pure `:core`) → one clean
+  `ReplayFix`/sec, fed through the SAME hermetic `LocationProvider.replay` path a recorded trip uses
+  (`MapViewModel.startDemoDrive`, `startNav` branches on the pref). It's presented as real nav, not a
+  replay: `MapUiState.demoDriving` hides the "Stop replay" pill and the normal **End** (`stopNav`)
+  cancels the demo job (its `finally` resumes live GPS + resets the dot/route). **Turn it OFF to
+  navigate for real** — while on, every "Start" simulates instead of using GPS.
 - CI in `.github/workflows/ci.yml` (single workflow): every push to `main`
   builds + tests the APK (uploaded as an artifact) and publishes a **normal
   versioned GitHub release** `v0.2.<run>` (versionName `0.2.<run>`, versionCode

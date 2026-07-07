@@ -720,8 +720,10 @@ fun MapScreen(
         }
 
         // Replaying a recorded trip drives the dot + camera like a live drive; give the
-        // user an explicit way out (its tap stops the replay and resumes live GPS).
-        if (state.replaying) {
+        // user an explicit way out (its tap stops the replay and resumes live GPS). A DEMO drive
+        // (Settings → Simulate driving) is meant to look like real nav — its own "End" button stops
+        // it (stopNav cancels the demo), so don't show the replay pill over the nav chrome.
+        if (state.replaying && !state.demoDriving) {
             ElevatedButton(
                 onClick = vm::stopReplay,
                 modifier = Modifier
