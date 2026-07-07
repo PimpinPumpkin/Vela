@@ -79,7 +79,7 @@ class WebPopularTimesFetcher @Inject constructor(
             }
         } finally { pending.remove(id) }
         return if (raw.isNullOrEmpty()) null
-        else runCatching { PopularTimesParser.parse(raw, place.featureId) }.getOrNull()
+        else runCatching { PopularTimesParser.parse(raw, place.featureId, cal.paths) }.getOrNull()
     }
 
     /** name + address (commas dropped — the geocoder resolves the flat form most
