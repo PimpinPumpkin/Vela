@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">Vous pouvez changer cela à tout moment dans Paramètres → Voix.</string>
     <string name="root_voice_download">Télécharger la voix Vela</string>
     <string name="root_voice_use_system">Utiliser la voix du système</string>
+    <string name="root_offline_title">Cartes hors ligne</string>
+    <string name="root_offline_body">Vela obtient les lieux, la recherche et les itinéraires depuis Google, donc sans réseau seules les zones que vous avez téléchargées fonctionneront. Configurez une zone maintenant pour rester couvert quand vous perdez le signal.</string>
+    <string name="root_offline_setup">Configurer hors ligne</string>
     <string name="nav_maneuver_continue">Continuer</string>
     <string name="nav_gps_lost">Recherche du signal GPS…</string>
     <string name="nav_compound_then">puis</string>

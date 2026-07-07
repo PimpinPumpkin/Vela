@@ -47,9 +47,14 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     }
 
     var showSettings by rememberSaveable { mutableStateOf(false) }
+    var settingsOpenOffline by rememberSaveable { mutableStateOf(false) }
     Box {
         if (showSettings) {
-            SettingsScreen(vm = vm, onBack = { showSettings = false })
+            SettingsScreen(
+                vm = vm,
+                onBack = { showSettings = false; settingsOpenOffline = false },
+                openOffline = settingsOpenOffline,
+            )
         } else {
             MapScreen(vm = vm, onOpenSettings = { showSettings = true })
             if (Onboarding.showVoicePrompt.value) {
@@ -63,6 +68,15 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                         Onboarding.dismissVoicePrompt(context)
                     },
                     onSkip = { Onboarding.dismissVoicePrompt(context) },
+                )
+            } else if (Onboarding.showOfflinePrompt.value) {
+                OfflinePrompt(
+                    onSetup = {
+                        Onboarding.dismissOfflinePrompt(context)
+                        settingsOpenOffline = true
+                        showSettings = true
+                    },
+                    onSkip = { Onboarding.dismissOfflinePrompt(context) },
                 )
             } else if (Onboarding.showDonatePrompt.value) {
                 DonatePrompt(
@@ -150,6 +164,20 @@ private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit)
             )
         },
         confirmButton = { TextButton(onClick = onDownload) { Text(stringResource(R.string.root_voice_download)) } },
+        dismissButton = { TextButton(onClick = onSkip) { Text(stringResource(R.string.root_not_now)) } },
+    )
+}
+
+/** One-time, first-run offer to set up offline maps. Vela's live data comes from Google, so without a
+ *  connection only downloaded areas work. Surfacing this during onboarding means people find it before
+ *  they lose signal on the road, not after. "Set up" opens Settings straight to the Offline section. */
+@Composable
+private fun OfflinePrompt(onSetup: () -> Unit, onSkip: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onSkip,
+        title = { Text(stringResource(R.string.root_offline_title)) },
+        text = { Text(stringResource(R.string.root_offline_body)) },
+        confirmButton = { TextButton(onClick = onSetup) { Text(stringResource(R.string.root_offline_setup)) } },
         dismissButton = { TextButton(onClick = onSkip) { Text(stringResource(R.string.root_not_now)) } },
     )
 }

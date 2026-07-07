@@ -673,6 +673,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Optional BeaconDB WiFi positioning for faster coarse fix
 
 ## Offline
+- ✅ **Onboarding offers offline maps (2026-07-07)** — a one-time first-run prompt (right after the voice offer) tells you Vela's places/search/directions come from Google, so without signal only downloaded areas work, and offers to set one up. "Set up offline" opens Settings straight to the Offline section (expanded, scrolled to it) instead of auto-downloading a possibly-wrong huge area, since the map can be zoomed out during onboarding. Shown once, then never again (`offline_prompt_done`). Localized in all 11 languages. This puts the download flow in front of people before they lose service, not only when a connection drops.
 - ✅ **Settings → Offline is collapsible (2026-07-02)** — collapsed by default (tap the header to expand), so its long routing-region list doesn't force a big scroll past to reach the sections below it.
 - ✅ **Offline basemap region downloads** — **Settings → Offline → Map area → "Download the
   area you're viewing"** saves the last on-screen area's tiles/glyphs/sprites (via

@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">Pode alterar isto a qualquer momento em Definições → Voz.</string>
     <string name="root_voice_download">Transferir voz Vela</string>
     <string name="root_voice_use_system">Usar voz do sistema</string>
+    <string name="root_offline_title">Mapas offline</string>
+    <string name="root_offline_body">O Vela obtém locais, pesquisa e direções do Google, por isso sem sinal só funcionam as áreas que transferiu. Configure uma área agora para ficar coberto quando perder a rede.</string>
+    <string name="root_offline_setup">Configurar offline</string>
     <string name="nav_maneuver_continue">Continuar</string>
     <string name="nav_gps_lost">Procurando sinal de GPS…</string>
     <string name="nav_compound_then">depois</string>
