@@ -349,6 +349,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit) {
             }
             Hint(stringResource(R.string.settings_traffic_lights_hint))
 
+            var demoDrive by remember { mutableStateOf(prefs.getBoolean("demo_drive", false)) }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_demo_drive), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = demoDrive,
+                    onCheckedChange = {
+                        demoDrive = it
+                        prefs.edit().putBoolean("demo_drive", it).apply()
+                    },
+                )
+            }
+            Hint(stringResource(R.string.settings_demo_drive_hint))
+
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_map))
             Row(
