@@ -183,9 +183,12 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             val type = ghType(ins.sign, first = i == 0)
             val road = ins.name?.takeIf { it.isNotBlank() }
             val at = ins.points.let { if (it.size() > 0) LatLng(it.getLat(0), it.getLon(0)) else poly.firstOrNull() ?: LatLng(0.0, 0.0) }
+            // A roundabout instruction carries its exit number — thread it so the phrase reads "take exit N"
+            // (without it, ROUNDABOUT fell to the "Enter the roundabout" branch and lost the exit).
+            val rbExit = (ins as? com.graphhopper.util.RoundaboutInstruction)?.exitNumber?.takeIf { it > 0 }
             Maneuver(
                 type = type,
-                instruction = ghPhrase(type, road),
+                instruction = ghPhrase(type, road, rbExit),
                 location = at,
                 distanceMeters = ins.distance,
                 durationSeconds = ins.time / 1000.0,
@@ -248,7 +251,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
          *  same 11 tables, with zero new translations (audit 2026-07-06: this used to hardcode English, so
          *  offline routes were never localized unlike the OSRM path). English output is byte-identical to
          *  the old literals for the shipped cases. */
-        internal fun ghPhrase(type: ManeuverType, road: String?): String {
+        internal fun ghPhrase(type: ManeuverType, road: String?, rbExit: Int? = null): String {
             val (t, mod) = when (type) {
                 ManeuverType.DEPART -> "depart" to null
                 ManeuverType.ARRIVE -> "arrive" to null
@@ -268,7 +271,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
                 ManeuverType.EXIT_ROUNDABOUT -> "exit roundabout" to null
                 ManeuverType.UNKNOWN -> "continue" to null
             }
-            return app.vela.core.i18n.NavStringsRegistry.current().phrase(t, mod, road, null, null, null)
+            return app.vela.core.i18n.NavStringsRegistry.current().phrase(t, mod, road, null, null, rbExit)
         }
     }
 }
