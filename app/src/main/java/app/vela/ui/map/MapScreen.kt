@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -785,9 +786,14 @@ fun MapScreen(
                     .padding(top = 96.dp, start = 12.dp, end = 12.dp),
             )
         }
-        // Pushed notices (signed calibration channel) — on the bare map only, so they
-        // don't cover the nav banner / search / a place sheet.
-        if (!state.navigating && state.selected == null && !searchOpen && state.notices.isNotEmpty()) {
+        // Pushed notices (signed calibration channel) + the voice-download progress card — on the
+        // bare map only, so they don't cover the nav banner / search / a place sheet. The download
+        // card makes the ONBOARDING one-tap voice install visible (it used to run invisibly after
+        // the prompt dismissed — progress only existed in Settings; user 2026-07-07).
+        val downloadingVoiceId = state.voiceDownloadingId
+        if (!state.navigating && state.selected == null && !searchOpen &&
+            (state.notices.isNotEmpty() || downloadingVoiceId != null)
+        ) {
             Column(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -795,6 +801,13 @@ fun MapScreen(
                     .padding(top = 84.dp, start = 12.dp, end = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (downloadingVoiceId != null) {
+                    VoiceDownloadCard(
+                        name = app.vela.core.voice.PiperCatalog.byId(downloadingVoiceId)?.displayName
+                            ?: stringResource(R.string.map_voice_downloading_fallback_name),
+                        pct = state.kokoroDownloadPct ?: 0f,
+                    )
+                }
                 state.notices.forEach { n ->
                     NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
                 }
@@ -1483,6 +1496,34 @@ private fun InfoCard(
                 Text(body, style = MaterialTheme.typography.bodySmall, color = SheetPalette.dim(dark))
             }
             TextButton(onClick = onAction) { Text(actionLabel) }
+        }
+    }
+}
+
+/** Voice-download progress over the map — makes the onboarding one-tap install visible (it used to
+ *  run with no surface outside Settings). Reads the SAME state the Settings row does, so it also
+ *  shows when a Settings-started download is still running after backing out to the map. The bar
+ *  includes the extract phase (KokoroInstaller maps untar into the tail), so it no longer parks at
+ *  ~98% while the archive unpacks. */
+@Composable
+private fun VoiceDownloadCard(name: String, pct: Float, modifier: Modifier = Modifier) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                stringResource(R.string.map_voice_downloading, name, (pct * 100).toInt()),
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { pct.coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
