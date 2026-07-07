@@ -135,6 +135,8 @@
     <string name="place_temporarily_closed">Cerrado temporalmente</string>
     <string name="settings_traffic_lights">Indicaciones con semáforos</string>
     <string name="settings_traffic_lights_hint">Dice «pasa el semáforo y luego gira» en cruces con semáforo (voz solo en inglés por ahora)</string>
+    <string name="settings_demo_drive">Simular conducción (demo)</string>
+    <string name="settings_demo_drive_hint">Para demos, capturas y pruebas: al pulsar Iniciar se recorre la ruta como un rastro GPS simulado en lugar de tu ubicación real, así la navegación funciona en cualquier sitio. Desactívalo para navegar de verdad.</string>
     <string name="place_address_copied">Dirección copiada</string>
     <string name="place_copy_address">Copiar dirección</string>
     <string name="place_directions">Cómo llegar</string>
