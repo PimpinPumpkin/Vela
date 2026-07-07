@@ -135,6 +135,8 @@
     <string name="place_temporarily_closed">Тимчасово зачинено</string>
     <string name="settings_traffic_lights">Підказки за світлофорами</string>
     <string name="settings_traffic_lights_hint">«Проїдьте світлофор, потім поверніть» на перехрестях зі світлофорами (голос поки лише англійською)</string>
+    <string name="settings_demo_drive">Симуляція поїздки (демо)</string>
+    <string name="settings_demo_drive_hint">Для демонстрацій, знімків екрана й тестів: натискання «Почати» веде маршрутом як змодельований GPS-трек замість вашого справжнього розташування — навігація працює будь-де. Вимкніть для справжньої навігації.</string>
     <string name="place_address_copied">Адресу скопійовано</string>
     <string name="place_copy_address">Копіювати адресу</string>
     <string name="place_directions">Маршрут</string>

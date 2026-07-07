@@ -110,7 +110,8 @@ data class MapUiState(
     val voiceMuted: Boolean = false,
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
-    val replaying: Boolean = false,            // a recorded trip is currently being replayed
+    val replaying: Boolean = false,            // a recorded trip OR a demo drive is playing (drives the puck)
+    val demoDriving: Boolean = false,          // replaying is a Settings→demo synthetic drive (not a recorded trip) — nav chrome only, no "Stop replay" pill
     val arrived: Boolean = false,
     val nav: NavState = NavState(),
     val maneuverText: String = "",
@@ -1404,8 +1405,68 @@ class MapViewModel @Inject constructor(
             // route's traffic signals once + fold the clauses into its turns before the session starts.
             val enriched = enrichLightsIfEnabled(named)
             if (enriched !== named) _state.update { it.copy(activeRoute = enriched) }
-            launchNav(enriched)
+            // Demo / screenshot / test mode (Settings → Navigation): drive the route as a SYNTHETIC GPS
+            // trace instead of using the real fix, so nav can be shown/tested anywhere (a Davis route
+            // while the phone is elsewhere). Same replay pipeline as a recorded trip.
+            if (settingsPrefs.getBoolean("demo_drive", false)) startDemoDrive(enriched) else launchNav(enriched)
         }
+    }
+
+    /** Drive [route] as a synthetic GPS trace ([DemoTrace] → the recorded-trip [LocationProvider.replay]
+     *  path), so navigation runs with NO real fix — for demos, screenshots and testing nav anywhere.
+     *  Reuses the replay machinery wholesale (hermetic nav, puck physics, camera, voice); the synthetic
+     *  fixes are clean (monotonic time, real speed/bearing) so they skip the outlier/standstill gating a
+     *  recorded trace needs. Ends like a replay: live GPS resumes, the route/dot reset. */
+    private fun startDemoDrive(route: app.vela.core.model.Route) {
+        val dest = destination ?: route.polyline.lastOrNull() ?: return
+        val fixes = app.vela.core.location.DemoTrace.fromRoute(route.polyline)
+        if (fixes.size < 2) { flashStatus(appContext.getString(R.string.mapvm_no_track_to_replay)); return }
+        replayJob?.cancel()
+        if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
+        locationJob?.cancel(); locationJob = null // synthetic trace owns the puck — no live fixes
+        staleTimerJob?.cancel(); staleTimerJob = null
+        val resumeLoc = _state.value.myLocation
+        _state.update { it.copy(replaying = true, demoDriving = true, navCameraDetached = false) }
+        val label = _state.value.selected?.name.orEmpty()
+        val job = viewModelScope.launch {
+            try {
+                destination = dest
+                val engine = _state.value.selectedEngine?.packageName
+                neuralSynthFor(engine)?.let { voice.neural = it }
+                navSession.replayMode = true
+                navSession.start(route, dest, label, engine)
+                replayOwnsNav = true
+                locationProvider.replay(fixes, speedup = 1f).collect { loc ->
+                    if (replayJob !== coroutineContext[Job]) return@collect // superseded
+                    val here = LatLng(loc.latitude, loc.longitude)
+                    _state.update {
+                        it.copy(
+                            myLocation = here, myBearing = loc.bearing, mySpeed = loc.speed,
+                            mySpeedRaw = loc.speed, center = here, myLocationStale = false,
+                        )
+                    }
+                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, loc.speed.toDouble())
+                    updateSpeedLimit(here)
+                }
+            } finally {
+                if (replayJob === coroutineContext[Job]) {
+                    replayJob = null
+                    navSession.replayMode = false
+                    if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
+                    clearSpeedLimit()
+                    _state.update {
+                        it.copy(
+                            replaying = false, demoDriving = false, speedLimitKmh = null,
+                            routes = emptyList(), activeRoute = null, directionsOpen = false,
+                            showSteps = false, previewStepIndex = null,
+                            myLocation = resumeLoc ?: it.myLocation,
+                        )
+                    }
+                    startLocation()
+                }
+            }
+        }
+        replayJob = job
     }
 
     /** Fold traffic-light landmark clauses into [route]'s turns if Settings → Navigation has it on (else no-op,
@@ -1442,6 +1503,9 @@ class MapViewModel @Inject constructor(
     }
 
     fun stopNav() {
+        // A demo drive owns nav through the replay job — "End" cancels it; the job's finally tears the
+        // session down + resumes live GPS (so demo behaves like real nav, no separate "Stop replay" pill).
+        if (_state.value.demoDriving) { replayJob?.cancel(); return }
         NavigationService.stop(appContext)
         navSession.stop()
         tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
