@@ -46,7 +46,7 @@ object SearchParser {
             root.atPath(pathOf(paths, "results")).arr()?.takeIf { it.isNotEmpty() }
                 ?: atThisPlaceEntries(root, paths) // an address → the business AT it
                 ?: singleResultEntry(root, paths)
-                ?: findResultsArray(root)
+                ?: findResultsArray(root, paths)
                 ?: return SearchResult(query, emptyList())
 
         val places = entries.mapNotNull { entry -> toPlace(entry, near, paths) }
@@ -80,8 +80,12 @@ object SearchParser {
      *  [toPlace], which reads `entry[1]`, parses it unchanged. */
     private fun singleResultEntry(root: JsonElement, paths: Map<String, List<Int>>): List<JsonElement>? {
         val node = root.atPath(pathOf(paths, "single")) ?: return null
-        if (node.at(11).str() == null) return null
-        return listOf(JsonArray(listOf(JsonNull, node)))
+        // Validate through the CALIBRATED name path, not a hard-coded [11], so a remote
+        // paths.name recalibration reaches this gate too (wrap as [null, node] first — the
+        // entry-relative name path resolves node.at(11) by default).
+        val entry = JsonArray(listOf(JsonNull, node))
+        if (entry.atPath(pathOf(paths, "name")).str() == null) return null
+        return listOf(entry)
     }
 
     /** Searching a bare ADDRESS that is a business ("1020 Olive Dr" → In-N-Out): Google
@@ -93,8 +97,9 @@ object SearchParser {
         val list = root.atPath(pathOf(paths, "atThisPlace")).arr() ?: return null
         val entries = list.mapNotNull { e ->
             val node = e.at(0) ?: return@mapNotNull null
-            if (node.at(11).str() == null) return@mapNotNull null
-            JsonArray(listOf(JsonNull, node))
+            val entry = JsonArray(listOf(JsonNull, node))
+            if (entry.atPath(pathOf(paths, "name")).str() == null) return@mapNotNull null // calibrated name path, not [11]
+            entry
         }
         return entries.ifEmpty { null }
     }
@@ -105,6 +110,12 @@ object SearchParser {
         val lat = field("lat").dbl() ?: return null
         val lng = field("lng").dbl() ?: return null
         val loc = LatLng(lat, lng)
+        // ONE status string feeds BOTH the open/closed boolean AND the displayed text, resolved in the
+        // SAME order (richest first: status118 → statusRich → openStatus). They used to read in OPPOSITE
+        // orders (openNow openStatus-first, statusText status118-first), so when the [203]/[118] status
+        // nodes disagreed the colour contradicted the words the user saw (audit 2026-07-06). Deriving the
+        // boolean from the exact string displayed makes that impossible.
+        val statusStr = field("status118").str() ?: field("statusRich").str() ?: field("openStatus").str()
         return Place(
             id = "g:" + name.hashCode() + ":" + (lat * 1e4).toInt(),
             name = name,
@@ -140,12 +151,8 @@ object SearchParser {
             // live EN capture 2026-07-04: closed pharmacies carried 6 ("open") and an
             // Open-24-hours business carried 13/4 ("closed") — they're span/style markers, not
             // open/closed, and the French pin agreeing was a coincidence. Text is authoritative.
-            openNow = parseOpenNow(
-                field("openStatus").str() ?: field("statusRich").str() ?: field("status118").str(),
-            ),
-            statusText = field("status118").str()
-                ?: field("statusRich").str()
-                ?: field("openStatus").str(),
+            openNow = parseOpenNow(statusStr),
+            statusText = statusStr,
             // Dead POI: the `[23]==1` flag is the reliable signal (Caffé Italia has no
             // status text at all, so the text check alone missed it); keep the text
             // check as a belt-and-suspenders for places that DO spell it out.
@@ -299,6 +306,12 @@ object SearchParser {
         "uk" to listOf("Зачинено", "Відчиниться", "Тимчасово"),
     )
 
+    /** Languages [parseOpenNow] actually has a keyword table for. `GoogleMapsDataSource.localized()`
+     *  gates its `hl=` rewrite on this — for a locale NOT covered here the scrape must stay `hl=en`,
+     *  else the status text comes back in an unparseable language and openNow is always null (the UI
+     *  then can't colour it). Keyed off [CLOSED_WORDS] so the set can never drift from the tables. */
+    internal val STATUS_LANGS: Set<String> get() = CLOSED_WORDS.keys
+
     /** OPEN indicators per language: the "open" word itself plus the closes-later forms
      *  ("Closes 9 PM" / "Ferme à 19:00" / "Closing soon" — closing LATER means open NOW). */
     private val OPEN_WORDS = mapOf(
@@ -373,10 +386,11 @@ object SearchParser {
     }
 
     /** Fallback: the largest array whose first entry has a name + coordinate. */
-    private fun findResultsArray(root: JsonElement): JsonArray? {
+    private fun findResultsArray(root: JsonElement, paths: Map<String, List<Int>>): JsonArray? {
         if (root !is JsonArray) return null
+        val namePath = pathOf(paths, "name") // entry-relative; validity gate follows a paths.name recalibration
         return root.filterIsInstance<JsonArray>()
-            .filter { it.size >= 1 && it.firstOrNull()?.at(1, 11).str() != null }
+            .filter { it.size >= 1 && it.firstOrNull().atPath(namePath).str() != null }
             .maxByOrNull { it.size }
     }
 
