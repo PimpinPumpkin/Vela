@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">U kunt dit op elk moment wijzigen bij Instellingen → Stem.</string>
     <string name="root_voice_download">Vela-stem downloaden</string>
     <string name="root_voice_use_system">Systeemstem gebruiken</string>
+    <string name="root_offline_title">Offlinekaarten</string>
+    <string name="root_offline_body">Vela haalt plaatsen, zoekopdrachten en routes van Google, dus zonder signaal werken alleen gebieden die je hebt gedownload. Stel nu een gebied in zodat je gedekt bent als je bereik verliest.</string>
+    <string name="root_offline_setup">Offline instellen</string>
     <string name="nav_maneuver_continue">Doorgaan</string>
     <string name="nav_gps_lost">GPS-signaal zoeken…</string>
     <string name="nav_compound_then">daarna</string>

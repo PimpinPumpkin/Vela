@@ -32,6 +32,11 @@ object Onboarding {
      *  model is present or the user has answered. */
     val showVoicePrompt = mutableStateOf(false)
 
+    /** True for the single session where the one-time "set up offline maps?" prompt should show — offered
+     *  right after the voice prompt so people discover offline maps during onboarding instead of hitting a
+     *  dead search on the road. Shown once, then never again. */
+    val showOfflinePrompt = mutableStateOf(false)
+
     // Replace with your own funding page (Liberapay / Ko-fi / GitHub Sponsors).
     const val DONATE_URL = "https://github.com/sponsors/PimpinPumpkin"
 
@@ -64,13 +69,26 @@ object Onboarding {
         // arms it right after the welcome screen instead.
         val voicePromptDone = p.getBoolean("voice_prompt_done", false)
         showVoicePrompt.value = welcomeDone.value && !voicePromptDone && !VelaPiper.isReady(context)
+
+        // Offline prompt: once the voice question is behind them (new install) or already answered
+        // (existing install), offer to set up offline maps. Shown a single time.
+        val offlinePromptDone = p.getBoolean("offline_prompt_done", false)
+        showOfflinePrompt.value = welcomeDone.value && voicePromptDone && !offlinePromptDone
     }
 
-    /** Mark the voice prompt handled so it never shows again. */
+    /** Mark the voice prompt handled so it never shows again, and arm the offline prompt next. */
     fun dismissVoicePrompt(context: Context) {
         showVoicePrompt.value = false
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        p.edit().putBoolean("voice_prompt_done", true).apply()
+        showOfflinePrompt.value = !p.getBoolean("offline_prompt_done", false)
+    }
+
+    /** Mark the offline prompt handled so it never shows again. */
+    fun dismissOfflinePrompt(context: Context) {
+        showOfflinePrompt.value = false
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-            .edit().putBoolean("voice_prompt_done", true).apply()
+            .edit().putBoolean("offline_prompt_done", true).apply()
     }
 
     /** Mark the diagnostics prompt as handled so it never shows again. */

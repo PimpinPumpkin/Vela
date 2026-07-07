@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">Puedes cambiar esto cuando quieras en Ajustes → Voz.</string>
     <string name="root_voice_download">Descargar voz de Vela</string>
     <string name="root_voice_use_system">Usar voz del sistema</string>
+    <string name="root_offline_title">Mapas sin conexión</string>
+    <string name="root_offline_body">Vela obtiene lugares, búsqueda e indicaciones de Google, así que sin señal solo funcionarán las zonas que hayas descargado. Configura una zona ahora para estar cubierto cuando pierdas la conexión.</string>
+    <string name="root_offline_setup">Configurar sin conexión</string>
     <string name="nav_maneuver_continue">Continúa</string>
     <string name="nav_gps_lost">Buscando señal de GPS…</string>
     <string name="nav_compound_then">después</string>
