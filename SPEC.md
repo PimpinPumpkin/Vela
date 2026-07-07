@@ -390,6 +390,15 @@ itself shows the traffic, not the whole map.
   -DvelaTrip=<abs.csv>` (the `velaTrip` property is forwarded to the test JVM in
   `core/build.gradle.kts`). Unit-tested clean-drive + flag-logic + CSV round-trip. (Pure `:core`,
   Android-free.)
+- **Demo / simulate-driving mode** (Settings → Navigation, off by default, pref `demo_drive`): a
+  synthetic-trace path that reuses the replay machinery so nav can be driven **anywhere** without a
+  real fix (demos, screenshots, testing). `DemoTrace.fromRoute(polyline)` (pure `:core`) densifies the
+  planned route into one clean `ReplayFix`/sec (cruise speed → real bearing + speed + monotonic time),
+  and `startDemoDrive` in `MapViewModel` starts nav through the SAME hermetic `LocationProvider.replay`
+  path a recorded trip uses (`replayMode`, puck physics, follow-camera, voice, speed-limit badge). It's
+  presented as real nav, not a replay: `MapUiState.demoDriving` hides the "Stop replay" pill, and the
+  normal **End** (`stopNav`) cancels the demo job — whose `finally` tears the session down and resumes
+  live GPS (dot/route reset to the pre-demo location). `startNav` branches on the `demo_drive` pref.
 
 ---
 
