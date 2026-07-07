@@ -295,6 +295,9 @@
     <string name="root_voice_body_outro">You can change this any time in Settings → Voice.</string>
     <string name="root_voice_download">Download Vela voice</string>
     <string name="root_voice_use_system">Use system voice</string>
+    <string name="root_offline_title">Offline maps</string>
+    <string name="root_offline_body">Vela gets places, search and directions from Google, so with no signal only areas you have downloaded will work. Set up an area now so you are covered when you lose service.</string>
+    <string name="root_offline_setup">Set up offline</string>
 
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">Continue</string>

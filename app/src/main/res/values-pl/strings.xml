@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">Możesz to zmienić w dowolnej chwili w Ustawienia → Głos.</string>
     <string name="root_voice_download">Pobierz głos Vela</string>
     <string name="root_voice_use_system">Użyj głosu systemowego</string>
+    <string name="root_offline_title">Mapy offline</string>
+    <string name="root_offline_body">Vela pobiera miejsca, wyszukiwanie i trasy z Google, więc bez sygnału zadziałają tylko obszary, które pobrałeś. Skonfiguruj obszar teraz, aby mieć pokrycie, gdy stracisz zasięg.</string>
+    <string name="root_offline_setup">Skonfiguruj offline</string>
     <string name="nav_maneuver_continue">Jedź dalej</string>
     <string name="nav_gps_lost">Szukanie sygnału GPS…</string>
     <string name="nav_compound_then">następnie</string>

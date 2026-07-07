@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">Змінити це можна будь-коли в Налаштування → Голос.</string>
     <string name="root_voice_download">Завантажити голос Vela</string>
     <string name="root_voice_use_system">Використати системний голос</string>
+    <string name="root_offline_title">Офлайн-карти</string>
+    <string name="root_offline_body">Vela отримує місця, пошук і маршрути з Google, тому без сигналу працюватимуть лише завантажені вами області. Налаштуйте область зараз, щоб залишатися на зв\'язку, коли зникне мережа.</string>
+    <string name="root_offline_setup">Налаштувати офлайн</string>
     <string name="nav_maneuver_continue">Прямуйте далі</string>
     <string name="nav_gps_lost">Пошук сигналу GPS…</string>
     <string name="nav_compound_then">потім</string>
