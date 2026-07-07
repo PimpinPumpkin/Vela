@@ -272,6 +272,9 @@
     <string name="root_voice_body_outro">Puoi modificarlo in qualsiasi momento in Impostazioni → Voce.</string>
     <string name="root_voice_download">Scarica voce Vela</string>
     <string name="root_voice_use_system">Usa voce di sistema</string>
+    <string name="root_offline_title">Mappe offline</string>
+    <string name="root_offline_body">Vela ottiene luoghi, ricerca e indicazioni da Google, quindi senza segnale funzioneranno solo le aree che hai scaricato. Configura un\'area ora per restare coperto quando perdi la rete.</string>
+    <string name="root_offline_setup">Configura offline</string>
     <string name="nav_maneuver_continue">Prosegui</string>
     <string name="nav_gps_lost">Ricerca del segnale GPS…</string>
     <string name="nav_compound_then">poi</string>
