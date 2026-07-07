@@ -16,6 +16,24 @@ signed `v0.2.<run>` release — no Play Store, no account. Or grab the APK strai
 from [Releases](https://github.com/PimpinPumpkin/Vela/releases). F-Droid submission
 is planned.
 
+---
+
+## Screenshots
+
+| Map & search | Search results | Place details | Directions | Navigation |
+|:-:|:-:|:-:|:-:|:-:|
+| <img src="docs/screenshots/01-map.png" width="150"> | <img src="docs/screenshots/02-search.png" width="150"> | <img src="docs/screenshots/03-place.png" width="150"> | <img src="docs/screenshots/04-directions.png" width="150"> | <img src="docs/screenshots/05-navigation.png" width="150"> |
+
+| Public transit | Photo gallery | Light theme — search | Light theme — place |
+|:-:|:-:|:-:|:-:|
+| <img src="docs/screenshots/06-transit.png" width="150"> | <img src="docs/screenshots/07-gallery.png" width="150"> | <img src="docs/screenshots/08-map-light.png" width="150"> | <img src="docs/screenshots/09-place-light.png" width="150"> |
+
+*Keyless OpenFreeMap basemap with custom Google-style POI markers; live Google
+search / place / **transit** data and the full **photo gallery**; the directions
+panel (alternates, depart-time, search-along-route); turn-by-turn navigation with
+the maneuver banner + speedometer; and the in-app **light/dark** themes (decoupled
+from the OS).*
+
 ## Why a degoogled app uses Google
 
 A phone without Google Play Services cannot run Google Maps, and the open map
@@ -59,24 +77,6 @@ or another no-GMS ROM, this gets you working maps back.
 > See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
 > resilience-layer specification (the rebuild target), and **[`ROADMAP.md`](ROADMAP.md)**
 > for what's planned (opt-in telemetry, a Vela-own traffic layer, popular times, …).
-
----
-
-## Screenshots
-
-| Map & search | Search results | Place details | Directions | Navigation |
-|:-:|:-:|:-:|:-:|:-:|
-| <img src="docs/screenshots/01-map.png" width="150"> | <img src="docs/screenshots/02-search.png" width="150"> | <img src="docs/screenshots/03-place.png" width="150"> | <img src="docs/screenshots/04-directions.png" width="150"> | <img src="docs/screenshots/05-navigation.png" width="150"> |
-
-| Public transit | Photo gallery | Light theme — search | Light theme — place |
-|:-:|:-:|:-:|:-:|
-| <img src="docs/screenshots/06-transit.png" width="150"> | <img src="docs/screenshots/07-gallery.png" width="150"> | <img src="docs/screenshots/08-map-light.png" width="150"> | <img src="docs/screenshots/09-place-light.png" width="150"> |
-
-*Keyless OpenFreeMap basemap with custom Google-style POI markers; live Google
-search / place / **transit** data and the full **photo gallery**; the directions
-panel (alternates, depart-time, search-along-route); turn-by-turn navigation with
-the maneuver banner + speedometer; and the in-app **light/dark** themes (decoupled
-from the OS).*
 
 ## Privacy
 
