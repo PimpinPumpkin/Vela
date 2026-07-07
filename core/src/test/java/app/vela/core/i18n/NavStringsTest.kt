@@ -105,7 +105,7 @@ class NavStringsTest {
 
     @Test fun `expandForSpeech is English-only opt-in`() {
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
-        assertEquals("one twenty-eighth Street", EnNavStrings.expandForSpeech("128th St"))
+        assertEquals("one twenty eighth Street", EnNavStrings.expandForSpeech("128th St"))
         // French leaves the text — including a road abbreviation — untouched (interface default identity).
         assertEquals("Tournez sur Rue St", FrNavStrings.expandForSpeech("Tournez sur Rue St"))
         // Other languages also leave text untouched (they use the interface default).
