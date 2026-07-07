@@ -133,6 +133,8 @@
     <string name="place_close">Закрити</string>
     <string name="place_permanently_closed">Закрито назавжди</string>
     <string name="place_temporarily_closed">Тимчасово зачинено</string>
+    <string name="settings_traffic_lights">Підказки за світлофорами</string>
+    <string name="settings_traffic_lights_hint">«Проїдьте світлофор, потім поверніть» на перехрестях зі світлофорами (голос поки лише англійською)</string>
     <string name="place_address_copied">Адресу скопійовано</string>
     <string name="place_copy_address">Копіювати адресу</string>
     <string name="place_directions">Маршрут</string>
