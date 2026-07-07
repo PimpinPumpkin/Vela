@@ -133,6 +133,8 @@
     <string name="place_close">Fermer</string>
     <string name="place_permanently_closed">Définitivement fermé</string>
     <string name="place_temporarily_closed">Fermé temporairement</string>
+    <string name="settings_traffic_lights">Guidage aux feux tricolores</string>
+    <string name="settings_traffic_lights_hint">Annonce « passez le feu, puis tournez » aux intersections à feux (annonces en anglais pour l’instant)</string>
     <string name="place_address_copied">Adresse copiée</string>
     <string name="place_copy_address">Copier l\'adresse</string>
     <string name="place_directions">Itinéraire</string>
