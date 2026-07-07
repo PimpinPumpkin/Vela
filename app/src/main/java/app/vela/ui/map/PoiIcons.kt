@@ -167,6 +167,11 @@ object PoiIcons {
                     ),
                     PropertyFactory.textRadialOffset(1.4f),
                     PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
+                    // UPRIGHT font, matching the ambient Google-POI layer. Liberty's default POI face is
+                    // Noto Sans ITALIC, so when ambient clears (search / a place selected / nav) these OSM
+                    // labels slanted — an inconsistent "everything goes italic mid-search" flicker. Google's
+                    // labels are upright everywhere; pin the same regular face the ambient layer uses.
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
@@ -194,6 +199,7 @@ object PoiIcons {
                     ),
                     PropertyFactory.textRadialOffset(1.4f),
                     PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")), // upright, like ambient (Liberty's default is italic)
                 )
                 layer.setProperties(PropertyFactory.textColor(textColor)) // per-category in BOTH modes (dark = pastel tints)
                 layer.setMinZoom(16f)
