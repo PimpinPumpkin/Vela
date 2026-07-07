@@ -25,6 +25,18 @@ class VoiceInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
     private val http: OkHttpClient,
 ) {
+    // A body-tolerant client for the APK download (an engine APK can be tens of MB): the shared `http`
+    // carries a callTimeout(12s) that scrape-bounds requests but ABORTS a large body mid-stream, which
+    // runCatching silently ate → the one-tap install fell back to the web page for no reason. Mirrors
+    // the KokoroInstaller/RoutingGraphStore/OverlayTileStore rule (audit 2026-07-06). Manifest fetch
+    // stays on `http` (tiny).
+    private val downloadHttp by lazy {
+        http.newBuilder()
+            .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
+            .build()
+    }
+
     data class Engine(val pkg: String, val label: String, val note: String)
 
     /** Offered engines, all FOSS on F-Droid. SherpaTTS runs sherpa-onnx neural models (Kokoro is
@@ -56,13 +68,13 @@ class VoiceInstaller @Inject constructor(
             val url = "https://f-droid.org/repo/${pkg}_$vc.apk"
             val dir = File(context.filesDir, "engines").apply { mkdirs() }
             val apk = File(dir, "$pkg.apk")
-            val ok = http.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
+            val ok = downloadHttp.newCall(Request.Builder().url(url).header("User-Agent", "VelaMaps").build()).execute().use { resp ->
                 if (!resp.isSuccessful) return@use false
                 val body = resp.body ?: return@use false
                 apk.outputStream().use { out -> body.byteStream().copyTo(out) }
                 true
             }
-            if (ok && apk.length() >= 10_000L) { launchInstaller(apk); true } else false
+            if (ok && apk.length() >= 10_000L) { launchInstaller(apk); true } else { apk.delete(); false }
         }.getOrDefault(false)
         if (downloaded) return@withContext null
         // Fallback: hand off to F-Droid's page so the user can grab the right split.

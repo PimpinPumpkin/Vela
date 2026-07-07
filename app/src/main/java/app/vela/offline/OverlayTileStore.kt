@@ -3,6 +3,7 @@ package app.vela.offline
 import android.content.Context
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -30,6 +31,13 @@ class OverlayTileStore @Inject constructor(
 ) {
     private val overlaysRoot = File(context.filesDir, "overlays")
     private val indexFile = File(overlaysRoot, "index.json")
+
+    // Serialize downloads so two callers requesting the SAME region can't interleave writes into the one
+    // `<id>.pmtiles.tmp` (the 7-byte magic check could then pass on a corrupt archive) and can't race the
+    // index read-modify-write. Voice/routing serialize at the ViewModel; do it in the store so every caller
+    // is covered (audit 2026-07-06). indexLock also guards delete()'s index mutation vs a download.
+    private val downloadMutex = kotlinx.coroutines.sync.Mutex()
+    private val indexLock = Any()
 
     // A ~200 MB PMTiles download blows past the shared client's 12s callTimeout (that bound exists to
     // cap a hung *scrape*, not a large file) — the call aborts mid-stream, runCatching swallows it, and
@@ -71,6 +79,9 @@ class OverlayTileStore @Inject constructor(
 
     /** Download [region]'s `.pmtiles` into `overlays/<id>.pmtiles` (atomic via a .tmp) + register it. 0..100. */
     suspend fun download(region: RoutingRegion, onProgress: (Int) -> Unit): Boolean = withContext(Dispatchers.IO) {
+        downloadMutex.withLock {
+        // A duplicate request queued behind the first is a no-op, not a re-download.
+        if (region.id in readIndex() && fileFor(region.id).exists()) { onProgress(100); return@withLock true }
         overlaysRoot.mkdirs()
         val file = fileFor(region.id)
         val tmp = File(overlaysRoot, "${region.id}.pmtiles.tmp")
@@ -90,15 +101,16 @@ class OverlayTileStore @Inject constructor(
                 { "downloaded overlay isn't a PMTiles archive" }
             file.delete()
             check(tmp.renameTo(file)) { "could not install overlay (rename failed)" }
-            writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e)))
+            synchronized(indexLock) { writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e))) }
             onProgress(100)
             true
         }.getOrElse { tmp.delete(); false }
+        }
     }
 
     fun delete(id: String) {
         fileFor(id).delete()
-        writeIndex(readIndex() - id)
+        synchronized(indexLock) { writeIndex(readIndex() - id) }
     }
 
     private fun readIndex(): Map<String, DoubleArray> = runCatching {
