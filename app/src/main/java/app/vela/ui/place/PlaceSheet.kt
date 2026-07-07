@@ -94,6 +94,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Streetview
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -590,6 +591,16 @@ fun PlaceSheet(
                     ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                     }
+                }
+                // Street View — opens Google's KEYLESS consumer pano (documented map_action=pano deep
+                // link) EXTERNALLY (Google Maps app or the browser). The interactive pano is keyless but
+                // renders black in an in-app WebView on some devices (ANGLE GL driver + the SV SPA served
+                // a degraded page), so we hand it off rather than embed a maybe-black panel (see ROADMAP).
+                ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view)) {
+                    val loc = place.location
+                    val pano = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=" +
+                        "%.6f,%.6f".format(java.util.Locale.US, loc.lat, loc.lng)
+                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pano))) }
                 }
             }
 
