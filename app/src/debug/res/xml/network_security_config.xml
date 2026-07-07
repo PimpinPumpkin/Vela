@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DEBUG-BUILD ONLY (app/src/debug overrides app/src/main for the debug variant). Adds a base-config
+  that trusts USER-installed CA certificates on top of the system store, so a contributor can put a
+  proxy CA (mitmproxy/Charles) on the device and capture Vela's HTTPS traffic to RE-CALIBRATE the pb
+  templates / field-index paths against live maps.google.com (see CLAUDE.md "Working on the scraper").
+
+  This is deliberately NOT in the release config (app/src/main): trusting user CAs app-wide would let a
+  rogue user-installed cert MITM every HTTPS connection, which is the wrong default for a privacy /
+  degoogled app. Release keeps the platform default (system CAs only). Cf. PR #4 (thanks @JMTDI) — same
+  capability, scoped to debug so end users aren't weakened.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+    <base-config>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
