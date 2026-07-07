@@ -135,6 +135,8 @@
     <string name="place_temporarily_closed">Tymczasowo zamknięte</string>
     <string name="settings_traffic_lights">Wskazówki przy sygnalizacji</string>
     <string name="settings_traffic_lights_hint">„Minij światła, potem skręć” na skrzyżowaniach z sygnalizacją (głos na razie tylko po angielsku)</string>
+    <string name="settings_demo_drive">Symuluj jazdę (demo)</string>
+    <string name="settings_demo_drive_hint">Do demonstracji, zrzutów ekranu i testów: dotknięcie Start prowadzi trasą jako symulowany ślad GPS zamiast Twojej rzeczywistej lokalizacji — nawigacja działa wszędzie. Wyłącz, aby nawigować naprawdę.</string>
     <string name="place_address_copied">Skopiowano adres</string>
     <string name="place_copy_address">Kopiuj adres</string>
     <string name="place_directions">Trasa</string>
