@@ -44,6 +44,8 @@ no server in the middle. NewPipe does the same for YouTube. There are no ads, an
 your searches, saved places, and history stay on the phone. If you run GrapheneOS
 or another no-GMS ROM, this gets you working maps back.
 
+The map itself, the streets, the labels, and the house numbers all come from OpenStreetMap. Google is only used for places, search, routing, and traffic. So street names and house numbers can differ from what Google Maps shows, and how much detail you see offline depends on how well OpenStreetMap covers your area. I'm thinking of ways to improve OSM and fill the gaps in the data. Stay tuned.
+
 > Status: **a genuinely usable day-to-day maps app.** Calibrated against live
 > captures and verified end-to-end on-device:
 >
