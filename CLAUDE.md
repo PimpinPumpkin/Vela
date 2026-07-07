@@ -199,8 +199,12 @@ genuinely needs no doc edit, say why in the commit.
   MUST NOT use the shared OkHttp client** — its `callTimeout(12s)` (scrape-bounding) aborts the body read
   mid-stream, `runCatching` eats it, and the asset SILENTLY never installs (this is exactly what hid the
   197 MB overlay for a whole debug cycle — no crash, no log, just no footprints). `KokoroInstaller`,
-  `RoutingGraphStore` and `OverlayTileStore` each derive a `downloadHttp` with `callTimeout(0)` +
-  `readTimeout(60s)` for the body; only the tiny manifest fetch stays on the shared short-timeout client.
+  `RoutingGraphStore`, `OverlayTileStore` **and `VoiceInstaller`** (the TTS-engine APK download — added
+  2026-07-06 audit; a >12 s APK fetch silently fell back to the F-Droid web page) each derive a
+  `downloadHttp` with `callTimeout(0)` + `readTimeout(60s)` for the body; only the tiny manifest/version
+  fetch stays on the shared short-timeout client. `OverlayTileStore.download` is also serialized behind a
+  `Mutex` (+ a first-line "already installed" re-check) so two callers for the same region can't interleave
+  writes into the one `.tmp` (whose 7-byte magic check could then pass on a corrupt archive).
   Settings → Voice → **Voice library** is the browser; the
   multi-speaker variant picker (Advanced) only shows when the SELECTED catalog voice has >1 speaker.
   **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
@@ -339,6 +343,15 @@ genuinely needs no doc edit, say why in the commit.
   voice once present. **Non-obvious, all device-only (compiler-clean):** R8 MUST `-keep class
   com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original name); and you must generate the WHOLE
   utterance before `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT).
+  The whole utterance is generated, but it's **written to the track in ~200 ms chunks with a `generation`
+  check between them** (`PiperSynth`, audit 2026-07-06) so an interrupt (turn-now/rerouting/stop) takes
+  effect within ~200 ms instead of blocking for the full utterance — safe against the SIGABRT rule because
+  back-to-back chunk writes keep the buffer full (no underrun). **Audio-focus is refcounted via the
+  utterance callbacks; two audit-2026-07-06 leaks closed:** a system-TTS `speak()` returning `ERROR`
+  enqueues no utterance so no callback ever fires — `VoiceGuide.speakViaSystem` now rolls back the focus
+  acquire on `ERROR`; and a failed system-TTS `onInit` used to queue every prompt into `pending` forever
+  (unbounded, replayed stale on a later init) — it now clears `pending`, latches `systemInitFailed`, and
+  fires `langUnavailable` instead of queueing into a void.
   **A Piper voice is a SINGLE-language model** — reading another language's nav text through it is
   gibberish (the "English voice read Russian after a language override" bug). `NeuralSynth.voiceLanguage`
   exposes the loaded voice's lang (id prefix, `en_US-hfc_female` → "en"); `VoiceGuide.speakNow` compares it

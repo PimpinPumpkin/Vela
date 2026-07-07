@@ -83,6 +83,11 @@ class WebPhotoFetcher @Inject constructor(
         warmed = true
         main.post {
             runCatching {
+                // Re-check on the MAIN thread: if a fetch's Dispatchers.Main block created + started
+                // using the WebView after this warm() was posted (from a bg thread), it already owns it —
+                // don't replace its webViewClient or navigate away from its in-flight ?cid page (audit
+                // 2026-07-06). All WebView creation/mutation is on the main thread, so this check is race-free.
+                if (webView != null) return@runCatching
                 val wv = ensureWebView()
                 wv.webViewClient = WebViewClient()
                 wv.loadUrl("https://www.google.com/maps?hl=en")
