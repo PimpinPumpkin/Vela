@@ -97,14 +97,18 @@ object SpeechText {
             when {
                 r == 0 -> "${CARD[h]} hundredth"      // 100th → "one hundredth"
                 r < 10 -> "${CARD[h]} oh ${ORD1[r]}"  // 105th → "one oh fifth"
-                else -> "${CARD[h]} ${twoDigitOrdinal(r)}" // 128th → "one twenty-eighth"
+                else -> "${CARD[h]} ${twoDigitOrdinal(r)}" // 128th → "one twenty eighth"
             }
         }
 
     private fun twoDigitOrdinal(r: Int): String = when {
         r in 10..19 -> TEEN_ORD[r - 10]
         r % 10 == 0 -> TENS_ORD[r / 10]
-        else -> "${TENS_CARD[r / 10]}-${ORD1[r % 10]}"
+        // SPACE, not hyphen: as two words each gets its own full stress, so the tens word keeps its
+        // final consonant. The hyphenated compound ("thirty-second") was read with a reduced/flapped
+        // "-ty" by the neural voice — "132nd" came out sounding like "one third second" on a real
+        // drive (user 2026-07-06).
+        else -> "${TENS_CARD[r / 10]} ${ORD1[r % 10]}"
     }
 
     private val STREET_ORDINAL = Regex("\\b([1-9])(\\d\\d)(?:st|nd|rd|th)\\b")

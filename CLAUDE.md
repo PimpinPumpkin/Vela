@@ -177,9 +177,16 @@ genuinely needs no doc edit, say why in the commit.
   + `VelaPiper.DEFAULT_VOICE_ID`. NB the neural voice lengthens pauses at periods by
   **splitting the utterance on sentence boundaries and splicing silence in-app**
   (`PiperSynth.splitSentences`/`joinWithGaps`) — sherpa-onnx's `silenceScale` config is
-  a measured no-op on the Piper/VITS path, don't reach for it. Spoken text also runs through
-  `SpeechText.spokenNumbers` in `VoiceGuide.forSpeech` — 3-digit **street ordinals** ("128th" →
-  "one twenty-eighth") are pre-expanded so the neural G2P doesn't mangle them into "one, hundred
+  a measured no-op on the Piper/VITS path, don't reach for it. **Every fragment gets terminal
+  punctuation before synthesis (`PiperSynth`, 2026-07-07):** a bare-ending fragment ("turn left") gives
+  the model no final prosody contour, so it trailed off and swallowed the last consonant — the real-drive
+  "lef" instead of "left". A `;` is appended to any fragment ending in a letter/digit (the same
+  semicolon-contour finding the user A/B'd on "You have arrived;"); punctuation is language-neutral, so
+  it's safe for every Piper voice. Spoken text also runs through
+  `SpeechText.spokenNumbers` in `EnNavStrings.expandForSpeech` — 3-digit **street ordinals** ("128th" →
+  "one twenty eighth", **space not hyphen** — the hyphenated compound got a reduced/flapped "-ty" from
+  the neural voice, "132nd" came out sounding like "one third second" on a real drive, 2026-07-07) are
+  pre-expanded so the neural G2P doesn't mangle them into "one, hundred
   and 28th" (only 100–999; 1–2 digit + 4-digit+ are left for espeak). And `NavEngine` **does not
   announce the DEPART maneuver** — `NavSession.start` speaks it once ("Starting navigation. Head
   east on F St"); the engine skips it (it's at distance ≈ 0) and advances silently, else the opener
