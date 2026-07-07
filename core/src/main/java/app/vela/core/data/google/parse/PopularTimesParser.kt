@@ -21,9 +21,15 @@ import kotlinx.serialization.json.JsonNull
  */
 object PopularTimesParser {
 
-    fun parse(body: String, featureId: String? = null): PlaceDetails? {
+    fun parse(
+        body: String,
+        featureId: String? = null,
+        paths: Map<String, List<Int>> = Calibration.DEFAULT_PATHS,
+    ): PlaceDetails? {
         val root = runCatching { GoogleResponse.parse(body) }.getOrNull() ?: return null
-        val places = runCatching { SearchParser.parse("", root).places }.getOrDefault(emptyList())
+        // Thread the LIVE calibrated paths through so a remote paths fix reaches the WebView
+        // details/popular-times path too (it used to pin DEFAULT_PATHS — audit 2026-07-06).
+        val places = runCatching { SearchParser.parse("", root, paths = paths).places }.getOrDefault(emptyList())
 
         // The focused place: the feature-id match if we have one, else the first entry
         // that actually carries any of the rich fields, else just the first.
@@ -42,7 +48,7 @@ object PopularTimesParser {
         val popularTimes = place?.popularTimes ?: run {
             val node = root.at(0, 1, 0, 14) ?: return@run null
             runCatching {
-                SearchParser.parsePopularTimes(JsonArray(listOf(JsonNull, node)), Calibration.DEFAULT_PATHS)
+                SearchParser.parsePopularTimes(JsonArray(listOf(JsonNull, node)), paths)
             }.getOrNull()
         }
 
