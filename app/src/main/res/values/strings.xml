@@ -244,6 +244,9 @@
     <string name="mapscreen_filter_open_now">Open now</string>
     <string name="mapscreen_filter_top_rated">4.0★</string>
     <string name="mapscreen_filter_price">Price</string>
+    <string name="mapscreen_sort">Sort</string>
+    <string name="mapscreen_sort_rating">Sort: Rating</string>
+    <string name="mapscreen_sort_distance">Sort: Distance</string>
     <string name="mapscreen_permanently_closed">Permanently closed</string>
     <string name="mapscreen_hide_results">Hide results</string>
     <string name="mapscreen_section_saved">Saved</string>
