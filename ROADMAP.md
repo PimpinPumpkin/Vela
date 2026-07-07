@@ -503,8 +503,27 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
       across borders (British Columbia's box dips into Seattle), so the picker, the tiles→routing combine, and
       the engine all now pick the **smallest** box covering you (the engine falls through to the next-smallest
       if a graph can't make the trip) instead of the first.
-- **Street View** — key-gated on Google; the aligned path is open imagery
-  (Mapillary/KartaView) with a free token, which is sparser.
+- **Street View** — the Google Maps EMBED API is key-gated, but the CONSUMER pano
+  (`…/maps/@?api=1&map_action=pano&viewpoint=<lat>,<lng>`, Google's documented deep link)
+  is **keyless — verified in a real desktop browser** 2026-07-06 (snapped to the nearest
+  pano, full interactive WebGL, no key wall). **BUT it does NOT render in an Android WebView
+  and was reverted.** Investigated on-device end-to-end (Pixel-class, ARM Mali-G715 + the
+  **ANGLE** GL driver): tried the panel in a Compose Dialog, a Dialog with forced
+  `FLAG_HARDWARE_ACCELERATED`, without the `.alpha()` fade, AND hoisted into the main
+  hardware-accelerated window — **black pano in all four.** A JS probe proved the WebGL
+  context inits (`renderer: Mali-G715`), the onscreen canvas is full-size (1079×2297), the
+  URL resolves to a real panoid, and there's no key wall — yet the pano composites to black,
+  AND `document.body` came back at only ~182 chars (a **stripped/degraded page**: Google
+  appears to serve the Street-View SPA a minimal shell in the WebView, the same TLS/bot
+  defense that degrades our OkHttp scrapes — but here the WebView doesn't rescue it the way
+  it does for the `?cid=` reviews/photos pages). The keyless static thumbnail
+  (`streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=…`) 403s on a direct fetch (needs
+  browser session/referer), so that fallback is also non-trivial. **Options if revisited:**
+  (a) an "open externally" pill → `Intent.ACTION_VIEW` the pano URL (reliable + keyless but
+  leaves Vela — against the in-app ethos); (b) resolve the panoid + fetch the thumbnail via a
+  background WebView with session (uncertain, thumbnail 403 unresolved); (c) open imagery
+  (Mapillary/KartaView) with a free token, sparser but truly renders. Parked pending a
+  decision on which fallback fits the degoogled posture.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
   gallery for a busy place (In-N-Out, 50 photos) carried **zero video entries** (no
   `googlevideo.com`/`.mp4`/`m3u8`), so videos are rare in the first place; supporting
