@@ -798,6 +798,15 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Is there a usable internet connection right now? Used to skip the Google scrape when offline (it
+     *  would only hang to the socket timeout). Fails OPEN — if the check itself errors, assume online so a
+     *  quirk can never block search. */
+    private fun isOnline(): Boolean = runCatching {
+        val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
+        caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+    }.getOrDefault(true)
+
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
         suggestJob?.cancel()
@@ -812,6 +821,19 @@ class MapViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false) }
+            // No connection → skip the Google scrape entirely (it would just hang to the socket timeout,
+            // the "search does nothing offline" report) and search the on-device OSM index straight away.
+            // Empty index = no area downloaded yet, so point the user at the download (issue #3).
+            if (!isOnline()) {
+                val offline = withContext(Dispatchers.IO) { runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList()) }
+                _state.update {
+                    if (offline.isNotEmpty())
+                        it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false)
+                    else
+                        it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_data), searching = false)
+                }
+                return@launch
+            }
             try {
                 val res = dataSource.search(q, near)
                 _state.update {
