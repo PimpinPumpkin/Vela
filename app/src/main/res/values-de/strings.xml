@@ -307,6 +307,7 @@
     <string name="search_settings_cd">Einstellungen</string>
     <string name="mapvm_shortcut_set">%1$s auf %2$s festgelegt</string>
     <string name="mapvm_search_needs_recalibration">Suche muss neu kalibriert werden: %1$s</string>
+    <string name="mapvm_offline_no_data">Du bist offline. Lade unter Einstellungen ▸ Offline einen Bereich herunter, um ohne Verbindung zu suchen.</string>
     <string name="mapvm_offline_results">Offline-Ergebnisse (keine Verbindung)</string>
     <string name="mapvm_search_failed_reason">Suche fehlgeschlagen: %1$s</string>
     <string name="mapvm_none_found_along_route">Kein \"%1$s\" entlang Ihrer Route gefunden</string>
