@@ -103,12 +103,14 @@ object PoiIcons {
     }
 
     /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our coloured markers,
-     *  and (in light mode) colour the POI label text by category, like Google. */
+     *  and colour the POI label text by category like Google — saturated in light, PASTEL TINTS in
+     *  dark (Google's dark labels are lightened category colours, not the full-saturation ones,
+     *  which vanish against a dark map — ground-truthed vs the Maps app; see [labelColor]). */
     fun applyToLiberty(style: Style, dark: Boolean) {
         runCatching {
             val icon = Expression.raw(match("\"vela-poi-default\"") { "\"vela-poi-$it\"" })
-            val colorByGroup = GROUPS.associate { it.first to it.third }
-            val textColor = Expression.raw(match("\"#5F6368\"") { "\"${colorByGroup[it] ?: "#5F6368"}\"" })
+            val fallback = if (dark) "#C8CDD4" else "#5F6368"
+            val textColor = Expression.raw(match("\"$fallback\"") { "\"${labelColor(it, dark)}\"" })
             listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
                 val layer = style.getLayer(id) as? SymbolLayer ?: return@forEach
                 layer.setProperties(
@@ -131,7 +133,7 @@ object PoiIcons {
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
-                if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
+                layer.setProperties(PropertyFactory.textColor(textColor)) // per-category in BOTH modes (dark = pastel tints)
                 // Only show POIs that have a NAME — the nameless ones can't be opened
                 // (they'd just drop an address pin) and read as junk/duplicate icons.
                 // AND with the layer's existing rank filter so the rank gating stays.
@@ -156,7 +158,7 @@ object PoiIcons {
                     PropertyFactory.textRadialOffset(1.4f),
                     PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                 )
-                if (!dark) layer.setProperties(PropertyFactory.textColor(textColor))
+                layer.setProperties(PropertyFactory.textColor(textColor)) // per-category in BOTH modes (dark = pastel tints)
                 layer.setMinZoom(16f)
                 hideNameless(layer)
             }
@@ -179,6 +181,37 @@ object PoiIcons {
             sb.append(',').append(value(group))
         }
         return sb.append(',').append(default).append(']').toString()
+    }
+
+    /** Blend [hex] toward white by [f] — Google's DARK-mode POI labels are pastel TINTS of the
+     *  category colour (ground-truthed against the Maps app in Davis: restaurants read light
+     *  peach, shopping light blue, lodging light pink), not the saturated light-mode colour. */
+    private fun lighten(hex: String, f: Float): String {
+        val c = hex.removePrefix("#").toLong(16)
+        fun ch(shift: Int): Int {
+            val v = ((c shr shift) and 0xFF).toInt()
+            return (v + ((255 - v) * f)).toInt().coerceIn(0, 255)
+        }
+        return String.format("#%02X%02X%02X", ch(16), ch(8), ch(0))
+    }
+
+    /** The label colour for a category [group] per theme: the icon colour in light, its pastel
+     *  tint in dark (Google's own dark-mode treatment — full saturation vanishes on a dark map). */
+    private fun labelColor(group: String, dark: Boolean): String {
+        val base = GROUPS.first { it.first == group }.third
+        return if (dark) lighten(base, 0.55f) else base
+    }
+
+    /** Data-driven text colour for the AMBIENT Google-POI layer: match the feature's `icon`
+     *  property ("vela-poi-<group>") to the category label colour, Google-style — the label
+     *  reads as part of the icon. Default = the plain per-theme label grey. */
+    fun ambientLabelColor(dark: Boolean): Expression {
+        val sb = StringBuilder("""["match",["get","icon"]""")
+        GROUPS.forEach { (group, _, _) ->
+            sb.append(",\"vela-poi-").append(group).append("\",\"").append(labelColor(group, dark)).append('"')
+        }
+        sb.append(",\"").append(if (dark) "#C8CDD4" else "#3C4043").append("\"]")
+        return Expression.raw(sb.toString())
     }
 
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
