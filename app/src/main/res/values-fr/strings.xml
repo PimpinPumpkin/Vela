@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Effacer la recherche dans les avis</string>
     <string name="place_no_reviews_mention">Aucun avis ne mentionne « %1$s » (recherche parmi les %2$d chargés).</string>
     <string name="place_back">Retour</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Avis</string>
     <string name="place_from_the_owner">Réponse du propriétaire</string>
     <string name="place_share_place">Partager le lieu</string>

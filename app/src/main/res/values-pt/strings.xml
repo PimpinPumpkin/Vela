@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Limpar pesquisa de avaliações</string>
     <string name="place_no_reviews_mention">Nenhuma avaliação menciona “%1$s” (a pesquisar nas %2$d carregadas).</string>
     <string name="place_back">Voltar</string>
+    <string name="place_street_view">Street View</string>
     <string name="place_reviews_title">Avaliações</string>
     <string name="place_from_the_owner">Do proprietário</string>
     <string name="place_share_place">Partilhar local</string>

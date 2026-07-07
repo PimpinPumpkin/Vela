@@ -195,6 +195,7 @@
     <string name="place_clear_review_search">Очистити пошук у відгуках</string>
     <string name="place_no_reviews_mention">Жоден відгук не згадує «%1$s» (пошук серед %2$d завантажених).</string>
     <string name="place_back">Назад</string>
+    <string name="place_street_view">Перегляд вулиць</string>
     <string name="place_reviews_title">Відгуки</string>
     <string name="place_from_the_owner">Від власника</string>
     <string name="place_share_place">Поділитися місцем</string>
