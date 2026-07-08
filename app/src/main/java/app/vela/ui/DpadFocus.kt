@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -15,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.InputMode
@@ -90,6 +92,34 @@ fun rememberDpadMode(): Boolean {
     val dpadFirst = rememberDpadFirstDevice()
     val inputModeManager = LocalInputModeManager.current
     return dpadFirst || inputModeManager.inputMode == InputMode.Keyboard
+}
+
+/**
+ * D-pad-FIRST initial focus (hard rule, docs/dpad.md): place focus on this element as soon
+ * as the screen/overlay appears, so a D-pad user NEVER has to press a key just to "wake up"
+ * focus — every screen or view must land already focused. Attach the returned
+ * [FocusRequester] to the primary element via `Modifier.focusRequester(...)`.
+ *
+ * Retries briefly (20 × 50 ms) because a freshly-composed focus node often isn't attached on
+ * the first frame — the first `requestFocus()` would silently throw and nothing would end up
+ * focused (this is the exact reason MapScreen's map-target acquisition retries; generalized
+ * here). Only requests on a **D-pad-first device** (`rememberDpadFirstDevice`), so touch UX
+ * is byte-identical — no focus ring pops up under touch. Pass [keys] to re-grab focus when an
+ * overlay's content swaps (e.g. a step preview); omit for a plain screen that focuses once.
+ */
+@Composable
+fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
+    val fr = remember { FocusRequester() }
+    val dpadFirst = rememberDpadFirstDevice()
+    LaunchedEffect(dpadFirst, *keys) {
+        if (dpadFirst) {
+            repeat(20) {
+                if (runCatching { fr.requestFocus() }.isSuccess) return@LaunchedEffect
+                kotlinx.coroutines.delay(50)
+            }
+        }
+    }
+    return fr
 }
 
 /**
