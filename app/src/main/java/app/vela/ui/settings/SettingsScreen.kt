@@ -320,6 +320,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                             prefs.edit().putBoolean(Haptics.keyFor(mode), on).apply()
                         },
                         label = { Text(label) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     )
                 }
             }
