@@ -50,7 +50,9 @@ for m in re.finditer(r"<node [^>]*focused=\"true\"[^>]*>", d):
 focused_stable() {
   [ -n "$(focused)" ] && return 0
   local t
-  for t in 0.3 0.5; do sleep "$t"; [ -n "$(focused)" ] && return 0; done   # settle a scroll animation
+  # A null sample during a fast traversal is almost always a dump racing a UI update / scroll
+  # animation; re-check with growing settles. Only a null that survives ~1.5s is a real focus loss.
+  for t in 0.3 0.5 0.7; do sleep "$t"; [ -n "$(focused)" ] && return 0; done
   return 1
 }
 focused_bounds() { focused | cut -d"|" -f1; }
