@@ -701,7 +701,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   mode, Silver Firs): "gas" → Safeway Fuel Station, "restaurant" → Subway/Papa Murphy's/Applebee's,
   "fast food" → the two fast-food spots first. And when you DO have a downloaded area but nothing
   matches, the message is now "no offline results for X in your saved area" instead of telling you to
-  download one you already have.
+  download one you already have. Offline search also matches a POI's stored **address** now, so typing
+  the street address of an indexed OSM place finds it.
+  **What offline search does and does not cover (important):** it's the OSM POIs in the area you
+  downloaded, NOT a general geocoder. A **specific typed street address routes offline only if it
+  belongs to an indexed POI** — there is no offline forward geocoder to turn an arbitrary "1425 4th Ave"
+  into a coordinate (reverse-geocode is online Nominatim too). **Routing itself works fully offline**
+  (device-verified: offline search Applebee's → Directions → "1 min, 0.6 mi via 134th Place Southeast"
+  from on-device GraphHopper) to anything you can put on the map — an offline search result, a
+  long-pressed pin, or Choose-on-map. A true offline address geocoder (indexing OpenAddresses / OSM
+  addr:* points into the on-device DB during download) is a possible future add.
   **Graceful when there's nothing to show (2026-07-07):** searching with no connection (or on a
   wifi that's connected but has no real internet, so the Google call fails with a host/timeout error)
   and no downloaded area now shows the plain guidance *"You're offline. Download an area in Settings ▸
