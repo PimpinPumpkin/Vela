@@ -83,7 +83,13 @@ import app.vela.ui.theme.ThemeMode
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadFieldEscape
 import app.vela.ui.rememberDpadAutoFocus
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -130,6 +136,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
         Column(
             Modifier
                 .padding(padding)
+                // D-pad (docs/dpad.md): Settings is a VERTICAL list. In a verticalScroll Column a
+                // LEFT/RIGHT with no horizontal target (every plain row) makes Compose's focus
+                // search CLEAR focus with no way back via arrows (dpad audit 2026-07-08; moveFocus
+                // clears on a no-target move, focusGroup doesn't help — only swallowing the key
+                // keeps focus). So swallow bare LEFT/RIGHT here: this fires AFTER a focused child's
+                // own onKeyEvent, so the one horizontal row (the vibrate FilterChips) handles its
+                // LEFT/RIGHT first (via FocusRequesters) and this never runs for it.
+                .onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
                 .onGloballyPositioned { viewportTopY = it.positionInRoot().y }
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
@@ -312,12 +326,16 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp, bottom = 2.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // The ROOT swallows bare LEFT/RIGHT (see above), so this horizontal row drives its
+                // OWN LEFT/RIGHT via FocusRequesters — requestFocus (not moveFocus) never clears at
+                // the ends, and consuming the key stops it reaching the root swallow.
+                val chipFocus = remember { List(4) { FocusRequester() } }
                 listOf(
                     TravelMode.DRIVE to stringResource(R.string.settings_mode_driving),
                     TravelMode.WALK to stringResource(R.string.settings_mode_walking),
                     TravelMode.BICYCLE to stringResource(R.string.settings_mode_cycling),
                     TravelMode.TRANSIT to stringResource(R.string.settings_mode_transit),
-                ).forEach { (mode, label) ->
+                ).forEachIndexed { i, (mode, label) ->
                     var on by remember(mode) {
                         val default = if (!prefs.getBoolean(Haptics.KEY, true)) false else Haptics.defaultFor(mode)
                         mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), default))
@@ -330,6 +348,19 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                         },
                         label = { Text(label) },
                         shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier
+                            .focusRequester(chipFocus[i])
+                            .onKeyEvent { ev ->
+                                if (ev.key == Key.DirectionRight || ev.key == Key.DirectionLeft) {
+                                    if (ev.type == KeyEventType.KeyDown) {
+                                        if (ev.key == Key.DirectionRight && i < chipFocus.lastIndex) chipFocus[i + 1].requestFocus()
+                                        if (ev.key == Key.DirectionLeft && i > 0) chipFocus[i - 1].requestFocus()
+                                    }
+                                    true
+                                } else {
+                                    false
+                                }
+                            },
                     )
                 }
             }
@@ -918,7 +949,11 @@ private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit)
         Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        // onClick = null: the RadioButton is display-only so the ROW is the single focus stop. A
+        // separately-focusable RadioButton made the row TWO focus stops, and a horizontal (LEFT/
+        // RIGHT) D-pad move into that nested target cleared focus with no way back (dpad audit
+        // 2026-07-08) — the Material "clickable row + indicator" pattern.
+        RadioButton(selected = selected, onClick = null)
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }

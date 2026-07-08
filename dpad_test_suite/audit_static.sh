@@ -55,10 +55,12 @@ def chain_has_ring(lines, idx):
             return True
     return False
 
-# --- gesture modifiers that MUST have a key alternative in the same composable ----------------
+# --- gesture modifiers / raw pointer handlers that MUST have a key alternative -----------------
 GESTURE = re.compile(r'(detectTapGestures|detectDragGestures|detectVerticalDragGestures|'
-                     r'detectHorizontalDragGestures|detectTransformGestures|'
-                     r'\.draggable\s*\(|\.swipeable\s*\(|\.anchoredDraggable\s*\(|\.transformable\s*\()')
+                     r'detectHorizontalDragGestures|detectTransformGestures|detectTapAndPress|'
+                     r'awaitEachGesture|awaitPointerEventScope|awaitFirstDown|'
+                     r'\.draggable\s*\(|\.swipeable\s*\(|\.anchoredDraggable\s*\(|\.transformable\s*\(|'
+                     r'\.scrollable\s*\()')
 # A gesture has a D-pad alternative if the same composable also offers a KEY path: an explicit key
 # handler, a focus-target modifier, OR any Material control (IconButton/Button/Chip/onClick=…) that
 # is inherently focusable + OK-activatable (e.g. the results-sheet chevron mirrors its drag handle).
@@ -77,12 +79,17 @@ RE_FIELD    = re.compile(r'\b(OutlinedTextField|BasicTextField|TextField)\s*\(')
 RE_SLIDER   = re.compile(r'\bSlider\s*\(')
 RE_RAWDIALOG= re.compile(r'(?<!Alert)(?<!Date)(?<!Time)\bDialog\s*\(')
 RE_POPUP    = re.compile(r'\bPopup\s*\(')
+RE_SURFACE  = re.compile(r'\b(Card|Surface|ListItem|OutlinedCard|ElevatedCard)\s*\(')  # clickable ones
+RE_ANDROIDVIEW = re.compile(r'\bAndroidView\s*\(')
+RE_SHEET    = re.compile(r'\b(ModalBottomSheet|BottomSheetScaffold)\s*\(')
 # Files allowed to host a raw Dialog/Popup (the sanctioned auto-focus seams + full-screen viewers).
 RAW_OK = {"VelaMenu.kt", "VelaDialog.kt", "PlaceSheet.kt", "ReviewsPanel.kt"}
+scanned = 0
 
 for path in walk():
     name, base = rel(path), os.path.basename(path)
     lines = open(path, encoding="utf-8").readlines()
+    scanned += 1
     for i, ln in enumerate(lines):
         n = i + 1
         # A/B. Material menu/dialog shortcuts that can't auto-focus
@@ -118,10 +125,30 @@ for path in walk():
         if has(RE_FIELD, ln):
             if "dpadFieldEscape" not in "".join(lines[max(0,i-2):i+22]):
                 check.append(("field", f"{name}:{n}", "text field — confirm .dpadFieldEscape() (or bespoke DOWN-escape) so controls below stay reachable"))
+        # J. clickable Material SURFACE (Card/Surface/ListItem whose OWN constructor takes onClick) —
+        #    Material focus indication on a big grey surface is faint; confirm it reads or add a ring.
+        #    Only the constructor args count (text before the content-lambda '{'), so a child's
+        #    onClick doesn't trip it.
+        if has(RE_SURFACE, ln):
+            ctor = ""
+            for k in range(i, min(i + 6, len(lines))):
+                c = code_of(lines[k]); b = c.find("{")
+                ctor += c[:b] if b >= 0 else c
+                if b >= 0: break
+            if "onClick" in ctor and "dpadHighlight(" not in "".join(code_of(l) for l in lines[max(0,i-1):i+9]):
+                check.append(("surface", f"{name}:{n}", "Card/Surface/ListItem with onClick — confirm its focus is visible (Material indication is faint on grey) or add dpadHighlight"))
+        # K. AndroidView — a native view (WebView/MapView) has NO Compose focus; confirm it has an
+        #    explicit D-pad key bridge (MapDpadController / pageUp-pageDown) or it's unreachable.
+        if has(RE_ANDROIDVIEW, ln):
+            check.append(("androidview", f"{name}:{n}", "AndroidView — confirm a D-pad key bridge (MapDpadController / WebView pageUp-Down) or the native view is unreachable"))
+        # L. Material bottom sheet / scaffold sheet — confirm it auto-focuses (Vela uses hand-built
+        #    sheets for exactly this reason).
+        if has(RE_SHEET, ln):
+            check.append(("sheet", f"{name}:{n}", "ModalBottomSheet/BottomSheetScaffold — confirm it auto-focuses a primary control (Compose sheets open unfocused)"))
 
 order = {"HIGH": 0, "MED": 1, "LOW": 2}
 viol.sort(key=lambda v: order.get(v[0], 9))
-print("=== D-pad EXHAUSTIVE static audit ===")
+print(f"=== D-pad EXHAUSTIVE static audit ({scanned} .kt files scanned) ===")
 if viol:
     print(f"VIOLATIONS ({len(viol)}):")
     for sev, loc, msg in viol: print(f"  [{sev}] {loc}  {msg}")

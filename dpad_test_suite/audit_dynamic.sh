@@ -16,15 +16,23 @@ FAILS=0
 ok()   { echo "  OK   $1"; }
 bad()  { echo "  FAIL $1"; FAILS=$((FAILS + 1)); }
 
-# integrity <label> <n>  — press DOWN n times; fail if focus is ever null (a dead-end/trap).
+# integrity <label> <n>  — traverse the surface in ALL FOUR directions (DOWN/RIGHT interleaved,
+# then a UP/LEFT return sweep) pressing n moves each way; fail if focus is EVER null (a dead-end or
+# focus-swallowing trap) in any direction. Multi-axis so a focusable only reachable via RIGHT (an
+# action-icon row) or UP can't hide.
 integrity() {
-  local label="$1" n="$2" lost=0 s
-  for _ in $(seq 1 "$n"); do
-    s="$(focused)"; [ -z "$s" ] && lost=$((lost + 1))
-    key "$K_DOWN"
+  local label="$1" n="$2" lost=0 samples=0
+  local fwd=("$K_DOWN" "$K_RIGHT") rev=("$K_UP" "$K_LEFT") k
+  for i in $(seq 1 "$n"); do
+    [ -z "$(focused)" ] && lost=$((lost + 1)); samples=$((samples + 1))
+    k="${fwd[$((i % 2))]}"; key "$k"
   done
-  [ -z "$(focused)" ] && lost=$((lost + 1))
-  if [ "$lost" -eq 0 ]; then ok "$label — focus held across $n moves"; else bad "$label — focus LOST in $lost/$((n + 1)) samples"; fi
+  for i in $(seq 1 "$n"); do
+    [ -z "$(focused)" ] && lost=$((lost + 1)); samples=$((samples + 1))
+    k="${rev[$((i % 2))]}"; key "$k"
+  done
+  [ -z "$(focused)" ] && lost=$((lost + 1)); samples=$((samples + 1))
+  if [ "$lost" -eq 0 ]; then ok "$label — focus held across $samples multi-axis moves"; else bad "$label — focus LOST in $lost/$samples samples"; fi
 }
 
 if ! $ADB get-state >/dev/null 2>&1; then echo "No device."; exit 2; fi
