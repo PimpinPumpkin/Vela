@@ -160,6 +160,8 @@
     <string name="mapvm_poipack_unavailable">Nessun pacchetto di luoghi per %1$s per ora. Comparirà qui appena pubblicato.</string> <!-- format -->
     <string name="settings_demo_drive">Simula la guida (demo)</string>
     <string name="settings_demo_drive_hint">Per demo, screenshot e test: toccando Avvia il percorso viene guidato come una traccia GPS simulata invece della tua posizione reale, così la navigazione funziona ovunque. Disattiva per navigare davvero.</string>
+    <string name="settings_sim_location">Simula la mia posizione (demo)</string>
+    <string name="settings_sim_location_hint">Per demo e screenshot: fai finta di essere al centro della mappa, così il punto di posizione, le distanze e i percorsi partono da lì invece che dalla tua posizione reale. Disattiva per usare il GPS reale.</string>
     <string name="place_address_copied">Indirizzo copiato</string>
     <string name="place_copy_address">Copia indirizzo</string>
     <string name="place_directions">Indicazioni</string>

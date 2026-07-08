@@ -160,6 +160,8 @@
     <string name="mapvm_poipack_unavailable">Nog geen plaatsenpakket voor %1$s. Het verschijnt hier zodra het is gepubliceerd.</string> <!-- format -->
     <string name="settings_demo_drive">Rijden simuleren (demo)</string>
     <string name="settings_demo_drive_hint">Voor demo’s, schermafbeeldingen en tests: op Start tikken rijdt de route als een gesimuleerd gps-spoor in plaats van je echte locatie — navigatie werkt overal. Zet uit om echt te navigeren.</string>
+    <string name="settings_sim_location">Mijn locatie simuleren (demo)</string>
+    <string name="settings_sim_location_hint">Voor demo\'s en schermafbeeldingen: doe alsof je nu in het midden van de kaart bent, zodat de locatiestip, afstanden en routes daar beginnen in plaats van je echte positie. Zet uit voor echte gps.</string>
     <string name="place_address_copied">Adres gekopieerd</string>
     <string name="place_copy_address">Adres kopiëren</string>
     <string name="place_directions">Route</string>
