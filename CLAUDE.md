@@ -130,7 +130,11 @@ genuinely needs no doc edit, say why in the commit.
   can't-BACK-out, and DOWN-must-escape-into-the-suggestions); don't "simplify" it back to
   bare field-focus. The full-app D-pad sweep (2026-07-07) also made Choose-on-map keep the
   map pannable to place the pin (a `pickOnMap` exception in `mapTargetHidden`) and scroll-cap
-  the directions panel so **Start** is reachable with 4 alternates (helps touch too).
+  the directions panel so **Start** is reachable with 4 alternates (helps touch too). The one
+  raw WebView in the app — the full-screen "Read all reviews" panel (`ReviewsPanel`,
+  `fullScreen`) — maps ↑/↓ to `pageUp`/`pageDown` + `requestFocus()`es so it scrolls by D-pad
+  (a WebView's default is to hop focus between links, not scroll); reach/exit are proven, exit
+  is always hardware BACK via the `Dialog`'s `BackHandler`.
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in

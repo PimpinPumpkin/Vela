@@ -63,11 +63,13 @@ from the `directions` diag), offline highway refs (a graph rebuild — parked).
 
 ## Near-term (next up)
 
-- **D-pad polish** (base support SHIPPED — see `docs/dpad.md`): a real-device pass on
-  D-pad hardware to tune the pan step / OK-hold threshold / focus-ring visibility and
-  traversal order; make the WebView reviews panel key-friendly (or auto-fall back to the
-  native list in D-pad mode); consider an on-screen key-hint pill while the map target is
-  focused.
+- **D-pad polish** (base support SHIPPED + full-function sweep done 2026-07-07 — see
+  `docs/dpad.md`): a real-device pass on D-pad hardware to tune the pan step / OK-hold
+  threshold / focus-ring visibility and traversal order; **pixel-verify the full-screen
+  reviews WebView's ↑/↓ page-scroll on an unfiltered network** (the handler is wired +
+  reach/exit are proven, but the test device's content filter throttles the reviews carve so
+  the loaded page never renders there); consider an on-screen key-hint pill while the map
+  target is focused.
 
 - ~~Visible-WebView reviews panel~~ — **SHIPPED 2026-07-01 (experimental, default ON,
   Settings toggle)**: Google's live reviews pane embedded in the place sheet's Reviews tab,
