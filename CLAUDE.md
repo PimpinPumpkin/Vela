@@ -523,6 +523,31 @@ genuinely needs no doc edit, say why in the commit.
   manifest test: serve a manifest+graph, `adb reverse tcp:8099 tcp:8099`, build with
   `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json` (localhost cleartext allowed by
   `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
+- **Offline PLACE packs — whole-region POI/address search, Organic-Maps-style (`app/offline/PoiPackStore` +
+  `core/data/OfflinePacks`, DONE 2026-07-07, device-verified: offline "dumpling hose" from the test suburb → the Midtown
+  Dumpling House with address).** Downloading a state (routing region) also pulls its place pack — a
+  per-region SQLite db baked by CI from the SAME Geofabrik PBF (`scripts/build-poi-region.sh`: osmium
+  tags-filter → export geojsonseq → `poipack_build.py` → SQLite → zip; workflow `poi-packs.yml`, a matrix clone
+  of routing-graphs.yml with `merge-poi-manifest.sh`; release tag `poi-packs`, manifest
+  `poi-pack-manifest.json`, `POI_PACK_MANIFEST_URL` / `-PpoiPackManifestUrl=`). **Pack schema is NORMALIZED,
+  not the app stores' own schema** (that naive shape was 761 MB for DE): `poi(id,name,lat,lng,category,address,
+  phone,website,hours)` + `streetname(sid,street,street_norm)` + `addr(hn,sid,city,lat,lng)` +
+  `streetpt(sid,lat,lng)` → DE = 335 MB raw / **143 MB zipped** (163k POIs, 2.8M addrs, 1.2M street pts, 92k
+  street names). The normalization is also the QUERY strategy: match street names first (~90k-row scan), hit
+  the big tables only through sid/hn/lat indexes — never a LIKE scan of millions of rows. `OfflinePacks`
+  (:core singleton) holds the opened read-only dbs; `OfflinePoiStore.search` runs its same SQL on each pack
+  (identical poi columns), `OfflineAddressStore` has dedicated pack paths (`packSids`/`packQuery`/
+  `packStreetGeom` + reverse-geocode JOINs) merged into query()/streetGeom()/reverseGeocode(); counts include
+  packs. `poipack_build.py` PORTS `normalizeStreet`'s ABBREV and OverpassPois' category formatting — keep them
+  in sync. Lifecycle: pack downloads after its region's graph (`downloadPoiPack`), deletes with it
+  (`deleteRoutingGraph`), `registerPacks()` at VM init; graphs installed before packs get a **"Get places"**
+  button on the Settings row (`downloadPoiPackFor`, with a "no pack published yet" status when the manifest
+  lacks the region). **Heads-up progress:** `RegionDownloadCard` in MapScreen mirrors the voice card —
+  `routingDownloadingId`/`routingDownloadPct` then `poiPackDownloadingId`/`poiPackDownloadPct`, named by
+  `regionDownloadName`. Local pack test: build one with the script's osmium+python steps, serve manifest+zip
+  on :8099, `adb reverse`, `-PpoiPackManifestUrl=http://127.0.0.1:8099/poi-pack-manifest.json`. **After
+  pushing, dispatch Actions → "Build offline place packs"** (group=us etc.) to publish packs + manifest —
+  until then "Get places" reports no pack available.
 - **Offline forward geocoder — typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
   `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified the test suburb).** So an arbitrary
   typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is

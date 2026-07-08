@@ -66,6 +66,9 @@
     <string name="settings_routing_no_match">Keine Region passt zu „%1$s“.</string>
     <string name="settings_routing_downloading">Wird heruntergeladen … %1$d%%</string>
     <string name="settings_routing_installed">Installiert · Routen hier offline</string>
+    <string name="settings_routing_installed_places">Installiert · Orte offline durchsuchbar</string>
+    <string name="settings_routing_places_downloading">Orte werden gespeichert · %1$d %%</string> <!-- format -->
+    <string name="settings_get_places">Orte laden</string>
     <string name="settings_routing_size_here">%1$s MB · deckt Ihren Standort ab</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Offline-Routing entfernen</string>
@@ -143,6 +146,10 @@
     <string name="settings_traffic_lights_hint">„Fahren Sie an der Ampel vorbei, dann abbiegen“ an Ampelkreuzungen (Ansagen vorerst nur auf Englisch)</string>
     <string name="map_voice_downloading">Vela-Stimme wird heruntergeladen · %1$d %%</string>
     <string name="map_voice_installing">Vela-Stimme wird installiert…</string>
+    <string name="map_region_downloading">Routing für %1$s wird heruntergeladen · %2$d %%</string> <!-- format -->
+    <string name="map_region_places_downloading">Orte in %1$s werden für die Offline-Suche gespeichert · %2$d %%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Orte in %1$s sind jetzt offline durchsuchbar</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Für %1$s gibt es noch kein Orte-Paket. Es erscheint hier, sobald es veröffentlicht ist.</string> <!-- format -->
     <string name="settings_demo_drive">Fahrt simulieren (Demo)</string>
     <string name="settings_demo_drive_hint">Für Demos, Screenshots und Tests: Mit Start wird die geplante Route als simulierte GPS-Spur statt deiner echten Position gefahren — Navigation funktioniert überall. Zum echten Navigieren ausschalten.</string>
     <string name="place_address_copied">Adresse kopiert</string>

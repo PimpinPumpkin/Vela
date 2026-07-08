@@ -545,6 +545,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 shown.forEach { region ->
                     val installed = region.id in state.routingInstalledIds
                     val downloading = state.routingDownloadingId == region.id
+                    val packDownloading = state.poiPackDownloadingId == region.id
+                    val packInstalled = region.id in state.poiPackInstalledIds
                     val here = region.id == primary?.id
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -555,6 +557,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                             Text(
                                 when {
                                     downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
+                                    packDownloading -> stringResource(R.string.settings_routing_places_downloading, state.poiPackDownloadPct)
+                                    installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
                                     installed -> stringResource(R.string.settings_routing_installed)
                                     here -> stringResource(R.string.settings_routing_size_here, region.sizeMb)
                                     else -> stringResource(R.string.settings_routing_size, region.sizeMb)
@@ -565,7 +569,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                             )
                         }
                         when {
-                            downloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            downloading || packDownloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            // Installed before place packs existed (or its pack was skipped): offer just
+                            // the pack, so offline search covers the region without a graph re-download.
+                            installed && !packInstalled -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedButton(
+                                    onClick = { vm.downloadPoiPackFor(region) },
+                                    enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
+                                ) { Text(stringResource(R.string.settings_get_places)) }
+                                IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                                }
+                            }
                             installed -> IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
                                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
                             }
