@@ -520,6 +520,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   All of it parsed (unit-tested) from `trip[1][0][1]` in the **same** keyless fetch — no
   extra RPC. **Calibrated + device-verified** Miami→Aventura Mall (route 9, 2026-07-07);
   single-digit route numbers ("9") now render a pill (the ≥2-char guard dropped them).
+- ✅ Transit **walk-leg turn-by-turn** — tap a **Walk** leg in the drill-down to expand
+  turn-by-turn walking directions between that leg's endpoints (the previous ride's alight
+  stop / trip origin → the next ride's board stop / trip destination). The endpoints come
+  from the stop coordinates in the **same** keyless transit payload (`TransitParser` now reads
+  each stop's `[4][2]`/`[4][3]` and `assignWalkEndpoints` wires the adjacent stops onto each
+  walk leg); the steps are fetched **on demand** via the normal walk router (OSRM foot) — no
+  extra transit RPC. Collapsed by default; a chevron opens it and a spinner shows while the
+  route loads.
 - ⬜ Per-minute **predictive** future-traffic ETA (login/app-only — keyless gives the typical *range* only, see Depart/arrive time above); avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
