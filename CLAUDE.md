@@ -91,6 +91,10 @@ genuinely needs no doc edit, say why in the commit.
 - The one seam is `core/data/MapDataSource`. `MockMapDataSource` is the default
   and keeps the entire app usable offline; `google/GoogleMapsDataSource` is the
   real scraper.
+- **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
+  (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
+  They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
+  + the photo-hero `if`), so off = zero scrape traffic. Keep any new review/photo surface behind them.
 - **Light/dark is `AppTheme` (`ui/theme/AppTheme.kt`), not the OS.** Read the
   in-app theme with the composable **`isAppInDarkTheme()`** — never call
   `isSystemInDarkTheme()` directly in app UI (it ignores the user's Light/Dark/
