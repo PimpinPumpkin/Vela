@@ -426,4 +426,5 @@
     <string name="settings_update_checking">Checking…</string>
     <string name="settings_update_found">Update available! Go back to the map to install it.</string>
     <string name="settings_update_none">You\'re on the latest version.</string>
+    <string name="settings_place_pages">Place pages</string>
 </resources>
