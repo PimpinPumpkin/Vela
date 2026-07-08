@@ -96,5 +96,10 @@ object OfflineMaps {
         runCatching { JSONObject(String(region.metadata)).optString(KEY_NAME) }
             .getOrNull()?.takeIf { it.isNotBlank() } ?: "Saved area"
 
+    /** The saved area's tile bounds, so callers can re-fetch its offline data (POIs/addresses) for the
+     *  same box. Null if the region isn't a tile-pyramid definition. */
+    fun boundsOf(region: OfflineRegion): LatLngBounds? =
+        (region.definition as? org.maplibre.android.offline.OfflineTilePyramidRegionDefinition)?.bounds
+
     private const val KEY_NAME = "name"
 }
