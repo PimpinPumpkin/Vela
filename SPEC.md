@@ -533,7 +533,7 @@ handed — no filesystem, network, or device access.
 
 **In-app updater** (`app/update/SelfUpdater.kt`): checks
 `api.github.com/repos/PimpinPumpkin/Vela/releases/latest`, derives versionCode from the
-`v0.2.<run>` tag (`2000 + run`), and when newer offers a card on the map
+`v0.3.<run>` tag (`2000 + run`), and when newer offers a card on the map
 (`MapUiState.updateInfo`). Download uses a no-call-timeout client (the APK is ~80 MB),
 zip-magic-checks the body, then hands the file to the system installer via the app
 FileProvider (`filesDir/updates/`, same plumbing as the voice-engine installer) — the OS
@@ -545,8 +545,8 @@ enforces same-package/same-signature. Launch check throttled to ~daily behind th
   compileSdk 35, minSdk 26, Java 17**, Compose + Hilt + version catalog. **R8 in the
   `release` buildType** — always build release for on-device (debug lags the map).
 - **CI** (`.github/workflows/ci.yml`): every push to `main` builds + tests + signs the
-  APK and publishes a normal versioned GitHub release **`v0.2.<run>`** (versionName
-  `0.2.<run>`, versionCode `2000+run`). Obtainium tracks the latest.
+  APK and publishes a normal versioned GitHub release **`v0.3.<run>`** (versionName
+  `0.3.<run>`, versionCode `2000+run`). Obtainium tracks the latest.
 - **APK signing**: release keystore `~/.vela-signing/vela-release.jks` (alias `vela`,
   password in `credentials.txt`); CI secrets `VELA_KEYSTORE_BASE64` /
   `_PASSWORD` / `VELA_KEY_ALIAS`. **`CN=Vela Maps`**. **Keystore lives outside the repo
