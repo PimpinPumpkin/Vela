@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Build a Vela offline POI pack (SQLite) from an osmium geojsonseq export.
 
-Usage: poipack_build.py <features.geojsonl> <out.db>
+Usage: poipack_build.py <features.geojsonl | -> <out.db>   ("-" reads the export from stdin)
+
+Big regions MUST stream: the geojsonseq export is ~12x the filtered PBF (Washington: 161 MB PBF ->
+1.9 GB of JSON), so a country-sized export written to disk blows a CI runner. build-poi-region.sh
+pipes `osmium export -o -` straight into this script.
 
 The pack holds a whole region's named POIs, address points and street centreline samples so the
 app can search/geocode the entire region offline (Organic-Maps-style), not just saved map areas.
@@ -151,7 +155,8 @@ def main():
         n_poi += len(pois); n_addr += len(addrs); n_pt += len(streetpts)
         pois, addrs, streetpts = [], [], []
 
-    with open(src, encoding="utf-8") as f:
+    stream = sys.stdin if src == "-" else open(src, encoding="utf-8")
+    with stream as f:
         for line in f:
             line = line.strip().lstrip("\x1e")  # geojsonseq RS separator
             if not line:

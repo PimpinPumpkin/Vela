@@ -20,27 +20,31 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 echo "→ downloading $URL"
 curl -fsSL "$URL" -o "$WORK/region.osm.pbf"
 
+# bbox first (from the header), so the source PBF can be deleted as soon as it's filtered — a big
+# country needs the disk back. [S,W,N,E] from the declared extract region, NOT data.bbox (same rule
+# as routing graphs — node extent is polluted by outlier nodes). osmium prints (minlon,minlat,...).
+read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
+BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
+
 echo "→ filtering POIs / addresses / named roads"
 osmium tags-filter "$WORK/region.osm.pbf" \
   nwr/amenity nwr/shop nwr/tourism nwr/leisure nwr/public_transport nwr/boundary=national_park \
   nwr/addr:housenumber \
   w/highway=motorway,trunk,primary,secondary,tertiary,unclassified,residential,living_street,service,road,motorway_link,trunk_link,primary_link,secondary_link,tertiary_link \
   -o "$WORK/filtered.osm.pbf" --overwrite
+rm -f "$WORK/region.osm.pbf" # reclaim disk before the build (country PBFs are GB-scale)
 
-echo "→ exporting features"
-osmium export "$WORK/filtered.osm.pbf" -f geojsonseq --add-unique-id=type_id \
-  -o "$WORK/features.geojsonl" --overwrite
-
-echo "→ building SQLite pack"
-python3 "$ROOT/scripts/poipack_build.py" "$WORK/features.geojsonl" "$WORK/$ID.db"
+# The export STREAMS into the pack builder — never written to disk. The geojsonseq is ~12x the
+# filtered PBF (Washington: 161 MB -> 1.9 GB), so a country-sized export on disk would blow a
+# 14 GB CI runner; piped, the peak disk is just filtered.pbf + the SQLite db.
+echo "→ exporting features → building SQLite pack (streamed)"
+osmium export "$WORK/filtered.osm.pbf" -f geojsonseq --add-unique-id=type_id -o - \
+  | python3 "$ROOT/scripts/poipack_build.py" - "$WORK/$ID.db"
+rm -f "$WORK/filtered.osm.pbf"
 
 ( cd "$WORK" && zip -q "$WORK/$ID.zip" "$ID.db" )
+rm -f "$WORK/$ID.db"
 SIZE=$(( ( $(stat -f%z "$WORK/$ID.zip" 2>/dev/null || stat -c%s "$WORK/$ID.zip") + 1048575 ) / 1048576 ))
-
-# bbox [S,W,N,E] from the extract's HEADER box (same rule as routing graphs — data.bbox is
-# polluted by outlier nodes). osmium prints (minlon,minlat,maxlon,maxlat).
-read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
-BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.zip"
 echo "→ $ID: ${SIZE} MB, bbox $BBOX"
 
