@@ -23,10 +23,14 @@ cd dpad_test_suite
 ADB="adb -s emulator-5554" ./run_all.sh   # pick a device
 ```
 
-`run_all.sh` first calls `setup.sh` (grants location + installs a mock GPS provider at Brooklyn so
-search/routing have a fix — override with `VELA_LAT`/`VELA_LNG`). Then it runs `tests/*.sh` in
-order; each prints `PASS:`/`FAIL:` lines and a per-suite verdict. Exit code is non-zero if any
-suite failed (usable in CI once a device is attached).
+`run_all.sh` first calls `setup.sh` (grants location + notifications, installs a mock GPS provider
+at Brooklyn so search/routing have a fix — override with `VELA_LAT`/`VELA_LNG`, and **forces
+D-pad-first** via `settings put global vela_force_dpad 1`). The force flag matters since the
+2026-07-08 detection fix: an ordinary touchscreen dev phone is correctly NOT D-pad-first, so without
+it the auto-focus/ring/arm behaviour is off and the suite can't exercise the D-pad path. Real D-pad
+phones (touchless / physical DPAD) don't need it. Run **`./teardown.sh`** when done to clear the flag
+and reset any screen change. Then it runs `tests/*.sh` in order; each prints `PASS:`/`FAIL:` lines
+and a per-suite verdict. Exit code is non-zero if any suite failed (usable in CI once a device is attached).
 
 ## What's covered
 

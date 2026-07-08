@@ -15,8 +15,10 @@ if ! $ADB get-state >/dev/null 2>&1; then echo "No device."; exit 2; fi
 FAILS=0
 ok()  { echo "  OK   $1"; }
 bad() { echo "  FAIL $1"; FAILS=$((FAILS + 1)); }
-restore() { $ADB shell wm size reset >/dev/null 2>&1; $ADB shell wm density reset >/dev/null 2>&1; }
+restore() { $ADB shell wm size reset >/dev/null 2>&1; $ADB shell wm density reset >/dev/null 2>&1; $ADB shell settings delete global vela_force_dpad >/dev/null 2>&1; }
 trap restore EXIT
+# A feature phone is small-screen AND D-pad, so force D-pad-first (see dpad_test_suite/setup.sh).
+$ADB shell settings put global vela_force_dpad 1 >/dev/null 2>&1
 
 # Shrink to a small phone. Read back the ACTUAL logical size for the on-screen bounds test.
 echo "== shrinking display to a small-phone size =="
