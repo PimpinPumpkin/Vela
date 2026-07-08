@@ -528,6 +528,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   walk leg); the steps are fetched **on demand** via the normal walk router (OSRM foot) — no
   extra transit RPC. Collapsed by default; a chevron opens it and a spinner shows while the
   route loads.
+- ✅ Transit **step-by-step guidance (Moovit-style)** — an expanded itinerary gets a **Start**
+  button that opens a full-screen leg-by-leg guide: the current leg large (with its walk-directions
+  drill-down), the remaining legs as a timeline, and **Back / Next** controls. It **advances
+  automatically** as GPS reaches each leg's end (board/alight stop or the walk destination) and
+  **speaks each instruction** ("Take Route 9 towards Aventura, get off at …", "Walk 7 min",
+  "You have arrived") through the selected voice, localized in all 11 languages. The auto-advance is
+  **latched** (`MapViewModel`, `TransitNavState`): a leg must first be ARMED by being >90 m from its
+  end, then advances on entering the 40 m radius — so a transfer hub with two leg-ends close together
+  can't cascade and a short final walk can't fire a premature "arrived". Back exits guidance.
 - ⬜ Per-minute **predictive** future-traffic ETA (login/app-only — keyless gives the typical *range* only, see Depart/arrive time above); avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
