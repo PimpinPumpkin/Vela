@@ -805,7 +805,12 @@ genuinely needs no doc edit, say why in the commit.
   epochs give "N min late"); **headsign `leg[0][14][2][1][0]`**, agency phone `leg[0][6][4][0][4]`,
   service alerts `leg[0][9][k][2]`. Fare is scanned defensively from the trip summary (usually
   absent — most US agencies send none). NB `parseLines` allows a **1-char** line name (single-digit
-  bus routes like "9" are real; the old ≥2 guard dropped their pill).
+  bus routes like "9" are real; the old ≥2 guard dropped their pill). Each stop node's **coordinates
+  are `[4][2]` (lat) / `[4][3]` (lng)** — `parseStopTime` reads them into `TransitStopTime.location`,
+  and `assignWalkEndpoints` wires each WALK leg's `walkFrom`/`walkTo` from the adjacent ride's
+  alight/board stop (falling back to the trip origin/dest, which `parse(raw, origin, dest)` threads
+  through). The UI then fetches that walk leg's turn-by-turn steps **on demand** via the normal walk
+  router (`MapViewModel.walkDirections` → OSRM foot) — no extra transit RPC.
 
 ## Name
 
