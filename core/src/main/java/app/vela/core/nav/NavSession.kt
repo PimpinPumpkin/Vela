@@ -139,7 +139,14 @@ class NavSession @Inject constructor(
             // Seed the first turn's approach distance so the banner doesn't read "0 ft" (with
             // every distance gate momentarily open) until the first fix — the DEPART maneuver's
             // after-distance IS the distance to the first real turn.
-            nav = NavState(distanceToNextManeuver = route.maneuvers.firstOrNull()?.distanceMeters ?: 0.0),
+            nav = NavState(
+                distanceToNextManeuver = route.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+                // Seed the trip totals so the ETA card reads the full route time/distance BEFORE the
+                // first fix — the engine overwrites these per-fix, but until then a 0 here rendered
+                // "<1 min / 10 ft" (worst while "Searching for GPS" holds off the first fix).
+                remainingDistance = route.distanceMeters,
+                remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
+            ),
             maneuverText = first,
             remainingDistance = route.distanceMeters,
             remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
@@ -268,7 +275,11 @@ class NavSession @Inject constructor(
         _state.update {
             it.copy(
                 route = faster,
-                nav = NavState(distanceToNextManeuver = faster.maneuvers.firstOrNull()?.distanceMeters ?: 0.0),
+                nav = NavState(
+                    distanceToNextManeuver = faster.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+                    remainingDistance = faster.distanceMeters,
+                    remainingDuration = faster.durationInTrafficSeconds ?: faster.durationSeconds,
+                ),
                 maneuverText = first,
                 remainingDistance = faster.distanceMeters,
                 remainingDuration = faster.durationInTrafficSeconds ?: faster.durationSeconds,
@@ -356,7 +367,11 @@ class NavSession @Inject constructor(
         _state.update {
             it.copy(
                 route = r,
-                nav = NavState(distanceToNextManeuver = r.maneuvers.firstOrNull()?.distanceMeters ?: 0.0),
+                nav = NavState(
+                    distanceToNextManeuver = r.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+                    remainingDistance = r.distanceMeters,
+                    remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
+                ),
                 maneuverText = r.maneuvers.firstOrNull()?.instruction.orEmpty(),
                 remainingDistance = r.distanceMeters,
                 remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
@@ -443,7 +458,11 @@ class NavSession @Inject constructor(
             _state.update {
                 it.copy(
                     route = r,
-                    nav = NavState(distanceToNextManeuver = r.maneuvers.firstOrNull()?.distanceMeters ?: 0.0),
+                    nav = NavState(
+                        distanceToNextManeuver = r.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+                        remainingDistance = r.distanceMeters,
+                        remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
+                    ),
                     maneuverText = r.maneuvers.firstOrNull()?.instruction.orEmpty(),
                     remainingDistance = r.distanceMeters,
                     remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
