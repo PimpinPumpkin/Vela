@@ -118,6 +118,11 @@ data class MapUiState(
     val pickingStop: Boolean = false,        // the next search pick is added as a stop
     val pickOnMap: MapPick? = null,          // "Choose on map" crosshair mode is active for this endpoint
     val travelMode: TravelMode = TravelMode.DRIVE,
+    // Depart/arrive time for directions: 0 = leave now, 1 = depart at, 2 = arrive by, 3 = last available;
+    // [directionsTimeEpochSec] is the chosen wall-clock (null when "now"). Drives the transit re-fetch at
+    // that time (Google's board is time-dependent).
+    val directionsTimeMode: Int = 0,
+    val directionsTimeEpochSec: Long? = null,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val transitNav: TransitNavState? = null,
@@ -1679,6 +1684,15 @@ class MapViewModel @Inject constructor(
         route(mode)
     }
 
+    /** Set the depart/arrive time for directions (mode 0=now, 1=depart at, 2=arrive by, 3=last available;
+     *  [epochSec] null for now) and re-route so transit shows departures at that time. */
+    fun setDirectionsTime(mode: Int, epochSec: Long?) {
+        val s = _state.value
+        if (s.directionsTimeMode == mode && s.directionsTimeEpochSec == epochSec) return
+        _state.update { it.copy(directionsTimeMode = mode, directionsTimeEpochSec = if (mode == 0) null else epochSec) }
+        route(_state.value.travelMode)
+    }
+
     private fun route(mode: TravelMode) {
         val s = _state.value
         val place = s.selected?.location ?: return
@@ -1688,7 +1702,7 @@ class MapViewModel @Inject constructor(
         val origin = (if (s.directionsReversed) place else fromPoint) ?: return
         val dest = (if (s.directionsReversed) fromPoint else place) ?: return
         destination = dest
-        if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest); return }
+        if (mode == TravelMode.TRANSIT) { routeTransit(origin, dest, s.directionsTimeMode, s.directionsTimeEpochSec); return }
         // Stops are ALWAYS stored in travel order (swapDirections physically reverses the list), so no
         // per-call reversal here — display, reorder arrows and routing all agree on one order.
         val stops = s.directionsWaypoints.map { it.location }
@@ -1736,10 +1750,10 @@ class MapViewModel @Inject constructor(
      *  WebView ([WebDirectionsFetcher]) rather than the OkHttp data source. We
      *  clear the driving route line while it loads — transit shows a results
      *  board, not a single drawn path. */
-    private fun routeTransit(origin: LatLng, dest: LatLng) {
+    private fun routeTransit(origin: LatLng, dest: LatLng, timeMode: Int = 0, timeEpochSec: Long? = null) {
         _state.update { it.copy(routes = emptyList(), activeRoute = null, transit = emptyList(), transitLoading = true, status = null) }
         viewModelScope.launch {
-            val trips = runCatching { webDirections.transit(origin, dest) }.getOrDefault(emptyList())
+            val trips = runCatching { webDirections.transit(origin, dest, timeMode, timeEpochSec) }.getOrDefault(emptyList())
             _state.update {
                 if (it.travelMode != TravelMode.TRANSIT) it // user switched away mid-load
                 else it.copy(

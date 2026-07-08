@@ -791,7 +791,12 @@ genuinely needs no doc edit, say why in the commit.
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
   the WebView instead navigates the `/maps/dir/<olat>,<olng>/<dlat>,<dlng>/data=!4m2!4m1!3e3`
-  page and reads the itinerary set out of `APP_INITIALIZATION_STATE`. **Gotchas:**
+  page and reads the itinerary set out of `APP_INITIALIZATION_STATE`. **Depart/arrive time:** the
+  board is time-dependent, so a scheduled request replaces the plain `!4m2!4m1!3e3` with Google's
+  time block — `!4m6!4m5!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>!3e3` (the `!4m` numbers
+  are DESCENDANT counts, so the inner group grows `4m1`→`4m5` and the outer `4m2`→`4m6`; verified
+  against a real Google transit-with-time URL — an earlier `!4m8!4m7` guess had the wrong counts and
+  Google silently fell back to "now"). **Gotchas:**
   the directions payload is the **longest** `)]}'`-guarded string under slot `[3]`
   (a ~1.7 KB stub sits alongside the ~165 KB real one — take the longest, and poll
   for it: the SPA fills it a beat after page-finish). `TransitParser` (`:core`,
