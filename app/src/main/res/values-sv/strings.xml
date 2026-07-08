@@ -45,6 +45,8 @@
     <string name="settings_map">Karta</string>
     <string name="settings_live_traffic">Trafiklager i realtid</string>
     <string name="settings_live_traffic_hint">Färglägger vägar efter trafik när du bläddrar i kartan (Googles nyckellösa trafikrutor). Av som standard – navigeringen färglägger redan din rutt efter trafik, så det här är bara för att överblicka ett större område. Det är ett rasterlager, så det är lite grovkornigt.</string>
+    <string name="settings_transit_layer">Markera kollektivtrafiklinjer</string>
+    <string name="settings_transit_layer_hint">Ritar tåg- och tunnelbanelinjer i färg på kartan, så att spåren är lätta att följa. Använder de öppna kartdata som redan finns i rutorna, utan nätverk.</string>
     <string name="settings_read_all_reviews">Knappen ”Läs alla recensioner”</string>
     <string name="settings_read_all_reviews_hint">Recensioner i platsvyn är alltid Velas egen smidiga inbyggda lista. Detta lägger till en knapp ”Läs alla recensioner” som öppnar Googles fullständiga recensionssida i HELSKÄRM – alla recensioner (inte bara de första ~50), Googles serversökning och videorecensioner spelas upp. Spårare/beacons blockeras, men Googles sida körs inuti appen. Av = endast inbyggd lista, ingen Google-sida för recensioner.</string>
     <string name="settings_offline">Offline</string>

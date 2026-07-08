@@ -45,6 +45,8 @@
     <string name="settings_map">Mapa</string>
     <string name="settings_live_traffic">Camada de trânsito em direto</string>
     <string name="settings_live_traffic_hint">Sombreia as estradas por congestionamento ao explorar o mapa (mosaicos de trânsito sem chave da Google). Desligado por predefinição — a navegação já colore o seu percurso pelo trânsito, portanto isto serve apenas para observar a área envolvente. É uma sobreposição raster, por isso fica um pouco granulada.</string>
+    <string name="settings_transit_layer">Destacar linhas de transporte</string>
+    <string name="settings_transit_layer_hint">Desenha as linhas de comboio e metro a cores no mapa, para seguir o carril com facilidade. Usa os dados abertos já presentes nos mosaicos, sem rede.</string>
     <string name="settings_read_all_reviews">Botão “Ler todas as avaliações”</string>
     <string name="settings_read_all_reviews_hint">As avaliações na ficha do local são sempre a lista nativa e fluida do próprio Vela. Isto adiciona um botão “Ler todas as avaliações” que abre a página completa de avaliações da Google em ECRÃ INTEIRO — todas as avaliações (não apenas as primeiras ~50), a pesquisa no servidor da Google e a reprodução de avaliações em vídeo. Rastreadores/balizas são bloqueados, mas executa a página da Google dentro da aplicação. Desligado = apenas a lista nativa, sem página da Google para avaliações.</string>
     <string name="settings_offline">Offline</string>
