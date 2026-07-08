@@ -82,8 +82,12 @@ jobs:
         # download fails loud instead of producing a runtime-crashing APK.
         run: |
           mkdir -p app/libs
+          # The `tts-runtime` release only lives on the upstream repo, so a FORK's CI (github.repository
+          # = the fork) 404s. Try this repo first, then fall back to the upstream release.
           curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
-            https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar
+            "https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar" \
+          || curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
+            "https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar"
           test "$(stat -c%s app/libs/sherpa-onnx-1.13.3.aar)" -gt 50000000
 
       - name: Build release APK
