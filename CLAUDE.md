@@ -796,9 +796,16 @@ genuinely needs no doc edit, say why in the commit.
   (a ~1.7 KB stub sits alongside the ~165 KB real one — take the longest, and poll
   for it: the SPA fills it a beat after page-finish). `TransitParser` (`:core`,
   takes the raw string so `:app` stays out of kotlinx.serialization, like
-  `PhotosParser`) reads `root[0][1]` = trips, each trip's **summary at `trip[0]`**
-  (one level deeper than you'd guess — `trip[1]` is the per-stop leg tree, a future
-  drill-down). Calibrated + device-verified Davis→Sacramento 2026-06-18.
+  `PhotosParser`) reads `root[0][1]` = trips, each trip's **summary at `trip[0]`**;
+  `trip[1][0][1]` is the per-stop leg tree. Calibrated + device-verified Davis→Sacramento
+  2026-06-18. **Full stop detail (2026-07-07, Miami→Aventura capture, unit-tested):** a RIDE
+  leg carries its stop block at **`leg[5]`** — board `[5][0]`, alight `[5][1]`, **stop count
+  `[5][2]`**, intermediate list `[5][7]` (each stop node: name `[0]`, agency code `[1]`, and
+  time tuples — real-time arr/dep at `[2]`/`[3]`, timetable at `[7]`/`[8]`, so RT-vs-timetable
+  epochs give "N min late"); **headsign `leg[0][14][2][1][0]`**, agency phone `leg[0][6][4][0][4]`,
+  service alerts `leg[0][9][k][2]`. Fare is scanned defensively from the trip summary (usually
+  absent — most US agencies send none). NB `parseLines` allows a **1-char** line name (single-digit
+  bus routes like "9" are real; the old ≥2 guard dropped their pill).
 
 ## Name
 

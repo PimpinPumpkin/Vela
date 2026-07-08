@@ -806,6 +806,54 @@ class TransitParserTest {
         assertEquals("5:48 AM", steps[1].departText)
         assertEquals("6:41 AM", steps[1].arriveText)
     }
+
+    // Real-shaped ride leg from the Miami→Aventura `!3e3` capture (2026-07-07). The ride's stop
+    // block is leg[5]: board [5][0], alight [5][1], stop count [5][2], intermediate list [5][7];
+    // each stop node holds name [0], agency code [1], and time tuples (real-time [2]/[3],
+    // timetable [7]/[8]). Headsign is leg[0][14][2][1][0]; agency+phone leg[0][6][4][0][0]/[4];
+    // service alerts leg[0][9][k][2]. Board is 5 min late (RT 4:35 vs timetable 4:30).
+    private val boardStop = """["NE 10 Av & NE 175 St","A10V1752",null,""" +
+        """[1783456549,"America/New_York","4:35 PM"],null,null,null,null,""" +
+        """[1783456243,"America/New_York","4:30 PM"],null,3]"""
+    private val alightStop = """["Aventura Blvd & #2740 (Bank)","AVTB#276",""" +
+        """[1783458840,"America/New_York","4:54 PM"],null,null,null,null,""" +
+        """[1783458540,"America/New_York","4:49 PM"],null,null,3]"""
+    private val intermStop = """["NE 10 Av & NE 180 Ter","A10V1801",""" +
+        """[1783456644,"America/New_York","4:37 PM"],null,null,null,null,null,null,null,3]"""
+    private val ride = """[$boardStop,$alightStop,17,"#5c7ca2",0,null,2,[$intermStop]]"""
+    private val richBusLeg = """[[null,null,null,[null,"19 min"],null,null,""" +
+        """[null,null,null,null,[["Miami-Dade Transit","id",null,null,"1 (305) 891-3131"]]],""" +
+        """null,null,[[2,"Information","Route 9 / 9A - Southbound Midtown Detour"]],null,null,null,null,""" +
+        """[[4,null,[3,"bus2.png",null,"Bus"]],[5,["9",1,"#5c7ca2","#ffffff"]],[7,["Aventura Mall Terminal Via M. Gardens Dr"]]]],""" +
+        """null,null,null,null,$ride]"""
+
+    @Test
+    fun parsesRideStopDetail() {
+        val legs = "[[null,[$richBusLeg]]]"
+        val list = TransitParser.parse(Json.parseToJsonElement("[[null,[[$itin0,$legs]]]]"))
+        val trip = list[0]
+        val ride = trip.steps.single { it.line != null }
+        assertEquals("9", ride.line?.name)
+        assertEquals("Aventura Mall Terminal Via M. Gardens Dr", ride.headsign)
+        assertEquals(17, ride.numStops)
+        // board / alight stops with codes + real-time times
+        assertEquals("NE 10 Av & NE 175 St", ride.boardStop?.name)
+        assertEquals("A10V1752", ride.boardStop?.code)
+        assertEquals("4:35 PM", ride.boardStop?.timeText)
+        assertEquals("4:30 PM", ride.boardStop?.scheduledText) // differs → shown struck
+        assertEquals("Aventura Blvd & #2740 (Bank)", ride.alightStop?.name)
+        assertEquals("4:54 PM", ride.alightStop?.timeText)
+        assertEquals("5 min late", ride.delayText)
+        // intermediate list
+        assertEquals(1, ride.intermediateStops.size)
+        assertEquals("NE 10 Av & NE 180 Ter", ride.intermediateStops[0].name)
+        assertEquals("4:37 PM", ride.intermediateStops[0].timeText)
+        // itinerary-level agency phone + alerts (phone/alerts come from the ride leg's agency node;
+        // the agency NAME keeps the trip-summary value — here itin0's — by design).
+        assertEquals("Amtrak Chartered Vehicle", trip.agency)
+        assertEquals("1 (305) 891-3131", trip.agencyPhone)
+        assertEquals(listOf("Route 9 / 9A - Southbound Midtown Detour"), trip.alerts)
+    }
 }
 
 class RouteRefTest {

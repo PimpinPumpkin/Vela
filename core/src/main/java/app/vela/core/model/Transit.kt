@@ -12,11 +12,23 @@ data class TransitLine(
     val textColorHex: String? = null, // legible text on the fill, e.g. "#000000"
 )
 
+/** A single stop on a transit leg (board / alight / intermediate), with its name,
+ *  agency stop code ("Stop ID"), and the time the vehicle calls there. When the
+ *  live (real-time) time differs from the timetable, [scheduledText] carries the
+ *  original so the UI can show "4:30 → 4:35 (5 min late)" like Google. */
+data class TransitStopTime(
+    val name: String,
+    val code: String? = null,           // agency stop code, e.g. "A10V1752"
+    val timeText: String? = null,       // the shown (real-time if live) time, "4:35 PM"
+    val scheduledText: String? = null,  // the timetable time when it differs, "4:30 PM"
+)
+
 /**
  * One leg of a transit itinerary — a single walk or ride. The drill-down view
  * lists these in order: "Walk 7 min → Bus 42B 5:48–6:41 AM → Walk 7 min".
- * Intermediate stop names + the ridden polyline live in the same payload too
- * (a future enrichment); this is the leg-summary layer.
+ * Ride legs also carry the full stop detail Google shows: the board/alight stops
+ * (with codes + times), the ridden headsign ("towards …"), the number of stops,
+ * the delay, and every intermediate stop — all from the same keyless payload.
  */
 data class TransitStep(
     val mode: TransitMode,
@@ -25,6 +37,12 @@ data class TransitStep(
     val line: TransitLine? = null,    // the ridden line (transit legs only)
     val departText: String? = null,   // board time, "5:48 AM" (transit legs)
     val arriveText: String? = null,   // alight time, "6:41 AM"
+    val headsign: String? = null,             // "Aventura Mall Terminal Via M. Gardens Dr"
+    val boardStop: TransitStopTime? = null,   // where you get on
+    val alightStop: TransitStopTime? = null,  // where you get off
+    val numStops: Int? = null,                // "Ride 17 stops"
+    val delayText: String? = null,            // "5 min late" / "2 min early" (real-time)
+    val intermediateStops: List<TransitStopTime> = emptyList(), // the in-between stops
 )
 
 /**
@@ -42,6 +60,9 @@ data class TransitItinerary(
     val durationText: String? = null,  // "45 min"
     val distanceText: String? = null,  // "15.0 miles"
     val agency: String? = null,        // "Amtrak Chartered Vehicle"
+    val agencyPhone: String? = null,   // "1 (305) 891-3131" — dialable "Tickets and information"
+    val alerts: List<String> = emptyList(), // service alerts ("Route 9 - Southbound Detour")
+    val fare: String? = null,          // "$2.25" when the agency provides it (often absent)
     val lines: List<TransitLine> = emptyList(),
     val steps: List<TransitStep> = emptyList(),
 )
