@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Pobierz oglądany obszar</string>
     <string name="settings_offline_download_viewport_hint">Zapisuje kafelki dla obszaru mapy, który ostatnio był na ekranie — oraz otaczający go region tras — aby później renderował się i nawigował bez sieci. Wyszukiwanie nadal wymaga połączenia.</string>
     <string name="settings_offline_no_areas">Nie zapisano jeszcze żadnych obszarów.</string>
+    <string name="settings_offline_addresses_missing">Obszary zapisane przed tą aktualizacją nie zawierają danych adresowych. Zaktualizuj je, aby wyszukiwać adresy i wyznaczać do nich trasy offline.</string>
+    <string name="settings_offline_addresses_update">Zaktualizuj zapisane obszary</string>
     <string name="settings_offline_delete_area">Usuń ten obszar offline</string>
     <string name="settings_routing_regions">Regiony tras</string>
     <string name="settings_routing_regions_hint">Sieć dróg dla całego regionu (województwo, kraj…), aby nawigacja zakręt po zakręcie działała offline w dowolnym miejscu wewnątrz niego — pobierz tam, gdzie podróżujesz. Online nadal używa ruchu na żywo; to rozwiązanie awaryjne bez zasięgu.</string>

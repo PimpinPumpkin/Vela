@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Hämta området du tittar på</string>
     <string name="settings_offline_download_viewport_hint">Sparar de öppna rutorna för kartområdet du senast hade på skärmen – och ruttregionen runt det – så att det ritas upp och navigerar senare utan nätverk. Sökning kräver fortfarande anslutning.</string>
     <string name="settings_offline_no_areas">Inga områden sparade ännu.</string>
+    <string name="settings_offline_addresses_missing">Områden du sparade före den här uppdateringen innehåller inga adressdata. Uppdatera dem för att söka och navigera till adresser offline.</string>
+    <string name="settings_offline_addresses_update">Uppdatera sparade områden</string>
     <string name="settings_offline_delete_area">Ta bort det här offlineområdet</string>
     <string name="settings_routing_regions">Ruttregioner</string>
     <string name="settings_routing_regions_hint">Vägnätet för en hel region (delstat, land …), så att sväng-för-sväng fungerar offline var som helst inuti den – hämta där du reser. Online används fortfarande realtidstrafik; det här är reserven utan täckning.</string>
