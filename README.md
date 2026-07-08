@@ -12,7 +12,7 @@ GrapheneOS and other no-GMS ROMs.
 
 Tap the badge (or add the repo URL `https://github.com/PimpinPumpkin/Vela` in
 **[Obtainium](https://github.com/ImranR98/Obtainium)**) and it auto-tracks every
-signed `v0.2.<run>` release — no Play Store, no account. Or grab the APK straight
+signed `v0.3.<run>` release — no Play Store, no account. Or grab the APK straight
 from [Releases](https://github.com/PimpinPumpkin/Vela/releases). F-Droid submission
 is planned.
 
@@ -73,7 +73,7 @@ The map itself, the streets, the labels, and the house numbers all come from Ope
 >   markers, hillshade relief, a **map scale bar**, and **offline** basemap + POI
 >   download.
 >
-> Every push to `main` publishes a signed, Obtainium-friendly `v0.2.<run>` release.
+> Every push to `main` publishes a signed, Obtainium-friendly `v0.3.<run>` release.
 > `MockMapDataSource` stays as an offline fallback; both build types are green.
 >
 > See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
@@ -125,7 +125,7 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Android Auto (first cut)** | Navigation-category CarAppService; the MapLibre map draws onto the car surface through a VirtualDisplay + Presentation; maneuver card from the shared NavSession. Sideloads show up with AA's "Unknown sources" on | `app/car/VelaCarAppService.kt`, `app/car/CarMapScreen.kt` |
 | **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor — never GMS/Fused | `core/location/` |
 | **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
-| **Distribution** | Every push to `main` → CI builds + signs → `v0.2.<run>` GitHub release; Obtainium tracks it | `.github/workflows/ci.yml` |
+| **Distribution** | Every push to `main` → CI builds + signs → `v0.3.<run>` GitHub release; Obtainium tracks it | `.github/workflows/ci.yml` |
 
 ## Docs — where to look
 
@@ -212,7 +212,7 @@ debug keystore so `adb install` still works.
 
 **CI** (`.github/workflows/`): every push to `main` builds + tests the APK,
 uploads it as an artifact, and publishes a **normal versioned release**
-(`v0.2.<run>`, versionCode `2000+run`) — kept as a revision history, so Obtainium
+(`v0.3.<run>`, versionCode `2000+run`) — kept as a revision history, so Obtainium
 tracks the latest with zero configuration and no pre-release toggle. The release APK is signed with the keystore from repo secrets
 `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (without them
 it's debug-signed — installable, but not update-compatible across builds). An
@@ -469,6 +469,15 @@ without an app release.
 **Vela Maps** (`app.vela`) — the navigator's constellation "the Sails", and
 "sail" in several languages. The name was vetted clear of maps-app and
 trademark collisions.
+
+## Contributing
+
+Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first — it covers the hard rules (no
+backend, no static Google keys, degoogled runtime, the `:core`/`:app` module
+boundary, docs-in-the-same-commit, and translations for all 11 locales) and how to
+send a change. There is no separate code-of-conduct document by design: keep it
+about the code. Security issues go through [`SECURITY.md`](SECURITY.md) (GitHub
+private vulnerability reporting), not a public issue.
 
 ## License
 
