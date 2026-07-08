@@ -106,6 +106,15 @@ genuinely needs no doc edit, say why in the commit.
   `onScroll`/`onScale` and move the camera by hand (projection math — `MapLibreMap.scrollBy` isn't
   a thing in 11.x). The PHONE runs nav (MapViewModel feeds NavSession) and speaks; the car is a
   display. Car-side search/route-start is a follow-up. Untested on a real head unit yet.
+- **Settings ORDER is deliberate (reorg 2026-07-08):** Appearance → Map (traffic/transit/3D) →
+  **Place pages** (ShowReviews / read-all-reviews / LoadPhotos) → Navigation (keep-screen-on,
+  traffic lights, vibrate-on-turns as FilterChips one per mode, demo LAST) → Voice → Offline →
+  Saved places → Data & privacy → Diagnostics → About/Support/Version(+updater). Put a new setting
+  in the section it serves, not at the end; place-content settings go under Place pages, not Map.
+- **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
+  Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
+  name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
+  default-radius cards, no OutlinedIconButton circles — that was the "dated" look).
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`

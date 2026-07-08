@@ -26,6 +26,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -133,16 +134,20 @@ fun ManeuverBanner(
                 )
             }
             .then(if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier),
+        // Softer, more current shape than the stock card: big radius + a real shadow so the
+        // banner floats over the map instead of sitting on it like a toolbar.
+        shape = RoundedCornerShape(24.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(maneuverIcon(type), contentDescription = null, modifier = Modifier.size(46.dp))
-                Spacer(Modifier.width(16.dp))
+                Icon(maneuverIcon(type), contentDescription = null, modifier = Modifier.size(54.dp))
+                Spacer(Modifier.width(18.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
                         formatDistance(distanceMeters),
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                     )
                     val signs = roadSigns(text, ref)
@@ -153,7 +158,11 @@ fun ManeuverBanner(
                             modifier = Modifier.padding(top = 2.dp, bottom = 1.dp),
                         ) { signs.forEach { SignChip(it) } }
                     }
-                    Text(text.ifEmpty { stringResource(R.string.nav_maneuver_continue) }, style = MaterialTheme.typography.bodyLarge)
+                    Text(
+                        text.ifEmpty { stringResource(R.string.nav_maneuver_continue) },
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
             }
             // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
@@ -443,13 +452,16 @@ fun NavControls(
     }
     Card(
         modifier.fillMaxWidth(),
+        // Match the banner's treatment: generous radius + shadow, a floating pill not a bar.
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
         colors = CardDefaults.cardColors(
             containerColor = SheetPalette.bg(dark),
             contentColor = SheetPalette.ink(dark),
         ),
     ) {
         Row(
-            Modifier.fillMaxWidth().padding(16.dp),
+            Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -474,13 +486,13 @@ fun NavControls(
             // Steps is icon-only so the row stays compact (the left ETA column can
             // grow with a longer "X mi · 7:42 PM"); End keeps its label.
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedIconButton(onClick = onToggleVoice) {
+                FilledTonalIconButton(onClick = onToggleVoice) {
                     Icon(
                         if (voiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                         contentDescription = if (voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
                     )
                 }
-                OutlinedIconButton(onClick = onSteps) {
+                FilledTonalIconButton(onClick = onSteps) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps))
                 }
                 Button(onClick = onStop) {
