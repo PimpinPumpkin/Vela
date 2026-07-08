@@ -179,7 +179,7 @@ helpers) attached to each surface's primary element:
 
 | Screen / overlay | Auto-focus target | Was broken? |
 |---|---|---|
-| Bare map | centre map target (pre-existing retry effect) | already OK |
+| Bare map | **nothing** on open — the map neither auto-focuses nor auto-engages; the user's first arrow lands on the search bar (the first focusable). See note below. | changed 2026-07-08 |
 | **Settings** | back button (top of screen) | **nothing focused** — confirmed + fixed |
 | **Welcome** | Get-started button | fixed |
 | **Place sheet** | drag handle | focus leaked to the search bar behind it — fixed |
@@ -195,6 +195,19 @@ place sheet → handle, directions panel → Drive tab all land focused. The thr
 helper, so the sheet/reviews/steps that attach it identically follow. Results after a search
 keep focus on the search field (Google-style — you can refine or press DOWN into the list);
 that's "already focused", so it's left as-is.
+
+**The bare map is the ONE intentional exception (2026-07-08).** It used to auto-focus AND
+auto-engage the centre map target on open, so arrows immediately panned and you had to press
+BACK before you could reach the search bar (user report). Now the map neither auto-focuses nor
+auto-engages: nothing is focused on open, and the user's **first arrow lands on the search bar**
+(Compose's real-first-key initial focus picks the first focusable, which is the search bar). Why
+not just pre-focus the search bar? **Compose won't let us on the opening screen** — verified ~13
+ways: `requestFocus` no-ops while nothing is focused yet; `moveFocus` only ever lands on the
+centre map target (even after removing its `FocusRequester`); `moveFocus(Up)`/`Enter` and
+synthetic `KeyEvent`s don't take. So "nothing focused, first key → search bar" is the closest
+reachable behaviour — and it doesn't violate the spirit of the always-focused rule (the map is
+ambient; the first key isn't wasted, it goes straight to search). From the search bar, DOWN walks
+to the category chips and the map target; OK on the map target engages it to pan.
 
 ### The search overlay — the "can't get out of search" trap (MapScreen + SearchBar)
 
