@@ -414,4 +414,5 @@
     <string name="transit_nav_from">від %1$s</string> <!-- format -->
     <string name="transit_nav_get_off">Вийдіть на %1$s</string> <!-- format -->
     <string name="transit_nav_next">Далі</string>
+    <string name="place_last_available">Останній рейс</string>
 </resources>
