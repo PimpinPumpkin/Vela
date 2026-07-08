@@ -82,6 +82,7 @@ import androidx.compose.material.icons.filled.Train
 import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocalCafe
@@ -174,6 +175,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.vela.core.model.AboutSection
+import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.ShortcutKind
 import app.vela.core.model.Review
@@ -182,12 +184,14 @@ import app.vela.core.model.TransitItinerary
 import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
 import app.vela.core.model.TransitStep
+import app.vela.core.model.TransitStopTime
 import app.vela.core.model.TravelMode
 import coil.compose.AsyncImage
 import app.vela.ui.RatingStars
 import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
+import app.vela.ui.map.TransitNavState
 import kotlin.math.roundToInt
 import app.vela.ui.placeStatusColor
 import java.util.Locale
@@ -947,7 +951,10 @@ fun DirectionsPanel(
     onStartNav: () -> Unit,
     onSteps: (() -> Unit)?,
     onSearchAlongRoute: (String) -> Unit,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
+    onStartTransit: (TransitItinerary) -> Unit = {},
     onClose: () -> Unit,
+    onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -1073,20 +1080,26 @@ fun DirectionsPanel(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             AnimatedVisibility(visible = !collapsed.value) {
-              // Scrollable + height-capped: with up to 4 alternates the mode tabs + route
-              // list + depart options + Start/Steps exceed the screen, and without a scroll
-              // container the Start button was pushed off-screen with no way to reach it
-              // (measured on-device — affects touch too). Cap to ~58% of the screen so the
-              // From/To header stays visible above; focus-to-Start now scrolls it into view.
-              val dirScroll = rememberScrollState()
-              val dirMaxH = (LocalConfiguration.current.screenHeightDp * 0.58f).dp
-              Column(Modifier.heightIn(max = dirMaxH).verticalScroll(dirScroll)) {
+              // Cap the expandable body to ~58% of the screen and let it scroll — on short screens the
+              // mode chips + route/transit list + Start button are taller than the bottom-anchored card,
+              // so without this the Start button (drive) and the lower transit trips fall off the bottom,
+              // unreachable. verticalScroll keeps the whole chooser usable; the map stays visible above.
+              Column(
+                  Modifier
+                      .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.58f).dp)
+                      .verticalScroll(rememberScrollState()),
+              ) {
             Spacer(Modifier.height(10.dp))
             // D-pad-first (docs/dpad.md): land focus on the first travel-mode tab when the
             // directions panel opens, so it's the active surface (else focus stays on the
             // search bar behind it). No-op under touch.
             val dirAutoFocus = rememberDpadAutoFocus()
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Scrollable so all four mode pills keep full size on a narrow screen — without this the
+            // 4th (Bike) overflowed the row and got clipped to the edge as an icon-only stub.
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 listOf(
                     Triple(TravelMode.DRIVE, stringResource(R.string.place_mode_drive), Icons.Default.DirectionsCar),
                     Triple(TravelMode.TRANSIT, stringResource(R.string.place_mode_transit), Icons.Default.DirectionsBus),
@@ -1104,8 +1117,16 @@ fun DirectionsPanel(
                     )
                 }
             }
+            // ONE depart/arrive time chooser, right under the mode chips — it applies to ALL modes
+            // (drive/transit/walk/bike), so it lives above the mode-specific results, not inside them.
+            Spacer(Modifier.height(12.dp))
+            DepartTimeChooser(
+                activeRoute ?: routes.firstOrNull(), dim,
+                isTransit = currentMode == TravelMode.TRANSIT,
+                onTimeSelected = onTimeSelected,
+            )
             if (currentMode == TravelMode.TRANSIT) {
-                TransitBoard(transit, transitLoading, ink, dim, dark)
+                TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit)
             } else {
                 Spacer(Modifier.height(12.dp))
                 if (routes.isEmpty()) {
@@ -1124,8 +1145,6 @@ fun DirectionsPanel(
                             RouteOption(r, selected, fastestEtaSeconds = fastestEta, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    DepartTimeChooser(activeRoute ?: routes.firstOrNull(), dim)
                     Spacer(Modifier.height(14.dp))
                     Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
@@ -1187,67 +1206,79 @@ fun DirectionsPanel(
  *  we can't reach keyless, so we surface the range Google itself plans with. Falls
  *  back to a single ~estimate when no range is shipped (short trips, walk/bike). */
 @Composable
-private fun DepartTimeChooser(route: Route?, dim: Color) {
+private fun DepartTimeChooser(
+    route: Route?,
+    dim: Color,
+    isTransit: Boolean = false,
+    onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
+) {
     val context = LocalContext.current
-    // Keyed to the route so switching places/alternates resets the picked time
-    // instead of carrying it over.
-    var mode by remember(route?.summary) { mutableStateOf(0) } // 0 = now, 1 = depart at, 2 = arrive by
-    var picked by remember(route?.summary) { mutableStateOf<java.time.LocalTime?>(null) }
+    // Keyed to the destination so switching places resets the picked time. mode: 0 now, 1 depart at,
+    // 2 arrive by, 3 last available (transit only). date + time compose the chosen wall-clock.
+    var mode by remember(route?.summary) { mutableStateOf(0) }
+    var date by remember(route?.summary) { mutableStateOf(java.time.LocalDate.now()) }
+    var time by remember(route?.summary) { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0)) }
     val nowDur = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
     val range = route?.typicalRangeSeconds
     val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    val dateFmt = java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d")
 
-    fun openPicker(target: Int) {
-        val base = picked ?: java.time.LocalTime.now()
-        android.app.TimePickerDialog(
-            context,
-            { _, h, m -> picked = java.time.LocalTime.of(h, m); mode = target },
-            base.hour, base.minute, false,
-        ).show()
-    }
+    fun epoch(): Long = date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+    fun emit() = onTimeSelected(mode, if (mode == 0) null else epoch())
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text(stringResource(R.string.place_leave_now)) })
-        FilterChip(selected = mode == 1, onClick = { openPicker(1) }, label = { Text(stringResource(R.string.place_depart_at)) })
-        FilterChip(selected = mode == 2, onClick = { openPicker(2) }, label = { Text(stringResource(R.string.place_arrive_by)) })
-    }
+    fun openTime() = android.app.TimePickerDialog(
+        context, { _, h, m -> time = java.time.LocalTime.of(h, m); emit() }, time.hour, time.minute, false,
+    ).show()
+    fun openDate() = android.app.DatePickerDialog(
+        context, { _, y, mo, d -> date = java.time.LocalDate.of(y, mo + 1, d); emit() },
+        date.year, date.monthValue - 1, date.dayOfMonth,
+    ).show()
 
-    // A clock window [base+loOffset .. base+hiOffset] when we have a typical spread,
-    // else a single ~point from the current duration (sign chosen by the caller).
-    fun window(base: java.time.LocalTime, lo: Double, hi: Double, sign: Int): String =
-        if (range != null)
-            "${base.plusSeconds((sign * lo).toLong()).format(fmt)}–${base.plusSeconds((sign * hi).toLong()).format(fmt)}"
-        else "~${base.plusSeconds((sign * nowDur).toLong()).format(fmt)}"
-
-    val lo = range?.first ?: nowDur
-    val hi = range?.second ?: nowDur
-    // Only claim "current traffic" when the route actually carries a live in-traffic ETA. An offline
-    // (GraphHopper) route, or any traffic-less route, has neither a typical range nor live traffic, so
-    // it shows no traffic note at all instead of a misleading "current traffic".
-    val hasLive = route?.hasLiveTraffic == true
-    // Resolve both traffic notes up front (composable calls must be at the top level, not inside a lambda).
-    val typicalNote = stringResource(R.string.place_in_typical_traffic)
-    val liveNoteDepart = stringResource(R.string.place_based_current_traffic)
-    val liveNoteNow = stringResource(R.string.place_current_traffic)
-    val departNote = when { range != null -> typicalNote; hasLive -> liveNoteDepart; else -> null }
-    val (summary, note) = when (mode) {
-        1 -> picked?.let { p ->
-            stringResource(R.string.place_depart_arrive, p.format(fmt), window(p, lo, hi, +1)) to departNote
-        } ?: (null to null)
-        2 -> picked?.let { p ->
-            // Arrive by p → leave between p−hi and p−lo (earlier end first).
-            stringResource(R.string.place_arriveby_leave, p.format(fmt), window(p, hi, lo, -1)) to departNote
-        } ?: (null to null)
-        else -> {
-            val arrive = stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt))
-            arrive to (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
-                ?: if (hasLive) liveNoteNow else null)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Mode chips — scroll horizontally so 3–4 chips never clip on a narrow phone.
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) })
+            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) })
+            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) })
+            if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) })
         }
-    }
-    summary?.let {
-        Column(Modifier.padding(top = 6.dp)) {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = dim)
-            note?.let { n -> Text(n, style = MaterialTheme.typography.bodySmall, color = dim) }
+        // Time + date pickers for depart/arrive (Google-style: a time field AND a date field).
+        if (mode == 1 || mode == 2) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { openTime() }) { Text(time.format(fmt)) }
+                OutlinedButton(onClick = { openDate() }) { Text(date.format(dateFmt)) }
+            }
+        }
+
+        // Drive ETA estimate (only meaningful with a route — transit shows just the chips). Only claim
+        // "current traffic" when the route actually carries a live in-traffic ETA (an offline/GraphHopper
+        // route has neither a typical range nor live traffic).
+        if (route != null && mode != 3) {
+            fun window(base: java.time.LocalTime, lo: Double, hi: Double, sign: Int): String =
+                if (range != null)
+                    "${base.plusSeconds((sign * lo).toLong()).format(fmt)}–${base.plusSeconds((sign * hi).toLong()).format(fmt)}"
+                else "~${base.plusSeconds((sign * nowDur).toLong()).format(fmt)}"
+            val lo = range?.first ?: nowDur
+            val hi = range?.second ?: nowDur
+            val hasLive = route.hasLiveTraffic
+            val typicalNote = stringResource(R.string.place_in_typical_traffic)
+            val liveNoteDepart = stringResource(R.string.place_based_current_traffic)
+            val liveNoteNow = stringResource(R.string.place_current_traffic)
+            val departNote = when { range != null -> typicalNote; hasLive -> liveNoteDepart; else -> null }
+            val (summary, note) = when (mode) {
+                1 -> stringResource(R.string.place_depart_arrive, time.format(fmt), window(time, lo, hi, +1)) to departNote
+                2 -> stringResource(R.string.place_arriveby_leave, time.format(fmt), window(time, hi, lo, -1)) to departNote
+                else -> stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt)) to
+                    (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
+                        ?: if (hasLive) liveNoteNow else null)
+            }
+            Column {
+                Text(summary, style = MaterialTheme.typography.bodyMedium, color = dim)
+                note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = dim) }
+            }
         }
     }
 }
@@ -1332,6 +1363,8 @@ private fun TransitBoard(
     ink: Color,
     dim: Color,
     dark: Boolean,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
+    onStartTransit: (TransitItinerary) -> Unit = {},
 ) {
     Spacer(Modifier.height(10.dp))
     when {
@@ -1344,13 +1377,71 @@ private fun TransitBoard(
         }
         trips.isEmpty() -> Text(stringResource(R.string.place_no_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
         else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            trips.take(6).forEach { TransitRow(it, ink, dim, dark) }
+            trips.take(6).forEach { TransitRow(it, ink, dim, dark, onWalkDirections, onStartTransit) }
+        }
+    }
+}
+
+/** Full-screen step-by-step transit guidance (Moovit-style): the current leg large, the remaining
+ *  legs as a timeline, Back / Next controls. Advances automatically as GPS reaches each leg's end. */
+@Composable
+fun TransitNavSheet(
+    nav: TransitNavState,
+    onNext: () -> Unit,
+    onBack: () -> Unit,
+    onEnd: () -> Unit,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<String>,
+) {
+    val dark = isAppInDarkTheme()
+    val ink = if (dark) InkDark else InkLight
+    val dim = if (dark) DimDark else DimLight
+    val itin = nav.itinerary
+    val step = itin.steps.getOrNull(nav.stepIndex)
+    Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (nav.arrived) stringResource(R.string.transit_nav_arrived)
+                    else "${nav.stepIndex + 1} / ${itin.steps.size}",
+                    style = MaterialTheme.typography.titleMedium, color = dim, modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onEnd) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
+            }
+            Spacer(Modifier.height(8.dp))
+            // Current leg, large.
+            if (step != null && !nav.arrived) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
+                ) { TransitStepRow(step, ink, dim, onWalkDirections) }
+            } else {
+                Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+            }
+            Spacer(Modifier.height(16.dp))
+            // Remaining legs as a compact timeline.
+            val remaining = itin.steps.drop(nav.stepIndex + 1)
+            if (remaining.isNotEmpty()) {
+                Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
+                Spacer(Modifier.height(6.dp))
+                Column(
+                    Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) { remaining.forEach { TransitStepRow(it, ink, dim) } }
+            }
+            Spacer(Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_back))
+                }
+                Button(onClick = onNext, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.transit_nav_next))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean) {
+private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}) {
     var expanded by remember { mutableStateOf(false) }
     val canExpand = t.steps.isNotEmpty()
     Column(
@@ -1402,8 +1493,47 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
         if (expanded) {
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
+            // Step-by-step guidance (Moovit-style) for this itinerary.
+            if (t.steps.isNotEmpty()) {
+                Button(onClick = { onStartTransit(t) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+                    Text(stringResource(R.string.place_start))
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                t.steps.forEach { TransitStepRow(it, ink, dim) }
+                t.steps.forEach { TransitStepRow(it, ink, dim, onWalkDirections) }
+            }
+            // Service alerts (detours / info) for the ridden lines.
+            if (t.alerts.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    t.alerts.take(4).forEach { alert ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.padding(top = 2.dp).size(15.dp))
+                            Text(alert, style = MaterialTheme.typography.labelSmall, color = dim)
+                        }
+                    }
+                }
+            }
+            // Tickets & info: fare (when the agency provides one) + agency name and a dialable phone
+            // (Google's "Tickets and information" footer).
+            if (t.fare != null || t.agencyPhone != null) {
+                val context = LocalContext.current
+                HorizontalDivider(color = dim.copy(alpha = 0.25f))
+                Text(stringResource(R.string.place_transit_tickets), style = MaterialTheme.typography.labelMedium, color = ink)
+                t.fare?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink) }
+                val info = listOfNotNull(t.agency, t.agencyPhone).joinToString("  ·  ")
+                if (info.isNotEmpty()) {
+                    val phone = t.agencyPhone
+                    Text(
+                        info,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (phone != null) MaterialTheme.colorScheme.primary else dim,
+                        modifier = if (phone != null) Modifier.clickable {
+                            val dialable = "tel:" + phone.filter { it.isDigit() || it == '+' }
+                            runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                        } else Modifier,
+                    )
+                }
             }
         }
     }
@@ -1412,23 +1542,122 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
 /** One leg in the expanded drill-down: a mode glyph + the line/"Walk" title and a
  *  times·duration·distance subtitle ("Bus 42B / 5:48 AM – 6:41 AM · 53 min"). */
 @Composable
-private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color) {
+private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }) {
+    // Walk leg — "Walk · 11 min · 0.5 mi", tap to expand turn-by-turn walking directions
+    // (fetched on demand via the walk router between this leg's endpoints).
+    if (s.line == null) {
+        val from = s.walkFrom; val to = s.walkTo
+        val canExpand = from != null && to != null
+        var open by remember { mutableStateOf(false) }
+        var steps by remember(from, to) { mutableStateOf<List<String>?>(null) }
+        if (open && canExpand) {
+            LaunchedEffect(from, to) { steps = onWalkDirections(from!!, to!!) }
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            Icon(transitModeIcon(s.mode), null, tint = dim, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+            Column(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.then(if (canExpand) Modifier.clickable { open = !open } else Modifier),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
+                        val sub = listOfNotNull(s.durationText, s.distanceText).joinToString("  ·  ")
+                        if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+                    }
+                    if (canExpand) Icon(
+                        if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (open) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
+                        tint = dim, modifier = Modifier.size(18.dp),
+                    )
+                }
+                if (open && canExpand) {
+                    Column(Modifier.padding(start = 4.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        when (val list = steps) {
+                            null -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            else -> if (list.isEmpty()) {
+                                Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.labelSmall, color = dim)
+                            } else list.forEach { instr ->
+                                Text("•  $instr", style = MaterialTheme.typography.labelSmall, color = dim)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
+    val line = s.line ?: return // unreachable (walk branch returned) — re-narrows the cross-module type
+    val lineColor = parseHexColor(line.colorHex) ?: dim
+    var stopsOpen by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-        Icon(
-            transitModeIcon(s.mode),
-            contentDescription = null,
-            tint = s.line?.colorHex?.let { parseHexColor(it) } ?: dim,
-            modifier = Modifier.padding(top = 2.dp).size(18.dp),
-        )
-        Column {
-            Text(s.line?.name ?: stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
-            val parts = listOfNotNull(
-                if (s.departText != null && s.arriveText != null) "${s.departText} – ${s.arriveText}" else null,
+        Icon(transitModeIcon(s.mode), null, tint = lineColor, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LinePill(line)
+                s.headsign?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, maxLines = 2) }
+            }
+            s.boardStop?.let { StopLine(it, ink, dim, emphasize = true, delay = s.delayText) }
+            val rideLabel = listOfNotNull(
                 s.durationText,
-                s.distanceText,
+                s.numStops?.let { stringResource(R.string.place_transit_stops, it) },
+            ).joinToString("  ·  ")
+            if (s.intermediateStops.isNotEmpty()) {
+                Row(
+                    Modifier.clickable { stopsOpen = !stopsOpen }.padding(vertical = 1.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
+                    Icon(
+                        if (stopsOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (stopsOpen) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
+                        tint = dim, modifier = Modifier.size(18.dp),
+                    )
+                }
+                if (stopsOpen) {
+                    Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        s.intermediateStops.forEach { StopLine(it, ink, dim, emphasize = false) }
+                    }
+                }
+            } else if (rideLabel.isNotEmpty()) {
+                Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
+            }
+            s.alightStop?.let { StopLine(it, ink, dim, emphasize = true) }
+        }
+    }
+}
+
+/** One stop in the transit drill-down: its call time, name, and (for board/alight) the agency
+ *  stop code + any real-time delay. Emphasised for board/alight, lighter for the intermediate list. */
+@Composable
+private fun StopLine(stop: TransitStopTime, ink: Color, dim: Color, emphasize: Boolean, delay: String? = null) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+        stop.timeText?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (delay != null) SheetPalette.TrafficRed else dim,
+                modifier = Modifier.widthIn(min = 54.dp),
             )
-            if (parts.isNotEmpty()) {
-                Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.bodySmall, color = dim)
+        }
+        Column {
+            Text(
+                stop.name,
+                style = if (emphasize) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                color = ink,
+            )
+            val meta = listOfNotNull(
+                delay,
+                stop.scheduledText?.takeIf { emphasize },
+                stop.code?.takeIf { emphasize }?.let { stringResource(R.string.place_transit_stop_id, it) },
+            ).joinToString("  ·  ")
+            if (meta.isNotEmpty()) {
+                Text(
+                    meta,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (delay != null) SheetPalette.TrafficRed else dim,
+                )
             }
         }
     }

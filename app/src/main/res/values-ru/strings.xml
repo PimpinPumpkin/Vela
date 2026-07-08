@@ -407,4 +407,15 @@
     <string name="settings_update_found">Доступно обновление! Вернитесь на карту, чтобы установить.</string>
     <string name="settings_update_none">У вас самая новая версия.</string>
     <string name="settings_place_pages">Страницы мест</string>
+    <string name="place_transit_stops">%1$d остановок</string> <!-- format -->
+    <string name="place_transit_stop_id">Остановка %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Билеты и информация</string>
+    <string name="transit_nav_arrived">Вы прибыли.</string>
+    <string name="transit_nav_walk">Идите %1$s</string> <!-- format -->
+    <string name="transit_nav_take">Сядьте на %1$s</string> <!-- format -->
+    <string name="transit_nav_towards">в сторону %1$s</string> <!-- format -->
+    <string name="transit_nav_from">от %1$s</string> <!-- format -->
+    <string name="transit_nav_get_off">Выйдите на %1$s</string> <!-- format -->
+    <string name="transit_nav_next">Далее</string>
+    <string name="place_last_available">Последний рейс</string>
 </resources>

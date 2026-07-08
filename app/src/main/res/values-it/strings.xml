@@ -407,4 +407,15 @@
     <string name="settings_update_found">Aggiornamento disponibile! Torna alla mappa per installarlo.</string>
     <string name="settings_update_none">Hai già l\'ultima versione.</string>
     <string name="settings_place_pages">Pagine dei luoghi</string>
+    <string name="place_transit_stops">%1$d fermate</string> <!-- format -->
+    <string name="place_transit_stop_id">Fermata %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Biglietti e info</string>
+    <string name="transit_nav_arrived">Sei arrivato.</string>
+    <string name="transit_nav_walk">Cammina %1$s</string> <!-- format -->
+    <string name="transit_nav_take">Prendi %1$s</string> <!-- format -->
+    <string name="transit_nav_towards">verso %1$s</string> <!-- format -->
+    <string name="transit_nav_from">da %1$s</string> <!-- format -->
+    <string name="transit_nav_get_off">Scendi a %1$s</string> <!-- format -->
+    <string name="transit_nav_next">Avanti</string>
+    <string name="place_last_available">Ultimo disponibile</string>
 </resources>
