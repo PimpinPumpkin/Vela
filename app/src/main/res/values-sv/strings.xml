@@ -49,6 +49,10 @@
     <string name="settings_transit_layer_hint">Ritar tåg- och tunnelbanelinjer i färg på kartan, så att spåren är lätta att följa. Använder de öppna kartdata som redan finns i rutorna, utan nätverk.</string>
     <string name="settings_read_all_reviews">Knappen ”Läs alla recensioner”</string>
     <string name="settings_read_all_reviews_hint">Recensioner i platsvyn är alltid Velas egen smidiga inbyggda lista. Detta lägger till en knapp ”Läs alla recensioner” som öppnar Googles fullständiga recensionssida i HELSKÄRM – alla recensioner (inte bara de första ~50), Googles serversökning och videorecensioner spelas upp. Spårare/beacons blockeras, men Googles sida körs inuti appen. Av = endast inbyggd lista, ingen Google-sida för recensioner.</string>
+    <string name="settings_show_reviews">Visa recensioner</string>
+    <string name="settings_show_reviews_hint">Av = platssidor visar inga recensioner och Vela hämtar dem aldrig.</string>
+    <string name="settings_load_photos">Ladda foton</string>
+    <string name="settings_load_photos_hint">Av = platssidor visar inga foton och inget laddas ner. Sparar data.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Att använda kartan utan täckning kräver två saker – KARTRUTORNA du ser och VÄGNÄTET som beräknar rutter åt dig. Att spara ett kartområde hämtar båda för den platsen; regionlistan nedan lägger till vägnätet för dit du reser.</string>
     <string name="settings_offline_map_area">Kartområde</string>

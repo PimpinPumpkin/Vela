@@ -86,6 +86,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ Map rotation/tilt + heading-up mode during nav (tilted follow-camera, speed-adaptive zoom)
 
 ## Search & POIs (live Google data)
+- ✅ **Toggles to hide reviews and skip photo loading (2026-07-08, user request).** Settings → Map gains two
+  switches, both on by default. **Show reviews** off = the place sheet renders no review section at all (no
+  tab, no featured quote, no "Read all reviews") and Vela never runs the review scrape for a selected place.
+  **Load photos** off = no hero strip or gallery, and the WebView photo fetch (the heaviest per-place request)
+  never starts; the search response's preview photo is hidden too, so this doubles as a data saver. Both
+  persist (`ShowReviews` / `LoadPhotos` holders, same shape as the other reactive settings) and gate BOTH the
+  fetch in the ViewModel and the render in the place sheet, so off means no traffic, not just hidden UI.
+  Device-verified: with both off, an Applebee's sheet opens with rating, hours, phone and attributes but no
+  photos and no review section. Localized in all 11 languages.
 - ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list — fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
 - ✅ **Address → business snap** — searching a raw address that *is* a business (e.g. "1020 Olive Dr, Davis") now lands on the **business** (In-N-Out Burger, rating/hours/category and all), not the bare address — Google lists the "at this place" business under the geocoded node (`[0][1][0][14][68]`) and Vela now reads it. *(verified on-device; unit-tested; the path is in calibration so it's remotely fixable)*
