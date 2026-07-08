@@ -45,6 +45,8 @@
     <string name="settings_map">Mapa</string>
     <string name="settings_live_traffic">Capa de tráfico en directo</string>
     <string name="settings_live_traffic_hint">Sombrea las carreteras según la congestión mientras exploras el mapa (mosaicos de tráfico de Google sin clave). Desactivado de forma predeterminada: la navegación ya colorea tu ruta según el tráfico, así que esto sirve solo para explorar la zona en general. Es una capa ráster, por lo que se ve un poco granulada.</string>
+    <string name="settings_transit_layer">Resaltar líneas de transporte</string>
+    <string name="settings_transit_layer_hint">Dibuja las líneas de tren y metro en color sobre el mapa, para seguir el ferrocarril con facilidad. Usa los datos abiertos que ya están en los mosaicos, sin red.</string>
     <string name="settings_read_all_reviews">Botón «Leer todas las reseñas»</string>
     <string name="settings_read_all_reviews_hint">Las reseñas de la ficha del lugar son siempre la propia lista nativa y fluida de Vela. Esto añade un botón «Leer todas las reseñas» que abre la página completa de reseñas de Google a PANTALLA COMPLETA: todas las reseñas (no solo las primeras ~50), la búsqueda del lado del servidor de Google y las reseñas en vídeo se reproducen. Se bloquean rastreadores y balizas, pero sí ejecuta la página de Google dentro de la app. Desactivado = solo lista nativa, sin página de Google para las reseñas.</string>
     <string name="settings_offline">Sin conexión</string>
