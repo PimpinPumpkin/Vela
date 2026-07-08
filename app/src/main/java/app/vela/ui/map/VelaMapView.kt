@@ -107,6 +107,10 @@ private const val TERRARIUM_TILES = "https://s3.amazonaws.com/elevation-tiles-pr
 
 private const val TRAFFIC_SRC = "vela-traffic-src"
 private const val TRAFFIC_LAYER = "vela-traffic"
+// Rail-highlight layer (train + subway/tram), drawn over the basemap's own transportation lines.
+private const val TRANSIT_LAYER = "vela-transit"
+private const val TRANSIT_RAIL = "#7E57C2"   // heavy rail — purple
+private const val TRANSIT_SUBWAY = "#12B5A5" // subway / light rail / tram — teal
 // Google's LIVE traffic, as a raster overlay (congestion-coloured roads +
 // incidents) — the web map's own `/maps/vt` tile, which is a public, keyless PNG
 // on www.google.com (the same host we already scrape). The trimmed `pb` (no map
@@ -176,6 +180,7 @@ fun VelaMapView(
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
+    transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
@@ -866,11 +871,13 @@ fun VelaMapView(
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(style, trafficOn)
+                ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
                 applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(it, trafficOn)
+                ensureTransit(it, transitOn)
             }
         }
 
@@ -1273,6 +1280,51 @@ private fun ensureTraffic(style: Style, on: Boolean) {
     } else if (!on && present) {
         style.removeLayer(TRAFFIC_LAYER)
         style.getSource(TRAFFIC_SRC)?.let { runCatching { style.removeSource(it) } }
+    }
+}
+
+/** Highlight rail lines (heavy rail + subway/light-rail/tram) drawn from the basemap's own
+ *  `transportation` source-layer (OpenMapTiles `class` = rail / transit), Google-transit-layer style.
+ *  No new data or network — just a coloured LineLayer over the existing tiles, inserted below the first
+ *  symbol layer so station/road labels stay on top. No-op if the basemap isn't OpenMapTiles (e.g. a
+ *  MapTiler variant whose source id differs, or the demo style); removed cleanly when off. */
+private fun ensureTransit(style: Style, on: Boolean) {
+    val present = style.getLayer(TRANSIT_LAYER) != null
+    if (on && !present) {
+        if (style.getSource("openmaptiles") == null) return
+        val layer = LineLayer(TRANSIT_LAYER, "openmaptiles").apply {
+            setSourceLayer("transportation")
+            // class = "rail" (heavy rail) or "transit" (subway / light_rail / tram / monorail).
+            setFilter(
+                Expression.any(
+                    Expression.eq(Expression.get("class"), Expression.literal("rail")),
+                    Expression.eq(Expression.get("class"), Expression.literal("transit")),
+                ),
+            )
+            setProperties(
+                // Subways/trams a brighter teal, heavy rail a purple — both read on light AND dark maps.
+                PropertyFactory.lineColor(
+                    Expression.match(
+                        Expression.get("class"),
+                        Expression.literal("transit"), Expression.literal(TRANSIT_SUBWAY),
+                        Expression.literal(TRANSIT_RAIL),
+                    ),
+                ),
+                PropertyFactory.lineWidth(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.zoom(),
+                        Expression.stop(8, 1.0f), Expression.stop(13, 2.4f), Expression.stop(16, 4.2f),
+                    ),
+                ),
+                PropertyFactory.lineOpacity(0.9f),
+                PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            )
+        }
+        val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
+        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+    } else if (!on && present) {
+        runCatching { style.removeLayer(TRANSIT_LAYER) }
     }
 }
 

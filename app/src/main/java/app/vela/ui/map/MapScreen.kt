@@ -321,6 +321,7 @@ fun MapScreen(
             // DirectionsParser.parseTrafficSpans); the whole-map overlay stays off unless
             // the user explicitly enables it in Settings → Map.
             trafficOn = Traffic.on.value,
+            transitOn = app.vela.ui.TransitLayer.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
