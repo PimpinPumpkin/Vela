@@ -1176,7 +1176,16 @@ fun DirectionsPanel(
                                 selected = false,
                                 onClick = { onSearchAlongRoute(query) },
                                 label = { Text(stringResource(labelRes)) },
-                                leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                leadingIcon = {
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = ink,
+                                    )
+                                },
+                                // Stadium pill, matching the map category chips + the mode chips above.
+                                shape = androidx.compose.foundation.shape.CircleShape,
                             )
                         }
                     }
@@ -1240,10 +1249,12 @@ private fun DepartTimeChooser(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) })
-            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) })
-            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) })
-            if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) })
+            // Stadium pills, matching every other Vela chip (CLAUDE.md chip style).
+            val pill = androidx.compose.foundation.shape.CircleShape
+            FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) }, shape = pill)
+            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) }, shape = pill)
+            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) }, shape = pill)
+            if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) }, shape = pill)
         }
         // Time + date pickers for depart/arrive (Google-style: a time field AND a date field).
         if (mode == 1 || mode == 2) {
