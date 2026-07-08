@@ -26,7 +26,16 @@ genuinely needs no doc edit, say why in the commit.
 
 - **Always build release** for anything run on-device — debug builds visibly lag
   during map scroll/nav. R8 lives in the `release`
-  buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
+  buildType. Use `./gradlew :app:assembleStandardDebug` only as a compile check.
+- **Two product flavors (`distribution` dimension) — build tasks are FLAVORED:**
+  - **`standard`** (`app.vela`) — the public build the CI release line + Obtainium track. Release task
+    is **`:app:assembleStandardRelease`** (the old `assembleRelease` is GONE); APK at
+    `app/build/outputs/apk/standard/release/app-standard-release.apk`. CI builds/publishes this flavor.
+  - **`restricted`** (`app.vela.restricted`, `-restricted` version suffix, `BuildConfig.RESTRICTED=true`)
+    — a LOCKED build for managed/kiosk devices. The **distinct application id is deliberate**: the public
+    Obtainium feed tracks `app.vela`, so it can NEVER auto-update `app.vela.restricted` — it's built,
+    vetted and sideloaded, kept off the release line. It also **locks the content settings** (see the
+    content-toggle bullet). Build with `:app:assembleRestrictedRelease`.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
 - **Auditing a real drive.** A saved trip stores the navigated route too (`core/replay/TripLog`
   format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
@@ -172,6 +181,15 @@ genuinely needs no doc edit, say why in the commit.
   localized via `hl=<lang>`, so the filter must too). Unit-tested (`CategoryFilterTest`). NB the `:core`
   flag pattern (not reading the app holder from `:core`) is deliberate — mirror it for any future
   content gate that must act inside `:core`.
+- **Content toggles are `LockableToggle`s — locked by the `restricted` flavor (2026-07-08).** `ShowReviews`
+  / `LoadPhotos` / `HideAdult` all extend `LockableToggle(key, default, lockedValue)` (`ui/PlaceContent.kt`).
+  In the **`restricted`** build (`BuildConfig.RESTRICTED`, via `ContentPolicy.locked`) each is pinned to its
+  `lockedValue` (reviews/photos OFF, adult-hide ON), its stored pref is ignored, and its setter is a no-op;
+  the whole content-toggle section is hidden in `SettingsScreen` (`if (!ContentPolicy.locked)`). **This is
+  the mechanism that makes "any future content restriction is baked into the restricted build" true by
+  construction** — a new content toggle just `: LockableToggle(...)` with the safe `lockedValue`, and puts
+  its Settings row inside that hidden section; it locks automatically, no per-toggle wiring. `onChanged` is
+  the hook for a side effect (e.g. HideAdult pushes `CategoryFilter.enabled`).
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
   `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →

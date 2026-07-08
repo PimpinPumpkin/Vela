@@ -221,6 +221,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             Hint(stringResource(R.string.settings_buildings_3d_hint))
 
+            // Restricted (locked) build: hide the whole content-toggle section entirely — reviews and
+            // photos are forced off and adult categories forced hidden, so there's nothing to flip.
+            if (!app.vela.ui.ContentPolicy.locked) {
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_place_pages))
 
@@ -271,6 +274,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 )
             }
             Hint(stringResource(R.string.settings_hide_adult_hint))
+            } // end !ContentPolicy.locked (Place pages section)
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_navigation))

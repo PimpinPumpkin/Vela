@@ -99,6 +99,28 @@ android {
         }
     }
 
+    // Two distribution flavors so a locked-down build can be kept off the public auto-update feed:
+    //  - standard   : app.vela — the public build the CI release line + Obtainium track (auto-updates).
+    //  - restricted : app.vela.restricted — a SEPARATE app id (so the public Obtainium feed, which
+    //    tracks app.vela, can NEVER auto-update it) that also LOCKS the content settings: the
+    //    Show-reviews / Load-photos / Hide-adult toggles are forced to their safe values and their
+    //    Settings rows are hidden, so the content can't be turned back on. For managed / kiosk / locked
+    //    devices that must be built, vetted and sideloaded rather than auto-updated. BuildConfig.RESTRICTED
+    //    is the compile-time switch the holders + Settings screen read.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("standard") {
+            dimension = "distribution"
+            buildConfigField("boolean", "RESTRICTED", "false")
+        }
+        create("restricted") {
+            dimension = "distribution"
+            applicationIdSuffix = ".restricted"
+            versionNameSuffix = "-restricted"
+            buildConfigField("boolean", "RESTRICTED", "true")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

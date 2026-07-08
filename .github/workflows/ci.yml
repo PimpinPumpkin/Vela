@@ -92,7 +92,7 @@ jobs:
           VELA_KEYSTORE_PASSWORD: ${{ secrets.VELA_KEYSTORE_PASSWORD }}
           VELA_KEY_ALIAS: ${{ secrets.VELA_KEY_ALIAS }}
         run: >
-          ./gradlew :app:assembleRelease --no-daemon
+          ./gradlew :app:assembleStandardRelease --no-daemon
           -PappVersionName=${{ steps.ver.outputs.name }}
           -PappVersionCode=${{ steps.ver.outputs.code }}
           -PmaptilerKey=${{ secrets.MAPTILER_KEY }}
@@ -101,7 +101,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: vela-maps-apk
-          path: app/build/outputs/apk/release/app-release.apk
+          path: app/build/outputs/apk/standard/release/app-standard-release.apk
           if-no-files-found: error
 
       - name: Publish release
@@ -112,7 +112,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           VER="0.3.${{ github.run_number }}"
-          cp app/build/outputs/apk/release/app-release.apk "vela-maps-v${VER}.apk"
+          cp app/build/outputs/apk/standard/release/app-standard-release.apk "vela-maps-v${VER}.apk"
           # Build the changelog from the commit subjects since the previous release. Our commit
           # subjects are written as plain-language changelog lines, so this reads as real release
           # notes (what Obtainium shows people), not a raw hash dump.
