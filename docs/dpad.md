@@ -334,28 +334,29 @@ content filter otherwise leaves routing without a usable fix on this device.)
 
 ## Known limitations / follow-ups (also on the ROADMAP)
 
-- **Compose secondary windows can't be pre-focused (framework limit).** A `DropdownMenu` (Popup)
-  AND an `AlertDialog` (Dialog) both open with **window** focus but **no content Compose-focused**
-  — Compose sets that focus only on the first key event. So a menu opens un-highlighted and its
-  first DOWN "enters" it; an onboarding/confirm dialog opens with no button highlighted and the
-  first nav key enters the buttons. Verified un-fixable in-app on-device (2026-07-07): **eight
-  approaches, none land focus** — `requestFocus()` on the item, the same on a custom focusable
-  Row, a retry-until-`onFocusEvent`-confirms loop, an outer-scope delayed request,
-  `FocusManager.moveFocus(Down)` from inside the popup, and a **synthetic `DPAD_DOWN` `KeyEvent`**
-  dispatched to the popup's ComposeView, then to its `rootView`, then again with a real DPAD input
-  source — all leave `mCurrentFocus` on the Pop-Up/Dialog window with no node focused until a real
-  key press. The `AlertDialog` was retried separately (requestFocus on its `TextButton`, and on a
-  directly-`.clickable` Text) — also un-focusable (~10 approaches total). **The one thing that DOES
-  work** is a hand-built **raw `Dialog` with an explicit `.focusable()` element** — Vela's photo
-  gallery does exactly that and auto-focuses on open — but Material `AlertDialog`/`DropdownMenu`
-  don't expose that seam. So the only way to pre-highlight the Material ones is to replace every
-  menu/dialog with a **custom raw-Dialog / in-window overlay**, which breaks the "touch stays
-  byte-identical" rule (and loses Popup edge-clamping / positioning), so they're left stock.
-  **Fully operable regardless:** the window is focused the instant it opens (keys live, BACK
-  closes); OK/nav-key enters, DOWN/UP walk, OK selects — all proven on-device. The distinction
-  from a *dead* screen (e.g. the Settings bug this sweep fixed) is real: there the **main window**
-  had nothing focused and the first press was wasted; here the **popup/dialog window IS focused**,
-  so the D-pad is live from the first press — only the pre-*highlight* is missing.
+- **Menus & dialogs — SOLVED (`VelaMenu` / `VelaDialog`), was the last framework wall.** A Compose
+  Material `DropdownMenu` (Popup) and `AlertDialog` (Dialog) open with their **window** focused but
+  **no content Compose-focused** — Compose sets that focus only on the first key event, so they'd
+  open un-highlighted. Nothing in-app pre-places focus onto their content: **~10 approaches verified
+  failing on-device (2026-07-07)** — `requestFocus()` on the item / a custom focusable Row / a
+  `TextButton` / a directly-`.clickable` Text, a retry-until-`onFocusEvent`-confirms loop, an
+  outer-scope delayed request, `FocusManager.moveFocus(Down)`, and a **synthetic `DPAD_DOWN`
+  `KeyEvent`** dispatched to the popup's ComposeView, then its `rootView`, then again with a real
+  DPAD input source. **The one seam that works is a hand-built raw `Dialog` with an explicit
+  `.focusable()` element** (Vela's photo gallery proves it), so both were rebuilt on it:
+  - **`VelaDialog`** (`ui/VelaDialog.kt`) — drop-in two-button `AlertDialog` replacement (raw
+    `Dialog` + Material-matched Surface) that **auto-focuses the dismiss/safe button** on open;
+    buttons are a directly-`.focusable()` Text (the only node `requestFocus` lands on in a Dialog)
+    with OK via `.onKeyEvent` and touch via `pointerInput` (not `.clickable`, which adds a 2nd
+    focus target). All 7 `AlertDialog`s use it; looks identical under touch.
+  - **`VelaMenu`** (`ui/VelaMenu.kt`) — drop-in `DropdownMenu` replacement. **Under touch it renders
+    the ordinary anchored `DropdownMenu` byte-identical**; under D-pad a raw-`Dialog` chooser whose
+    **first item is focused on open**. `VelaMenu(expanded, onDismissRequest){ item("A"){…}; item("B"){…} }`.
+    All 6 menus use it.
+
+  **Proven on-device:** onboarding dialogs auto-focus "Not now"; the place-sheet ⋮ auto-focuses
+  "Set as Home"; the share menu auto-focuses "Google Maps link"; OK selects, DOWN/UP walk, arrows
+  move between dialog buttons, BACK dismisses. **No secondary window opens un-focused any more.**
 - **Off-screen initial-focus targets (small screens).** Compose won't move focus to an element
   it can't bring into view, so a primary control that starts **below the fold** can't be
   auto-focused on open (measured: the Welcome screen's Get-started button on a 480×640 keypad
