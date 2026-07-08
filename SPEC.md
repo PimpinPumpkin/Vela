@@ -7,7 +7,7 @@
 > walk-through) and [`CLAUDE.md`](CLAUDE.md) (build rules + gotchas). When behaviour,
 > calibration, or architecture changes, **update this file in the same commit.**
 
-Last reviewed: 2026-07-04.
+Last reviewed: 2026-07-08.
 
 ---
 
@@ -74,7 +74,9 @@ Two Gradle modules, strict boundary:
 - **Process-wide reactive holders** (a `mutableStateOf` mirror + `SharedPreferences`,
   `init()`-ed in `VelaApp`): `ui/Units` (metric/imperial), `ui/theme/AppTheme`
   (Light/Dark/System — read via **`isAppInDarkTheme()`**, never `isSystemInDarkTheme()`),
-  `ui/Traffic` (overlay on/off), `ui/Onboarding`.
+  `ui/Traffic` (overlay on/off), `ui/TransitLayer` (rail highlight), `ui/LiveReviews` (reviews panel),
+  `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`), `ui/Buildings3d` (extrusion layer), `ui/AppLocale`
+  (language), `ui/Onboarding`.
 
 ### Data flow (search example)
 `MapScreen` → `MapViewModel.search()` → `GoogleMapsDataSource.search()` →
@@ -99,7 +101,7 @@ build `pb` (`SearchPb`) + `GET` → **optional JS override** (`JsTransforms`, §
 | Directions (turn-by-turn) | **PRIMARY: FOSSGIS OSRM** `route/v1?steps=true` (`routed-car`/`-bike`/`-foot`) — full street-named maneuvers + geometry |
 | Directions (traffic ETA + fallback) | `GET /maps/preview/directions?pb=<DirectionsPb>` — Google's live-traffic ETA/spans, overlaid on the OSRM route; also the fallback router |
 | Directions (traffic-aware path, option 3) | when Google's route diverges >700 m from OSRM's (jam reroute), OSRM `route/v1` **through ~12 vias sampled off Google's polyline** → Google's path with full OSRM steps. `/match` map-matching would be cleaner but FOSSGIS caps it at 10 coords — see "Why dense-via, not map-matching" |
-| Reviews | `GET /maps/preview/review/listentitiesreviews?pb=!1m2!1y<HIGH>!2y<LOW>!2m2!2i0!3i20!3e1!5m2!1svela!7e81` |
+| Reviews | hidden WebView DOM-scrape of the place's own `?cid=` page (`WebReviewsFetcher`; the old `listentitiesreviews` RPC is dead, 404) |
 | Photos (full gallery) | `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` (proto in calibration) |
 | Transit | hidden WebView on `/maps/dir/<o>/<d>/data=!4m2!4m1!3e3` (see below) |
 | Reverse-geocode | OSM **Nominatim** `/reverse` (NOT Google — Google `tbm=map` won't reverse a lat,lng) |
@@ -528,6 +530,16 @@ handed — no filesystem, network, or device access.
 ---
 
 ## 7. Build, release, signing
+
+**In-app updater** (`app/update/SelfUpdater.kt`): checks
+`api.github.com/repos/PimpinPumpkin/Vela/releases/latest`, derives versionCode from the
+`v0.2.<run>` tag (`2000 + run`), and when newer offers a card on the map
+(`MapUiState.updateInfo`). Download uses a no-call-timeout client (the APK is ~80 MB),
+zip-magic-checks the body, then hands the file to the system installer via the app
+FileProvider (`filesDir/updates/`, same plumbing as the voice-engine installer) — the OS
+enforces same-package/same-signature. Launch check throttled to ~daily behind the
+`self_update_check` pref (Settings toggle, default on); "Not now" pins
+`update_dismissed_code` so only a newer release re-offers.
 
 - Toolchain: **AGP 8.7.3, Kotlin 2.1.0, Gradle 8.11.1,
   compileSdk 35, minSdk 26, Java 17**, Compose + Hilt + version catalog. **R8 in the
