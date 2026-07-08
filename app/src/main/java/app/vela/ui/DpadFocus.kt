@@ -80,6 +80,14 @@ fun rememberDpadFirstDevice(): Boolean {
  *  - `KeyCharacterMap.deviceHasKey(DPAD_CENTER)`: true on a Pixel too (the virtual keymap carries
  *    the key), and it was already false on the MTK phone — so it only added false positives. */
 private fun detectDpadFirst(context: android.content.Context): Boolean {
+    // Test override so dpad_test_suite can verify the D-pad-FIRST experience (auto-focus, rings,
+    // arm behaviour) on a touch dev phone or in CI, where real detection would say touch:
+    // `adb shell settings put global vela_force_dpad 1`. Reading a Global setting needs no
+    // permission; only adb/WRITE_SECURE_SETTINGS can set it, so it never turns on in normal use.
+    val forced = runCatching {
+        android.provider.Settings.Global.getInt(context.contentResolver, "vela_force_dpad", 0) == 1
+    }.getOrDefault(false)
+    if (forced) return true
     val noTouch = !context.packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
     val hasPhysicalDpad = runCatching {
         InputDevice.getDeviceIds().any { id ->
