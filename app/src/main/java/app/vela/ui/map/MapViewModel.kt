@@ -811,6 +811,20 @@ class MapViewModel @Inject constructor(
         caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }.getOrDefault(true)
 
+    /** A dropped/absent connection (DNS, no route, timeout) as opposed to a real Google/parse failure —
+     *  so search can show the friendly "download an area" offline guidance instead of a raw host error. */
+    private fun isConnectivityError(e: Throwable?): Boolean {
+        var t = e
+        while (t != null) {
+            if (t is java.net.UnknownHostException || t is java.net.ConnectException ||
+                t is java.net.SocketTimeoutException || t is java.net.NoRouteToHostException ||
+                t is javax.net.ssl.SSLException
+            ) return true
+            t = t.cause
+        }
+        return false
+    }
+
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
         suggestJob?.cancel()
@@ -857,6 +871,10 @@ class MapViewModel @Inject constructor(
                 }
                 if (offline.isNotEmpty()) {
                     _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false) }
+                } else if (isConnectivityError(e)) {
+                    // A dead connection with nothing downloaded → point the user at the offline download
+                    // instead of showing a raw "Unable to resolve host" error.
+                    _state.update { it.copy(status = appContext.getString(R.string.mapvm_offline_no_data), searching = false) }
                 } else {
                     _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_failed_reason, e.message), searching = false) }
                 }
