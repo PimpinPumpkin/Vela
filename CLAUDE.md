@@ -22,6 +22,11 @@ features, or structure, update — in the *same* commit:
 Stale docs are treated as a bug. Code-only commits are not OK; if a change
 genuinely needs no doc edit, say why in the commit.
 
+**Writing style (hard rule): NO EMOJIS, EVER** — not in code, comments, docs, commit
+messages, UI strings, or script output. Plain text only. Also no em-dashes; write in a
+plain human voice (commit subjects are the user-facing changelog). Use words like `PASS`/
+`FAIL`, not pictographs.
+
 ## Build
 
 - **Always build release** for anything run on-device — debug builds visibly lag
@@ -228,6 +233,47 @@ genuinely needs no doc edit, say why in the commit.
   unused** — the `asset://`/`fromJson` path in `VelaMapView` is dead code kept only as reference (a bundled
   copy blanked the vector tiles on-device; see the project memory). Don't be misled by the stale path in
   that asset. Verify basemap edits on-device in **both** themes.
+- **D-PAD-FIRST IS THE FORK'S REASON TO EXIST — NON-NEGOTIABLE, NO EXCEPTIONS (read before touching ANY UI).**
+  Vela must be **100% operable with a 5-key D-pad (↑ ↓ ← → + OK) and hardware BACK, on a device with
+  NO touchscreen** (a Qin F21 / feature phone). Touch is a *bonus*, never a requirement. This is what
+  this fork stands for; a change that regresses it is a **release blocker**, not a nit. Every one of
+  these is MANDATORY for any new or edited UI, and is **enforced by `dpad_test_suite/` — run the
+  auditors before every UI commit and wire `audit_static.sh` into CI**:
+  1. **Opens already focused.** Every screen / overlay / sheet / dialog / menu lands focus on a
+     primary element the instant it appears — a wasted first keypress is a BUG. Attach
+     `rememberDpadAutoFocus()`. The bare map is the ONE documented exception (it opens ambient; the
+     first arrow reaches the search bar). Menus/dialogs: use `VelaMenu`/`VelaDialog` (a stock Compose
+     `DropdownMenu`/`AlertDialog` **cannot** be pre-focused — proven; never use them for new UI).
+  2. **Every interactive element is focusable WITH A VISIBLE RING.** Any `.clickable` /
+     `.combinedClickable` / `.toggleable` / `.selectable` needs `Modifier.dpadHighlight(shape)` in its
+     chain — Material's default focus indication is too faint on Vela's grey sheets. Material
+     buttons/chips/switches keep their built-in indication (OK). A bare `.focusable()` is allowed ONLY
+     if it draws its own affordance (the map target's crosshair/pill, a full-screen viewer).
+  3. **Every gesture has a key path.** Any `detect*Gestures` / `draggable` / `swipeable` /
+     `awaitPointerEventScope` / `.scrollable` must have an `onKeyEvent` or a focusable control that
+     does the same thing, in the same composable. The map's pan/zoom/tap live on `MapDpadController`.
+  4. **No focus traps.** BACK always exits a surface. A text field in a vertical list gets
+     `Modifier.dpadFieldEscape()` (UP/DOWN escape it) — never let a field swallow the arrows. A
+     **vertical-list screen swallows bare LEFT/RIGHT** with `Modifier.dpadSwallowHorizontal()` (on the
+     scroll container AND any lone control outside it, e.g. a top-bar back button) — a no-target
+     horizontal move otherwise CLEARS focus irrecoverably in a `verticalScroll` Column.
+  5. **Dialogs & menus MUST fit a small screen.** Wrap dialog/menu content in a `verticalScroll` (or
+     `LazyColumn`) capped to a fraction of the screen height so a tall body scrolls and the buttons
+     stay on-screen — on a feature-phone display an un-scrolling dialog shoves its buttons off the
+     bottom, unreachable. (`VelaDialog`/`VelaMenu` already do this; keep it.)
+  6. **Touch stays byte-identical.** Every D-pad affordance is gated on `rememberDpadMode()` /
+     `rememberDpadFirstDevice()`; the touch path must be unchanged. Key device behaviour off the LIVE
+     input mode where it matters (e.g. the search bar shows the soft keyboard on a touch tap, hides it
+     on a D-pad OK — a hybrid touch+keypad phone reports `dpadMode` true but still wants touch typing).
+  7. **Theme via `isAppInDarkTheme()`**, never `isSystemInDarkTheme()` in app UI.
+  8. **Merge-friendly** (this fork rebases on upstream): new behaviour in new files
+     (`DpadFocus.kt`/`VelaMenu.kt`/`VelaDialog.kt`/`MapDpadController.kt`), shared-file edits as small
+     anchored insertions, one commented D-pad import block per file. **Reuse the helpers — do not
+     reinvent** `dpadHighlight`/`dpadAutoFocus`/`dpadSwallowHorizontal`/`dpadFieldEscape`.
+  9. **Enforcement (`dpad_test_suite/`):** `audit_static.sh` (no device — every rule above as a source
+     scan; **must be 0 violations**), `audit_dynamic.sh` (every surface opens focused, multi-axis
+     traversal never loses focus, BACK exits), `audit_dialogs.sh` (dialogs fit a feature-phone screen),
+     and `run_all.sh` (per-surface). A UI PR that fails any of these does not merge.
 - **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
   works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
   `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/

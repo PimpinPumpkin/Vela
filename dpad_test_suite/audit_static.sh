@@ -82,6 +82,9 @@ RE_POPUP    = re.compile(r'\bPopup\s*\(')
 RE_SURFACE  = re.compile(r'\b(Card|Surface|ListItem|OutlinedCard|ElevatedCard)\s*\(')  # clickable ones
 RE_ANDROIDVIEW = re.compile(r'\bAndroidView\s*\(')
 RE_SHEET    = re.compile(r'\b(ModalBottomSheet|BottomSheetScaffold)\s*\(')
+# A dialog's content is safe on a small screen if it SCROLLS or FILLS the screen (a full-screen
+# viewer paginates instead). Otherwise a tall body clips its buttons off a feature-phone display.
+RE_DLG_SAFE = re.compile(r'verticalScroll|LazyColumn|LazyVerticalGrid|HorizontalPager|VerticalPager|fillMaxSize|fillMaxHeight')
 # Files allowed to host a raw Dialog/Popup (the sanctioned auto-focus seams + full-screen viewers).
 RAW_OK = {"VelaMenu.kt", "VelaDialog.kt", "PlaceSheet.kt", "ReviewsPanel.kt"}
 scanned = 0
@@ -121,6 +124,13 @@ for path in walk():
         # H. raw Dialog/Popup outside the sanctioned files
         if base not in RAW_OK and (has(RE_RAWDIALOG, ln) or has(RE_POPUP, ln)):
             check.append(("window", f"{name}:{n}", "raw Dialog/Popup — must auto-focus a .focusable() element (VelaDialog/VelaMenu pattern)"))
+        # H2. any raw Dialog whose content has NO scroll container and isn't full-screen — a tall
+        #     body clips its buttons/options off a small (feature-phone) screen. VIOLATION: dialogs
+        #     must scroll or fill the screen so every option stays reachable (user 2026-07-08).
+        if has(RE_RAWDIALOG, ln):
+            body = "".join(code_of(l) for l in lines[i:i + 60])
+            if not RE_DLG_SAFE.search(body):
+                viol.append(("MED", f"{name}:{n}", "Dialog content has no verticalScroll/LazyColumn and isn't full-screen — clips options on a small screen; wrap the body in a scroll container"))
         # I. text field escape
         if has(RE_FIELD, ln):
             if "dpadFieldEscape" not in "".join(lines[max(0,i-2):i+22]):
