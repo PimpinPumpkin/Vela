@@ -235,12 +235,13 @@ fun MapScreen(
     // dropping straight out of the app. Only the bare map (or collapsed pins,
     // which a back already peeled down to) lets the system handle back and exit.
     BackHandler(
-        enabled = searchOpen || state.showSteps || state.navigating ||
+        enabled = searchOpen || state.showSteps || state.navigating || state.transitNav != null ||
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
             state.selected != null ||
             (state.results.isNotEmpty() && !state.resultsCollapsed),
     ) {
         when {
+            state.transitNav != null -> vm.endTransitNav()
             state.pickOnMap != null -> vm.cancelChooseOnMap()
             searchOpen -> { focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
             state.showSteps -> vm.closeSteps()
@@ -751,6 +752,7 @@ fun MapScreen(
                 onSteps = if (state.activeRoute != null) vm::openSteps else null,
                 onSearchAlongRoute = vm::searchAlongRoute,
                 onWalkDirections = vm::walkDirections,
+                onStartTransit = vm::startTransitNav,
                 onClose = vm::clearRoute,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
@@ -775,6 +777,17 @@ fun MapScreen(
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
                 modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+
+        // Full-screen transit step-by-step guidance (Moovit-style) — covers everything while active.
+        state.transitNav?.let { tn ->
+            app.vela.ui.place.TransitNavSheet(
+                nav = tn,
+                onNext = vm::advanceTransitNav,
+                onBack = vm::backTransitNav,
+                onEnd = vm::endTransitNav,
+                onWalkDirections = vm::walkDirections,
             )
         }
 
