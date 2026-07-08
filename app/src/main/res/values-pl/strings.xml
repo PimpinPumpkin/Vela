@@ -247,6 +247,9 @@
     <string name="mapscreen_choose_set_stop">Ustaw przystanek</string>
     <string name="mapscreen_destination">Cel</string>
     <string name="mapscreen_center_on_my_location">Wyśrodkuj na mojej lokalizacji</string>
+    <string name="mapscreen_zoom_in">Przybliż</string>
+    <string name="mapscreen_zoom_out">Oddal</string>
+    <string name="mapscreen_dpad_engage">OK: przesuń mapę</string>
     <string name="mapscreen_stop_replay">Zatrzymaj odtwarzanie</string>
     <string name="mapscreen_psds_tip_title">Wolne ustalanie GPS?</string>
     <string name="mapscreen_psds_tip_body">Włącz PSDS w Ustawienia → Lokalizacja, aby uzyskać znacznie szybsze ustalenie pozycji (w GrapheneOS przechodzi przez ich serwer proxy).</string>
