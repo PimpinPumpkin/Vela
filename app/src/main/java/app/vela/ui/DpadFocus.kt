@@ -23,6 +23,7 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
@@ -178,12 +179,6 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
 }
 
 /**
- * A clearly visible focus ring for D-pad traversal, drawn only while the element (or a
- * descendant — Material buttons host their own focus target) holds focus AND the UI is
- * key-driven, so it never appears under touch. Apply it to any interactive element; pass
- * the element's own [shape] so the ring hugs it.
- */
-/**
  * Makes a text field D-pad ESCAPABLE: UP/DOWN move focus to the previous/next form control
  * instead of being swallowed by the field's own cursor handling. Without this, a single- or
  * multi-line `TextField`/`BasicTextField` eats the vertical arrows, trapping focus on the
@@ -214,6 +209,24 @@ fun Modifier.dpadFieldEscape(): Modifier = composed {
     }
 }
 
+/**
+ * Swallows bare LEFT/RIGHT D-pad keys so a horizontal move with NO target can't CLEAR focus.
+ * In a `Column(verticalScroll)` Compose's focus search clears focus outright on a no-target
+ * directional move (and there's no way back via arrows — dpad audit 2026-07-08; `moveFocus`
+ * clears, `focusGroup` doesn't help). Put this on a vertical-list container AND on any lone
+ * control that lives outside it (e.g. a top-bar back button). It fires via `onKeyEvent`
+ * (leaf→root) so a focused child that WANTS LEFT/RIGHT — a chip row driving its own nav with
+ * FocusRequesters — handles the key first and this never runs for it. Other keys pass through.
+ */
+fun Modifier.dpadSwallowHorizontal(): Modifier =
+    this.onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
+
+/**
+ * A clearly visible focus ring for D-pad traversal, drawn only while the element (or a
+ * descendant — Material buttons host their own focus target) holds focus AND the UI is
+ * key-driven, so it never appears under touch. Apply it to any interactive element; pass
+ * the element's own [shape] so the ring hugs it.
+ */
 fun Modifier.dpadHighlight(shape: Shape = RoundedCornerShape(14.dp)): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
     val dpadFirst = rememberDpadFirstDevice()
