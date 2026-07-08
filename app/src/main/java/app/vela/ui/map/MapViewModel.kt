@@ -811,6 +811,20 @@ class MapViewModel @Inject constructor(
         caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }.getOrDefault(true)
 
+    /** A dropped/absent connection (DNS, no route, timeout) as opposed to a real Google/parse failure —
+     *  so search can show the friendly "download an area" offline guidance instead of a raw host error. */
+    private fun isConnectivityError(e: Throwable?): Boolean {
+        var t = e
+        while (t != null) {
+            if (t is java.net.UnknownHostException || t is java.net.ConnectException ||
+                t is java.net.SocketTimeoutException || t is java.net.NoRouteToHostException ||
+                t is javax.net.ssl.SSLException
+            ) return true
+            t = t.cause
+        }
+        return false
+    }
+
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
         suggestJob?.cancel()
@@ -829,12 +843,20 @@ class MapViewModel @Inject constructor(
             // the "search does nothing offline" report) and search the on-device OSM index straight away.
             // Empty index = no area downloaded yet, so point the user at the download (issue #3).
             if (!isOnline()) {
-                val offline = withContext(Dispatchers.IO) { runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList()) }
+                val (offline, haveArea) = withContext(Dispatchers.IO) {
+                    val r = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                    r to (r.isNotEmpty() || runCatching { offlinePoiStore.count() > 0 }.getOrDefault(false))
+                }
                 _state.update {
-                    if (offline.isNotEmpty())
-                        it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false)
-                    else
-                        it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_data), searching = false)
+                    when {
+                        offline.isNotEmpty() ->
+                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false)
+                        // Has a downloaded area but nothing matched — don't tell them to download again.
+                        haveArea ->
+                            it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_match, q), searching = false)
+                        else ->
+                            it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_data), searching = false)
+                    }
                 }
                 return@launch
             }
@@ -857,6 +879,12 @@ class MapViewModel @Inject constructor(
                 }
                 if (offline.isNotEmpty()) {
                     _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false) }
+                } else if (isConnectivityError(e)) {
+                    // A dead connection: if there's a downloaded area the query just didn't match it, else
+                    // point the user at the offline download instead of a raw "Unable to resolve host".
+                    val haveArea = withContext(Dispatchers.IO) { runCatching { offlinePoiStore.count() > 0 }.getOrDefault(false) }
+                    val msg = if (haveArea) appContext.getString(R.string.mapvm_offline_no_match, q) else appContext.getString(R.string.mapvm_offline_no_data)
+                    _state.update { it.copy(status = msg, searching = false) }
                 } else {
                     _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_failed_reason, e.message), searching = false) }
                 }
@@ -1121,6 +1149,21 @@ class MapViewModel @Inject constructor(
                 directionsWaypoints = emptyList(), pickingStop = false,
             )
         }
+        // Opening a place pans the camera to centre it, so the ambient POIs (loaded for the previous
+        // centre) can be off-screen once we're back on the bare map. Closing no longer moves the camera
+        // (that was the "camera spazz"), so nothing fires a camera-idle to reload them. Do it here.
+        refreshAmbientForCurrentView()
+    }
+
+    /** Re-evaluate the ambient POIs for whatever the map is currently showing. Used when returning to
+     *  the bare map without a camera move (e.g. closing a place). No-op if there's no viewport yet, and
+     *  [maybeLoadAmbientPois] keeps its own gates (skips while results/nav/a place are up, only refetches
+     *  on a real pan/zoom). */
+    private fun refreshAmbientForCurrentView() {
+        val vp = viewport ?: return
+        val c = mapCenter ?: LatLng((vp[0] + vp[2]) / 2, (vp[1] + vp[3]) / 2)
+        val radius = c.distanceTo(LatLng(vp[2], vp[3]))
+        maybeLoadAmbientPois(c, vp[4], radius)
     }
 
     /** Back out of the directions preview to the place sheet: drop the route,

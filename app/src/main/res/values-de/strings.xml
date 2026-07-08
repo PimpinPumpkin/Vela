@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Laden Sie eine natürliche Stimme direkt auf dem Gerät für gesprochene Ansagen herunter – wählen Sie unten eine aus. Die ★-Stimmen klingen am ehesten wie eine Navigationsstimme (Lessac und HFC kommen Google am nächsten). Einmaliger Download; WLAN empfohlen.</string>
     <string name="settings_voice_lib_lang_hint">Ihre App-Sprache ist %1$s – laden Sie unten eine %2$s-Stimme herunter, damit die Ansagen passen (eine englische Stimme würde %3$s Straßennamen falsch aussprechen).</string>
     <string name="settings_voice_search">Stimmen suchen</string>
+    <string name="settings_voice_show_more">%1$d weitere anzeigen</string>
+    <string name="settings_voice_show_less">Weniger anzeigen</string>
     <string name="settings_voice_this_voice">diese Stimme</string>
     <string name="settings_voice_remove_title">%1$s entfernen?</string>
     <string name="settings_voice_remove_body">Dies ist Ihre einzige Vela-Stimme. Gesprochene Ansagen greifen dann auf eine System-Text-zu-Sprache-Engine zurück (oder bleiben stumm, falls keine installiert ist), bis Sie eine andere herunterladen.</string>
@@ -321,6 +323,7 @@
     <string name="mapvm_shortcut_set">%1$s auf %2$s festgelegt</string>
     <string name="mapvm_search_needs_recalibration">Suche muss neu kalibriert werden: %1$s</string>
     <string name="mapvm_offline_no_data">Du bist offline. Lade unter Einstellungen ▸ Offline einen Bereich herunter, um ohne Verbindung zu suchen.</string>
+    <string name="mapvm_offline_no_match">Keine Offline-Ergebnisse für \"%1$s\" in deinem gespeicherten Bereich. Die Offline-Suche umfasst die heruntergeladenen OpenStreetMap-Orte.</string>
     <string name="mapvm_offline_results">Offline-Ergebnisse (keine Verbindung)</string>
     <string name="mapvm_search_failed_reason">Suche fehlgeschlagen: %1$s</string>
     <string name="mapvm_none_found_along_route">Kein \"%1$s\" entlang Ihrer Route gefunden</string>

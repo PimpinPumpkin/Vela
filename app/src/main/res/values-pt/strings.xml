@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Transfira uma voz natural no dispositivo para as indicações faladas — escolha uma abaixo. As vozes ★ soam mais como um navegador de mapas (Lessac e HFC são as mais próximas da Google). Transferência única; recomenda-se Wi-Fi.</string>
     <string name="settings_voice_lib_lang_hint">O idioma da sua aplicação é %1$s — transfira uma voz de %2$s abaixo para que as indicações faladas correspondam (uma voz de inglês pronunciaria mal os nomes das ruas em %3$s).</string>
     <string name="settings_voice_search">Pesquisar vozes</string>
+    <string name="settings_voice_show_more">Mostrar mais %1$d</string>
+    <string name="settings_voice_show_less">Mostrar menos</string>
     <string name="settings_voice_this_voice">esta voz</string>
     <string name="settings_voice_remove_title">Remover %1$s?</string>
     <string name="settings_voice_remove_body">Esta é a sua única voz Vela. As indicações faladas passam a usar um motor de texto para voz do sistema (ou ficam silenciosas se nenhum estiver instalado) até transferir outra.</string>
@@ -321,6 +323,7 @@
     <string name="mapvm_shortcut_set">%1$s definido como %2$s</string>
     <string name="mapvm_search_needs_recalibration">A pesquisa precisa de recalibração: %1$s</string>
     <string name="mapvm_offline_no_data">Você está offline. Baixe uma área em Configurações ▸ Offline para pesquisar sem conexão.</string>
+    <string name="mapvm_offline_no_match">Sem resultados offline para \"%1$s\" na sua área guardada. A pesquisa offline abrange os locais do OpenStreetMap que transferiu.</string>
     <string name="mapvm_offline_results">Resultados offline (sem ligação)</string>
     <string name="mapvm_search_failed_reason">Falha na pesquisa: %1$s</string>
     <string name="mapvm_none_found_along_route">Nenhum \"%1$s\" encontrado ao longo do seu percurso</string>

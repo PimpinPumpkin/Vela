@@ -86,19 +86,21 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
     val context = LocalContext.current
     // System back should return to the map, not fall through and exit the app.
     BackHandler(onBack = onBack)
-    // When arriving from the onboarding "set up offline" prompt we open expanded and
-    // scroll straight to the Offline section (it sits well below the fold).
+    // When arriving from the onboarding "set up offline" prompt, open the Offline section expanded and
+    // scroll straight to it (it sits below the fold). We measure the section's on-screen Y and the scroll
+    // viewport's top, then scroll by the difference. The effect re-runs whenever the measured Y changes,
+    // so it SELF-CORRECTS as the layout settles (the earlier one-shot latch scrolled to a stale position
+    // and landed mid-page); it converges once the section sits at the viewport top (the abs guard stops it).
     val scrollState = rememberScrollState()
     var viewportTopY by remember { mutableStateOf<Float?>(null) }
     var offlineSectionY by remember { mutableStateOf<Float?>(null) }
-    var didAutoScroll by remember { mutableStateOf(false) }
     LaunchedEffect(openOffline, viewportTopY, offlineSectionY) {
-        if (openOffline && !didAutoScroll) {
+        if (openOffline) {
             val top = viewportTopY
             val sec = offlineSectionY
             if (top != null && sec != null) {
-                didAutoScroll = true
-                scrollState.animateScrollTo((scrollState.value + (sec - top)).toInt().coerceAtLeast(0))
+                val target = (scrollState.value + (sec - top)).toInt().coerceIn(0, scrollState.maxValue)
+                if (kotlin.math.abs(scrollState.value - target) > 4) scrollState.animateScrollTo(target)
             }
         }
     }
@@ -223,7 +225,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             // Voice library — browse, download, switch between and remove Vela's neural voices (Piper).
             // Auto-expanded when nothing is installed so the download path is obvious.
-            var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty()) }
+            // Auto-expand when nothing is installed so the download path is obvious — EXCEPT when we
+            // arrived to set up offline, where a big open voice list between the top and the Offline
+            // section would push it around and fight the scroll-into-view.
+            var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty() && !openOffline) }
             CollapsibleSectionTitle(stringResource(R.string.settings_voice_library), voiceLibExpanded) { voiceLibExpanded = !voiceLibExpanded }
             if (voiceLibExpanded) VoiceLibrary(vm, state)
 
@@ -856,6 +861,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         if (appLang in codes) listOf(appLang) + codes.filter { it != appLang } else codes
     }
     val langExpanded = remember { mutableStateMapOf<String, Boolean>() }
+    val langShowAll = remember { mutableStateMapOf<String, Boolean>() }
     langOrder.forEach { lang ->
         val group = catalog.filter { it.langCode == lang && matches(it) }.sortedWith(
             compareByDescending<PiperVoice> { it.id in installed }
@@ -896,21 +902,37 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (expanded) group.forEach { v ->
-                VoiceRow(
-                    v = v,
-                    installed = v.id in installed,
-                    active = v.id == selected,
-                    downloading = state.voiceDownloadingId == v.id,
-                    downloadPct = if (state.voiceDownloadingId == v.id) state.kokoroDownloadPct ?: 0f else 0f,
-                    anyDownloading = state.voiceDownloadingId != null,
-                    onDownload = { vm.downloadVoice(v.id) },
-                    onUse = { vm.selectVoice(v.id) },
-                    onDelete = {
-                        // Confirm only when it's the last voice (guidance would lose its neural voice).
-                        if (installed.size == 1 && v.id == selected) confirmDeleteId = v.id else vm.deleteVoice(v.id)
-                    },
-                )
+            if (expanded) {
+                // Show just the top few per language (each language still has a lot, English most of
+                // all); a "Show more" reveals the rest. Never hide an INSTALLED voice behind it, and a
+                // search shows everything that matches.
+                val showAll = query.isNotBlank() || (langShowAll[lang] ?: false)
+                val limit = maxOf(3, installedHere)
+                val visible = if (showAll) group else group.take(limit)
+                visible.forEach { v ->
+                    VoiceRow(
+                        v = v,
+                        installed = v.id in installed,
+                        active = v.id == selected,
+                        downloading = state.voiceDownloadingId == v.id,
+                        downloadPct = if (state.voiceDownloadingId == v.id) state.kokoroDownloadPct ?: 0f else 0f,
+                        anyDownloading = state.voiceDownloadingId != null,
+                        onDownload = { vm.downloadVoice(v.id) },
+                        onUse = { vm.selectVoice(v.id) },
+                        onDelete = {
+                            // Confirm only when it's the last voice (guidance would lose its neural voice).
+                            if (installed.size == 1 && v.id == selected) confirmDeleteId = v.id else vm.deleteVoice(v.id)
+                        },
+                    )
+                }
+                if (query.isBlank() && group.size > limit) {
+                    TextButton(onClick = { langShowAll[lang] = !showAll }) {
+                        Text(
+                            if (showAll) stringResource(R.string.settings_voice_show_less)
+                            else stringResource(R.string.settings_voice_show_more, group.size - limit),
+                        )
+                    }
+                }
             }
         }
     }

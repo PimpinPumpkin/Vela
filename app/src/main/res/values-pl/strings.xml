@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Pobierz naturalny głos działający na urządzeniu do wskazówek głosowych — wybierz jeden poniżej. Głosy oznaczone ★ brzmią najbardziej jak nawigator map (Lessac i HFC są najbliższe Google). Jednorazowe pobranie; zalecane wifi.</string>
     <string name="settings_voice_lib_lang_hint">Twój język aplikacji to %1$s — pobierz głos %2$s poniżej, aby wskazówki głosowe pasowały (angielski głos błędnie wymawiałby %3$s nazwy ulic).</string>
     <string name="settings_voice_search">Szukaj głosów</string>
+    <string name="settings_voice_show_more">Pokaż %1$d więcej</string>
+    <string name="settings_voice_show_less">Pokaż mniej</string>
     <string name="settings_voice_this_voice">ten głos</string>
     <string name="settings_voice_remove_title">Usunąć %1$s?</string>
     <string name="settings_voice_remove_body">To Twój jedyny głos Vela. Wskazówki głosowe przełączą się na systemowy silnik syntezy mowy (albo zamilkną, jeśli żaden nie jest zainstalowany), dopóki nie pobierzesz kolejnego.</string>
@@ -321,6 +323,7 @@
     <string name="mapvm_shortcut_set">%1$s ustawiono na %2$s</string>
     <string name="mapvm_search_needs_recalibration">Wyszukiwanie wymaga rekalibracji: %1$s</string>
     <string name="mapvm_offline_no_data">Jesteś offline. Pobierz obszar w Ustawieniach ▸ Offline, aby wyszukiwać bez połączenia.</string>
+    <string name="mapvm_offline_no_match">Brak wyników offline dla \"%1$s\" w zapisanym obszarze. Wyszukiwanie offline obejmuje pobrane miejsca OpenStreetMap.</string>
     <string name="mapvm_offline_results">Wyniki offline (brak połączenia)</string>
     <string name="mapvm_search_failed_reason">Wyszukiwanie nie powiodło się: %1$s</string>
     <string name="mapvm_none_found_along_route">Nie znaleziono „%1$s” wzdłuż Twojej trasy</string>
