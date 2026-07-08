@@ -403,4 +403,5 @@
     <string name="settings_update_checking">Wird geprüft…</string>
     <string name="settings_update_found">Update verfügbar! Geh zurück zur Karte, um es zu installieren.</string>
     <string name="settings_update_none">Du bist auf der neuesten Version.</string>
+    <string name="settings_place_pages">Ortsseiten</string>
 </resources>
