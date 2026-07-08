@@ -70,3 +70,26 @@ object HideAdult {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "hide_adult"
 }
+
+/**
+ * Whether to hide links that launch arbitrary EXTERNAL web content from a place: the Website pill/row,
+ * the Street View pano (opens Google externally), and the Book online / Reserve / Order online action.
+ * OFF by default (everything shown); ON suppresses those so no place-detail control opens an arbitrary
+ * site. Internal actions (dial, directions, share a `geo:` pin) are unaffected. Same process-wide
+ * reactive holder shape as [ShowReviews] / [LoadPhotos], persisted in vela_settings.
+ */
+object HideExternalLinks {
+    val on = mutableStateOf(false)
+
+    fun init(context: Context) {
+        on.value = prefs(context).getBoolean(KEY, false)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        on.value = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "hide_external_links"
+}
