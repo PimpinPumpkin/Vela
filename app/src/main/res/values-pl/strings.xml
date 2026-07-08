@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Pobierz oglądany obszar</string>
     <string name="settings_offline_download_viewport_hint">Zapisuje kafelki dla obszaru mapy, który ostatnio był na ekranie — oraz otaczający go region tras — aby później renderował się i nawigował bez sieci. Wyszukiwanie nadal wymaga połączenia.</string>
     <string name="settings_offline_no_areas">Nie zapisano jeszcze żadnych obszarów.</string>
+    <string name="settings_offline_addresses_missing">Obszary zapisane przed tą aktualizacją nie zawierają danych adresowych. Zaktualizuj je, aby wyszukiwać adresy i wyznaczać do nich trasy offline.</string>
+    <string name="settings_offline_addresses_update">Zaktualizuj zapisane obszary</string>
     <string name="settings_offline_delete_area">Usuń ten obszar offline</string>
     <string name="settings_routing_regions">Regiony tras</string>
     <string name="settings_routing_regions_hint">Sieć dróg dla całego regionu (województwo, kraj…), aby nawigacja zakręt po zakręcie działała offline w dowolnym miejscu wewnątrz niego — pobierz tam, gdzie podróżujesz. Online nadal używa ruchu na żywo; to rozwiązanie awaryjne bez zasięgu.</string>
@@ -64,6 +66,9 @@
     <string name="settings_routing_no_match">Żaden region nie pasuje do „%1$s”.</string>
     <string name="settings_routing_downloading">Pobieranie… %1$d%%</string>
     <string name="settings_routing_installed">Zainstalowano · trasy offline tutaj</string>
+    <string name="settings_routing_installed_places">Zainstalowano · miejsca dostępne offline</string>
+    <string name="settings_routing_places_downloading">Zapisywanie miejsc · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Pobierz miejsca</string>
     <string name="settings_routing_size_here">%1$s MB · obejmuje Twoją lokalizację</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Usuń trasy offline</string>
@@ -141,6 +146,10 @@
     <string name="settings_traffic_lights_hint">„Minij światła, potem skręć” na skrzyżowaniach z sygnalizacją (głos na razie tylko po angielsku)</string>
     <string name="map_voice_downloading">Pobieranie głosu Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalowanie głosu Vela…</string>
+    <string name="map_region_downloading">Pobieranie tras: %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Zapisywanie miejsc regionu %1$s do wyszukiwania offline · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Miejsca regionu %1$s można teraz wyszukiwać offline</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Brak jeszcze pakietu miejsc dla regionu %1$s. Pojawi się tutaj po opublikowaniu.</string> <!-- format -->
     <string name="settings_demo_drive">Symuluj jazdę (demo)</string>
     <string name="settings_demo_drive_hint">Do demonstracji, zrzutów ekranu i testów: dotknięcie Start prowadzi trasą jako symulowany ślad GPS zamiast Twojej rzeczywistej lokalizacji — nawigacja działa wszędzie. Wyłącz, aby nawigować naprawdę.</string>
     <string name="place_address_copied">Skopiowano adres</string>
@@ -318,6 +327,7 @@
     <string name="welcome_donate_dismiss">Może później</string>
     <string name="search_close_cd">Zamknij wyszukiwanie</string>
     <string name="search_placeholder">Szukaj</string>
+    <string name="search_offline">Offline</string>
     <string name="search_clear_cd">Wyczyść wyszukiwanie</string>
     <string name="search_settings_cd">Ustawienia</string>
     <string name="mapvm_shortcut_set">%1$s ustawiono na %2$s</string>
@@ -353,6 +363,7 @@
     <string name="mapvm_offline_routing_failed">Pobieranie tras offline nie powiodło się</string>
     <string name="mapvm_offline_routing_removed">Usunięto trasy offline</string>
     <string name="mapvm_saved_places_offline">Zapisano %1$d miejsc do wyszukiwania offline</string>
+    <string name="mapvm_saved_addresses_offline">Zapisano %1$d adresów i %2$d ulic do tras offline</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Cel osiągnięty</string>
     <string name="navservice_notif_title_navigating">Nawigacja</string>
     <string name="navservice_notif_title_in_distance">Za %1$s · %2$s</string>

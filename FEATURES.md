@@ -12,7 +12,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Routing & traffic](#routing--traffic) | OSRM turn-by-turn (primary) + Google traffic ETA & jam reroute; alternates; **offline on-device routing** (135-region world catalog) |
 > | [Navigation](#navigation) | Maneuver banner with a real lane diagram + highway shields, spoken + haptic guidance, speedometer, re-center, arrival summary |
 > | [Location](#location-degoogled) | AOSP LocationManager + rotation-vector heading — no GMS/Fused |
-> | [Offline](#offline) | Downloadable basemap tiles + OSM POI index + routing graphs + open building-footprint overlay (Microsoft, ODbL); combined map+routing area download |
+> | [Offline](#offline) | Downloadable basemap tiles + OSM POI index + **address geocoder (typed address → route, no signal)** + **whole-state place packs (Organic-Maps-style offline search)** + routing graphs + open building-footprint overlay (Microsoft, ODbL); combined map+routing area download; quiet offline indicator (no banner) |
 > | [Platform](#platform--distribution) | GrapheneOS/no-GMS, CI-signed `v0.2.<run>` releases, Obtainium |
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices — hot-fix drift without an app update |
 
@@ -703,14 +703,66 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   matches, the message is now "no offline results for X in your saved area" instead of telling you to
   download one you already have. Offline search also matches a POI's stored **address** now, so typing
   the street address of an indexed OSM place finds it.
-  **What offline search does and does not cover (important):** it's the OSM POIs in the area you
-  downloaded, NOT a general geocoder. A **specific typed street address routes offline only if it
-  belongs to an indexed POI** — there is no offline forward geocoder to turn an arbitrary "1425 4th Ave"
-  into a coordinate (reverse-geocode is online Nominatim too). **Routing itself works fully offline**
-  (device-verified: offline search Applebee's → Directions → "1 min, 0.6 mi via W Covell Blvd"
-  from on-device GraphHopper) to anything you can put on the map — an offline search result, a
-  long-pressed pin, or Choose-on-map. A true offline address geocoder (indexing OpenAddresses / OSM
-  addr:* points into the on-device DB during download) is a possible future add.
+- ✅ **True offline address routing — typed address → coordinate → route, no signal (2026-07-07).** Downloading
+  a map area now also builds an on-device **forward geocoder** (`OfflineAddressStore`, SQLite), so an arbitrary
+  typed street address resolves to a coordinate offline and routes via the on-device GraphHopper engine — not
+  just addresses that happen to be an indexed POI. Two OSM sources, fetched (keyless Overpass) over a **padded
+  ~15 km box around the viewport** (not just the few blocks of tiles on screen, so a saved area covers the
+  surrounding metro): **`addr:housenumber` points** for house-precise hits, and **named road centrelines**
+  (thinned to ~one point per 120 m) for a street-level fallback where OSM has the road but no house numbers —
+  the reality in new US suburbs, where houses are sparse but streets are complete. Geocoding is layered:
+  (1) exact house number on the street, (2) **interpolate** the house's position between the two nearest
+  mapped numbers ("1453" lands between 1451 and 1455), (3) nearest mapped house on the street (right block),
+  (4) nearest point on the street's own centreline (works with zero mapped houses). Street matching is
+  abbreviation-normalized ("Pl"↔"place", "SE"↔"southeast"), so "W Covell Blvd" and "W Covell Blvd" hit
+  the same rows. **Device-verified (wifi fully off, South Davis):** the download saved **8591 addresses + 1466
+  streets**; typing "5601 156th Street Southeast" resolved to the right spot and routed *5 min · 1.5 mi via
+  South Davis Drive* from on-device GraphHopper; an arbitrary number ("13820 60th Avenue Southeast") resolved
+  through the fallback layers too. Names/streets themselves are never translated (data). Routing still works to
+  anything else you can put on the map (offline search result, long-pressed pin, Choose-on-map).
+  **Offline POIs now show an address (2026-07-07).** Most US chains have no `addr:*` in OSM (Applebee's came
+  back as bare "WA"), so an offline place sheet showed no address. Opening an offline POI with no real street
+  now **reverse-geocodes its location against the same on-device index** (`OfflineAddressStore.reverseGeocode`):
+  the nearest mapped house within 60 m (usually the POI's own building), else the nearest street name within
+  150 m. Device-verified: Applebee's offline now shows "W Covell Blvd" (the street it sits on) plus its
+  OSM phone/website/hours.
+  **No misleading "current traffic" offline (2026-07-07).** The directions ETA subtitle only says "current
+  traffic" when the route actually carries a live in-traffic ETA; an offline GraphHopper route (or any
+  traffic-less route) shows the arrival time with no traffic note instead of a false "current traffic".
+  **Upgrade nudge for older saved areas (2026-07-07).** Because the address index is built at download time,
+  areas saved before this feature have tiles + POIs but no address data. Settings → Offline shows a one-tap
+  "Update saved areas" card when you have saved areas but the index is empty; it re-fetches the address/street
+  data for every saved area so you don't have to re-download each one by hand. Localized in all 11 languages.
+- ✅ **Whole-region offline place packs — Organic-Maps-style state-wide search (2026-07-07, device-verified).**
+  The gap this closes: Organic Maps finds "pel meni" in Fremont from anywhere in Washington offline, because its
+  download carries the whole state's POI index; Vela's offline search only knew the small viewport areas you'd
+  saved. Now **downloading a state (routing region) also pulls its PLACE PACK** — a per-region SQLite database
+  baked by CI (`scripts/build-poi-region.sh` + `poipack_build.py`, workflow `poi-packs.yml`, hosted on the
+  `poi-packs` release like the routing graphs) from the same Geofabrik OSM extract, holding the entire region's
+  **named POIs (with address/phone/website/hours), address points and street names**. The pack schema is
+  normalized (street names deduped into an int-keyed lookup) so a state stays reasonable: Washington — one of
+  the heaviest US states, 163k POIs + 2.8M addresses + 1.2M street points — is **143 MB zipped** (was 761 MB
+  naive). `OfflinePoiStore`/`OfflineAddressStore` query every installed pack alongside their own index
+  (`OfflinePacks`), and the normalized shape keeps whole-state queries fast (street matching scans ~90k distinct
+  names, never the 2.8M-row table; the big tables are hit through sid/housenumber/lat indexes). Packs ride the
+  routing region: downloaded after its graph, deleted with it; regions installed before packs existed get a
+  **"Get places"** button on their Settings row (and a friendly "no pack published yet" note while the catalog
+  builds out). **Device-verified end-to-end (wifi off):** searching "pel meni" from South Davis returned
+  Pel'Meni Dumpling Tzar · 17.9 mi · 3518 Fremont Place North (plus the Capitol Hill and Bellingham ones),
+  ranked by relevance then distance, and its place sheet opened with address/hours/phone/website — all OSM,
+  no signal. Typed-address geocoding also gains the whole state (the pack's addr/street tables feed the same
+  layered geocoder). Localized in all 11 languages.
+- ✅ **State downloads show a heads-up progress card (2026-07-07, device-verified).** A routing-region download
+  (and the place pack that follows it) now shows the same map heads-up progress card the Vela-voice download
+  gets — "Downloading Washington (state) routing · N%" then "Saving Washington (state) places for offline
+  search · N%" with a live bar — so a Settings-started state download stays visible after backing out to the
+  map instead of running invisibly.
+- ✅ **Quiet offline indicator, no banner (2026-07-07).** When there's no connection, instead of a card hanging
+  over the map Vela shows two subtle cues: a greyed **globe-with-a-line-through-it icon + "Offline"** in the
+  search bar (before the settings gear, only on the bare map), and a small **globe-slash chip tucked just under
+  the category chips**, next to the search box. Driven by a reactive `ConnectivityManager` default-network callback (`MapUiState.offline`),
+  seeded on launch and updated on every network change (fails safe to "online"). The old "Offline results"
+  status line was removed — these two cues already say it. Device-verified in both the search bar and on the map.
   **Graceful when there's nothing to show (2026-07-07):** searching with no connection (or on a
   wifi that's connected but has no real internet, so the Google call fails with a host/timeout error)
   and no downloaded area now shows the plain guidance *"You're offline. Download an area in Settings ▸

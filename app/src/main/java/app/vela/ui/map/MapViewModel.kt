@@ -80,6 +80,7 @@ data class MapUiState(
                                      // when coarse fixes keep the ordinary stale timer from firing
     val compassHeading: Float? = null, // device facing (rotation-vector sensor) — browse cone when stopped
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
+    val offline: Boolean = false, // no usable internet — drives the subtle offline indicator
     val query: String = "",
     val results: List<Place> = emptyList(),
     val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
@@ -154,6 +155,11 @@ data class MapUiState(
     val routingInstalledIds: Set<String> = emptySet(), // region ids whose graphs are on disk
     val routingDownloadingId: String? = null,          // region id currently downloading, else null
     val routingDownloadPct: Int = 0,
+    val regionDownloadName: String? = null,            // display name for the heads-up download card
+    // Offline PLACE pack (whole-region POI/address db, pulled after the region's routing graph)
+    val poiPackDownloadingId: String? = null,
+    val poiPackDownloadPct: Int = 0,
+    val poiPackInstalledIds: Set<String> = emptySet(),
 )
 
 /**
@@ -178,6 +184,7 @@ class MapViewModel @Inject constructor(
     private val shortcutStore: PlaceShortcutStore,
     private val calibration: CalibrationStore,
     private val offlinePoiStore: OfflinePoiStore,
+    private val addressStore: app.vela.core.data.OfflineAddressStore,
     private val webPhotos: WebPhotoFetcher,
     private val webReviews: WebReviewsFetcher,
     private val webDirections: WebDirectionsFetcher,
@@ -186,6 +193,7 @@ class MapViewModel @Inject constructor(
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
     private val tripStore: app.vela.replay.TripStore,
     private val routingGraphStore: app.vela.offline.RoutingGraphStore,
+    private val poiPackStore: app.vela.offline.PoiPackStore,
     private val overlayStore: app.vela.offline.OverlayTileStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
@@ -224,6 +232,14 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
         refreshBuildingOverlays() // surface any installed open building overlays for the map to render
+        observeConnectivity() // drive the subtle offline indicator (globe-slash + "Offline" in the bar)
+        // Open any downloaded offline place packs so the POI/address stores can query them right away.
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                poiPackStore.registerPacks()
+                _state.update { it.copy(poiPackInstalledIds = poiPackStore.installedIds()) }
+            }
+        }
         // Reclaim disk from the removed Kokoro/Matcha voices (up to ~500 MB of dead model files after
         // the Piper-only switch). Off the main thread; a no-op once the dirs are gone.
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -805,6 +821,24 @@ class MapViewModel @Inject constructor(
     /** Is there a usable internet connection right now? Used to skip the Google scrape when offline (it
      *  would only hang to the socket timeout). Fails OPEN — if the check itself errors, assume online so a
      *  quirk can never block search. */
+    /** Track connectivity so the UI can show a quiet offline indicator (no more banner). Seeds now and
+     *  updates on every network change; fails safe to "online" so a quirk never falsely greys the app. */
+    private fun observeConnectivity() {
+        val cm = appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
+        fun refresh() {
+            val off = !isOnline()
+            _state.update { if (it.offline != off) it.copy(offline = off) else it }
+        }
+        refresh()
+        runCatching {
+            cm.registerDefaultNetworkCallback(object : android.net.ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: android.net.Network) = refresh()
+                override fun onLost(network: android.net.Network) = refresh()
+                override fun onCapabilitiesChanged(network: android.net.Network, caps: android.net.NetworkCapabilities) = refresh()
+            })
+        }
+    }
+
     private fun isOnline(): Boolean = runCatching {
         val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
@@ -844,13 +878,21 @@ class MapViewModel @Inject constructor(
             // Empty index = no area downloaded yet, so point the user at the download (issue #3).
             if (!isOnline()) {
                 val (offline, haveArea) = withContext(Dispatchers.IO) {
-                    val r = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
-                    r to (r.isNotEmpty() || runCatching { offlinePoiStore.count() > 0 }.getOrDefault(false))
+                    val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                    // If it looks like a street address, geocode it too and lead with the address matches.
+                    val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
+                        runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
+                    val merged = (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
+                    val have = merged.isNotEmpty() ||
+                        runCatching { offlinePoiStore.count() > 0 || addressStore.count() > 0 || addressStore.streetCount() > 0 }.getOrDefault(false)
+                    merged to have
                 }
                 _state.update {
                     when {
+                        // No "Offline results" banner — the quiet offline indicator (globe-slash + the
+                        // greyed "Offline" in the search bar) already says we're offline.
                         offline.isNotEmpty() ->
-                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false)
+                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false)
                         // Has a downloaded area but nothing matched — don't tell them to download again.
                         haveArea ->
                             it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_match, q), searching = false)
@@ -873,16 +915,22 @@ class MapViewModel @Inject constructor(
             } catch (e: CalibrationNeededException) {
                 _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_needs_recalibration, e.message), searching = false) }
             } catch (e: Exception) {
-                // Network/Google failure → fall back to the offline OSM index.
+                // Network/Google failure → fall back to the offline OSM index (POIs + address geocode, same
+                // as the straight-offline branch so an address still resolves when the scrape times out).
                 val offline = withContext(Dispatchers.IO) {
-                    runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                    val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                    val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
+                        runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
+                    (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
                 }
                 if (offline.isNotEmpty()) {
-                    _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false) }
+                    _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false) }
                 } else if (isConnectivityError(e)) {
                     // A dead connection: if there's a downloaded area the query just didn't match it, else
                     // point the user at the offline download instead of a raw "Unable to resolve host".
-                    val haveArea = withContext(Dispatchers.IO) { runCatching { offlinePoiStore.count() > 0 }.getOrDefault(false) }
+                    val haveArea = withContext(Dispatchers.IO) {
+                        runCatching { offlinePoiStore.count() > 0 || addressStore.count() > 0 || addressStore.streetCount() > 0 }.getOrDefault(false)
+                    }
                     val msg = if (haveArea) appContext.getString(R.string.mapvm_offline_no_match, q) else appContext.getString(R.string.mapvm_offline_no_data)
                     _state.update { it.copy(status = msg, searching = false) }
                 } else {
@@ -953,7 +1001,29 @@ class MapViewModel @Inject constructor(
         fetchReviews(p)
         fetchPhotos(p)
         fetchPlaceDetails(p)
+        backfillOfflineAddress(p)
         rememberRecentPlace(SavedPlace.of(p))
+    }
+
+    /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
+     *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
+     *  index (nearest mapped house, else nearest street) so it still shows an address. Only when offline,
+     *  only when the place lacks one, and only if it's still the selected place when the lookup returns. */
+    private fun backfillOfflineAddress(p: Place) {
+        // Fire when there's no real street line, not only when address is fully blank: OSM often tags a POI
+        // with just `addr:state`/`addr:city` (Applebee's came back as bare "WA"), which is useless. Treat an
+        // address with no digit (no house number) as "needs a street".
+        if (isOnline() || (!p.address.isNullOrBlank() && p.address!!.any { it.isDigit() })) return
+        viewModelScope.launch {
+            val addr = withContext(Dispatchers.IO) {
+                runCatching { addressStore.reverseGeocode(p.location) }.getOrNull()
+            } ?: return@launch
+            _state.update { st ->
+                val sel = st.selected
+                val stillNeeds = sel?.id == p.id && (sel.address.isNullOrBlank() || sel.address!!.none { it.isDigit() })
+                if (stillNeeds) st.copy(selected = sel!!.copy(address = addr)) else st
+            }
+        }
     }
 
     /** Open a "People also search for" card: build a minimal Place from it and select it —
@@ -2511,10 +2581,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Download + install [region]'s CH graph for fully-offline routing in that area. */
+    /** Download + install [region]'s CH graph for fully-offline routing in that area, then the
+     *  region's PLACE pack (whole-region POIs + addresses) so search/geocoding covers it offline too. */
     fun downloadRoutingGraph(region: app.vela.offline.RoutingRegion) {
         if (_state.value.routingDownloadingId != null) return
-        _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0) }
+        _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0, regionDownloadName = region.name) }
         viewModelScope.launch {
             val ok = routingGraphStore.download(region) { pct ->
                 _state.update { it.copy(routingDownloadPct = pct) }
@@ -2523,12 +2594,52 @@ class MapViewModel @Inject constructor(
                 it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds())
             }
             showStatus(if (ok) appContext.getString(R.string.mapvm_offline_routing_ready, region.name) else appContext.getString(R.string.mapvm_offline_routing_failed))
+            if (ok) downloadPoiPack(region)
+            else _state.update { it.copy(regionDownloadName = null) }
+        }
+    }
+
+    /** Pull [region]'s offline place pack (best-effort — regions without a pack just skip). The pack
+     *  catalog shares the routing catalog's region ids, so the graph's region row looks itself up. */
+    private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion) {
+        val pack = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
+            .firstOrNull { it.id == region.id }
+        if (pack == null || region.id in poiPackStore.installedIds()) {
+            _state.update { it.copy(regionDownloadName = null) }
+            return
+        }
+        _state.update { it.copy(poiPackDownloadingId = pack.id, poiPackDownloadPct = 0, regionDownloadName = region.name) }
+        val ok = poiPackStore.download(pack) { pct ->
+            _state.update { it.copy(poiPackDownloadPct = pct) }
+        }
+        _state.update {
+            it.copy(poiPackDownloadingId = null, regionDownloadName = null, poiPackInstalledIds = poiPackStore.installedIds())
+        }
+        if (ok) showStatus(appContext.getString(R.string.mapvm_poipack_ready, region.name))
+    }
+
+    /** Settings "Get places" on an already-installed routing region whose pack predates this feature
+     *  (or was skipped) — pulls just the place pack. Says so when the region has no pack published yet
+     *  (the catalog builds out region by region), instead of silently doing nothing. */
+    fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion) {
+        if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
+        viewModelScope.launch {
+            val available = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
+                .any { it.id == region.id }
+            if (!available) {
+                showStatus(appContext.getString(R.string.mapvm_poipack_unavailable, region.name))
+                return@launch
+            }
+            downloadPoiPack(region)
         }
     }
 
     fun deleteRoutingGraph(id: String) {
         routingGraphStore.delete(id)
-        _state.update { it.copy(routingInstalledIds = routingGraphStore.installedIds()) }
+        poiPackStore.delete(id) // the place pack rides with the region — remove them together
+        _state.update {
+            it.copy(routingInstalledIds = routingGraphStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds())
+        }
         showStatus(appContext.getString(R.string.mapvm_offline_routing_removed))
     }
 
@@ -2541,7 +2652,67 @@ class MapViewModel @Inject constructor(
                 withContext(Dispatchers.IO) { offlinePoiStore.add(pois) }
                 showStatus(appContext.getString(R.string.mapvm_saved_places_offline, pois.size))
             }
+            // Also pull the address data so offline search can GEOCODE an arbitrary typed address and route
+            // to it. Geocoding wants coverage well beyond the few blocks of tiles on screen, so this fetch
+            // is PADDED to a ~15 km minimum span around the viewport centre — a downloaded area then routes
+            // to an address across the whole metro, not just what was visible. Two OSM sources:
+            //   • addr:housenumber points → house-precise where mapped,
+            //   • named road centrelines → street-level fallback where OSM has the road but no house numbers
+            //     (the reality in new US suburbs — houses are thin, streets are complete).
+            // Big bodies, so the no-call-timeout client (the shared 12 s scrape cap would abort mid-read).
+            val cLat = (south + north) / 2.0
+            val cLng = (west + east) / 2.0
+            val aS = minOf(south, cLat - GEOCODE_PAD_DEG)
+            val aN = maxOf(north, cLat + GEOCODE_PAD_DEG)
+            val aW = minOf(west, cLng - GEOCODE_PAD_DEG)
+            val aE = maxOf(east, cLng + GEOCODE_PAD_DEG)
+            val addrs = withContext(Dispatchers.IO) {
+                runCatching { OverpassPois.fetchAddresses(offlineDownloadHttp, aS, aW, aN, aE) }.getOrDefault(emptyList())
+            }
+            if (addrs.isNotEmpty()) withContext(Dispatchers.IO) { addressStore.add(addrs) }
+            val streets = withContext(Dispatchers.IO) {
+                runCatching { OverpassPois.fetchStreets(offlineDownloadHttp, aS, aW, aN, aE) }.getOrDefault(emptyList())
+            }
+            if (streets.isNotEmpty()) withContext(Dispatchers.IO) { addressStore.addStreets(streets) }
+            // One combined notice: N addresses over M streets are now routable offline.
+            val streetNames = streets.map { it.street }.distinct().size
+            if (addrs.isNotEmpty() || streets.isNotEmpty()) {
+                showStatus(appContext.getString(R.string.mapvm_saved_addresses_offline, addrs.size, streetNames))
+            }
         }
+    }
+
+    /** How many offline address+street rows are indexed. Settings uses this to decide whether to nudge a
+     *  user whose SAVED areas predate the geocoder (they have tiles/POIs but no address data). */
+    fun offlineAddressCount(cb: (Int) -> Unit) {
+        viewModelScope.launch {
+            val n = withContext(Dispatchers.IO) {
+                runCatching { addressStore.count() + addressStore.streetCount() }.getOrDefault(0)
+            }
+            cb(n)
+        }
+    }
+
+    /** Re-fetch offline POIs + the address/street index for every already-saved map area, so areas
+     *  downloaded before the geocoder existed become address-searchable without the user hunting each one
+     *  down. Each area runs the same padded fetch as a fresh download. */
+    fun refreshOfflineDataForSavedAreas() {
+        app.vela.offline.OfflineMaps.list(appContext) { regions ->
+            regions.forEach { r ->
+                app.vela.offline.OfflineMaps.boundsOf(r)?.let { b ->
+                    downloadOfflinePois(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast)
+                }
+            }
+        }
+    }
+
+    /** OkHttp with the scrape-bounding call-timeout removed (see the offline-download rule) — for the
+     *  large Overpass address body only; the shared [http] stays for the small POI fetch. */
+    private val offlineDownloadHttp by lazy {
+        http.newBuilder()
+            .callTimeout(java.time.Duration.ZERO)
+            .readTimeout(java.time.Duration.ofSeconds(120))
+            .build()
     }
 
     companion object {
@@ -2571,5 +2742,9 @@ class MapViewModel @Inject constructor(
         // Max ambient POIs handed to the map layer. Bounds symbol-collision cost per frame so old
         // phones (Pixel 5a) stay smooth while dragging; the collider only paints ~a few dozen anyway.
         const val AMBIENT_ONSCREEN_CAP = 140
+        // Half-span (degrees) the offline geocoder's address/street fetch is padded to around the viewport
+        // centre — ~10 km lat each way (a bit less in lng at mid-latitudes), so a downloaded area can route
+        // to an arbitrary address across the surrounding metro, not just the blocks that were on screen.
+        const val GEOCODE_PAD_DEG = 0.09
     }
 }

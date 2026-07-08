@@ -35,6 +35,8 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.AlertDialog
@@ -448,6 +450,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             SubHead(stringResource(R.string.settings_offline_map_area))
             var regions by remember { mutableStateOf<List<OfflineRegion>>(emptyList()) }
             LaunchedEffect(Unit) { OfflineMaps.list(context) { regions = it } }
+            // -1 = not loaded yet; used only to decide the "saved areas predate offline addresses" nudge below.
+            var offlineAddrCount by remember { mutableStateOf(-1) }
+            LaunchedEffect(Unit) { vm.offlineAddressCount { offlineAddrCount = it } }
             OutlinedButton(
                 onClick = {
                     vm.downloadViewport()
@@ -472,6 +477,30 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                         IconButton(onClick = { OfflineMaps.delete(r) { OfflineMaps.list(context) { regions = it } } }) {
                             Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_offline_delete_area))
                         }
+                    }
+                }
+            }
+            // Nudge for areas saved before the offline address geocoder existed: they have tiles + POIs but no
+            // address data, so offline address search/routing would silently miss. One tap re-fetches the
+            // address index for every saved area. Only shown when there ARE areas and the index is still empty.
+            if (regions.isNotEmpty() && offlineAddrCount == 0) {
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                ) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(
+                            stringResource(R.string.settings_offline_addresses_missing),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                        OutlinedButton(
+                            onClick = {
+                                vm.refreshOfflineDataForSavedAreas()
+                                onBack() // back to the map to watch the per-area progress
+                            },
+                            modifier = Modifier.padding(top = 8.dp),
+                        ) { Text(stringResource(R.string.settings_offline_addresses_update)) }
                     }
                 }
             }
@@ -525,6 +554,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 shown.forEach { region ->
                     val installed = region.id in state.routingInstalledIds
                     val downloading = state.routingDownloadingId == region.id
+                    val packDownloading = state.poiPackDownloadingId == region.id
+                    val packInstalled = region.id in state.poiPackInstalledIds
                     val here = region.id == primary?.id
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -535,6 +566,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                             Text(
                                 when {
                                     downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
+                                    packDownloading -> stringResource(R.string.settings_routing_places_downloading, state.poiPackDownloadPct)
+                                    installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
                                     installed -> stringResource(R.string.settings_routing_installed)
                                     here -> stringResource(R.string.settings_routing_size_here, region.sizeMb)
                                     else -> stringResource(R.string.settings_routing_size, region.sizeMb)
@@ -545,7 +578,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                             )
                         }
                         when {
-                            downloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            downloading || packDownloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            // Installed before place packs existed (or its pack was skipped): offer just
+                            // the pack, so offline search covers the region without a graph re-download.
+                            installed && !packInstalled -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedButton(
+                                    onClick = { vm.downloadPoiPackFor(region) },
+                                    enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
+                                ) { Text(stringResource(R.string.settings_get_places)) }
+                                IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                                }
+                            }
                             installed -> IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
                                 Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
                             }

@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Загрузить видимую область</string>
     <string name="settings_offline_download_viewport_hint">Сохраняет открытые тайлы для области карты, которая последней была на экране, — и дорожный регион вокруг неё — чтобы позже она отображалась и вела навигацию без сети. Для поиска всё ещё нужно подключение.</string>
     <string name="settings_offline_no_areas">Области ещё не сохранены.</string>
+    <string name="settings_offline_addresses_missing">Области, сохранённые до этого обновления, не содержат данные адресов. Обновите их, чтобы искать адреса и строить маршруты офлайн.</string>
+    <string name="settings_offline_addresses_update">Обновить сохранённые области</string>
     <string name="settings_offline_delete_area">Удалить эту офлайн-область</string>
     <string name="settings_routing_regions">Регионы маршрутизации</string>
     <string name="settings_routing_regions_hint">Дорожная сеть для целого региона (области, страны…), чтобы навигация работала офлайн в любой его точке — загрузите тот, куда едете. При наличии сети по-прежнему используются актуальные пробки; это запасной вариант без сигнала.</string>
@@ -64,6 +66,9 @@
     <string name="settings_routing_no_match">Нет регионов по запросу «%1$s».</string>
     <string name="settings_routing_downloading">Загрузка… %1$d%%</string>
     <string name="settings_routing_installed">Установлено · маршруты офлайн здесь</string>
+    <string name="settings_routing_installed_places">Установлено · места доступны офлайн</string>
+    <string name="settings_routing_places_downloading">Сохранение мест · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Скачать места</string>
     <string name="settings_routing_size_here">%1$s МБ · покрывает ваше местоположение</string>
     <string name="settings_routing_size">%1$s МБ</string>
     <string name="settings_routing_remove">Удалить офлайн-маршрутизацию</string>
@@ -141,6 +146,10 @@
     <string name="settings_traffic_lights_hint">«Проедьте светофор, затем поверните» на перекрёстках со светофорами (голос пока только на английском)</string>
     <string name="map_voice_downloading">Загрузка голоса Vela · %1$d %%</string>
     <string name="map_voice_installing">Установка голоса Vela…</string>
+    <string name="map_region_downloading">Загрузка маршрутов: %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Сохранение мест региона %1$s для офлайн-поиска · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Места региона %1$s теперь доступны для офлайн-поиска</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Для региона %1$s пока нет пакета мест. Он появится здесь после публикации.</string> <!-- format -->
     <string name="settings_demo_drive">Симуляция поездки (демо)</string>
     <string name="settings_demo_drive_hint">Для демонстраций, скриншотов и тестов: нажатие «Начать» ведёт по маршруту как смоделированный GPS-трек вместо вашего реального местоположения — навигация работает где угодно. Выключите для настоящей навигации.</string>
     <string name="place_address_copied">Адрес скопирован</string>
@@ -318,6 +327,7 @@
     <string name="welcome_donate_dismiss">Может быть, позже</string>
     <string name="search_close_cd">Закрыть поиск</string>
     <string name="search_placeholder">Поиск</string>
+    <string name="search_offline">Офлайн</string>
     <string name="search_clear_cd">Очистить поиск</string>
     <string name="search_settings_cd">Настройки</string>
     <string name="mapvm_shortcut_set">%1$s задан(а): %2$s</string>
@@ -353,6 +363,7 @@
     <string name="mapvm_offline_routing_failed">Не удалось загрузить офлайн-маршрутизацию</string>
     <string name="mapvm_offline_routing_removed">Офлайн-маршрутизация удалена</string>
     <string name="mapvm_saved_places_offline">Сохранено %1$d мест для офлайн-поиска</string>
+    <string name="mapvm_saved_addresses_offline">Сохранено %1$d адресов и %2$d улиц для офлайн-маршрутов</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Прибытие</string>
     <string name="navservice_notif_title_navigating">Навигация</string>
     <string name="navservice_notif_title_in_distance">Через %1$s · %2$s</string>

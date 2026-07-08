@@ -117,6 +117,8 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Turn-by-turn routing** | **FOSSGIS OSRM** (open) — complete street-named steps incl. highway `ref`/exit/lanes; retried on blips | `core/data/RouteGeometry.kt` |
 | **Traffic ETA + jam reroute** | Google's directions overlaid on the OSRM route; re-runs OSRM through Google's path only when they diverge (option 3) | `GoogleMapsDataSource.directions`/`applyTraffic` |
 | **Offline routing** | On-device **GraphHopper** CH graphs, one per region, downloaded from a 135-region world catalog | `core/data/GraphHopperRouteEngine.kt`, `app/offline/RoutingGraphStore.kt`, `tools/routing-regions.json` |
+| **Offline address geocoding** | Typed street address → coordinate → GraphHopper route with no signal; keyless OSM `addr:housenumber` + named-road centrelines indexed on area download (house-precise, interpolated, or street-level fallback) | `core/data/OfflineAddressStore.kt`, `core/data/OverpassPois.kt` |
+| **Offline place packs** | Downloading a state also pulls its whole-region place pack (CI-baked SQLite of every OSM POI/address/street), so offline search covers the entire state, Organic-Maps-style | `app/offline/PoiPackStore.kt`, `core/data/OfflinePacks.kt`, `scripts/build-poi-region.sh`, `.github/workflows/poi-packs.yml` |
 | **Open building overlay** | Microsoft building footprints (ODbL) as per-region PMTiles, rendered beneath OSM to fill areas OSM never mapped; world catalog of 51 US states + ~199 countries (US + Global ML sources) | `app/offline/OverlayTileStore.kt`, `app/ui/map/VelaMapView.kt`, `scripts/build-overlay-region.sh`, `tools/overlay-regions.json` |
 | **Open house-number overlay** | OpenAddresses address points as per-state PMTiles, streamed + rendered as a house-number SymbolLayer where OSM lacks `addr:housenumber` | `app/ui/map/VelaMapView.kt`, `scripts/build-address-region.sh`, `tools/address-regions.json` |
 | **Navigation (banner, voice, haptics)** | Pure `NavEngine` turn logic (unit-tested) → maneuver banner (lane diagram / shields), AOSP TTS, direction-coded vibration | `core/nav/`, `app/ui/nav/`, `core/voice/`, `core/feedback/` |
@@ -159,8 +161,10 @@ R8 release builds):
         │   ├─ RouteEngine               offline-routing interface (connectivity/graph-presence picks it)
         │   ├─ GraphHopperRouteEngine    on-device GraphHopper CH graphs, one per downloaded region
         │   ├─ RouteCorridor             "search along route" — filter results to the line
-        │   ├─ OverpassPois              keyless OSM POI fetch (offline-search source)
+        │   ├─ OverpassPois              keyless OSM POI + addr + street fetch (offline-search/geocode source)
         │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
+        │   ├─ OfflineAddressStore       on-device SQLite forward geocoder (typed address → coord, offline)
+        │   ├─ OfflinePacks              registry of downloaded whole-region place packs (both stores query them)
         │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
         ├─ location/         LocationProvider — AOSP LocationManager (no Fused)
         ├─ voice/            VoiceGuide — AOSP TextToSpeech, engine-selectable
@@ -179,7 +183,7 @@ R8 release builds):
         ├─ ui/theme/         AppTheme — in-app light/dark, decoupled from the OS
         ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
         ├─ web/              WebPhotoFetcher, WebDirectionsFetcher — hidden-WebView scrapes
-        ├─ offline/          OfflineMaps (MapLibre tiles) + RoutingGraphStore (GraphHopper graphs) + OverlayTileStore (building-footprint PMTiles)
+        ├─ offline/          OfflineMaps (MapLibre tiles) + RoutingGraphStore (GraphHopper graphs) + PoiPackStore (place packs) + OverlayTileStore (building-footprint PMTiles)
         └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / keep-screen-on / offline)
 ```
 
@@ -451,7 +455,7 @@ without an app release.
 - [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
 - [x] **Offline routing on-device (GraphHopper)** — a downloadable **135-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief
-- [x] **Offline** basemap + OSM POI index; **popular / busy times** (keyless hidden-WebView search)
+- [x] **Offline** basemap + OSM POI index + **address geocoder** (typed address → route, no signal; house-precise / interpolated / street-level) + **whole-state place packs** (a state download makes the entire state searchable offline, Organic-Maps-style); quiet offline indicator (globe-slash, no banner); **popular / busy times** (keyless hidden-WebView search)
 - [ ] **Predictive** (future-traffic) depart-time ETA — needs a directions-`pb` calibration
 - [x] Rank shown routes by live-traffic ETA (each Google alternate carries its own `duration_in_traffic`, fastest-shown leads) · [ ] optional offline highway refs
 - [x] Street View — a place-sheet pill opens Google’s keyless pano in the browser (in-app WebGL panos render black) · [ ] embedded Mapillary/KartaView tiles (need a token)

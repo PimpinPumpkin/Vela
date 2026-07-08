@@ -227,6 +227,32 @@ GitHub-Actions build matrix → `routing-manifest.json`). The app downloads regi
 region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
 must fit one region's monolithic graph; cross-region falls online.
 
+**Offline place packs (whole-region search, DONE 2026-07-07).** Downloading a state's routing region also
+pulls its PLACE PACK — a CI-baked SQLite db (`scripts/build-poi-region.sh` from the same Geofabrik PBF the
+graph uses; workflow `poi-packs.yml`; release `poi-packs`) holding the entire region's named OSM POIs
+(address/phone/website/hours), address points and street names, so offline search/geocoding covers the whole
+state (Organic-Maps-style), not just saved map areas. The pack schema is normalized (street names deduped
+into an int-keyed `streetname` table; `addr`/`streetpt` reference them by sid) — Washington is 143 MB zipped
+for 163k POIs + 2.8M addresses — and queries match street names first (~90k-row scan) so the million-row
+tables are only ever hit through indexes. `OfflinePacks` (:core) registers the downloaded dbs;
+`OfflinePoiStore`/`OfflineAddressStore` query them alongside their own index. Packs install after the
+region's graph, delete with it, and show the same heads-up progress card as the voice download; graphs
+installed before packs existed get a "Get places" button. Device-verified: offline "pel meni" from
+Yolo County → Pel'Meni Dumpling Tzar, Fremont, with address.
+
+**Offline address geocoding (on-device, DONE 2026-07-07).** So an arbitrary typed street address routes with
+no signal, not just addresses that are an indexed POI. Downloading a map area builds a SQLite forward geocoder
+(`core/data/OfflineAddressStore`) from keyless Overpass (`OverpassPois.fetchAddresses`/`fetchStreets`) over a
+bbox **padded to a ~15 km min span** around the viewport (`GEOCODE_PAD_DEG`) — the tile-viewport box was too
+small (8 addresses in a dense suburb; the padded box → 8591 addresses + 1466 streets). Two OSM sources: `addr:
+housenumber` points (house-precise) and named-road centrelines thinned to ~1 pt/120 m (street-level fallback
+where OSM maps the road but no house numbers — the US-suburb reality). `geocode()` layers exact → interpolated
+between bracketing numbers → nearest house on street → nearest centreline point; street names are
+abbreviation-normalized both ways. The result Place routes through the same GraphHopper offline engine.
+Device-verified wifi-off (South Davis). A **quiet offline indicator** (reactive `ConnectivityManager` →
+`MapUiState.offline`) replaced the old banner: a greyed globe-slash + "Offline" in the search bar and a
+globe-slash chip on the basemap.
+
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: DOM-scraped from the place's own `?cid=` page in a hidden anonymous desktop-UA WebView
   (`WebReviewsFetcher`) — the keyless `listentitiesreviews` RPC is **dead** (404) and only ever served
