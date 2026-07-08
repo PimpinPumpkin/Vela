@@ -187,12 +187,6 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
 }
 
 /**
- * A clearly visible focus ring for D-pad traversal, drawn only while the element (or a
- * descendant — Material buttons host their own focus target) holds focus AND the UI is
- * key-driven, so it never appears under touch. Apply it to any interactive element; pass
- * the element's own [shape] so the ring hugs it.
- */
-/**
  * Makes a text field D-pad ESCAPABLE: UP/DOWN move focus to the previous/next form control
  * instead of being swallowed by the field's own cursor handling. Without this, a single- or
  * multi-line `TextField`/`BasicTextField` eats the vertical arrows, trapping focus on the
@@ -235,6 +229,12 @@ fun Modifier.dpadFieldEscape(): Modifier = composed {
     }
 }
 
+/**
+ * A clearly visible focus ring for D-pad traversal, drawn only while the element (or a
+ * descendant — Material buttons host their own focus target) holds focus AND the UI is
+ * key-driven, so it never appears under touch. Apply it to any interactive element; pass
+ * the element's own [shape] so the ring hugs it.
+ */
 fun Modifier.dpadHighlight(shape: Shape = RoundedCornerShape(14.dp)): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
     val dpadFirst = rememberDpadFirstDevice()
