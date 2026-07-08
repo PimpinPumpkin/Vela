@@ -86,6 +86,7 @@ import app.vela.ui.dpadSwallowHorizontal
 import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -141,6 +142,11 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 // no-target horizontal move can't clear focus. The vibrate FilterChips row (a real
                 // horizontal row) handles its own LEFT/RIGHT first, so this never runs for it.
                 .dpadSwallowHorizontal()
+                // D-pad (docs/dpad.md): the back button lives in the TopAppBar, a SEPARATE container
+                // from this scroll Column, so Compose's directional UP can't bridge them — an UP from
+                // the top row cleared focus instead of reaching Back (auditor-found, 1/49). Route the
+                // Column's UP-exit explicitly to the back button so walking up always lands on it.
+                .focusProperties { up = settingsAutoFocus }
                 .onGloballyPositioned { viewportTopY = it.positionInRoot().y }
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
