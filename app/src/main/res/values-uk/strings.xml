@@ -69,6 +69,8 @@
     <string name="settings_routing_installed_places">Встановлено · місця доступні офлайн</string>
     <string name="settings_routing_places_downloading">Збереження місць · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Завантажити місця</string>
+    <string name="settings_update_places">Оновити місця</string>
+    <string name="settings_routing_update_available">Встановлено · доступне оновлення місць</string>
     <string name="settings_routing_size_here">%1$s МБ · охоплює ваше місцезнаходження</string>
     <string name="settings_routing_size">%1$s МБ</string>
     <string name="settings_routing_remove">Видалити офлайн-маршрутизацію</string>
