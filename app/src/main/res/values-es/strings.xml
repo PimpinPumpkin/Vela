@@ -403,4 +403,5 @@
     <string name="settings_update_checking">Comprobando…</string>
     <string name="settings_update_found">¡Actualización disponible! Vuelve al mapa para instalarla.</string>
     <string name="settings_update_none">Tienes la versión más reciente.</string>
+    <string name="settings_place_pages">Páginas de sitios</string>
 </resources>
