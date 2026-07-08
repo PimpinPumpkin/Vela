@@ -200,6 +200,14 @@ genuinely needs no doc edit, say why in the commit.
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
   + the photo-hero `if`), so off = zero scrape traffic. Keep any new review/photo surface behind them.
+- **"Hide adult categories" toggle (2026-07-08):** `HideAdult` holder (`ui/PlaceContent.kt`, default
+  **off**, init in VelaApp, row in Settings → Map). It flips `CategoryFilter.enabled` (a `:core` flag) —
+  `:core`'s `data/CategoryFilter` filters adult/nightlife/alcohol/gambling/smoking places at the
+  `GoogleMapsDataSource.search`/`nearbyPlaces` seam. Match is CATEGORY-only (never name) and PRECISE
+  (`EXACT`/`PHRASE`, food "…bar" kept); the keyword lists are **multilingual** (categories arrive
+  localized via `hl=<lang>`, so the filter must too). Unit-tested (`CategoryFilterTest`). NB the `:core`
+  flag pattern (not reading the app holder from `:core`) is deliberate — mirror it for any future
+  content gate that must act inside `:core`.
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
   `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
