@@ -25,6 +25,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   travel mode. And the in-drive UI got a facelift: the maneuver banner and the bottom bar are now
   soft-cornered floating cards with real shadows, a bigger turn glyph, a bolder distance, a heavier
   road name, and filled tonal buttons instead of thin outlined circles. Verified in a simulated drive.
+- ✅ **Arrive step names the destination (2026-07-08).** The ARRIVE step in the maneuver banner, the step
+  list and the arrival card shows the business name and its address under the "Arrive at your destination"
+  line, Google-style. Robust to partial data (offline routing often has no business name): name, else the
+  address, else the raw coordinates — and no line ever just repeats another (an address search's "name" IS
+  its address, so it prints once). `NavSession.destinationDisplay` (pure, unit-tested
+  `DestinationDisplayTest`); the address rides `NavSession.State.destinationAddress` → `navDestAddress`.
 - ✅ **Zoomed-in pan smoothness (2026-07-08).** Three targeted trims for the "stutters when zoomed right in"
   report: (1) the scale bar no longer recomposes every pan frame — the per-frame camera listener only pushes
   a new value when it changes over 1%, which is when the drawn bar could actually differ; (2) house numbers
@@ -141,7 +147,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Full-screen search page** (Google-style) — focusing the search box opens an opaque page with **Home/Work shortcuts**, saved + recent searches over the map (back arrow / back gesture closes it); running a search drops back to the map with the results list + red pins
 - ✅ **Home / Work shortcuts** (Google's signature) — two pinned rows at the top of the search page. Unset shows "Set home/work address"; tapping arms an assign mode (a "Search for your home address" banner + Cancel) and the **next place you pick** — a suggestion, a saved place, or a tapped POI — gets pinned. A set shortcut shows the place name and a **⋮ menu (Change / Remove)**; tapping the row opens the place. You can also set the **currently-open place** as Home/Work straight from its **place-sheet ⋮ overflow**, or promote a Saved place via its ⋮. Persisted in `PlaceShortcutStore` (`vela_shortcuts` prefs), so they survive restarts *(verified on-device: set Home → "Sacramento Valley Station", ⋮ → Change/Remove)*
 - ✅ **Autocomplete / suggestions as you type** — after a short debounce, the search page shows live **place matches** (name + address) to tap, like Google; tapping one opens its sheet directly. Reuses the calibrated search endpoint (no separate suggest RPC); a stale response is dropped if the query moved on. *(verified on-device: "starb" → Starbucks locations)*
-- ✅ Clear-search (X) button; the **results list is a top-sheet** under the search bar (it hangs from the top, so the gestures follow that): **swipe DOWN to grow** it (~half screen → ~94% full), **swipe UP to retract** it — first shrinking an expanded list, then hiding it to the "N results" pill so you can browse the map (pins stay, tapping the pill re-opens it); the chevron + back gesture also collapse it. A nested-scroll handler lets a down-overscroll at the top of the list expand it ("pull to see more")
+- ✅ Clear-search (X) button; the **results list is a bottom sheet** with the place sheet's detent grammar (2026-07-08): MINIMIZED ("N results" bar) ↔ PEEK (~42%) ↔ EXPANDED (~82%) — tap the handle to step up a detent, drag up/down to grow/shrink one, and a nested-scroll handler shares the gesture with the list. The header has the **detent chevron** and, to its right, an **X that exits the search entirely** (results, pins and query — same as backing all the way out); the back gesture still peels detents first. *(X added 2026-07-08)*
 - ✅ **Result filters** — chips in the results header: **"Open now"** (places open right now) and **"4.0★"** (rating ≥ 4.0); they stack and the count updates live
 - ✅ **Back gesture peels one layer at a time** (steps → navigation → route preview → place sheet → results list) instead of closing the app — only the bare map exits
 - ✅ **Full reviews — now via a hidden WebView, WITH per-review photos (2026-06-27).** Google
