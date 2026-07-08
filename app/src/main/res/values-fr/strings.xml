@@ -265,6 +265,7 @@
     <string name="mapscreen_results_count">%1$d résultats</string>
     <string name="mapscreen_shrink_list">Réduire la liste</string>
     <string name="mapscreen_expand_list">Agrandir la liste</string>
+    <string name="mapscreen_close_results">Fermer les résultats de recherche</string>
     <string name="mapscreen_filter_open_now">Ouvert</string>
     <string name="mapscreen_filter_top_rated">4,0★</string>
     <string name="mapscreen_filter_price">Prix</string>

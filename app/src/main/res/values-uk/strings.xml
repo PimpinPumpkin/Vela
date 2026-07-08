@@ -265,6 +265,7 @@
     <string name="mapscreen_results_count">%1$d результатів</string>
     <string name="mapscreen_shrink_list">Згорнути список</string>
     <string name="mapscreen_expand_list">Розгорнути список</string>
+    <string name="mapscreen_close_results">Закрити результати пошуку</string>
     <string name="mapscreen_filter_open_now">Відкрито зараз</string>
     <string name="mapscreen_filter_top_rated">4.0★</string>
     <string name="mapscreen_filter_price">Ціна</string>

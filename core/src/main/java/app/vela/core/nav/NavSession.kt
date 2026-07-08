@@ -51,6 +51,9 @@ class NavSession @Inject constructor(
         val fasterSavingSeconds: Double = 0.0,
         // Trip summary, populated on arrival (and carried for the arrival card).
         val destinationLabel: String = "",
+        // The destination's address line, when it adds anything beyond [destinationLabel]
+        // (see [destinationDisplay]) — shown on the ARRIVE step in the banner + step list.
+        val destinationAddress: String = "",
         val tripDistanceMeters: Double = 0.0,
         val tripElapsedSeconds: Double = 0.0,
     )
@@ -113,6 +116,7 @@ class NavSession @Inject constructor(
         voiceEngine: String? = null,
         stops: List<NavStop> = emptyList(),
         mode: TravelMode = TravelMode.DRIVE,
+        destinationAddress: String = "",
     ) {
         this.destination = destination
         this.mode = mode
@@ -151,6 +155,7 @@ class NavSession @Inject constructor(
             remainingDistance = route.distanceMeters,
             remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
             destinationLabel = destinationLabel,
+            destinationAddress = destinationAddress,
             tripDistanceMeters = route.distanceMeters,
         )
         voice.speak(app.vela.core.i18n.NavStringsRegistry.current().startNav(first))
@@ -477,7 +482,9 @@ class NavSession @Inject constructor(
     private fun Route.reaches(dest: LatLng) =
         polyline.lastOrNull()?.let { it.distanceTo(dest) <= REACH_TOLERANCE_M } ?: false
 
-    private companion object {
+    // Public for destinationDisplay (callers build the arrive-step lines before start());
+    // the tuning constants stay implementation detail by convention.
+    companion object {
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
         const val MIN_RECHECK_DISTANCE_M = 1_500.0 // don't bother near the destination
         const val FASTER_THRESHOLD_S = 90.0        // only offer if it saves real time
@@ -495,5 +502,23 @@ class NavSession @Inject constructor(
         const val MIN_PLAUSIBLE_ETA_FRACTION = 0.4
         // Fire the per-stop cue when along-route progress gets within this of the stop's mark (as you pass).
         const val STOP_ARRIVE_TOL_M = 25.0
+
+        /** Primary + secondary display lines for a destination, robust to partial data. Offline
+         *  routing often has no business name — just "123 Main St" from the offline geocoder, a
+         *  bare street from the street-fallback tier, or nothing but the tapped point. Primary =
+         *  the name, else the address, else the raw coordinates (something always shows).
+         *  Secondary = the address only when it adds something the primary line doesn't already
+         *  say (an address search's "name" IS its address — don't print it twice). */
+        fun destinationDisplay(name: String?, address: String?, dest: LatLng?): Pair<String, String?> {
+            val n = name?.trim().orEmpty()
+            val a = address?.trim().orEmpty()
+            val primary = n.ifBlank {
+                a.ifBlank {
+                    dest?.let { String.format(java.util.Locale.US, "%.5f, %.5f", it.lat, it.lng) }.orEmpty()
+                }
+            }
+            val secondary = a.takeIf { it.isNotBlank() && !it.equals(primary, ignoreCase = true) }
+            return primary to secondary
+        }
     }
 }
