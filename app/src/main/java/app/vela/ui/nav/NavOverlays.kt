@@ -146,7 +146,7 @@ fun ManeuverBanner(
             // (via the clickable below while previewing). Placed BEFORE the clickable so key
             // events bubbling up from its focus target reach this handler; the extra
             // focusable() only exists when the clickable isn't there (one focus stop always).
-            .dpadHighlight(RoundedCornerShape(24.dp))
+            .dpadHighlight(RoundedCornerShape(12.dp))
             .onKeyEvent { ev ->
                 val previewKey = ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight
                 when {
