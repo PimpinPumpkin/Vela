@@ -123,19 +123,17 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
     return fr
 }
 
-// Note (docs/dpad.md "Known limitations"): a Compose Material secondary window — a `DropdownMenu`'s
-// Popup or an `AlertDialog` — opens with WINDOW focus but no content Compose-focused, and Compose
-// sets that content focus ONLY on the first real key event. Nothing in-app pre-places it: for the
-// DropdownMenu, requestFocus (on the item / a custom focusable child), retry-until-onFocusEvent,
-// outer-scope delayed request, FocusManager.moveFocus(Down), and synthetic KeyEvent dispatch (to
-// the popup ComposeView and its rootView, with/without a DPAD source) ALL failed; for the
-// AlertDialog, requestFocus on a TextButton AND on a directly-`.clickable` Text both failed too
-// (~10 approaches, verified on-device 2026-07-07). The ONE thing that works is a hand-built RAW
-// `Dialog` with an explicit `.focusable()` element (the photo gallery does exactly this and DOES
-// auto-focus) — Material `AlertDialog`/`DropdownMenu` don't expose that. Menus/dialogs stay stock
-// (fully navigable: OK/nav-key enters, DOWN/UP walk, OK selects, BACK closes) so touch is
-// byte-identical. Pre-highlighting them would mean replacing every Material menu/dialog with a
-// custom raw-Dialog / in-window overlay — a large change that breaks the touch-parity rule.
+// Note (docs/dpad.md): a Compose Material secondary window — a `DropdownMenu`'s Popup or an
+// `AlertDialog` — opens with WINDOW focus but no content Compose-focused, and Compose sets that
+// focus ONLY on the first real key event. Nothing in-app pre-places it (~10 approaches verified
+// failing on-device: requestFocus on the item / a custom focusable child / a TextButton / a bare
+// .clickable, retry-until-onFocusEvent, outer-scope delayed request, FocusManager.moveFocus(Down),
+// and synthetic KeyEvent dispatch to the popup ComposeView and its rootView with/without a DPAD
+// source). The ONE seam that works is a hand-built RAW `Dialog` with an explicit `.focusable()`
+// element (the photo gallery proves it). SOLVED on that seam: `VelaDialog` (ui/VelaDialog.kt)
+// replaces every AlertDialog, and `VelaMenu` (ui/VelaMenu.kt) replaces every DropdownMenu (touch
+// still gets the anchored DropdownMenu; D-pad gets a raw-Dialog chooser that auto-focuses item 0).
+// So every menu/dialog now lands already focused — see those files.
 
 /**
  * Robust auto-focus Modifier — the version to use when the target may be **off-screen** (below
