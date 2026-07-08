@@ -21,6 +21,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # Full history + tags so the release step can build a changelog from the
+          # commits since the previous release.
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -109,8 +113,21 @@ jobs:
         run: |
           VER="0.2.${{ github.run_number }}"
           cp app/build/outputs/apk/release/app-release.apk "vela-maps-v${VER}.apk"
+          # Build the changelog from the commit subjects since the previous release. Our commit
+          # subjects are written as plain-language changelog lines, so this reads as real release
+          # notes (what Obtainium shows people), not a raw hash dump.
+          PREV="$(git tag -l 'v0.2.*' --sort=-v:refname | head -n1)"
+          if [ -n "$PREV" ]; then
+            LOG="$(git log --no-merges --pretty=format:'- %s' "${PREV}..HEAD")"
+            COMPARE="**Full changelog:** https://github.com/${{ github.repository }}/compare/${PREV}...v${VER}"
+          else
+            LOG="$(git log --no-merges --pretty=format:'- %s' -n 20 HEAD)"
+            COMPARE=""
+          fi
+          [ -z "$LOG" ] && LOG="- Maintenance and internal changes"
+          NOTES="$(printf 'What'\''s changed in %s\n\n%s\n\n%s\n' "$VER" "$LOG" "$COMPARE")"
           gh release create "v${VER}" \
             --title "Vela $VER" \
             --target "$GITHUB_SHA" \
-            --generate-notes \
+            --notes "$NOTES" \
             "vela-maps-v${VER}.apk"
