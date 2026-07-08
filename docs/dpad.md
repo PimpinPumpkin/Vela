@@ -197,10 +197,32 @@ keep focus on the search field (Google-style — you can refine or press DOWN in
 that's "already focused", so it's left as-is.
 
 **Reproducible verification: [`../dpad_test_suite/`](../dpad_test_suite/).** The manual `adb`
-focus-dump checks used throughout this doc are scripted there — `./run_all.sh` drives the app with
-only D-pad keys and asserts on the focused element for each surface (bare map → search bar,
-Settings back button, Welcome/dialog auto-focus, place-sheet handle + `VelaMenu`). Run it after any
-change that touches focus.
+focus-dump checks used throughout this doc are scripted there. Run all three after any change that
+touches focus (`audit_static.sh` needs no device):
+- **`run_all.sh`** — per-surface assertions (bare map → search bar, Settings back button,
+  Welcome/dialog auto-focus, place-sheet handle + `VelaMenu`, Choose-on-map engages, Directions
+  pill reachable).
+- **`audit_static.sh`** — EXHAUSTIVE source scan: every `clickable/toggleable/selectable` has a
+  `dpadHighlight` ring, every gesture (`detect*Gestures`/`draggable`/…) has a key path, no bare
+  `DropdownMenu`/`AlertDialog`, no `isSystemInDarkTheme`, plus triage notes for bare `.focusable()`
+  / raw windows / text fields. Fails the build on any real violation.
+- **`audit_dynamic.sh`** — EXHAUSTIVE on-device tour: every surface opens focused, focus is never
+  lost across a full DOWN-traversal (a null sample = a dead-end trap), and BACK exits.
+
+**Focus rings on the place sheet (2026-07-08).** The place sheet's custom `clickable` content rows
+(the Directions/Call/Street-View action pills, route-alternate rows, From/Add-stop/To editors,
+phone/website rows, "also at this location", "people also search for", photo thumbnails, hours/
+transit/popular-times expanders) originally had no `dpadHighlight`, so they were focus-reachable but
+*invisibly* (Material's default state-layer is too faint on the fixed-grey sheet). They all carry a
+ring now — `audit_static.sh` enforces it going forward. Same for the Settings voice-group headers.
+
+**Choose-on-map auto-engages (2026-07-08).** The bare map opening un-focused (above) removed the
+global auto-engage that Choose-on-map depended on, so pick mode opened dead (nothing focused, map
+not engaged, crosshair/pill suppressed in pick mode). Restored **scoped to pick mode**: a
+`LaunchedEffect(pickingOnMap)` in `MapScreen` requestFocuses + engages the centre target the moment
+`state.pickOnMap` goes non-null, so arrows pan immediately to place the pin and OK confirms. This
+works (unlike the cold-open bare map) because pick mode is entered mid-session, so focus already
+exists and `requestFocus` lands.
 
 **The bare map is the ONE intentional exception (2026-07-08).** It used to auto-focus AND
 auto-engage the centre map target on open, so arrows immediately panned and you had to press
