@@ -49,6 +49,8 @@
     <string name="settings_transit_layer_hint">Tekent trein- en metrolijnen in kleur op de kaart, zodat je het spoor makkelijk volgt. Gebruikt de open kaartgegevens die al in de tegels zitten, zonder netwerk.</string>
     <string name="settings_read_all_reviews">Knop “Alle recensies lezen”</string>
     <string name="settings_read_all_reviews_hint">Recensies in het plaatsvenster zijn altijd Vela\'s eigen soepele native lijst. Dit voegt een knop “Alle recensies lezen” toe die Googles volledige recensiepagina SCHERMVULLEND opent — elke recensie (niet alleen de eerste ~50), Googles serverzijdige zoekfunctie, en videorecensies spelen af. Trackers/bakens worden geblokkeerd, maar Googles pagina draait wel in de app. Uit = alleen native lijst, geen Google-pagina voor recensies.</string>
+    <string name="settings_buildings_3d">3D-gebouwen</string>
+    <string name="settings_buildings_3d_hint">Verhoogde gebouwvormen bij ver inzoomen. Uitzetten kan het slepen soepeler maken op oudere telefoons; de platte contouren blijven.</string>
     <string name="settings_show_reviews">Reviews tonen</string>
     <string name="settings_show_reviews_hint">Uit = plaatspagina\'s tonen geen reviews en Vela haalt ze ook nooit op.</string>
     <string name="settings_load_photos">Foto\'s laden</string>
@@ -390,4 +392,15 @@
     <string name="mapscreen_your_destination">uw bestemming</string>
     <string name="mapvm_resume_waiting_gps">Wachten op GPS om de navigatie te hervatten…</string>
     <string name="mapvm_resume_failed">Kon navigatie niet hervatten</string>
+    <string name="update_available_title">Vela %1$s is beschikbaar</string>
+    <string name="update_downloading">Downloaden… %1$d%%</string>
+    <string name="update_later">Niet nu</string>
+    <string name="update_install">Bijwerken</string>
+    <string name="update_download_failed">Downloaden van de update is mislukt. Probeer het later opnieuw.</string>
+    <string name="settings_update_auto">Bij het starten op updates controleren</string>
+    <string name="settings_update_auto_hint">Kijkt ongeveer één keer per dag naar de nieuwste GitHub-release en biedt die aan als die nieuwer is dan deze build. Installeren gaat via de normale Android-installer. Werk je al bij via Obtainium, dan kun je dit uitzetten.</string>
+    <string name="settings_update_check_now">Op updates controleren</string>
+    <string name="settings_update_checking">Controleren…</string>
+    <string name="settings_update_found">Update beschikbaar! Ga terug naar de kaart om te installeren.</string>
+    <string name="settings_update_none">Je hebt de nieuwste versie.</string>
 </resources>
