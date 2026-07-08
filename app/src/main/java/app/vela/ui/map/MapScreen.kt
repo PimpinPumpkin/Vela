@@ -159,6 +159,8 @@ import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadHighlight
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.rememberDpadFirstDevice
+import app.vela.ui.VelaMenu // D-pad-first menu (docs/dpad.md)
+import app.vela.ui.item
 
 // Basemap provider. Keyless OpenFreeMap (loaded by URL — the setup that always
 // worked) is active; POI markers + colours are applied at runtime. Flip to true
@@ -1712,15 +1714,9 @@ private fun ShortcutRow(
                 IconButton(onClick = { menu = true }) {
                     Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mapscreen_edit_shortcut, kind.label))
                 }
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.mapscreen_menu_change)) },
-                        onClick = { menu = false; onAssign(kind) },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.mapscreen_menu_remove)) },
-                        onClick = { menu = false; onClear(kind) },
-                    )
+                VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                    item(stringResource(R.string.mapscreen_menu_change)) { menu = false; onAssign(kind) }
+                    item(stringResource(R.string.mapscreen_menu_remove)) { menu = false; onClear(kind) }
                 }
             }
         }
@@ -1751,19 +1747,10 @@ private fun SavedRow(
             IconButton(onClick = { menu = true }) {
                 Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mapscreen_saved_place_options))
             }
-            DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.mapscreen_set_as_home)) },
-                    onClick = { menu = false; onPinAs(place, ShortcutKind.HOME) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.mapscreen_set_as_work)) },
-                    onClick = { menu = false; onPinAs(place, ShortcutKind.WORK) },
-                )
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.mapscreen_menu_remove)) },
-                    onClick = { menu = false; onRemove(place) },
-                )
+            VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                item(stringResource(R.string.mapscreen_set_as_home)) { menu = false; onPinAs(place, ShortcutKind.HOME) }
+                item(stringResource(R.string.mapscreen_set_as_work)) { menu = false; onPinAs(place, ShortcutKind.WORK) }
+                item(stringResource(R.string.mapscreen_menu_remove)) { menu = false; onRemove(place) }
             }
         }
     }
