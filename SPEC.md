@@ -389,6 +389,10 @@ itself shows the traffic, not the whole map.
   windowed projection in `projectAlong` — not global-nearest) so "remaining" and "distance to
   next turn" stay **along-route** and honest on routes that pass near themselves
   (switchback / cloverleaf / out-and-back); off-route it holds rather than snapping to a far leg.
+- **Place-content toggles**: Settings → Map, `ShowReviews` / `LoadPhotos` holders
+  (default on). Off gates BOTH the fetch (`fetchReviews`/`fetchPhotos` in the VM) and the
+  render (review tab / photo strip in `PlaceSheet`), so off means no scrape traffic at
+  all, not just hidden UI.
 - **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
   nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
   **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),

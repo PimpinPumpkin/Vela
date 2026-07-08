@@ -49,6 +49,10 @@
     <string name="settings_transit_layer_hint">Trace les lignes de train et de métro en couleur sur la carte, pour suivre le rail facilement. Utilise les données ouvertes déjà présentes dans les tuiles, sans réseau.</string>
     <string name="settings_read_all_reviews">Bouton « Lire tous les avis »</string>
     <string name="settings_read_all_reviews_hint">Les avis dans la fiche du lieu sont toujours affichés dans la liste native fluide de Vela. Ceci ajoute un bouton « Lire tous les avis » qui ouvre la page complète des avis Google en PLEIN ÉCRAN — tous les avis (pas seulement les ~50 premiers), la recherche côté serveur de Google et la lecture des avis vidéo. Les traqueurs et balises sont bloqués, mais la page de Google s\'exécute alors dans l\'application. Désactivé = liste native uniquement, aucune page Google pour les avis.</string>
+    <string name="settings_show_reviews">Afficher les avis</string>
+    <string name="settings_show_reviews_hint">Désactivé = les fiches de lieux n\'affichent aucun avis et Vela ne les récupère jamais.</string>
+    <string name="settings_load_photos">Charger les photos</string>
+    <string name="settings_load_photos_hint">Désactivé = les fiches de lieux n\'affichent aucune photo et rien n\'est téléchargé. Économise les données.</string>
     <string name="settings_offline">Hors ligne</string>
     <string name="settings_offline_hint">Utiliser la carte sans réseau nécessite deux éléments — les TUILES de carte que vous voyez et le RÉSEAU ROUTIER qui vous guide. Enregistrer une zone de carte récupère les deux pour cet endroit ; la liste des régions ci-dessous ajoute le réseau routier partout où vous voyagez.</string>
     <string name="settings_offline_map_area">Zone de carte</string>

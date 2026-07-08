@@ -1091,6 +1091,9 @@ class MapViewModel @Inject constructor(
      *  Sets [MapState.photosLoading] while in flight so the sheet can show "more coming".
      *  Best-effort: an empty/failed scrape leaves the preview untouched (no regression). */
     private fun fetchPhotos(p: Place) {
+        // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
+        // request); the sheet also hides the photo strip, so no loading flag either.
+        if (!app.vela.ui.LoadPhotos.on.value) return
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         // Only flash the loading shimmer for places LIKELY to have photos — a rated/reviewed
@@ -1131,6 +1134,8 @@ class MapViewModel @Inject constructor(
     private var reviewsJob: Job? = null
 
     private fun fetchReviews(p: Place, force: Boolean = false) {
+        // "Show reviews" off: no review section is rendered, so don't scrape either.
+        if (!app.vela.ui.ShowReviews.on.value) return
         // Supersede any in-flight scrape: the fetcher serializes on a Mutex, so an abandoned
         // 40 s Taco Bell grind would otherwise make the NEXT place's reviews queue behind it
         // (~90 s worst case to first review). Cancelling frees the mutex immediately, and this

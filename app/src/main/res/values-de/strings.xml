@@ -49,6 +49,10 @@
     <string name="settings_transit_layer_hint">Zeichnet Zug- und U-Bahn-Linien farbig auf die Karte, damit man Schienen leicht verfolgen kann. Nutzt die offenen Kartendaten, die schon in den Kacheln stecken, ohne Netz.</string>
     <string name="settings_read_all_reviews">Schaltfläche „Alle Rezensionen lesen“</string>
     <string name="settings_read_all_reviews_hint">Rezensionen im Ortsfenster sind immer Velas eigene, flüssige native Liste. Dies fügt eine Schaltfläche „Alle Rezensionen lesen“ hinzu, die Googles vollständige Rezensionsseite im VOLLBILD öffnet – jede Rezension (nicht nur die ersten ~50), Googles serverseitige Suche und abspielbare Video-Rezensionen. Tracker/Beacons werden blockiert, aber Googles Seite läuft dabei in der App. Aus = nur native Liste, keine Google-Seite für Rezensionen.</string>
+    <string name="settings_show_reviews">Bewertungen anzeigen</string>
+    <string name="settings_show_reviews_hint">Aus = Orte zeigen keine Bewertungen, und Vela ruft sie auch nie ab.</string>
+    <string name="settings_load_photos">Fotos laden</string>
+    <string name="settings_load_photos_hint">Aus = Orte zeigen keine Fotos, und es wird nichts dafür heruntergeladen. Spart Datenvolumen.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Für die Kartennutzung ohne Signal braucht es zwei Dinge – die KARTEN-Kacheln, die Sie sehen, und das STRASSENNETZ, das Sie leitet. Das Speichern eines Kartenbereichs holt beides für diesen Ort; die Regionsliste unten fügt das Straßennetz für Ihr Reiseziel hinzu.</string>
     <string name="settings_offline_map_area">Kartenbereich</string>
