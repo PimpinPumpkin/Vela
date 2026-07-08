@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Descargar la zona que estás viendo</string>
     <string name="settings_offline_download_viewport_hint">Guarda los mosaicos abiertos de la zona del mapa que tenías en pantalla por última vez, y la región de rutas que la rodea, para que se muestre y navegue más tarde sin red. La búsqueda sigue necesitando conexión.</string>
     <string name="settings_offline_no_areas">Aún no hay zonas guardadas.</string>
+    <string name="settings_offline_addresses_missing">Las áreas guardadas antes de esta actualización no incluyen datos de direcciones. Actualízalas para buscar direcciones y crear rutas sin conexión.</string>
+    <string name="settings_offline_addresses_update">Actualizar áreas guardadas</string>
     <string name="settings_offline_delete_area">Eliminar esta zona sin conexión</string>
     <string name="settings_routing_regions">Regiones de rutas</string>
     <string name="settings_routing_regions_hint">La red de carreteras de toda una región (estado, país…), para que la navegación giro a giro funcione sin conexión en cualquier lugar dentro de ella: obtén la de donde viajes. Con conexión se sigue usando el tráfico en directo; esto es la alternativa sin señal.</string>

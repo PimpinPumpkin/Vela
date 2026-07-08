@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Transferir a área que está a ver</string>
     <string name="settings_offline_download_viewport_hint">Guarda os mosaicos abertos da área do mapa que teve no ecrã por último — e a região de percursos à sua volta — para que renderize e navegue mais tarde sem rede. A pesquisa continua a precisar de ligação.</string>
     <string name="settings_offline_no_areas">Ainda sem áreas guardadas.</string>
+    <string name="settings_offline_addresses_missing">As áreas guardadas antes desta atualização não incluem dados de moradas. Atualize-as para pesquisar moradas e traçar rotas offline.</string>
+    <string name="settings_offline_addresses_update">Atualizar áreas guardadas</string>
     <string name="settings_offline_delete_area">Eliminar esta área offline</string>
     <string name="settings_routing_regions">Regiões de percursos</string>
     <string name="settings_routing_regions_hint">A rede viária de toda uma região (estado, país…), para que a navegação curva a curva funcione offline em qualquer ponto dentro dela — obtenha por onde estiver a viajar. Online continua a usar o trânsito em direto; isto é a alternativa sem sinal.</string>
