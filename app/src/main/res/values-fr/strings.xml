@@ -315,6 +315,7 @@
     <string name="welcome_donate_dismiss">Peut-être plus tard</string>
     <string name="search_close_cd">Fermer la recherche</string>
     <string name="search_placeholder">Rechercher</string>
+    <string name="search_offline">Hors ligne</string>
     <string name="search_clear_cd">Effacer la recherche</string>
     <string name="search_settings_cd">Paramètres</string>
     <string name="mapvm_shortcut_set">%1$s défini sur %2$s</string>
@@ -350,6 +351,7 @@
     <string name="mapvm_offline_routing_failed">Échec du téléchargement du routage hors ligne</string>
     <string name="mapvm_offline_routing_removed">Routage hors ligne supprimé</string>
     <string name="mapvm_saved_places_offline">%1$d lieux enregistrés pour la recherche hors ligne</string>
+    <string name="mapvm_saved_addresses_offline">%1$d adresses et %2$d rues enregistrées pour l\'itinéraire hors ligne</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Arrivé</string>
     <string name="navservice_notif_title_navigating">Navigation en cours</string>
     <string name="navservice_notif_title_in_distance">Dans %1$s · %2$s</string>
