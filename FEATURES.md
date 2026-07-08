@@ -12,7 +12,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Routing & traffic](#routing--traffic) | OSRM turn-by-turn (primary) + Google traffic ETA & jam reroute; alternates; **offline on-device routing** (135-region world catalog) |
 > | [Navigation](#navigation) | Maneuver banner with a real lane diagram + highway shields, spoken + haptic guidance, speedometer, re-center, arrival summary |
 > | [Location](#location-degoogled) | AOSP LocationManager + rotation-vector heading — no GMS/Fused |
-> | [Offline](#offline) | Downloadable basemap tiles + OSM POI index + **address geocoder (typed address → route, no signal)** + routing graphs + open building-footprint overlay (Microsoft, ODbL); combined map+routing area download; quiet offline indicator (no banner) |
+> | [Offline](#offline) | Downloadable basemap tiles + OSM POI index + **address geocoder (typed address → route, no signal)** + **whole-state place packs (Organic-Maps-style offline search)** + routing graphs + open building-footprint overlay (Microsoft, ODbL); combined map+routing area download; quiet offline indicator (no banner) |
 > | [Platform](#platform--distribution) | GrapheneOS/no-GMS, CI-signed `v0.2.<run>` releases, Obtainium |
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices — hot-fix drift without an app update |
 
@@ -733,6 +733,30 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   areas saved before this feature have tiles + POIs but no address data. Settings → Offline shows a one-tap
   "Update saved areas" card when you have saved areas but the index is empty; it re-fetches the address/street
   data for every saved area so you don't have to re-download each one by hand. Localized in all 11 languages.
+- ✅ **Whole-region offline place packs — Organic-Maps-style state-wide search (2026-07-07, device-verified).**
+  The gap this closes: Organic Maps finds "pel meni" in Fremont from anywhere in Washington offline, because its
+  download carries the whole state's POI index; Vela's offline search only knew the small viewport areas you'd
+  saved. Now **downloading a state (routing region) also pulls its PLACE PACK** — a per-region SQLite database
+  baked by CI (`scripts/build-poi-region.sh` + `poipack_build.py`, workflow `poi-packs.yml`, hosted on the
+  `poi-packs` release like the routing graphs) from the same Geofabrik OSM extract, holding the entire region's
+  **named POIs (with address/phone/website/hours), address points and street names**. The pack schema is
+  normalized (street names deduped into an int-keyed lookup) so a state stays reasonable: Washington — one of
+  the heaviest US states, 163k POIs + 2.8M addresses + 1.2M street points — is **143 MB zipped** (was 761 MB
+  naive). `OfflinePoiStore`/`OfflineAddressStore` query every installed pack alongside their own index
+  (`OfflinePacks`), and the normalized shape keeps whole-state queries fast (street matching scans ~90k distinct
+  names, never the 2.8M-row table; the big tables are hit through sid/housenumber/lat indexes). Packs ride the
+  routing region: downloaded after its graph, deleted with it; regions installed before packs existed get a
+  **"Get places"** button on their Settings row (and a friendly "no pack published yet" note while the catalog
+  builds out). **Device-verified end-to-end (wifi off):** searching "pel meni" from Silver Firs returned
+  Pel'Meni Dumpling Tzar · 17.9 mi · 3518 Fremont Place North (plus the Capitol Hill and Bellingham ones),
+  ranked by relevance then distance, and its place sheet opened with address/hours/phone/website — all OSM,
+  no signal. Typed-address geocoding also gains the whole state (the pack's addr/street tables feed the same
+  layered geocoder). Localized in all 11 languages.
+- ✅ **State downloads show a heads-up progress card (2026-07-07, device-verified).** A routing-region download
+  (and the place pack that follows it) now shows the same map heads-up progress card the Vela-voice download
+  gets — "Downloading Washington (state) routing · N%" then "Saving Washington (state) places for offline
+  search · N%" with a live bar — so a Settings-started state download stays visible after backing out to the
+  map instead of running invisibly.
 - ✅ **Quiet offline indicator, no banner (2026-07-07).** When there's no connection, instead of a card hanging
   over the map Vela shows two subtle cues: a greyed **globe-with-a-line-through-it icon + "Offline"** in the
   search bar (before the settings gear, only on the bare map), and a small **globe-slash chip tucked just under

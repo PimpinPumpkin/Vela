@@ -1,0 +1,119 @@
+# Build offline PLACE packs (whole-region POI/address SQLite, Organic-Maps-style offline search) for
+# many regions in parallel and publish them to the `poi-packs` release. Packs share the routing
+# catalog's region ids (tools/routing-regions.json) — the app pulls a region's pack automatically
+# when its routing graph is downloaded.
+#
+# Run from the Actions tab → "Build offline place packs" → pick a `group` or pass explicit `ids`.
+# Race-safety is the routing-graphs pattern: each region builds in its own matrix job and uploads
+# ONLY its own <id>.zip + a manifest *entry* artifact; one final `merge` job folds every entry into
+# poi-pack-manifest.json in a single upload.
+name: Build offline place packs
+
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: "Region group to build (ignored if 'ids' is set)"
+        type: choice
+        options: [us, canada, europe, oceania, asia, south-america, central-america, africa]
+        default: us
+      ids:
+        description: "Optional: space/comma-separated region ids (e.g. 'washington oregon'). Overrides 'group'."
+        type: string
+        default: ""
+      skip_big:
+        description: "Skip large (big:true) regions for a quick run"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # create/upload assets on the poi-packs release
+
+# Serialize runs so two dispatches never race their merge jobs against poi-pack-manifest.json.
+concurrency:
+  group: poi-packs-manifest
+  cancel-in-progress: false
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+      count: ${{ steps.sel.outputs.count }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          GROUP: ${{ inputs.group }}
+          IDS: ${{ inputs.ids }}
+          SKIP_BIG: ${{ inputs.skip_big }}
+        run: |
+          ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
+            [ .regions[]
+              | select( if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null else .group == $group end )
+              | select( ($skipBig | not) or (.big != true) )
+              | {id, name, pbf_url} ]
+          ' tools/routing-regions.json)
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GROUP' ids='$IDS'"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap — pick a smaller group or ids"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+          echo "count=$n" >> "$GITHUB_OUTPUT"
+      - name: Ensure the catalog release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view poi-packs --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create poi-packs --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Offline place packs" \
+              --notes "Prebuilt SQLite place/address packs (OpenStreetMap, ODbL) for Vela offline search. Data assets, not a code release."
+
+  build:
+    needs: prep
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false # one bad region must not kill the rest of the batch
+      max-parallel: 12
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool jq zip python3
+      - name: Build ${{ matrix.id }} + upload zip + emit entry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+          MANIFEST_MODE: emit
+          ENTRY_OUT: ${{ matrix.id }}.json
+        run: bash scripts/build-poi-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.pbf_url }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.id }}
+          path: ${{ matrix.id }}.json
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: ${{ !cancelled() }} # merge whatever succeeded, even if some regions failed
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - uses: actions/download-artifact@v4
+        with:
+          path: entries
+          pattern: entry-*
+          merge-multiple: true
+      - name: Merge entries into poi-pack-manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(entries/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          echo "merging ${#files[@]} entr(y/ies)"
+          bash scripts/merge-poi-manifest.sh entries

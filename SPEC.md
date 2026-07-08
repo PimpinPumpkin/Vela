@@ -227,6 +227,19 @@ GitHub-Actions build matrix → `routing-manifest.json`). The app downloads regi
 region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
 must fit one region's monolithic graph; cross-region falls online.
 
+**Offline place packs (whole-region search, DONE 2026-07-07).** Downloading a state's routing region also
+pulls its PLACE PACK — a CI-baked SQLite db (`scripts/build-poi-region.sh` from the same Geofabrik PBF the
+graph uses; workflow `poi-packs.yml`; release `poi-packs`) holding the entire region's named OSM POIs
+(address/phone/website/hours), address points and street names, so offline search/geocoding covers the whole
+state (Organic-Maps-style), not just saved map areas. The pack schema is normalized (street names deduped
+into an int-keyed `streetname` table; `addr`/`streetpt` reference them by sid) — Washington is 143 MB zipped
+for 163k POIs + 2.8M addresses — and queries match street names first (~90k-row scan) so the million-row
+tables are only ever hit through indexes. `OfflinePacks` (:core) registers the downloaded dbs;
+`OfflinePoiStore`/`OfflineAddressStore` query them alongside their own index. Packs install after the
+region's graph, delete with it, and show the same heads-up progress card as the voice download; graphs
+installed before packs existed get a "Get places" button. Device-verified: offline "pel meni" from
+Snohomish County → Pel'Meni Dumpling Tzar, Fremont, with address.
+
 **Offline address geocoding (on-device, DONE 2026-07-07).** So an arbitrary typed street address routes with
 no signal, not just addresses that are an indexed POI. Downloading a map area builds a SQLite forward geocoder
 (`core/data/OfflineAddressStore`) from keyless Overpass (`OverpassPois.fetchAddresses`/`fetchStreets`) over a
