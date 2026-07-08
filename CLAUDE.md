@@ -149,7 +149,10 @@ genuinely needs no doc edit, say why in the commit.
   gesture and the sheet agree) ↔ **PEEK** (~0.42 list cap) ↔ **EXPANDED** (~0.82, fills the screen).
   Handle TAP steps up; drag UP grows a detent, DOWN shrinks one; the nested-scroll connection steps
   ONE detent per gesture (re-armed in `onPreFling`) with an up-drag into the list expanding — a hard
-  fling can cross two detents, which matches Google. There is **NO "hide results" button**. **Filter
+  fling can cross two detents, which matches Google. **BACK also steps one detent** — `resultsExpanded`
+  is HOISTED to MapScreen so the BackHandler does expanded → peek → minimized instead of jumping to
+  the bar; and the sheet modifier carries `statusBarsPadding()` so the expanded handle pill stops
+  below the clock / camera cutout instead of sliding under it (both user 2026-07-09). There is **NO "hide results" button**. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
