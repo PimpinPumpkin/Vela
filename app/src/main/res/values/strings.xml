@@ -132,6 +132,8 @@
     <string name="settings_voice_lib_empty_hint">Download a natural on-device voice for spoken directions. Pick one below. The ★ voices sound the most like a maps navigator (Lessac and HFC are closest to Google). One-time download; wifi recommended.</string>
     <string name="settings_voice_lib_lang_hint">Your app language is %1$s. Download a %2$s voice below so spoken directions match (an English voice would mispronounce %3$s street names).</string> <!-- format -->
     <string name="settings_voice_search">Search voices</string>
+    <string name="settings_voice_show_more">Show %1$d more</string>
+    <string name="settings_voice_show_less">Show less</string>
     <string name="settings_voice_this_voice">this voice</string>
     <string name="settings_voice_remove_title">Remove %1$s?</string> <!-- format -->
     <string name="settings_voice_remove_body">This is your only Vela voice. Spoken directions fall back to a system text-to-speech engine (or go silent if none is installed) until you download another.</string>

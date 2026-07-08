@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Загрузите естественный голос на устройство для голосовых подсказок — выберите один из списка ниже. Голоса, отмеченные ★, звучат наиболее похоже на навигатор (Lessac и HFC ближе всего к Google). Разовая загрузка; рекомендуется Wi-Fi.</string>
     <string name="settings_voice_lib_lang_hint">Язык приложения — %1$s. Загрузите голос (%2$s) ниже, чтобы голосовые подсказки совпадали (английский голос неправильно произнёс бы названия улиц (%3$s)).</string>
     <string name="settings_voice_search">Поиск голосов</string>
+    <string name="settings_voice_show_more">Показать ещё %1$d</string>
+    <string name="settings_voice_show_less">Свернуть</string>
     <string name="settings_voice_this_voice">этот голос</string>
     <string name="settings_voice_remove_title">Удалить %1$s?</string>
     <string name="settings_voice_remove_body">Это ваш единственный голос Vela. Голосовые подсказки перейдут на системный движок синтеза речи (или замолчат, если ни один не установлен), пока вы не загрузите другой.</string>
