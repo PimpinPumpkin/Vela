@@ -754,6 +754,7 @@ fun MapScreen(
                 onWalkDirections = vm::walkDirections,
                 onStartTransit = vm::startTransitNav,
                 onClose = vm::clearRoute,
+                onTimeSelected = vm::setDirectionsTime,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 

@@ -437,4 +437,5 @@
     <string name="transit_nav_from">from %1$s</string> <!-- format -->
     <string name="transit_nav_get_off">Get off at %1$s</string> <!-- format -->
     <string name="transit_nav_next">Next</string>
+    <string name="place_last_available">Last available</string>
 </resources>
