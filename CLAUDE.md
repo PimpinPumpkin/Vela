@@ -541,10 +541,18 @@ genuinely needs no doc edit, say why in the commit.
   counts `count()`+`streetCount()` so a street-only suburb isn't misreported "no data". Big Overpass bodies → the
   no-call-timeout `offlineDownloadHttp` (same rule as the graph/overlay downloads). The result Place routes
   through the normal GraphHopper offline engine. Device-verified wifi-off: "5601 156th Street Southeast" → *5 min
-  · 1.5 mi via Silver Firs Drive*. **Quiet offline indicator (no banner):** `MapUiState.offline` (a reactive
+  · 1.5 mi via Silver Firs Drive*. **Reverse-geocode backfill for offline POIs:** most US chains have no OSM
+  `addr:*` (Applebee's came back as bare "WA"), so `MapViewModel.backfillOfflineAddress` — on selecting a place
+  while offline, when its address has no house number (`.none { isDigit() }`) — calls
+  `OfflineAddressStore.reverseGeocode(loc)` (nearest mapped house ≤60 m, else nearest street ≤150 m, bounded
+  lat/lng box scan) and fills `selected.address` if still selected. Device-verified: Applebee's offline →
+  "134th Place Southeast". **Quiet offline indicator (no banner):** `MapUiState.offline` (a reactive
   `ConnectivityManager` default-network callback, `observeConnectivity`, fails safe to online) drives a greyed
-  globe-slash + "Offline" in `SearchBar` (bare map only) and a globe-slash chip on the basemap
-  (`MapScreen`) — the old "Offline results" status line is gone.
+  globe-slash + "Offline" in `SearchBar` (bare map only) and a globe-slash chip **inline under the category
+  chips** in `MapScreen`'s top Column (gated to the same bare-map state the chips show in, so it never trails a
+  results list) — the old "Offline results" status line and the old bottom-left chip are gone. **The directions
+  ETA subtitle** (`PlaceSheet.DepartTimeChooser`) only says "current traffic" when `route.hasLiveTraffic`; an
+  offline (traffic-less) route shows the arrival time with no traffic note.
 - **Open building-footprint overlay (`app/offline/OverlayTileStore` + `VelaMapView`, DONE 2026-07-04,
   device-verified in Silver Firs).** Fills the map's building gaps where OSM is thin (a suburb the
   Microsoft→OSM import never reached) with **Microsoft US Building Footprints (ODbL)**. Off-device, CI bakes

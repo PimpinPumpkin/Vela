@@ -105,6 +105,51 @@ class OfflineAddressStore @Inject constructor(
         .rawQuery("SELECT COUNT(*) FROM addr", null)
         .use { if (it.moveToFirst()) it.getInt(0) else 0 }
 
+    /**
+     * Reverse-geocode a point to a display address, so an offline POI that OSM never tagged with an
+     * `addr:*` (most US chain locations) still shows *something* Google-like. Prefers the nearest mapped
+     * house within [REV_ADDR_M] (usually the POI's own building), else falls back to the nearest street
+     * name within [REV_STREET_M] ("on 164th Street SE"), else null. Bounded by a small lat/lng box so it
+     * scans only nearby rows, not the whole index.
+     */
+    fun reverseGeocode(loc: LatLng): String? {
+        val box = arrayOf(
+            (loc.lat - REV_BOX_DEG).toString(), (loc.lat + REV_BOX_DEG).toString(),
+            (loc.lng - REV_BOX_DEG).toString(), (loc.lng + REV_BOX_DEG).toString(),
+        )
+        val db = helper.readableDatabase
+        var bestAddr: Pair<Double, String>? = null
+        db.rawQuery(
+            "SELECT housenumber,street,city,lat,lng FROM addr WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?",
+            box,
+        ).use { c ->
+            while (c.moveToNext()) {
+                val d = loc.distanceTo(LatLng(c.getDouble(3), c.getDouble(4)))
+                if (d <= REV_ADDR_M && (bestAddr == null || d < bestAddr!!.first)) {
+                    val label = listOfNotNull(
+                        listOfNotNull(c.getString(0), c.getString(1)).joinToString(" ").ifBlank { null },
+                        c.getString(2),
+                    ).joinToString(", ").ifBlank { null }
+                    if (label != null) bestAddr = d to label
+                }
+            }
+        }
+        bestAddr?.let { return it.second }
+        var bestStreet: Pair<Double, String>? = null
+        db.rawQuery(
+            "SELECT street,lat,lng FROM street WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?",
+            box,
+        ).use { c ->
+            while (c.moveToNext()) {
+                val d = loc.distanceTo(LatLng(c.getDouble(1), c.getDouble(2)))
+                if (d <= REV_STREET_M && (bestStreet == null || d < bestStreet!!.first)) {
+                    c.getString(0)?.let { bestStreet = d to it }
+                }
+            }
+        }
+        return bestStreet?.second
+    }
+
     fun streetCount(): Int = helper.readableDatabase
         .rawQuery("SELECT COUNT(*) FROM street", null)
         .use { if (it.moveToFirst()) it.getInt(0) else 0 }
@@ -231,6 +276,10 @@ class OfflineAddressStore @Inject constructor(
         )
 
     companion object {
+        private const val REV_BOX_DEG = 0.0016 // ~180 m lat/lng box for the reverse-geocode nearest scan
+        private const val REV_ADDR_M = 60.0    // accept a mapped house this close as the POI's address
+        private const val REV_STREET_M = 150.0 // else fall back to a street name this close
+
         // A query is address-like if it starts with a house number or names a street type. Used to decide
         // whether to run the geocoder alongside the POI search (so "coffee" doesn't hit the address table).
         fun looksLikeAddress(query: String): Boolean {

@@ -720,10 +720,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Silver Firs Drive* from on-device GraphHopper; an arbitrary number ("13820 60th Avenue Southeast") resolved
   through the fallback layers too. Names/streets themselves are never translated (data). Routing still works to
   anything else you can put on the map (offline search result, long-pressed pin, Choose-on-map).
+  **Offline POIs now show an address (2026-07-07).** Most US chains have no `addr:*` in OSM (Applebee's came
+  back as bare "WA"), so an offline place sheet showed no address. Opening an offline POI with no real street
+  now **reverse-geocodes its location against the same on-device index** (`OfflineAddressStore.reverseGeocode`):
+  the nearest mapped house within 60 m (usually the POI's own building), else the nearest street name within
+  150 m. Device-verified: Applebee's offline now shows "134th Place Southeast" (the street it sits on) plus its
+  OSM phone/website/hours.
+  **No misleading "current traffic" offline (2026-07-07).** The directions ETA subtitle only says "current
+  traffic" when the route actually carries a live in-traffic ETA; an offline GraphHopper route (or any
+  traffic-less route) shows the arrival time with no traffic note instead of a false "current traffic".
 - ✅ **Quiet offline indicator, no banner (2026-07-07).** When there's no connection, instead of a card hanging
   over the map Vela shows two subtle cues: a greyed **globe-with-a-line-through-it icon + "Offline"** in the
-  search bar (before the settings gear, only on the bare map), and a small **globe-slash chip on the basemap**
-  (bottom-left). Driven by a reactive `ConnectivityManager` default-network callback (`MapUiState.offline`),
+  search bar (before the settings gear, only on the bare map), and a small **globe-slash chip tucked just under
+  the category chips**, next to the search box. Driven by a reactive `ConnectivityManager` default-network callback (`MapUiState.offline`),
   seeded on launch and updated on every network change (fails safe to "online"). The old "Offline results"
   status line was removed — these two cues already say it. Device-verified in both the search bar and on the map.
   **Graceful when there's nothing to show (2026-07-07):** searching with no connection (or on a
