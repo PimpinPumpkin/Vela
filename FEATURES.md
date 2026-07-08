@@ -17,6 +17,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices — hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
+  disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
+  transit lines, 3D buildings), then a new **Place pages** section (Show reviews, the "Read all reviews"
+  button, Load photos), then Navigation, then Voice right after it (voice serves navigation), then
+  Offline and the rest. The four stacked vibrate-on-turns switches became one row of chips, one per
+  travel mode. And the in-drive UI got a facelift: the maneuver banner and the bottom bar are now
+  soft-cornered floating cards with real shadows, a bigger turn glyph, a bolder distance, a heavier
+  road name, and filled tonal buttons instead of thin outlined circles. Verified in a simulated drive.
 - ✅ **Zoomed-in pan smoothness (2026-07-08).** Three targeted trims for the "stutters when zoomed right in"
   report: (1) the scale bar no longer recomposes every pan frame — the per-frame camera listener only pushes
   a new value when it changes over 1%, which is when the drawn bar could actually differ; (2) house numbers
