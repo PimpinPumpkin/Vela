@@ -228,6 +228,9 @@
     <string name="mapscreen_choose_set_stop">Imposta tappa</string>
     <string name="mapscreen_destination">Destinazione</string>
     <string name="mapscreen_center_on_my_location">Centra sulla mia posizione</string>
+    <string name="mapscreen_zoom_in">Ingrandisci</string>
+    <string name="mapscreen_zoom_out">Riduci</string>
+    <string name="mapscreen_dpad_engage">OK: muovi la mappa</string>
     <string name="mapscreen_stop_replay">Interrompi riproduzione</string>
     <string name="mapscreen_psds_tip_title">Blocco GPS lento?</string>
     <string name="mapscreen_psds_tip_body">Attiva PSDS in Impostazioni → Posizione per un blocco molto più rapido (su GrapheneOS passa attraverso il loro proxy).</string>

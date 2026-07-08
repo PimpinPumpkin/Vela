@@ -193,6 +193,7 @@ fun VelaMapView(
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
+    dpadController: MapDpadController? = null, // key-driven pan/zoom/select for D-pad-only devices (docs/dpad.md)
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -223,6 +224,7 @@ fun VelaMapView(
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val viewport = rememberUpdatedState(onViewport)
+    val dpadHolder = rememberUpdatedState(dpadController)
     val gestureMove = remember { booleanArrayOf(false) }
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
     val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
@@ -243,7 +245,21 @@ fun VelaMapView(
     // otherwise nuke a just-set pinch zoom, snapping it back to auto a beat later.
     LaunchedEffect(navMode) { if (!navMode) navUserZoom[0] = Double.NaN }
     remember { MapLibre.getInstance(context) }
-    val mapView = remember { MapView(context).apply { onCreate(null) } }
+    // D-pad-only operation (docs/dpad.md): MapLibre's MapView calls requestFocus() on
+    // itself and overrides onKeyDown to handle hardware D-pad keys (DPAD_CENTER = zoom in,
+    // arrows = scroll). On a keypad phone it therefore SWALLOWS every D-pad key before
+    // Compose focus ever sees it — the "literally nothing happens with the D-pad" bug.
+    // We drive the map through MapDpadController instead, so make the MapView (and its
+    // surface child) non-focusable, unconditionally: touch gestures don't need view focus,
+    // so nothing is lost, and key events now flow to the Compose focus system.
+    val mapView = remember {
+        MapView(context).apply {
+            onCreate(null)
+            isFocusable = false
+            isFocusableInTouchMode = false
+            descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        }
+    }
 
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
     var styleRef by remember { mutableStateOf<Style?>(null) }
@@ -558,6 +574,13 @@ fun VelaMapView(
     }
 
     AndroidView(factory = { mapView }, modifier = modifier) { mv ->
+        // Re-assert non-focusability each pass — MapLibre re-enables it on surface
+        // (re)creation, which would let it eat D-pad keys again (docs/dpad.md).
+        if (mv.isFocusable) {
+            mv.isFocusable = false
+            mv.isFocusableInTouchMode = false
+            mv.descendantFocusability = android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS
+        }
         if (mapRef == null) {
             mv.getMapAsync { map ->
                 map.uiSettings.isLogoEnabled = false
@@ -570,8 +593,10 @@ fun VelaMapView(
                 // newLatLngZoom (which preserves pitch), so a tilt the user sets sticks.
                 map.uiSettings.isTiltGesturesEnabled = true
                 map.setMaxPitchPreference(70.0)
-                // Tap a labelled POI on the map to open it.
-                map.addOnMapClickListener { tapped ->
+                // Tap a labelled POI on the map to open it. (Named so the D-pad
+                // controller's OK-at-crosshair runs the EXACT same resolution path;
+                // docs/dpad.md.)
+                val handleTap = handleTap@{ tapped: MLLatLng ->
                     val p = map.projection.toScreenLocation(tapped)
                     // Generous hit radius (~16dp) so taps near a POI icon register —
                     // a tight box made the bigger markers feel un-tappable.
@@ -581,13 +606,13 @@ fun VelaMapView(
                     val pin = feats.firstOrNull { it.hasProperty(MARKER_INDEX_PROP) }
                     if (pin != null) {
                         markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
-                        return@addOnMapClickListener true
+                        return@handleTap true
                     }
                     // An ambient Google POI dot — opens the place (priority over basemap POI labels).
                     val amb = feats.firstOrNull { it.hasProperty(AMBIENT_INDEX_PROP) }
                     if (amb != null) {
                         ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
-                        return@addOnMapClickListener true
+                        return@handleTap true
                     }
                     // Tap a greyed alternate route line to switch to it (Google-style).
                     val altHit = map.queryRenderedFeatures(
@@ -595,7 +620,7 @@ fun VelaMapView(
                     ).firstOrNull { it.hasProperty(ALT_INDEX_PROP) }
                     if (altHit != null) {
                         selectAlt.value(altHit.getNumberProperty(ALT_INDEX_PROP).toInt())
-                        return@addOnMapClickListener true
+                        return@handleTap true
                     }
                     // POIs are named Points; some only carry name:latin/name:en, so
                     // try those too — more icons become directly tappable that way.
@@ -619,6 +644,7 @@ fun VelaMapView(
                         else -> false
                     }
                 }
+                map.addOnMapClickListener { handleTap(it) }
                 // Only flag camera settling when the user dragged the map (not
                 // our own programmatic framing) → drives "Search this area".
                 map.addOnCameraMoveStartedListener { reason ->
@@ -688,6 +714,25 @@ fun VelaMapView(
                 map.addOnMapLongClickListener { p ->
                     longPress.value(LatLng(p.latitude, p.longitude))
                     true
+                }
+                // D-pad control seam (docs/dpad.md): key-driven pan/zoom/select reuses the
+                // SAME tap resolution, long-press, gesture-flag and nav-zoom-override paths
+                // the touch listeners use, so behaviour is identical either way in.
+                dpadHolder.value?.let { c ->
+                    c.mapView = mv
+                    c.map = map
+                    c.onTap = { handleTap(it) }
+                    c.onLongPress = { pt -> longPress.value(LatLng(pt.latitude, pt.longitude)) }
+                    c.markPan = {
+                        gestureMove[0] = true
+                        if (navModeHolder.value) {
+                            navPanned.value()
+                            navUserZoom[0] = Double.NaN
+                        }
+                    }
+                    c.markZoom = { z ->
+                        if (navModeHolder.value) navUserZoom[0] = z else gestureMove[0] = true
+                    }
                 }
                 mapRef = map
             }

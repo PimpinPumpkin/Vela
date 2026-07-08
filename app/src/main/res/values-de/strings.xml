@@ -228,6 +228,9 @@
     <string name="mapscreen_choose_set_stop">Stopp setzen</string>
     <string name="mapscreen_destination">Ziel</string>
     <string name="mapscreen_center_on_my_location">Auf meinen Standort zentrieren</string>
+    <string name="mapscreen_zoom_in">Vergrößern</string>
+    <string name="mapscreen_zoom_out">Verkleinern</string>
+    <string name="mapscreen_dpad_engage">OK: Karte bewegen</string>
     <string name="mapscreen_stop_replay">Wiedergabe stoppen</string>
     <string name="mapscreen_psds_tip_title">Langsame GPS-Ortung?</string>
     <string name="mapscreen_psds_tip_body">Aktivieren Sie PSDS unter Einstellungen → Standort für eine deutlich schnellere Ortung (auf GrapheneOS läuft es über deren Proxy).</string>

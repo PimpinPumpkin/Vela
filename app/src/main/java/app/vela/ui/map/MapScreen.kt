@@ -139,6 +139,25 @@ import app.vela.ui.place.DirectionsPanel
 import app.vela.ui.place.PlaceSheet
 import app.vela.ui.search.SearchBar
 import java.util.Locale
+// D-pad-only operation (docs/dpad.md) — kept as one import block so upstream merges stay clean.
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material3.SmallFloatingActionButton
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import app.vela.ui.dpadHighlight
+import app.vela.ui.rememberDpadMode
+import app.vela.ui.rememberDpadFirstDevice
 
 // Basemap provider. Keyless OpenFreeMap (loaded by URL — the setup that always
 // worked) is active; POI markers + colours are applied at runtime. Flip to true
@@ -201,10 +220,37 @@ fun MapScreen(
     }
 
     var searchFocused by remember { mutableStateOf(false) }
-    // The search overlay is open when the field is focused OR we're picking a custom
-    // directions origin (which opens the same overlay WITHOUT focusing the field — so
-    // we can't rely on clearFocus() to close it; pick-mode is reset explicitly instead).
-    val searchOpen = searchFocused || state.pickingOrigin || state.pickingStop
+    // --- D-pad-only operation (docs/dpad.md) -------------------------------------
+    // dpadMode = user is driving with keys right now (always true with no touchscreen);
+    // the map gets a focusable centre target (arrows pan, OK selects, hold-OK = pin) and
+    // on-screen zoom buttons. mapDpad is the key→camera seam into VelaMapView.
+    val dpadMode = rememberDpadMode()
+    val dpadFirst = rememberDpadFirstDevice()
+    val mapDpad = remember { MapDpadController() }
+    var mapFocused by remember { mutableStateOf(false) }
+    var mapEngaged by remember { mutableStateOf(false) } // arrows pan only while engaged (docs/dpad.md)
+    val mapFocusRequester = remember { FocusRequester() }
+    // D-pad (docs/dpad.md): under touch the overlay tracks field focus (blur = close), but
+    // under D-pad focus must be able to WALK the overlay's rows without it snapping shut the
+    // instant the field blurs — AND back must be able to definitively close it. A derived
+    // focus-latch could do the first but got STUCK on the second (focus never fully left the
+    // overlay tree, so it never closed — the "no way to go back from search" bug). So the
+    // entry overlay is an EXPLICIT boolean instead: opened on field focus, closed on
+    // touch-blur / BACK / once a search runs or a place is picked (the effect below).
+    var searchExpanded by remember { mutableStateOf(false) }
+    // A search producing results, or any place selection, ends the entry page in BOTH input
+    // modes (under touch clearFocus already did; under D-pad clearFocus leaves focus in the
+    // tree, so close it here). Pick-mode keeps the overlay up (handled via searchOpen below).
+    LaunchedEffect(state.results.size, state.selected, state.pickingOrigin, state.pickingStop) {
+        if (!state.pickingOrigin && !state.pickingStop &&
+            (state.results.isNotEmpty() || state.selected != null)
+        ) {
+            searchExpanded = false
+        }
+    }
+    // The search overlay is open when the entry page is expanded OR we're picking a custom
+    // directions origin/stop (that opens the same overlay WITHOUT focusing the field).
+    val searchOpen = searchExpanded || state.pickingOrigin || state.pickingStop
     var metersPerPixel by remember { mutableStateOf(0.0) }
     // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
     // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
@@ -225,21 +271,54 @@ fun MapScreen(
     // place sheet → results list — so it behaves like Google Maps instead of
     // dropping straight out of the app. Only the bare map (or collapsed pins,
     // which a back already peeled down to) lets the system handle back and exit.
+    // ONE back handler (docs/dpad.md): folding the D-pad "disengage map" case in here
+    // (rather than a second BackHandler) keeps a single, well-ordered precedence — a
+    // separate handler would win by registration order and could swallow BACK while the
+    // search overlay is up over an engaged map. Order: cancel map-pick → disengage map →
+    // close search → peel nav/route/place/results.
     BackHandler(
-        enabled = searchOpen || state.showSteps || state.navigating ||
+        enabled = mapEngaged || searchOpen || state.showSteps || state.navigating ||
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
             state.selected != null ||
             (state.results.isNotEmpty() && !state.resultsCollapsed),
     ) {
         when {
             state.pickOnMap != null -> vm.cancelChooseOnMap()
-            searchOpen -> { focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
+            // Disengage map control only when nothing more prominent is open (a sheet /
+            // search / route sitting on top should peel first).
+            mapEngaged && !searchOpen && !state.showSteps && !state.navigating &&
+                !state.directionsOpen && state.activeRoute == null && state.routes.isEmpty() &&
+                state.selected == null &&
+                (state.results.isEmpty() || state.resultsCollapsed) -> mapEngaged = false
+            searchOpen -> { searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
             else -> vm.collapseResults()
+        }
+    }
+    // The map target is the focus surface ONLY when the map is primary — hidden while any
+    // list/sheet/panel/search owns the screen (those own focus; a crosshair over them stole
+    // DOWN traversal into their rows). Nav keeps the map primary (the banner is an overlay).
+    val mapTargetHidden = searchOpen || state.selected != null || state.directionsOpen ||
+        state.showSteps || state.arrived ||
+        (state.results.isNotEmpty() && !state.resultsCollapsed && state.selected == null)
+    // Reset engagement the moment a panel takes over (the target unmounts under it).
+    LaunchedEffect(mapTargetHidden) { if (mapTargetHidden) mapEngaged = false }
+    // On a D-pad-first device the map is home: wake up drivable, and RE-acquire + engage the
+    // map whenever we return to it from a panel, so the next arrow press pans immediately.
+    // The target's focus node may not be attached on the first frame, so retry briefly.
+    LaunchedEffect(dpadFirst, mapTargetHidden) {
+        if (dpadFirst && !mapTargetHidden) {
+            repeat(20) {
+                if (runCatching { mapFocusRequester.requestFocus() }.isSuccess) {
+                    mapEngaged = true
+                    return@LaunchedEffect
+                }
+                kotlinx.coroutines.delay(50)
+            }
         }
     }
 
@@ -334,8 +413,125 @@ fun MapScreen(
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
             onViewport = vm::onViewport,
+            dpadController = mapDpad,
             modifier = Modifier.fillMaxSize(),
         )
+
+        // --- D-pad map target (docs/dpad.md) -------------------------------
+        // TWO-STAGE so the chrome stays reachable (v1 trapped focus on the map):
+        //  · FOCUSED (ring + "OK" pill): a normal focus stop — arrows traverse to the
+        //    search bar / chips / zoom buttons / FABs like any other element; OK engages.
+        //  · ENGAGED (crosshair + edge ring): arrows pan, OK "taps" the crosshair (or
+        //    confirms a Choose-on-map pick), holding OK long-presses (pin / direct pick),
+        //    +/−/zoom keys zoom, BACK disengages (focus stays on the target).
+        // Shown only when the MAP is the primary surface — with a list/sheet/panel open the
+        // panel owns focus (a centre crosshair + focus stop over the results list stole DOWN
+        // traversal into the rows). Closing the panel re-acquires + engages the map below.
+        if (dpadMode && !mapTargetHidden) {
+            if (mapEngaged) {
+                // Screen-edge ring: unmistakable "the MAP has the keys now" signal.
+                Box(
+                    Modifier
+                        .matchParentSize()
+                        .border(2.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.55f)),
+                )
+            }
+            val centerHeld = remember { booleanArrayOf(false) } // long-press fired for the held OK
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .size(140.dp)
+                    .focusRequester(mapFocusRequester)
+                    .onFocusChanged {
+                        mapFocused = it.isFocused
+                        if (!it.isFocused) mapEngaged = false
+                    }
+                    .onKeyEvent { ev ->
+                        if (!mapFocused) return@onKeyEvent false
+                        val isOk = ev.key == Key.DirectionCenter || ev.key == Key.Enter || ev.key == Key.NumPadEnter
+                        if (!mapEngaged) {
+                            // Plain focus stop: only OK does anything (engage); arrows fall
+                            // through to normal focus traversal so the chrome is reachable.
+                            return@onKeyEvent when {
+                                isOk && ev.type == KeyEventType.KeyDown -> true
+                                isOk && ev.type == KeyEventType.KeyUp -> { mapEngaged = true; true }
+                                else -> false
+                            }
+                        }
+                        val pan = 0.22f // fraction of the view per press; holds auto-repeat
+                        when (ev.type) {
+                            KeyEventType.KeyDown -> when (ev.key) {
+                                Key.DirectionUp -> { mapDpad.panBy(0f, -pan); true }
+                                Key.DirectionDown -> { mapDpad.panBy(0f, pan); true }
+                                Key.DirectionLeft -> { mapDpad.panBy(-pan, 0f); true }
+                                Key.DirectionRight -> { mapDpad.panBy(pan, 0f); true }
+                                Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                    val n = ev.nativeKeyEvent
+                                    if (n.repeatCount == 0) {
+                                        centerHeld[0] = false
+                                    } else if (!centerHeld[0] && n.eventTime - n.downTime >= 500) {
+                                        centerHeld[0] = true
+                                        mapDpad.longPressAtCenter()
+                                    }
+                                    true
+                                }
+                                Key.ZoomIn, Key.Plus, Key.Equals -> { mapDpad.zoomBy(1.0); true }
+                                Key.ZoomOut, Key.Minus -> { mapDpad.zoomBy(-1.0); true }
+                                else -> false
+                            }
+                            KeyEventType.KeyUp -> when (ev.key) {
+                                Key.DirectionUp, Key.DirectionDown, Key.DirectionLeft, Key.DirectionRight,
+                                Key.ZoomIn, Key.Plus, Key.Equals, Key.ZoomOut, Key.Minus,
+                                -> true
+                                Key.DirectionCenter, Key.Enter, Key.NumPadEnter -> {
+                                    if (!centerHeld[0]) {
+                                        // In Choose-on-map mode OK = the crosshair confirm;
+                                        // otherwise it's a tap at the crosshair.
+                                        if (state.pickOnMap != null) vm.confirmMapPick() else mapDpad.selectAtCenter()
+                                    }
+                                    centerHeld[0] = false
+                                    true
+                                }
+                                else -> false
+                            }
+                            else -> false
+                        }
+                    }
+                    .focusable(),
+                contentAlignment = Alignment.Center,
+            ) {
+                when {
+                    // Crosshair only while the map is key-driven; Choose-on-map draws its own.
+                    mapEngaged && state.pickOnMap == null -> {
+                        val crossColor = MaterialTheme.colorScheme.primary
+                        Canvas(Modifier.size(36.dp)) {
+                            val cx = size.width / 2f
+                            val cy = size.height / 2f
+                            drawCircle(Color.White, radius = size.minDimension * 0.30f, style = Stroke(7f))
+                            drawCircle(crossColor, radius = size.minDimension * 0.30f, style = Stroke(3.5f))
+                            drawLine(crossColor, Offset(cx, 0f), Offset(cx, cy - 8f), 3.5f)
+                            drawLine(crossColor, Offset(cx, cy + 8f), Offset(cx, size.height), 3.5f)
+                            drawLine(crossColor, Offset(0f, cy), Offset(cx - 8f, cy), 3.5f)
+                            drawLine(crossColor, Offset(cx + 8f, cy), Offset(size.width, cy), 3.5f)
+                        }
+                    }
+                    // Focused but not engaged: a visible stop + how to enter map control.
+                    mapFocused -> Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                        shadowElevation = 4.dp,
+                        border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                    ) {
+                        Text(
+                            stringResource(R.string.mapscreen_dpad_engage),
+                            style = MaterialTheme.typography.labelLarge,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+            }
+        }
 
         // --- top overlay: nav banner while navigating, else search ----------
         if (state.navigating) {
@@ -415,8 +611,15 @@ fun MapScreen(
                         },
                         onOpenSettings = onOpenSettings,
                         onClear = vm::clearSearch,
-                        onFocusChange = { searchFocused = it },
-                        onBack = if (searchOpen) ({ focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
+                        onFocusChange = {
+                            searchFocused = it
+                            // Focus opens the entry page; a touch blur closes it. Under
+                            // D-pad, blur must NOT close (focus walks the rows) — BACK /
+                            // a run search / a pick close it instead.
+                            if (it) searchExpanded = true else if (!dpadMode) searchExpanded = false
+                        },
+                        onBack = if (searchOpen) ({ searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
+                        dpadMode = dpadMode,
                     )
                     when {
                         // While picking an origin/stop the overlay stays latched open (pickingOrigin/
@@ -512,6 +715,7 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = vm::recenterNav,
                 modifier = Modifier
+                    .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(end = 16.dp, bottom = navBarClearance),
@@ -750,6 +954,35 @@ fun MapScreen(
             )
         }
 
+        // D-pad zoom buttons (docs/dpad.md): pinch has no key equivalent, so give zoom a
+        // first-class on-screen control while the UI is key-driven. Shown ONLY while
+        // browsing the map with no list/sheet/panel over it — the mid-right buttons sit in
+        // the vertical focus path of the results list / place sheet and would intercept
+        // DOWN traversal into their rows (measured: DOWN from the results header jumped to
+        // the zoom + button instead of the first result). During those, the map is behind
+        // a panel anyway; zoom the map via the engaged crosshair after closing the panel.
+        val zoomButtonsVisible = dpadMode && !searchOpen && !state.navigating &&
+            state.selected == null && !state.directionsOpen && !state.showSteps &&
+            state.activeRoute == null && state.routes.isEmpty() &&
+            (state.results.isEmpty() || state.resultsCollapsed)
+        if (zoomButtonsVisible) {
+            Column(
+                Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(end = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SmallFloatingActionButton(
+                    onClick = { mapDpad.zoomBy(1.0) },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(12.dp)),
+                ) { Icon(Icons.Default.Add, contentDescription = stringResource(R.string.mapscreen_zoom_in)) }
+                SmallFloatingActionButton(
+                    onClick = { mapDpad.zoomBy(-1.0) },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(12.dp)),
+                ) { Icon(Icons.Default.Remove, contentDescription = stringResource(R.string.mapscreen_zoom_out)) }
+            }
+        }
+
         // Replaying a recorded trip drives the dot + camera like a live drive; give the
         // user an explicit way out (its tap stops the replay and resumes live GPS). A DEMO drive
         // (Settings → Simulate driving) is meant to look like real nav — its own "End" button stops
@@ -771,6 +1004,7 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = vm::recenter,
                 modifier = Modifier
+                    .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(16.dp),
@@ -1059,6 +1293,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                 Column(
                     Modifier
                         .fillMaxWidth()
+                        .dpadHighlight(RoundedCornerShape(6.dp))
                         .clickable { onPick(place) }
                         .padding(horizontal = 16.dp, vertical = 14.dp),
                 ) {
@@ -1137,7 +1372,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
             // "N results" pill; the back gesture still works too.
             Divider()
             Row(
-                Modifier.fillMaxWidth().clickable { onCollapse() }.padding(vertical = 13.dp),
+                Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp)).clickable { onCollapse() }.padding(vertical = 13.dp),
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -1176,6 +1411,7 @@ private fun CategoryChips(onPick: (String) -> Unit) {
         categories.forEach { (labelRes, query, icon) ->
             ElevatedAssistChip(
                 onClick = { onPick(query) },
+                modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp)),
                 label = { Text(stringResource(labelRes)) },
                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 // MONOCHROME glyphs (user 2026-07-06): the M3 default tints the leading icon with the
@@ -1401,6 +1637,7 @@ private fun ShortcutRow(
     Row(
         Modifier
             .fillMaxWidth()
+            .dpadHighlight(RoundedCornerShape(6.dp))
             .clickable { if (place != null) onPick(kind) else onAssign(kind) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1453,6 +1690,7 @@ private fun SavedRow(
     Row(
         Modifier
             .fillMaxWidth()
+            .dpadHighlight(RoundedCornerShape(6.dp))
             .clickable { onPick(place) }
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1548,7 +1786,7 @@ private fun SuggestionRow(
     sublabel: String? = null,
 ) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
+        Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp)).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
