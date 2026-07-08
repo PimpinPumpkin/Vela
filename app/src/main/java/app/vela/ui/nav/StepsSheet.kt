@@ -60,6 +60,8 @@ import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
+import app.vela.ui.rememberDpadAutoFocus
+import androidx.compose.ui.focus.focusRequester
 
 /**
  * The full turn-by-turn step list — shown both while previewing a route and
@@ -102,6 +104,9 @@ fun StepsSheet(
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.steps_close_cd), tint = dim) }
             }
+            // D-pad-first (docs/dpad.md): land focus on the first step row when the sheet
+            // opens, so it's the active surface (OK previews that step). No-op under touch.
+            val stepsAutoFocus = rememberDpadAutoFocus()
             LazyColumn(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.5f).dp)) {
                 itemsIndexed(maneuvers) { i, m ->
                     val highlighted = i == previewIndex
@@ -109,6 +114,7 @@ fun StepsSheet(
                     Row(
                         Modifier
                             .fillMaxWidth()
+                            .then(if (i == 0) Modifier.focusRequester(stepsAutoFocus) else Modifier)
                             .background(
                                 if (highlighted || active) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
                                 else Color.Transparent,

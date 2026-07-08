@@ -214,8 +214,11 @@ genuinely needs no doc edit, say why in the commit.
 - **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
   works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
   `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/
-  `Modifier.dpadFieldEscape` — the last makes a text field's UP/DOWN escape it instead of
-  being swallowed as a cursor move, so controls below the field stay reachable);
+  `Modifier.dpadFieldEscape` — makes a text field's UP/DOWN escape it instead of
+  being swallowed as a cursor move, so controls below the field stay reachable — and
+  `rememberDpadAutoFocus()` — attach its `FocusRequester` to a screen's primary element so
+  focus is PLACED on appearance, no wake-up keypress; retries because the node isn't attached
+  on frame 1);
   the map is key-driven via `app/ui/map/MapDpadController.kt` (wired in `VelaMapView`, key
   handling + crosshair + zoom buttons in `MapScreen`). Rules when touching UI: (1) every new
   interactive element must be focusable with a visible ring (`dpadHighlight`) and every new
@@ -232,7 +235,14 @@ genuinely needs no doc edit, say why in the commit.
   raw WebView in the app — the full-screen "Read all reviews" panel (`ReviewsPanel`,
   `fullScreen`) — maps ↑/↓ to `pageUp`/`pageDown` + `requestFocus()`es so it scrolls by D-pad
   (a WebView's default is to hop focus between links, not scroll); reach/exit are proven, exit
-  is always hardware BACK via the `Dialog`'s `BackHandler`.
+  is always hardware BACK via the `Dialog`'s `BackHandler`. **D-pad-FIRST initial focus is a
+  hard rule (sweep 2026-07-07): NO screen/view may open with nothing focused** — a wasted
+  first keypress is the bug. Compose doesn't give this for free (focus recovery is
+  nondeterministic — the place sheet landed on a photo / the search bar / nowhere), so every
+  screen attaches `rememberDpadAutoFocus()` to a primary element (Settings→back, Welcome→Get
+  started, place sheet→handle, directions→Drive tab, steps→first row, reviews→back arrow);
+  the map + photo gallery already self-focus. When adding a screen, give it an auto-focus
+  target.
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
