@@ -1528,7 +1528,7 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
                         info,
                         style = MaterialTheme.typography.bodySmall,
                         color = if (phone != null) MaterialTheme.colorScheme.primary else dim,
-                        modifier = if (phone != null) Modifier.clickable {
+                        modifier = if (phone != null) Modifier.dpadHighlight(RoundedCornerShape(6.dp)).clickable {
                             val dialable = "tel:" + phone.filter { it.isDigit() || it == '+' }
                             runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                         } else Modifier,
@@ -1557,7 +1557,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
             Icon(transitModeIcon(s.mode), null, tint = dim, modifier = Modifier.padding(top = 2.dp).size(18.dp))
             Column(Modifier.fillMaxWidth()) {
                 Row(
-                    Modifier.then(if (canExpand) Modifier.clickable { open = !open } else Modifier),
+                    Modifier.then(if (canExpand) Modifier.dpadHighlight(RoundedCornerShape(8.dp)).clickable { open = !open } else Modifier),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
@@ -1604,7 +1604,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
             ).joinToString("  ·  ")
             if (s.intermediateStops.isNotEmpty()) {
                 Row(
-                    Modifier.clickable { stopsOpen = !stopsOpen }.padding(vertical = 1.dp),
+                    Modifier.dpadHighlight(RoundedCornerShape(6.dp)).clickable { stopsOpen = !stopsOpen }.padding(vertical = 1.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
