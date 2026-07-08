@@ -81,35 +81,41 @@ class OfflinePoiStore @Inject constructor(
         val args = ArrayList<String>()
         for (t in nameCat) { clauses.add("name LIKE ?"); args.add("%$t%"); clauses.add("category LIKE ?"); args.add("%$t%") }
         for (c in cats) { clauses.add("category LIKE ?"); args.add("%$c%") }
-        // Whole-query address match, so typing a downloaded POI's street address finds it offline. (This
-        // is NOT a general address geocoder — only addresses attached to indexed OSM POIs are searchable.)
+        // Whole-query address match, so typing a downloaded POI's street address finds it offline (the
+        // general typed-address geocoder is OfflineAddressStore).
         clauses.add("address LIKE ?"); args.add("%$term%")
+        val sql = "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE ${clauses.joinToString(" OR ")} LIMIT 400"
         val rows = ArrayList<Place>()
-        helper.readableDatabase.rawQuery(
-            "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE ${clauses.joinToString(" OR ")} LIMIT 400",
-            args.toTypedArray(),
-        ).use { c ->
-            while (c.moveToNext()) {
-                val loc = LatLng(c.getDouble(2), c.getDouble(3))
-                rows.add(
-                    Place(
-                        id = c.getString(0),
-                        name = c.getString(1),
-                        location = loc,
-                        category = c.getString(4),
-                        address = c.getString(5),
-                        phone = c.getString(6),
-                        website = c.getString(7),
-                        hours = c.getString(8)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
-                        distanceMeters = near?.distanceTo(loc),
-                    ),
-                )
+        fun query(db: android.database.sqlite.SQLiteDatabase) {
+            runCatching {
+                db.rawQuery(sql, args.toTypedArray()).use { c ->
+                    while (c.moveToNext()) {
+                        val loc = LatLng(c.getDouble(2), c.getDouble(3))
+                        rows.add(
+                            Place(
+                                id = c.getString(0),
+                                name = c.getString(1),
+                                location = loc,
+                                category = c.getString(4),
+                                address = c.getString(5),
+                                phone = c.getString(6),
+                                website = c.getString(7),
+                                hours = c.getString(8)?.split("\n")?.filter { it.isNotBlank() } ?: emptyList(),
+                                distanceMeters = near?.distanceTo(loc),
+                            ),
+                        )
+                    }
+                }
             }
         }
+        // The viewport-download index, then every installed region pack (a state's whole POI set) —
+        // same schema, same SQL. Dedupe by id (a POI can be in both once its area was also saved).
+        query(helper.readableDatabase)
+        OfflinePacks.dbs.forEach(::query)
         // Rank by how many query words hit the name/category (so "mexican restaurant" leads with the
         // Mexican restaurant, not a random one), then by distance.
         val qWords = (if (words.size > 1) words else listOf(term)).map { it.lowercase() }
-        return rows.sortedWith(
+        return rows.distinctBy { it.id }.sortedWith(
             compareByDescending<Place> { p ->
                 val hay = (p.name + " " + (p.category ?: "") + " " + (p.address ?: "")).lowercase()
                 qWords.count { hay.contains(it) }

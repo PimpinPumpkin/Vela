@@ -66,6 +66,9 @@
     <string name="settings_routing_no_match">Nenhuma região corresponde a “%1$s”.</string>
     <string name="settings_routing_downloading">A transferir… %1$d%%</string>
     <string name="settings_routing_installed">Instalado · percursos offline aqui</string>
+    <string name="settings_routing_installed_places">Instalado · locais pesquisáveis offline</string>
+    <string name="settings_routing_places_downloading">A guardar locais · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Obter locais</string>
     <string name="settings_routing_size_here">%1$s MB · abrange a sua localização</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Remover percursos offline</string>
@@ -143,6 +146,10 @@
     <string name="settings_traffic_lights_hint">Diz «passe o semáforo e depois vire» em cruzamentos com semáforo (voz apenas em inglês por enquanto)</string>
     <string name="map_voice_downloading">Baixando a voz Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalando a voz Vela…</string>
+    <string name="map_region_downloading">A transferir rotas de %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">A guardar locais de %1$s para pesquisa offline · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Os locais de %1$s já podem ser pesquisados offline</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Ainda não há pacote de locais para %1$s. Aparecerá aqui assim que for publicado.</string> <!-- format -->
     <string name="settings_demo_drive">Simular condução (demo)</string>
     <string name="settings_demo_drive_hint">Para demonstrações, capturas e testes: tocar em Iniciar percorre a rota como um rasto de GPS simulado em vez da tua localização real — a navegação funciona em qualquer lugar. Desliga para navegar a sério.</string>
     <string name="place_address_copied">Morada copiada</string>

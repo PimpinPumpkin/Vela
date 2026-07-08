@@ -60,6 +60,10 @@
     <string name="settings_traffic_lights_hint">Adds Google-style landmark cues to spoken directions (\"pass the traffic light, then turn left\") using open OpenStreetMap signal data (keyless), fetched once when you start a drive. Only added when it helps (one or two lights right before a surface-street turn). Off by default; English only for now, and coverage follows how well signals are mapped in your area.</string>
     <string name="map_voice_downloading">Downloading Vela voice · %1$d%%</string>
     <string name="map_voice_installing">Installing Vela voice…</string>
+    <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Saving %1$s places for offline search · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Places in %1$s are now searchable offline</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">No place pack for %1$s yet. It\'ll appear here once it\'s published.</string> <!-- format -->
     <string name="settings_demo_drive">Simulate driving (demo)</string>
     <string name="settings_demo_drive_hint">For demos, screenshots and testing: tapping Start drives the planned route as a simulated GPS trace instead of using your real location, so navigation works anywhere. Turn off to navigate for real.</string>
     <string name="settings_map">Map</string>
@@ -86,6 +90,9 @@
     <string name="settings_routing_no_match">No regions match “%1$s”.</string> <!-- format -->
     <string name="settings_routing_downloading">Downloading… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>
+    <string name="settings_routing_installed_places">Installed · places searchable offline</string>
+    <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Get places</string>
     <string name="settings_routing_size_here">%1$s MB · covers your location</string> <!-- format -->
     <string name="settings_routing_size">%1$s MB</string> <!-- format -->
     <string name="settings_routing_remove">Remove offline routing</string>
