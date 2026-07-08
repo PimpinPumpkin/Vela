@@ -1,6 +1,7 @@
 package app.vela.web
 
 import android.annotation.SuppressLint
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
@@ -232,6 +233,29 @@ private fun buildPanelWebView(
         c.recycle()
     }
     wv.overScrollMode = android.view.View.OVER_SCROLL_NEVER // no glow while the sheet takes the drag
+    // D-pad scroll (docs/dpad.md): the full-screen "Read all reviews" view is the one surface that
+    // is a raw WebView, and a WebView's default D-pad handling hops focus between the page's links
+    // instead of scrolling — useless for reading on a keypad phone. Map UP/DOWN to page-scroll so
+    // it scrolls DETERMINISTICALLY regardless of the page's internal focusables. `pageUp`/`pageDown`
+    // are stable, documented WebView APIs. This fires ONLY on hardware D-pad key events, so it is
+    // completely inert under touch (a finger never sends KEYCODE_DPAD_*), and only in fullScreen
+    // (the inline scroll-sync path is untouched). Exit stays on hardware BACK via the caller's
+    // BackHandler, which fires even while the WebView holds focus, so this can never trap the user.
+    if (fullScreen) {
+        wv.isFocusableInTouchMode = true
+        wv.setOnKeyListener { _, keyCode, ev ->
+            if (ev.action == KeyEvent.ACTION_DOWN) {
+                when (keyCode) {
+                    KeyEvent.KEYCODE_DPAD_DOWN -> { wv.pageDown(false); true }
+                    KeyEvent.KEYCODE_DPAD_UP -> { wv.pageUp(false); true }
+                    else -> false
+                }
+            } else {
+                // Swallow the matching key-up so the page never sees a half event.
+                keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP
+            }
+        }
+    }
     // FULL-SCREEN: the WebView owns the whole screen, no scrolling parent — skip all the scroll-sync
     // machinery and let it scroll natively (this is what makes full-screen jitter-free by design).
     if (!fullScreen) wv.setOnTouchListener { v, ev ->
@@ -402,6 +426,10 @@ private fun buildPanelWebView(
 
         override fun onPageFinished(view: WebView?, url: String?) {
             loaded = true
+            // D-pad: give the full-screen reviews WebView focus so the UP/DOWN page-scroll key
+            // listener above receives events (harmless under touch — it's the only interactive
+            // thing in the full-screen dialog besides the back arrow, which BACK still reaches).
+            if (fullScreen) view?.requestFocus()
             view?.evaluateJavascript(carveScript(dark, fullScreen), null)
         }
     }
