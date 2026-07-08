@@ -403,4 +403,5 @@
     <string name="settings_update_checking">Kontrollerar…</string>
     <string name="settings_update_found">Uppdatering tillgänglig! Gå tillbaka till kartan för att installera.</string>
     <string name="settings_update_none">Du har den senaste versionen.</string>
+    <string name="settings_place_pages">Platssidor</string>
 </resources>
