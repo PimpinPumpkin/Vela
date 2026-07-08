@@ -38,6 +38,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import app.vela.ui.dpadHighlight
 import androidx.compose.ui.input.key.Key
@@ -74,6 +76,7 @@ fun SearchBar(
     var fieldArmed by remember { mutableStateOf(false) }
     val fieldFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
     LaunchedEffect(fieldArmed) {
         if (fieldArmed) {
             runCatching { fieldFocus.requestFocus() }
@@ -160,13 +163,25 @@ fun SearchBar(
                         // itself; the next BACK reaches here and closes — platform-standard
                         // two-press behaviour, now deterministic.
                         .onPreviewKeyEvent { ev ->
-                            if (dpadMode && onBack != null &&
-                                (ev.key == Key.Back || ev.key == Key.Escape)
-                            ) {
-                                if (ev.type == KeyEventType.KeyDown) onBack()
-                                true // swallow both down and up so the field can't also act
-                            } else {
-                                false
+                            when {
+                                // BACK/ESC closes the overlay (see comment above).
+                                dpadMode && onBack != null &&
+                                    (ev.key == Key.Back || ev.key == Key.Escape) -> {
+                                    if (ev.type == KeyEventType.KeyDown) onBack()
+                                    true
+                                }
+                                // DOWN moves focus OUT of the field into the entry rows /
+                                // suggestions below. A single-line BasicTextField otherwise
+                                // swallows DOWN (cursor move), trapping focus on the field so
+                                // the Home/Work/recent/suggestion rows were unreachable by
+                                // D-pad (measured). Explicitly hand focus downward instead.
+                                dpadMode && ev.key == Key.DirectionDown -> {
+                                    if (ev.type == KeyEventType.KeyDown) {
+                                        focusManager.moveFocus(FocusDirection.Down)
+                                    }
+                                    true
+                                }
+                                else -> false
                             }
                         }
                         .onFocusChanged {

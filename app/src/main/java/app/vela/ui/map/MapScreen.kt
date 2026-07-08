@@ -302,9 +302,15 @@ fun MapScreen(
     // The map target is the focus surface ONLY when the map is primary — hidden while any
     // list/sheet/panel/search owns the screen (those own focus; a crosshair over them stole
     // DOWN traversal into their rows). Nav keeps the map primary (the banner is an overlay).
-    val mapTargetHidden = searchOpen || state.selected != null || state.directionsOpen ||
-        state.showSteps || state.arrived ||
-        (state.results.isNotEmpty() && !state.resultsCollapsed && state.selected == null)
+    // EXCEPTION: "Choose on map" (pickOnMap) — the crosshair pick REQUIRES the map be
+    // pannable (arrows) so the user can position the pin, so the map target stays active even
+    // though directionsOpen is still true underneath (measured: without this, arrows only
+    // moved focus to the cancel X and the pin couldn't be moved). OK then confirms the pick.
+    val mapTargetHidden = state.pickOnMap == null && (
+        searchOpen || state.selected != null || state.directionsOpen ||
+            state.showSteps || state.arrived ||
+            (state.results.isNotEmpty() && !state.resultsCollapsed && state.selected == null)
+        )
     // Reset engagement the moment a panel takes over (the target unmounts under it).
     LaunchedEffect(mapTargetHidden) { if (mapTargetHidden) mapEngaged = false }
     // On a D-pad-first device the map is home: wake up drivable, and RE-acquire + engage the
@@ -516,7 +522,11 @@ fun MapScreen(
                         }
                     }
                     // Focused but not engaged: a visible stop + how to enter map control.
-                    mapFocused -> Surface(
+                    // In Choose-on-map mode draw NOTHING here — the ChooseOnMapOverlay
+                    // supplies the pin + "Move the map to set…" banner, and the target is
+                    // auto-engaged so arrows already pan; the "OK: move the map" pill would
+                    // be wrong there (OK confirms the pick, it doesn't enter map control).
+                    mapFocused && state.pickOnMap == null -> Surface(
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
