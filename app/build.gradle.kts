@@ -159,6 +159,7 @@ dependencies {
     // MapLibre Native — the renderer. Only the app module touches it; :core
     // stays UI-agnostic.
     implementation(libs.maplibre.android)
+    implementation(libs.androidx.car.app) // Android Auto (projection): templates + car surface
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
