@@ -58,6 +58,14 @@ android {
             "\"${(project.findProperty("addressManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/address-overlays/address-overlay-manifest.json"}\"",
         )
+        // Offline PLACE packs (whole-region POI/address SQLite, pulled with a routing-region download so a
+        // state is searchable offline) — same override pattern (-PpoiPackManifestUrl=… via `adb reverse`).
+        buildConfigField(
+            "String",
+            "POI_PACK_MANIFEST_URL",
+            "\"${(project.findProperty("poiPackManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/poi-packs/poi-pack-manifest.json"}\"",
+        )
     }
 
     // Real release signing comes from CI env vars; local dev falls back to the
