@@ -7,7 +7,7 @@
 > walk-through) and [`CLAUDE.md`](CLAUDE.md) (build rules + gotchas). When behaviour,
 > calibration, or architecture changes, **update this file in the same commit.**
 
-Last reviewed: 2026-07-04.
+Last reviewed: 2026-07-08.
 
 ---
 
@@ -74,7 +74,9 @@ Two Gradle modules, strict boundary:
 - **Process-wide reactive holders** (a `mutableStateOf` mirror + `SharedPreferences`,
   `init()`-ed in `VelaApp`): `ui/Units` (metric/imperial), `ui/theme/AppTheme`
   (Light/Dark/System — read via **`isAppInDarkTheme()`**, never `isSystemInDarkTheme()`),
-  `ui/Traffic` (overlay on/off), `ui/Onboarding`.
+  `ui/Traffic` (overlay on/off), `ui/TransitLayer` (rail highlight), `ui/LiveReviews` (reviews panel),
+  `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`), `ui/Buildings3d` (extrusion layer), `ui/AppLocale`
+  (language), `ui/Onboarding`.
 
 ### Data flow (search example)
 `MapScreen` → `MapViewModel.search()` → `GoogleMapsDataSource.search()` →
@@ -99,7 +101,7 @@ build `pb` (`SearchPb`) + `GET` → **optional JS override** (`JsTransforms`, §
 | Directions (turn-by-turn) | **PRIMARY: FOSSGIS OSRM** `route/v1?steps=true` (`routed-car`/`-bike`/`-foot`) — full street-named maneuvers + geometry |
 | Directions (traffic ETA + fallback) | `GET /maps/preview/directions?pb=<DirectionsPb>` — Google's live-traffic ETA/spans, overlaid on the OSRM route; also the fallback router |
 | Directions (traffic-aware path, option 3) | when Google's route diverges >700 m from OSRM's (jam reroute), OSRM `route/v1` **through ~12 vias sampled off Google's polyline** → Google's path with full OSRM steps. `/match` map-matching would be cleaner but FOSSGIS caps it at 10 coords — see "Why dense-via, not map-matching" |
-| Reviews | `GET /maps/preview/review/listentitiesreviews?pb=!1m2!1y<HIGH>!2y<LOW>!2m2!2i0!3i20!3e1!5m2!1svela!7e81` |
+| Reviews | hidden WebView DOM-scrape of the place's own `?cid=` page (`WebReviewsFetcher`; the old `listentitiesreviews` RPC is dead, 404) |
 | Photos (full gallery) | `POST /maps/_/MapsWizUi/data/batchexecute?rpcids=hspqX` (proto in calibration) |
 | Transit | hidden WebView on `/maps/dir/<o>/<d>/data=!4m2!4m1!3e3` (see below) |
 | Reverse-geocode | OSM **Nominatim** `/reverse` (NOT Google — Google `tbm=map` won't reverse a lat,lng) |
@@ -239,6 +241,20 @@ tables are only ever hit through indexes. `OfflinePacks` (:core) registers the d
 region's graph, delete with it, and show the same heads-up progress card as the voice download; graphs
 installed before packs existed get a "Get places" button. Device-verified: offline "pel meni" from
 Yolo County → Pel'Meni Dumpling Tzar, Fremont, with address.
+
+**Place pack freshness (rev + monthly cron + row-level deltas, DONE 2026-07-07).** `poi-packs.yml` also runs
+on a monthly cron that rebuilds every published region; each rebuild bumps the region's `rev` in the manifest
+(alongside `updatedAt` and per-table row counts). Installed revs live in `poipacks/revs.json`; a newer
+manifest rev puts an "Update places" button on the region's Settings row. CI diffs each rebuild against the
+previous rev (`scripts/poipack_delta.py`, one SQL EXCEPT per table producing del_/ins_ tables) and publishes
+the delta zip only when it is under half the full pack size. `PoiPackStore.applyDelta` (valid only when
+installed rev == the delta's fromRev, else full download) applies it in one transaction: delete by full-row
+match driven through each table's index (NULL-safe `IS` matching), insert the ins_ rows, then verify every
+table's count against the manifest before committing; any mismatch rolls back and the caller falls back to a
+full download. Street-name sids are stable content hashes (SHA-1 of the normalized name, truncated to a
+positive 63-bit int; the build fails on a collision), not insertion counters, so a rebuild leaves unchanged
+rows byte-identical and deltas stay small (a Washington test delta: 5.6 KB vs the 143 MB pack). The
+`TABLE_COLUMNS` map in PoiPackStore mirrors `poipack_build.py`/`poipack_delta.py`; keep all three in sync.
 
 **Offline address geocoding (on-device, DONE 2026-07-07).** So an arbitrary typed street address routes with
 no signal, not just addresses that are an indexed POI. Downloading a map area builds a SQLite forward geocoder
@@ -390,6 +406,21 @@ itself shows the traffic, not the whole map.
   windowed projection in `projectAlong` — not global-nearest) so "remaining" and "distance to
   next turn" stay **along-route** and honest on routes that pass near themselves
   (switchback / cloverleaf / out-and-back); off-route it holds rather than snapping to a far leg.
+- **Android Auto (first cut)**: `app/car/` — a NAVIGATION-category `CarAppService`
+  (`VelaCarAppService`, host validator open because sideloads already require AA's
+  "Unknown sources" developer switch) whose one screen (`CarMapScreen`) renders the live
+  map on the car display and, while navigating, a RoutingInfo card with the current
+  maneuver + distance from the same `@Singleton NavSession` the phone drives. Rendering:
+  templated car apps get a raw surface, MapLibre needs a View, so the renderer wraps the
+  surface in a `VirtualDisplay` + `Presentation` holding a plain `MapView`, styled with
+  the same Liberty URI + `applyDark`/`applyLight` recolour keyed to the car's own
+  day/night. Puck = its own AOSP `LocationManager` listener; pan/zoom = `onScroll`/`onScale`
+  camera math; recenter + zoom actions in the strip. The phone app runs nav and voice;
+  the car is a display for it.
+- **Place-content toggles**: Settings → Map, `ShowReviews` / `LoadPhotos` holders
+  (default on). Off gates BOTH the fetch (`fetchReviews`/`fetchPhotos` in the VM) and the
+  render (review tab / photo strip in `PlaceSheet`), so off means no scrape traffic at
+  all, not just hidden UI.
 - **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
   nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
   **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),
@@ -515,12 +546,22 @@ handed — no filesystem, network, or device access.
 
 ## 7. Build, release, signing
 
+**In-app updater** (`app/update/SelfUpdater.kt`): checks
+`api.github.com/repos/PimpinPumpkin/Vela/releases/latest`, derives versionCode from the
+`v0.3.<run>` tag (`2000 + run`), and when newer offers a card on the map
+(`MapUiState.updateInfo`). Download uses a no-call-timeout client (the APK is ~80 MB),
+zip-magic-checks the body, then hands the file to the system installer via the app
+FileProvider (`filesDir/updates/`, same plumbing as the voice-engine installer) — the OS
+enforces same-package/same-signature. Launch check throttled to ~daily behind the
+`self_update_check` pref (Settings toggle, default on); "Not now" pins
+`update_dismissed_code` so only a newer release re-offers.
+
 - Toolchain: **AGP 8.7.3, Kotlin 2.1.0, Gradle 8.11.1,
   compileSdk 35, minSdk 26, Java 17**, Compose + Hilt + version catalog. **R8 in the
   `release` buildType** — always build release for on-device (debug lags the map).
 - **CI** (`.github/workflows/ci.yml`): every push to `main` builds + tests + signs the
-  APK and publishes a normal versioned GitHub release **`v0.2.<run>`** (versionName
-  `0.2.<run>`, versionCode `2000+run`). Obtainium tracks the latest.
+  APK and publishes a normal versioned GitHub release **`v0.3.<run>`** (versionName
+  `0.3.<run>`, versionCode `2000+run`). Obtainium tracks the latest.
 - **APK signing**: release keystore `~/.vela-signing/vela-release.jks` (alias `vela`,
   password in `credentials.txt`); CI secrets `VELA_KEYSTORE_BASE64` /
   `_PASSWORD` / `VELA_KEY_ALIAS`. **`CN=Vela Maps`**. **Keystore lives outside the repo

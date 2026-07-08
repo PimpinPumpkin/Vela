@@ -16,6 +16,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
@@ -99,6 +100,7 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -173,6 +175,13 @@ fun MapScreen(
     onOpenSettings: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
+    // True while the results panel is stretched to ~full screen; the bottom map chrome
+    // (scale bar, locate FAB, Search this area) hides then — it used to draw on top of
+    // the list (they live later in the Box, so they stacked above it).
+    var resultsFullscreen by remember { mutableStateOf(false) }
+    LaunchedEffect(state.results, state.resultsCollapsed) {
+        if (state.results.isEmpty() || state.resultsCollapsed) resultsFullscreen = false
+    }
     val darkTheme = isAppInDarkTheme()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // When the place sheet is the active bottom UI it covers ~the bottom 56% of the
@@ -421,6 +430,7 @@ fun MapScreen(
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
+            onAddressLabelTap = vm::onAddressLabelTap,
             onViewport = vm::onViewport,
             dpadController = mapDpad,
             modifier = Modifier.fillMaxSize(),
@@ -697,6 +707,7 @@ fun MapScreen(
                                     vm.selectPlace(it)
                                 },
                                 onCollapse = vm::collapseResults,
+                                onExpandedChange = { resultsFullscreen = it },
                             )
 
                         state.results.isNotEmpty() && state.selected == null && state.resultsCollapsed ->
@@ -704,6 +715,7 @@ fun MapScreen(
                                 onClick = vm::expandResults,
                                 label = { Text(stringResource(R.string.mapscreen_results_count, state.results.size)) },
                                 leadingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null) },
+                                shape = androidx.compose.foundation.shape.CircleShape,
                                 modifier = Modifier.padding(top = 8.dp),
                             )
 
@@ -837,7 +849,7 @@ fun MapScreen(
             )
         }
 
-        if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen) {
+        if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen && !resultsFullscreen) {
             ElevatedButton(
                 onClick = vm::searchThisArea,
                 modifier = Modifier
@@ -1039,7 +1051,7 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null) {
+        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsFullscreen) {
             FloatingActionButton(
                 onClick = vm::recenter,
                 modifier = Modifier
@@ -1096,7 +1108,7 @@ fun MapScreen(
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
         if (!state.navigating && state.selected == null && !searchOpen &&
-            (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion)
+            (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null)
         ) {
             Column(
                 Modifier
@@ -1116,6 +1128,15 @@ fun MapScreen(
                         name = state.regionDownloadName ?: "",
                         places = state.poiPackDownloadingId != null,
                         pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                    )
+                }
+                // A newer release on GitHub (self-updater; the check is a Settings toggle).
+                state.updateInfo?.let { u ->
+                    UpdateCard(
+                        versionName = u.versionName,
+                        downloadPct = state.updateDownloadPct,
+                        onUpdate = { vm.downloadUpdate() },
+                        onDismiss = { vm.dismissUpdate() },
                     )
                 }
                 state.notices.forEach { n ->
@@ -1176,8 +1197,16 @@ private fun markersOf(state: MapUiState): List<MapMarker> =
     displayedPlaces(state).map { MapMarker(it.name, it.location) }
 
 @Composable
-private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onCollapse: () -> Unit) {
+private fun SearchResults(
+    results: List<Place>,
+    onPick: (Place) -> Unit,
+    onCollapse: () -> Unit,
+    onExpandedChange: (Boolean) -> Unit = {},
+) {
     val expandedState = remember { mutableStateOf(false) }
+    // Tell MapScreen when we're stretched (near) full screen so the bottom map chrome
+    // (scale bar / locate FAB / Search this area) gets out of the way.
+    LaunchedEffect(expandedState.value) { onExpandedChange(expandedState.value) }
     var openOnly by remember { mutableStateOf(false) }
     var topRated by remember { mutableStateOf(false) }
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
@@ -1189,24 +1218,37 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
         if (expandedState.value) (screenH * 0.94f).dp else (screenH * 0.52f).dp,
         label = "resultsHeight",
     )
-    // The panel hangs from the top (under the search bar), so it follows a
-    // top-sheet model: pull DOWN to grow, push UP to retract. A nested-scroll
-    // handler lets a down-overscroll at the top of the list expand the panel
-    // ("pull to see more"); hiding is the upward gesture on the handle below.
+    // The panel hangs from the top (under the search bar), so it follows a top-sheet
+    // model, the MIRROR of the place sheet: pull DOWN grows a detent, push UP shrinks
+    // one (expanded → peek → the "N results" pill via onCollapse). Same stepping feel as
+    // the POI viewer's dismissConn — ONE detent per gesture (a long drag can't blow
+    // through peek straight to the pill), re-armed at the fling boundary. Swipe anywhere
+    // on the list, not just the handle: a down-overscroll at the list top grows it
+    // ("pull to see more"); an up-drag scrolls the content normally.
     val listState = rememberLazyListState()
     val onCollapseUpdated = rememberUpdatedState(onCollapse)
     val dismissConn = remember {
         object : NestedScrollConnection {
             private var acc = 0f
+            private var steppedThisGesture = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (available.y > 0f && atTop && !expandedState.value) {
+                if (available.y > 0f && atTop) {
                     acc += available.y
-                    if (acc > 120f) { expandedState.value = true; acc = 0f }
+                    if (!steppedThisGesture && !expandedState.value && acc > 120f) {
+                        expandedState.value = true; steppedThisGesture = true; acc = 0f
+                    }
                     return available
                 }
-                if (available.y <= 0f) acc = 0f
+                if (available.y < 0f) acc = 0f
                 return Offset.Zero
+            }
+            // Fling phase closes every drag (even at zero velocity) — the gesture boundary
+            // that re-arms stepping for the next swipe, exactly like the place sheet.
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                acc = 0f
+                steppedThisGesture = false
+                return Velocity.Zero
             }
         }
     }
@@ -1240,12 +1282,17 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = SheetPalette.ink(dark)),
     ) {
         Column {
-            // Top-sheet handle: swipe DOWN to expand the list, swipe UP to retract
-            // it — first shrinking an expanded list, then hiding it back to the
-            // "N results" pill (the panel lives at the top, so up = away).
+            // Top-sheet handle, mirroring the POI viewer's handle. TAP steps one detent
+            // (peek→expanded, expanded→peek). Swipe DOWN grows a detent, swipe UP shrinks
+            // one — first collapsing an expanded list to peek, then hiding peek back to the
+            // "N results" pill (the panel lives at the top, so up = away). A hard down-flick
+            // jumps straight to expanded, a hard up-flick straight to the pill.
             Column(
                 Modifier
                     .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectTapGestures(onTap = { expandedState.value = !expandedState.value })
+                    }
                     .pointerInput(Unit) {
                         var total = 0f
                         detectVerticalDragGestures(
@@ -1306,6 +1353,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         selected = openOnly,
                         onClick = { openOnly = !openOnly },
                         label = { Text(stringResource(R.string.mapscreen_filter_open_now)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                         leadingIcon = if (openOnly) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
@@ -1314,12 +1362,14 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                         selected = topRated,
                         onClick = { topRated = !topRated },
                         label = { Text(stringResource(R.string.mapscreen_filter_top_rated)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     )
                     // Price: tap to cycle off → ≤$ → ≤$$ → ≤$$$ → ≤$$$$ → off.
                     FilterChip(
                         selected = priceMax > 0,
                         onClick = { priceMax = (priceMax + 1) % 5 },
                         label = { Text(if (priceMax == 0) stringResource(R.string.mapscreen_filter_price) else "≤ " + "$".repeat(priceMax)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     )
                     // Sort: tap to cycle relevance (Google's order) → rating → distance.
                     FilterChip(
@@ -1334,6 +1384,7 @@ private fun SearchResults(results: List<Place>, onPick: (Place) -> Unit, onColla
                                 },
                             )
                         },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     )
                 }
             }
@@ -1464,6 +1515,8 @@ private fun CategoryChips(onPick: (String) -> Unit) {
                 modifier = Modifier.dpadHighlight(RoundedCornerShape(8.dp)),
                 label = { Text(stringResource(labelRes)) },
                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                // Full pill, Google-style — the M3 default 8dp corners read dated on a map chip row.
+                shape = androidx.compose.foundation.shape.CircleShape,
                 // MONOCHROME glyphs (user 2026-07-06): the M3 default tints the leading icon with the
                 // theme primary (teal), Google's chips are single-ink — icon matches the label colour.
                 colors = androidx.compose.material3.AssistChipDefaults.elevatedAssistChipColors(
@@ -1941,6 +1994,41 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, modifier
 
 /** A notice pushed through the signed calibration channel — level-tinted, with an
  *  optional "Learn more" link and a per-id Dismiss. */
+/** "A newer Vela is out" card (self-updater): download with progress, then the system
+ *  installer takes over. "Not now" silences this version until a newer one appears. */
+@Composable
+private fun UpdateCard(
+    versionName: String,
+    downloadPct: Int?,
+    onUpdate: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
+            Text(stringResource(R.string.update_available_title, versionName), fontWeight = FontWeight.SemiBold)
+            if (downloadPct != null) {
+                Text(stringResource(R.string.update_downloading, downloadPct), style = MaterialTheme.typography.bodySmall)
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { downloadPct / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp),
+                )
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.update_later)) }
+                    TextButton(onClick = onUpdate) { Text(stringResource(R.string.update_install)) }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun NoticeCard(notice: Notice, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current

@@ -49,6 +49,12 @@
     <string name="settings_transit_layer_hint">Rysuje linie kolejowe i metra na mapie kolorem, aby łatwo śledzić tory. Używa otwartych danych już zawartych w kafelkach, bez sieci.</string>
     <string name="settings_read_all_reviews">Przycisk „Czytaj wszystkie opinie”</string>
     <string name="settings_read_all_reviews_hint">Opinie w karcie miejsca to zawsze płynna, natywna lista Vela. To dodaje przycisk „Czytaj wszystkie opinie”, który otwiera pełną stronę opinii Google na CAŁYM EKRANIE — każdą opinię (nie tylko pierwsze ~50), wyszukiwanie po stronie serwera Google i odtwarzanie opinii wideo. Trackery i beacony są blokowane, ale strona Google działa wtedy w aplikacji. Wyłączone = tylko natywna lista, bez strony Google do opinii.</string>
+    <string name="settings_buildings_3d">Budynki 3D</string>
+    <string name="settings_buildings_3d_hint">Wypukłe bryły budynków przy dużym zbliżeniu. Wyłączenie może poprawić płynność przesuwania na starszych telefonach; płaskie obrysy zostają.</string>
+    <string name="settings_show_reviews">Pokazuj recenzje</string>
+    <string name="settings_show_reviews_hint">Wył. = strony miejsc nie pokazują recenzji i Vela nigdy ich nie pobiera.</string>
+    <string name="settings_load_photos">Wczytuj zdjęcia</string>
+    <string name="settings_load_photos_hint">Wył. = strony miejsc nie pokazują zdjęć i nic nie jest pobierane. Oszczędza dane.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Korzystanie z mapy bez zasięgu wymaga dwóch rzeczy — KAFELKÓW mapy, które widzisz, oraz SIECI DRÓG, która wyznacza trasę. Zapisanie obszaru mapy pobiera oba dla tego miejsca; lista regionów poniżej dodaje sieć dróg wszędzie tam, gdzie podróżujesz.</string>
     <string name="settings_offline_map_area">Obszar mapy</string>
@@ -69,6 +75,8 @@
     <string name="settings_routing_installed_places">Zainstalowano · miejsca dostępne offline</string>
     <string name="settings_routing_places_downloading">Zapisywanie miejsc · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Pobierz miejsca</string>
+    <string name="settings_update_places">Zaktualizuj miejsca</string>
+    <string name="settings_routing_update_available">Zainstalowano · dostępna aktualizacja miejsc</string>
     <string name="settings_routing_size_here">%1$s MB · obejmuje Twoją lokalizację</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Usuń trasy offline</string>
@@ -387,4 +395,16 @@
     <string name="mapscreen_your_destination">celu</string>
     <string name="mapvm_resume_waiting_gps">Oczekiwanie na GPS, aby wznowić nawigację…</string>
     <string name="mapvm_resume_failed">Nie udało się wznowić nawigacji</string>
+    <string name="update_available_title">Dostępna jest Vela %1$s</string>
+    <string name="update_downloading">Pobieranie… %1$d%%</string>
+    <string name="update_later">Nie teraz</string>
+    <string name="update_install">Aktualizuj</string>
+    <string name="update_download_failed">Pobieranie aktualizacji nie powiodło się. Spróbuj później.</string>
+    <string name="settings_update_auto">Sprawdzaj aktualizacje przy starcie</string>
+    <string name="settings_update_auto_hint">Mniej więcej raz dziennie sprawdza najnowsze wydanie na GitHubie i proponuje je, gdy jest nowsze niż ta wersja. Instalacja przebiega przez zwykły instalator Androida. Jeśli aktualizujesz przez Obtainium, możesz to wyłączyć.</string>
+    <string name="settings_update_check_now">Sprawdź aktualizacje</string>
+    <string name="settings_update_checking">Sprawdzanie…</string>
+    <string name="settings_update_found">Dostępna aktualizacja! Wróć do mapy, aby ją zainstalować.</string>
+    <string name="settings_update_none">Masz najnowszą wersję.</string>
+    <string name="settings_place_pages">Strony miejsc</string>
 </resources>

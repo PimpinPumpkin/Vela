@@ -49,6 +49,12 @@
     <string name="settings_transit_layer_hint">Trace les lignes de train et de métro en couleur sur la carte, pour suivre le rail facilement. Utilise les données ouvertes déjà présentes dans les tuiles, sans réseau.</string>
     <string name="settings_read_all_reviews">Bouton « Lire tous les avis »</string>
     <string name="settings_read_all_reviews_hint">Les avis dans la fiche du lieu sont toujours affichés dans la liste native fluide de Vela. Ceci ajoute un bouton « Lire tous les avis » qui ouvre la page complète des avis Google en PLEIN ÉCRAN — tous les avis (pas seulement les ~50 premiers), la recherche côté serveur de Google et la lecture des avis vidéo. Les traqueurs et balises sont bloqués, mais la page de Google s\'exécute alors dans l\'application. Désactivé = liste native uniquement, aucune page Google pour les avis.</string>
+    <string name="settings_buildings_3d">Bâtiments en 3D</string>
+    <string name="settings_buildings_3d_hint">Formes de bâtiments en relief à fort zoom. Le désactiver peut rendre le déplacement plus fluide sur les vieux téléphones; les contours plats restent.</string>
+    <string name="settings_show_reviews">Afficher les avis</string>
+    <string name="settings_show_reviews_hint">Désactivé = les fiches de lieux n\'affichent aucun avis et Vela ne les récupère jamais.</string>
+    <string name="settings_load_photos">Charger les photos</string>
+    <string name="settings_load_photos_hint">Désactivé = les fiches de lieux n\'affichent aucune photo et rien n\'est téléchargé. Économise les données.</string>
     <string name="settings_offline">Hors ligne</string>
     <string name="settings_offline_hint">Utiliser la carte sans réseau nécessite deux éléments — les TUILES de carte que vous voyez et le RÉSEAU ROUTIER qui vous guide. Enregistrer une zone de carte récupère les deux pour cet endroit ; la liste des régions ci-dessous ajoute le réseau routier partout où vous voyagez.</string>
     <string name="settings_offline_map_area">Zone de carte</string>
@@ -69,6 +75,8 @@
     <string name="settings_routing_installed_places">Installé · lieux consultables hors ligne</string>
     <string name="settings_routing_places_downloading">Enregistrement des lieux · %1$d %%</string> <!-- format -->
     <string name="settings_get_places">Obtenir les lieux</string>
+    <string name="settings_update_places">Mettre à jour les lieux</string>
+    <string name="settings_routing_update_available">Installé · mise à jour des lieux disponible</string>
     <string name="settings_routing_size_here">%1$s Mo · couvre votre position</string>
     <string name="settings_routing_size">%1$s Mo</string>
     <string name="settings_routing_remove">Supprimer le routage hors ligne</string>
@@ -387,4 +395,16 @@
     <string name="mapscreen_your_destination">votre destination</string>
     <string name="mapvm_resume_waiting_gps">En attente du GPS pour reprendre la navigation…</string>
     <string name="mapvm_resume_failed">Impossible de reprendre la navigation</string>
+    <string name="update_available_title">Vela %1$s est disponible</string>
+    <string name="update_downloading">Téléchargement… %1$d%%</string>
+    <string name="update_later">Pas maintenant</string>
+    <string name="update_install">Mettre à jour</string>
+    <string name="update_download_failed">Le téléchargement de la mise à jour a échoué. Réessaie plus tard.</string>
+    <string name="settings_update_auto">Vérifier les mises à jour au lancement</string>
+    <string name="settings_update_auto_hint">Consulte la dernière version GitHub environ une fois par jour et la propose quand elle est plus récente que celle-ci. L\'installation passe par l\'installateur Android normal. Si tu mets déjà à jour via Obtainium, tu peux désactiver.</string>
+    <string name="settings_update_check_now">Vérifier les mises à jour</string>
+    <string name="settings_update_checking">Vérification…</string>
+    <string name="settings_update_found">Mise à jour disponible ! Reviens à la carte pour l\'installer.</string>
+    <string name="settings_update_none">Tu as la version la plus récente.</string>
+    <string name="settings_place_pages">Fiches de lieux</string>
 </resources>

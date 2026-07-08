@@ -17,9 +17,9 @@ android {
         minSdk = 26
         targetSdk = 35
         // Overridable from CI: -PappVersionCode / -PappVersionName (ci.yml derives
-        // them from the run number → 0.2.<run> / 2000+run). Defaults are local/dev only.
+        // them from the run number → 0.3.<run> / 2000+run). Defaults are local/dev only.
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = (project.findProperty("appVersionName") as String?) ?: "0.2.0"
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -159,6 +159,7 @@ dependencies {
     // MapLibre Native — the renderer. Only the app module touches it; :core
     // stays UI-agnostic.
     implementation(libs.maplibre.android)
+    implementation(libs.androidx.car.app) // Android Auto (projection): templates + car surface
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

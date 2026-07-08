@@ -49,6 +49,12 @@
     <string name="settings_transit_layer_hint">Ritar tåg- och tunnelbanelinjer i färg på kartan, så att spåren är lätta att följa. Använder de öppna kartdata som redan finns i rutorna, utan nätverk.</string>
     <string name="settings_read_all_reviews">Knappen ”Läs alla recensioner”</string>
     <string name="settings_read_all_reviews_hint">Recensioner i platsvyn är alltid Velas egen smidiga inbyggda lista. Detta lägger till en knapp ”Läs alla recensioner” som öppnar Googles fullständiga recensionssida i HELSKÄRM – alla recensioner (inte bara de första ~50), Googles serversökning och videorecensioner spelas upp. Spårare/beacons blockeras, men Googles sida körs inuti appen. Av = endast inbyggd lista, ingen Google-sida för recensioner.</string>
+    <string name="settings_buildings_3d">3D-byggnader</string>
+    <string name="settings_buildings_3d_hint">Upphöjda byggnadsformer vid hög zoom. Att stänga av kan göra panorering mjukare på äldre telefoner; de platta konturerna finns kvar.</string>
+    <string name="settings_show_reviews">Visa recensioner</string>
+    <string name="settings_show_reviews_hint">Av = platssidor visar inga recensioner och Vela hämtar dem aldrig.</string>
+    <string name="settings_load_photos">Ladda foton</string>
+    <string name="settings_load_photos_hint">Av = platssidor visar inga foton och inget laddas ner. Sparar data.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Att använda kartan utan täckning kräver två saker – KARTRUTORNA du ser och VÄGNÄTET som beräknar rutter åt dig. Att spara ett kartområde hämtar båda för den platsen; regionlistan nedan lägger till vägnätet för dit du reser.</string>
     <string name="settings_offline_map_area">Kartområde</string>
@@ -69,6 +75,8 @@
     <string name="settings_routing_installed_places">Installerad · platser sökbara offline</string>
     <string name="settings_routing_places_downloading">Sparar platser · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Hämta platser</string>
+    <string name="settings_update_places">Uppdatera platser</string>
+    <string name="settings_routing_update_available">Installerad · platsuppdatering tillgänglig</string>
     <string name="settings_routing_size_here">%1$s MB · täcker din plats</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Ta bort offlineruttning</string>
@@ -387,4 +395,16 @@
     <string name="mapscreen_your_destination">ditt mål</string>
     <string name="mapvm_resume_waiting_gps">Väntar på GPS för att återuppta navigeringen…</string>
     <string name="mapvm_resume_failed">Kunde inte återuppta navigeringen</string>
+    <string name="update_available_title">Vela %1$s finns tillgänglig</string>
+    <string name="update_downloading">Laddar ner… %1$d%%</string>
+    <string name="update_later">Inte nu</string>
+    <string name="update_install">Uppdatera</string>
+    <string name="update_download_failed">Nedladdningen av uppdateringen misslyckades. Försök igen senare.</string>
+    <string name="settings_update_auto">Sök efter uppdateringar vid start</string>
+    <string name="settings_update_auto_hint">Tittar på den senaste GitHub-releasen ungefär en gång om dagen och erbjuder den när den är nyare än den här versionen. Installationen sker via Androids vanliga installerare. Uppdaterar du redan via Obtainium kan du stänga av detta.</string>
+    <string name="settings_update_check_now">Sök efter uppdateringar</string>
+    <string name="settings_update_checking">Kontrollerar…</string>
+    <string name="settings_update_found">Uppdatering tillgänglig! Gå tillbaka till kartan för att installera.</string>
+    <string name="settings_update_none">Du har den senaste versionen.</string>
+    <string name="settings_place_pages">Platssidor</string>
 </resources>

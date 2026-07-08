@@ -10,6 +10,10 @@
 name: Build offline place packs
 
 on:
+  # Monthly refresh: rebuild EVERY catalogued region from current OSM and publish row-level deltas
+  # alongside the full zips, so installed packs can update without a full re-download.
+  schedule:
+    - cron: "15 7 3 * *"
   workflow_dispatch:
     inputs:
       group:
@@ -47,11 +51,16 @@ jobs:
           GROUP: ${{ inputs.group }}
           IDS: ${{ inputs.ids }}
           SKIP_BIG: ${{ inputs.skip_big }}
+          EVENT: ${{ github.event_name }}
         run: |
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
-          sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
+          # scheduled runs have no inputs: rebuild the whole catalog (the monthly refresh)
+          sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" --arg event "$EVENT" '
             [ .regions[]
-              | select( if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null else .group == $group end )
+              | select(
+                  if ($ids|length) > 0 then (.id as $rid | $ids | index($rid)) != null
+                  elif $event == "schedule" then true
+                  else .group == $group end )
               | select( ($skipBig | not) or (.big != true) )
               | {id, name, pbf_url} ]
           ' tools/routing-regions.json)
@@ -80,7 +89,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install tools
-        run: sudo apt-get update && sudo apt-get install -y osmium-tool jq zip python3
+        run: sudo apt-get update && sudo apt-get install -y osmium-tool jq zip unzip python3
       - name: Build ${{ matrix.id }} + upload zip + emit entry
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

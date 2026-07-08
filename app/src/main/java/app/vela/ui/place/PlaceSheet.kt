@@ -70,7 +70,10 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsBoat
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsSubway
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.DirectionsTransit
@@ -458,7 +461,9 @@ fun PlaceSheet(
             }
             // Photo hero at the top (Google-style) — always visible, even at the
             // peek height / in landscape; tap one to open the full gallery.
-            if (place.photoUrls.isNotEmpty() || photosLoading) {
+            // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
+            // search response can seed a preview photo — don't show it either).
+            if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
                 // Category filter chips (Menu / Food & drink / Vibe / By owner …) — only when Google tagged
                 // photos with categories, mirroring its gallery tabs. "All" clears the filter.
                 val photoCats = remember(place.photoCategories) { place.photoCategories.filterNotNull().distinct() }
@@ -1080,16 +1085,19 @@ fun DirectionsPanel(
             val dirAutoFocus = rememberDpadAutoFocus()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
-                    TravelMode.DRIVE to stringResource(R.string.place_mode_drive),
-                    TravelMode.TRANSIT to stringResource(R.string.place_mode_transit),
-                    TravelMode.WALK to stringResource(R.string.place_mode_walk),
-                    TravelMode.BICYCLE to stringResource(R.string.place_mode_bike),
-                ).forEach { (mode, label) ->
+                    Triple(TravelMode.DRIVE, stringResource(R.string.place_mode_drive), Icons.Default.DirectionsCar),
+                    Triple(TravelMode.TRANSIT, stringResource(R.string.place_mode_transit), Icons.Default.DirectionsBus),
+                    Triple(TravelMode.WALK, stringResource(R.string.place_mode_walk), Icons.AutoMirrored.Filled.DirectionsWalk),
+                    Triple(TravelMode.BICYCLE, stringResource(R.string.place_mode_bike), Icons.AutoMirrored.Filled.DirectionsBike),
+                ).forEach { (mode, label, icon) ->
+                    // Google-style mode pills: stadium shape + a mode glyph, not bare squarish chips.
                     FilterChip(
                         selected = currentMode == mode,
                         onClick = { onModeSelected(mode) },
                         label = { Text(label) },
                         modifier = if (mode == TravelMode.DRIVE) Modifier.focusRequester(dirAutoFocus) else Modifier,
+                        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     )
                 }
             }
@@ -1727,8 +1735,10 @@ private fun PlaceTabs(
     // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
     // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
     // zero-reviews state if there are none.
-    val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
-        (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
+    val hasReviews = app.vela.ui.ShowReviews.on.value && (
+        place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
+            (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
+        )
     val hasAbout = place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null
     val tabs = buildList {
         if (hasReviews) add("Reviews")

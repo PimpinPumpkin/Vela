@@ -150,6 +150,8 @@ data class MapUiState(
     val work: SavedPlace? = null,
     val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
     val notices: List<Notice> = emptyList(), // pushed via the signed calibration channel
+    val updateInfo: app.vela.update.SelfUpdater.UpdateInfo? = null, // newer release found (card on the bare map)
+    val updateDownloadPct: Int? = null, // non-null while the update APK downloads
     // Offline routing (downloadable per-region CH graphs — Settings → Offline routing)
     val routingRegions: List<app.vela.offline.RoutingRegion> = emptyList(),
     val routingInstalledIds: Set<String> = emptySet(), // region ids whose graphs are on disk
@@ -160,6 +162,8 @@ data class MapUiState(
     val poiPackDownloadingId: String? = null,
     val poiPackDownloadPct: Int = 0,
     val poiPackInstalledIds: Set<String> = emptySet(),
+    val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
+    val poiPackInstalledRevs: Map<String, Int> = emptyMap(),                // installed pack revision per region
 )
 
 /**
@@ -197,6 +201,7 @@ class MapViewModel @Inject constructor(
     private val overlayStore: app.vela.offline.OverlayTileStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
+    private val selfUpdater: app.vela.update.SelfUpdater,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -304,6 +309,7 @@ class MapViewModel @Inject constructor(
             runCatching { calibration.refresh() }
             refreshNotices()
         }
+        maybeCheckForUpdate()
 
         viewModelScope.launch {
             navSession.state.collect { ns ->
@@ -703,6 +709,61 @@ class MapViewModel @Inject constructor(
         _state.update { st -> st.copy(notices = st.notices.filterNot { it.id == id }) }
     }
 
+    // --- Self-updater (GitHub releases) ------------------------------------------------------
+
+    /** Launch check, at most ~daily, gated by the Settings toggle. "Not now" on a version
+     *  silences that version (a NEWER release shows the card again).
+     *  NB called from init{}, which runs BEFORE the later-declared `settingsPrefs` field
+     *  initializer — resolve the prefs locally or this NPEs on launch (it did). */
+    private fun maybeCheckForUpdate() {
+        val prefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("self_update_check", true)) return
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong("last_update_check_ms", 0L) < 20 * 60 * 60_000L) return
+        prefs.edit().putLong("last_update_check_ms", now).apply()
+        viewModelScope.launch {
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE) ?: return@launch
+            if (info.versionCode <= prefs.getInt("update_dismissed_code", 0)) return@launch
+            _state.update { it.copy(updateInfo = info) }
+        }
+    }
+
+    /** Settings "Check for updates" button — unthrottled, reports back via [onResult]
+     *  (true = an update was found and the card is up; false = already current / check failed). */
+    fun checkForUpdateNow(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE)
+            if (info != null) _state.update { it.copy(updateInfo = info) }
+            onResult(info != null)
+        }
+    }
+
+    /** Download the offered update and hand it to the system installer. */
+    fun downloadUpdate() {
+        val info = _state.value.updateInfo ?: return
+        if (_state.value.updateDownloadPct != null) return // already downloading
+        _state.update { it.copy(updateDownloadPct = 0) }
+        viewModelScope.launch {
+            val apk = selfUpdater.download(info) { pct ->
+                _state.update { it.copy(updateDownloadPct = pct) }
+            }
+            _state.update { it.copy(updateDownloadPct = null) }
+            if (apk != null) {
+                selfUpdater.install(apk)
+            } else {
+                showStatus(appContext.getString(app.vela.R.string.update_download_failed))
+            }
+        }
+    }
+
+    /** "Not now": hide the card and stay quiet about THIS version (a newer one re-offers). */
+    fun dismissUpdate() {
+        _state.value.updateInfo?.let {
+            settingsPrefs.edit().putInt("update_dismissed_code", it.versionCode).apply()
+        }
+        _state.update { it.copy(updateInfo = null, updateDownloadPct = null) }
+    }
+
     /** Record an opened place so the search page can offer one-tap return to it. */
     private fun rememberRecentPlace(sp: SavedPlace) {
         recentPlaceStore.add(sp)
@@ -1089,6 +1150,9 @@ class MapViewModel @Inject constructor(
      *  Sets [MapState.photosLoading] while in flight so the sheet can show "more coming".
      *  Best-effort: an empty/failed scrape leaves the preview untouched (no regression). */
     private fun fetchPhotos(p: Place) {
+        // "Load photos" off: never start the gallery scrape (it's the heaviest per-place
+        // request); the sheet also hides the photo strip, so no loading flag either.
+        if (!app.vela.ui.LoadPhotos.on.value) return
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         // Only flash the loading shimmer for places LIKELY to have photos — a rated/reviewed
@@ -1129,6 +1193,8 @@ class MapViewModel @Inject constructor(
     private var reviewsJob: Job? = null
 
     private fun fetchReviews(p: Place, force: Boolean = false) {
+        // "Show reviews" off: no review section is rendered, so don't scrape either.
+        if (!app.vela.ui.ShowReviews.on.value) return
         // Supersede any in-flight scrape: the fetcher serializes on a Mutex, so an abandoned
         // 40 s Taco Bell grind would otherwise make the NEXT place's reviews queue behind it
         // (~90 s worst case to first review). Cancelling frees the mutex immediately, and this
@@ -1415,6 +1481,52 @@ class MapViewModel @Inject constructor(
             if (place != null && _state.value.selected?.location == location) {
                 _state.update { it.copy(selected = place) }
             }
+        }
+    }
+
+    /** Tap on a house-number LABEL (the map's own `addr:housenumber` or the address overlay's
+     *  `number`). Unlike a long-press we KNOW the number the user aimed at, so we LEAD the pin with
+     *  that exact number and use the reverse-geocode only for the street/city — otherwise Google's
+     *  reverse-geocode can snap to a neighbour (tapped 1020, got 1040), which is exactly the "doesn't
+     *  snap to the house number" complaint. A real business sitting on the point still wins. */
+    fun onAddressLabelTap(number: String, location: LatLng) {
+        if (_state.value.pickOnMap != null) { onMapLongPress(location); return } // pick-mode reuses the endpoint flow
+        reviewsJob?.cancel()
+        val id = "addr:$number@${location.lat},${location.lng}"
+        val immediate = Place(id = id, name = number, location = location)
+        _state.update {
+            it.copy(
+                selected = immediate,
+                results = emptyList(),
+                resultsCollapsed = false,
+                showSearchThisArea = false,
+                placesHere = emptyList(),
+                reviews = emptyList(),
+                reviewsLoading = false,
+                reviewsFound = 0,
+                photosLoading = false,
+                loadingDetails = false,
+                pickingOrigin = false,
+                pickingStop = false,
+            )
+        }
+        viewModelScope.launch {
+            val geo = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
+            val place = when {
+                geo == null -> immediate.copy(address = number)
+                // A real POI (has a rating/category) at that spot — show it, the user gets the business.
+                geo.rating != null || geo.category != null -> geo
+                else -> {
+                    val base = geo.address ?: geo.name
+                    if (base.any { it.isLetter() }) {
+                        // Strip any house number the reverse-geocode led with, then prepend the tapped one.
+                        val rest = base.replaceFirst(Regex("^\\s*\\d+\\S*\\s+"), "")
+                        val addr = "$number $rest"
+                        immediate.copy(name = addr.substringBefore(",").trim(), address = addr)
+                    } else immediate.copy(address = number)
+                }
+            }
+            if (_state.value.selected?.id == id) _state.update { it.copy(selected = place) }
         }
     }
 
@@ -2578,6 +2690,15 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val regions = routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL)
             _state.update { it.copy(routingRegions = regions) }
+            // The pack catalog too (revs + deltas) — Settings compares it against the installed pack
+            // revisions to offer "Update places" on stale regions.
+            val packs = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
+            _state.update {
+                it.copy(
+                    poiPackRegions = packs,
+                    poiPackInstalledRevs = poiPackStore.installedIds().associateWith { id -> poiPackStore.installedRev(id) },
+                )
+            }
         }
     }
 
@@ -2600,28 +2721,40 @@ class MapViewModel @Inject constructor(
     }
 
     /** Pull [region]'s offline place pack (best-effort — regions without a pack just skip). The pack
-     *  catalog shares the routing catalog's region ids, so the graph's region row looks itself up. */
-    private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion) {
+     *  catalog shares the routing catalog's region ids, so the graph's region row looks itself up.
+     *  With [update] set, an installed pack is refreshed: by row-level DELTA when the manifest offers
+     *  one matching the installed revision (a few MB), else by full re-download. */
+    private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         val pack = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
             .firstOrNull { it.id == region.id }
-        if (pack == null || region.id in poiPackStore.installedIds()) {
+        val installed = region.id in poiPackStore.installedIds()
+        if (pack == null || (installed && !update)) {
             _state.update { it.copy(regionDownloadName = null) }
             return
         }
         _state.update { it.copy(poiPackDownloadingId = pack.id, poiPackDownloadPct = 0, regionDownloadName = region.name) }
-        val ok = poiPackStore.download(pack) { pct ->
-            _state.update { it.copy(poiPackDownloadPct = pct) }
+        val canDelta = installed && pack.deltaUrl != null && poiPackStore.installedRev(pack.id) == pack.deltaFromRev
+        var ok = false
+        if (canDelta) {
+            ok = poiPackStore.applyDelta(pack) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
+        }
+        if (!ok) { // no delta path (or it failed) → full download replaces the pack
+            ok = poiPackStore.download(pack) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
         }
         _state.update {
-            it.copy(poiPackDownloadingId = null, regionDownloadName = null, poiPackInstalledIds = poiPackStore.installedIds())
+            it.copy(
+                poiPackDownloadingId = null, regionDownloadName = null,
+                poiPackInstalledIds = poiPackStore.installedIds(),
+                poiPackInstalledRevs = poiPackStore.installedIds().associateWith { id -> poiPackStore.installedRev(id) },
+            )
         }
         if (ok) showStatus(appContext.getString(R.string.mapvm_poipack_ready, region.name))
     }
 
-    /** Settings "Get places" on an already-installed routing region whose pack predates this feature
-     *  (or was skipped) — pulls just the place pack. Says so when the region has no pack published yet
-     *  (the catalog builds out region by region), instead of silently doing nothing. */
-    fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion) {
+    /** Settings "Get places" / "Update places" on an installed routing region — pulls or refreshes just
+     *  the place pack. Says so when the region has no pack published yet (the catalog builds out region
+     *  by region), instead of silently doing nothing. */
+    fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
         viewModelScope.launch {
             val available = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
@@ -2630,7 +2763,7 @@ class MapViewModel @Inject constructor(
                 showStatus(appContext.getString(R.string.mapvm_poipack_unavailable, region.name))
                 return@launch
             }
-            downloadPoiPack(region)
+            downloadPoiPack(region, update = update)
         }
     }
 

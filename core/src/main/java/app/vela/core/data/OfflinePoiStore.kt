@@ -84,7 +84,13 @@ class OfflinePoiStore @Inject constructor(
         // Whole-query address match, so typing a downloaded POI's street address finds it offline (the
         // general typed-address geocoder is OfflineAddressStore).
         clauses.add("address LIKE ?"); args.add("%$term%")
-        val sql = "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE ${clauses.joinToString(" OR ")} LIMIT 400"
+        // Whole-query NAME matches must survive the LIMIT, not just win the post-sort: a state pack has
+        // thousands of category hits ("cafe"), and taking the first 400 in table order dropped an exact
+        // name match that lived past them (found while verifying delta updates). The ORDER BY puts
+        // phrase-in-name rows first, THEN the cap applies. Its LIKE arg is the last one bound.
+        args.add("%$term%")
+        val sql = "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi " +
+            "WHERE ${clauses.joinToString(" OR ")} ORDER BY (name LIKE ?) DESC LIMIT 400"
         val rows = ArrayList<Place>()
         fun query(db: android.database.sqlite.SQLiteDatabase) {
             runCatching {

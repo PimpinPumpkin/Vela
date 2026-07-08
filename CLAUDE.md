@@ -57,10 +57,11 @@ genuinely needs no doc edit, say why in the commit.
   navigate for real** — while on, every "Start" simulates instead of using GPS.
 - CI in `.github/workflows/ci.yml` (single workflow): every push to `main`
   builds + tests the APK (uploaded as an artifact) and publishes a **normal
-  versioned GitHub release** `v0.2.<run>` (versionName `0.2.<run>`, versionCode
+  versioned GitHub release** `v0.3.<run>` (versionName `0.3.<run>`, versionCode
   `2000+run`) — kept as a revision history; Obtainium tracks the latest with no
   pre-release toggle. **Release notes are a real changelog** built from the commit
-  subjects since the previous `v0.2.*` tag (checkout is `fetch-depth: 0` so the tag
+  subjects since the previous `v0.[0-9]*` tag (the glob spans minor bumps so a fresh
+  0.3 release still finds the last 0.2 tag; checkout is `fetch-depth: 0` so the tag
   history is present; the publish step formats them + a compare link into `--notes`).
   So **commit subjects ARE the user-facing changelog** — write them as plain-language
   changelog lines (see the writing-style rule: no em-dashes, human voice), not terse
@@ -69,7 +70,12 @@ genuinely needs no doc edit, say why in the commit.
   2026-06-18 after local dev builds were hand-set with `-PappVersionCode` in the
   1000s, got installed on a test phone, and left it *ahead* of the release line —
   Obtainium then saw the next release as a downgrade. **Keep local dev builds
-  below 1000**, e.g. `-PappVersionCode=1`, so the release line always wins.)
+  below 1000**, e.g. `-PappVersionCode=1`, so the release line always wins. Bumped
+  versionName `0.2.<run>` → `0.3.<run>` on 2026-07-08 — a big UI batch (stadium-pill
+  chips, rebuilt results detents, full-screen-results z-order fix) plus community
+  files + the in-app updater. The versionCode base stays `2000+run` because the run
+  number is global/monotonic, so vc keeps rising across the minor bump; only the
+  *name*'s minor changed.)
   Release signing uses repo secrets `VELA_KEYSTORE_BASE64`,
   `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`,
   outside the repo — back it up). Without them the APK is debug-signed. Version
@@ -91,6 +97,88 @@ genuinely needs no doc edit, say why in the commit.
 - The one seam is `core/data/MapDataSource`. `MockMapDataSource` is the default
   and keeps the entire app usable offline; `google/GoogleMapsDataSource` is the
   real scraper.
+- **Android Auto (`app/car/`, first cut 2026-07-08).** `VelaCarAppService` is a
+  NAVIGATION-category templated `CarAppService` (manifest service + `xml/automotive_app_desc.xml`
+  + the two `androidx.car.app.*` permissions + application-level `minCarApiLevel=1`); a sideload
+  appears in the car launcher only with AA developer "Unknown sources" on, hence
+  `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`. `CarMapScreen` is the whole car UI:
+  NavigationTemplate (Re-center / + / − action strip; RoutingInfo card with
+  `NavSession.state.maneuverText` + distance while navigating) over a map surface. **The
+  MapLibre-on-car trick: SurfaceCallback surface → `DisplayManager.createVirtualDisplay` →
+  `Presentation` → plain `MapView`** (MapLibre can't draw to a raw surface). It reuses
+  `applyDark`/`applyLight` from VelaMapView (made `internal` for this) keyed to
+  `carContext.isDarkMode`, has its OWN AOSP LocationManager listener for the puck (works with the
+  phone UI closed), and draws the route from `NavSession.state.route.polyline`. Pan/zoom arrive as
+  `onScroll`/`onScale` and move the camera by hand (projection math — `MapLibreMap.scrollBy` isn't
+  a thing in 11.x). The PHONE runs nav (MapViewModel feeds NavSession) and speaks; the car is a
+  display. Car-side search/route-start is a follow-up. Untested on a real head unit yet.
+- **Settings ORDER is deliberate (reorg 2026-07-08):** Appearance → Map (traffic/transit/3D) →
+  **Place pages** (ShowReviews / read-all-reviews / LoadPhotos) → Navigation (keep-screen-on,
+  traffic lights, vibrate-on-turns as FilterChips one per mode, demo LAST) → Voice → Offline →
+  Saved places → Data & privacy → Diagnostics → About/Support/Version(+updater). Put a new setting
+  in the section it serves, not at the end; place-content settings go under Place pages, not Map.
+- **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
+  Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
+  name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
+  default-radius cards, no OutlinedIconButton circles — that was the "dated" look).
+- **Chip style = stadium pills (2026-07-08):** EVERY chip (map CategoryChips, results-panel filter
+  chips Open-now/top-rated/price/sort + the collapsed "N results" pill, PlaceSheet travel-mode chips
+  now with a leading `Icons.Default.Directions*` glyph, Settings vibrate-on-turns FilterChips) sets
+  `shape = androidx.compose.foundation.shape.CircleShape` — full-radius pills, Google-style. The M3
+  default 8dp-corner chip read "dated" (user 2026-07-08). Keep any new chip on CircleShape; monochrome
+  leading icons (tint `onSurface`, not the teal primary) so it reads single-ink like Google's.
+- **Search-results sheet detents (rebuilt 2026-07-08 to mirror the POI viewer, `MapScreen.SearchResults`).**
+  It's a TOP sheet (hangs under the search bar), the MIRROR of the place bottom sheet: pull DOWN grows
+  a detent, push UP shrinks one (expanded ~0.94 → peek ~0.52 → the collapsed "N results" pill via
+  `onCollapse`). Same stepping polish as `PlaceSheet.dismissConn` — **one detent per gesture**
+  (`steppedThisGesture` guard, re-armed in `onPreFling` so a long drag can't blow through), swipe
+  anywhere on the list (a down-overscroll at the list top grows it), and **tap the handle to step**
+  (peek↔expanded). **Full-screen hides the bottom map chrome:** `resultsFullscreen` (set from
+  `SearchResults.onExpandedChange`) gates OUT the scale bar, the locate FAB and "Search this area" with
+  `&& !resultsFullscreen`, and is force-reset when results empty/collapse — the fix for the panel
+  rendering UNDER those overlays (later Box children stacked above it). The compass is MapLibre's
+  built-in (`setCompassMargins`), which fades when the map faces north (Google's behaviour) and
+  reappears when rotated/tilted or during heading-up nav — it wasn't removed, it's just north-hidden
+  on the browse map.
+- **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
+  resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
+  `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
+  (a business) → `onPoiTap`; (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber`
+  or the address overlay `vela-addr-*` `number`, queried by layer id) → `onAddressLabelTap(number,
+  labelPoint)`; (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
+  **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay fill,
+  queried by layer id) → reverse-geocode at the tap; else nothing (only a long-press drops a raw
+  coordinate pin on empty land, as before). **The house-number case must SNAP to the tapped number:**
+  `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
+  geocode only for the street/city, replacing whatever house number the geocode led with (a regex
+  strips `^\s*\d+\S*\s+` then prepends the tapped number). Reason: Google's reverse-geocode snaps to
+  the nearest ADDRESSABLE point, which for a tapped OSM label routinely returns a NEIGHBOUR (device:
+  tapped 1020, raw reverse-geocode said 1040) — exactly the "doesn't snap to the house number"
+  complaint. A real business sitting on the point still wins (if the geocode has a rating/category it's
+  shown as-is). Device-verified in South Davis: tapping "1020" → 1020 Olive Dr; a bare footprint →
+  1040 Olive Dr.
+- **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
+  (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
+  They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
+  + the photo-hero `if`), so off = zero scrape traffic. Keep any new review/photo surface behind them.
+- **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
+  `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
+  card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
+  `filesDir/updates/` (FileProvider `updates` path) → ACTION_VIEW package-archive; the OS verifies
+  same package + signature. Launch check ~daily behind `self_update_check` (Settings → Version,
+  default on); manual Check-for-updates button there too. "Not now" stores `update_dismissed_code`
+  (only a NEWER release re-offers). The tag parse is **minor-agnostic** (`^v0\.\d+\.(\d+)$` — it
+  survived the 0.2→0.3 bump untouched), taking only the run number for the versionCode; it still
+  assumes the `2000+run` base, so update `SelfUpdater.check` if the versionCode base ever changes.
+- **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
+  to compose when mpp moved >1% — an unconditional write recomposed the scale bar every pan frame;
+  keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
+  carry `textIgnorePlacement(true)`: they still YIELD to icons (allow-overlap stays false) but never
+  enter the collision index — cheaper placement at street zoom and numbers can't evict icons
+  whatever the layer order. (3) `ui/Buildings3d` holder + Settings → Map "3D buildings" toggle sets
+  visibility on the basemap `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns
+  visibility; applyLight/applyDark only colour it) — extrusion is the fragment-heavy layer, the
+  documented 5a-class stutter source at z16+.
 - **Light/dark is `AppTheme` (`ui/theme/AppTheme.kt`), not the OS.** Read the
   in-app theme with the composable **`isAppInDarkTheme()`** — never call
   `isSystemInDarkTheme()` directly in app UI (it ignores the user's Light/Dark/
@@ -504,7 +592,7 @@ genuinely needs no doc edit, say why in the commit.
   path. **No backend needed for any of this** (the serverless constraint holds).
 - **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
   Pure-JVM, runs on ART — **validated end-to-end on a Pixel 5a** (`:ghprobe`, a throwaway instrumented
-  test; delete once this is wired). Chosen over Valhalla (no maintained Android map-matching binding) /
+  probe — the routing shipped long ago; the module is safe to delete whenever). Chosen over Valhalla (no maintained Android map-matching binding) /
   BRouter (no street names) / Mapbox (token-gated). It's wired as a `:core` dep
   (`libs.graphhopper.mapmatching`, **OSM-import deps excluded** — osmosis/protobuf/woodstox/xmlgraphics
   are Android-hostile + only needed to *build* graphs, which we do off-device). **Three ART workarounds,
@@ -588,6 +676,26 @@ genuinely needs no doc edit, say why in the commit.
   on :8099, `adb reverse`, `-PpoiPackManifestUrl=http://127.0.0.1:8099/poi-pack-manifest.json`. **After
   pushing, dispatch Actions → "Build offline place packs"** (group=us etc.) to publish packs + manifest —
   until then "Get places" reports no pack available.
+  **Pack freshness (2026-07-07): rev + monthly cron + row-level deltas.** Manifest rows carry
+  `rev`/`updatedAt`/`counts{poi,addr,streetpt,streetname}` and optionally `delta{fromRev,url,sizeMb}`;
+  `poi-packs.yml` has a monthly `schedule` cron (3rd, 07:15 UTC) whose prep step selects ALL catalog regions.
+  `build-poi-region.sh` reads the LIVE manifest for the old rev, downloads the previous zip BEFORE clobbering
+  it, builds the delta (`scripts/poipack_delta.py`, SQL EXCEPT per table into del_/ins_ tables), and publishes
+  it only when it is under half the full size. App: installed revs in `poipacks/revs.json`
+  (`PoiPackStore.installedRev`); Settings shows "Update available" + an **Update places** button when the
+  manifest rev is newer; `MapViewModel.downloadPoiPack(update=true)` applies the delta via
+  `PoiPackStore.applyDelta` ONLY when installedRev == deltaFromRev, else full download. applyDelta runs one
+  transaction (delete-by-full-row via a rowid JOIN with NULL-safe `IS` matching, then insert), verifies every
+  table count against the manifest before committing, and re-registers packs on both success and failure.
+  **sids are STABLE content hashes** — SHA-1 of `street_norm` truncated to a positive 63-bit int, collision
+  fails the build; NEVER a counter (a counter renumbers millions of rows on one mid-order insertion and the
+  delta balloons to pack size). `TABLE_COLUMNS` in PoiPackStore mirrors `poipack_build.py` +
+  `poipack_delta.py` — keep all three in sync (`PRAGMA user_version=2`). Gotcha: KDoc in PoiPackStore must
+  not contain a literal `del_*/ins_*` (the `*/` ends the comment). `OfflinePoiStore.search` orders
+  whole-query name matches first so they survive the internal 400-row cap (thousands of category hits used
+  to crowd out an exact name match in a state pack; found live while verifying deltas). v1-format packs
+  (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
+  full-download once, then deltas kick in.
 - **Offline forward geocoder — typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
   `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified South Davis).** So an arbitrary
   typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is
@@ -657,7 +765,7 @@ genuinely needs no doc edit, say why in the commit.
   real deployment should host the PMTiles behind a CDN for snappier range reads. `OVERLAY_MANIFEST_URL`
   BuildConfig overridable `-PoverlayManifestUrl=` like routing. BREAKING-ish: an overlay is DATA (ODbL), orthogonal
   to the app's GPLv3, obligation met by tippecanoe `--attribution` + the release publishing derived tiles under ODbL.
-  **World catalog (`tools/overlay-regions.json`, 250 regions):** TWO Microsoft sources picked by each row's
+  **World catalog (`tools/overlay-regions.json`, 361 rows — ~250 base regions plus chunk pieces):** TWO Microsoft sources picked by each row's
   `source`, both handled by the ONE build script (`SOURCE` env): **`us-legacy`** = a US state's single
   `.geojson.zip` (Microsoft US Building Footprints, 51 states+DC); **`ms-global`** = a world country's
   quadkey-partitioned GeoJSONL from Microsoft's **Global ML Building Footprints** (`global-buildings/dataset-links.csv`

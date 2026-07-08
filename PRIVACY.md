@@ -30,9 +30,10 @@
 | **OpenFreeMap** | viewing the map | your IP, which map tiles you pan over | no search/place text — just tile coordinates |
 | **OSM Nominatim** | long-pressing to drop a pin | your IP, that one lat/lng | nothing else |
 | **AWS (terrarium DEM)** | hillshade relief | your IP, tile coordinates | nothing else |
-| **FOSSGIS OSRM** | rare route-geometry fallback | your IP, origin/dest coordinates | only used when Google omits a route's shape |
-| **Overpass (OSM)** | "download this area" for offline | your IP, the bounding box | nothing else |
+| **FOSSGIS OSRM** | every route you plan | your IP, origin/destination (and waypoint) coordinates | the primary turn-by-turn router; Google is queried in parallel only for the traffic ETA |
+| **Overpass (OSM)** | "download this area", offline address indexing, and traffic-light/stop-sign icons at close zoom | your IP, the bounding box | nothing else |
 | **raw.githubusercontent.com** | once at launch (config refresh) | your IP, a plain file fetch | no data *about you* is sent — it's a download |
+| **GitHub release assets** | downloading offline regions/voices, checking for app updates, and streaming the building/house-number overlays as you browse (small ranged tile reads) | your IP, which file or tile byte-range is fetched (implies your rough map area for the overlays) | no query text, no account |
 
 ## Google, specifically
 
@@ -59,10 +60,10 @@ can't link them to a Google account or your real-world identity. The honest limi
 inherent to fetching from them. If you want to hide that too, run Vela over a **VPN or
 Tor**; it works over any network.
 
-## The hidden WebViews (photos + transit)
+## The hidden WebViews (photos, reviews, transit, popular times)
 
-Two features — the **full photo gallery** and **public-transit directions** — are
-only served to a real browser engine, so Vela loads `maps.google.com` in a **hidden,
+Four features — the **full photo gallery**, **reviews**, **public-transit directions**
+and **popular times** — are only served to a real browser engine, so Vela loads `maps.google.com` in a **hidden,
 logged-out WebView** and reads the result. This is the one place Google's own
 JavaScript runs on your device. It runs **anonymously** (no login), but, like any
 browser visit to Google, that JS *could* set cookies or fingerprint the browser. It's
