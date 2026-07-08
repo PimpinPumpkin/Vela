@@ -49,6 +49,10 @@
     <string name="settings_transit_layer_hint">Rysuje linie kolejowe i metra na mapie kolorem, aby łatwo śledzić tory. Używa otwartych danych już zawartych w kafelkach, bez sieci.</string>
     <string name="settings_read_all_reviews">Przycisk „Czytaj wszystkie opinie”</string>
     <string name="settings_read_all_reviews_hint">Opinie w karcie miejsca to zawsze płynna, natywna lista Vela. To dodaje przycisk „Czytaj wszystkie opinie”, który otwiera pełną stronę opinii Google na CAŁYM EKRANIE — każdą opinię (nie tylko pierwsze ~50), wyszukiwanie po stronie serwera Google i odtwarzanie opinii wideo. Trackery i beacony są blokowane, ale strona Google działa wtedy w aplikacji. Wyłączone = tylko natywna lista, bez strony Google do opinii.</string>
+    <string name="settings_show_reviews">Pokazuj recenzje</string>
+    <string name="settings_show_reviews_hint">Wył. = strony miejsc nie pokazują recenzji i Vela nigdy ich nie pobiera.</string>
+    <string name="settings_load_photos">Wczytuj zdjęcia</string>
+    <string name="settings_load_photos_hint">Wył. = strony miejsc nie pokazują zdjęć i nic nie jest pobierane. Oszczędza dane.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Korzystanie z mapy bez zasięgu wymaga dwóch rzeczy — KAFELKÓW mapy, które widzisz, oraz SIECI DRÓG, która wyznacza trasę. Zapisanie obszaru mapy pobiera oba dla tego miejsca; lista regionów poniżej dodaje sieć dróg wszędzie tam, gdzie podróżujesz.</string>
     <string name="settings_offline_map_area">Obszar mapy</string>

@@ -437,7 +437,9 @@ fun PlaceSheet(
             }
             // Photo hero at the top (Google-style) — always visible, even at the
             // peek height / in landscape; tap one to open the full gallery.
-            if (place.photoUrls.isNotEmpty() || photosLoading) {
+            // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
+            // search response can seed a preview photo — don't show it either).
+            if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
                 // Category filter chips (Menu / Food & drink / Vibe / By owner …) — only when Google tagged
                 // photos with categories, mirroring its gallery tabs. "All" clears the filter.
                 val photoCats = remember(place.photoCategories) { place.photoCategories.filterNotNull().distinct() }
@@ -1672,8 +1674,10 @@ private fun PlaceTabs(
     // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
     // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
     // zero-reviews state if there are none.
-    val hasReviews = place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
-        (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
+    val hasReviews = app.vela.ui.ShowReviews.on.value && (
+        place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
+            (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
+        )
     val hasAbout = place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null
     val tabs = buildList {
         if (hasReviews) add("Reviews")
