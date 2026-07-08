@@ -247,14 +247,25 @@ class VoiceGuide @Inject constructor(
      *  then every system TTS engine installed on the phone. Enumerated via [android.content.pm.PackageManager]
      *  (the TTS_SERVICE intent) so the list is complete even when no Android [TextToSpeech] instance
      *  is active — e.g. while the neural voice is the current engine and `tts` is null. */
+    // Cache the SLOW part — enumerating system TTS engines is a PackageManager binder IPC plus a
+    // per-engine loadLabel (resource load), which took >5 s on a slow flip phone and ANR'd the UI
+    // when called in composition. System engines don't install/uninstall mid-session, so cache the
+    // list for the process; the Vela neural entry is recomputed each call so it appears the instant
+    // its model finishes downloading. Callers should still make the FIRST call off the main thread.
+    @Volatile private var installedEnginesCache: List<VoiceEngine>? = null
+
     fun availableEngines(): List<VoiceEngine> {
-        val pm = context.packageManager
-        val installed = runCatching {
-            pm.queryIntentServices(Intent("android.intent.action.TTS_SERVICE"), 0)
-                .mapNotNull { it.serviceInfo }
-                .map { VoiceEngine(it.packageName, it.loadLabel(pm).toString()) }
-                .distinctBy { it.packageName }
-        }.getOrElse { tts?.engines.orEmpty().map { VoiceEngine(it.name, it.label) } }
+        val installed = installedEnginesCache ?: run {
+            val pm = context.packageManager
+            val list = runCatching {
+                pm.queryIntentServices(Intent("android.intent.action.TTS_SERVICE"), 0)
+                    .mapNotNull { it.serviceInfo }
+                    .map { VoiceEngine(it.packageName, it.loadLabel(pm).toString()) }
+                    .distinctBy { it.packageName }
+            }.getOrElse { tts?.engines.orEmpty().map { VoiceEngine(it.name, it.label) } }
+            installedEnginesCache = list
+            list
+        }
         val vela = if (VelaPiper.isReady(context)) listOf(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL)) else emptyList()
         return vela + installed
     }
