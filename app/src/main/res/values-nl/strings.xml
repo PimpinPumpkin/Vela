@@ -69,6 +69,8 @@
     <string name="settings_routing_installed_places">Geïnstalleerd · plaatsen offline doorzoekbaar</string>
     <string name="settings_routing_places_downloading">Plaatsen opslaan · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Plaatsen ophalen</string>
+    <string name="settings_update_places">Plaatsen bijwerken</string>
+    <string name="settings_routing_update_available">Geïnstalleerd · update voor plaatsen beschikbaar</string>
     <string name="settings_routing_size_here">%1$s MB · dekt uw locatie</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Offline routering verwijderen</string>

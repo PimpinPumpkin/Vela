@@ -69,6 +69,8 @@
     <string name="settings_routing_installed_places">Zainstalowano · miejsca dostępne offline</string>
     <string name="settings_routing_places_downloading">Zapisywanie miejsc · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Pobierz miejsca</string>
+    <string name="settings_update_places">Zaktualizuj miejsca</string>
+    <string name="settings_routing_update_available">Zainstalowano · dostępna aktualizacja miejsc</string>
     <string name="settings_routing_size_here">%1$s MB · obejmuje Twoją lokalizację</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Usuń trasy offline</string>
