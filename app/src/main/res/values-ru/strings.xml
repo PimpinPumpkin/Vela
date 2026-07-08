@@ -66,6 +66,9 @@
     <string name="settings_routing_no_match">Нет регионов по запросу «%1$s».</string>
     <string name="settings_routing_downloading">Загрузка… %1$d%%</string>
     <string name="settings_routing_installed">Установлено · маршруты офлайн здесь</string>
+    <string name="settings_routing_installed_places">Установлено · места доступны офлайн</string>
+    <string name="settings_routing_places_downloading">Сохранение мест · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Скачать места</string>
     <string name="settings_routing_size_here">%1$s МБ · покрывает ваше местоположение</string>
     <string name="settings_routing_size">%1$s МБ</string>
     <string name="settings_routing_remove">Удалить офлайн-маршрутизацию</string>
@@ -143,6 +146,10 @@
     <string name="settings_traffic_lights_hint">«Проедьте светофор, затем поверните» на перекрёстках со светофорами (голос пока только на английском)</string>
     <string name="map_voice_downloading">Загрузка голоса Vela · %1$d %%</string>
     <string name="map_voice_installing">Установка голоса Vela…</string>
+    <string name="map_region_downloading">Загрузка маршрутов: %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Сохранение мест региона %1$s для офлайн-поиска · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Места региона %1$s теперь доступны для офлайн-поиска</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Для региона %1$s пока нет пакета мест. Он появится здесь после публикации.</string> <!-- format -->
     <string name="settings_demo_drive">Симуляция поездки (демо)</string>
     <string name="settings_demo_drive_hint">Для демонстраций, скриншотов и тестов: нажатие «Начать» ведёт по маршруту как смоделированный GPS-трек вместо вашего реального местоположения — навигация работает где угодно. Выключите для настоящей навигации.</string>
     <string name="place_address_copied">Адрес скопирован</string>
