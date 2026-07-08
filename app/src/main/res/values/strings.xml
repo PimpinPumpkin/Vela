@@ -75,6 +75,8 @@
     <string name="settings_offline_download_viewport">Download the area you\'re viewing</string>
     <string name="settings_offline_download_viewport_hint">Saves the open tiles for the map area you last had on screen, and the routing region around it, so it renders and navigates later with no network. Search still needs a connection.</string>
     <string name="settings_offline_no_areas">No areas saved yet.</string>
+    <string name="settings_offline_addresses_missing">Areas you saved before this update don\'t include address data. Update them to search and route to addresses offline.</string>
+    <string name="settings_offline_addresses_update">Update saved areas</string>
     <string name="settings_offline_delete_area">Delete this offline area</string>
     <string name="settings_routing_regions">Routing regions</string>
     <string name="settings_routing_regions_hint">The road network for a whole region (state, country…), so turn-by-turn works offline anywhere inside it. Grab where you\'re travelling. Online still uses live traffic; this is the no-signal fallback.</string>

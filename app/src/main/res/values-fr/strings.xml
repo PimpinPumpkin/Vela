@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Télécharger la zone affichée</string>
     <string name="settings_offline_download_viewport_hint">Enregistre les tuiles de la zone que vous aviez à l\'écran — ainsi que la région de routage autour — pour l\'afficher et y naviguer plus tard sans réseau. La recherche nécessite toujours une connexion.</string>
     <string name="settings_offline_no_areas">Aucune zone enregistrée pour l\'instant.</string>
+    <string name="settings_offline_addresses_missing">Les zones enregistrées avant cette mise à jour ne contiennent pas de données d\'adresses. Mettez-les à jour pour rechercher des adresses et calculer des itinéraires hors ligne.</string>
+    <string name="settings_offline_addresses_update">Mettre à jour les zones enregistrées</string>
     <string name="settings_offline_delete_area">Supprimer cette zone hors ligne</string>
     <string name="settings_routing_regions">Régions de routage</string>
     <string name="settings_routing_regions_hint">Le réseau routier d\'une région entière (état, pays…), pour que la navigation guidée fonctionne hors ligne partout à l\'intérieur — récupérez la région où vous voyagez. En ligne, le trafic en temps réel reste utilisé ; ceci sert de secours sans réseau.</string>

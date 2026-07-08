@@ -2628,6 +2628,30 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** How many offline address+street rows are indexed. Settings uses this to decide whether to nudge a
+     *  user whose SAVED areas predate the geocoder (they have tiles/POIs but no address data). */
+    fun offlineAddressCount(cb: (Int) -> Unit) {
+        viewModelScope.launch {
+            val n = withContext(Dispatchers.IO) {
+                runCatching { addressStore.count() + addressStore.streetCount() }.getOrDefault(0)
+            }
+            cb(n)
+        }
+    }
+
+    /** Re-fetch offline POIs + the address/street index for every already-saved map area, so areas
+     *  downloaded before the geocoder existed become address-searchable without the user hunting each one
+     *  down. Each area runs the same padded fetch as a fresh download. */
+    fun refreshOfflineDataForSavedAreas() {
+        app.vela.offline.OfflineMaps.list(appContext) { regions ->
+            regions.forEach { r ->
+                app.vela.offline.OfflineMaps.boundsOf(r)?.let { b ->
+                    downloadOfflinePois(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast)
+                }
+            }
+        }
+    }
+
     /** OkHttp with the scrape-bounding call-timeout removed (see the offline-download rule) — for the
      *  large Overpass address body only; the shared [http] stays for the small POI fetch. */
     private val offlineDownloadHttp by lazy {
