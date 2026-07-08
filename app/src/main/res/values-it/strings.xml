@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Scarica una voce naturale sul dispositivo per le indicazioni vocali: scegline una qui sotto. Le voci ★ suonano più simili a un navigatore di mappe (Lessac e HFC sono le più vicine a Google). Download una tantum; consigliato il Wi-Fi.</string>
     <string name="settings_voice_lib_lang_hint">La lingua dell\'app è %1$s: scarica una voce %2$s qui sotto così le indicazioni vocali corrispondono (una voce inglese pronuncerebbe male i nomi delle strade in %3$s).</string>
     <string name="settings_voice_search">Cerca voci</string>
+    <string name="settings_voice_show_more">Mostra altri %1$d</string>
+    <string name="settings_voice_show_less">Mostra meno</string>
     <string name="settings_voice_this_voice">questa voce</string>
     <string name="settings_voice_remove_title">Rimuovere %1$s?</string>
     <string name="settings_voice_remove_body">Questa è la tua unica voce Vela. Le indicazioni vocali ripiegheranno su un motore di sintesi vocale di sistema (o resteranno mute se non ne è installato nessuno) finché non ne scarichi un\'altra.</string>
