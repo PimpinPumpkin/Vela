@@ -1357,7 +1357,7 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     ).forEach { style.getLayer(it)?.setProperties(PropertyFactory.visibility(Property.NONE)) }
 }
 
-private fun applyLight(style: Style) {
+internal fun applyLight(style: Style) {
     // Google-Maps light palette: clean white road fills on a light-grey land, with
     // every casing faded DOWN the hierarchy until minor-road casing == the land, so
     // streets are crisp white lines with NO outline (the outlines were exactly what
@@ -1442,7 +1442,7 @@ private fun applyLight(style: Style) {
 }
 
 /** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */
-private fun applyDark(style: Style) {
+internal fun applyDark(style: Style) {
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
     style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))

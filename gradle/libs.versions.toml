@@ -25,12 +25,16 @@ androidxJunit = "1.2.1"
 # Rhino interpreter-only artifact (no compiler/codegen) — runs the remote
 # transforms.js in interpreted mode, the mode that works on Android/ART.
 rhino = "1.7.14"
+# Android for Cars app library (Android Auto projection). Templated host UI;
+# the map itself renders onto the car surface via a virtual display.
+carApp = "1.4.0"
 # GraphHopper — on-device routing + map-matching engine (offline routing, and the
 # clean "name Google's path" always-snap). Pure JVM; runs on ART with 3 workarounds
 # (MMAP / SpeedWeighting factory / close()-swallow) — see RouteEngine + ROADMAP.
 graphhopper = "11.0"
 
 [libraries]
+androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycleRuntimeKtx" }
