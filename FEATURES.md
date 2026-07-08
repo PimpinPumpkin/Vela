@@ -510,15 +510,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   and reads the itinerary set out of `APP_INITIALIZATION_STATE` (the longest
   `)]}'` payload at slot [3]); `TransitParser` (keyless) parses it. **Verified
   on-device** Davis→Sacramento (6 options: Amtrak Thruway, Yolobus 42B/43/44, …).
-- ✅ Transit **leg drill-down** — tap an itinerary to expand its ordered legs
-  ("Walk 7 min → Bus 42B 5:48–6:41 AM (53 min) → Walk 7 min"): each leg shows its
-  mode glyph, the ridden line (name + colour) or "Walk", and board/alight times +
-  duration/distance. Parsed (unit-tested) from `trip[1]` in the **same** keyless
-  fetch — no extra RPC. *(UI built; on-device visual check pending — phone was off
-  ADB when it shipped.)*
-- ⬜ Transit drill-down **stop names + ridden polyline** — the intermediate stops
-  (board/alight stop names) sit in the leg's stop array and the shape in the same
-  payload; deferred until the index can be device-verified (pinned from one capture).
+- ✅ Transit **leg drill-down with full stop detail** — tap an itinerary to expand
+  its ordered legs. A ride leg shows Google's whole layout: the **line pill + "towards …"
+  headsign**, the **board stop** (name + agency **Stop ID** + real-time board time, with
+  **"N min late/early"** when it drifts from the timetable), an expandable **"N stops"**
+  list of every **intermediate stop with its time**, the **alight stop**, plus the trip's
+  **service alerts** (detours/info) and a **"Tickets & info"** footer with the agency name +
+  a **dialable phone** (and **fare** for agencies that provide one — many US agencies don't).
+  All of it parsed (unit-tested) from `trip[1][0][1]` in the **same** keyless fetch — no
+  extra RPC. **Calibrated + device-verified** Miami→Aventura Mall (route 9, 2026-07-07);
+  single-digit route numbers ("9") now render a pill (the ≥2-char guard dropped them).
 - ⬜ Per-minute **predictive** future-traffic ETA (login/app-only — keyless gives the typical *range* only, see Depart/arrive time above); avoid tolls/highways
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
