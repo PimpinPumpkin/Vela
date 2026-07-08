@@ -843,12 +843,20 @@ class MapViewModel @Inject constructor(
             // the "search does nothing offline" report) and search the on-device OSM index straight away.
             // Empty index = no area downloaded yet, so point the user at the download (issue #3).
             if (!isOnline()) {
-                val offline = withContext(Dispatchers.IO) { runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList()) }
+                val (offline, haveArea) = withContext(Dispatchers.IO) {
+                    val r = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+                    r to (r.isNotEmpty() || runCatching { offlinePoiStore.count() > 0 }.getOrDefault(false))
+                }
                 _state.update {
-                    if (offline.isNotEmpty())
-                        it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false)
-                    else
-                        it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_data), searching = false)
+                    when {
+                        offline.isNotEmpty() ->
+                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false)
+                        // Has a downloaded area but nothing matched — don't tell them to download again.
+                        haveArea ->
+                            it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_match, q), searching = false)
+                        else ->
+                            it.copy(results = emptyList(), status = appContext.getString(R.string.mapvm_offline_no_data), searching = false)
+                    }
                 }
                 return@launch
             }
@@ -872,9 +880,11 @@ class MapViewModel @Inject constructor(
                 if (offline.isNotEmpty()) {
                     _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_offline_results), searching = false) }
                 } else if (isConnectivityError(e)) {
-                    // A dead connection with nothing downloaded → point the user at the offline download
-                    // instead of showing a raw "Unable to resolve host" error.
-                    _state.update { it.copy(status = appContext.getString(R.string.mapvm_offline_no_data), searching = false) }
+                    // A dead connection: if there's a downloaded area the query just didn't match it, else
+                    // point the user at the offline download instead of a raw "Unable to resolve host".
+                    val haveArea = withContext(Dispatchers.IO) { runCatching { offlinePoiStore.count() > 0 }.getOrDefault(false) }
+                    val msg = if (haveArea) appContext.getString(R.string.mapvm_offline_no_match, q) else appContext.getString(R.string.mapvm_offline_no_data)
+                    _state.update { it.copy(status = msg, searching = false) }
                 } else {
                     _state.update { it.copy(status = appContext.getString(R.string.mapvm_search_failed_reason, e.message), searching = false) }
                 }

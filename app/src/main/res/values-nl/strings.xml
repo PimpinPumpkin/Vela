@@ -320,6 +320,7 @@
     <string name="mapvm_shortcut_set">%1$s ingesteld op %2$s</string>
     <string name="mapvm_search_needs_recalibration">Zoeken vereist herkalibratie: %1$s</string>
     <string name="mapvm_offline_no_data">Je bent offline. Download een gebied in Instellingen ▸ Offline om zonder verbinding te zoeken.</string>
+    <string name="mapvm_offline_no_match">Geen offlineresultaten voor \"%1$s\" in je opgeslagen gebied. Offline zoeken omvat de OpenStreetMap-plaatsen die je hebt gedownload.</string>
     <string name="mapvm_offline_results">Offline resultaten (geen verbinding)</string>
     <string name="mapvm_search_failed_reason">Zoeken mislukt: %1$s</string>
     <string name="mapvm_none_found_along_route">Geen \"%1$s\" gevonden langs uw route</string>
