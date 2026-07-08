@@ -16,6 +16,11 @@
     <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Android Auto: navigation-category templates + drawing the map onto the
+         car screen's surface. Both are car-library permissions, not runtime ones. -->
+    <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
+    <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
+
     <!-- So a phone with NO text-to-speech engine (common on degoogled ROMs) can be
          offered a one-tap install of an open-source voice (eSpeak NG / RHVoice from
          F-Droid). The user still confirms each install in the system dialog. -->
@@ -94,6 +99,25 @@
             android:name=".service.NavigationService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- Android Auto (projection). The desc XML marks Vela as a templated car
+             app; the service is what the car launcher starts. Works sideloaded once
+             AA developer settings enable "Unknown sources". -->
+        <meta-data
+            android:name="com.google.android.gms.car.application"
+            android:resource="@xml/automotive_app_desc" />
+        <meta-data
+            android:name="androidx.car.app.minCarApiLevel"
+            android:value="1" />
+        <service
+            android:name=".car.VelaCarAppService"
+            android:exported="true"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="androidx.car.app.CarAppService" />
+                <category android:name="androidx.car.app.category.NAVIGATION" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
