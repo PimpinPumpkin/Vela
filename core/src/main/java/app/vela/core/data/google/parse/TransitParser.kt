@@ -10,8 +10,11 @@ import app.vela.core.model.TransitItinerary
 import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
 import app.vela.core.model.TransitStep
+import app.vela.core.model.TransitStopTime
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 /**
  * Parses the public-transit (`!3e3`) directions payload that Google embeds in
@@ -20,8 +23,9 @@ import kotlinx.serialization.json.JsonElement
  *
  * Schema calibrated against a live Davis→Sacramento capture (2026-06-18):
  *   trips         `root[0][1]`        (array of trip options + trailing metadata)
- *   per trip, the SUMMARY node is `trip[0]` (`trip[1]` holds the per-stop leg
- *   tree — a future drill-down); within that summary `s`:
+ *   per trip, the SUMMARY node is `trip[0]`; `trip[1][0][1]` holds the per-stop
+ *   leg tree (board/alight/intermediate stops, delay, headsign, agency phone,
+ *   alerts — see [parseSteps]). Within the summary `s`:
  *     distance    `s[2][1]`           ("15.0 miles")
  *     duration    `s[3][1]`           ("45 min")
  *     departure   `s[5][0]` = [epochSec, tz, "6:10 AM", …]
@@ -57,6 +61,11 @@ object TransitParser {
         val t = trip.at(0) ?: trip // the trip's summary node
         val dep = t.at(5, 0)
         val arr = t.at(5, 1)
+        val legsEl = trip.at(1, 0, 1)
+        // The ride legs (those carrying a stop block at leg[5]) hold the operating agency's phone
+        // and any service alerts; a walk leg has neither.
+        val rideLegs = legsEl.arr()?.filter { it.at(5).arr() != null }.orEmpty()
+        val agencyNode = rideLegs.firstNotNullOfOrNull { it.at(0, 6, 4, 0) }
         return TransitItinerary(
             departureEpochSec = dep.at(0).long(),
             arrivalEpochSec = arr.at(0).long(),
@@ -64,18 +73,46 @@ object TransitParser {
             arrivalText = arr.at(2).str(),
             durationText = t.at(3, 1).str(),
             distanceText = t.at(2, 1).str(),
-            agency = t.at(6, 4, 0, 0).str(),
+            agency = t.at(6, 4, 0, 0).str() ?: agencyNode.at(0).str(),
+            agencyPhone = agencyNode.at(4).str(),
+            alerts = rideLegs.flatMap { parseAlerts(it.at(0, 9)) }.distinct(),
+            fare = parseFare(t),
             lines = parseLines(t.at(14)),
-            steps = parseSteps(trip.at(1, 0, 1)),
+            steps = parseSteps(legsEl),
         )
+    }
+
+    /** Service alerts on a ride leg: `leg[0][9]` is an array whose entries carry a
+     *  human title at `[2]` ("Route 9 / 9A - Southbound Midtown Detour"). */
+    private fun parseAlerts(node: JsonElement?): List<String> =
+        node.arr()?.mapNotNull { it.at(2).str()?.takeIf { s -> s.length in 4..140 } }.orEmpty()
+
+    private val FARE = Regex("""^[$€£¥]\s?\d[\d.,]*(?:\s?[-–]\s?[$€£¥]?\d[\d.,]*)?$""")
+
+    /** Best-effort fare: scan the trip summary for a currency-shaped string. Many US
+     *  agencies (Miami-Dade here) send none, so this is usually null — Google itself
+     *  then shows only "Tickets and information" + a phone, which we surface instead. */
+    private fun parseFare(t: JsonElement): String? {
+        var found: String? = null
+        fun walk(n: JsonElement) {
+            if (found != null) return
+            when (n) {
+                is JsonArray -> n.forEach(::walk)
+                else -> n.str()?.trim()?.let { if (FARE.matches(it)) found = it }
+            }
+        }
+        walk(t)
+        return found
     }
 
     /** The ordered legs (walk/ride) for the drill-down — they live at
      *  `trip[1][0][1]` in the SAME payload (no extra RPC). Each leg's summary is
-     *  `leg[0]` (duration `[3][1]`, distance `[2][1]`, mode/line badge `[14]`);
-     *  board/alight times are the first/last "h:mm AM" strings in the leg.
-     *  (Intermediate stop names sit in the leg's stop array too, but that index
-     *  is pinned from a single capture, so it's deferred until device-verified.) */
+     *  `leg[0]` (duration `[3][1]`, distance `[2][1]`, mode/line badge `[14]`,
+     *  headsign `[14][2][1][0]`). A RIDE leg also carries the full stop block at
+     *  `leg[5]`: board `[5][0]`, alight `[5][1]`, stop count `[5][2]`, and the
+     *  ordered intermediate stops `[5][7]` — each stop node holding name `[0]`,
+     *  agency code `[1]`, and real-time/scheduled call-time tuples. Calibrated
+     *  against a live Miami→Aventura capture (2026-07-07). */
     private fun parseSteps(legs: JsonElement?): List<TransitStep> {
         val arr = legs.arr() ?: return emptyList()
         return arr.mapNotNull { runCatching { parseStep(it) }.getOrNull() }
@@ -85,15 +122,54 @@ object TransitParser {
     private fun parseStep(leg: JsonElement): TransitStep {
         val sum = leg.at(0) ?: leg
         val line = parseLines(sum.at(14)).firstOrNull()
+        val stops = leg.at(5) // present on ride legs only
+        val board = parseStopTime(stops.at(0))
+        val alight = parseStopTime(stops.at(1))
         val times = collectTimes(leg)
         return TransitStep(
             mode = line?.mode ?: TransitMode.WALK,
             durationText = sum.at(3, 1).str(),
             distanceText = sum.at(2, 1).str(),
             line = line,
-            departText = if (line != null) times.firstOrNull() else null,
-            arriveText = if (line != null) times.lastOrNull() else null,
+            departText = board?.timeText ?: (if (line != null) times.firstOrNull() else null),
+            arriveText = alight?.timeText ?: (if (line != null) times.lastOrNull() else null),
+            headsign = sum.at(14, 2, 1, 0).str()?.takeIf { it.length in 2..80 },
+            boardStop = board,
+            alightStop = alight,
+            numStops = stops.at(2).long()?.toInt()?.takeIf { it in 1..500 },
+            delayText = delayText(stops.at(0)),
+            intermediateStops = stops.at(7).arr()?.mapNotNull { parseStopTime(it) }.orEmpty(),
         )
+    }
+
+    /** One stop node → name + code + shown/scheduled call time. A node carries up to
+     *  four time tuples ([epochSec, tz, "h:mm AM", …]): real-time arrival/departure at
+     *  `[2]`/`[3]`, timetable arrival/departure at `[7]`/`[8]`. We show the real-time
+     *  value and keep the timetable one only when it differs (a delay). */
+    private fun parseStopTime(node: JsonElement?): TransitStopTime? {
+        val n = node ?: return null
+        val name = n.at(0).str()?.takeIf { it.isNotBlank() } ?: return null
+        val realtime = n.at(2, 2).str() ?: n.at(3, 2).str()
+        val scheduled = n.at(7, 2).str() ?: n.at(8, 2).str()
+        return TransitStopTime(
+            name = name,
+            code = n.at(1).str()?.takeIf { it.isNotBlank() },
+            timeText = realtime ?: scheduled,
+            scheduledText = scheduled?.takeIf { realtime != null && it != realtime },
+        )
+    }
+
+    /** "5 min late" / "2 min early" from a stop node's real-time vs timetable epoch. */
+    private fun delayText(node: JsonElement?): String? {
+        val n = node ?: return null
+        val realtime = n.at(2, 0).long() ?: n.at(3, 0).long() ?: return null
+        val scheduled = n.at(7, 0).long() ?: n.at(8, 0).long() ?: return null
+        val diffMin = ((realtime - scheduled) / 60.0).roundToInt()
+        return when {
+            diffMin >= 1 -> "$diffMin min late"
+            diffMin <= -1 -> "${abs(diffMin)} min early"
+            else -> null
+        }
     }
 
     private val TIME = Regex("""^\d{1,2}:\d{2}\s?[AP]M$""")
@@ -128,7 +204,9 @@ object TransitParser {
             val a = n as? JsonArray ?: return
             val name = a.getOrNull(0).str()
             val fill = a.getOrNull(2).str()
-            if (name != null && name.length in 2..60 && fill != null && fill.startsWith("#") && seen.add(name)) {
+            // length 1..60: single-digit route numbers ("9", "5") are real bus lines; the
+            // `["name", int, "#fill", "#text"]` node shape + a "#…" fill keeps that from over-matching.
+            if (name != null && name.length in 1..60 && fill != null && fill.startsWith("#") && seen.add(name)) {
                 out.add(
                     TransitLine(
                         name = name.trim(),
