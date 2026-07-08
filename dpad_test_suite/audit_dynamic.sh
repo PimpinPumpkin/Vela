@@ -24,14 +24,14 @@ integrity() {
   local label="$1" n="$2" lost=0 samples=0
   local fwd=("$K_DOWN" "$K_RIGHT") rev=("$K_UP" "$K_LEFT") k
   for i in $(seq 1 "$n"); do
-    [ -z "$(focused)" ] && lost=$((lost + 1)); samples=$((samples + 1))
+    focused_stable || lost=$((lost + 1)); samples=$((samples + 1))
     k="${fwd[$((i % 2))]}"; key "$k"
   done
   for i in $(seq 1 "$n"); do
-    [ -z "$(focused)" ] && lost=$((lost + 1)); samples=$((samples + 1))
+    focused_stable || lost=$((lost + 1)); samples=$((samples + 1))
     k="${rev[$((i % 2))]}"; key "$k"
   done
-  [ -z "$(focused)" ] && lost=$((lost + 1)); samples=$((samples + 1))
+  focused_stable || lost=$((lost + 1)); samples=$((samples + 1))
   if [ "$lost" -eq 0 ]; then ok "$label — focus held across $samples multi-axis moves"; else bad "$label — focus LOST in $lost/$samples samples"; fi
 }
 

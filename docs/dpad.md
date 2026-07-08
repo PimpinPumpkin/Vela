@@ -229,8 +229,9 @@ Settings is a `Column(verticalScroll)`. A LEFT/RIGHT press on a plain row (a `Se
 switch row — no horizontal neighbour) made Compose's focus search CLEAR focus outright, with no way
 back via arrows (only BACK escaped). Root cause: `moveFocus` clears on a no-target directional move
 in a scrolling column; `focusGroup()` doesn't help — only *swallowing* the key keeps focus. Fix: the
-Settings root `Column` has `.onKeyEvent { LEFT/RIGHT -> true }` (swallow bare horizontal keys — it
-fires AFTER a focused child's own handler). The ONE horizontal row, the vibrate-on-turns FilterChips,
+reusable **`Modifier.dpadSwallowHorizontal()`** (`DpadFocus.kt`) on the Settings root `Column` AND on
+the top-bar back button (it lives outside the Column, so it needed it too — the auditor's 1/44
+residual). It fires AFTER a focused child's own handler. The ONE horizontal row, the vibrate FilterChips,
 drives its OWN LEFT/RIGHT via per-chip `FocusRequester`s (`requestFocus` never clears at the ends, and
 consuming the key stops it reaching the root swallow), so it still walks Driving↔Walking↔Cycling↔
 Transit. `SelectableRow`'s RadioButton is also `onClick = null` (display-only) so the row is a single

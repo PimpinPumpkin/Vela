@@ -24,6 +24,7 @@ import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
@@ -183,6 +184,18 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
  * (root→leaf) so it wins before the field consumes the key. Falls through (returns false)
  * at a list edge where focus can't move, so the field still behaves normally there.
  */
+/**
+ * Swallows bare LEFT/RIGHT D-pad keys so a horizontal move with NO target can't CLEAR focus.
+ * In a `Column(verticalScroll)` Compose's focus search clears focus outright on a no-target
+ * directional move (and there's no way back via arrows — dpad audit 2026-07-08; `moveFocus`
+ * clears, `focusGroup` doesn't help). Put this on a vertical-list container AND on any lone
+ * control that lives outside it (e.g. a top-bar back button). It fires via `onKeyEvent`
+ * (leaf→root) so a focused child that WANTS LEFT/RIGHT — a chip row driving its own nav with
+ * FocusRequesters — handles the key first and this never runs for it. Other keys pass through.
+ */
+fun Modifier.dpadSwallowHorizontal(): Modifier =
+    this.onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
+
 fun Modifier.dpadFieldEscape(): Modifier = composed {
     val dpad = rememberDpadMode()
     val focusManager = LocalFocusManager.current
