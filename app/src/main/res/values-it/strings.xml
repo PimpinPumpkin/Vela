@@ -315,6 +315,7 @@
     <string name="welcome_donate_dismiss">Forse più tardi</string>
     <string name="search_close_cd">Chiudi ricerca</string>
     <string name="search_placeholder">Cerca</string>
+    <string name="search_offline">Offline</string>
     <string name="search_clear_cd">Cancella ricerca</string>
     <string name="search_settings_cd">Impostazioni</string>
     <string name="mapvm_shortcut_set">%1$s impostato su %2$s</string>
@@ -350,6 +351,7 @@
     <string name="mapvm_offline_routing_failed">Download dei percorsi offline non riuscito</string>
     <string name="mapvm_offline_routing_removed">Percorsi offline rimossi</string>
     <string name="mapvm_saved_places_offline">Salvati %1$d luoghi per la ricerca offline</string>
+    <string name="mapvm_saved_addresses_offline">%1$d indirizzi e %2$d strade salvati per l\'instradamento offline</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Arrivato</string>
     <string name="navservice_notif_title_navigating">Navigazione</string>
     <string name="navservice_notif_title_in_distance">Tra %1$s · %2$s</string>
