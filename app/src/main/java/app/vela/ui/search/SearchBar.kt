@@ -13,8 +13,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -42,6 +45,7 @@ fun SearchBar(
     onClear: () -> Unit = {},
     onFocusChange: (Boolean) -> Unit = {},
     onBack: (() -> Unit)? = null,
+    offline: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     // Match the darker tone of the category chips (elevated chips sit on
@@ -102,6 +106,23 @@ fun SearchBar(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
+            }
+            // Quiet offline indicator: a greyed globe-with-a-slash + "Offline", shown when there's no
+            // connection (replaces the old banner). Hidden while typing so it doesn't crowd the clear "X".
+            if (offline && query.isEmpty() && onBack == null) {
+                Icon(
+                    Icons.Default.PublicOff,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    stringResource(R.string.search_offline),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(end = 4.dp),
+                )
             }
             if (searching) {
                 CircularProgressIndicator(Modifier.size(22.dp).padding(end = 10.dp), strokeWidth = 2.dp)

@@ -315,6 +315,7 @@
     <string name="welcome_donate_dismiss">Может быть, позже</string>
     <string name="search_close_cd">Закрыть поиск</string>
     <string name="search_placeholder">Поиск</string>
+    <string name="search_offline">Офлайн</string>
     <string name="search_clear_cd">Очистить поиск</string>
     <string name="search_settings_cd">Настройки</string>
     <string name="mapvm_shortcut_set">%1$s задан(а): %2$s</string>
@@ -350,6 +351,7 @@
     <string name="mapvm_offline_routing_failed">Не удалось загрузить офлайн-маршрутизацию</string>
     <string name="mapvm_offline_routing_removed">Офлайн-маршрутизация удалена</string>
     <string name="mapvm_saved_places_offline">Сохранено %1$d мест для офлайн-поиска</string>
+    <string name="mapvm_saved_addresses_offline">Сохранено %1$d адресов и %2$d улиц для офлайн-маршрутов</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Прибытие</string>
     <string name="navservice_notif_title_navigating">Навигация</string>
     <string name="navservice_notif_title_in_distance">Через %1$s · %2$s</string>

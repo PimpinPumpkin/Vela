@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Work
@@ -417,6 +418,7 @@ fun MapScreen(
                         onClear = vm::clearSearch,
                         onFocusChange = { searchFocused = it },
                         onBack = if (searchOpen) ({ focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
+                        offline = state.offline,
                     )
                     when {
                         // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)
@@ -752,6 +754,29 @@ fun MapScreen(
                 onConfirm = vm::confirmMapPick,
                 onCancel = vm::cancelChooseOnMap,
             )
+        }
+
+        // Quiet offline marker on the basemap: a small globe-with-a-slash chip, bottom-left above the
+        // scale bar. Only on the bare map (nav/search have their own chrome). Pairs with the "Offline"
+        // label in the search bar, replacing the old heads-up banner.
+        if (state.offline && !state.navigating && !searchOpen && !state.replaying) {
+            Surface(
+                color = SheetPalette.bg(darkTheme).copy(alpha = 0.82f),
+                shape = CircleShape,
+                shadowElevation = 2.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .navigationBarsPadding()
+                    .padding(start = 14.dp, bottom = 72.dp)
+                    .size(34.dp),
+            ) {
+                Icon(
+                    Icons.Default.PublicOff,
+                    contentDescription = stringResource(R.string.search_offline),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(7.dp),
+                )
+            }
         }
 
         // Replaying a recorded trip drives the dot + camera like a live drive; give the

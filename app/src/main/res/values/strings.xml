@@ -346,6 +346,7 @@
     <!-- search: SearchBar.kt -->
     <string name="search_close_cd">Close search</string>
     <string name="search_placeholder">Search</string>
+    <string name="search_offline">Offline</string>
     <string name="search_clear_cd">Clear search</string>
     <string name="search_settings_cd">Settings</string>
 
@@ -385,6 +386,7 @@
     <string name="mapvm_offline_routing_failed">Offline routing download failed</string>
     <string name="mapvm_offline_routing_removed">Offline routing removed</string>
     <string name="mapvm_saved_places_offline">Saved %1$d places for offline search</string> <!-- format -->
+    <string name="mapvm_saved_addresses_offline">Saved %1$d addresses and %2$d streets for offline routing</string> <!-- format -->
 
     <!-- navservice: NavigationService.kt -->
     <string name="navservice_notif_title_arrived">Arrived</string>
