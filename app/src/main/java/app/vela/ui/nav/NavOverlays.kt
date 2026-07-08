@@ -87,6 +87,10 @@ fun ManeuverBanner(
     nextType: ManeuverType? = null,
     nextRef: String? = null,
     nextDistanceMeters: Double? = null,
+    // Destination lines for the ARRIVE step (name + address, either may be blank — offline
+    // routing can have only a street, an address, or nothing but the tapped coordinates).
+    destName: String? = null,
+    destAddress: String? = null,
     // Approach gate for lane arrows AND the compound "then" row — speed-scaled by the caller
     // (max(800 m, v×30 s)): a 75 mph exit needs the lanes ~1 km out, a city turn at 800 m.
     laneShowM: Double = LANE_SHOW_M,
@@ -188,6 +192,24 @@ fun ManeuverBanner(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Medium,
                     )
+                    // The arrive step names WHERE you're arriving (Google-style): the business or
+                    // label, and its address when that adds anything. Skip a line that would just
+                    // repeat the instruction text.
+                    if (type == ManeuverType.ARRIVE) {
+                        val name = destName?.trim().orEmpty()
+                        val addr = destAddress?.trim()?.takeIf { it.isNotEmpty() && !it.equals(name, ignoreCase = true) }
+                        if (name.isNotEmpty() && !text.contains(name, ignoreCase = true)) {
+                            Text(
+                                name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                modifier = Modifier.padding(top = 2.dp),
+                            )
+                        }
+                        addr?.let {
+                            Text(it, style = MaterialTheme.typography.bodyMedium, color = content.copy(alpha = 0.85f))
+                        }
+                    }
                 }
             }
             // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
@@ -534,6 +556,7 @@ fun NavControls(
 @Composable
 fun ArrivalSummary(
     destinationLabel: String,
+    destinationAddress: String = "",
     tripSeconds: Double,
     tripDistanceMeters: Double,
     onDone: () -> Unit,
@@ -553,6 +576,9 @@ fun ArrivalSummary(
                     Text(stringResource(R.string.nav_arrived), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                     if (destinationLabel.isNotBlank()) {
                         Text(destinationLabel, style = MaterialTheme.typography.bodyLarge)
+                    }
+                    if (destinationAddress.isNotBlank() && !destinationAddress.equals(destinationLabel, ignoreCase = true)) {
+                        Text(destinationAddress, style = MaterialTheme.typography.bodyMedium)
                     }
                 }
             }
