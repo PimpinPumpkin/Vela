@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.InputMode
@@ -120,6 +121,38 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
         }
     }
     return fr
+}
+
+/**
+ * Robust auto-focus Modifier — the version to use when the target may be **off-screen** (below
+ * the fold in a scroll container) or otherwise not laid out on the first frame. There,
+ * [rememberDpadAutoFocus]'s "requestFocus didn't throw → stop" retry gives up while focus never
+ * actually landed (measured on-device: the Welcome screen's off-screen Get-started button stayed
+ * unfocused). This variant keeps re-requesting (every 50 ms, up to ~2 s) **until `onFocusEvent`
+ * confirms focus truly landed**, then stops (so it never fights the user once they navigate
+ * away). Apply directly to the target: `Modifier.dpadAutoFocus()`. No-op under touch.
+ *
+ * NB this still can't focus a `DropdownMenu` popup item — that's a separate, unfixable Compose
+ * limitation (the popup only takes item focus on the first key event; requestFocus/moveFocus
+ * can't pre-place it, five approaches verified). Menus stay stock DropdownMenus (fully
+ * navigable) so touch is byte-identical. See docs/dpad.md "Known limitations".
+ */
+fun Modifier.dpadAutoFocus(): Modifier = composed {
+    val fr = remember { FocusRequester() }
+    val dpadFirst = rememberDpadFirstDevice()
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(dpadFirst) {
+        if (dpadFirst) {
+            repeat(40) {
+                if (focused) return@LaunchedEffect
+                runCatching { fr.requestFocus() }
+                kotlinx.coroutines.delay(50)
+            }
+        }
+    }
+    this
+        .focusRequester(fr)
+        .onFocusEvent { focused = it.isFocused }
 }
 
 /**
