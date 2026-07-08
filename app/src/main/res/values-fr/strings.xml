@@ -404,4 +404,7 @@
     <string name="settings_update_found">Mise à jour disponible ! Reviens à la carte pour l\'installer.</string>
     <string name="settings_update_none">Tu as la version la plus récente.</string>
     <string name="settings_place_pages">Fiches de lieux</string>
+    <string name="place_transit_stops">%1$d arrêts</string> <!-- format -->
+    <string name="place_transit_stop_id">Arrêt %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Billets et infos</string>
 </resources>
