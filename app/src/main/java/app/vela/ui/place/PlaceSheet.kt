@@ -933,6 +933,7 @@ fun DirectionsPanel(
     onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
     onStartTransit: (TransitItinerary) -> Unit = {},
     onClose: () -> Unit,
+    onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -1076,6 +1077,14 @@ fun DirectionsPanel(
                     )
                 }
             }
+            // ONE depart/arrive time chooser, right under the mode chips — it applies to ALL modes
+            // (drive/transit/walk/bike), so it lives above the mode-specific results, not inside them.
+            Spacer(Modifier.height(12.dp))
+            DepartTimeChooser(
+                activeRoute ?: routes.firstOrNull(), dim,
+                isTransit = currentMode == TravelMode.TRANSIT,
+                onTimeSelected = onTimeSelected,
+            )
             if (currentMode == TravelMode.TRANSIT) {
                 TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit)
             } else {
@@ -1096,8 +1105,6 @@ fun DirectionsPanel(
                             RouteOption(r, selected, fastestEtaSeconds = fastestEta, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
                         }
                     }
-                    Spacer(Modifier.height(12.dp))
-                    DepartTimeChooser(activeRoute ?: routes.firstOrNull(), dim)
                     Spacer(Modifier.height(14.dp))
                     Row(Modifier.padding(end = 12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Button(onClick = onStartNav, modifier = Modifier.weight(1f)) {
@@ -1159,67 +1166,79 @@ fun DirectionsPanel(
  *  we can't reach keyless, so we surface the range Google itself plans with. Falls
  *  back to a single ~estimate when no range is shipped (short trips, walk/bike). */
 @Composable
-private fun DepartTimeChooser(route: Route?, dim: Color) {
+private fun DepartTimeChooser(
+    route: Route?,
+    dim: Color,
+    isTransit: Boolean = false,
+    onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
+) {
     val context = LocalContext.current
-    // Keyed to the route so switching places/alternates resets the picked time
-    // instead of carrying it over.
-    var mode by remember(route?.summary) { mutableStateOf(0) } // 0 = now, 1 = depart at, 2 = arrive by
-    var picked by remember(route?.summary) { mutableStateOf<java.time.LocalTime?>(null) }
+    // Keyed to the destination so switching places resets the picked time. mode: 0 now, 1 depart at,
+    // 2 arrive by, 3 last available (transit only). date + time compose the chosen wall-clock.
+    var mode by remember(route?.summary) { mutableStateOf(0) }
+    var date by remember(route?.summary) { mutableStateOf(java.time.LocalDate.now()) }
+    var time by remember(route?.summary) { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0)) }
     val nowDur = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
     val range = route?.typicalRangeSeconds
     val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
+    val dateFmt = java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d")
 
-    fun openPicker(target: Int) {
-        val base = picked ?: java.time.LocalTime.now()
-        android.app.TimePickerDialog(
-            context,
-            { _, h, m -> picked = java.time.LocalTime.of(h, m); mode = target },
-            base.hour, base.minute, false,
-        ).show()
-    }
+    fun epoch(): Long = date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
+    fun emit() = onTimeSelected(mode, if (mode == 0) null else epoch())
 
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(selected = mode == 0, onClick = { mode = 0 }, label = { Text(stringResource(R.string.place_leave_now)) })
-        FilterChip(selected = mode == 1, onClick = { openPicker(1) }, label = { Text(stringResource(R.string.place_depart_at)) })
-        FilterChip(selected = mode == 2, onClick = { openPicker(2) }, label = { Text(stringResource(R.string.place_arrive_by)) })
-    }
+    fun openTime() = android.app.TimePickerDialog(
+        context, { _, h, m -> time = java.time.LocalTime.of(h, m); emit() }, time.hour, time.minute, false,
+    ).show()
+    fun openDate() = android.app.DatePickerDialog(
+        context, { _, y, mo, d -> date = java.time.LocalDate.of(y, mo + 1, d); emit() },
+        date.year, date.monthValue - 1, date.dayOfMonth,
+    ).show()
 
-    // A clock window [base+loOffset .. base+hiOffset] when we have a typical spread,
-    // else a single ~point from the current duration (sign chosen by the caller).
-    fun window(base: java.time.LocalTime, lo: Double, hi: Double, sign: Int): String =
-        if (range != null)
-            "${base.plusSeconds((sign * lo).toLong()).format(fmt)}–${base.plusSeconds((sign * hi).toLong()).format(fmt)}"
-        else "~${base.plusSeconds((sign * nowDur).toLong()).format(fmt)}"
-
-    val lo = range?.first ?: nowDur
-    val hi = range?.second ?: nowDur
-    // Only claim "current traffic" when the route actually carries a live in-traffic ETA. An offline
-    // (GraphHopper) route, or any traffic-less route, has neither a typical range nor live traffic, so
-    // it shows no traffic note at all instead of a misleading "current traffic".
-    val hasLive = route?.hasLiveTraffic == true
-    // Resolve both traffic notes up front (composable calls must be at the top level, not inside a lambda).
-    val typicalNote = stringResource(R.string.place_in_typical_traffic)
-    val liveNoteDepart = stringResource(R.string.place_based_current_traffic)
-    val liveNoteNow = stringResource(R.string.place_current_traffic)
-    val departNote = when { range != null -> typicalNote; hasLive -> liveNoteDepart; else -> null }
-    val (summary, note) = when (mode) {
-        1 -> picked?.let { p ->
-            stringResource(R.string.place_depart_arrive, p.format(fmt), window(p, lo, hi, +1)) to departNote
-        } ?: (null to null)
-        2 -> picked?.let { p ->
-            // Arrive by p → leave between p−hi and p−lo (earlier end first).
-            stringResource(R.string.place_arriveby_leave, p.format(fmt), window(p, hi, lo, -1)) to departNote
-        } ?: (null to null)
-        else -> {
-            val arrive = stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt))
-            arrive to (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
-                ?: if (hasLive) liveNoteNow else null)
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // Mode chips — scroll horizontally so 3–4 chips never clip on a narrow phone.
+        Row(
+            Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) })
+            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) })
+            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) })
+            if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) })
         }
-    }
-    summary?.let {
-        Column(Modifier.padding(top = 6.dp)) {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = dim)
-            note?.let { n -> Text(n, style = MaterialTheme.typography.bodySmall, color = dim) }
+        // Time + date pickers for depart/arrive (Google-style: a time field AND a date field).
+        if (mode == 1 || mode == 2) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { openTime() }) { Text(time.format(fmt)) }
+                OutlinedButton(onClick = { openDate() }) { Text(date.format(dateFmt)) }
+            }
+        }
+
+        // Drive ETA estimate (only meaningful with a route — transit shows just the chips). Only claim
+        // "current traffic" when the route actually carries a live in-traffic ETA (an offline/GraphHopper
+        // route has neither a typical range nor live traffic).
+        if (route != null && mode != 3) {
+            fun window(base: java.time.LocalTime, lo: Double, hi: Double, sign: Int): String =
+                if (range != null)
+                    "${base.plusSeconds((sign * lo).toLong()).format(fmt)}–${base.plusSeconds((sign * hi).toLong()).format(fmt)}"
+                else "~${base.plusSeconds((sign * nowDur).toLong()).format(fmt)}"
+            val lo = range?.first ?: nowDur
+            val hi = range?.second ?: nowDur
+            val hasLive = route.hasLiveTraffic
+            val typicalNote = stringResource(R.string.place_in_typical_traffic)
+            val liveNoteDepart = stringResource(R.string.place_based_current_traffic)
+            val liveNoteNow = stringResource(R.string.place_current_traffic)
+            val departNote = when { range != null -> typicalNote; hasLive -> liveNoteDepart; else -> null }
+            val (summary, note) = when (mode) {
+                1 -> stringResource(R.string.place_depart_arrive, time.format(fmt), window(time, lo, hi, +1)) to departNote
+                2 -> stringResource(R.string.place_arriveby_leave, time.format(fmt), window(time, hi, lo, -1)) to departNote
+                else -> stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt)) to
+                    (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
+                        ?: if (hasLive) liveNoteNow else null)
+            }
+            Column {
+                Text(summary, style = MaterialTheme.typography.bodyMedium, color = dim)
+                note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = dim) }
+            }
         }
     }
 }

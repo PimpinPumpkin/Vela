@@ -65,11 +65,26 @@ class WebDirectionsFetcher @Inject constructor(
     }
 
     /** The transit results board for [origin]→[destination], or empty on any
-     *  failure/timeout (the caller then offers drive/walk/bike instead). */
-    suspend fun transit(origin: LatLng, destination: LatLng): List<TransitItinerary> = mutex.withLock {
+     *  failure/timeout (the caller then offers drive/walk/bike instead).
+     *  [timeMode] 0 = leave now, 1 = depart at, 2 = arrive by, 3 = last available; [timeEpochSec]
+     *  is the chosen wall-clock (Unix seconds), null for "now". */
+    suspend fun transit(
+        origin: LatLng,
+        destination: LatLng,
+        timeMode: Int = 0,
+        timeEpochSec: Long? = null,
+    ): List<TransitItinerary> = mutex.withLock {
+        // Google's transit data param. Now = the plain `!4m2!4m1!3e3`. For a scheduled time we insert
+        // Google's time block `!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>` before `!3e3`.
+        // The `!4m` wrappers are DESCENDANT counts, so the inner group grows 4m1 → 4m5 (2m3+6e+7e+8j+3e3)
+        // and the outer 4m2 → 4m6. Verified against a real Google Maps transit-with-time URL (2026-07-08);
+        // an earlier `!4m8!4m7` guess had the wrong counts, so Google silently fell back to "now".
+        val timeRef = when (timeMode) { 2 -> 1; 3 -> 2; else -> 0 } // depart=0, arrive=1, last available=2
+        val data = if (timeMode == 0 || timeEpochSec == null) "!4m2!4m1!3e3"
+        else "!4m6!4m5!2m3!6e$timeRef!7e2!8j$timeEpochSec!3e3"
         val url = "https://www.google.com/maps/dir/" +
             "${origin.lat},${origin.lng}/${destination.lat},${destination.lng}" +
-            "/data=!4m2!4m1!3e3?hl=en&gl=us"
+            "/data=$data?hl=en&gl=us"
         val id = seq.incrementAndGet().toString()
         val deferred = CompletableDeferred<String>()
         pending[id] = deferred
