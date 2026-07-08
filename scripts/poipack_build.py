@@ -27,6 +27,7 @@ KEEP IN SYNC with the app:
 Input is `osmium export -f geojsonseq --add-unique-id=type_id` of a tags-filtered extract
 (see build-poi-region.sh). Streaming, constant memory except the street-name dict.
 """
+import hashlib
 import json
 import math
 import sqlite3
@@ -109,24 +110,43 @@ def address(tags):
     return ", ".join(parts) or None
 
 
+def stable_sid(norm):
+    """A street's sid is a STABLE hash of its normalized name, not an encounter-order counter.
+
+    This is what makes pack DELTAS small: with a counter, one new street early in the stream
+    renumbered every later sid and rewrote millions of addr/streetpt rows; with a hash, unchanged
+    streets keep their sid across rebuilds so a monthly delta only carries real OSM churn.
+    Truncated SHA-1 to a positive 63-bit int (fits SQLite INTEGER / Kotlin Long); collision odds
+    across even a million names are ~1e-7, and a collision is caught at build time below.
+    """
+    return int.from_bytes(hashlib.sha1(norm.encode("utf-8")).digest()[:8], "big") & 0x7FFFFFFFFFFFFFFF
+
+
 class StreetNames:
     """norm -> (sid, best display name). Longest original wins (fully spelled out beats 'St SE')."""
 
     def __init__(self):
         self.by_norm = {}
+        self.by_sid = {}
 
     def sid(self, name):
         norm = normalize_street(name)
         e = self.by_norm.get(norm)
         if e is None:
-            e = [len(self.by_norm) + 1, name]
+            s = stable_sid(norm)
+            clash = self.by_sid.get(s)
+            if clash is not None and clash != norm:
+                raise SystemExit(f"sid hash collision: {norm!r} vs {clash!r} - pick a new hash")
+            self.by_sid[s] = norm
+            e = [s, name]
             self.by_norm[norm] = e
         elif len(name) > len(e[1]):
             e[1] = name
         return e[0]
 
     def rows(self):
-        return [(sid, disp, norm) for norm, (sid, disp) in self.by_norm.items()]
+        # sorted for a deterministic table regardless of encounter order
+        return sorted((sid, disp, norm) for norm, (sid, disp) in self.by_norm.items())
 
 
 def main():
@@ -135,6 +155,7 @@ def main():
     db.executescript(
         """
         PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF;
+        PRAGMA user_version=2; -- pack format: 2 = stable hashed sids (delta-friendly)
         CREATE TABLE poi(id TEXT, name TEXT, lat REAL, lng REAL, category TEXT,
                          address TEXT, phone TEXT, website TEXT, hours TEXT);
         CREATE TABLE streetname(sid INTEGER PRIMARY KEY, street TEXT, street_norm TEXT);
@@ -233,6 +254,10 @@ def main():
     db.execute("VACUUM")
     db.close()
     print(f"pack built: {n_poi} pois, {n_addr} addresses, {n_pt} street points, {len(names.by_norm)} street names")
+    # machine-readable row counts for the manifest (the app verifies a delta-applied pack against these)
+    counts = {"poi": n_poi, "addr": n_addr, "streetpt": n_pt, "streetname": len(names.by_norm)}
+    with open(out + ".counts.json", "w", encoding="utf-8") as cf:
+        json.dump(counts, cf)
 
 
 if __name__ == "__main__":

@@ -547,6 +547,11 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     val downloading = state.routingDownloadingId == region.id
                     val packDownloading = state.poiPackDownloadingId == region.id
                     val packInstalled = region.id in state.poiPackInstalledIds
+                    // A fresher pack is published than the one installed → offer an in-place update
+                    // (a small row-level delta when the manifest carries one, else a full re-download).
+                    val packRegion = state.poiPackRegions.firstOrNull { it.id == region.id }
+                    val updateAvailable = installed && packInstalled && packRegion != null &&
+                        packRegion.rev > (state.poiPackInstalledRevs[region.id] ?: 0)
                     val here = region.id == primary?.id
                     Row(
                         Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -558,18 +563,28 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                                 when {
                                     downloading -> stringResource(R.string.settings_routing_downloading, state.routingDownloadPct)
                                     packDownloading -> stringResource(R.string.settings_routing_places_downloading, state.poiPackDownloadPct)
+                                    updateAvailable -> stringResource(R.string.settings_routing_update_available)
                                     installed && packInstalled -> stringResource(R.string.settings_routing_installed_places)
                                     installed -> stringResource(R.string.settings_routing_installed)
                                     here -> stringResource(R.string.settings_routing_size_here, region.sizeMb)
                                     else -> stringResource(R.string.settings_routing_size, region.sizeMb)
                                 },
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (here && !installed && !downloading) MaterialTheme.colorScheme.primary
+                                color = if ((here && !installed && !downloading) || updateAvailable) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                         when {
                             downloading || packDownloading -> CircularProgressIndicator(Modifier.size(20.dp), strokeWidth = 2.dp)
+                            updateAvailable -> Row(verticalAlignment = Alignment.CenterVertically) {
+                                OutlinedButton(
+                                    onClick = { vm.downloadPoiPackFor(region, update = true) },
+                                    enabled = state.routingDownloadingId == null && state.poiPackDownloadingId == null,
+                                ) { Text(stringResource(R.string.settings_update_places)) }
+                                IconButton(onClick = { vm.deleteRoutingGraph(region.id) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_routing_remove))
+                                }
+                            }
                             // Installed before place packs existed (or its pack was skipped): offer just
                             // the pack, so offline search covers the region without a graph re-download.
                             installed && !packInstalled -> Row(verticalAlignment = Alignment.CenterVertically) {
