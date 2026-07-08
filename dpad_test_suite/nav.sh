@@ -43,3 +43,27 @@ open_first_place() {
   keys "$K_DOWN" "$K_DOWN" "$K_DOWN"   # search field -> filter chips -> first result row
   key "$K_OK" 2.5                       # open place sheet
 }
+
+# reach_directions — from a bare map, open the first Coffee result and its Directions panel (Drive
+# tab focused). Returns non-zero if results never loaded. Leaves the directions panel open.
+reach_directions() {
+  run_coffee || return 1
+  open_first_place
+  key "$K_OK" 1                          # expand the sheet so the action pills are on screen
+  keys "$K_DOWN" "$K_DOWN" "$K_DOWN"     # -> the action-pills row (lands on Call, the middle pill)
+  key "$K_LEFT"                          # -> Directions (the leftmost, emphasised pill)
+  key "$K_OK" 5                         # open the directions panel
+  on_screen "Add stop"                   # a directions-panel-only row
+}
+
+# open_choose_on_map — drill all the way to the Choose-on-map pick overlay (edit the origin ->
+# "Choose on map"). Returns 0 iff the "Move the map" pick overlay is showing. Deep + network-bound.
+open_choose_on_map() {
+  reach_directions || return 1
+  key "$K_UP"                            # Drive tab -> the "Your location" (From) row
+  key "$K_OK" 2                         # open the origin search overlay (pickingOrigin)
+  on_screen "Choose on map" || return 1
+  focus_and_ok "Choose on map" || return 1
+  sleep 1
+  on_screen_contains "Move the map"      # banner: "Move the map to set the start/stop" (substring)
+}
