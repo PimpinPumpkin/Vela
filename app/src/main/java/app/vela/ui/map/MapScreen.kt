@@ -240,7 +240,6 @@ fun MapScreen(
     val mapDpad = remember { MapDpadController() }
     var mapFocused by remember { mutableStateOf(false) }
     var mapEngaged by remember { mutableStateOf(false) } // arrows pan only while engaged (docs/dpad.md)
-    val mapFocusRequester = remember { FocusRequester() }
     // D-pad (docs/dpad.md): under touch the overlay tracks field focus (blur = close), but
     // under D-pad focus must be able to WALK the overlay's rows without it snapping shut the
     // instant the field blurs — AND back must be able to definitively close it. A derived
@@ -342,20 +341,16 @@ fun MapScreen(
         )
     // Reset engagement the moment a panel takes over (the target unmounts under it).
     LaunchedEffect(mapTargetHidden) { if (mapTargetHidden) mapEngaged = false }
-    // On a D-pad-first device the map is home: wake up drivable, and RE-acquire + engage the
-    // map whenever we return to it from a panel, so the next arrow press pans immediately.
-    // The target's focus node may not be attached on the first frame, so retry briefly.
-    LaunchedEffect(dpadFirst, mapTargetHidden) {
-        if (dpadFirst && !mapTargetHidden) {
-            repeat(20) {
-                if (runCatching { mapFocusRequester.requestFocus() }.isSuccess) {
-                    mapEngaged = true
-                    return@LaunchedEffect
-                }
-                kotlinx.coroutines.delay(50)
-            }
-        }
-    }
+    // D-pad-first, the bare map (docs/dpad.md): the map does NOT auto-focus or auto-engage on open.
+    // The user asked for the search bar to be the landing focus, not the engaged map (which used to
+    // force a BACK press to move). Compose won't let us programmatically pre-place focus on the
+    // SEARCH BAR on the app's opening screen (verified ~13 ways: requestFocus no-ops with no prior
+    // focus; moveFocus lands only on the centre map target; moveFocus(Up)/Enter and synthetic
+    // KeyEvents don't take), so instead nothing is focused on open and the user's first arrow
+    // lands on the search bar — Compose's real-first-key initial focus picks the first focusable,
+    // which IS the search bar (measured). Net: no map engage, no BACK, one arrow reaches search.
+    // This is the ONE screen that intentionally opens un-focused (the map is ambient; the first key
+    // isn't wasted — it goes straight to search). (Was: auto-engage the map — user report 2026-07-08.)
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -477,7 +472,6 @@ fun MapScreen(
                 Modifier
                     .align(Alignment.Center)
                     .size(140.dp)
-                    .focusRequester(mapFocusRequester)
                     .onFocusChanged {
                         mapFocused = it.isFocused
                         if (!it.isFocused) mapEngaged = false
