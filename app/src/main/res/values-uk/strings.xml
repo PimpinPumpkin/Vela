@@ -219,6 +219,11 @@
     <string name="mapscreen_search_this_area">Шукати в цій зоні</string>
     <string name="mapscreen_place">Місце</string>
     <string name="mapscreen_your_location">Ваше місцезнаходження</string>
+    <string name="mapscreen_choose_on_map">Вибрати на карті</string>
+    <string name="mapscreen_choose_origin_hint">Пересуньте карту, щоб задати початкову точку</string>
+    <string name="mapscreen_choose_stop_hint">Пересуньте карту, щоб задати зупинку</string>
+    <string name="mapscreen_choose_set_start">Задати початок</string>
+    <string name="mapscreen_choose_set_stop">Задати зупинку</string>
     <string name="mapscreen_destination">Пункт призначення</string>
     <string name="mapscreen_center_on_my_location">Центрувати на моєму місцезнаходженні</string>
     <string name="mapscreen_stop_replay">Зупинити відтворення</string>
