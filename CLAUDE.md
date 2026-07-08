@@ -57,10 +57,11 @@ genuinely needs no doc edit, say why in the commit.
   navigate for real** — while on, every "Start" simulates instead of using GPS.
 - CI in `.github/workflows/ci.yml` (single workflow): every push to `main`
   builds + tests the APK (uploaded as an artifact) and publishes a **normal
-  versioned GitHub release** `v0.2.<run>` (versionName `0.2.<run>`, versionCode
+  versioned GitHub release** `v0.3.<run>` (versionName `0.3.<run>`, versionCode
   `2000+run`) — kept as a revision history; Obtainium tracks the latest with no
   pre-release toggle. **Release notes are a real changelog** built from the commit
-  subjects since the previous `v0.2.*` tag (checkout is `fetch-depth: 0` so the tag
+  subjects since the previous `v0.[0-9]*` tag (the glob spans minor bumps so a fresh
+  0.3 release still finds the last 0.2 tag; checkout is `fetch-depth: 0` so the tag
   history is present; the publish step formats them + a compare link into `--notes`).
   So **commit subjects ARE the user-facing changelog** — write them as plain-language
   changelog lines (see the writing-style rule: no em-dashes, human voice), not terse
@@ -69,7 +70,12 @@ genuinely needs no doc edit, say why in the commit.
   2026-06-18 after local dev builds were hand-set with `-PappVersionCode` in the
   1000s, got installed on a test phone, and left it *ahead* of the release line —
   Obtainium then saw the next release as a downgrade. **Keep local dev builds
-  below 1000**, e.g. `-PappVersionCode=1`, so the release line always wins.)
+  below 1000**, e.g. `-PappVersionCode=1`, so the release line always wins. Bumped
+  versionName `0.2.<run>` → `0.3.<run>` on 2026-07-08 — a big UI batch (stadium-pill
+  chips, rebuilt results detents, full-screen-results z-order fix) plus community
+  files + the in-app updater. The versionCode base stays `2000+run` because the run
+  number is global/monotonic, so vc keeps rising across the minor bump; only the
+  *name*'s minor changed.)
   Release signing uses repo secrets `VELA_KEYSTORE_BASE64`,
   `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`,
   outside the repo — back it up). Without them the APK is debug-signed. Version
@@ -115,18 +121,38 @@ genuinely needs no doc edit, say why in the commit.
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles — that was the "dated" look).
+- **Chip style = stadium pills (2026-07-08):** EVERY chip (map CategoryChips, results-panel filter
+  chips Open-now/top-rated/price/sort + the collapsed "N results" pill, PlaceSheet travel-mode chips
+  now with a leading `Icons.Default.Directions*` glyph, Settings vibrate-on-turns FilterChips) sets
+  `shape = androidx.compose.foundation.shape.CircleShape` — full-radius pills, Google-style. The M3
+  default 8dp-corner chip read "dated" (user 2026-07-08). Keep any new chip on CircleShape; monochrome
+  leading icons (tint `onSurface`, not the teal primary) so it reads single-ink like Google's.
+- **Search-results sheet detents (rebuilt 2026-07-08 to mirror the POI viewer, `MapScreen.SearchResults`).**
+  It's a TOP sheet (hangs under the search bar), the MIRROR of the place bottom sheet: pull DOWN grows
+  a detent, push UP shrinks one (expanded ~0.94 → peek ~0.52 → the collapsed "N results" pill via
+  `onCollapse`). Same stepping polish as `PlaceSheet.dismissConn` — **one detent per gesture**
+  (`steppedThisGesture` guard, re-armed in `onPreFling` so a long drag can't blow through), swipe
+  anywhere on the list (a down-overscroll at the list top grows it), and **tap the handle to step**
+  (peek↔expanded). **Full-screen hides the bottom map chrome:** `resultsFullscreen` (set from
+  `SearchResults.onExpandedChange`) gates OUT the scale bar, the locate FAB and "Search this area" with
+  `&& !resultsFullscreen`, and is force-reset when results empty/collapse — the fix for the panel
+  rendering UNDER those overlays (later Box children stacked above it). The compass is MapLibre's
+  built-in (`setCompassMargins`), which fades when the map faces north (Google's behaviour) and
+  reappears when rotated/tilted or during heading-up nav — it wasn't removed, it's just north-hidden
+  on the browse map.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
   + the photo-hero `if`), so off = zero scrape traffic. Keep any new review/photo surface behind them.
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
-  `v0.2.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
+  `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
   `filesDir/updates/` (FileProvider `updates` path) → ACTION_VIEW package-archive; the OS verifies
   same package + signature. Launch check ~daily behind `self_update_check` (Settings → Version,
   default on); manual Check-for-updates button there too. "Not now" stores `update_dismissed_code`
-  (only a NEWER release re-offers). The tag→versionCode parse assumes the `v0.2.<run>` scheme —
-  update `SelfUpdater.check` if the release line ever changes.
+  (only a NEWER release re-offers). The tag parse is **minor-agnostic** (`^v0\.\d+\.(\d+)$` — it
+  survived the 0.2→0.3 bump untouched), taking only the run number for the versionCode; it still
+  assumes the `2000+run` base, so update `SelfUpdater.check` if the versionCode base ever changes.
 - **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
   to compose when mpp moved >1% — an unconditional write recomposed the scale bar every pan frame;
   keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
