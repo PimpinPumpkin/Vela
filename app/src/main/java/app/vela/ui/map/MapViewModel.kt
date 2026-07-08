@@ -155,6 +155,11 @@ data class MapUiState(
     val routingInstalledIds: Set<String> = emptySet(), // region ids whose graphs are on disk
     val routingDownloadingId: String? = null,          // region id currently downloading, else null
     val routingDownloadPct: Int = 0,
+    val regionDownloadName: String? = null,            // display name for the heads-up download card
+    // Offline PLACE pack (whole-region POI/address db, pulled after the region's routing graph)
+    val poiPackDownloadingId: String? = null,
+    val poiPackDownloadPct: Int = 0,
+    val poiPackInstalledIds: Set<String> = emptySet(),
 )
 
 /**
@@ -188,6 +193,7 @@ class MapViewModel @Inject constructor(
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
     private val tripStore: app.vela.replay.TripStore,
     private val routingGraphStore: app.vela.offline.RoutingGraphStore,
+    private val poiPackStore: app.vela.offline.PoiPackStore,
     private val overlayStore: app.vela.offline.OverlayTileStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
@@ -227,6 +233,13 @@ class MapViewModel @Inject constructor(
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
         refreshBuildingOverlays() // surface any installed open building overlays for the map to render
         observeConnectivity() // drive the subtle offline indicator (globe-slash + "Offline" in the bar)
+        // Open any downloaded offline place packs so the POI/address stores can query them right away.
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching {
+                poiPackStore.registerPacks()
+                _state.update { it.copy(poiPackInstalledIds = poiPackStore.installedIds()) }
+            }
+        }
         // Reclaim disk from the removed Kokoro/Matcha voices (up to ~500 MB of dead model files after
         // the Piper-only switch). Off the main thread; a no-op once the dirs are gone.
         viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
@@ -2568,10 +2581,11 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Download + install [region]'s CH graph for fully-offline routing in that area. */
+    /** Download + install [region]'s CH graph for fully-offline routing in that area, then the
+     *  region's PLACE pack (whole-region POIs + addresses) so search/geocoding covers it offline too. */
     fun downloadRoutingGraph(region: app.vela.offline.RoutingRegion) {
         if (_state.value.routingDownloadingId != null) return
-        _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0) }
+        _state.update { it.copy(routingDownloadingId = region.id, routingDownloadPct = 0, regionDownloadName = region.name) }
         viewModelScope.launch {
             val ok = routingGraphStore.download(region) { pct ->
                 _state.update { it.copy(routingDownloadPct = pct) }
@@ -2580,12 +2594,52 @@ class MapViewModel @Inject constructor(
                 it.copy(routingDownloadingId = null, routingInstalledIds = routingGraphStore.installedIds())
             }
             showStatus(if (ok) appContext.getString(R.string.mapvm_offline_routing_ready, region.name) else appContext.getString(R.string.mapvm_offline_routing_failed))
+            if (ok) downloadPoiPack(region)
+            else _state.update { it.copy(regionDownloadName = null) }
+        }
+    }
+
+    /** Pull [region]'s offline place pack (best-effort — regions without a pack just skip). The pack
+     *  catalog shares the routing catalog's region ids, so the graph's region row looks itself up. */
+    private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion) {
+        val pack = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
+            .firstOrNull { it.id == region.id }
+        if (pack == null || region.id in poiPackStore.installedIds()) {
+            _state.update { it.copy(regionDownloadName = null) }
+            return
+        }
+        _state.update { it.copy(poiPackDownloadingId = pack.id, poiPackDownloadPct = 0, regionDownloadName = region.name) }
+        val ok = poiPackStore.download(pack) { pct ->
+            _state.update { it.copy(poiPackDownloadPct = pct) }
+        }
+        _state.update {
+            it.copy(poiPackDownloadingId = null, regionDownloadName = null, poiPackInstalledIds = poiPackStore.installedIds())
+        }
+        if (ok) showStatus(appContext.getString(R.string.mapvm_poipack_ready, region.name))
+    }
+
+    /** Settings "Get places" on an already-installed routing region whose pack predates this feature
+     *  (or was skipped) — pulls just the place pack. Says so when the region has no pack published yet
+     *  (the catalog builds out region by region), instead of silently doing nothing. */
+    fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion) {
+        if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
+        viewModelScope.launch {
+            val available = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
+                .any { it.id == region.id }
+            if (!available) {
+                showStatus(appContext.getString(R.string.mapvm_poipack_unavailable, region.name))
+                return@launch
+            }
+            downloadPoiPack(region)
         }
     }
 
     fun deleteRoutingGraph(id: String) {
         routingGraphStore.delete(id)
-        _state.update { it.copy(routingInstalledIds = routingGraphStore.installedIds()) }
+        poiPackStore.delete(id) // the place pack rides with the region — remove them together
+        _state.update {
+            it.copy(routingInstalledIds = routingGraphStore.installedIds(), poiPackInstalledIds = poiPackStore.installedIds())
+        }
         showStatus(appContext.getString(R.string.mapvm_offline_routing_removed))
     }
 

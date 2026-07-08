@@ -101,9 +101,10 @@ class OfflineAddressStore @Inject constructor(
         }
     }
 
+    /** Addresses known offline — this store's own index plus every installed region pack. */
     fun count(): Int = helper.readableDatabase
         .rawQuery("SELECT COUNT(*) FROM addr", null)
-        .use { if (it.moveToFirst()) it.getInt(0) else 0 }
+        .use { if (it.moveToFirst()) it.getInt(0) else 0 } + OfflinePacks.count("addr")
 
     /**
      * Reverse-geocode a point to a display address, so an offline POI that OSM never tagged with an
@@ -117,33 +118,56 @@ class OfflineAddressStore @Inject constructor(
             (loc.lat - REV_BOX_DEG).toString(), (loc.lat + REV_BOX_DEG).toString(),
             (loc.lng - REV_BOX_DEG).toString(), (loc.lng + REV_BOX_DEG).toString(),
         )
-        val db = helper.readableDatabase
         var bestAddr: Pair<Double, String>? = null
-        db.rawQuery(
+        fun considerAddr(hn: String?, street: String?, city: String?, lat: Double, lng: Double) {
+            val d = loc.distanceTo(LatLng(lat, lng))
+            if (d <= REV_ADDR_M && (bestAddr == null || d < bestAddr!!.first)) {
+                val label = listOfNotNull(
+                    listOfNotNull(hn, street).joinToString(" ").ifBlank { null },
+                    city,
+                ).joinToString(", ").ifBlank { null }
+                if (label != null) bestAddr = d to label
+            }
+        }
+        helper.readableDatabase.rawQuery(
             "SELECT housenumber,street,city,lat,lng FROM addr WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?",
             box,
         ).use { c ->
-            while (c.moveToNext()) {
-                val d = loc.distanceTo(LatLng(c.getDouble(3), c.getDouble(4)))
-                if (d <= REV_ADDR_M && (bestAddr == null || d < bestAddr!!.first)) {
-                    val label = listOfNotNull(
-                        listOfNotNull(c.getString(0), c.getString(1)).joinToString(" ").ifBlank { null },
-                        c.getString(2),
-                    ).joinToString(", ").ifBlank { null }
-                    if (label != null) bestAddr = d to label
+            while (c.moveToNext()) considerAddr(c.getString(0), c.getString(1), c.getString(2), c.getDouble(3), c.getDouble(4))
+        }
+        for (pack in OfflinePacks.dbs) {
+            runCatching {
+                pack.rawQuery(
+                    "SELECT a.hn,s.street,a.city,a.lat,a.lng FROM addr a JOIN streetname s ON a.sid=s.sid " +
+                        "WHERE a.lat BETWEEN ? AND ? AND a.lng BETWEEN ? AND ?",
+                    box,
+                ).use { c ->
+                    while (c.moveToNext()) considerAddr(c.getString(0), c.getString(1), c.getString(2), c.getDouble(3), c.getDouble(4))
                 }
             }
         }
         bestAddr?.let { return it.second }
         var bestStreet: Pair<Double, String>? = null
-        db.rawQuery(
+        fun considerStreet(street: String?, lat: Double, lng: Double) {
+            val d = loc.distanceTo(LatLng(lat, lng))
+            if (d <= REV_STREET_M && (bestStreet == null || d < bestStreet!!.first)) {
+                street?.let { bestStreet = d to it }
+            }
+        }
+        helper.readableDatabase.rawQuery(
             "SELECT street,lat,lng FROM street WHERE lat BETWEEN ? AND ? AND lng BETWEEN ? AND ?",
             box,
         ).use { c ->
-            while (c.moveToNext()) {
-                val d = loc.distanceTo(LatLng(c.getDouble(1), c.getDouble(2)))
-                if (d <= REV_STREET_M && (bestStreet == null || d < bestStreet!!.first)) {
-                    c.getString(0)?.let { bestStreet = d to it }
+            while (c.moveToNext()) considerStreet(c.getString(0), c.getDouble(1), c.getDouble(2))
+        }
+        for (pack in OfflinePacks.dbs) {
+            runCatching {
+                pack.rawQuery(
+                    "SELECT s.street,p.lat,p.lng FROM streetpt p JOIN streetname s ON p.sid=s.sid " +
+                        "WHERE p.lat BETWEEN ? AND ? AND p.lng BETWEEN ? AND ?",
+                    box,
+                ).use { c ->
+                    while (c.moveToNext()) considerStreet(c.getString(0), c.getDouble(1), c.getDouble(2))
                 }
             }
         }
@@ -152,7 +176,7 @@ class OfflineAddressStore @Inject constructor(
 
     fun streetCount(): Int = helper.readableDatabase
         .rawQuery("SELECT COUNT(*) FROM street", null)
-        .use { if (it.moveToFirst()) it.getInt(0) else 0 }
+        .use { if (it.moveToFirst()) it.getInt(0) else 0 } + OfflinePacks.count("streetpt")
 
     /**
      * Forward-geocode a typed address → matching Places (nearest first). Empty if nothing matches.
@@ -202,7 +226,7 @@ class OfflineAddressStore @Inject constructor(
 
     private data class AddrRow(val hn: String?, val street: String?, val city: String?, val lat: Double, val lng: Double)
 
-    /** All addr rows matching the street words (no house-number filter). */
+    /** All addr rows matching the street words (no house-number filter) — own index + region packs. */
     private fun query(houseNo: String?, words: List<String>): List<AddrRow> {
         val clauses = ArrayList<String>()
         val args = ArrayList<String>()
@@ -217,6 +241,64 @@ class OfflineAddressStore @Inject constructor(
                 rows.add(AddrRow(c.getString(0), c.getString(1), c.getString(2), c.getDouble(3), c.getDouble(4)))
             }
         }
+        for (pack in OfflinePacks.dbs) rows.addAll(packQuery(pack, houseNo, words))
+        return rows
+    }
+
+    // ---- Region-pack queries. Packs are state-scale, so their schema is NORMALIZED (see
+    // scripts/poipack_build.py): street names live once in `streetname(sid,street,street_norm)` and
+    // the millions of `addr(hn,sid,city,lat,lng)` / `streetpt(sid,lat,lng)` rows reference them by
+    // int. Matching street names first (a ~60k-row scan) keeps a whole-state query fast — the big
+    // tables are then hit through their sid/hn indexes, never LIKE-scanned.
+
+    /** sids (+ display name) of pack street names matching all [words]. */
+    private fun packSids(pack: SQLiteDatabase, words: List<String>): Map<Int, String> {
+        val clauses = words.map { "street_norm LIKE ?" }
+        val args = words.map { "%$it%" }
+        val out = LinkedHashMap<Int, String>()
+        runCatching {
+            pack.rawQuery(
+                "SELECT sid,street FROM streetname WHERE ${clauses.joinToString(" AND ")} LIMIT 200",
+                args.toTypedArray(),
+            ).use { c -> while (c.moveToNext()) out[c.getInt(0)] = c.getString(1) }
+        }
+        return out
+    }
+
+    private fun packQuery(pack: SQLiteDatabase, houseNo: String?, words: List<String>): List<AddrRow> {
+        val sids = packSids(pack, words)
+        if (sids.isEmpty()) return emptyList()
+        val inList = sids.keys.joinToString(",")
+        val rows = ArrayList<AddrRow>()
+        runCatching {
+            val sql = if (houseNo != null) {
+                "SELECT hn,sid,city,lat,lng FROM addr WHERE hn = ? AND sid IN ($inList) LIMIT 400"
+            } else {
+                "SELECT hn,sid,city,lat,lng FROM addr WHERE sid IN ($inList) LIMIT 400"
+            }
+            pack.rawQuery(sql, if (houseNo != null) arrayOf(houseNo) else null).use { c ->
+                while (c.moveToNext()) {
+                    rows.add(AddrRow(c.getString(0), sids[c.getInt(1)], c.getString(2), c.getDouble(3), c.getDouble(4)))
+                }
+            }
+        }
+        return rows
+    }
+
+    private fun packStreetGeom(pack: SQLiteDatabase, words: List<String>): List<StreetPt> {
+        val sids = packSids(pack, words)
+        if (sids.isEmpty()) return emptyList()
+        val rows = ArrayList<StreetPt>()
+        runCatching {
+            pack.rawQuery(
+                "SELECT sid,lat,lng FROM streetpt WHERE sid IN (${sids.keys.joinToString(",")}) LIMIT 4000",
+                null,
+            ).use { c ->
+                while (c.moveToNext()) {
+                    rows.add(StreetPt(sids[c.getInt(0)] ?: return@use, c.getDouble(1), c.getDouble(2)))
+                }
+            }
+        }
         return rows
     }
 
@@ -227,7 +309,7 @@ class OfflineAddressStore @Inject constructor(
             .sortedBy { it.distanceMeters ?: Double.MAX_VALUE }
             .take(limit)
 
-    /** Street centreline points matching the street words. */
+    /** Street centreline points matching the street words — own index + region packs. */
     private fun streetGeom(words: List<String>): List<StreetPt> {
         val clauses = words.map { "street_norm LIKE ?" }
         val args = words.map { "%$it%" }
@@ -238,6 +320,7 @@ class OfflineAddressStore @Inject constructor(
         ).use { c ->
             while (c.moveToNext()) rows.add(StreetPt(c.getString(0), c.getDouble(1), c.getDouble(2)))
         }
+        for (pack in OfflinePacks.dbs) rows.addAll(packStreetGeom(pack, words))
         return rows
     }
 
