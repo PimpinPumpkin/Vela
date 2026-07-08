@@ -39,6 +39,7 @@ import app.vela.voice.PiperSynth
 import app.vela.voice.VoiceInstaller
 import app.vela.service.NavigationService
 import app.vela.core.model.TransitItinerary
+import app.vela.core.model.TransitStep
 import app.vela.web.WebDirectionsFetcher
 import app.vela.web.WebPhotoFetcher
 import app.vela.web.WebReviewsFetcher
@@ -61,6 +62,17 @@ import javax.inject.Inject
 
 /** Which directions endpoint the "Choose on map" crosshair is currently setting. */
 enum class MapPick { ORIGIN, STOP }
+
+/** Live step-by-step guidance through a transit trip (Moovit-style): the itinerary + which leg
+ *  you're on. Advances by GPS proximity to each leg's end (or manually). */
+data class TransitNavState(
+    val itinerary: TransitItinerary,
+    val stepIndex: Int = 0,
+    val arrived: Boolean = false,
+) {
+    val step: TransitStep? get() = itinerary.steps.getOrNull(stepIndex)
+    val isLastStep: Boolean get() = stepIndex >= itinerary.steps.lastIndex
+}
 
 data class MapUiState(
     val center: LatLng? = null,
@@ -108,6 +120,7 @@ data class MapUiState(
     val travelMode: TravelMode = TravelMode.DRIVE,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
+    val transitNav: TransitNavState? = null,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
@@ -530,6 +543,8 @@ class MapViewModel @Inject constructor(
                     )
                 }
                 restartStaleTimer()
+                // Advance transit step-by-step guidance when we reach the current leg's end (no-op off transit).
+                maybeAdvanceTransitNav(here)
                 // Save the fix to the active trip (no-op unless one is recording).
                 tripStore.record(loc)
                 // Drive turn-by-turn from here so navigation works even if the
@@ -1735,6 +1750,68 @@ class MapViewModel @Inject constructor(
             }
         }
     }
+
+    // Auto-advance ARMING: a leg only auto-advances once GPS has been FAR from its end (armed) and
+    // then reaches it — so standing at a transfer hub (two leg-ends <40 m apart) can't cascade through
+    // legs, a short final walk can't fire a premature "arrived", and it can't double-fire with Next.
+    private var transitLegArmed = false
+    private val TRANSIT_ARRIVE_M = 40.0
+    private val TRANSIT_ARM_M = 90.0 // must have been at least this far from the leg end to arm
+
+    /** Begin guiding through [itin] leg by leg. Speaks the first instruction; GPS auto-advances. */
+    fun startTransitNav(itin: TransitItinerary) {
+        if (itin.steps.isEmpty()) return
+        transitLegArmed = false
+        _state.update { it.copy(transitNav = TransitNavState(itin, 0), directionsOpen = false, selected = null) }
+        startLocation()
+        itin.steps.firstOrNull()?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+    }
+
+    fun advanceTransitNav() {
+        val tn = _state.value.transitNav ?: return
+        transitLegArmed = false // the new leg must re-arm (leave its end zone) before auto-advancing
+        if (tn.isLastStep) {
+            _state.update { it.copy(transitNav = tn.copy(arrived = true)) }
+            voice.speak(appContext.getString(R.string.transit_nav_arrived), interrupt = true)
+            return
+        }
+        val ni = tn.stepIndex + 1
+        _state.update { it.copy(transitNav = tn.copy(stepIndex = ni)) }
+        tn.itinerary.steps.getOrNull(ni)?.let { voice.speak(transitStepSpoken(it), interrupt = true) }
+    }
+
+    fun backTransitNav() {
+        val tn = _state.value.transitNav ?: return
+        transitLegArmed = false
+        _state.update { it.copy(transitNav = tn.copy(stepIndex = (tn.stepIndex - 1).coerceAtLeast(0), arrived = false)) }
+    }
+
+    fun endTransitNav() = _state.update { it.copy(transitNav = null) }
+
+    /** Auto-advance transit guidance when GPS reaches the current leg's end (board/alight stop or the
+     *  leg's walk destination). Latched: the leg must first be ARMED by being >TRANSIT_ARM_M from its
+     *  end, then advances on entering the TRANSIT_ARRIVE_M radius — one advance per leg, no cascade. */
+    private fun maybeAdvanceTransitNav(here: LatLng) {
+        val tn = _state.value.transitNav ?: return
+        if (tn.arrived) return
+        val step = tn.step ?: return
+        val end = (if (step.line != null) step.alightStop?.location else step.walkTo) ?: return
+        val d = here.distanceTo(end)
+        if (d > TRANSIT_ARM_M) transitLegArmed = true
+        else if (transitLegArmed && d < TRANSIT_ARRIVE_M) advanceTransitNav()
+    }
+
+    /** The spoken cue for a transit leg. */
+    private fun transitStepSpoken(step: TransitStep): String =
+        if (step.line == null) {
+            appContext.getString(R.string.transit_nav_walk, step.durationText ?: "").trim()
+        } else {
+            val s = StringBuilder(appContext.getString(R.string.transit_nav_take, step.line?.name.orEmpty()))
+            step.headsign?.let { s.append(" ").append(appContext.getString(R.string.transit_nav_towards, it)) }
+            step.boardStop?.name?.let { s.append(" ").append(appContext.getString(R.string.transit_nav_from, it)) }
+            step.alightStop?.name?.let { s.append(". ").append(appContext.getString(R.string.transit_nav_get_off, it)) }
+            s.toString()
+        }
 
     fun startNav() {
         val route = _state.value.activeRoute ?: return
