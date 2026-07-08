@@ -137,6 +137,7 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadFieldEscape
+import app.vela.ui.rememberDpadAutoFocus // D-pad-first initial focus (docs/dpad.md)
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -362,12 +363,18 @@ fun PlaceSheet(
     ) {
         // Card background fills to the screen bottom; pad the content up off the nav bar.
         Column(Modifier.navigationBarsPadding()) {
+            // D-pad-first (docs/dpad.md): when the sheet opens, land focus ON the handle so the
+            // sheet is the active surface — otherwise Compose leaves focus on the search bar
+            // behind the sheet (measured: sometimes the search field, sometimes a photo — the
+            // exact nondeterminism to kill). No-op under touch.
+            val sheetAutoFocus = rememberDpadAutoFocus()
             // Drag the handle UP to expand (reviews), DOWN to shrink, down again to dismiss.
             // TAP toggles expand/peek. The touch target is a tall (36dp) invisible strip — the
             // 4dp handle is just the visual; a fat hit-area makes it easy to grab.
             Box(
                 Modifier
                     .fillMaxWidth()
+                    .focusRequester(sheetAutoFocus)
                     // D-pad (docs/dpad.md): the handle is a real button — focusable, OK runs the
                     // same one-detent-grow logic as a tap. clickable replaces the tap-only
                     // detector (same behaviour under touch); the drag detector below is untouched.
@@ -1068,6 +1075,10 @@ fun DirectionsPanel(
               val dirMaxH = (LocalConfiguration.current.screenHeightDp * 0.58f).dp
               Column(Modifier.heightIn(max = dirMaxH).verticalScroll(dirScroll)) {
             Spacer(Modifier.height(10.dp))
+            // D-pad-first (docs/dpad.md): land focus on the first travel-mode tab when the
+            // directions panel opens, so it's the active surface (else focus stays on the
+            // search bar behind it). No-op under touch.
+            val dirAutoFocus = rememberDpadAutoFocus()
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
                     TravelMode.DRIVE to stringResource(R.string.place_mode_drive),
@@ -1079,6 +1090,7 @@ fun DirectionsPanel(
                         selected = currentMode == mode,
                         onClick = { onModeSelected(mode) },
                         label = { Text(label) },
+                        modifier = if (mode == TravelMode.DRIVE) Modifier.focusRequester(dirAutoFocus) else Modifier,
                     )
                 }
             }
@@ -1774,6 +1786,11 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
     var reviewPhotos by remember(featureId) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
     // Back closes the photo gallery first (if open), else the whole screen.
     BackHandler(onBack = { if (reviewPhotos != null) reviewPhotos = null else onClose() })
+    // D-pad-first (docs/dpad.md): land focus on the back arrow immediately so the panel isn't
+    // unfocused during the WebView's load window (the WebView itself is alpha-0 + only grabs
+    // focus on page-finish). The auto-focus loop stops on its first success, so it hands off
+    // to the WebView cleanly once the page loads. No-op under touch.
+    val reviewsBackFocus = rememberDpadAutoFocus()
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -1781,7 +1798,7 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 ) {
-                    IconButton(onClick = onClose) {
+                    IconButton(onClick = onClose, modifier = Modifier.focusRequester(reviewsBackFocus)) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_back), tint = ink)
                     }
                     Column(Modifier.weight(1f)) {
