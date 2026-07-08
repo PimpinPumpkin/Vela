@@ -50,6 +50,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.produceState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -76,6 +79,7 @@ import app.vela.ui.Units
 import androidx.compose.foundation.layout.Arrangement
 import app.vela.core.voice.PiperCatalog
 import app.vela.core.voice.PiperVoice
+import app.vela.core.voice.VoiceEngine
 import app.vela.ui.map.MapUiState
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.AppTheme
@@ -404,11 +408,20 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
             } ?: Spacer(Modifier.height(4.dp))
-            val engines = vm.voiceEngines()
-            if (engines.isEmpty()) {
+            // Enumerate TTS engines OFF the main thread. PackageManager.queryIntentServices + the
+            // per-engine loadLabel is a binder IPC that took >5 s on the flip phone and ANR'd the UI
+            // when run in composition (input-dispatch timeout). Load async (cached in VoiceGuide);
+            // render nothing until ready so there's no flash of the "no engines" hint.
+            val engines by produceState<List<VoiceEngine>?>(null, state.voiceDownloadingId) {
+                value = withContext(Dispatchers.IO) { vm.voiceEngines() }
+            }
+            val engineList = engines
+            if (engineList == null) {
+                // still loading — render nothing
+            } else if (engineList.isEmpty()) {
                 Hint(stringResource(R.string.settings_voice_none_hint))
             } else {
-                engines.forEach { e ->
+                engineList.forEach { e ->
                     SelectableRow(
                         label = e.label,
                         selected = state.selectedEngine?.packageName == e.packageName,
@@ -440,7 +453,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             CollapsibleSectionTitle(stringResource(R.string.settings_voice_library), voiceLibExpanded) { voiceLibExpanded = !voiceLibExpanded }
             if (voiceLibExpanded) VoiceLibrary(vm, state)
 
-            if (engines.isNotEmpty()) {
+            if (engineList?.isNotEmpty() == true) {
                 // Speed + the niche bits (playground, the multi-speaker variant picker) — most people never
                 // touch these, so tuck them behind a collapsible header (collapsed by default).
                 var voiceAdvExpanded by remember { mutableStateOf(false) }
