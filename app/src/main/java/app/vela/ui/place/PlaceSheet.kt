@@ -539,11 +539,10 @@ fun PlaceSheet(
                     // wasting the first arrow press. Focus the first item from the outer scope
                     // once the popup settles. No-op under touch.
                     // D-pad note (docs/dpad.md): a Compose DropdownMenu opens with the popup
-                    // window focused but no item pre-highlighted — the first DOWN enters the items
-                    // (Compose sets popup focus only on the first key event; requestFocus/moveFocus
-                    // can't pre-place it, proven by 5 approaches). Fully navigable: OK opens, DOWN/UP
-                    // walk, OK selects, BACK closes. Left as a stock DropdownMenu so touch stays
-                    // byte-identical.
+                    // window focused but no item pre-highlighted — Compose sets popup item focus
+                    // only on the first key event, and NOTHING in-app can pre-place it (8 approaches
+                    // proven on-device). Fully navigable: OK opens, DOWN/UP walk, OK selects, BACK
+                    // closes. Stock DropdownMenu so touch stays byte-identical.
                     DropdownMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.place_set_as_home)) },

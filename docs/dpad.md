@@ -334,17 +334,21 @@ content filter otherwise leaves routing without a usable fix on this device.)
 
 ## Known limitations / follow-ups (also on the ROADMAP)
 
-- **`DropdownMenu` items can't be pre-focused (Compose framework limit).** A Compose
-  `DropdownMenu` opens its Popup with **window** focus but **no item Compose-focused** — Compose
-  sets the initial item focus only on the first key event. So the menu opens un-highlighted and
-  the first DOWN "enters" it. Verified un-fixable on-device (2026-07-07): `FocusRequester.request-
-  Focus()` on the item, the same on a custom focusable Row, a retry-until-`onFocusEvent`-confirms
-  loop, an outer-scope delayed request, and `FocusManager.moveFocus(Down)` from inside the popup
-  — **five approaches, none land focus** (`mCurrentFocus` is the Pop-Up Window, yet no node is
-  focused until a key press). Rewriting the ~6 menus as custom in-window overlays *would* allow
-  pre-focus but would break the "touch stays byte-identical" rule, so they're left as stock
-  DropdownMenus. **Fully operable regardless:** OK opens, DOWN/UP walk the items, OK selects,
-  BACK closes the menu (not the sheet) — all proven on-device.
+- **Compose secondary windows can't be pre-focused (framework limit).** A `DropdownMenu` (Popup)
+  AND an `AlertDialog` (Dialog) both open with **window** focus but **no content Compose-focused**
+  — Compose sets that focus only on the first key event. So a menu opens un-highlighted and its
+  first DOWN "enters" it; an onboarding/confirm dialog opens with no button highlighted and the
+  first nav key enters the buttons. Verified un-fixable in-app on-device (2026-07-07): **eight
+  approaches, none land focus** — `requestFocus()` on the item, the same on a custom focusable
+  Row, a retry-until-`onFocusEvent`-confirms loop, an outer-scope delayed request,
+  `FocusManager.moveFocus(Down)` from inside the popup, and a **synthetic `DPAD_DOWN` `KeyEvent`**
+  dispatched to the popup's ComposeView, then to its `rootView`, then again with a real DPAD input
+  source — all leave `mCurrentFocus` on the Pop-Up/Dialog window with no node focused until a real
+  key press. The only way to pre-highlight is to replace every menu/dialog with a **custom
+  in-window overlay**, which breaks the "touch stays byte-identical" rule (and loses Popup
+  edge-clamping / positioning), so they're left as stock components. **Fully operable regardless:**
+  OK/nav-key enters, DOWN/UP walk, OK selects, BACK closes (the menu/dialog, not the surface
+  behind it) — all proven on-device.
 - **Off-screen initial-focus targets (small screens).** Compose won't move focus to an element
   it can't bring into view, so a primary control that starts **below the fold** can't be
   auto-focused on open (measured: the Welcome screen's Get-started button on a 480×640 keypad
