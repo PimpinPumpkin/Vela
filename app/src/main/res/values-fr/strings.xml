@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Téléchargez une voix naturelle sur l\'appareil pour les instructions vocales — choisissez-en une ci-dessous. Les voix ★ ressemblent le plus à une voix de navigation (Lessac et HFC sont les plus proches de Google). Téléchargement unique ; le Wi-Fi est recommandé.</string>
     <string name="settings_voice_lib_lang_hint">La langue de votre application est %1$s — téléchargez une voix %2$s ci-dessous pour que les instructions vocales correspondent (une voix anglaise prononcerait mal les noms de rues en %3$s).</string>
     <string name="settings_voice_search">Rechercher des voix</string>
+    <string name="settings_voice_show_more">Afficher %1$d de plus</string>
+    <string name="settings_voice_show_less">Afficher moins</string>
     <string name="settings_voice_this_voice">cette voix</string>
     <string name="settings_voice_remove_title">Supprimer %1$s ?</string>
     <string name="settings_voice_remove_body">C\'est votre seule voix Vela. Les instructions vocales utiliseront un moteur de synthèse vocale du système (ou resteront silencieuses si aucun n\'est installé) jusqu\'à ce que vous en téléchargiez une autre.</string>
@@ -321,6 +323,7 @@
     <string name="mapvm_shortcut_set">%1$s défini sur %2$s</string>
     <string name="mapvm_search_needs_recalibration">La recherche nécessite un recalibrage : %1$s</string>
     <string name="mapvm_offline_no_data">Vous êtes hors ligne. Téléchargez une zone dans Réglages ▸ Hors ligne pour rechercher sans connexion.</string>
+    <string name="mapvm_offline_no_match">Aucun résultat hors ligne pour \"%1$s\" dans votre zone enregistrée. La recherche hors ligne couvre les lieux OpenStreetMap que vous avez téléchargés.</string>
     <string name="mapvm_offline_results">Résultats hors ligne (aucune connexion)</string>
     <string name="mapvm_search_failed_reason">Échec de la recherche : %1$s</string>
     <string name="mapvm_none_found_along_route">Aucun « %1$s » trouvé le long de votre itinéraire</string>

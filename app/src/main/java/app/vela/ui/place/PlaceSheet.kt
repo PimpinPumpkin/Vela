@@ -225,12 +225,20 @@ fun PlaceSheet(
     // Gallery category filter (null = All); resets per place. Chips appear only when Google tagged photos.
     var photoCat by remember(place.id) { mutableStateOf<String?>(null) }
 
-    // The place card PEEKS at ~half-screen (so business info isn't immediately
-    // full-screen); drag the handle up to expand for the reviews.
+    // Three detents, Google-style: EXPANDED (reviews) ↔ PEEK (default, ~half) ↔ MINIMIZED (a small
+    // card). A gentle swipe down steps one detent (expanded→peek→minimized); from minimized another
+    // swipe dismisses, and a big/fast swipe dismisses outright. So the first gentle pull minimizes
+    // instead of closing. expandedState stays the reviews driver; minimizedState is only ever set from
+    // peek, so the two are never both true.
     val expandedState = remember(place.id) { mutableStateOf(false) }
+    val minimizedState = remember(place.id) { mutableStateOf(false) }
     val screenH = LocalConfiguration.current.screenHeightDp
     val maxSheetHeight by animateDpAsState(
-        if (expandedState.value) (screenH * 0.92f).dp else (screenH * 0.56f).dp,
+        when {
+            expandedState.value -> (screenH * 0.92f).dp
+            minimizedState.value -> (screenH * 0.26f).dp
+            else -> (screenH * 0.56f).dp
+        },
         label = "placeSheetHeight",
     )
     // Swipe down ANYWHERE on the sheet to dismiss (not just the handle): a nested-
@@ -241,16 +249,20 @@ fun PlaceSheet(
     val dismissConn = remember(place.id) {
         object : NestedScrollConnection {
             private var acc = 0f
-            // Once a downward drag collapses an expanded sheet, it must NOT also dismiss it in the
-            // SAME gesture — lift and swipe again to close. (A single long swipe used to collapse then
-            // keep accumulating past 150 and dismiss, closing an expanded sheet outright.)
-            private var collapsedThisGesture = false
+            // One detent step per gesture — lift and swipe again for the next. A single long drag
+            // steps down once (e.g. peek→minimized) and stops, so it can't blow through to dismiss.
+            private var steppedThisGesture = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (available.y > 0f && bodyScroll.value == 0) {
                     acc += available.y
-                    when {
-                        expandedState.value && acc > 90f -> { expandedState.value = false; acc = 0f; collapsedThisGesture = true }
-                        !expandedState.value && !collapsedThisGesture && acc > 150f -> { acc = 0f; onCloseUpdated.value() }
+                    if (!steppedThisGesture) {
+                        when {
+                            // Collapse an expanded sheet a touch sooner (common gesture); the other
+                            // steps want a more deliberate pull so a gentle swipe doesn't overshoot.
+                            expandedState.value && acc > 90f -> { expandedState.value = false; steppedThisGesture = true; acc = 0f }
+                            !minimizedState.value && acc > 150f -> { minimizedState.value = true; steppedThisGesture = true; acc = 0f }
+                            minimizedState.value && acc > 150f -> { steppedThisGesture = true; acc = 0f; onCloseUpdated.value() }
+                        }
                     }
                     return available
                 }
@@ -259,15 +271,20 @@ fun PlaceSheet(
                 // reaching for the handle. Doesn't consume the scroll: the body scrolls too.
                 if (available.y < 0f) {
                     acc = 0f
-                    if (!expandedState.value) expandedState.value = true
+                    if (minimizedState.value) minimizedState.value = false
+                    else if (!expandedState.value) expandedState.value = true
                 }
                 return Offset.Zero
             }
             // The fling phase runs at the end of every drag (even at zero velocity) — use it as the
-            // gesture boundary that re-arms dismissal for the next swipe.
+            // gesture boundary that re-arms stepping for the next swipe. A hard downward flick from
+            // peek/minimized dismisses outright (the "dramatic swipe closes" case); an expanded flick
+            // just collapses to peek via onPreScroll above.
             override suspend fun onPreFling(available: Velocity): Velocity {
+                val dramatic = available.y > 2400f && bodyScroll.value == 0 && !expandedState.value
                 acc = 0f
-                collapsedThisGesture = false
+                steppedThisGesture = false
+                if (dramatic) onCloseUpdated.value()
                 return Velocity.Zero
             }
         }
@@ -292,15 +309,22 @@ fun PlaceSheet(
             leftover < -0.5f -> { // pulling down past the body top
                 pull[1] = 0f
                 pull[0] += -leftover
-                when {
-                    expandedState.value && pull[0] > 90f -> { expandedState.value = false; reviewsEngaged.value = false; pull[0] = 0f; pull[2] = 1f }
-                    !expandedState.value && pull[2] == 0f && pull[0] > 150f -> { pull[0] = 0f; reviewsEngaged.value = false; onCloseUpdated.value() }
+                if (pull[2] == 0f) {
+                    when {
+                        expandedState.value && pull[0] > 90f -> { expandedState.value = false; reviewsEngaged.value = false; pull[0] = 0f; pull[2] = 1f }
+                        !minimizedState.value && pull[0] > 150f -> { minimizedState.value = true; reviewsEngaged.value = false; pull[0] = 0f; pull[2] = 1f }
+                        minimizedState.value && pull[0] > 150f -> { pull[0] = 0f; pull[2] = 1f; reviewsEngaged.value = false; onCloseUpdated.value() }
+                    }
                 }
             }
             leftover > 0.5f -> { // pushing up past the body bottom
                 pull[0] = 0f
                 pull[1] += leftover
-                if (!expandedState.value && pull[1] > 90f) { expandedState.value = true; pull[1] = 0f }
+                if (pull[1] > 90f) {
+                    if (minimizedState.value) minimizedState.value = false
+                    else if (!expandedState.value) expandedState.value = true
+                    pull[1] = 0f
+                }
             }
             else -> { pull[0] = 0f; pull[1] = 0f }
         }
@@ -343,11 +367,15 @@ fun PlaceSheet(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    // D-pad (docs/dpad.md): the handle is a real button — focusable, OK toggles
-                    // peek/expanded. clickable replaces the old tap-only detector (same tap
-                    // behaviour under touch); the drag detector below is untouched.
+                    // D-pad (docs/dpad.md): the handle is a real button — focusable, OK runs the
+                    // same one-detent-grow logic as a tap. clickable replaces the tap-only
+                    // detector (same behaviour under touch); the drag detector below is untouched.
                     .dpadHighlight(RoundedCornerShape(3.dp))
-                    .clickable { expandedState.value = !expandedState.value }
+                    .clickable {
+                        // Grows one detent: minimized→peek, peek→expanded, expanded→peek.
+                        if (minimizedState.value) minimizedState.value = false
+                        else expandedState.value = !expandedState.value
+                    }
                     .pointerInput(Unit) {
                         var total = 0f
                         detectVerticalDragGestures(
@@ -355,9 +383,19 @@ fun PlaceSheet(
                             onVerticalDrag = { change, dy -> change.consume(); total += dy },
                             onDragEnd = {
                                 when {
-                                    total < -40f -> expandedState.value = true
-                                    total > 40f && expandedState.value -> expandedState.value = false
-                                    total > 40f -> onClose()
+                                    // Swipe up grows one detent.
+                                    total < -40f -> {
+                                        if (minimizedState.value) minimizedState.value = false
+                                        else expandedState.value = true
+                                    }
+                                    // A big deliberate swipe down closes outright ("dramatic swipe").
+                                    total > 220f -> onClose()
+                                    // A gentle swipe down shrinks one detent (expanded→peek→minimized→close).
+                                    total > 40f -> when {
+                                        expandedState.value -> expandedState.value = false
+                                        !minimizedState.value -> minimizedState.value = true
+                                        else -> onClose()
+                                    }
                                 }
                             },
                         )
@@ -379,6 +417,35 @@ fun PlaceSheet(
                     .verticalScroll(bodyScroll)
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
+            // Minimized detent: a compact card (name, rating, Directions) instead of the full body,
+            // like Google's collapsed sheet. At this small height leading with the photo hero showed
+            // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
+            if (minimizedState.value) {
+                Text(
+                    place.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                if (place.rating != null) {
+                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            String.format(Locale.US, "%.1f", place.rating),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = ink,
+                        )
+                        RatingStars(place.rating!!, modifier = Modifier.padding(horizontal = 5.dp))
+                        place.reviewCount?.let { Text("($it)", style = MaterialTheme.typography.bodySmall, color = dim) }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                return@Column
+            }
             // Photo hero at the top (Google-style) — always visible, even at the
             // peek height / in landscape; tap one to open the full gallery.
             if (place.photoUrls.isNotEmpty() || photosLoading) {
