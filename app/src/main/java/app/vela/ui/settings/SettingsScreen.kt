@@ -82,6 +82,8 @@ import app.vela.ui.theme.AppTheme
 import app.vela.ui.theme.ThemeMode
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadFieldEscape
+import app.vela.ui.rememberDpadAutoFocus
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -109,12 +111,16 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
         }
     }
+    // D-pad-first (docs/dpad.md): Settings must open already focused — land on the back
+    // button (top of screen) so the first arrow press enters the content, never a wasted
+    // "wake up focus" press. No-op under touch.
+    val settingsAutoFocus = rememberDpadAutoFocus()
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack) {
+                    IconButton(onClick = onBack, modifier = Modifier.focusRequester(settingsAutoFocus)) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 },
