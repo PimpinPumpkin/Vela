@@ -942,6 +942,9 @@ class MapViewModel @Inject constructor(
 
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
+        // Re-poll connectivity per search: the registered callback alone proved able to
+        // wedge `offline` on (missed onAvailable after doze) until an app relaunch.
+        _state.update { val off = !isOnline(); if (it.offline != off) it.copy(offline = off) else it }
         suggestJob?.cancel()
         recentStore.add(q)
         _state.update { it.copy(recents = recentStore.recent()) }
@@ -989,7 +992,10 @@ class MapViewModel @Inject constructor(
                     // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
                     // else typing the origin query wiped the "To" and the panel showed an empty
                     // "Destination" with stale routes (the from-here edit cleared where you were going).
-                    it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false)
+                    // A live scrape succeeding is definitive proof we're online — clear a stuck
+                    // offline flag (the network callback can miss an event after doze and leave
+                    // `offline` latched until relaunch; seen on-device 2026-07-09).
+                    it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // superseded by a newer search — don't run the fallback/error update on a dead job
