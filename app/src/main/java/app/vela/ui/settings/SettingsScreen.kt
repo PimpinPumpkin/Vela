@@ -80,6 +80,8 @@ import app.vela.ui.map.MapUiState
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.AppTheme
 import app.vela.ui.theme.ThemeMode
+import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
+import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -885,7 +887,7 @@ private fun SectionTitle(text: String) {
 @Composable
 private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 8.dp),
+        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onToggle).padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
@@ -906,7 +908,7 @@ private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: (
 @Composable
 private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(onClick = onClick).padding(vertical = 4.dp),
+        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = onClick)
