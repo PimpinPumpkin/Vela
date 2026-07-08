@@ -1121,6 +1121,21 @@ class MapViewModel @Inject constructor(
                 directionsWaypoints = emptyList(), pickingStop = false,
             )
         }
+        // Opening a place pans the camera to centre it, so the ambient POIs (loaded for the previous
+        // centre) can be off-screen once we're back on the bare map. Closing no longer moves the camera
+        // (that was the "camera spazz"), so nothing fires a camera-idle to reload them. Do it here.
+        refreshAmbientForCurrentView()
+    }
+
+    /** Re-evaluate the ambient POIs for whatever the map is currently showing. Used when returning to
+     *  the bare map without a camera move (e.g. closing a place). No-op if there's no viewport yet, and
+     *  [maybeLoadAmbientPois] keeps its own gates (skips while results/nav/a place are up, only refetches
+     *  on a real pan/zoom). */
+    private fun refreshAmbientForCurrentView() {
+        val vp = viewport ?: return
+        val c = mapCenter ?: LatLng((vp[0] + vp[2]) / 2, (vp[1] + vp[3]) / 2)
+        val radius = c.distanceTo(LatLng(vp[2], vp[3]))
+        maybeLoadAmbientPois(c, vp[4], radius)
     }
 
     /** Back out of the directions preview to the place sheet: drop the route,
