@@ -344,11 +344,18 @@ content filter otherwise leaves routing without a usable fix on this device.)
   `FocusManager.moveFocus(Down)` from inside the popup, and a **synthetic `DPAD_DOWN` `KeyEvent`**
   dispatched to the popup's ComposeView, then to its `rootView`, then again with a real DPAD input
   source — all leave `mCurrentFocus` on the Pop-Up/Dialog window with no node focused until a real
-  key press. The only way to pre-highlight is to replace every menu/dialog with a **custom
-  in-window overlay**, which breaks the "touch stays byte-identical" rule (and loses Popup
-  edge-clamping / positioning), so they're left as stock components. **Fully operable regardless:**
-  OK/nav-key enters, DOWN/UP walk, OK selects, BACK closes (the menu/dialog, not the surface
-  behind it) — all proven on-device.
+  key press. The `AlertDialog` was retried separately (requestFocus on its `TextButton`, and on a
+  directly-`.clickable` Text) — also un-focusable (~10 approaches total). **The one thing that DOES
+  work** is a hand-built **raw `Dialog` with an explicit `.focusable()` element** — Vela's photo
+  gallery does exactly that and auto-focuses on open — but Material `AlertDialog`/`DropdownMenu`
+  don't expose that seam. So the only way to pre-highlight the Material ones is to replace every
+  menu/dialog with a **custom raw-Dialog / in-window overlay**, which breaks the "touch stays
+  byte-identical" rule (and loses Popup edge-clamping / positioning), so they're left stock.
+  **Fully operable regardless:** the window is focused the instant it opens (keys live, BACK
+  closes); OK/nav-key enters, DOWN/UP walk, OK selects — all proven on-device. The distinction
+  from a *dead* screen (e.g. the Settings bug this sweep fixed) is real: there the **main window**
+  had nothing focused and the first press was wasted; here the **popup/dialog window IS focused**,
+  so the D-pad is live from the first press — only the pre-*highlight* is missing.
 - **Off-screen initial-focus targets (small screens).** Compose won't move focus to an element
   it can't bring into view, so a primary control that starts **below the fold** can't be
   auto-focused on open (measured: the Welcome screen's Get-started button on a 480×640 keypad
