@@ -64,6 +64,18 @@ genuinely needs no doc edit, say why in the commit.
   replay: `MapUiState.demoDriving` hides the "Stop replay" pill and the normal **End** (`stopNav`)
   cancels the demo job (its `finally` resumes live GPS + resets the dot/route). **Turn it OFF to
   navigate for real** — while on, every "Start" simulates instead of using GPS.
+- **Simulate-my-location (demo)** (`ui/SimLocation.kt`, Settings → Navigation, off by default,
+  pref `sim_location` in `vela_settings`). A sibling of demo-drive for demos/screenshots: when on,
+  Vela pretends to be at the map centre (captured when you flip the toggle), so the location dot,
+  the directions ORIGIN ("Your location"), and recenter all read from there instead of your real
+  GPS — that is how every Davis/Sacramento screenshot was shot from elsewhere without leaking a real
+  position. Process-wide reactive holder like `TransitLayer` (`init` in `VelaApp`); `MapViewModel`
+  applies it — `startLocation()` pins `myLocation` to the sim point (guard sits AFTER the replaying
+  guard so demo-drive still wins), `simulateLocationHere()` captures `mapCenter`,
+  `stopSimulateLocation()` resumes live GPS. NB search/place-sheet DISTANCES are `near`-relative
+  (Google computes them off `mapCenter`), so those read local from wherever the map is centred, with
+  or without this toggle; sim-location is specifically about the dot + route origin. **Turn it OFF
+  for real navigation.**
 - CI: **nightly + weekly channels (2026-07-08).** `.github/workflows/ci.yml`: every push to
   `main` builds + tests the APK and publishes a **PRERELEASE** `v0.3.<run>` (versionName
   `0.3.<run>`, versionCode `2000+run`) — the nightly channel; Obtainium users opt in with
