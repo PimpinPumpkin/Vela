@@ -688,7 +688,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   search can't be reached, search falls back to that index ("Offline results"). The
   index now **keeps the POI detail** OSM carries — **address, phone, website and
   opening hours** (from the `addr:*` / `phone` / `website` / `opening_hours` tags) —
-  so an offline place sheet isn't just a name on a pin (sparser than Google, but real)
+  so an offline place sheet isn't just a name on a pin (sparser than Google, but real).
+  **Graceful when there's nothing to show (2026-07-07):** searching with no connection (or on a
+  wifi that's connected but has no real internet, so the Google call fails with a host/timeout error)
+  and no downloaded area now shows the plain guidance *"You're offline. Download an area in Settings ▸
+  Offline to search without a connection."* instead of a raw "Unable to resolve host" error
+  (`isConnectivityError` maps DNS/route/timeout/SSL failures to the offline message)
 - ✅ **Open building-footprint overlay (Microsoft, ODbL — 2026-07-04, device-verified).** Fills the map's
   building gaps where OSM is thin (a suburb the Microsoft→OSM import never reached, e.g. the test suburb). **Online it
   STREAMS automatically — no download to see houses (2026-07-05):** the overlay is a PMTiles archive, so MapLibre
