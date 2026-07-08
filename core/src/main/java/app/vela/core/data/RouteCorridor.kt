@@ -33,7 +33,12 @@ object RouteCorridor {
                 if (best <= maxMeters) p to bestAlong else null
             }
             .sortedBy { it.second }
-            .map { it.first }
+            // Rewrite each place's distance to its ALONG-ROUTE distance (metres from the route
+            // start to its projection). The raw value was the crow-flies distance from wherever
+            // the search was centred (the route midpoint), which read as nonsense in the list --
+            // two stations at opposite ends of the trip both showed "5.9 mi". Along-route
+            // distance is monotonic with the list order: how far into the drive the stop sits.
+            .map { (p, along) -> p.copy(distanceMeters = along) }
     }
 
     /** Distance (m) from [p] to segment [a]–[b] plus the fraction t∈[0,1] along it,
