@@ -42,8 +42,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import app.vela.ui.dpadHighlight
@@ -88,10 +88,10 @@ fun SearchBar(
         if (fieldArmed) {
             runCatching { fieldFocus.requestFocus() }
             // Show/hide the soft keyboard by HOW the field was armed, not the static device type.
-            // On a hybrid touch+keypad phone (e.g. Qin F21) `dpadMode` is always true, so keying off
-            // it hid the keyboard even when the user TAPPED the bar — they couldn't type by touch and
-            // had to use the physical D-pad (tester report 2026-07-08). Keying off the live input mode
-            // shows the keyboard for a touch tap and hides it for a D-pad OK, which is what each wants.
+            // On a hybrid touch+keypad phone (e.g. Qin F21) dpadMode is always true, so keying off
+            // it hid the keyboard even when the user TAPPED the bar — they couldn't type by touch
+            // (alltechdev tester report 2026-07-08). Keying off the live input mode shows the
+            // keyboard for a touch tap and hides it for a D-pad OK, which is what each wants.
             if (inputMode.inputMode == InputMode.Keyboard) keyboard?.hide() else keyboard?.show()
         }
     }
@@ -235,7 +235,10 @@ fun SearchBar(
                 )
             }
             if (searching) {
-                CircularProgressIndicator(Modifier.size(22.dp).padding(end = 10.dp), strokeWidth = 2.dp)
+                // padding BEFORE size: sizing the indicator itself to 22dp keeps it a true circle.
+                // The old `.size(22.dp).padding(end=10.dp)` squeezed the arc into a 12x22 box, so it
+                // drew as an ellipse and looked like it was spinning off-axis (user report).
+                CircularProgressIndicator(Modifier.padding(end = 10.dp).size(22.dp), strokeWidth = 2.dp)
             } else {
                 IconButton(onClick = onOpenSettings) {
                     Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.search_settings_cd))
