@@ -4,9 +4,23 @@
 > [`SPEC.md`](SPEC.md) is **how it's built**; this file is **what's planned** and the
 > bigger bets. Keep it current — add ideas here the moment they come up.
 
-Last updated: 2026-07-02.
+Last updated: 2026-07-08.
 
 ## Recently shipped
+- **Whole-state offline place packs + self-updating packs (2026-07-07).** Downloading a state pulls a
+  CI-baked SQLite of the entire region's OSM POIs/addresses/streets, so offline search works
+  Organic-Maps-style anywhere in the state. Packs rebuild monthly from fresh OSM and installed ones
+  update in place through small row-level deltas (a Washington test delta was 5.6 KB against the 143 MB
+  pack). Offline typed-address geocoding shipped alongside (house-precise, interpolated, street fallback).
+- **Android Auto, first cut (2026-07-08).** Vela appears in the car launcher (AA "Unknown sources" for
+  sideloads): live map, puck, route, and the current-maneuver card from the same NavSession the phone
+  runs. Car-side search/route-start is the follow-up.
+- **Open building + house-number overlays (2026-07-04/05).** Microsoft footprints (ODbL) and OpenAddresses
+  numbers as per-region PMTiles, streamed over the map by default where OSM is thin, downloadable for
+  full offline. Traffic lights + stop signs draw at close zoom (keyless Overpass).
+- **In-app updater + content toggles (2026-07-08).** A PipePipe-style updater checks the newest GitHub
+  release (about daily, Settings toggle), downloads the APK and hands it to Android's installer. Plus
+  Settings switches to hide reviews and skip photo loading, and a 3D-buildings toggle for weaker GPUs.
 - **In-process neural voice (Piper) — DONE, device-verified.** Vela bundles the sherpa-onnx VITS
   runtime and downloads a **Piper** voice itself (progress bar), running it in-process as the default nav
   voice — near-Siri quality, no standalone TTS app. Default = **HFC Female** (`en_US-hfc_female-medium`,
@@ -175,10 +189,9 @@ Real building footprints render now. They were **already in our tiles** — the
 OpenMapTiles `building` + `building-3d` layers (OSM data, much of it imported from
 Microsoft's footprints) — Vela just coloured them a hair off the land so they were
 ~invisible; bumped the contrast + added an outline (2026-06-19). No key, no new
-data. If coverage ever needs filling, **Microsoft US Building Footprints** (~130 M,
-ODbL, **free + keyless**) and **Overture** buildings are the open sources — but
-they're bulk files you'd tile + host yourself (that's infra), so only worth it for
-gaps. 3-D massing at high zoom is already on via `building-3d`. **Parcels: not
+data. The gap-filling actually happened (2026-07-04): **Microsoft footprints (US + Global ML) ship as
+per-region PMTiles** (`OverlayTileStore`, CI-baked, 361-row catalog), streamed under the OSM
+buildings by default and downloadable for offline — so thin-OSM suburbs render houses now. 3-D massing at high zoom is already on via `building-3d`. **Parcels: not
 pursuing** (lot/assessment data — a per-county scraping + backend commitment with
 licensing heterogeneity; out of scope by decision 2026-06-19).
 
@@ -307,12 +320,9 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   against Tartine + Bottega Louie: 60 image URLs, all `/a/…ACg8oc` / `/a-/…ALV-`, zero
   `/gps-cs`·`/geougc`·`/p/AF1Qip`). The old parser swept the avatar at `[12][1][3]` into
   the photo strip — now fixed to collect UGC-by-URL-shape only, so it shows nothing here
-  rather than a face. To actually show review photos we need the **media source**: 6
-  pb-flag guesses (`!4m1!1b1`, `!6m1!1b1`, `!8b1`, `!2m3…!4e1`, sort `3e1`/`3e2`) all came
-  back avatars-only, and the web client never fired a readable reviews-with-photos request
-  (the photos on the place overview are embedded from the initial place load). Likely a
-  different RPC (`listugcposts`?) or a media flag — needs one captured real request, same
-  as depart-time. `ReviewsParser` already accepts UGC the moment it appears.
+  rather than a face. SHIPPED since: reviews moved off that RPC entirely to the WebView DOM scrape of the place's
+  `?cid=` page (`WebReviewsFetcher`), which carries each review's real uploaded photos — the
+  place sheet shows them today. This entry stays only as the record of why the RPC path was dead.
 - **Photo contributor name** — the gallery `hspqX` RPC gives each photo's URL + **posted
   date** (`[21][6][8]`, now shown as "Photo · May 2026") + an upload-source tag, but **not
   the contributor's name**: verified 2026-06-20 (every string field on a user photo is the
@@ -522,8 +532,9 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   (a) an "open externally" pill → `Intent.ACTION_VIEW` the pano URL (reliable + keyless but
   leaves Vela — against the in-app ethos); (b) resolve the panoid + fetch the thumbnail via a
   background WebView with session (uncertain, thumbnail 403 unresolved); (c) open imagery
-  (Mapillary/KartaView) with a free token, sparser but truly renders. Parked pending a
-  decision on which fallback fits the degoogled posture.
+  (Mapillary/KartaView) with a free token, sparser but truly renders. Option (a) SHIPPED:
+  the place sheet has a Street View pill that opens the keyless pano externally. In-app
+  panos (b/c) stay parked.
 - **Gallery videos** — parked, low value (re-checked 2026-06-19). The full `hspqX`
   gallery for a busy place (In-N-Out, 50 photos) carried **zero video entries** (no
   `googlevideo.com`/`.mp4`/`m3u8`), so videos are rare in the first place; supporting
