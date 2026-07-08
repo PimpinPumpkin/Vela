@@ -552,7 +552,11 @@ genuinely needs no doc edit, say why in the commit.
   chips** in `MapScreen`'s top Column (gated to the same bare-map state the chips show in, so it never trails a
   results list) — the old "Offline results" status line and the old bottom-left chip are gone. **The directions
   ETA subtitle** (`PlaceSheet.DepartTimeChooser`) only says "current traffic" when `route.hasLiveTraffic`; an
-  offline (traffic-less) route shows the arrival time with no traffic note.
+  offline (traffic-less) route shows the arrival time with no traffic note. **Upgrade nudge:** the address
+  index is built at download time, so areas saved before the geocoder have tiles+POIs but no addresses.
+  Settings → Offline shows a "Update saved areas" card when `regions.isNotEmpty() && offlineAddressCount == 0`
+  (via `MapViewModel.offlineAddressCount`); tapping it runs `refreshOfflineDataForSavedAreas` — iterates every
+  saved `OfflineRegion`, reads its `OfflineMaps.boundsOf` and re-runs `downloadOfflinePois` over each box.
 - **Open building-footprint overlay (`app/offline/OverlayTileStore` + `VelaMapView`, DONE 2026-07-04,
   device-verified in Silver Firs).** Fills the map's building gaps where OSM is thin (a suburb the
   Microsoft→OSM import never reached) with **Microsoft US Building Footprints (ODbL)**. Off-device, CI bakes
