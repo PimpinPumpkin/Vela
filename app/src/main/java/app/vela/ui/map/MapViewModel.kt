@@ -59,6 +59,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+/** Which directions endpoint the "Choose on map" crosshair is currently setting. */
+enum class MapPick { ORIGIN, STOP }
+
 data class MapUiState(
     val center: LatLng? = null,
     val recenterTick: Int = 0, // bumped per recenter tap so the map force-moves even if "centered"
@@ -100,6 +103,7 @@ data class MapUiState(
     val pickingOrigin: Boolean = false,      // the next search pick sets the origin, not a destination
     val directionsWaypoints: List<Place> = emptyList(), // intermediate stops, in order (multi-stop)
     val pickingStop: Boolean = false,        // the next search pick is added as a stop
+    val pickOnMap: MapPick? = null,          // "Choose on map" crosshair mode is active for this endpoint
     val travelMode: TravelMode = TravelMode.DRIVE,
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
@@ -1130,7 +1134,7 @@ class MapViewModel @Inject constructor(
                 transit = emptyList(), transitLoading = false,
                 showSteps = false, previewStepIndex = null,
                 directionsOrigin = null, pickingOrigin = false, directionsReversed = false,
-                directionsWaypoints = emptyList(), pickingStop = false,
+                directionsWaypoints = emptyList(), pickingStop = false, pickOnMap = null,
             )
         }
     }
@@ -1258,6 +1262,20 @@ class MapViewModel @Inject constructor(
     /** Long-press the map (or a building) → drop a pin and reverse-geocode it
      *  to an address, like Google's press-and-hold. */
     fun onMapLongPress(location: LatLng) {
+        // "Choose on map" is active → a long-press sets that endpoint directly (the quick half of the
+        // crosshair flow) instead of dropping a destination pin.
+        val pick = _state.value.pickOnMap
+        if (pick != null) {
+            viewModelScope.launch {
+                val place = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
+                    ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location)
+                when (pick) {
+                    MapPick.ORIGIN -> setDirectionsOrigin(place)
+                    MapPick.STOP -> addStop(place)
+                }
+            }
+            return
+        }
         reviewsJob?.cancel() // a pin never fetches reviews — free the old scrape's WebView/mutex
         _state.update {
             it.copy(
@@ -1324,8 +1342,29 @@ class MapViewModel @Inject constructor(
     /** Set a custom directions origin (a place other than your live location) and
      *  re-route. Clears with [clearRoute]. */
     fun setDirectionsOrigin(p: Place) {
-        _state.update { it.copy(directionsOrigin = p, pickingOrigin = false) }
+        _state.update { it.copy(directionsOrigin = p, pickingOrigin = false, pickOnMap = null) }
         route(_state.value.travelMode)
+    }
+
+    /** "Choose on map" for an endpoint — leave the search overlay, show a center crosshair over the
+     *  live map, and set that endpoint from wherever the map is centred (or a long-press) on confirm. */
+    fun chooseOriginOnMap() = _state.update { it.copy(pickingOrigin = false, pickOnMap = MapPick.ORIGIN) }
+    fun chooseStopOnMap() = _state.update { it.copy(pickingStop = false, pickOnMap = MapPick.STOP) }
+    fun cancelChooseOnMap() = _state.update { it.copy(pickOnMap = null) }
+
+    /** Confirm the crosshair pick: reverse-geocode the map's current centre and set it as the
+     *  origin/stop (falls back to a bare pin if the geocode misses so the endpoint is still set). */
+    fun confirmMapPick() {
+        val target = _state.value.pickOnMap ?: return
+        val at = mapCenter ?: return
+        viewModelScope.launch {
+            val place = runCatching { dataSource.reverseGeocode(at) }.getOrNull()
+                ?: Place(id = "pin:${at.lat},${at.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = at)
+            when (target) {
+                MapPick.ORIGIN -> setDirectionsOrigin(place)
+                MapPick.STOP -> addStop(place)
+            }
+        }
     }
 
     /** Drop a custom origin → route from your live location again. Also exits
@@ -1343,7 +1382,7 @@ class MapViewModel @Inject constructor(
 
     /** Append an intermediate stop and re-route through it. */
     fun addStop(p: Place) {
-        _state.update { it.copy(directionsWaypoints = it.directionsWaypoints + p, pickingStop = false) }
+        _state.update { it.copy(directionsWaypoints = it.directionsWaypoints + p, pickingStop = false, pickOnMap = null) }
         route(_state.value.travelMode)
     }
 

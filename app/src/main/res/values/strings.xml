@@ -237,6 +237,11 @@
     <string name="mapscreen_search_this_area">Search this area</string>
     <string name="mapscreen_place">Place</string>
     <string name="mapscreen_your_location">Your location</string>
+    <string name="mapscreen_choose_on_map">Choose on map</string>
+    <string name="mapscreen_choose_origin_hint">Move the map to set the starting point</string>
+    <string name="mapscreen_choose_stop_hint">Move the map to set the stop</string>
+    <string name="mapscreen_choose_set_start">Set start</string>
+    <string name="mapscreen_choose_set_stop">Set stop</string>
     <string name="mapscreen_destination">Destination</string>
     <string name="mapscreen_center_on_my_location">Center on my location</string>
     <string name="mapscreen_stop_replay">Stop replay</string>
