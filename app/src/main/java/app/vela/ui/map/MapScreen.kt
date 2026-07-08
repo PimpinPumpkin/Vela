@@ -343,6 +343,7 @@ fun MapScreen(
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
             onMapLongPress = vm::onMapLongPress,
+            onAddressLabelTap = vm::onAddressLabelTap,
             onViewport = vm::onViewport,
             modifier = Modifier.fillMaxSize(),
         )
