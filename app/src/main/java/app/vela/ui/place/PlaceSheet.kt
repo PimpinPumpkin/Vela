@@ -1058,7 +1058,15 @@ fun DirectionsPanel(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             AnimatedVisibility(visible = !collapsed.value) {
-              Column {
+              // Cap the expandable body to ~58% of the screen and let it scroll — on short screens the
+              // mode chips + route/transit list + Start button are taller than the bottom-anchored card,
+              // so without this the Start button (drive) and the lower transit trips fall off the bottom,
+              // unreachable. verticalScroll keeps the whole chooser usable; the map stays visible above.
+              Column(
+                  Modifier
+                      .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.58f).dp)
+                      .verticalScroll(rememberScrollState()),
+              ) {
             Spacer(Modifier.height(10.dp))
             // Scrollable so all four mode pills keep full size on a narrow screen — without this the
             // 4th (Bike) overflowed the row and got clipped to the edge as an icon-only stub.
