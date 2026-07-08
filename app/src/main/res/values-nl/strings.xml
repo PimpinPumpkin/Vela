@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Download het gebied dat u bekijkt</string>
     <string name="settings_offline_download_viewport_hint">Slaat de open tegels op voor het kaartgebied dat u het laatst in beeld had — en de routeringsregio eromheen — zodat het later zonder netwerk wordt weergegeven en navigeert. Zoeken vereist nog steeds een verbinding.</string>
     <string name="settings_offline_no_areas">Nog geen gebieden opgeslagen.</string>
+    <string name="settings_offline_addresses_missing">Gebieden die je vóór deze update hebt opgeslagen, bevatten geen adresgegevens. Werk ze bij om offline naar adressen te zoeken en ernaartoe te navigeren.</string>
+    <string name="settings_offline_addresses_update">Opgeslagen gebieden bijwerken</string>
     <string name="settings_offline_delete_area">Dit offline gebied verwijderen</string>
     <string name="settings_routing_regions">Routeringsregio\'s</string>
     <string name="settings_routing_regions_hint">Het wegennetwerk voor een hele regio (provincie, land…), zodat navigatie overal daarbinnen offline werkt — download waar u naartoe reist. Online wordt nog steeds live verkeer gebruikt; dit is de terugval zonder signaal.</string>
@@ -64,6 +66,9 @@
     <string name="settings_routing_no_match">Geen regio\'s komen overeen met “%1$s”.</string>
     <string name="settings_routing_downloading">Downloaden… %1$d%%</string>
     <string name="settings_routing_installed">Geïnstalleerd · routes hier offline</string>
+    <string name="settings_routing_installed_places">Geïnstalleerd · plaatsen offline doorzoekbaar</string>
+    <string name="settings_routing_places_downloading">Plaatsen opslaan · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Plaatsen ophalen</string>
     <string name="settings_routing_size_here">%1$s MB · dekt uw locatie</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Offline routering verwijderen</string>
@@ -141,6 +146,10 @@
     <string name="settings_traffic_lights_hint">"Rijd het stoplicht voorbij en sla dan af" bij kruispunten met verkeerslichten (voorlopig alleen Engelse spraak)</string>
     <string name="map_voice_downloading">Vela-stem wordt gedownload · %1$d %%</string>
     <string name="map_voice_installing">Vela-stem wordt geïnstalleerd…</string>
+    <string name="map_region_downloading">Routes voor %1$s downloaden · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Plaatsen in %1$s opslaan voor offline zoeken · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Plaatsen in %1$s zijn nu offline doorzoekbaar</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Nog geen plaatsenpakket voor %1$s. Het verschijnt hier zodra het is gepubliceerd.</string> <!-- format -->
     <string name="settings_demo_drive">Rijden simuleren (demo)</string>
     <string name="settings_demo_drive_hint">Voor demo’s, schermafbeeldingen en tests: op Start tikken rijdt de route als een gesimuleerd gps-spoor in plaats van je echte locatie — navigatie werkt overal. Zet uit om echt te navigeren.</string>
     <string name="place_address_copied">Adres gekopieerd</string>
@@ -318,6 +327,7 @@
     <string name="welcome_donate_dismiss">Misschien later</string>
     <string name="search_close_cd">Zoeken sluiten</string>
     <string name="search_placeholder">Zoeken</string>
+    <string name="search_offline">Offline</string>
     <string name="search_clear_cd">Zoekopdracht wissen</string>
     <string name="search_settings_cd">Instellingen</string>
     <string name="mapvm_shortcut_set">%1$s ingesteld op %2$s</string>
@@ -353,6 +363,7 @@
     <string name="mapvm_offline_routing_failed">Downloaden offline routering mislukt</string>
     <string name="mapvm_offline_routing_removed">Offline routering verwijderd</string>
     <string name="mapvm_saved_places_offline">%1$d plaatsen opgeslagen voor offline zoeken</string>
+    <string name="mapvm_saved_addresses_offline">%1$d adressen en %2$d straten opgeslagen voor offline routes</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Aangekomen</string>
     <string name="navservice_notif_title_navigating">Navigeren</string>
     <string name="navservice_notif_title_in_distance">Over %1$s · %2$s</string>

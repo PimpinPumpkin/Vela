@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Scarica l\'area che stai visualizzando</string>
     <string name="settings_offline_download_viewport_hint">Salva i riquadri aperti per l\'area della mappa che avevi sullo schermo, e la regione di percorso attorno, così viene visualizzata e navigata in seguito senza rete. La ricerca richiede comunque una connessione.</string>
     <string name="settings_offline_no_areas">Nessuna area ancora salvata.</string>
+    <string name="settings_offline_addresses_missing">Le aree salvate prima di questo aggiornamento non includono i dati degli indirizzi. Aggiornale per cercare indirizzi e calcolare percorsi offline.</string>
+    <string name="settings_offline_addresses_update">Aggiorna aree salvate</string>
     <string name="settings_offline_delete_area">Elimina questa area offline</string>
     <string name="settings_routing_regions">Regioni di percorso</string>
     <string name="settings_routing_regions_hint">La rete stradale di un\'intera regione (regione, Paese…), così la navigazione passo-passo funziona offline ovunque al suo interno: scarica dove stai viaggiando. Online usa comunque il traffico in tempo reale; questa è l\'alternativa senza segnale.</string>
@@ -64,6 +66,9 @@
     <string name="settings_routing_no_match">Nessuna regione corrisponde a “%1$s”.</string>
     <string name="settings_routing_downloading">Download… %1$d%%</string>
     <string name="settings_routing_installed">Installata · percorsi offline qui</string>
+    <string name="settings_routing_installed_places">Installato · luoghi ricercabili offline</string>
+    <string name="settings_routing_places_downloading">Salvataggio luoghi · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Scarica luoghi</string>
     <string name="settings_routing_size_here">%1$s MB · copre la tua posizione</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Rimuovi percorsi offline</string>
@@ -141,6 +146,10 @@
     <string name="settings_traffic_lights_hint">Dice «supera il semaforo, poi svolta» agli incroci con semaforo (voce solo in inglese per ora)</string>
     <string name="map_voice_downloading">Download della voce Vela · %1$d %%</string>
     <string name="map_voice_installing">Installazione della voce Vela…</string>
+    <string name="map_region_downloading">Download instradamento %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Salvataggio dei luoghi di %1$s per la ricerca offline · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">I luoghi di %1$s ora sono ricercabili offline</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Nessun pacchetto di luoghi per %1$s per ora. Comparirà qui appena pubblicato.</string> <!-- format -->
     <string name="settings_demo_drive">Simula la guida (demo)</string>
     <string name="settings_demo_drive_hint">Per demo, screenshot e test: toccando Avvia il percorso viene guidato come una traccia GPS simulata invece della tua posizione reale, così la navigazione funziona ovunque. Disattiva per navigare davvero.</string>
     <string name="place_address_copied">Indirizzo copiato</string>
@@ -318,6 +327,7 @@
     <string name="welcome_donate_dismiss">Forse più tardi</string>
     <string name="search_close_cd">Chiudi ricerca</string>
     <string name="search_placeholder">Cerca</string>
+    <string name="search_offline">Offline</string>
     <string name="search_clear_cd">Cancella ricerca</string>
     <string name="search_settings_cd">Impostazioni</string>
     <string name="mapvm_shortcut_set">%1$s impostato su %2$s</string>
@@ -353,6 +363,7 @@
     <string name="mapvm_offline_routing_failed">Download dei percorsi offline non riuscito</string>
     <string name="mapvm_offline_routing_removed">Percorsi offline rimossi</string>
     <string name="mapvm_saved_places_offline">Salvati %1$d luoghi per la ricerca offline</string>
+    <string name="mapvm_saved_addresses_offline">%1$d indirizzi e %2$d strade salvati per l\'instradamento offline</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Arrivato</string>
     <string name="navservice_notif_title_navigating">Navigazione</string>
     <string name="navservice_notif_title_in_distance">Tra %1$s · %2$s</string>

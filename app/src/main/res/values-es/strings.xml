@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Descargar la zona que estás viendo</string>
     <string name="settings_offline_download_viewport_hint">Guarda los mosaicos abiertos de la zona del mapa que tenías en pantalla por última vez, y la región de rutas que la rodea, para que se muestre y navegue más tarde sin red. La búsqueda sigue necesitando conexión.</string>
     <string name="settings_offline_no_areas">Aún no hay zonas guardadas.</string>
+    <string name="settings_offline_addresses_missing">Las áreas guardadas antes de esta actualización no incluyen datos de direcciones. Actualízalas para buscar direcciones y crear rutas sin conexión.</string>
+    <string name="settings_offline_addresses_update">Actualizar áreas guardadas</string>
     <string name="settings_offline_delete_area">Eliminar esta zona sin conexión</string>
     <string name="settings_routing_regions">Regiones de rutas</string>
     <string name="settings_routing_regions_hint">La red de carreteras de toda una región (estado, país…), para que la navegación giro a giro funcione sin conexión en cualquier lugar dentro de ella: obtén la de donde viajes. Con conexión se sigue usando el tráfico en directo; esto es la alternativa sin señal.</string>
@@ -64,6 +66,9 @@
     <string name="settings_routing_no_match">Ninguna región coincide con «%1$s».</string>
     <string name="settings_routing_downloading">Descargando… %1$d%%</string>
     <string name="settings_routing_installed">Instalada · rutas sin conexión aquí</string>
+    <string name="settings_routing_installed_places">Instalado · lugares con búsqueda sin conexión</string>
+    <string name="settings_routing_places_downloading">Guardando lugares · %1$d %%</string> <!-- format -->
+    <string name="settings_get_places">Obtener lugares</string>
     <string name="settings_routing_size_here">%1$s MB · cubre tu ubicación</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Quitar rutas sin conexión</string>
@@ -141,6 +146,10 @@
     <string name="settings_traffic_lights_hint">Dice «pasa el semáforo y luego gira» en cruces con semáforo (voz solo en inglés por ahora)</string>
     <string name="map_voice_downloading">Descargando la voz Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalando la voz Vela…</string>
+    <string name="map_region_downloading">Descargando rutas de %1$s · %2$d %%</string> <!-- format -->
+    <string name="map_region_places_downloading">Guardando lugares de %1$s para la búsqueda sin conexión · %2$d %%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Los lugares de %1$s ya se pueden buscar sin conexión</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Aún no hay paquete de lugares para %1$s. Aparecerá aquí cuando se publique.</string> <!-- format -->
     <string name="settings_demo_drive">Simular conducción (demo)</string>
     <string name="settings_demo_drive_hint">Para demos, capturas y pruebas: al pulsar Iniciar se recorre la ruta como un rastro GPS simulado en lugar de tu ubicación real, así la navegación funciona en cualquier sitio. Desactívalo para navegar de verdad.</string>
     <string name="place_address_copied">Dirección copiada</string>
@@ -318,6 +327,7 @@
     <string name="welcome_donate_dismiss">Quizá más tarde</string>
     <string name="search_close_cd">Cerrar búsqueda</string>
     <string name="search_placeholder">Buscar</string>
+    <string name="search_offline">Sin conexión</string>
     <string name="search_clear_cd">Borrar búsqueda</string>
     <string name="search_settings_cd">Ajustes</string>
     <string name="mapvm_shortcut_set">%1$s establecido en %2$s</string>
@@ -353,6 +363,7 @@
     <string name="mapvm_offline_routing_failed">Error al descargar las rutas sin conexión</string>
     <string name="mapvm_offline_routing_removed">Rutas sin conexión eliminadas</string>
     <string name="mapvm_saved_places_offline">Se guardaron %1$d lugares para la búsqueda sin conexión</string>
+    <string name="mapvm_saved_addresses_offline">%1$d direcciones y %2$d calles guardadas para rutas sin conexión</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Has llegado</string>
     <string name="navservice_notif_title_navigating">Navegando</string>
     <string name="navservice_notif_title_in_distance">En %1$s · %2$s</string>

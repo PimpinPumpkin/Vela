@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Work
@@ -630,6 +631,7 @@ fun MapScreen(
                         },
                         onBack = if (searchOpen) ({ searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
                         dpadMode = dpadMode,
+                        offline = state.offline,
                     )
                     when {
                         // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)
@@ -704,6 +706,27 @@ fun MapScreen(
                             )
 
                         state.selected == null -> CategoryChips(onPick = vm::quickSearch)
+                    }
+
+                    // Quiet offline marker: a small globe-with-a-slash chip tucked just under the category
+                    // chips, near the search box (pairs with the greyed "Offline" in the bar). Only on the
+                    // bare map — the same state the chips show in — so it never trails a results list.
+                    if (state.offline && !searchOpen && !state.navigating && !state.replaying &&
+                        state.selected == null && state.results.isEmpty()
+                    ) {
+                        Surface(
+                            color = SheetPalette.bg(darkTheme).copy(alpha = 0.82f),
+                            shape = CircleShape,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier.padding(top = 8.dp, start = 2.dp).size(34.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.PublicOff,
+                                contentDescription = stringResource(R.string.search_offline),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(7.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -1069,8 +1092,9 @@ fun MapScreen(
         // card makes the ONBOARDING one-tap voice install visible (it used to run invisibly after
         // the prompt dismissed — progress only existed in Settings; user 2026-07-07).
         val downloadingVoiceId = state.voiceDownloadingId
+        val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
         if (!state.navigating && state.selected == null && !searchOpen &&
-            (state.notices.isNotEmpty() || downloadingVoiceId != null)
+            (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion)
         ) {
             Column(
                 Modifier
@@ -1081,6 +1105,16 @@ fun MapScreen(
             ) {
                 if (downloadingVoiceId != null) {
                     VoiceDownloadCard(installing = state.voiceInstalling, pct = state.kokoroDownloadPct ?: 0f)
+                }
+                // A region (state/country) download: the routing graph first, then its place pack —
+                // same progress card treatment as the voice download, so a Settings-started state
+                // download stays visible after backing out to the map.
+                if (downloadingRegion) {
+                    RegionDownloadCard(
+                        name = state.regionDownloadName ?: "",
+                        places = state.poiPackDownloadingId != null,
+                        pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                    )
                 }
                 state.notices.forEach { n ->
                     NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
@@ -1887,6 +1921,33 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, modifier: Modifie
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        }
+    }
+}
+
+/** Progress card for a region (state/country) offline download — the routing graph, then the
+ *  region's place pack. Mirrors [VoiceDownloadCard] so a Settings-started download stays visible
+ *  on the map. */
+@Composable
+private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, modifier: Modifier = Modifier) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                if (places) stringResource(R.string.map_region_places_downloading, name, pct)
+                else stringResource(R.string.map_region_downloading, name, pct),
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { (pct / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
