@@ -1,6 +1,9 @@
 package app.vela.ui
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +31,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -37,15 +41,23 @@ import app.vela.R
 /** First-run welcome — what Vela is and why, then a single Get-started button. */
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
+    // Scrollable so the Get-started button is always reachable — on a small screen the fixed layout
+    // pushed the button off the bottom with no way to scroll to it. heightIn(min = screen height)
+    // keeps the content filling a tall screen; on short ones the column grows and scrolls. (The old
+    // weight(1f) spacers can't be used inside a verticalScroll — unbounded height — so they're fixed.)
+    val scroll = rememberScrollState()
+    val minH = LocalConfiguration.current.screenHeightDp.dp
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
+                .verticalScroll(scroll)
+                .heightIn(min = minH)
                 .padding(horizontal = 28.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(24.dp))
             Icon(
                 Icons.Default.Explore,
                 contentDescription = null,
@@ -76,7 +88,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
                 stringResource(R.string.welcome_feature_open_source_title),
                 stringResource(R.string.welcome_feature_open_source_body),
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(40.dp))
             Button(
                 onClick = onGetStarted,
                 modifier = Modifier.fillMaxWidth().height(52.dp),
