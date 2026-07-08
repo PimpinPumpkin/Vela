@@ -93,6 +93,8 @@
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Get places</string>
+    <string name="settings_update_places">Update places</string>
+    <string name="settings_routing_update_available">Installed · places update available</string>
     <string name="settings_routing_size_here">%1$s MB · covers your location</string> <!-- format -->
     <string name="settings_routing_size">%1$s MB</string> <!-- format -->
     <string name="settings_routing_remove">Remove offline routing</string>
