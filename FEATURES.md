@@ -729,6 +729,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **No misleading "current traffic" offline (2026-07-07).** The directions ETA subtitle only says "current
   traffic" when the route actually carries a live in-traffic ETA; an offline GraphHopper route (or any
   traffic-less route) shows the arrival time with no traffic note instead of a false "current traffic".
+  **Upgrade nudge for older saved areas (2026-07-07).** Because the address index is built at download time,
+  areas saved before this feature have tiles + POIs but no address data. Settings → Offline shows a one-tap
+  "Update saved areas" card when you have saved areas but the index is empty; it re-fetches the address/street
+  data for every saved area so you don't have to re-download each one by hand. Localized in all 11 languages.
 - ✅ **Quiet offline indicator, no banner (2026-07-07).** When there's no connection, instead of a card hanging
   over the map Vela shows two subtle cues: a greyed **globe-with-a-line-through-it icon + "Offline"** in the
   search bar (before the settings gear, only on the bare map), and a small **globe-slash chip tucked just under

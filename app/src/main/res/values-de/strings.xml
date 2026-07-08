@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Angezeigten Bereich herunterladen</string>
     <string name="settings_offline_download_viewport_hint">Speichert die Kacheln für den zuletzt angezeigten Kartenbereich – und die Routing-Region drumherum – sodass er später ohne Netz dargestellt und navigiert wird. Die Suche benötigt weiterhin eine Verbindung.</string>
     <string name="settings_offline_no_areas">Noch keine Bereiche gespeichert.</string>
+    <string name="settings_offline_addresses_missing">Vor diesem Update gespeicherte Gebiete enthalten keine Adressdaten. Aktualisiere sie, um offline nach Adressen zu suchen und dorthin zu navigieren.</string>
+    <string name="settings_offline_addresses_update">Gespeicherte Gebiete aktualisieren</string>
     <string name="settings_offline_delete_area">Diesen Offline-Bereich löschen</string>
     <string name="settings_routing_regions">Routing-Regionen</string>
     <string name="settings_routing_regions_hint">Das Straßennetz einer ganzen Region (Bundesland, Land …), damit die Navigation überall darin offline funktioniert – laden Sie Ihr Reiseziel herunter. Online wird weiterhin der Live-Verkehr genutzt; dies ist die Ausweichlösung ohne Signal.</string>
