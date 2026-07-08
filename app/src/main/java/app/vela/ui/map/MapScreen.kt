@@ -620,6 +620,8 @@ fun MapScreen(
                 // Arrive" (ARRIVE has 0 after it) show permanently while approaching the final turn, and
                 // suppressed true exit-then-merge compounds whose merge had a long following leg.
                 nextDistanceMeters = shown?.distanceMeters,
+                destName = state.arrivedLabel,
+                destAddress = state.navDestAddress,
                 // Speed-scaled approach gate for lanes + the "then" row: identity at city speeds
                 // (≤ ~60 mph), ~1 km ≈ 30 s at highway speed — Google's cadence.
                 laneShowM = maxOf(800.0, (state.mySpeed ?: 0f).toDouble() * 30.0),
@@ -911,6 +913,7 @@ fun MapScreen(
         when {
             state.arrived && !state.replaying -> ArrivalSummary(
                 destinationLabel = state.arrivedLabel,
+                destinationAddress = state.navDestAddress,
                 tripSeconds = state.arrivedSeconds,
                 tripDistanceMeters = state.arrivedDistanceMeters,
                 onDone = vm::finishNav,
@@ -929,6 +932,19 @@ fun MapScreen(
                 currentStep = if (state.navigating) state.nav.stepIndex else null,
                 onStep = vm::previewStep,
                 onClose = vm::closeSteps,
+                // Arrive-row destination lines: the live nav state while navigating; pre-nav (the
+                // Steps preview from the directions panel) the selected place, unless the trip is
+                // reversed (the destination is you, so a place line would be wrong).
+                destName = when {
+                    state.navigating -> state.arrivedLabel
+                    !state.directionsReversed -> state.selected?.name
+                    else -> null
+                },
+                destAddress = when {
+                    state.navigating -> state.navDestAddress
+                    !state.directionsReversed -> state.selected?.address
+                    else -> null
+                },
                 // Background fills to the bottom; StepsSheet pads its own content.
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
@@ -1024,6 +1040,7 @@ fun MapScreen(
                 },
                 onMinimize = vm::collapseResults,
                 onExpand = vm::expandResults,
+                onClose = vm::clearSearch,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
@@ -1250,13 +1267,15 @@ private fun SearchResults(
     onPick: (Place) -> Unit,
     onMinimize: () -> Unit,
     onExpand: () -> Unit,
+    onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
     // MINIMIZED (a short "N results" bar, = the VM's resultsCollapsed so back agrees)
     // ↔ PEEK (~0.42) ↔ EXPANDED (~0.82, hoisted to MapScreen so BACK steps it first).
     // Drag the handle (or the list at its top) DOWN to shrink a detent, UP to grow
-    // one; tap the handle to step up. No hide button.
+    // one; tap the handle to step up. The X exits the search entirely (results + query),
+    // same as backing all the way out.
     var openOnly by remember { mutableStateOf(false) }
     var topRated by remember { mutableStateOf(false) }
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
@@ -1393,6 +1412,13 @@ private fun SearchResults(
                         Icon(
                             if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
                             contentDescription = if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
+                            tint = SheetPalette.dim(dark),
+                        )
+                    }
+                    IconButton(onClick = onClose) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.mapscreen_close_results),
                             tint = SheetPalette.dim(dark),
                         )
                     }
