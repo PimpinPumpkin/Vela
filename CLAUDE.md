@@ -810,7 +810,13 @@ genuinely needs no doc edit, say why in the commit.
   and `assignWalkEndpoints` wires each WALK leg's `walkFrom`/`walkTo` from the adjacent ride's
   alight/board stop (falling back to the trip origin/dest, which `parse(raw, origin, dest)` threads
   through). The UI then fetches that walk leg's turn-by-turn steps **on demand** via the normal walk
-  router (`MapViewModel.walkDirections` → OSRM foot) — no extra transit RPC.
+  router (`MapViewModel.walkDirections` → OSRM foot) — no extra transit RPC. **Step-by-step transit
+  guidance** (Moovit-style, `TransitNavState` + `startTransitNav`/`advance`/`back`/`endTransitNav` in
+  `MapViewModel`, `TransitNavSheet` in `PlaceSheet`) walks the itinerary leg by leg, speaking each
+  cue (`transitStepSpoken` → the `transit_nav_*` strings) and auto-advancing when GPS reaches the leg
+  end. The auto-advance is **latched** (`maybeAdvanceTransitNav`, `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`):
+  a leg only advances once it's been ARMED by being >ARM_M from its end, so a transfer hub can't cascade
+  through legs and a short final walk can't fire a premature arrival.
 
 ## Name
 
