@@ -66,6 +66,9 @@
     <string name="settings_routing_no_match">Inga regioner matchar ”%1$s”.</string>
     <string name="settings_routing_downloading">Hämtar… %1$d %%</string>
     <string name="settings_routing_installed">Installerad · ruttar offline här</string>
+    <string name="settings_routing_installed_places">Installerad · platser sökbara offline</string>
+    <string name="settings_routing_places_downloading">Sparar platser · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Hämta platser</string>
     <string name="settings_routing_size_here">%1$s MB · täcker din plats</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Ta bort offlineruttning</string>
@@ -143,6 +146,10 @@
     <string name="settings_traffic_lights_hint">"Passera trafikljuset och sväng sedan" vid ljusreglerade korsningar (röst endast på engelska än så länge)</string>
     <string name="map_voice_downloading">Laddar ner Vela-rösten · %1$d %%</string>
     <string name="map_voice_installing">Installerar Vela-rösten…</string>
+    <string name="map_region_downloading">Laddar ner rutter för %1$s · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Sparar platser i %1$s för offlinesökning · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Platser i %1$s går nu att söka offline</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Inget platspaket för %1$s ännu. Det dyker upp här när det publicerats.</string> <!-- format -->
     <string name="settings_demo_drive">Simulera körning (demo)</string>
     <string name="settings_demo_drive_hint">För demos, skärmbilder och tester: att trycka på Starta kör rutten som ett simulerat GPS-spår i stället för din verkliga plats — navigering fungerar var som helst. Stäng av för att navigera på riktigt.</string>
     <string name="place_address_copied">Adress kopierad</string>

@@ -66,6 +66,9 @@
     <string name="settings_routing_no_match">Ninguna región coincide con «%1$s».</string>
     <string name="settings_routing_downloading">Descargando… %1$d%%</string>
     <string name="settings_routing_installed">Instalada · rutas sin conexión aquí</string>
+    <string name="settings_routing_installed_places">Instalado · lugares con búsqueda sin conexión</string>
+    <string name="settings_routing_places_downloading">Guardando lugares · %1$d %%</string> <!-- format -->
+    <string name="settings_get_places">Obtener lugares</string>
     <string name="settings_routing_size_here">%1$s MB · cubre tu ubicación</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Quitar rutas sin conexión</string>
@@ -143,6 +146,10 @@
     <string name="settings_traffic_lights_hint">Dice «pasa el semáforo y luego gira» en cruces con semáforo (voz solo en inglés por ahora)</string>
     <string name="map_voice_downloading">Descargando la voz Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalando la voz Vela…</string>
+    <string name="map_region_downloading">Descargando rutas de %1$s · %2$d %%</string> <!-- format -->
+    <string name="map_region_places_downloading">Guardando lugares de %1$s para la búsqueda sin conexión · %2$d %%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Los lugares de %1$s ya se pueden buscar sin conexión</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Aún no hay paquete de lugares para %1$s. Aparecerá aquí cuando se publique.</string> <!-- format -->
     <string name="settings_demo_drive">Simular conducción (demo)</string>
     <string name="settings_demo_drive_hint">Para demos, capturas y pruebas: al pulsar Iniciar se recorre la ruta como un rastro GPS simulado en lugar de tu ubicación real, así la navegación funciona en cualquier sitio. Desactívalo para navegar de verdad.</string>
     <string name="place_address_copied">Dirección copiada</string>
