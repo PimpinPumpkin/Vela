@@ -29,15 +29,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.R
-import app.vela.ui.dpadAutoFocus // D-pad-first initial focus, robust for off-screen (docs/dpad.md)
+import app.vela.ui.rememberDpadFirstDevice
+import app.vela.ui.dpadHighlight
 
 /** First-run welcome — what Vela is and why, then a single Get-started button. */
 @Composable
@@ -49,6 +66,16 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
     // centring the content on tall screens; on short ones the column grows and scrolls.
     val scroll = rememberScrollState()
     val minH = LocalConfiguration.current.screenHeightDp.dp
+    // D-pad-first (docs/dpad.md): reveal the Get-started button (below the fold on a tiny screen)
+    // so it can hold focus + be seen on open. scrollTo(maxValue) is a no-op on a normal phone
+    // where it already fits (maxValue 0). No-op under touch.
+    val dpadFirst = rememberDpadFirstDevice()
+    LaunchedEffect(dpadFirst) {
+        if (dpadFirst) repeat(20) {
+            if (scroll.maxValue > 0) { scroll.scrollTo(scroll.maxValue); return@LaunchedEffect }
+            kotlinx.coroutines.delay(50)
+        }
+    }
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(
             Modifier
@@ -91,19 +118,50 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
                 stringResource(R.string.welcome_feature_open_source_body),
             )
             Spacer(Modifier.height(40.dp))
-            // D-pad-first (docs/dpad.md): auto-focus Get-started so the screen is immediately
-            // actionable with OK. On a normal phone the button is on-screen and this lands; on a
-            // tiny keypad screen it starts BELOW the fold (Compose won't focus an off-screen
-            // element, and force-scrolling would hide the welcome intro on a once-seen screen) —
-            // there the D-pad user presses DOWN to reveal + focus it. No-op under touch.
-            Button(
-                onClick = onGetStarted,
-                modifier = Modifier.fillMaxWidth().height(52.dp).dpadAutoFocus(),
-            ) {
-                Text(stringResource(R.string.welcome_get_started), style = MaterialTheme.typography.titleMedium)
-            }
+            GetStartedButton(onGetStarted)
             Spacer(Modifier.height(8.dp))
         }
+    }
+}
+
+/** Filled primary "Get started" button that AUTO-FOCUSES on a D-pad device. A Material `Button`
+ *  wouldn't take requestFocus (its nested focusable isn't reachable — same as dialog buttons), so
+ *  this is a directly-`.focusable()` box (the only reliable focus target) with OK via `.onKeyEvent`
+ *  and touch via `pointerInput`. Styled to look like the filled Button it replaces. */
+@Composable
+private fun GetStartedButton(onGetStarted: () -> Unit) {
+    val fr = remember { FocusRequester() }
+    val dpadFirst = rememberDpadFirstDevice()
+    LaunchedEffect(dpadFirst) {
+        if (dpadFirst) repeat(40) {
+            if (runCatching { fr.requestFocus() }.isSuccess) return@LaunchedEffect
+            kotlinx.coroutines.delay(50)
+        }
+    }
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(52.dp)
+            .focusRequester(fr)
+            .dpadHighlight(RoundedCornerShape(24.dp))
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.primary)
+            .onKeyEvent { ev ->
+                if ((ev.key == Key.DirectionCenter || ev.key == Key.Enter) && ev.type == KeyEventType.KeyUp) {
+                    onGetStarted(); true
+                } else {
+                    false
+                }
+            }
+            .focusable()
+            .pointerInput(Unit) { detectTapGestures { onGetStarted() } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            stringResource(R.string.welcome_get_started),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onPrimary,
+        )
     }
 }
 
