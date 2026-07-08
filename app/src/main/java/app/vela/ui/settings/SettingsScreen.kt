@@ -403,6 +403,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Text(stringResource(R.string.settings_transit_layer), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.TransitLayer.on.value,
+                    onCheckedChange = { app.vela.ui.TransitLayer.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_transit_layer_hint))
+
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(stringResource(R.string.settings_read_all_reviews), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = app.vela.ui.LiveReviews.on.value,
