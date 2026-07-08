@@ -227,6 +227,19 @@ GitHub-Actions build matrix → `routing-manifest.json`). The app downloads regi
 region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
 must fit one region's monolithic graph; cross-region falls online.
 
+**Offline address geocoding (on-device, DONE 2026-07-07).** So an arbitrary typed street address routes with
+no signal, not just addresses that are an indexed POI. Downloading a map area builds a SQLite forward geocoder
+(`core/data/OfflineAddressStore`) from keyless Overpass (`OverpassPois.fetchAddresses`/`fetchStreets`) over a
+bbox **padded to a ~15 km min span** around the viewport (`GEOCODE_PAD_DEG`) — the tile-viewport box was too
+small (8 addresses in a dense suburb; the padded box → 8591 addresses + 1466 streets). Two OSM sources: `addr:
+housenumber` points (house-precise) and named-road centrelines thinned to ~1 pt/120 m (street-level fallback
+where OSM maps the road but no house numbers — the US-suburb reality). `geocode()` layers exact → interpolated
+between bracketing numbers → nearest house on street → nearest centreline point; street names are
+abbreviation-normalized both ways. The result Place routes through the same GraphHopper offline engine.
+Device-verified wifi-off (the test suburb). A **quiet offline indicator** (reactive `ConnectivityManager` →
+`MapUiState.offline`) replaced the old banner: a greyed globe-slash + "Offline" in the search bar and a
+globe-slash chip on the basemap.
+
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: DOM-scraped from the place's own `?cid=` page in a hidden anonymous desktop-UA WebView
   (`WebReviewsFetcher`) — the keyless `listentitiesreviews` RPC is **dead** (404) and only ever served
