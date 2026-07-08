@@ -247,6 +247,9 @@
     <string name="mapscreen_choose_set_stop">Definir paragem</string>
     <string name="mapscreen_destination">Destino</string>
     <string name="mapscreen_center_on_my_location">Centrar na minha localização</string>
+    <string name="mapscreen_zoom_in">Aproximar</string>
+    <string name="mapscreen_zoom_out">Afastar</string>
+    <string name="mapscreen_dpad_engage">OK: mover o mapa</string>
     <string name="mapscreen_stop_replay">Parar reprodução</string>
     <string name="mapscreen_psds_tip_title">Fixação de GPS lenta?</string>
     <string name="mapscreen_psds_tip_body">Ative o PSDS em Definições → Localização para uma fixação muito mais rápida (no GrapheneOS passa pelo proxy deles).</string>
