@@ -75,7 +75,7 @@ Two Gradle modules, strict boundary:
   `init()`-ed in `VelaApp`): `ui/Units` (metric/imperial), `ui/theme/AppTheme`
   (Light/Dark/System — read via **`isAppInDarkTheme()`**, never `isSystemInDarkTheme()`),
   `ui/Traffic` (overlay on/off), `ui/TransitLayer` (rail highlight), `ui/LiveReviews` (reviews panel),
-  `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`), `ui/Buildings3d` (extrusion layer), `ui/AppLocale`
+  `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`/`HideAdult`), `ui/Buildings3d` (extrusion layer), `ui/AppLocale`
   (language), `ui/Onboarding`.
 
 ### Data flow (search example)
@@ -421,6 +421,12 @@ itself shows the traffic, not the whole map.
   (default on). Off gates BOTH the fetch (`fetchReviews`/`fetchPhotos` in the VM) and the
   render (review tab / photo strip in `PlaceSheet`), so off means no scrape traffic at
   all, not just hidden UI.
+- **"Hide adult categories" toggle**: Settings → Map, `HideAdult` holder (default **off**).
+  On drops adult/nightlife/alcohol/gambling/smoking categories from search + ambient map via the
+  pure `:core` `CategoryFilter` (category-only, never name; multilingual keyword lists so it works
+  in every UI language; unit-tested). Applied at the `GoogleMapsDataSource.search`/`nearbyPlaces`
+  seam, gated by `CategoryFilter.enabled` (a `:core` flag `HideAdult` flips — keeps `:core` free of
+  the app's reactive holder).
 - **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
   nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
   **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),
