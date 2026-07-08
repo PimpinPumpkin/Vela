@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Hämta en naturlig röst på enheten för talade vägbeskrivningar – välj en nedan. ★-rösterna låter mest som en kartnavigator (Lessac och HFC ligger närmast Google). Engångshämtning; wifi rekommenderas.</string>
     <string name="settings_voice_lib_lang_hint">Ditt appspråk är %1$s – hämta en %2$s-röst nedan så att talade vägbeskrivningar matchar (en engelsk röst skulle uttala %3$s gatunamn fel).</string>
     <string name="settings_voice_search">Sök röster</string>
+    <string name="settings_voice_show_more">Visa %1$d till</string>
+    <string name="settings_voice_show_less">Visa mindre</string>
     <string name="settings_voice_this_voice">den här rösten</string>
     <string name="settings_voice_remove_title">Ta bort %1$s?</string>
     <string name="settings_voice_remove_body">Detta är din enda Vela-röst. Talade vägbeskrivningar faller tillbaka på en system-text-till-tal-motor (eller blir tysta om ingen är installerad) tills du hämtar en annan.</string>

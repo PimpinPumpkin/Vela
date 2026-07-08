@@ -859,6 +859,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         if (appLang in codes) listOf(appLang) + codes.filter { it != appLang } else codes
     }
     val langExpanded = remember { mutableStateMapOf<String, Boolean>() }
+    val langShowAll = remember { mutableStateMapOf<String, Boolean>() }
     langOrder.forEach { lang ->
         val group = catalog.filter { it.langCode == lang && matches(it) }.sortedWith(
             compareByDescending<PiperVoice> { it.id in installed }
@@ -899,21 +900,37 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (expanded) group.forEach { v ->
-                VoiceRow(
-                    v = v,
-                    installed = v.id in installed,
-                    active = v.id == selected,
-                    downloading = state.voiceDownloadingId == v.id,
-                    downloadPct = if (state.voiceDownloadingId == v.id) state.kokoroDownloadPct ?: 0f else 0f,
-                    anyDownloading = state.voiceDownloadingId != null,
-                    onDownload = { vm.downloadVoice(v.id) },
-                    onUse = { vm.selectVoice(v.id) },
-                    onDelete = {
-                        // Confirm only when it's the last voice (guidance would lose its neural voice).
-                        if (installed.size == 1 && v.id == selected) confirmDeleteId = v.id else vm.deleteVoice(v.id)
-                    },
-                )
+            if (expanded) {
+                // Show just the top few per language (each language still has a lot, English most of
+                // all); a "Show more" reveals the rest. Never hide an INSTALLED voice behind it, and a
+                // search shows everything that matches.
+                val showAll = query.isNotBlank() || (langShowAll[lang] ?: false)
+                val limit = maxOf(3, installedHere)
+                val visible = if (showAll) group else group.take(limit)
+                visible.forEach { v ->
+                    VoiceRow(
+                        v = v,
+                        installed = v.id in installed,
+                        active = v.id == selected,
+                        downloading = state.voiceDownloadingId == v.id,
+                        downloadPct = if (state.voiceDownloadingId == v.id) state.kokoroDownloadPct ?: 0f else 0f,
+                        anyDownloading = state.voiceDownloadingId != null,
+                        onDownload = { vm.downloadVoice(v.id) },
+                        onUse = { vm.selectVoice(v.id) },
+                        onDelete = {
+                            // Confirm only when it's the last voice (guidance would lose its neural voice).
+                            if (installed.size == 1 && v.id == selected) confirmDeleteId = v.id else vm.deleteVoice(v.id)
+                        },
+                    )
+                }
+                if (query.isBlank() && group.size > limit) {
+                    TextButton(onClick = { langShowAll[lang] = !showAll }) {
+                        Text(
+                            if (showAll) stringResource(R.string.settings_voice_show_less)
+                            else stringResource(R.string.settings_voice_show_more, group.size - limit),
+                        )
+                    }
+                }
             }
         }
     }
