@@ -404,4 +404,7 @@
     <string name="settings_update_found">Aggiornamento disponibile! Torna alla mappa per installarlo.</string>
     <string name="settings_update_none">Hai già l\'ultima versione.</string>
     <string name="settings_place_pages">Pagine dei luoghi</string>
+    <string name="place_transit_stops">%1$d fermate</string> <!-- format -->
+    <string name="place_transit_stop_id">Fermata %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Biglietti e info</string>
 </resources>
