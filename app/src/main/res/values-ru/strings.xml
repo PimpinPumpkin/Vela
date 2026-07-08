@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Загрузить видимую область</string>
     <string name="settings_offline_download_viewport_hint">Сохраняет открытые тайлы для области карты, которая последней была на экране, — и дорожный регион вокруг неё — чтобы позже она отображалась и вела навигацию без сети. Для поиска всё ещё нужно подключение.</string>
     <string name="settings_offline_no_areas">Области ещё не сохранены.</string>
+    <string name="settings_offline_addresses_missing">Области, сохранённые до этого обновления, не содержат данные адресов. Обновите их, чтобы искать адреса и строить маршруты офлайн.</string>
+    <string name="settings_offline_addresses_update">Обновить сохранённые области</string>
     <string name="settings_offline_delete_area">Удалить эту офлайн-область</string>
     <string name="settings_routing_regions">Регионы маршрутизации</string>
     <string name="settings_routing_regions_hint">Дорожная сеть для целого региона (области, страны…), чтобы навигация работала офлайн в любой его точке — загрузите тот, куда едете. При наличии сети по-прежнему используются актуальные пробки; это запасной вариант без сигнала.</string>

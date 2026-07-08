@@ -55,6 +55,8 @@
     <string name="settings_offline_download_viewport">Scarica l\'area che stai visualizzando</string>
     <string name="settings_offline_download_viewport_hint">Salva i riquadri aperti per l\'area della mappa che avevi sullo schermo, e la regione di percorso attorno, così viene visualizzata e navigata in seguito senza rete. La ricerca richiede comunque una connessione.</string>
     <string name="settings_offline_no_areas">Nessuna area ancora salvata.</string>
+    <string name="settings_offline_addresses_missing">Le aree salvate prima di questo aggiornamento non includono i dati degli indirizzi. Aggiornale per cercare indirizzi e calcolare percorsi offline.</string>
+    <string name="settings_offline_addresses_update">Aggiorna aree salvate</string>
     <string name="settings_offline_delete_area">Elimina questa area offline</string>
     <string name="settings_routing_regions">Regioni di percorso</string>
     <string name="settings_routing_regions_hint">La rete stradale di un\'intera regione (regione, Paese…), così la navigazione passo-passo funziona offline ovunque al suo interno: scarica dove stai viaggiando. Online usa comunque il traffico in tempo reale; questa è l\'alternativa senza segnale.</string>
