@@ -81,6 +81,9 @@ class OfflinePoiStore @Inject constructor(
         val args = ArrayList<String>()
         for (t in nameCat) { clauses.add("name LIKE ?"); args.add("%$t%"); clauses.add("category LIKE ?"); args.add("%$t%") }
         for (c in cats) { clauses.add("category LIKE ?"); args.add("%$c%") }
+        // Whole-query address match, so typing a downloaded POI's street address finds it offline. (This
+        // is NOT a general address geocoder — only addresses attached to indexed OSM POIs are searchable.)
+        clauses.add("address LIKE ?"); args.add("%$term%")
         val rows = ArrayList<Place>()
         helper.readableDatabase.rawQuery(
             "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE ${clauses.joinToString(" OR ")} LIMIT 400",
@@ -108,7 +111,7 @@ class OfflinePoiStore @Inject constructor(
         val qWords = (if (words.size > 1) words else listOf(term)).map { it.lowercase() }
         return rows.sortedWith(
             compareByDescending<Place> { p ->
-                val hay = (p.name + " " + (p.category ?: "")).lowercase()
+                val hay = (p.name + " " + (p.category ?: "") + " " + (p.address ?: "")).lowercase()
                 qWords.count { hay.contains(it) }
             }.thenBy { it.distanceMeters ?: Double.MAX_VALUE },
         ).take(limit)
