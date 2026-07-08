@@ -5,15 +5,16 @@ import androidx.compose.runtime.mutableStateOf
 
 /**
  * Whether rail lines (train + subway/light rail/tram) are highlighted on the map, Google-style.
- * Process-wide reactive holder like [Traffic] / [Units], flipped from Settings and persisted. Off by
- * default. The data is already in the keyless basemap tiles (OpenMapTiles `transportation` layer), so
- * this only adds a coloured line layer over it, no network.
+ * Process-wide reactive holder like [Traffic] / [Units], flipped from Settings and persisted. ON by
+ * default (rail is useful to see and the data is already in the tiles at no cost). The data is already
+ * in the keyless basemap tiles (OpenMapTiles `transportation` layer), so this only adds a coloured line
+ * layer over it, no network.
  */
 object TransitLayer {
-    val on = mutableStateOf(false)
+    val on = mutableStateOf(true)
 
     fun init(context: Context) {
-        on.value = prefs(context).getBoolean(KEY, false)
+        on.value = prefs(context).getBoolean(KEY, true)
     }
 
     fun set(context: Context, value: Boolean) {
