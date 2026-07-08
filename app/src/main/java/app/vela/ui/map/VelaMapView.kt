@@ -192,6 +192,7 @@ fun VelaMapView(
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
+    onAddressLabelTap: (number: String, location: LatLng) -> Unit = { _, _ -> },
     onViewport: (south: Double, west: Double, north: Double, east: Double, zoom: Double) -> Unit = { _, _, _, _, _ -> },
     modifier: Modifier = Modifier,
 ) {
@@ -216,6 +217,7 @@ fun VelaMapView(
     val ambientTap = rememberUpdatedState(onAmbientTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
+    val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
     val scaleChanged = rememberUpdatedState(onScaleChanged)
     val selectAlt = rememberUpdatedState(onSelectAlternate)
@@ -620,21 +622,58 @@ fun VelaMapView(
                         .firstOrNull { f.hasProperty(it) && !f.getStringProperty(it).isNullOrBlank() }
                         ?.let { f.getStringProperty(it) }
                     val hit = feats.firstOrNull { it.geometry() is Point && nameOf(it) != null }
-                    when {
-                        hit != null -> {
-                            val pt = hit.geometry() as Point
-                            poiTap.value(nameOf(hit)!!, LatLng(pt.latitude(), pt.longitude()))
-                            true
-                        }
-                        // An unnamed POI icon (has a class but no name — an apartment
-                        // gym, an unnamed park/playground, …) used to be a dead tap.
-                        // Reverse-geocode the spot to a pin + address, like a long-press.
-                        feats.any { it.geometry() is Point && it.hasProperty("class") } -> {
-                            longPress.value(LatLng(tapped.latitude, tapped.longitude))
-                            true
-                        }
-                        else -> false
+                    if (hit != null) {
+                        val pt = hit.geometry() as Point
+                        poiTap.value(nameOf(hit)!!, LatLng(pt.latitude(), pt.longitude()))
+                        return@addOnMapClickListener true
                     }
+                    val box = RectF(p.x - r, p.y - r, p.x + r, p.y + r)
+                    // A tapped HOUSE-NUMBER label — the basemap `vela-housenumber` (OSM addr:housenumber)
+                    // or the streamed address overlay (`vela-addr-*`). Snap the pin to that LABEL'S OWN
+                    // point, not the finger, so tapping "5611" resolves to 5611's address instead of a
+                    // fuzzy reverse-geocode of wherever the tap landed. The reverse-geocode at that exact
+                    // point returns the house (offline: nearest mapped house ≤60 m == this one).
+                    val addrLayers = (sequenceOf("vela-housenumber") +
+                        (map.style?.layers?.asSequence()?.map { it.id }?.filter { it.startsWith("vela-addr-") }
+                            ?: emptySequence())).toList().toTypedArray()
+                    val addrHit = if (addrLayers.isNotEmpty()) {
+                        map.queryRenderedFeatures(box, *addrLayers).firstOrNull { it.geometry() is Point }
+                    } else null
+                    if (addrHit != null) {
+                        val pt = addrHit.geometry() as Point
+                        val num = when {
+                            addrHit.hasProperty("housenumber") -> addrHit.getStringProperty("housenumber")
+                            addrHit.hasProperty("number") -> addrHit.getStringProperty("number")
+                            else -> null
+                        }
+                        if (!num.isNullOrBlank()) {
+                            addrLabelTap.value(num, LatLng(pt.latitude(), pt.longitude()))
+                        } else {
+                            longPress.value(LatLng(pt.latitude(), pt.longitude()))
+                        }
+                        return@addOnMapClickListener true
+                    }
+                    // An unnamed POI icon (has a class but no name — an apartment
+                    // gym, an unnamed park/playground, …) used to be a dead tap.
+                    // Reverse-geocode the spot to a pin + address, like a long-press.
+                    if (feats.any { it.geometry() is Point && it.hasProperty("class") }) {
+                        longPress.value(LatLng(tapped.latitude, tapped.longitude))
+                        return@addOnMapClickListener true
+                    }
+                    // A tapped BUILDING footprint — OSM basemap fill (`building`/`building-3d`) or the
+                    // streamed footprint overlay (`vela-ovl-*`). Makes a plain house/business building
+                    // tappable, not only long-pressable: the finger is inside the polygon so reverse-
+                    // geocoding the tapped point returns that building's address. Empty land has no
+                    // footprint here, so it falls through to `false` and only a long-press drops a raw
+                    // coordinate pin there (as before).
+                    val bldgLayers = (sequenceOf("building", "building-3d") +
+                        (map.style?.layers?.asSequence()?.map { it.id }?.filter { it.startsWith("vela-ovl-") }
+                            ?: emptySequence())).toList().toTypedArray()
+                    if (map.queryRenderedFeatures(box, *bldgLayers).isNotEmpty()) {
+                        longPress.value(LatLng(tapped.latitude, tapped.longitude))
+                        return@addOnMapClickListener true
+                    }
+                    false
                 }
                 // Only flag camera settling when the user dragged the map (not
                 // our own programmatic framing) → drives "Search this area".
