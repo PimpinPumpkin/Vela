@@ -5,6 +5,7 @@ import app.vela.core.config.CalibrationStore
 import app.vela.core.config.JsTransforms
 import app.vela.core.diag.DiagLog
 import app.vela.core.data.CalibrationNeededException
+import app.vela.core.data.CategoryFilter
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
@@ -115,7 +116,7 @@ class GoogleMapsDataSource @Inject constructor(
                 "",
             )
         }
-        SearchResult(query, jsTransforms.refineSearch(places))
+        SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
     }
 
     override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> = io {
@@ -160,7 +161,7 @@ class GoogleMapsDataSource @Inject constructor(
         val deduped = all.distinctBy {
             it.featureId ?: "${it.name}@${(it.location.lat * 1e4).toInt()},${(it.location.lng * 1e4).toInt()}"
         }
-        rankAmbientPlaces(deduped)
+        rankAmbientPlaces(CategoryFilter.applyIfEnabled(deduped))
     }
 
     override suspend fun placeDetails(id: String): Place = io {
