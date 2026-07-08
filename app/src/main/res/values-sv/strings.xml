@@ -404,4 +404,7 @@
     <string name="settings_update_found">Uppdatering tillgänglig! Gå tillbaka till kartan för att installera.</string>
     <string name="settings_update_none">Du har den senaste versionen.</string>
     <string name="settings_place_pages">Platssidor</string>
+    <string name="place_transit_stops">%1$d hållplatser</string> <!-- format -->
+    <string name="place_transit_stop_id">Hållplats %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Biljetter &amp; info</string>
 </resources>

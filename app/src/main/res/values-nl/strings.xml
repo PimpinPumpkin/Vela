@@ -404,4 +404,7 @@
     <string name="settings_update_found">Update beschikbaar! Ga terug naar de kaart om te installeren.</string>
     <string name="settings_update_none">Je hebt de nieuwste versie.</string>
     <string name="settings_place_pages">Plaatspagina\'s</string>
+    <string name="place_transit_stops">%1$d haltes</string> <!-- format -->
+    <string name="place_transit_stop_id">Halte %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Tickets &amp; info</string>
 </resources>
