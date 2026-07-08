@@ -34,20 +34,29 @@ but practically unusable.
 
 - `rememberDpadFirstDevice()` — the D-pad is a PRIMARY input, so default to a D-pad-first
   UI (affordances shown persistently, initial focus/engage placed for the user). Detection
-  is **multi-signal** because feature phones lie:
-  - **`FEATURE_TOUCHSCREEN` is useless** — the tested MTK keypad phone reports
-    `touchscreen=finger` (a tiny `mtk-tpd` panel), so a no-touch check alone is FALSE.
-  - **`KeyCharacterMap.deviceHasKey(DPAD_CENTER)` returned FALSE** on that phone — don't
-    rely on it.
-  - **The winning signal: an `InputDevice` whose sources include `SOURCE_DPAD`** — BUT on
-    the real phone that flag lives ONLY on the framework's **Virtual** aggregate device
-    (id −1, `src=0x301`); the physical `mtk-kpd` reports plain `0x101` (KEYBOARD). So the
-    enumeration must **include virtual devices** (an earlier `!isVirtual` filter is exactly
-    what made detection fail and showed "literally nothing with the D-pad" — proven by
-    on-device logging, see §Proven).
-- `rememberDpadMode()` — `dpadFirst || inputMode == Keyboard`. Always true on a D-pad-first
-  device; on a touch phone with an occasional keyboard it flips reactively (affordances
-  appear on the first key press, melt away on the next tap).
+  is deliberately **conservative** (rewritten 2026-07-08 after it broke touch phones):
+  - **`FEATURE_TOUCHSCREEN`** — genuinely touchless (Android TV / a real no-touch keypad) is
+    the one unambiguous signal. Feature phones lie about it (the MTK panel reports
+    `touchscreen=finger`), so it only ever produces a true-negative, never a false-positive.
+  - **A PHYSICAL `InputDevice` with `SOURCE_DPAD`** — a game controller, remote, or a keypad
+    whose own hardware exposes the D-pad.
+  - **Do NOT count the framework's Virtual aggregate device (id −1).** It reports
+    `KEYBOARD | DPAD` on essentially EVERY Android phone (confirmed on a Pixel 9 via
+    `dumpsys input`). An earlier version enumerated it (the note here used to *insist* on
+    including virtual devices), which classified ordinary phones as keypad devices and broke
+    the search bar — a plain tap stopped opening the field / raising the keyboard, and the
+    `+`/`−` zoom buttons appeared on a touch phone (repo-owner + tester reports 2026-07-08).
+  - **`KeyCharacterMap.deviceHasKey(DPAD_CENTER)` is dropped** — true on a Pixel too (the
+    virtual keymap carries the key) and already false on the MTK phone, so it only added
+    false positives.
+  - A fake-touchscreen keypad phone therefore isn't detected as D-pad-*first*; it still gets
+    full D-pad operation REACTIVELY the moment a key is pressed (via `rememberDpadMode`), just
+    without pre-placed focus on the very first frame. That is the price of never breaking
+    touch, since no startup signal separates such a phone from a Pixel.
+- `rememberDpadMode()` — `dpadFirst || inputMode == Keyboard`. True on a D-pad-first device,
+  and on any other device the instant Compose sees a non-touch key event (affordances appear
+  on the first key press, melt away on the next tap). This is what carries hybrid/keypad
+  phones now that `dpadFirst` no longer trusts the virtual device.
 - `Modifier.dpadHighlight(shape)` — a 2 dp primary-colour focus ring, drawn only while the
   element (or a descendant — Material buttons host their own focus node, and
   `onFocusEvent.hasFocus` covers both) holds focus **and** the UI is key-driven (honours

@@ -237,7 +237,18 @@ genuinely needs no doc edit, say why in the commit.
   focus is PLACED on appearance, no wake-up keypress; retries because the node isn't attached
   on frame 1);
   the map is key-driven via `app/ui/map/MapDpadController.kt` (wired in `VelaMapView`, key
-  handling + crosshair + zoom buttons in `MapScreen`). Rules when touching UI: (1) every new
+  handling + crosshair + zoom buttons in `MapScreen`).
+  **Detection is CONSERVATIVE — do not loosen it (fixed 2026-07-08).** `rememberDpadFirstDevice`
+  (`detectDpadFirst`) returns true ONLY for a genuinely touchless device (`!FEATURE_TOUCHSCREEN`)
+  or a PHYSICAL (non-virtual) `InputDevice` with `SOURCE_DPAD`. It must NOT count the framework's
+  Virtual aggregate device (id −1): it reports `KEYBOARD | DPAD` on essentially every phone
+  (verified on a Pixel 9 via `dumpsys input`), so counting it made `dpadMode` always-true on
+  ordinary phones and BROKE the search bar (a tap no longer opened the field / raised the keyboard;
+  the `+`/`−` zoom buttons showed under touch). A fake-touchscreen keypad phone is NOT D-pad-first
+  then; it gets full D-pad operation reactively on the first key via `rememberDpadMode`
+  (`dpadFirst || inputMode == Keyboard`). The soft keyboard in `SearchBar` is likewise keyed off the
+  LIVE `inputMode`, not the static device type, so a touch tap raises it even on a hybrid phone. See
+  docs/dpad.md. Rules when touching UI: (1) every new
   interactive element must be focusable with a visible ring (`dpadHighlight`) and every new
   gesture needs a key alternative; (2) D-pad code CALLS THE TOUCH PATHS (the named `handleTap`
   lambda, `gestureMove`, `navUserZoom`) — never fork them; (3) all D-pad affordances gate on
