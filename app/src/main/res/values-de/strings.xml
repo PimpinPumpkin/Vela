@@ -69,6 +69,8 @@
     <string name="settings_routing_installed_places">Installiert · Orte offline durchsuchbar</string>
     <string name="settings_routing_places_downloading">Orte werden gespeichert · %1$d %%</string> <!-- format -->
     <string name="settings_get_places">Orte laden</string>
+    <string name="settings_update_places">Orte aktualisieren</string>
+    <string name="settings_routing_update_available">Installiert · Orte-Update verfügbar</string>
     <string name="settings_routing_size_here">%1$s MB · deckt Ihren Standort ab</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Offline-Routing entfernen</string>

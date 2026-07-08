@@ -69,6 +69,8 @@
     <string name="settings_routing_installed_places">Instalado · locais pesquisáveis offline</string>
     <string name="settings_routing_places_downloading">A guardar locais · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Obter locais</string>
+    <string name="settings_update_places">Atualizar locais</string>
+    <string name="settings_routing_update_available">Instalado · atualização de locais disponível</string>
     <string name="settings_routing_size_here">%1$s MB · abrange a sua localização</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Remover percursos offline</string>
