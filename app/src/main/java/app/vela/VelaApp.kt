@@ -7,6 +7,7 @@ import app.vela.diag.CrashCatcher
 import app.vela.ui.AppLocale
 import app.vela.ui.Onboarding
 import app.vela.ui.Traffic
+import app.vela.ui.TransitLayer
 import app.vela.ui.Units
 import app.vela.ui.theme.AppTheme
 import dagger.hilt.android.HiltAndroidApp
@@ -29,6 +30,7 @@ class VelaApp : Application() {
         AppTheme.init(this)
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
         Traffic.init(this)
+        TransitLayer.init(this)
         app.vela.ui.LiveReviews.init(this)
         Onboarding.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
