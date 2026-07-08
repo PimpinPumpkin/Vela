@@ -433,7 +433,16 @@ class GoogleMapsDataSource @Inject constructor(
         val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
         val named = RouteGeometry.routeVia(http, vias, mode).firstOrNull()
             ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
-        if (named != null) applyTraffic(named, route).copy(provisional = false)
+        // Keep the route's OWN time figures through the snap. The picker sorted and displayed this
+        // route by its Google per-route ETA; applyTraffic here would swap in a recomputed one
+        // (OSRM free-flow x the ratio) IN PLACE, which can leapfrog a neighbouring row and leave
+        // the "Fastest" tag sitting below a slower first row. Naming is for geometry + named
+        // turn-by-turn (and the congestion spans remapped onto that geometry), not a new ETA.
+        if (named != null) applyTraffic(named, route).copy(
+            provisional = false,
+            durationSeconds = route.durationSeconds,
+            durationInTrafficSeconds = route.durationInTrafficSeconds,
+        )
         else route.copy(provisional = false)
     }
 
