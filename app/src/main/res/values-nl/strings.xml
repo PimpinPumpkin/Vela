@@ -219,6 +219,11 @@
     <string name="mapscreen_search_this_area">Dit gebied doorzoeken</string>
     <string name="mapscreen_place">Plaats</string>
     <string name="mapscreen_your_location">Uw locatie</string>
+    <string name="mapscreen_choose_on_map">Kies op kaart</string>
+    <string name="mapscreen_choose_origin_hint">Verplaats de kaart om het startpunt in te stellen</string>
+    <string name="mapscreen_choose_stop_hint">Verplaats de kaart om de tussenstop in te stellen</string>
+    <string name="mapscreen_choose_set_start">Start instellen</string>
+    <string name="mapscreen_choose_set_stop">Stop instellen</string>
     <string name="mapscreen_destination">Bestemming</string>
     <string name="mapscreen_center_on_my_location">Centreren op mijn locatie</string>
     <string name="mapscreen_stop_replay">Herhaling stoppen</string>
