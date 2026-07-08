@@ -548,6 +548,26 @@ genuinely needs no doc edit, say why in the commit.
   on :8099, `adb reverse`, `-PpoiPackManifestUrl=http://127.0.0.1:8099/poi-pack-manifest.json`. **After
   pushing, dispatch Actions → "Build offline place packs"** (group=us etc.) to publish packs + manifest —
   until then "Get places" reports no pack available.
+  **Pack freshness (2026-07-07): rev + monthly cron + row-level deltas.** Manifest rows carry
+  `rev`/`updatedAt`/`counts{poi,addr,streetpt,streetname}` and optionally `delta{fromRev,url,sizeMb}`;
+  `poi-packs.yml` has a monthly `schedule` cron (3rd, 07:15 UTC) whose prep step selects ALL catalog regions.
+  `build-poi-region.sh` reads the LIVE manifest for the old rev, downloads the previous zip BEFORE clobbering
+  it, builds the delta (`scripts/poipack_delta.py`, SQL EXCEPT per table into del_/ins_ tables), and publishes
+  it only when it is under half the full size. App: installed revs in `poipacks/revs.json`
+  (`PoiPackStore.installedRev`); Settings shows "Update available" + an **Update places** button when the
+  manifest rev is newer; `MapViewModel.downloadPoiPack(update=true)` applies the delta via
+  `PoiPackStore.applyDelta` ONLY when installedRev == deltaFromRev, else full download. applyDelta runs one
+  transaction (delete-by-full-row via a rowid JOIN with NULL-safe `IS` matching, then insert), verifies every
+  table count against the manifest before committing, and re-registers packs on both success and failure.
+  **sids are STABLE content hashes** — SHA-1 of `street_norm` truncated to a positive 63-bit int, collision
+  fails the build; NEVER a counter (a counter renumbers millions of rows on one mid-order insertion and the
+  delta balloons to pack size). `TABLE_COLUMNS` in PoiPackStore mirrors `poipack_build.py` +
+  `poipack_delta.py` — keep all three in sync (`PRAGMA user_version=2`). Gotcha: KDoc in PoiPackStore must
+  not contain a literal `del_*/ins_*` (the `*/` ends the comment). `OfflinePoiStore.search` orders
+  whole-query name matches first so they survive the internal 400-row cap (thousands of category hits used
+  to crowd out an exact name match in a state pack; found live while verifying deltas). v1-format packs
+  (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
+  full-download once, then deltas kick in.
 - **Offline forward geocoder — typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
   `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified Silver Firs).** So an arbitrary
   typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is

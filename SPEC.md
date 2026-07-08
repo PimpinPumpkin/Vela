@@ -240,6 +240,20 @@ region's graph, delete with it, and show the same heads-up progress card as the 
 installed before packs existed get a "Get places" button. Device-verified: offline "pel meni" from
 Snohomish County → Pel'Meni Dumpling Tzar, Fremont, with address.
 
+**Place pack freshness (rev + monthly cron + row-level deltas, DONE 2026-07-07).** `poi-packs.yml` also runs
+on a monthly cron that rebuilds every published region; each rebuild bumps the region's `rev` in the manifest
+(alongside `updatedAt` and per-table row counts). Installed revs live in `poipacks/revs.json`; a newer
+manifest rev puts an "Update places" button on the region's Settings row. CI diffs each rebuild against the
+previous rev (`scripts/poipack_delta.py`, one SQL EXCEPT per table producing del_/ins_ tables) and publishes
+the delta zip only when it is under half the full pack size. `PoiPackStore.applyDelta` (valid only when
+installed rev == the delta's fromRev, else full download) applies it in one transaction: delete by full-row
+match driven through each table's index (NULL-safe `IS` matching), insert the ins_ rows, then verify every
+table's count against the manifest before committing; any mismatch rolls back and the caller falls back to a
+full download. Street-name sids are stable content hashes (SHA-1 of the normalized name, truncated to a
+positive 63-bit int; the build fails on a collision), not insertion counters, so a rebuild leaves unchanged
+rows byte-identical and deltas stay small (a Washington test delta: 5.6 KB vs the 143 MB pack). The
+`TABLE_COLUMNS` map in PoiPackStore mirrors `poipack_build.py`/`poipack_delta.py`; keep all three in sync.
+
 **Offline address geocoding (on-device, DONE 2026-07-07).** So an arbitrary typed street address routes with
 no signal, not just addresses that are an indexed POI. Downloading a map area builds a SQLite forward geocoder
 (`core/data/OfflineAddressStore`) from keyless Overpass (`OverpassPois.fetchAddresses`/`fetchStreets`) over a

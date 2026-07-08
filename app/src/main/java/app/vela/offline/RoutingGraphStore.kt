@@ -13,7 +13,9 @@ import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** One downloadable region routing graph, from the manifest. [s]/[w]/[n]/[e] = covered bbox. */
+/** One downloadable region asset, from a manifest. [s]/[w]/[n]/[e] = covered bbox. Shared by the
+ *  routing-graph and place-pack catalogs (same row shape); the trailing fields are pack-only
+ *  (update revision + row counts + optional row-level delta) and stay at their defaults for graphs. */
 data class RoutingRegion(
     val id: String,
     val name: String,
@@ -23,6 +25,11 @@ data class RoutingRegion(
     val w: Double,
     val n: Double,
     val e: Double,
+    val rev: Int = 0,                       // pack revision (bumped every rebuild)
+    val counts: Map<String, Long> = emptyMap(), // expected per-table row counts, verifies a delta apply
+    val deltaUrl: String? = null,           // row-level delta from [deltaFromRev] to [rev], if published
+    val deltaFromRev: Int = 0,
+    val deltaSizeMb: Int = 0,
 )
 
 /**

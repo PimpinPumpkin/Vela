@@ -752,6 +752,25 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   ranked by relevance then distance, and its place sheet opened with address/hours/phone/website — all OSM,
   no signal. Typed-address geocoding also gains the whole state (the pack's addr/street tables feed the same
   layered geocoder). Localized in all 11 languages.
+- ✅ **Place packs stay fresh: monthly rebuilds, an Update button, and small delta downloads (2026-07-07,
+  device-verified).** OSM never stops changing, so the packs can't be a one-time bake. Three pieces. First,
+  `poi-packs.yml` runs on a monthly cron and rebuilds every published region from the current Geofabrik
+  extract; each rebuild bumps that region's `rev` in the manifest. Second, once the manifest carries a newer
+  rev than the one installed (tracked in `poipacks/revs.json`), the region's Settings row shows "Update
+  available" and an **Update places** button. Third, the update is normally a **row-level delta**, not a
+  re-download: CI diffs the new pack against the previous rev with SQL EXCEPT (`scripts/poipack_delta.py`)
+  and publishes a small zip of del/ins tables when it comes out under half the full pack size; the app
+  (`PoiPackStore.applyDelta`) applies it in a single transaction and verifies the result against per-table
+  row counts from the manifest before committing, so a bad patch can never leave a half-updated pack. A
+  verified Washington test delta was **5.6 KB against the 143 MB pack**. Anything off (wrong base rev, no
+  delta published, count mismatch) quietly falls back to a full download. The piece that makes deltas small:
+  street-name ids are **stable content hashes** (SHA-1 of the normalized name), not insertion counters, so a
+  rebuild only changes the rows whose data actually changed. Device-verified end-to-end: a staged rev bump
+  updated Washington through the 5.6 KB delta alone and the changed place was searchable offline right after.
+- ✅ **Offline search ranks exact name matches above the category flood (2026-07-07).** A whole-state pack has
+  thousands of rows matching a category word ("cafe"), and the internal 400-row candidate cap used to fill in
+  table order before a name match deep in the table was reached, so searching a place by its exact name could
+  come back empty. The pack SQL now orders whole-query name matches first, ahead of the cap.
 - ✅ **State downloads show a heads-up progress card (2026-07-07, device-verified).** A routing-region download
   (and the place pack that follows it) now shows the same map heads-up progress card the Vela-voice download
   gets — "Downloading Washington (state) routing · N%" then "Saving Washington (state) places for offline
