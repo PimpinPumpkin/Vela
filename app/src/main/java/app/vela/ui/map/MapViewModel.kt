@@ -116,6 +116,10 @@ data class MapUiState(
     val pickingOrigin: Boolean = false,      // the next search pick sets the origin, not a destination
     val directionsWaypoints: List<Place> = emptyList(), // intermediate stops, in order (multi-stop)
     val pickingStop: Boolean = false,        // the next search pick is added as a stop
+    // Set while browsing search-along-route results: the trip's DESTINATION, stashed so the trip
+    // survives the browse. A result pick adds a STOP to the trip (Google-style) instead of opening
+    // the place's own sheet, and closing the results returns to the directions panel.
+    val alongRouteDest: Place? = null,
     val pickOnMap: MapPick? = null,          // "Choose on map" crosshair mode is active for this endpoint
     val travelMode: TravelMode = TravelMode.DRIVE,
     // Depart/arrive time for directions: 0 = leave now, 1 = depart at, 2 = arrive by, 3 = last available;
@@ -701,9 +705,22 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** The X in the search bar: wipe the query, results and selection. */
+    /** The X in the search bar: wipe the query, results and selection. Closing an ALONG-ROUTE
+     *  browse instead returns to the trip it belongs to (restore the destination + panel) —
+     *  the user was hunting for a stop, not abandoning the drive. */
     fun clearSearch() {
         suggestJob?.cancel()
+        val backToTrip = _state.value.alongRouteDest
+        if (backToTrip != null) {
+            _state.update {
+                it.copy(
+                    query = "", results = emptyList(), suggestions = emptyList(),
+                    selected = backToTrip, alongRouteDest = null, directionsOpen = true,
+                    resultsCollapsed = false, showSearchThisArea = false,
+                )
+            }
+            return
+        }
         _state.update {
             it.copy(
                 query = "", results = emptyList(), suggestions = emptyList(), selected = null,
@@ -967,7 +984,8 @@ class MapViewModel @Inject constructor(
         runCatching { webPhotos.warm() }
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
-            _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false) }
+            // A fresh typed search leaves any along-route browse: picks open places normally again.
+            _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
             // No connection → skip the Google scrape entirely (it would just hang to the socket timeout,
             // the "search does nothing offline" report) and search the on-device OSM index straight away.
             // Empty index = no area downloaded yet, so point the user at the download (issue #3).
@@ -1049,7 +1067,13 @@ class MapViewModel @Inject constructor(
         searchJob?.cancel()
         searchJob = viewModelScope.launch {
             _state.update {
-                it.copy(query = query, searching = true, directionsOpen = false, suggestions = emptyList(), resultsCollapsed = false, recents = recentStore.recent())
+                it.copy(
+                    query = query, searching = true, directionsOpen = false, suggestions = emptyList(),
+                    resultsCollapsed = false, recents = recentStore.recent(),
+                    // Stash the trip's destination: browsing stop candidates must not lose the trip.
+                    // While this is set, picking a result ADDS IT AS A STOP and returns to the panel.
+                    alongRouteDest = it.selected ?: it.alongRouteDest,
+                )
             }
             try {
                 val res = dataSource.search(query, route[route.size / 2])
@@ -1087,6 +1111,17 @@ class MapViewModel @Inject constructor(
 
     fun selectPlace(p: Place) {
         if (consumeAssign(SavedPlace.of(p))) return
+        // Search-along-route pick: the tapped place becomes a STOP on the stashed trip (Google's
+        // flow), not a new destination — tapping "Directions" on it used to silently replace the
+        // whole trip. Restore the destination first so the panel reopens showing the real trip;
+        // picking the destination itself just returns to the panel (a stop AT the destination is
+        // nonsense).
+        _state.value.alongRouteDest?.let { dest ->
+            _state.update { it.copy(selected = dest, alongRouteDest = null) }
+            if (p.id != dest.id && p.location != dest.location) addStop(p)
+            else _state.update { it.copy(directionsOpen = true, results = emptyList(), query = "") }
+            return
+        }
         if (_state.value.pickingStop) { addStop(p); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(p); return }
         suggestJob?.cancel()
@@ -1351,6 +1386,7 @@ class MapViewModel @Inject constructor(
                 showSteps = false, previewStepIndex = null,
                 directionsOrigin = null, pickingOrigin = false, directionsReversed = false,
                 directionsWaypoints = emptyList(), pickingStop = false, pickOnMap = null,
+                alongRouteDest = null,
             )
         }
     }
@@ -1644,7 +1680,15 @@ class MapViewModel @Inject constructor(
 
     /** Append an intermediate stop and re-route through it. */
     fun addStop(p: Place) {
-        _state.update { it.copy(directionsWaypoints = it.directionsWaypoints + p, pickingStop = false, pickOnMap = null) }
+        _state.update {
+            it.copy(
+                directionsWaypoints = it.directionsWaypoints + p, pickingStop = false, pickOnMap = null,
+                // A stop pick always belongs to an open trip: return to the directions panel and
+                // drop the pick UI (query/results) so the route is what's on screen. Setting
+                // directionsOpen BEFORE route() also keeps its stillWanted() guard satisfied.
+                directionsOpen = true, results = emptyList(), query = "", resultsCollapsed = false,
+            )
+        }
         route(_state.value.travelMode)
     }
 
