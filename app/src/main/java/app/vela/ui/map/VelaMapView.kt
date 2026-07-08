@@ -237,6 +237,7 @@ fun VelaMapView(
     val lastGradNs = remember { longArrayOf(0L) }    // frame time of the last split upload (wall-clock floor)
     val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
                                                         // sizes the split-update throttle to sub-pixel
+    val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
     // A manual pinch sets a zoom override (navUserZoom) that we keep following at; it's cleared
     // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
     // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
@@ -319,7 +320,7 @@ fun VelaMapView(
     // House-number labels from the open ADDRESS overlay (OpenAddresses PMTiles of points): a SymbolLayer of the
     // `number` field, STREAMED for the region in view — fills in house numbers where OSM has no `addr:housenumber`
     // (the same gap the building overlay fills for footprints). Matched to the basemap `vela-housenumber` style
-    // (Noto Sans 10, grey + white halo). minZoom 16 so numbers only appear zoomed right in (Google-style) and
+    // (Noto Sans 10, grey + white halo). minZoom 17.5 so numbers only appear at street level (Google-style) and
     // collision thins dense blocks. INSERTED BELOW the traffic-controls layer (which sits below the ambient POI
     // icons) — NOT addLayer/top: MapLibre places symbols TOPMOST-LAYER-FIRST, so numbers stacked above the
     // ambient layer grabbed their collision boxes before the business icons placed, EVICTING them at z16+
@@ -352,6 +353,11 @@ fun VelaMapView(
                             PropertyFactory.textColor(txt),
                             PropertyFactory.textHaloColor(halo),
                             PropertyFactory.textHaloWidth(1f),
+                            // Numbers still YIELD to icons/labels (allow-overlap stays false), but they
+                            // never enter the collision index themselves: nothing needs to dodge a house
+                            // number, and keeping hundreds of them out of the index makes each placement
+                            // pass at street zoom cheaper (they're the densest symbols on screen there).
+                            PropertyFactory.textIgnorePlacement(true),
                         )
                     }
                 if (style.getLayer(CONTROLS_LAYER) != null) {
@@ -361,6 +367,17 @@ fun VelaMapView(
                 }
             }
         }
+    }
+
+    // "3D buildings" setting → the basemap's building-3d fill-extrusion layer (z16+).
+    // Extrusion is the most fragment-expensive thing the map draws, so this is the direct
+    // lever for zoomed-in pan stutter on weaker GPUs. applyLight/applyDark colour the layer
+    // but never touch visibility, so this effect owns it (re-applied on style reload too).
+    val buildings3d = app.vela.ui.Buildings3d.on.value
+    LaunchedEffect(buildings3d, styleRef) {
+        styleRef?.getLayer("building-3d")?.setProperties(
+            PropertyFactory.visibility(if (buildings3d) Property.VISIBLE else Property.NONE),
+        )
     }
 
     // Nav puck motion model (Google-style): a per-frame ticker glides the displayed
@@ -678,7 +695,16 @@ fun VelaMapView(
                     map.cameraPosition.target?.let { t ->
                         val mpp = map.projection.getMetersPerPixelAtLatitude(t.latitude)
                         mPerPxHolder[0] = mpp
-                        scaleChanged.value(mpp)
+                        // This fires on EVERY camera-move frame. Only push to compose state when the
+                        // value moved enough to change the drawn bar (>1%): an unconditional write
+                        // recomposed the scale bar per pan frame for invisible sub-percent latitude
+                        // drift — wasted main-thread work right when a slow phone can least afford it.
+                        if (lastScaleReport[0] <= 0.0 ||
+                            kotlin.math.abs(mpp - lastScaleReport[0]) > lastScaleReport[0] * 0.01
+                        ) {
+                            lastScaleReport[0] = mpp
+                            scaleChanged.value(mpp)
+                        }
                     }
                     Unit
                 }
@@ -1029,6 +1055,10 @@ private fun ensureLayers(style: Style) {
                     PropertyFactory.textColor("#8a8a8a"),
                     PropertyFactory.textHaloColor("#ffffff"),
                     PropertyFactory.textHaloWidth(1f),
+                    // Same as the vela-addr overlay: numbers yield to everything but never occupy
+                    // the collision index — cheaper placement at street zoom, and they can't evict
+                    // a business icon whatever the layer order.
+                    PropertyFactory.textIgnorePlacement(true),
                 )
             },
         )
