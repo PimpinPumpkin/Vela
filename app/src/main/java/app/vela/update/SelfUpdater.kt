@@ -21,8 +21,9 @@ import javax.inject.Singleton
  * accept as an update of the installed app. Obtainium users can keep using Obtainium; the
  * launch check is a Settings toggle.
  *
- * Version scheme (see CI): release tag `v0.2.<run>` = versionCode `2000 + run`, so the tag
- * alone tells us if the release is newer. The APK asset is the single `.apk` on the release.
+ * Version scheme (see CI): release tag `v0.<minor>.<run>` = versionCode `2000 + run` (the run
+ * number is global and monotonic across minor bumps), so the tag alone tells us if the release
+ * is newer. The APK asset is the single `.apk` on the release.
  */
 @Singleton
 class SelfUpdater @Inject constructor(
@@ -55,8 +56,11 @@ class SelfUpdater @Inject constructor(
                     .build(),
             ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
             val o = JSONObject(json)
-            val tag = o.getString("tag_name") // v0.2.<run>
-            val run = tag.removePrefix("v0.2.").toIntOrNull() ?: return@runCatching null
+            val tag = o.getString("tag_name") // v0.<minor>.<run>
+            // Parse the RUN, not a hardcoded minor: the line moved 0.2 -> 0.3 once already and a
+            // prefix-pinned parse would have silently stopped updating anyone on the old parse.
+            val run = Regex("""^v0\.\d+\.(\d+)$""").find(tag)?.groupValues?.get(1)?.toIntOrNull()
+                ?: return@runCatching null
             val code = 2000 + run
             if (code <= currentVersionCode) return@runCatching null
             val assets = o.getJSONArray("assets")
