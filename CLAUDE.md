@@ -55,11 +55,16 @@ genuinely needs no doc edit, say why in the commit.
   replay: `MapUiState.demoDriving` hides the "Stop replay" pill and the normal **End** (`stopNav`)
   cancels the demo job (its `finally` resumes live GPS + resets the dot/route). **Turn it OFF to
   navigate for real** — while on, every "Start" simulates instead of using GPS.
-- CI in `.github/workflows/ci.yml` (single workflow): every push to `main`
-  builds + tests the APK (uploaded as an artifact) and publishes a **normal
-  versioned GitHub release** `v0.3.<run>` (versionName `0.3.<run>`, versionCode
-  `2000+run`) — kept as a revision history; Obtainium tracks the latest with no
-  pre-release toggle. **Release notes are a real changelog** built from the commit
+- CI: **nightly + weekly channels (2026-07-08).** `.github/workflows/ci.yml`: every push to
+  `main` builds + tests the APK and publishes a **PRERELEASE** `v0.3.<run>` (versionName
+  `0.3.<run>`, versionCode `2000+run`) — the nightly channel; Obtainium users opt in with
+  "include prereleases". `.github/workflows/promote-stable.yml` (cron Mondays 16:00 UTC +
+  manual dispatch) **promotes the newest nightly to stable**: same tag, same signed APK, no
+  rebuild — it flips `--prerelease=false --latest` and regenerates the notes to span
+  everything since the previous stable. Default Obtainium installs and the in-app updater
+  (which reads `releases/latest` = latest STABLE) therefore move weekly; a nightly user whose
+  versionCode is ahead of stable simply is not offered anything until stable passes them.
+  **Release notes are a real changelog** built from the commit
   subjects since the previous `v0.[0-9]*` tag (the glob spans minor bumps so a fresh
   0.3 release still finds the last 0.2 tag; checkout is `fetch-depth: 0` so the tag
   history is present; the publish step formats them + a compare link into `--notes`).
@@ -127,22 +132,21 @@ genuinely needs no doc edit, say why in the commit.
   `shape = androidx.compose.foundation.shape.CircleShape` — full-radius pills, Google-style. The M3
   default 8dp-corner chip read "dated" (user 2026-07-08). Keep any new chip on CircleShape; monochrome
   leading icons (tint `onSurface`, not the teal primary) so it reads single-ink like Google's.
-- **Search-results sheet — TOP sheet with drag detents (`MapScreen.SearchResults`, 2026-07-08).**
-  It STAYS a top sheet (hangs under the search bar), NOT a bottom sheet — the user was explicit about
-  that; only the detent *sizing* should feel like the POI viewer. Pull DOWN grows a detent, push UP
-  shrinks one (expanded ~0.94 → peek ~0.52 → the collapsed "N results" pill via `onCollapse`); the
-  handle also TAPS to toggle peek↔expanded. There is **NO "hide results" button** — collapse to the
-  pill by swiping the handle up (or the system back gesture). **Filter chips are `ElevatedFilterChip`
-  with an explicit filled `chipColors`** (a subtle White/Black-alpha tint when off, solid `primary`
-  teal + check icon when on, `border = null`) so they read modern like the category pills — the
-  default outlined M3 chip looked "old" on the sheet. **Chrome hides whenever the results panel is
-  OPEN, not just full screen:** MapScreen computes `resultsShown = results.isNotEmpty() && selected ==
-  null && !searchOpen && !resultsCollapsed` and gates the scale bar / locate FAB / "Search this area"
-  with `&& !resultsShown`. The earlier `resultsFullscreen` (expanded-only) gate let those overlays
-  draw on top at the peek size (user 2026-07-08); gating on `resultsShown` covers every size. The
-  compass is MapLibre's built-in (`setCompassMargins`), which fades when the map faces north (Google's
-  behaviour) and reappears when rotated/tilted or during heading-up nav — it wasn't removed, it's just
-  north-hidden on the browse map.
+- **Search-results sheet — BOTTOM sheet with drag detents (`MapScreen.SearchResults`, 2026-07-08).**
+  After one day as a top sheet the user flipped it: results now rise from the BOTTOM, Google-style
+  (the top-of-menu grab pill read clunky). It renders with the other bottom surfaces in MapScreen's
+  bottom `when` (nav / directions / place sheet win the slot first) and shares the place sheet's
+  detent grammar: **MINIMIZED** (a short "N results" bar; = the VM's `resultsCollapsed`, so the back
+  gesture and the sheet agree) ↔ **PEEK** (~0.42 list cap) ↔ **EXPANDED** (~0.82, fills the screen).
+  Handle TAP steps up; drag UP grows a detent, DOWN shrinks one; the nested-scroll connection steps
+  ONE detent per gesture (re-armed in `onPreFling`) with an up-drag into the list expanding — a hard
+  fling can cross two detents, which matches Google. There is **NO "hide results" button**. **Filter
+  chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
+  `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
+  scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
+  `chromeLift` (76dp) so nothing sits on the minimized bar. The compass is MapLibre's built-in
+  (`setCompassMargins`), which fades facing north (Google's behaviour) and reappears when
+  rotated/tilted or during heading-up nav — never removed, just north-hidden on the browse map.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
