@@ -247,6 +247,9 @@
     <string name="mapscreen_choose_set_stop">Stop instellen</string>
     <string name="mapscreen_destination">Bestemming</string>
     <string name="mapscreen_center_on_my_location">Centreren op mijn locatie</string>
+    <string name="mapscreen_zoom_in">Inzoomen</string>
+    <string name="mapscreen_zoom_out">Uitzoomen</string>
+    <string name="mapscreen_dpad_engage">OK: kaart bewegen</string>
     <string name="mapscreen_stop_replay">Herhaling stoppen</string>
     <string name="mapscreen_psds_tip_title">Trage GPS-fix?</string>
     <string name="mapscreen_psds_tip_body">Schakel PSDS in bij Instellingen → Locatie voor een veel snellere fix (op GrapheneOS loopt het via hun proxy).</string>

@@ -30,6 +30,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
+// D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape as DpadRoundedCornerShape
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import app.vela.ui.dpadHighlight
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -46,11 +64,32 @@ fun SearchBar(
     onFocusChange: (Boolean) -> Unit = {},
     onBack: (() -> Unit)? = null,
     offline: Boolean = false,
+    dpadMode: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    // D-pad (docs/dpad.md): mere focus traversal must NOT fall into the text field (its
+    // focus opens the full-screen search overlay — a trap when you're just walking the
+    // chrome). In dpadMode the whole bar is ONE focus stop; pressing OK "arms" the field
+    // and focuses it. We deliberately do NOT raise the soft IME: on a keypad device the
+    // user types on hardware keys (which reach the focused field directly), and a shown
+    // soft IME holds an active InputConnection that SWALLOWS the BACK key — reproduced
+    // on-device as the "can't get out of search" trap. Hiding it lets BACK reach the app
+    // and close the overlay in one press.
+    var fieldArmed by remember { mutableStateOf(false) }
+    val fieldFocus = remember { FocusRequester() }
+    val keyboard = LocalSoftwareKeyboardController.current
+    LaunchedEffect(fieldArmed) {
+        if (fieldArmed) {
+            runCatching { fieldFocus.requestFocus() }
+            if (dpadMode) keyboard?.hide() else keyboard?.show()
+        }
+    }
     // Match the darker tone of the category chips (elevated chips sit on
     // surfaceContainerLow; the default Card uses the lightest surface) so the
     // search box and the chips read as one set.
+    // D-pad: the "arm the field" clickable goes on the TEXT REGION only (below), NOT the
+    // whole Card — a card-level clickable made the entire bar ONE focus stop and swallowed
+    // the Settings gear inside it (the gear became unreachable by D-pad; measured on-device).
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(28.dp),
@@ -79,7 +118,23 @@ fun SearchBar(
                 )
             }
             // Placeholder and input share one centered Box so they line up exactly.
-            Box(Modifier.weight(1f).padding(horizontal = 4.dp), contentAlignment = Alignment.CenterStart) {
+            // In dpadMode this text region is the "arm the field" focus stop (OK arms +
+            // focuses the field); the gear / clear / back stay independently focusable.
+            Box(
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = 4.dp)
+                    .then(
+                        if (dpadMode) {
+                            Modifier
+                                .dpadHighlight(DpadRoundedCornerShape(20.dp))
+                                .clickable { fieldArmed = true }
+                        } else {
+                            Modifier
+                        },
+                    ),
+                contentAlignment = Alignment.CenterStart,
+            ) {
                 if (query.isEmpty()) {
                     Text(
                         stringResource(R.string.search_placeholder),
@@ -95,7 +150,33 @@ fun SearchBar(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { onSearch() }),
                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                    modifier = Modifier.fillMaxWidth().onFocusChanged { onFocusChange(it.isFocused) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(fieldFocus)
+                        // Unfocusable until armed in dpadMode; untouched otherwise.
+                        .focusProperties { canFocus = !dpadMode || fieldArmed }
+                        // Deterministic escape (docs/dpad.md): catch BACK on the focused
+                        // field via onPreviewKeyEvent (root→leaf) + KeyDown, so it fires
+                        // BEFORE BasicTextField's built-in "BACK clears focus" — which
+                        // otherwise blurred the field on the down event and left the KeyUp
+                        // with nothing focused, taking a 3rd press to escape (measured).
+                        // With the IME up, its window still eats the first BACK to hide
+                        // itself; the next BACK reaches here and closes — platform-standard
+                        // two-press behaviour, now deterministic.
+                        .onPreviewKeyEvent { ev ->
+                            if (dpadMode && onBack != null &&
+                                (ev.key == Key.Back || ev.key == Key.Escape)
+                            ) {
+                                if (ev.type == KeyEventType.KeyDown) onBack()
+                                true // swallow both down and up so the field can't also act
+                            } else {
+                                false
+                            }
+                        }
+                        .onFocusChanged {
+                            if (!it.isFocused) fieldArmed = false
+                            onFocusChange(it.isFocused)
+                        },
                 )
             }
             if (query.isNotEmpty()) {

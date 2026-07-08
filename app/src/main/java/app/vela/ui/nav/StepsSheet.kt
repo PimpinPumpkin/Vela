@@ -59,6 +59,7 @@ import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
+import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 
 /**
  * The full turn-by-turn step list — shown both while previewing a route and
@@ -112,6 +113,7 @@ fun StepsSheet(
                                 if (highlighted || active) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
                                 else Color.Transparent,
                             )
+                            .dpadHighlight(RoundedCornerShape(6.dp))
                             .clickable { onStep(i) }
                             .padding(vertical = 12.dp, horizontal = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,

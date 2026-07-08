@@ -211,6 +211,19 @@ genuinely needs no doc edit, say why in the commit.
   unused** — the `asset://`/`fromJson` path in `VelaMapView` is dead code kept only as reference (a bundled
   copy blanked the vector tiles on-device; see the project memory). Don't be misled by the stale path in
   that asset. Verify basemap edits on-device in **both** themes.
+- **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
+  works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
+  `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`);
+  the map is key-driven via `app/ui/map/MapDpadController.kt` (wired in `VelaMapView`, key
+  handling + crosshair + zoom buttons in `MapScreen`). Rules when touching UI: (1) every new
+  interactive element must be focusable with a visible ring (`dpadHighlight`) and every new
+  gesture needs a key alternative; (2) D-pad code CALLS THE TOUCH PATHS (the named `handleTap`
+  lambda, `gestureMove`, `navUserZoom`) — never fork them; (3) all D-pad affordances gate on
+  `dpadMode`/`noTouch` so touch UX stays byte-identical; (4) keep the diff merge-friendly —
+  new behaviour in new files, shared-file edits as small anchored insertions (the one
+  commented import block per file). Search-overlay focus is subtle (armed field +
+  `searchHold` latch — two traps documented in docs/dpad.md); don't "simplify" it back to
+  bare field-focus.
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
