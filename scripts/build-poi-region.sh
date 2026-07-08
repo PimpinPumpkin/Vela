@@ -43,19 +43,57 @@ osmium export "$WORK/filtered.osm.pbf" -f geojsonseq --add-unique-id=type_id -o 
 rm -f "$WORK/filtered.osm.pbf"
 
 ( cd "$WORK" && zip -q "$WORK/$ID.zip" "$ID.db" )
-rm -f "$WORK/$ID.db"
 SIZE=$(( ( $(stat -f%z "$WORK/$ID.zip" 2>/dev/null || stat -c%s "$WORK/$ID.zip") + 1048575 ) / 1048576 ))
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.zip"
+COUNTS="$(cat "$WORK/$ID.db.counts.json")"
+UPDATED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "→ $ID: ${SIZE} MB, bbox $BBOX"
 
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
   gh release create "$TAG" --repo "$REPO" --prerelease --title "Offline place packs" \
     --notes "Prebuilt SQLite place/address packs (OpenStreetMap, ODbL) for Vela offline search. Data assets, not a code release."
 
+# Revision + delta against the currently published pack, BEFORE the new zip clobbers it. The delta is
+# a small row-level SQLite (poipack_delta.py) the app can apply instead of re-downloading the full
+# pack. Only published when it is genuinely smaller (a format jump like v1->v2 diffs everything, and a
+# delta near the pack's size helps nobody). rev counts up from the live manifest entry.
+OLD_REV=0
+DELTA_JSON=null
+gh release download "$TAG" --repo "$REPO" -p poi-pack-manifest.json -O "$WORK/live-manifest.json" 2>/dev/null || true
+if [ -s "$WORK/live-manifest.json" ]; then
+  OLD_REV=$(jq -r --arg id "$ID" '[.regions[] | select(.id==$id) | .rev // 0] | first // 0' "$WORK/live-manifest.json")
+fi
+REV=$(( OLD_REV + 1 ))
+if [ "$OLD_REV" -gt 0 ] && gh release download "$TAG" --repo "$REPO" -p "$ID.zip" -O "$WORK/old.zip" 2>/dev/null; then
+  ( cd "$WORK" && unzip -qo old.zip -d oldpack ) && OLD_DB="$(ls "$WORK"/oldpack/*.db 2>/dev/null | head -1)" || OLD_DB=""
+  if [ -n "$OLD_DB" ]; then
+    echo "→ building delta rev $OLD_REV → $REV"
+    python3 "$ROOT/scripts/poipack_delta.py" "$OLD_DB" "$WORK/$ID.db" "$WORK/$ID.delta.db" || true
+    if [ -s "$WORK/$ID.delta.db" ]; then
+      ( cd "$WORK" && zip -q "$ID.delta.zip" "$ID.delta.db" )
+      DSIZE_B=$(stat -f%z "$WORK/$ID.delta.zip" 2>/dev/null || stat -c%s "$WORK/$ID.delta.zip")
+      FSIZE_B=$(stat -f%z "$WORK/$ID.zip" 2>/dev/null || stat -c%s "$WORK/$ID.zip")
+      if [ "$DSIZE_B" -lt $(( FSIZE_B / 2 )) ]; then
+        gh release upload "$TAG" "$WORK/$ID.delta.zip" --clobber --repo "$REPO"
+        DSIZE_MB=$(( ( DSIZE_B + 1048575 ) / 1048576 ))
+        DELTA_JSON="$(jq -nc --arg url "https://github.com/$REPO/releases/download/$TAG/$ID.delta.zip" \
+          --argjson from "$OLD_REV" --argjson size "$DSIZE_MB" '{fromRev:$from,url:$url,sizeMb:$size}')"
+        echo "→ delta published: ${DSIZE_MB} MB (full is ${SIZE} MB)"
+      else
+        echo "→ delta too big ($(( DSIZE_B / 1048576 )) MB vs full ${SIZE} MB) — clients will full-download"
+      fi
+    fi
+  fi
+  rm -rf "$WORK/oldpack" "$WORK/old.zip" "$WORK/$ID.delta.db"
+fi
+rm -f "$WORK/$ID.db"
+
 gh release upload "$TAG" "$WORK/$ID.zip" --clobber --repo "$REPO"
 
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
-  '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
+  --argjson rev "$REV" --arg updated "$UPDATED_AT" --argjson counts "$COUNTS" --argjson delta "$DELTA_JSON" \
+  '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox,rev:$rev,updatedAt:$updated,counts:$counts}
+   + (if $delta != null then {delta:$delta} else {} end)')"
 
 # MANIFEST_MODE=emit (CI matrix): drop the entry for the central merge job (parallel builds must not
 # read-modify-write the manifest). Default (local single-region): merge it ourselves.

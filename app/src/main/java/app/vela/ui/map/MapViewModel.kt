@@ -160,6 +160,8 @@ data class MapUiState(
     val poiPackDownloadingId: String? = null,
     val poiPackDownloadPct: Int = 0,
     val poiPackInstalledIds: Set<String> = emptySet(),
+    val poiPackRegions: List<app.vela.offline.RoutingRegion> = emptyList(), // the pack catalog (revs/deltas)
+    val poiPackInstalledRevs: Map<String, Int> = emptyMap(),                // installed pack revision per region
 )
 
 /**
@@ -2578,6 +2580,15 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val regions = routingGraphStore.manifest(app.vela.BuildConfig.ROUTING_MANIFEST_URL)
             _state.update { it.copy(routingRegions = regions) }
+            // The pack catalog too (revs + deltas) — Settings compares it against the installed pack
+            // revisions to offer "Update places" on stale regions.
+            val packs = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
+            _state.update {
+                it.copy(
+                    poiPackRegions = packs,
+                    poiPackInstalledRevs = poiPackStore.installedIds().associateWith { id -> poiPackStore.installedRev(id) },
+                )
+            }
         }
     }
 
@@ -2600,28 +2611,40 @@ class MapViewModel @Inject constructor(
     }
 
     /** Pull [region]'s offline place pack (best-effort — regions without a pack just skip). The pack
-     *  catalog shares the routing catalog's region ids, so the graph's region row looks itself up. */
-    private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion) {
+     *  catalog shares the routing catalog's region ids, so the graph's region row looks itself up.
+     *  With [update] set, an installed pack is refreshed: by row-level DELTA when the manifest offers
+     *  one matching the installed revision (a few MB), else by full re-download. */
+    private suspend fun downloadPoiPack(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         val pack = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
             .firstOrNull { it.id == region.id }
-        if (pack == null || region.id in poiPackStore.installedIds()) {
+        val installed = region.id in poiPackStore.installedIds()
+        if (pack == null || (installed && !update)) {
             _state.update { it.copy(regionDownloadName = null) }
             return
         }
         _state.update { it.copy(poiPackDownloadingId = pack.id, poiPackDownloadPct = 0, regionDownloadName = region.name) }
-        val ok = poiPackStore.download(pack) { pct ->
-            _state.update { it.copy(poiPackDownloadPct = pct) }
+        val canDelta = installed && pack.deltaUrl != null && poiPackStore.installedRev(pack.id) == pack.deltaFromRev
+        var ok = false
+        if (canDelta) {
+            ok = poiPackStore.applyDelta(pack) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
+        }
+        if (!ok) { // no delta path (or it failed) → full download replaces the pack
+            ok = poiPackStore.download(pack) { pct -> _state.update { it.copy(poiPackDownloadPct = pct) } }
         }
         _state.update {
-            it.copy(poiPackDownloadingId = null, regionDownloadName = null, poiPackInstalledIds = poiPackStore.installedIds())
+            it.copy(
+                poiPackDownloadingId = null, regionDownloadName = null,
+                poiPackInstalledIds = poiPackStore.installedIds(),
+                poiPackInstalledRevs = poiPackStore.installedIds().associateWith { id -> poiPackStore.installedRev(id) },
+            )
         }
         if (ok) showStatus(appContext.getString(R.string.mapvm_poipack_ready, region.name))
     }
 
-    /** Settings "Get places" on an already-installed routing region whose pack predates this feature
-     *  (or was skipped) — pulls just the place pack. Says so when the region has no pack published yet
-     *  (the catalog builds out region by region), instead of silently doing nothing. */
-    fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion) {
+    /** Settings "Get places" / "Update places" on an installed routing region — pulls or refreshes just
+     *  the place pack. Says so when the region has no pack published yet (the catalog builds out region
+     *  by region), instead of silently doing nothing. */
+    fun downloadPoiPackFor(region: app.vela.offline.RoutingRegion, update: Boolean = false) {
         if (_state.value.poiPackDownloadingId != null || _state.value.routingDownloadingId != null) return
         viewModelScope.launch {
             val available = poiPackStore.manifest(app.vela.BuildConfig.POI_PACK_MANIFEST_URL)
@@ -2630,7 +2653,7 @@ class MapViewModel @Inject constructor(
                 showStatus(appContext.getString(R.string.mapvm_poipack_unavailable, region.name))
                 return@launch
             }
-            downloadPoiPack(region)
+            downloadPoiPack(region, update = update)
         }
     }
 

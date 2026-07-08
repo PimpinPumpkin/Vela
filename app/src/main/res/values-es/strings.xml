@@ -69,6 +69,8 @@
     <string name="settings_routing_installed_places">Instalado · lugares con búsqueda sin conexión</string>
     <string name="settings_routing_places_downloading">Guardando lugares · %1$d %%</string> <!-- format -->
     <string name="settings_get_places">Obtener lugares</string>
+    <string name="settings_update_places">Actualizar lugares</string>
+    <string name="settings_routing_update_available">Instalado · actualización de lugares disponible</string>
     <string name="settings_routing_size_here">%1$s MB · cubre tu ubicación</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Quitar rutas sin conexión</string>
