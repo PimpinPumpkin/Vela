@@ -73,6 +73,10 @@
     <string name="settings_transit_layer_hint">Draws train and subway lines on the map in colour, so rail is easy to follow. Uses the open map data already in the tiles, no network.</string>
     <string name="settings_read_all_reviews">“Read all reviews” button</string>
     <string name="settings_read_all_reviews_hint">Reviews in the place sheet are always Vela\'s own smooth native list. This adds a “Read all reviews” button that opens Google\'s full reviews page FULL-SCREEN, with every review (not just the first ~50), Google\'s server-side search, and video reviews that play. Trackers/beacons are blocked, but it does run Google\'s page inside the app. Off = native list only, no Google page for reviews.</string>
+    <string name="settings_show_reviews">Show reviews</string>
+    <string name="settings_show_reviews_hint">Off = place pages show no reviews, and Vela never fetches them.</string>
+    <string name="settings_load_photos">Load photos</string>
+    <string name="settings_load_photos_hint">Off = place pages show no photos, and nothing gets downloaded for them. Saves data.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Using the map without signal takes two things: the map TILES you see, and the ROAD NETWORK that routes you. Saving a map area grabs both for that spot; the region list below adds the road network for anywhere you\'re travelling.</string>
     <string name="settings_offline_map_area">Map area</string>
