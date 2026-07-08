@@ -73,6 +73,12 @@
     <string name="settings_transit_layer_hint">Draws train and subway lines on the map in colour, so rail is easy to follow. Uses the open map data already in the tiles, no network.</string>
     <string name="settings_read_all_reviews">“Read all reviews” button</string>
     <string name="settings_read_all_reviews_hint">Reviews in the place sheet are always Vela\'s own smooth native list. This adds a “Read all reviews” button that opens Google\'s full reviews page FULL-SCREEN, with every review (not just the first ~50), Google\'s server-side search, and video reviews that play. Trackers/beacons are blocked, but it does run Google\'s page inside the app. Off = native list only, no Google page for reviews.</string>
+    <string name="settings_buildings_3d">3D buildings</string>
+    <string name="settings_buildings_3d_hint">Raised building shapes when zoomed right in. Turning this off can make panning smoother on older phones; the flat footprints stay either way.</string>
+    <string name="settings_show_reviews">Show reviews</string>
+    <string name="settings_show_reviews_hint">Off = place pages show no reviews, and Vela never fetches them.</string>
+    <string name="settings_load_photos">Load photos</string>
+    <string name="settings_load_photos_hint">Off = place pages show no photos, and nothing gets downloaded for them. Saves data.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Using the map without signal takes two things: the map TILES you see, and the ROAD NETWORK that routes you. Saving a map area grabs both for that spot; the region list below adds the road network for anywhere you\'re travelling.</string>
     <string name="settings_offline_map_area">Map area</string>
@@ -93,6 +99,8 @@
     <string name="settings_routing_installed_places">Installed · places searchable offline</string>
     <string name="settings_routing_places_downloading">Saving places · %1$d%%</string> <!-- format -->
     <string name="settings_get_places">Get places</string>
+    <string name="settings_update_places">Update places</string>
+    <string name="settings_routing_update_available">Installed · places update available</string>
     <string name="settings_routing_size_here">%1$s MB · covers your location</string> <!-- format -->
     <string name="settings_routing_size">%1$s MB</string> <!-- format -->
     <string name="settings_routing_remove">Remove offline routing</string>
@@ -410,4 +418,16 @@
     <string name="navservice_notif_action_end">End</string>
     <string name="navservice_channel_name">Navigation</string>
 
+    <string name="update_available_title">Vela %1$s is available</string>
+    <string name="update_downloading">Downloading… %1$d%%</string>
+    <string name="update_later">Not now</string>
+    <string name="update_install">Update</string>
+    <string name="update_download_failed">Update download failed. Try again later.</string>
+    <string name="settings_update_auto">Check for updates on launch</string>
+    <string name="settings_update_auto_hint">Looks at the newest GitHub release about once a day and offers it when it is newer than this build. The update installs through Android\'s normal installer. If you already update through Obtainium you can turn this off.</string>
+    <string name="settings_update_check_now">Check for updates</string>
+    <string name="settings_update_checking">Checking…</string>
+    <string name="settings_update_found">Update available! Go back to the map to install it.</string>
+    <string name="settings_update_none">You\'re on the latest version.</string>
+    <string name="settings_place_pages">Place pages</string>
 </resources>
