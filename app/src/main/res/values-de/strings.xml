@@ -57,6 +57,8 @@
     <string name="settings_load_photos_hint">Aus = Orte zeigen keine Fotos, und es wird nichts dafür heruntergeladen. Spart Datenvolumen.</string>
     <string name="settings_hide_adult">Erwachsenen-Kategorien ausblenden</string>
     <string name="settings_hide_adult_hint">An = Bars, Clubs, Casinos, Spirituosengeschäfte und andere Erwachsenen- / Nachtleben-Orte werden aus Suche und Karte ausgeblendet.</string>
+    <string name="settings_hide_external_links">Website &amp; externe Links ausblenden</string>
+    <string name="settings_hide_external_links_hint">An = Ortsseiten zeigen keine Website-, Street-View- oder Buchen / Bestellen-Schaltflächen (keine beliebigen externen Seiten geöffnet).</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Für die Kartennutzung ohne Signal braucht es zwei Dinge – die KARTEN-Kacheln, die Sie sehen, und das STRASSENNETZ, das Sie leitet. Das Speichern eines Kartenbereichs holt beides für diesen Ort; die Regionsliste unten fügt das Straßennetz für Ihr Reiseziel hinzu.</string>
     <string name="settings_offline_map_area">Kartenbereich</string>
