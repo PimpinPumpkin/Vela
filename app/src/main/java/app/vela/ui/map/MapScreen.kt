@@ -419,12 +419,16 @@ fun MapScreen(
                         onBack = if (searchOpen) ({ focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
                     )
                     when {
-                        // While picking an origin/stop the overlay stays latched open (pickingOrigin/
-                        // pickingStop, not field focus) — but a typed IME submit or a recent-search tap
-                        // fills state.results with the field UNfocused. Fall through to the results list
-                        // then (its taps flow into selectPlace, whose pick-mode guards consume them),
-                        // else the results would be invisible behind the entry page: a dead-end.
-                        searchOpen && (searchFocused || state.results.isEmpty()) -> SearchEntryContent(
+                        // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)
+                        // when the field is focused, when there are no results yet, OR while picking an
+                        // origin/stop with a blank query. That last case matters: tapping "From" when the
+                        // destination search still had results (plus a place selected) matched NO branch,
+                        // so the picker was BLANK and "Choose on map" was unreachable. Typing a query then
+                        // fills the entry page with suggestions as usual.
+                        searchOpen && (
+                            searchFocused || state.results.isEmpty() ||
+                                ((state.pickingOrigin || state.pickingStop) && state.query.isBlank())
+                            ) -> SearchEntryContent(
                             suggestions = state.suggestions,
                             saved = state.saved,
                             recents = state.recents,
