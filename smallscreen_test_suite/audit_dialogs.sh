@@ -9,7 +9,7 @@
 #
 #   ./audit_dialogs.sh          # runs; restores the original screen size on exit
 set -uo pipefail
-D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; source "$D/lib.sh"; source "$D/nav.sh"
+DPAD="$(cd "$(dirname "${BASH_SOURCE[0]}")/../dpad_test_suite" && pwd)"; source "$DPAD/lib.sh"; source "$DPAD/nav.sh"; D="$DPAD"
 
 if ! $ADB get-state >/dev/null 2>&1; then echo "No device."; exit 2; fi
 FAILS=0

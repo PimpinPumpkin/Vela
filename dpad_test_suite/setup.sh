@@ -7,6 +7,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
 $ADB shell pm grant "$PKG" android.permission.ACCESS_FINE_LOCATION   >/dev/null 2>&1
 $ADB shell pm grant "$PKG" android.permission.ACCESS_COARSE_LOCATION >/dev/null 2>&1
+# Pre-grant notifications so starting nav / opening steps doesn't pop the AOSP POST_NOTIFICATIONS
+# system dialog mid-audit (it's a platform dialog, not the app's to auto-focus — was a false FAIL).
+$ADB shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS     >/dev/null 2>&1
 $ADB shell appops set com.android.shell android:mock_location allow  >/dev/null 2>&1
 $ADB shell cmd location providers add-test-provider gps              >/dev/null 2>&1
 $ADB shell cmd location providers set-test-provider-enabled gps true >/dev/null 2>&1
