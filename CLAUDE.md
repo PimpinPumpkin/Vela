@@ -91,6 +91,21 @@ genuinely needs no doc edit, say why in the commit.
 - The one seam is `core/data/MapDataSource`. `MockMapDataSource` is the default
   and keeps the entire app usable offline; `google/GoogleMapsDataSource` is the
   real scraper.
+- **Android Auto (`app/car/`, first cut 2026-07-08).** `VelaCarAppService` is a
+  NAVIGATION-category templated `CarAppService` (manifest service + `xml/automotive_app_desc.xml`
+  + the two `androidx.car.app.*` permissions + application-level `minCarApiLevel=1`); a sideload
+  appears in the car launcher only with AA developer "Unknown sources" on, hence
+  `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`. `CarMapScreen` is the whole car UI:
+  NavigationTemplate (Re-center / + / − action strip; RoutingInfo card with
+  `NavSession.state.maneuverText` + distance while navigating) over a map surface. **The
+  MapLibre-on-car trick: SurfaceCallback surface → `DisplayManager.createVirtualDisplay` →
+  `Presentation` → plain `MapView`** (MapLibre can't draw to a raw surface). It reuses
+  `applyDark`/`applyLight` from VelaMapView (made `internal` for this) keyed to
+  `carContext.isDarkMode`, has its OWN AOSP LocationManager listener for the puck (works with the
+  phone UI closed), and draws the route from `NavSession.state.route.polyline`. Pan/zoom arrive as
+  `onScroll`/`onScale` and move the camera by hand (projection math — `MapLibreMap.scrollBy` isn't
+  a thing in 11.x). The PHONE runs nav (MapViewModel feeds NavSession) and speaks; the car is a
+  display. Car-side search/route-start is a follow-up. Untested on a real head unit yet.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
