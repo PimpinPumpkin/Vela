@@ -57,6 +57,14 @@ import kotlinx.coroutines.launch
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
+// D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import app.vela.ui.dpadHighlight
 
 /**
  * Top banner during navigation, styled like Google's: a large directional turn
@@ -132,7 +140,24 @@ fun ManeuverBanner(
                     },
                 )
             }
-            .then(if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier),
+            // D-pad step preview (docs/dpad.md): focus the banner, then LEFT/RIGHT walk the
+            // upcoming steps (the key mirror of the swipe above); OK resumes live guidance
+            // (via the clickable below while previewing). Placed BEFORE the clickable so key
+            // events bubbling up from its focus target reach this handler; the extra
+            // focusable() only exists when the clickable isn't there (one focus stop always).
+            .dpadHighlight(RoundedCornerShape(12.dp))
+            .onKeyEvent { ev ->
+                val previewKey = ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight
+                when {
+                    !previewKey -> false
+                    ev.type != KeyEventType.KeyUp -> true // consume the DOWN so focus doesn't move
+                    ev.key == Key.DirectionRight -> { latestNext(); true }
+                    else -> { latestPrev(); true }
+                }
+            }
+            .then(
+                if (previewing) Modifier.clickable(onClick = onExitPreview) else Modifier.focusable(),
+            ),
         colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
     ) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {

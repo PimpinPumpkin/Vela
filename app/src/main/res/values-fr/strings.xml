@@ -228,6 +228,9 @@
     <string name="mapscreen_choose_set_stop">Définir l\'arrêt</string>
     <string name="mapscreen_destination">Destination</string>
     <string name="mapscreen_center_on_my_location">Centrer sur ma position</string>
+    <string name="mapscreen_zoom_in">Zoomer</string>
+    <string name="mapscreen_zoom_out">Dézoomer</string>
+    <string name="mapscreen_dpad_engage">OK : déplacer la carte</string>
     <string name="mapscreen_stop_replay">Arrêter la relecture</string>
     <string name="mapscreen_psds_tip_title">Verrouillage GPS lent ?</string>
     <string name="mapscreen_psds_tip_body">Activez PSDS dans Paramètres → Localisation pour un positionnement bien plus rapide (sur GrapheneOS, il passe par leur proxy).</string>

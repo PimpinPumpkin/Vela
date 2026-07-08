@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
@@ -37,15 +41,24 @@ import app.vela.R
 /** First-run welcome — what Vela is and why, then a single Get-started button. */
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
+    // Scrollable so the Get-started button is always reachable — on a small D-pad screen
+    // (e.g. 480×640 keypad phone) the fixed layout pushed the button off the bottom with no
+    // way to scroll to it, so a D-pad user couldn't SEE it (it was focusable-when-clipped,
+    // but invisible — docs/dpad.md). heightIn(min = screen height) keeps the weight spacers
+    // centring the content on tall screens; on short ones the column grows and scrolls.
+    val scroll = rememberScrollState()
+    val minH = LocalConfiguration.current.screenHeightDp.dp
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
         Column(
             Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.systemBars)
+                .verticalScroll(scroll)
+                .heightIn(min = minH)
                 .padding(horizontal = 28.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(24.dp))
             Icon(
                 Icons.Default.Explore,
                 contentDescription = null,
@@ -76,7 +89,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
                 stringResource(R.string.welcome_feature_open_source_title),
                 stringResource(R.string.welcome_feature_open_source_body),
             )
-            Spacer(Modifier.weight(1f))
+            Spacer(Modifier.height(40.dp))
             Button(
                 onClick = onGetStarted,
                 modifier = Modifier.fillMaxWidth().height(52.dp),

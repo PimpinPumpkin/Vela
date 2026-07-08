@@ -21,7 +21,6 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
@@ -127,6 +126,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
+// D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
+import androidx.compose.foundation.focusable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
+import app.vela.ui.dpadHighlight
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -334,9 +343,11 @@ fun PlaceSheet(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        detectTapGestures(onTap = { expandedState.value = !expandedState.value })
-                    }
+                    // D-pad (docs/dpad.md): the handle is a real button — focusable, OK toggles
+                    // peek/expanded. clickable replaces the old tap-only detector (same tap
+                    // behaviour under touch); the drag detector below is untouched.
+                    .dpadHighlight(RoundedCornerShape(3.dp))
+                    .clickable { expandedState.value = !expandedState.value }
                     .pointerInput(Unit) {
                         var total = 0f
                         detectVerticalDragGestures(
@@ -879,6 +890,7 @@ fun DirectionsPanel(
                             if (dy > 6f) collapsed.value = true else if (dy < -6f) collapsed.value = false
                         }
                     }
+                    .dpadHighlight(RoundedCornerShape(3.dp)) // D-pad: OK toggles (docs/dpad.md)
                     .clickable { collapsed.value = !collapsed.value }
                     .padding(vertical = 6.dp),
                 contentAlignment = Alignment.Center,
@@ -1384,7 +1396,31 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
     if (urls.isEmpty()) return
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
-        Box(Modifier.fillMaxSize().background(Color.Black)) {
+        // D-pad (docs/dpad.md): the viewer grabs focus so LEFT/RIGHT page through the
+        // photos with no touch; BACK already dismisses (Dialog).
+        val galleryFocus = remember { FocusRequester() }
+        val keyScope = rememberCoroutineScope()
+        LaunchedEffect(Unit) { runCatching { galleryFocus.requestFocus() } }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(Color.Black)
+                .focusRequester(galleryFocus)
+                .onKeyEvent { ev ->
+                    val pageKey = ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight
+                    when {
+                        !pageKey -> false
+                        ev.type != KeyEventType.KeyUp -> true
+                        ev.key == Key.DirectionRight -> {
+                            keyScope.launch { pager.animateScrollToPage(pager.currentPage + 1) }; true
+                        }
+                        else -> {
+                            keyScope.launch { pager.animateScrollToPage(pager.currentPage - 1) }; true
+                        }
+                    }
+                }
+                .focusable(),
+        ) {
             HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                 // One gesture loop so pinch-zoom, pan-when-zoomed, swipe-down-to-
                 // dismiss, AND the pager's horizontal swipe between photos all work

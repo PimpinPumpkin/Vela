@@ -228,6 +228,9 @@
     <string name="mapscreen_choose_set_stop">Задать остановку</string>
     <string name="mapscreen_destination">Пункт назначения</string>
     <string name="mapscreen_center_on_my_location">Центрировать на моём местоположении</string>
+    <string name="mapscreen_zoom_in">Приблизить</string>
+    <string name="mapscreen_zoom_out">Отдалить</string>
+    <string name="mapscreen_dpad_engage">OK: двигать карту</string>
     <string name="mapscreen_stop_replay">Остановить воспроизведение</string>
     <string name="mapscreen_psds_tip_title">Медленно ловит GPS?</string>
     <string name="mapscreen_psds_tip_body">Включите PSDS в «Настройки → Местоположение» для гораздо более быстрого определения (в GrapheneOS запрос идёт через их прокси).</string>
