@@ -32,6 +32,8 @@ class VelaApp : Application() {
         Traffic.init(this)
         TransitLayer.init(this)
         app.vela.ui.LiveReviews.init(this)
+        app.vela.ui.ShowReviews.init(this)
+        app.vela.ui.LoadPhotos.init(this)
         Onboarding.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
         // restart and can be exported from Settings → Diagnostics next launch.

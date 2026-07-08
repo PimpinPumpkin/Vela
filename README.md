@@ -450,6 +450,7 @@ without an app release.
 - [x] **Open router (OSRM) is primary** — complete street-named steps incl. highway refs / exit numbers / **per-lane diagrams**; Google overlays the **traffic-aware ETA** + **jam reroute** and is the offline-less fallback
 - [x] **Alternates**, **live-traffic overlay**, **search-along-route**, depart/arrive-time planning
 - [x] Turn-by-turn — maneuver banner (real lane diagram / exit shields / swipe-ahead), spoken + haptic guidance, **speedometer**, **re-center**, arrival summary
+- [x] Settings toggles to **hide reviews** and **skip photo loading** (place pages stay lean, nothing is fetched)
 - [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
 - [x] **Offline routing on-device (GraphHopper)** — a downloadable **135-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief

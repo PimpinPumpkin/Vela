@@ -49,6 +49,10 @@
     <string name="settings_transit_layer_hint">Dibuja las líneas de tren y metro en color sobre el mapa, para seguir el ferrocarril con facilidad. Usa los datos abiertos que ya están en los mosaicos, sin red.</string>
     <string name="settings_read_all_reviews">Botón «Leer todas las reseñas»</string>
     <string name="settings_read_all_reviews_hint">Las reseñas de la ficha del lugar son siempre la propia lista nativa y fluida de Vela. Esto añade un botón «Leer todas las reseñas» que abre la página completa de reseñas de Google a PANTALLA COMPLETA: todas las reseñas (no solo las primeras ~50), la búsqueda del lado del servidor de Google y las reseñas en vídeo se reproducen. Se bloquean rastreadores y balizas, pero sí ejecuta la página de Google dentro de la app. Desactivado = solo lista nativa, sin página de Google para las reseñas.</string>
+    <string name="settings_show_reviews">Mostrar reseñas</string>
+    <string name="settings_show_reviews_hint">Desactivado = las páginas de sitios no muestran reseñas y Vela nunca las descarga.</string>
+    <string name="settings_load_photos">Cargar fotos</string>
+    <string name="settings_load_photos_hint">Desactivado = las páginas de sitios no muestran fotos y no se descarga nada. Ahorra datos.</string>
     <string name="settings_offline">Sin conexión</string>
     <string name="settings_offline_hint">Usar el mapa sin señal requiere dos cosas: los MOSAICOS del mapa que ves y la RED DE CARRETERAS que traza tus rutas. Guardar una zona del mapa obtiene ambas para ese punto; la lista de regiones de abajo añade la red de carreteras de cualquier lugar por el que viajes.</string>
     <string name="settings_offline_map_area">Zona del mapa</string>
