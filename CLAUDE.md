@@ -114,6 +114,12 @@ genuinely needs no doc edit, say why in the commit.
   8.11.1, compileSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
 - Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /
   `VELA_KEY_ALIAS` (default alias `vela`); falls back to debug keystore locally.
+- **No blocking IPC/IO from a composable body.** `SettingsScreen` used to call
+  `vm.voiceEngines()` (a `PackageManager.queryIntentServices` binder IPC + per-engine
+  `loadLabel`) directly in composition, re-running on every recompose — invisible jank on a
+  Pixel, a >5 s ANR on a slow keypad phone (found by ys770's fork, fix taken 2026-07-08).
+  Load such data with `produceState { withContext(Dispatchers.IO) { … } }`;
+  `VoiceGuide.availableEngines()` also caches the system-engine enumeration per process.
 
 ## Layout
 
