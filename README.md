@@ -122,6 +122,7 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Open building overlay** | Microsoft building footprints (ODbL) as per-region PMTiles, rendered beneath OSM to fill areas OSM never mapped; world catalog of 51 US states + ~199 countries (US + Global ML sources) | `app/offline/OverlayTileStore.kt`, `app/ui/map/VelaMapView.kt`, `scripts/build-overlay-region.sh`, `tools/overlay-regions.json` |
 | **Open house-number overlay** | OpenAddresses address points as per-state PMTiles, streamed + rendered as a house-number SymbolLayer where OSM lacks `addr:housenumber` | `app/ui/map/VelaMapView.kt`, `scripts/build-address-region.sh`, `tools/address-regions.json` |
 | **Navigation (banner, voice, haptics)** | Pure `NavEngine` turn logic (unit-tested) → maneuver banner (lane diagram / shields), AOSP TTS, direction-coded vibration | `core/nav/`, `app/ui/nav/`, `core/voice/`, `core/feedback/` |
+| **Android Auto (first cut)** | Navigation-category CarAppService; the MapLibre map draws onto the car surface through a VirtualDisplay + Presentation; maneuver card from the shared NavSession. Sideloads show up with AA's "Unknown sources" on | `app/car/VelaCarAppService.kt`, `app/car/CarMapScreen.kt` |
 | **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor — never GMS/Fused | `core/location/` |
 | **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
 | **Distribution** | Every push to `main` → CI builds + signs → `v0.2.<run>` GitHub release; Obtainium tracks it | `.github/workflows/ci.yml` |
@@ -450,6 +451,7 @@ without an app release.
 - [x] **Open router (OSRM) is primary** — complete street-named steps incl. highway refs / exit numbers / **per-lane diagrams**; Google overlays the **traffic-aware ETA** + **jam reroute** and is the offline-less fallback
 - [x] **Alternates**, **live-traffic overlay**, **search-along-route**, depart/arrive-time planning
 - [x] Turn-by-turn — maneuver banner (real lane diagram / exit shields / swipe-ahead), spoken + haptic guidance, **speedometer**, **re-center**, arrival summary
+- [x] **Android Auto (first cut)** — launchable in the car (with AA "Unknown sources"), live map + puck + route + current-maneuver card; start routes on the phone for now
 - [x] Settings toggles to **hide reviews** and **skip photo loading** (place pages stay lean, nothing is fetched)
 - [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
 - [x] **Offline routing on-device (GraphHopper)** — a downloadable **135-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
