@@ -61,13 +61,23 @@ class OfflinePoiStore @Inject constructor(
         .rawQuery("SELECT COUNT(*) FROM poi", null)
         .use { if (it.moveToFirst()) it.getInt(0) else 0 }
 
-    /** Name/category match, nearest first. */
+    /** Name/category match, nearest first. Common category words ("gas", "coffee", "food", the map's
+     *  own category chips) are expanded to the OSM tag values we actually store — a gas station is
+     *  category "Fuel" (from `amenity=fuel`), not "gas", so a plain LIKE would miss it. */
     fun search(query: String, near: LatLng?, limit: Int = 30): List<Place> {
-        val q = "%${query.trim()}%"
+        val term = query.trim()
+        val like = "%$term%"
+        // name/category direct match, plus a category LIKE per expanded OSM keyword.
+        val where = StringBuilder("name LIKE ? OR category LIKE ?")
+        val args = ArrayList<String>().apply { add(like); add(like) }
+        for (c in categoryKeywords(term)) {
+            where.append(" OR category LIKE ?")
+            args.add("%$c%")
+        }
         val rows = ArrayList<Place>()
         helper.readableDatabase.rawQuery(
-            "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE name LIKE ? OR category LIKE ? LIMIT 400",
-            arrayOf(q, q),
+            "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE $where LIMIT 400",
+            args.toTypedArray(),
         ).use { c ->
             while (c.moveToNext()) {
                 val loc = LatLng(c.getDouble(2), c.getDouble(3))
@@ -87,5 +97,53 @@ class OfflinePoiStore @Inject constructor(
             }
         }
         return rows.sortedBy { it.distanceMeters ?: Double.MAX_VALUE }.take(limit)
+    }
+
+    companion object {
+        // Map a search word (or the map's category chip) to the OSM tag values we store as `category`
+        // (amenity/shop/leisure/…, space-separated + capitalized, e.g. "Fuel", "Fast food"). Matched
+        // case-insensitively via LIKE. Keep the values in the OSM form, not the display word.
+        private val CATEGORY_KEYWORDS: Map<String, List<String>> = mapOf(
+            "gas" to listOf("fuel", "charging station"),
+            "gas station" to listOf("fuel"),
+            "fuel" to listOf("fuel"),
+            "petrol" to listOf("fuel"),
+            "charging" to listOf("charging station"),
+            "ev charging" to listOf("charging station"),
+            "coffee" to listOf("cafe", "coffee"),
+            "cafe" to listOf("cafe"),
+            "food" to listOf("restaurant", "fast food"),
+            "restaurant" to listOf("restaurant", "fast food"),
+            "restaurants" to listOf("restaurant", "fast food"),
+            "fast food" to listOf("fast food"),
+            "groceries" to listOf("supermarket", "convenience", "greengrocer"),
+            "grocery" to listOf("supermarket", "convenience"),
+            "supermarket" to listOf("supermarket"),
+            "store" to listOf("supermarket", "convenience", "department store"),
+            "pharmacy" to listOf("pharmacy", "chemist"),
+            "drug store" to listOf("pharmacy", "chemist"),
+            "hotel" to listOf("hotel", "motel", "guest house"),
+            "motel" to listOf("motel"),
+            "lodging" to listOf("hotel", "motel", "guest house", "hostel"),
+            "parking" to listOf("parking"),
+            "atm" to listOf("atm", "bank"),
+            "bank" to listOf("bank", "atm"),
+            "hospital" to listOf("hospital"),
+            "clinic" to listOf("clinic", "doctors"),
+            "doctor" to listOf("doctors", "clinic"),
+            "urgent care" to listOf("clinic", "hospital"),
+            "bar" to listOf("bar", "pub", "biergarten"),
+            "pub" to listOf("pub", "bar"),
+            "bakery" to listOf("bakery"),
+            "park" to listOf("park"),
+            "school" to listOf("school"),
+            "gym" to listOf("fitness centre", "sports centre"),
+            "car wash" to listOf("car wash"),
+            "post office" to listOf("post office"),
+            "hardware" to listOf("hardware", "doityourself"),
+        )
+
+        internal fun categoryKeywords(query: String): List<String> =
+            CATEGORY_KEYWORDS[query.trim().lowercase()] ?: emptyList()
     }
 }
