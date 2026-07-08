@@ -4,8 +4,10 @@ import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.google.GoogleResponse
 import app.vela.core.data.google.arr
 import app.vela.core.data.google.at
+import app.vela.core.data.google.dbl
 import app.vela.core.data.google.long
 import app.vela.core.data.google.str
+import app.vela.core.model.LatLng
 import app.vela.core.model.TransitItinerary
 import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
@@ -45,19 +47,21 @@ object TransitParser {
 
     /** Parse a raw `)]}'`-guarded directions body (what the WebView reads out of
      *  `APP_INITIALIZATION_STATE`). Kept here so `:app` — which has no JSON lib —
-     *  can hand over the string and stay out of kotlinx.serialization. */
-    fun parse(body: String): List<TransitItinerary> = parse(GoogleResponse.parse(body))
+     *  can hand over the string and stay out of kotlinx.serialization. [origin]/[dest]
+     *  (the trip endpoints) anchor the first/last walk legs for on-demand walk directions. */
+    fun parse(body: String, origin: LatLng? = null, dest: LatLng? = null): List<TransitItinerary> =
+        parse(GoogleResponse.parse(body), origin, dest)
 
-    fun parse(root: JsonElement): List<TransitItinerary> {
+    fun parse(root: JsonElement, origin: LatLng? = null, dest: LatLng? = null): List<TransitItinerary> {
         val trips = root.at(0, 1).arr()
             ?: throw CalibrationNeededException("transit trips (root[0][1])")
-        val parsed = trips.mapNotNull { runCatching { parseItinerary(it) }.getOrNull() }
+        val parsed = trips.mapNotNull { runCatching { parseItinerary(it, origin, dest) }.getOrNull() }
             .filter { it.durationText != null || it.departureText != null }
         if (parsed.isEmpty()) throw CalibrationNeededException("transit: 0 itineraries parsed")
         return parsed
     }
 
-    private fun parseItinerary(trip: JsonElement): TransitItinerary {
+    private fun parseItinerary(trip: JsonElement, origin: LatLng?, dest: LatLng?): TransitItinerary {
         val t = trip.at(0) ?: trip // the trip's summary node
         val dep = t.at(5, 0)
         val arr = t.at(5, 1)
@@ -78,8 +82,22 @@ object TransitParser {
             alerts = rideLegs.flatMap { parseAlerts(it.at(0, 9)) }.distinct(),
             fare = parseFare(t),
             lines = parseLines(t.at(14)),
-            steps = parseSteps(legsEl),
+            steps = assignWalkEndpoints(parseSteps(legsEl), origin, dest),
         )
+    }
+
+    /** Give each WALK leg its start/end coordinates so the UI can fetch turn-by-turn walking
+     *  directions on demand: from the previous ride's alight stop (or the trip origin) to the next
+     *  ride's board stop (or the trip destination). */
+    private fun assignWalkEndpoints(steps: List<TransitStep>, origin: LatLng?, dest: LatLng?): List<TransitStep> {
+        if (steps.none { it.line == null }) return steps
+        return steps.mapIndexed { i, step ->
+            if (step.line != null) step else {
+                val from = (i - 1 downTo 0).firstNotNullOfOrNull { steps[it].alightStop?.location } ?: origin
+                val to = (i + 1..steps.lastIndex).firstNotNullOfOrNull { steps[it].boardStop?.location } ?: dest
+                step.copy(walkFrom = from, walkTo = to)
+            }
+        }
     }
 
     /** Service alerts on a ride leg: `leg[0][9]` is an array whose entries carry a
@@ -151,11 +169,13 @@ object TransitParser {
         val name = n.at(0).str()?.takeIf { it.isNotBlank() } ?: return null
         val realtime = n.at(2, 2).str() ?: n.at(3, 2).str()
         val scheduled = n.at(7, 2).str() ?: n.at(8, 2).str()
+        val lat = n.at(4, 2).dbl(); val lng = n.at(4, 3).dbl()
         return TransitStopTime(
             name = name,
             code = n.at(1).str()?.takeIf { it.isNotBlank() },
             timeText = realtime ?: scheduled,
             scheduledText = scheduled?.takeIf { realtime != null && it != realtime },
+            location = if (lat != null && lng != null) LatLng(lat, lng) else null,
         )
     }
 
