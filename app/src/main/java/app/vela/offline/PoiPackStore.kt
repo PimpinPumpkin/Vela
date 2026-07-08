@@ -9,7 +9,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
-import java.io.InputStream
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -105,14 +104,5 @@ class PoiPackStore @Inject constructor(
     fun delete(id: String) {
         File(packsRoot, "$id.db").delete()
         registerPacks()
-    }
-
-    private class CountingInputStream(private val wrapped: InputStream, private val onRead: (Long) -> Unit) : InputStream() {
-        private var count = 0L
-        override fun read(): Int = wrapped.read().also { if (it >= 0) onRead(++count) }
-        override fun read(b: ByteArray, off: Int, len: Int): Int =
-            wrapped.read(b, off, len).also { if (it > 0) { count += it; onRead(count) } }
-        override fun available(): Int = wrapped.available()
-        override fun close() = wrapped.close()
     }
 }
