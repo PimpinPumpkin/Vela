@@ -84,19 +84,21 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
     val context = LocalContext.current
     // System back should return to the map, not fall through and exit the app.
     BackHandler(onBack = onBack)
-    // When arriving from the onboarding "set up offline" prompt we open expanded and
-    // scroll straight to the Offline section (it sits well below the fold).
+    // When arriving from the onboarding "set up offline" prompt, open the Offline section expanded and
+    // scroll straight to it (it sits below the fold). We measure the section's on-screen Y and the scroll
+    // viewport's top, then scroll by the difference. The effect re-runs whenever the measured Y changes,
+    // so it SELF-CORRECTS as the layout settles (the earlier one-shot latch scrolled to a stale position
+    // and landed mid-page); it converges once the section sits at the viewport top (the abs guard stops it).
     val scrollState = rememberScrollState()
     var viewportTopY by remember { mutableStateOf<Float?>(null) }
     var offlineSectionY by remember { mutableStateOf<Float?>(null) }
-    var didAutoScroll by remember { mutableStateOf(false) }
     LaunchedEffect(openOffline, viewportTopY, offlineSectionY) {
-        if (openOffline && !didAutoScroll) {
+        if (openOffline) {
             val top = viewportTopY
             val sec = offlineSectionY
             if (top != null && sec != null) {
-                didAutoScroll = true
-                scrollState.animateScrollTo((scrollState.value + (sec - top)).toInt().coerceAtLeast(0))
+                val target = (scrollState.value + (sec - top)).toInt().coerceIn(0, scrollState.maxValue)
+                if (kotlin.math.abs(scrollState.value - target) > 4) scrollState.animateScrollTo(target)
             }
         }
     }
@@ -221,7 +223,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             // Voice library — browse, download, switch between and remove Vela's neural voices (Piper).
             // Auto-expanded when nothing is installed so the download path is obvious.
-            var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty()) }
+            // Auto-expand when nothing is installed so the download path is obvious — EXCEPT when we
+            // arrived to set up offline, where a big open voice list between the top and the Offline
+            // section would push it around and fight the scroll-into-view.
+            var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty() && !openOffline) }
             CollapsibleSectionTitle(stringResource(R.string.settings_voice_library), voiceLibExpanded) { voiceLibExpanded = !voiceLibExpanded }
             if (voiceLibExpanded) VoiceLibrary(vm, state)
 
