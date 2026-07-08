@@ -523,6 +523,28 @@ genuinely needs no doc edit, say why in the commit.
   manifest test: serve a manifest+graph, `adb reverse tcp:8099 tcp:8099`, build with
   `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json` (localhost cleartext allowed by
   `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
+- **Offline forward geocoder — typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
+  `OverpassPois.fetchAddresses`/`fetchStreets`, DONE 2026-07-07, device-verified Silver Firs).** So an arbitrary
+  typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is
+  downloaded (`MapViewModel.downloadOfflinePois`) from keyless Overpass over a bbox **padded to a ~15 km min span
+  around the viewport centre** (`GEOCODE_PAD_DEG=0.09`, so a saved area covers the surrounding metro, not the few
+  on-screen tiles — the tile-viewport bbox gave only 8 addresses; the padded box gave **8591 addresses + 1466
+  streets**). TWO OSM sources into ONE SQLite db (`vela_offline_addr.db`, v2): **`addr:housenumber` points**
+  (`addr` table) for house-precise hits, and **named road centrelines** (`street` table, thinned to ~1 pt/120 m
+  by `toStreetPts`) for a street-level fallback where OSM has the road but no house numbers (the US-suburb
+  reality — this is the SAME gap the OpenAddresses/Microsoft *render* overlays fill, but those are PMTiles, not
+  queryable as a geocoder, so the geocoder uses OSM). `geocode()` is layered: (1) exact house number, (2)
+  **interpolate** between the two bracketing mapped numbers, (3) nearest mapped house on the street, (4) nearest
+  point on the street centreline. `normalizeStreet` expands abbreviations both ways ("Pl"↔"place", "SE"↔
+  "southeast") so all spellings hit the same rows. Wired into the offline search branch (`MapViewModel`, gated by
+  `OfflineAddressStore.looksLikeAddress` so "coffee" doesn't hit it) AND the network-error fallback; `haveArea`
+  counts `count()`+`streetCount()` so a street-only suburb isn't misreported "no data". Big Overpass bodies → the
+  no-call-timeout `offlineDownloadHttp` (same rule as the graph/overlay downloads). The result Place routes
+  through the normal GraphHopper offline engine. Device-verified wifi-off: "5601 156th Street Southeast" → *5 min
+  · 1.5 mi via Silver Firs Drive*. **Quiet offline indicator (no banner):** `MapUiState.offline` (a reactive
+  `ConnectivityManager` default-network callback, `observeConnectivity`, fails safe to online) drives a greyed
+  globe-slash + "Offline" in `SearchBar` (bare map only) and a globe-slash chip on the basemap
+  (`MapScreen`) — the old "Offline results" status line is gone.
 - **Open building-footprint overlay (`app/offline/OverlayTileStore` + `VelaMapView`, DONE 2026-07-04,
   device-verified in Silver Firs).** Fills the map's building gaps where OSM is thin (a suburb the
   Microsoft→OSM import never reached) with **Microsoft US Building Footprints (ODbL)**. Off-device, CI bakes
