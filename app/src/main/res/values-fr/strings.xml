@@ -45,6 +45,8 @@
     <string name="settings_map">Carte</string>
     <string name="settings_live_traffic">Trafic en temps réel</string>
     <string name="settings_live_traffic_hint">Colore les routes selon la congestion pendant l\'exploration de la carte (tuiles de trafic sans clé de Google). Désactivé par défaut — la navigation colore déjà votre itinéraire selon le trafic, ceci sert donc à examiner une zone plus large. C\'est une superposition matricielle, donc légèrement granuleuse.</string>
+    <string name="settings_transit_layer">Mettre en évidence les lignes de transport</string>
+    <string name="settings_transit_layer_hint">Trace les lignes de train et de métro en couleur sur la carte, pour suivre le rail facilement. Utilise les données ouvertes déjà présentes dans les tuiles, sans réseau.</string>
     <string name="settings_read_all_reviews">Bouton « Lire tous les avis »</string>
     <string name="settings_read_all_reviews_hint">Les avis dans la fiche du lieu sont toujours affichés dans la liste native fluide de Vela. Ceci ajoute un bouton « Lire tous les avis » qui ouvre la page complète des avis Google en PLEIN ÉCRAN — tous les avis (pas seulement les ~50 premiers), la recherche côté serveur de Google et la lecture des avis vidéo. Les traqueurs et balises sont bloqués, mais la page de Google s\'exécute alors dans l\'application. Désactivé = liste native uniquement, aucune page Google pour les avis.</string>
     <string name="settings_offline">Hors ligne</string>
