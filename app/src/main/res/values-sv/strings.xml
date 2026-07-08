@@ -315,6 +315,7 @@
     <string name="welcome_donate_dismiss">Kanske senare</string>
     <string name="search_close_cd">Stäng sökning</string>
     <string name="search_placeholder">Sök</string>
+    <string name="search_offline">Offline</string>
     <string name="search_clear_cd">Rensa sökning</string>
     <string name="search_settings_cd">Inställningar</string>
     <string name="mapvm_shortcut_set">%1$s inställd till %2$s</string>
@@ -350,6 +351,7 @@
     <string name="mapvm_offline_routing_failed">Hämtning av offlineruttning misslyckades</string>
     <string name="mapvm_offline_routing_removed">Offlineruttning borttagen</string>
     <string name="mapvm_saved_places_offline">Sparade %1$d platser för offlinesökning</string>
+    <string name="mapvm_saved_addresses_offline">Sparade %1$d adresser och %2$d gator för offlinevägbeskrivning</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Framme</string>
     <string name="navservice_notif_title_navigating">Navigerar</string>
     <string name="navservice_notif_title_in_distance">Om %1$s · %2$s</string>
