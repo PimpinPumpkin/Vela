@@ -141,6 +141,9 @@ data class MapUiState(
     val fasterRoute: Route? = null,
     val fasterSavingSeconds: Double = 0.0,
     val arrivedLabel: String = "",
+    // Destination address line for the ARRIVE step (banner + step list); blank when the
+    // address adds nothing over arrivedLabel or is simply unknown (offline/partial data).
+    val navDestAddress: String = "",
     val arrivedDistanceMeters: Double = 0.0,
     val arrivedSeconds: Double = 0.0,
     val status: String? = null,
@@ -358,6 +361,7 @@ class MapViewModel @Inject constructor(
                         fasterRoute = ns.fasterRoute,
                         fasterSavingSeconds = ns.fasterSavingSeconds,
                         arrivedLabel = ns.destinationLabel,
+                        navDestAddress = ns.destinationAddress,
                         arrivedDistanceMeters = ns.tripDistanceMeters,
                         arrivedSeconds = ns.tripElapsedSeconds,
                     )
@@ -1930,7 +1934,11 @@ class MapViewModel @Inject constructor(
         // cues + reroute-through-remaining.
         val s = _state.value
         val stops = s.directionsWaypoints.map { NavSession.NavStop(it.location, it.name) }
-        navSession.start(route, dest, s.selected?.name.orEmpty(), s.selectedEngine?.packageName, stops, s.travelMode)
+        // Robust destination lines for the ARRIVE step: name, else address, else the raw
+        // coordinates (offline routing can have any of those missing); the address rides along
+        // only when it says something the primary line doesn't.
+        val (destName, destAddr) = NavSession.destinationDisplay(s.selected?.name, s.selected?.address, dest)
+        navSession.start(route, dest, destName, s.selectedEngine?.packageName, stops, s.travelMode, destinationAddress = destAddr.orEmpty())
         NavigationService.start(appContext)
         persistNav(dest, s.selected?.name.orEmpty(), s.travelMode) // so a process-kill mid-drive can resume
         if (_state.value.resumeNavLabel != null) _state.update { it.copy(resumeNavLabel = null) } // starting fresh clears any stale offer
@@ -2270,7 +2278,10 @@ class MapViewModel @Inject constructor(
             destination = dest
             _state.update { it.copy(activeRoute = route, routes = routes) }
             startLocation()
-            navSession.start(route, dest, label, _state.value.selectedEngine?.packageName, emptyList(), mode)
+            // No address survives a process kill (only the label was persisted); destinationDisplay
+            // still guarantees SOMETHING shows on the arrive step (label, else the coordinates).
+            val (resumedName, _) = NavSession.destinationDisplay(label, null, dest)
+            navSession.start(route, dest, resumedName, _state.value.selectedEngine?.packageName, emptyList(), mode)
             NavigationService.start(appContext)
             persistNav(dest, label, mode) // keep it persisted through the resumed drive
         }
