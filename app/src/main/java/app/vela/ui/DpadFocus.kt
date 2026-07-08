@@ -1,9 +1,8 @@
 package app.vela.ui
 
 import android.content.pm.PackageManager
+import android.os.Build
 import android.view.InputDevice
-import android.view.KeyCharacterMap
-import android.view.KeyEvent
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -37,11 +36,13 @@ import androidx.compose.ui.unit.dp
  * focus traversal, every gesture has a key alternative, and the focused element is
  * obvious. These helpers carry the "obvious" part plus the mode detection.
  *
- * Detection note (learned on a real keypad phone, 2026-07-07): feature phones LIE about
- * `FEATURE_TOUCHSCREEN` (the tiny `mtk-tpd` panel reports `touchscreen=finger`), so that
- * flag is useless for "is this a D-pad device". The reliable signal is
- * `KeyCharacterMap.deviceHasKey(KEYCODE_DPAD_*)` — true iff the hardware actually has
- * D-pad keys. See docs/dpad.md.
+ * Detection note (2026-07-08): there is NO signal that reliably separates a fake-touchscreen
+ * keypad phone from an ordinary touch phone at startup — feature phones lie about
+ * `FEATURE_TOUCHSCREEN`, the framework's virtual input device reports DPAD on every phone, and
+ * `KeyCharacterMap.deviceHasKey(DPAD_CENTER)` is true on a Pixel too. So proactive D-pad-FIRST
+ * is reserved for the unambiguous cases (genuinely no touchscreen, or a physical D-pad device);
+ * every other device gets full D-pad operation REACTIVELY via [rememberDpadMode] the moment a
+ * key is pressed. See [detectDpadFirst] and docs/dpad.md.
  */
 
 /**
@@ -56,29 +57,38 @@ fun rememberDpadFirstDevice(): Boolean {
     return remember { detectDpadFirst(context) }
 }
 
-/** Multi-signal D-pad detection. Any ONE positive signal wins, because different keypad
- *  phones expose the D-pad differently and none of the signals is reliable alone:
- *  - a genuinely touchless device;
- *  - ANY currently-attached input device that reports `SOURCE_DPAD`, INCLUDING the
- *    framework's "Virtual" aggregate device (id -1). On the real MTK keypad phone tested,
- *    the DPAD source lives ONLY on that Virtual device (`src=0x301` = KEYBOARD|DPAD); the
- *    physical `mtk-kpd` reports just `0x101` (KEYBOARD) even though its key layout emits
- *    DPAD keycodes — so filtering out virtual devices (an earlier bug) made detection
- *    FALSE and the whole D-pad UI never appeared. Do NOT exclude virtual devices here.
- *  - `KeyCharacterMap.deviceHasKey(DPAD_CENTER)` (returned false on the MTK one — kept
- *    only as a last-resort signal for other hardware). */
+/** D-pad-FIRST detection — deliberately CONSERVATIVE (fixed 2026-07-08). "D-pad-first" means
+ *  the app shows key affordances persistently and pre-places focus BEFORE any input, so a false
+ *  positive is expensive: it forces every touch phone into keypad behaviour (the search field
+ *  stops taking a plain tap, the soft keyboard is suppressed, the +/- zoom buttons appear). A
+ *  device is D-pad-first only when:
+ *  - it genuinely has NO touchscreen (Android TV / a real touchless keypad); or
+ *  - a PHYSICAL (non-virtual) input device reports `SOURCE_DPAD` — a game controller, remote, or
+ *    a keypad whose own hardware exposes the D-pad.
+ *
+ *  What we do NOT trust any more, and why (both fire on an ordinary phone):
+ *  - the framework's "Virtual" aggregate input device (id -1). It reports
+ *    `KEYBOARD | DPAD` on essentially EVERY Android device (confirmed on a Pixel 9 via
+ *    `dumpsys input`), so counting it classified normal phones as keypad devices and broke the
+ *    search bar (tester + repo-owner report). An earlier note here said "do NOT exclude virtual
+ *    devices" because one MTK keypad phone exposed its D-pad only on the virtual device — but
+ *    there is no signal that separates that phone from a Pixel, so proactive D-pad-first can't
+ *    rely on it. Such hybrid phones still get full D-pad operation the moment a key is pressed,
+ *    via the LIVE input mode in [rememberDpadMode] (Compose flips to `InputMode.Keyboard`); they
+ *    just aren't pre-focused on the very first frame.
+ *  - `KeyCharacterMap.deviceHasKey(DPAD_CENTER)`: true on a Pixel too (the virtual keymap carries
+ *    the key), and it was already false on the MTK phone — so it only added false positives. */
 private fun detectDpadFirst(context: android.content.Context): Boolean {
     val noTouch = !context.packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
-    val hasDpadDevice = runCatching {
+    val hasPhysicalDpad = runCatching {
         InputDevice.getDeviceIds().any { id ->
             val dev = InputDevice.getDevice(id) ?: return@any false
-            (dev.sources and InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD
+            // Skip the framework's virtual aggregate device — it reports DPAD on every phone.
+            val virtual = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) dev.isVirtual else id < 0
+            !virtual && (dev.sources and InputDevice.SOURCE_DPAD) == InputDevice.SOURCE_DPAD
         }
     }.getOrDefault(false)
-    val hasDpadKey = runCatching {
-        KeyCharacterMap.deviceHasKey(KeyEvent.KEYCODE_DPAD_CENTER)
-    }.getOrDefault(false)
-    return noTouch || hasDpadDevice || hasDpadKey
+    return noTouch || hasPhysicalDpad
 }
 
 /** Back-compat alias kept for call sites that mean "structural D-pad-first decisions". */
