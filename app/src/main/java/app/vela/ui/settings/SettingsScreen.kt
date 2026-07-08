@@ -1018,6 +1018,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
             Row(
                 Modifier
                     .fillMaxWidth()
+                    .dpadHighlight(RoundedCornerShape(8.dp))
                     .clickable(enabled = query.isBlank()) { langExpanded[lang] = !expanded }
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
