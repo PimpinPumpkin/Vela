@@ -251,7 +251,8 @@ class MapViewModel @Inject constructor(
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
-        val seed = locationProvider.lastKnown()
+        // A simulated location (Settings → demo) wins the seed so the app opens "there".
+        val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
         refreshBuildingOverlays() // surface any installed open building overlays for the map to render
@@ -434,6 +435,12 @@ class MapViewModel @Inject constructor(
         // replaying — and a real fix would then overwrite myLocation+center, snapping the puck back to the
         // user's actual position. Replay's own `finally` calls startLocation() again once replaying=false.
         if (_state.value.replaying) return
+        // Simulated location (Settings → demo): pin the puck to the chosen point and DON'T collect real
+        // GPS, so nothing leaks the real position. stopSimulateLocation() restarts the collector.
+        app.vela.ui.SimLocation.point.value?.let { sim ->
+            _state.update { it.copy(myLocation = sim, center = it.center ?: sim, myLocationStale = false, showPsdsTip = false) }
+            return
+        }
         locationJob = viewModelScope.launch {
             launch {
                 delay(8_000)
@@ -2500,6 +2507,25 @@ class MapViewModel @Inject constructor(
     fun dismissPsdsTip() = _state.update { it.copy(showPsdsTip = false) }
 
     fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1) }
+
+    /** Screenshot/demo tool (Settings → "Simulate my location"): pretend to be at the current map
+     *  centre. While on, the live GPS collector is suspended and every "your location" (the dot,
+     *  the search-distance bias, the directions origin, recenter) reads this point, so the app can
+     *  be shown from anywhere without leaking where you actually are. Sibling of demo-drive. */
+    fun simulateLocationHere() {
+        val here = mapCenter ?: _state.value.myLocation ?: return
+        app.vela.ui.SimLocation.set(appContext, here)
+        locationJob?.cancel(); locationJob = null // sim owns the puck — no live fixes
+        _state.update {
+            it.copy(myLocation = here, center = here, recenterTick = it.recenterTick + 1, myLocationStale = false)
+        }
+    }
+
+    /** Turn the simulated location off and resume real GPS. */
+    fun stopSimulateLocation() {
+        app.vela.ui.SimLocation.set(appContext, null)
+        startLocation() // resume the live collector (no-ops if already running)
+    }
 
     fun clearStatus() = _state.update { it.copy(status = null) }
 
