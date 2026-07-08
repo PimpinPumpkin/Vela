@@ -403,4 +403,5 @@
     <string name="settings_update_checking">Проверка…</string>
     <string name="settings_update_found">Доступно обновление! Вернитесь на карту, чтобы установить.</string>
     <string name="settings_update_none">У вас самая новая версия.</string>
+    <string name="settings_place_pages">Страницы мест</string>
 </resources>
