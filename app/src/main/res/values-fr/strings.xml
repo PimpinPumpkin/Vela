@@ -55,6 +55,10 @@
     <string name="settings_show_reviews_hint">Désactivé = les fiches de lieux n\'affichent aucun avis et Vela ne les récupère jamais.</string>
     <string name="settings_load_photos">Charger les photos</string>
     <string name="settings_load_photos_hint">Désactivé = les fiches de lieux n\'affichent aucune photo et rien n\'est téléchargé. Économise les données.</string>
+    <string name="settings_hide_adult">Masquer les catégories pour adultes</string>
+    <string name="settings_hide_adult_hint">Activé = masque les bars, clubs, casinos, cavistes et autres lieux pour adultes / de vie nocturne des résultats et de la carte.</string>
+    <string name="settings_hide_external_links">Masquer le site web et les liens externes</string>
+    <string name="settings_hide_external_links_hint">Activé = les pages de lieu n’affichent pas les boutons Site web, Street View ou Réserver / Commander (aucun site externe arbitraire ouvert).</string>
     <string name="settings_offline">Hors ligne</string>
     <string name="settings_offline_hint">Utiliser la carte sans réseau nécessite deux éléments — les TUILES de carte que vous voyez et le RÉSEAU ROUTIER qui vous guide. Enregistrer une zone de carte récupère les deux pour cet endroit ; la liste des régions ci-dessous ajoute le réseau routier partout où vous voyagez.</string>
     <string name="settings_offline_map_area">Zone de carte</string>

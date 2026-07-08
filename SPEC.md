@@ -75,7 +75,7 @@ Two Gradle modules, strict boundary:
   `init()`-ed in `VelaApp`): `ui/Units` (metric/imperial), `ui/theme/AppTheme`
   (Light/Dark/System — read via **`isAppInDarkTheme()`**, never `isSystemInDarkTheme()`),
   `ui/Traffic` (overlay on/off), `ui/TransitLayer` (rail highlight), `ui/LiveReviews` (reviews panel),
-  `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`), `ui/Buildings3d` (extrusion layer), `ui/AppLocale`
+  `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`/`HideAdult`), `ui/Buildings3d` (extrusion layer), `ui/AppLocale`
   (language), `ui/Onboarding`.
 
 ### Data flow (search example)
@@ -200,7 +200,11 @@ lands *on* a turn is encoded as a via arrive/depart, not a turn — **~1-in-10 n
 `SNAP_ETA_MARGIN` (×1.2) of OSRM's free-flow best, so a divergent-but-not-actually-faster snap steps
 aside for OSRM's clean route instead of being forced to the top (the `directions` diag logs `gEta`/`osrmFF`
 to tune this from real side-by-side data). Per-alternate re-rank IS done (2026-07-01): each Google alternate in `root[0][1]` carries its OWN
-`duration_in_traffic`, so the list is sorted by live in-traffic ETA — the fastest-shown route leads. The
+`duration_in_traffic`, so the list is sorted by live in-traffic ETA — the fastest-shown route leads. And
+that order survives naming (fix 2026-07-08): `nameRoute` (the OSRM snap that runs when a provisional
+alternate is picked, or auto-runs when one sorts to the top) keeps the route's ORIGINAL Google
+duration/in-traffic figures instead of adopting the snap's recomputed ETA — the recomputed figure could
+leapfrog a neighbouring row in place and leave the "Fastest" tag below a slower first row. The
 cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** — now shipped as
 the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
 
@@ -421,6 +425,16 @@ itself shows the traffic, not the whole map.
   (default on). Off gates BOTH the fetch (`fetchReviews`/`fetchPhotos` in the VM) and the
   render (review tab / photo strip in `PlaceSheet`), so off means no scrape traffic at
   all, not just hidden UI.
+- **"Hide adult categories" toggle**: Settings → Map, `HideAdult` holder (default **off**).
+  On drops adult/nightlife/alcohol/gambling/smoking categories from search + ambient map via the
+  pure `:core` `CategoryFilter` (category-only, never name; multilingual keyword lists so it works
+  in every UI language; unit-tested). Applied at the `GoogleMapsDataSource.search`/`nearbyPlaces`
+  seam, gated by `CategoryFilter.enabled` (a `:core` flag `HideAdult` flips — keeps `:core` free of
+  the app's reactive holder).
+- **"Hide website & external links" toggle**: Settings → Map, `HideExternalLinks` holder (default
+  **off**). On hides the Website pill/row, the Street View pano and the Book/Reserve/Order action in
+  `PlaceSheet`, so nothing on a place page opens an arbitrary external site. Dial, directions and
+  `geo:` share stay.
 - **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
   nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
   **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),

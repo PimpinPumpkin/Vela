@@ -55,6 +55,10 @@
     <string name="settings_show_reviews_hint">Uit = plaatspagina\'s tonen geen reviews en Vela haalt ze ook nooit op.</string>
     <string name="settings_load_photos">Foto\'s laden</string>
     <string name="settings_load_photos_hint">Uit = plaatspagina\'s tonen geen foto\'s en er wordt niets voor gedownload. Bespaart data.</string>
+    <string name="settings_hide_adult">Volwassen categorieën verbergen</string>
+    <string name="settings_hide_adult_hint">Aan = verbergt bars, clubs, casino’s, slijterijen en andere volwassen- / uitgaanslocaties uit zoekresultaten en de kaart.</string>
+    <string name="settings_hide_external_links">Website en externe links verbergen</string>
+    <string name="settings_hide_external_links_hint">Aan = plaatspagina’s tonen geen Website-, Street View- of Reserveren / Bestellen-knoppen (geen willekeurige externe sites geopend).</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">De kaart zonder signaal gebruiken vereist twee dingen — de kaartTEGELS die u ziet, en het WEGENNETWERK dat uw route berekent. Een kaartgebied opslaan haalt beide op voor die plek; de regiolijst hieronder voegt het wegennetwerk toe voor waar u ook reist.</string>
     <string name="settings_offline_map_area">Kaartgebied</string>

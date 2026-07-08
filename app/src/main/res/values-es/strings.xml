@@ -55,6 +55,10 @@
     <string name="settings_show_reviews_hint">Desactivado = las páginas de sitios no muestran reseñas y Vela nunca las descarga.</string>
     <string name="settings_load_photos">Cargar fotos</string>
     <string name="settings_load_photos_hint">Desactivado = las páginas de sitios no muestran fotos y no se descarga nada. Ahorra datos.</string>
+    <string name="settings_hide_adult">Ocultar categorías para adultos</string>
+    <string name="settings_hide_adult_hint">Activado = oculta bares, discotecas, casinos, licorerías y otros lugares para adultos / de ocio nocturno de la búsqueda y el mapa.</string>
+    <string name="settings_hide_external_links">Ocultar sitio web y enlaces externos</string>
+    <string name="settings_hide_external_links_hint">Activado = las páginas de lugar no muestran los botones Sitio web, Street View ni Reservar / Pedir (no se abren sitios externos arbitrarios).</string>
     <string name="settings_offline">Sin conexión</string>
     <string name="settings_offline_hint">Usar el mapa sin señal requiere dos cosas: los MOSAICOS del mapa que ves y la RED DE CARRETERAS que traza tus rutas. Guardar una zona del mapa obtiene ambas para ese punto; la lista de regiones de abajo añade la red de carreteras de cualquier lugar por el que viajes.</string>
     <string name="settings_offline_map_area">Zona del mapa</string>

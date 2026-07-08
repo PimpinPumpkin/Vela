@@ -55,6 +55,10 @@
     <string name="settings_show_reviews_hint">Выкл. = страницы мест не показывают отзывы, и Vela их никогда не загружает.</string>
     <string name="settings_load_photos">Загружать фото</string>
     <string name="settings_load_photos_hint">Выкл. = страницы мест не показывают фото, и ничего не скачивается. Экономит трафик.</string>
+    <string name="settings_hide_adult">Скрывать категории для взрослых</string>
+    <string name="settings_hide_adult_hint">Вкл. = скрывает бары, клубы, казино, алкогольные магазины и другие места для взрослых / ночной жизни из поиска и карты.</string>
+    <string name="settings_hide_external_links">Скрывать веб-сайт и внешние ссылки</string>
+    <string name="settings_hide_external_links_hint">Вкл. = на страницах мест нет кнопок «Сайт», Street View и «Забронировать / Заказать» (произвольные внешние сайты не открываются).</string>
     <string name="settings_offline">Офлайн</string>
     <string name="settings_offline_hint">Для работы карты без сигнала нужны две вещи — ТАЙЛЫ карты, которые вы видите, и ДОРОЖНАЯ СЕТЬ, которая строит маршруты. Сохранение области карты загружает и то, и другое для этого места; список регионов ниже добавляет дорожную сеть для любого места, куда вы едете.</string>
     <string name="settings_offline_map_area">Область карты</string>
