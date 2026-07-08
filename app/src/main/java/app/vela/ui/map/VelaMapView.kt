@@ -1006,6 +1006,9 @@ fun VelaMapView(
             map.setPadding(0, 0, 0, cameraBottomInsetPx)
             if (grew) lastCameraTarget = null // re-frame the current target against the new inset
         }
+        // While the results sheet is closed (or a place is selected) forget the last marker fit,
+        // so pulling the list back up frames the cluster again even after a manual pan away.
+        if (!frameMarkers) lastFittedMarkersKey = null
         when {
             // A recenter TAP always wins — even if we're already on the target (the
             // `target != lastCameraTarget` guard below used to swallow it after a manual pan) or a
@@ -1082,17 +1085,30 @@ fun VelaMapView(
 
             frameMarkers && markers.isNotEmpty() && markers.hashCode() != lastFittedMarkersKey -> {
                 lastFittedMarkersKey = markers.hashCode()
-                if (markers.size == 1) {
+                // Frame the result CLUSTER, not every last pin: a single stray hit hundreds of
+                // miles away (Google pads sparse local searches with far matches) used to zoom
+                // the camera out to a continental view. Median-center the pins and drop outliers
+                // beyond 4x the median spread (min 40 km) before fitting (user 2026-07-09).
+                val pts = markers.map { it.location }
+                val medLat = pts.map { it.lat }.sorted()[pts.size / 2]
+                val medLng = pts.map { it.lng }.sorted()[pts.size / 2]
+                val med = app.vela.core.model.LatLng(medLat, medLng)
+                val dists = pts.map { it.distanceTo(med) }.sorted()
+                val cutoff = maxOf(dists[dists.size / 2] * 4, 40_000.0)
+                val cluster = pts.filter { it.distanceTo(med) <= cutoff }
+                if (cluster.size == 1) {
                     map.animateCamera(
                         CameraUpdateFactory.newLatLngZoom(
-                            MLLatLng(markers[0].location.lat, markers[0].location.lng), 15.0,
+                            MLLatLng(cluster[0].lat, cluster[0].lng), 15.0,
                         ),
                     )
                 } else {
                     val builder = MLLatLngBounds.Builder()
-                    markers.forEach { builder.include(MLLatLng(it.location.lat, it.location.lng)) }
+                    cluster.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
+                    // Keep the cluster above the results sheet (peek covers the bottom half).
+                    val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + 160 else 160
                     runCatching {
-                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160), 700)
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160, 160, 160, bottom), 700)
                     }
                 }
             }
