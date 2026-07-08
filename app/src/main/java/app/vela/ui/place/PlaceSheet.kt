@@ -227,7 +227,7 @@ fun PlaceSheet(
     val maxSheetHeight by animateDpAsState(
         when {
             expandedState.value -> (screenH * 0.92f).dp
-            minimizedState.value -> (screenH * 0.22f).dp
+            minimizedState.value -> (screenH * 0.26f).dp
             else -> (screenH * 0.56f).dp
         },
         label = "placeSheetHeight",
@@ -406,6 +406,35 @@ fun PlaceSheet(
                     .verticalScroll(bodyScroll)
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
+            // Minimized detent: a compact card (name, rating, Directions) instead of the full body,
+            // like Google's collapsed sheet. At this small height leading with the photo hero showed
+            // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
+            if (minimizedState.value) {
+                Text(
+                    place.name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 2.dp),
+                )
+                if (place.rating != null) {
+                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            String.format(Locale.US, "%.1f", place.rating),
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = ink,
+                        )
+                        RatingStars(place.rating!!, modifier = Modifier.padding(horizontal = 5.dp))
+                        place.reviewCount?.let { Text("($it)", style = MaterialTheme.typography.bodySmall, color = dim) }
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                return@Column
+            }
             // Photo hero at the top (Google-style) — always visible, even at the
             // peek height / in landscape; tap one to open the full gallery.
             if (place.photoUrls.isNotEmpty() || photosLoading) {
