@@ -200,7 +200,11 @@ lands *on* a turn is encoded as a via arrive/depart, not a turn — **~1-in-10 n
 `SNAP_ETA_MARGIN` (×1.2) of OSRM's free-flow best, so a divergent-but-not-actually-faster snap steps
 aside for OSRM's clean route instead of being forced to the top (the `directions` diag logs `gEta`/`osrmFF`
 to tune this from real side-by-side data). Per-alternate re-rank IS done (2026-07-01): each Google alternate in `root[0][1]` carries its OWN
-`duration_in_traffic`, so the list is sorted by live in-traffic ETA — the fastest-shown route leads. The
+`duration_in_traffic`, so the list is sorted by live in-traffic ETA — the fastest-shown route leads. And
+that order survives naming (fix 2026-07-08): `nameRoute` (the OSRM snap that runs when a provisional
+alternate is picked, or auto-runs when one sorts to the top) keeps the route's ORIGINAL Google
+duration/in-traffic figures instead of adopting the snap's recomputed ETA — the recomputed figure could
+leapfrog a neighbouring row in place and leave the "Fastest" tag below a slower first row. The
 cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** — now shipped as
 the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
 
