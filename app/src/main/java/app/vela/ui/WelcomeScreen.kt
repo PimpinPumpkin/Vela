@@ -36,13 +36,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.R
-import app.vela.ui.rememberDpadAutoFocus // D-pad-first initial focus (docs/dpad.md)
+import app.vela.ui.dpadAutoFocus // D-pad-first initial focus, robust for off-screen (docs/dpad.md)
 
 /** First-run welcome — what Vela is and why, then a single Get-started button. */
 @Composable
@@ -95,12 +94,14 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
                 stringResource(R.string.welcome_feature_open_source_body),
             )
             Spacer(Modifier.height(40.dp))
-            // D-pad-first: land focus on Get-started so the welcome screen is immediately
-            // actionable with OK, no wake-up press needed (docs/dpad.md). No-op under touch.
-            val getStartedFocus = rememberDpadAutoFocus()
+            // D-pad-first (docs/dpad.md): auto-focus Get-started so the screen is immediately
+            // actionable with OK. On a normal phone the button is on-screen and this lands; on a
+            // tiny keypad screen it starts BELOW the fold (Compose won't focus an off-screen
+            // element, and force-scrolling would hide the welcome intro on a once-seen screen) —
+            // there the D-pad user presses DOWN to reveal + focus it. No-op under touch.
             Button(
                 onClick = onGetStarted,
-                modifier = Modifier.fillMaxWidth().height(52.dp).focusRequester(getStartedFocus),
+                modifier = Modifier.fillMaxWidth().height(52.dp).dpadAutoFocus(),
             ) {
                 Text(stringResource(R.string.welcome_get_started), style = MaterialTheme.typography.titleMedium)
             }
