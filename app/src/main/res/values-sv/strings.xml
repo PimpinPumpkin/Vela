@@ -219,6 +219,11 @@
     <string name="mapscreen_search_this_area">Sök i det här området</string>
     <string name="mapscreen_place">Plats</string>
     <string name="mapscreen_your_location">Din plats</string>
+    <string name="mapscreen_choose_on_map">Välj på kartan</string>
+    <string name="mapscreen_choose_origin_hint">Flytta kartan för att ange startpunkten</string>
+    <string name="mapscreen_choose_stop_hint">Flytta kartan för att ange stoppet</string>
+    <string name="mapscreen_choose_set_start">Ange start</string>
+    <string name="mapscreen_choose_set_stop">Ange stopp</string>
     <string name="mapscreen_destination">Mål</string>
     <string name="mapscreen_center_on_my_location">Centrera på min plats</string>
     <string name="mapscreen_stop_replay">Stoppa uppspelning</string>
