@@ -49,6 +49,8 @@
     <string name="settings_transit_layer_hint">Zeichnet Zug- und U-Bahn-Linien farbig auf die Karte, damit man Schienen leicht verfolgen kann. Nutzt die offenen Kartendaten, die schon in den Kacheln stecken, ohne Netz.</string>
     <string name="settings_read_all_reviews">Schaltfläche „Alle Rezensionen lesen“</string>
     <string name="settings_read_all_reviews_hint">Rezensionen im Ortsfenster sind immer Velas eigene, flüssige native Liste. Dies fügt eine Schaltfläche „Alle Rezensionen lesen“ hinzu, die Googles vollständige Rezensionsseite im VOLLBILD öffnet – jede Rezension (nicht nur die ersten ~50), Googles serverseitige Suche und abspielbare Video-Rezensionen. Tracker/Beacons werden blockiert, aber Googles Seite läuft dabei in der App. Aus = nur native Liste, keine Google-Seite für Rezensionen.</string>
+    <string name="settings_buildings_3d">3D-Gebäude</string>
+    <string name="settings_buildings_3d_hint">Erhöhte Gebäudeformen bei starkem Zoom. Ausschalten kann das Verschieben auf älteren Handys flüssiger machen; die flachen Umrisse bleiben.</string>
     <string name="settings_show_reviews">Bewertungen anzeigen</string>
     <string name="settings_show_reviews_hint">Aus = Orte zeigen keine Bewertungen, und Vela ruft sie auch nie ab.</string>
     <string name="settings_load_photos">Fotos laden</string>
@@ -390,4 +392,15 @@
     <string name="mapscreen_your_destination">Ihrem Ziel</string>
     <string name="mapvm_resume_waiting_gps">Warten auf GPS, um die Navigation fortzusetzen…</string>
     <string name="mapvm_resume_failed">Navigation konnte nicht fortgesetzt werden</string>
+    <string name="update_available_title">Vela %1$s ist verfügbar</string>
+    <string name="update_downloading">Wird heruntergeladen… %1$d%%</string>
+    <string name="update_later">Nicht jetzt</string>
+    <string name="update_install">Aktualisieren</string>
+    <string name="update_download_failed">Update-Download fehlgeschlagen. Versuch es später noch mal.</string>
+    <string name="settings_update_auto">Beim Start nach Updates suchen</string>
+    <string name="settings_update_auto_hint">Prüft etwa einmal täglich das neueste GitHub-Release und bietet es an, wenn es neuer als dieser Build ist. Die Installation läuft über den normalen Android-Installer. Wer über Obtainium aktualisiert, kann das ausschalten.</string>
+    <string name="settings_update_check_now">Nach Updates suchen</string>
+    <string name="settings_update_checking">Wird geprüft…</string>
+    <string name="settings_update_found">Update verfügbar! Geh zurück zur Karte, um es zu installieren.</string>
+    <string name="settings_update_none">Du bist auf der neuesten Version.</string>
 </resources>

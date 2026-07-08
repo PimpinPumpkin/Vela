@@ -150,6 +150,8 @@ data class MapUiState(
     val work: SavedPlace? = null,
     val assigningShortcut: ShortcutKind? = null, // picking a place to pin as Home/Work
     val notices: List<Notice> = emptyList(), // pushed via the signed calibration channel
+    val updateInfo: app.vela.update.SelfUpdater.UpdateInfo? = null, // newer release found (card on the bare map)
+    val updateDownloadPct: Int? = null, // non-null while the update APK downloads
     // Offline routing (downloadable per-region CH graphs — Settings → Offline routing)
     val routingRegions: List<app.vela.offline.RoutingRegion> = emptyList(),
     val routingInstalledIds: Set<String> = emptySet(), // region ids whose graphs are on disk
@@ -199,6 +201,7 @@ class MapViewModel @Inject constructor(
     private val overlayStore: app.vela.offline.OverlayTileStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
+    private val selfUpdater: app.vela.update.SelfUpdater,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -306,6 +309,7 @@ class MapViewModel @Inject constructor(
             runCatching { calibration.refresh() }
             refreshNotices()
         }
+        maybeCheckForUpdate()
 
         viewModelScope.launch {
             navSession.state.collect { ns ->
@@ -703,6 +707,61 @@ class MapViewModel @Inject constructor(
         val dismissed = noticePrefs.getStringSet(KEY_DISMISSED, emptySet()).orEmpty() + id
         noticePrefs.edit().putStringSet(KEY_DISMISSED, dismissed).apply()
         _state.update { st -> st.copy(notices = st.notices.filterNot { it.id == id }) }
+    }
+
+    // --- Self-updater (GitHub releases) ------------------------------------------------------
+
+    /** Launch check, at most ~daily, gated by the Settings toggle. "Not now" on a version
+     *  silences that version (a NEWER release shows the card again).
+     *  NB called from init{}, which runs BEFORE the later-declared `settingsPrefs` field
+     *  initializer — resolve the prefs locally or this NPEs on launch (it did). */
+    private fun maybeCheckForUpdate() {
+        val prefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+        if (!prefs.getBoolean("self_update_check", true)) return
+        val now = System.currentTimeMillis()
+        if (now - prefs.getLong("last_update_check_ms", 0L) < 20 * 60 * 60_000L) return
+        prefs.edit().putLong("last_update_check_ms", now).apply()
+        viewModelScope.launch {
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE) ?: return@launch
+            if (info.versionCode <= prefs.getInt("update_dismissed_code", 0)) return@launch
+            _state.update { it.copy(updateInfo = info) }
+        }
+    }
+
+    /** Settings "Check for updates" button — unthrottled, reports back via [onResult]
+     *  (true = an update was found and the card is up; false = already current / check failed). */
+    fun checkForUpdateNow(onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE)
+            if (info != null) _state.update { it.copy(updateInfo = info) }
+            onResult(info != null)
+        }
+    }
+
+    /** Download the offered update and hand it to the system installer. */
+    fun downloadUpdate() {
+        val info = _state.value.updateInfo ?: return
+        if (_state.value.updateDownloadPct != null) return // already downloading
+        _state.update { it.copy(updateDownloadPct = 0) }
+        viewModelScope.launch {
+            val apk = selfUpdater.download(info) { pct ->
+                _state.update { it.copy(updateDownloadPct = pct) }
+            }
+            _state.update { it.copy(updateDownloadPct = null) }
+            if (apk != null) {
+                selfUpdater.install(apk)
+            } else {
+                showStatus(appContext.getString(app.vela.R.string.update_download_failed))
+            }
+        }
+    }
+
+    /** "Not now": hide the card and stay quiet about THIS version (a newer one re-offers). */
+    fun dismissUpdate() {
+        _state.value.updateInfo?.let {
+            settingsPrefs.edit().putInt("update_dismissed_code", it.versionCode).apply()
+        }
+        _state.update { it.copy(updateInfo = null, updateDownloadPct = null) }
     }
 
     /** Record an opened place so the search page can offer one-tap return to it. */

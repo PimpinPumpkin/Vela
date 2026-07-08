@@ -49,6 +49,8 @@
     <string name="settings_transit_layer_hint">Dibuja las líneas de tren y metro en color sobre el mapa, para seguir el ferrocarril con facilidad. Usa los datos abiertos que ya están en los mosaicos, sin red.</string>
     <string name="settings_read_all_reviews">Botón «Leer todas las reseñas»</string>
     <string name="settings_read_all_reviews_hint">Las reseñas de la ficha del lugar son siempre la propia lista nativa y fluida de Vela. Esto añade un botón «Leer todas las reseñas» que abre la página completa de reseñas de Google a PANTALLA COMPLETA: todas las reseñas (no solo las primeras ~50), la búsqueda del lado del servidor de Google y las reseñas en vídeo se reproducen. Se bloquean rastreadores y balizas, pero sí ejecuta la página de Google dentro de la app. Desactivado = solo lista nativa, sin página de Google para las reseñas.</string>
+    <string name="settings_buildings_3d">Edificios en 3D</string>
+    <string name="settings_buildings_3d_hint">Formas de edificios en relieve con mucho zoom. Desactivarlo puede hacer que el desplazamiento sea más fluido en teléfonos antiguos; las siluetas planas se mantienen.</string>
     <string name="settings_show_reviews">Mostrar reseñas</string>
     <string name="settings_show_reviews_hint">Desactivado = las páginas de sitios no muestran reseñas y Vela nunca las descarga.</string>
     <string name="settings_load_photos">Cargar fotos</string>
@@ -390,4 +392,15 @@
     <string name="mapscreen_your_destination">tu destino</string>
     <string name="mapvm_resume_waiting_gps">Esperando el GPS para reanudar la navegación…</string>
     <string name="mapvm_resume_failed">No se pudo reanudar la navegación</string>
+    <string name="update_available_title">Vela %1$s está disponible</string>
+    <string name="update_downloading">Descargando… %1$d%%</string>
+    <string name="update_later">Ahora no</string>
+    <string name="update_install">Actualizar</string>
+    <string name="update_download_failed">Falló la descarga de la actualización. Inténtalo más tarde.</string>
+    <string name="settings_update_auto">Buscar actualizaciones al iniciar</string>
+    <string name="settings_update_auto_hint">Consulta la última versión de GitHub más o menos una vez al día y la ofrece cuando es más nueva que esta. Se instala con el instalador normal de Android. Si ya actualizas con Obtainium, puedes desactivarlo.</string>
+    <string name="settings_update_check_now">Buscar actualizaciones</string>
+    <string name="settings_update_checking">Comprobando…</string>
+    <string name="settings_update_found">¡Actualización disponible! Vuelve al mapa para instalarla.</string>
+    <string name="settings_update_none">Tienes la versión más reciente.</string>
 </resources>
