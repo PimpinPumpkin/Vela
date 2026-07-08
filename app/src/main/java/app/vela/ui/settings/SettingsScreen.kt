@@ -434,6 +434,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Text(stringResource(R.string.settings_buildings_3d), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.Buildings3d.on.value,
+                    onCheckedChange = { app.vela.ui.Buildings3d.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_buildings_3d_hint))
+
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(stringResource(R.string.settings_show_reviews), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
                 Switch(
                     checked = app.vela.ui.ShowReviews.on.value,
@@ -817,6 +829,29 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 style = MaterialTheme.typography.bodyLarge,
                 modifier = Modifier.padding(vertical = 4.dp),
             )
+            // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
+            // The offer itself is a card on the map; the system installer does the install.
+            var selfUpdate by remember { mutableStateOf(prefs.getBoolean("self_update_check", true)) }
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_update_auto), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = selfUpdate,
+                    onCheckedChange = { selfUpdate = it; prefs.edit().putBoolean("self_update_check", it).apply() },
+                )
+            }
+            Hint(stringResource(R.string.settings_update_auto_hint))
+            var updateStatus by remember { mutableStateOf<String?>(null) }
+            val checkingText = stringResource(R.string.settings_update_checking)
+            val foundText = stringResource(R.string.settings_update_found)
+            val noneText = stringResource(R.string.settings_update_none)
+            OutlinedButton(onClick = {
+                updateStatus = checkingText
+                vm.checkForUpdateNow { found -> updateStatus = if (found) foundText else noneText }
+            }) { Text(stringResource(R.string.settings_update_check_now)) }
+            updateStatus?.let { Hint(it) }
             Spacer(Modifier.height(32.dp))
         }
     }
