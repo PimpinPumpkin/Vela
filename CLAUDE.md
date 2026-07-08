@@ -140,6 +140,23 @@ genuinely needs no doc edit, say why in the commit.
   built-in (`setCompassMargins`), which fades when the map faces north (Google's behaviour) and
   reappears when rotated/tilted or during heading-up nav — it wasn't removed, it's just north-hidden
   on the browse map.
+- **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
+  resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
+  `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
+  (a business) → `onPoiTap`; (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber`
+  or the address overlay `vela-addr-*` `number`, queried by layer id) → `onAddressLabelTap(number,
+  labelPoint)`; (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
+  **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay fill,
+  queried by layer id) → reverse-geocode at the tap; else nothing (only a long-press drops a raw
+  coordinate pin on empty land, as before). **The house-number case must SNAP to the tapped number:**
+  `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
+  geocode only for the street/city, replacing whatever house number the geocode led with (a regex
+  strips `^\s*\d+\S*\s+` then prepends the tapped number). Reason: Google's reverse-geocode snaps to
+  the nearest ADDRESSABLE point, which for a tapped OSM label routinely returns a NEIGHBOUR (device:
+  tapped 6110, raw reverse-geocode said 6138) — exactly the "doesn't snap to the house number"
+  complaint. A real business sitting on the point still wins (if the geocode has a rating/category it's
+  shown as-is). Device-verified in the test suburb: tapping "6110" → a numbered address; a bare footprint →
+  a numbered address.
 - **Place-content toggles (2026-07-08):** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
