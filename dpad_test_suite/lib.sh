@@ -44,6 +44,10 @@ for m in re.finditer(r"<node [^>]*focused=\"true\"[^>]*>", d):
     break
 '
 }
+# focused_stable  — 0 (true) if something is focused, RE-CHECKING once after a short settle. A
+# transient null sampled mid-scroll-animation (the focused row briefly off-screen) is not a real
+# focus loss; a genuine focus clear persists. Use this in traversal integrity, not raw `focused`.
+focused_stable() { [ -n "$(focused)" ] && return 0; sleep 0.3; [ -n "$(focused)" ]; }
 focused_bounds() { focused | cut -d"|" -f1; }
 focused_text()   { focused | cut -d"|" -f2; }
 focused_desc()   { focused | cut -d"|" -f3; }

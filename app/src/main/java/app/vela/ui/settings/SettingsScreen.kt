@@ -82,6 +82,7 @@ import app.vela.ui.theme.AppTheme
 import app.vela.ui.theme.ThemeMode
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadFieldEscape
+import app.vela.ui.dpadSwallowHorizontal
 import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -126,7 +127,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.focusRequester(settingsAutoFocus)) {
+                    IconButton(onClick = onBack, modifier = Modifier.focusRequester(settingsAutoFocus).dpadSwallowHorizontal()) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 },
@@ -136,14 +137,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
         Column(
             Modifier
                 .padding(padding)
-                // D-pad (docs/dpad.md): Settings is a VERTICAL list. In a verticalScroll Column a
-                // LEFT/RIGHT with no horizontal target (every plain row) makes Compose's focus
-                // search CLEAR focus with no way back via arrows (dpad audit 2026-07-08; moveFocus
-                // clears on a no-target move, focusGroup doesn't help — only swallowing the key
-                // keeps focus). So swallow bare LEFT/RIGHT here: this fires AFTER a focused child's
-                // own onKeyEvent, so the one horizontal row (the vibrate FilterChips) handles its
-                // LEFT/RIGHT first (via FocusRequesters) and this never runs for it.
-                .onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
+                // D-pad (docs/dpad.md): Settings is a VERTICAL list — swallow bare LEFT/RIGHT so a
+                // no-target horizontal move can't clear focus. The vibrate FilterChips row (a real
+                // horizontal row) handles its own LEFT/RIGHT first, so this never runs for it.
+                .dpadSwallowHorizontal()
                 .onGloballyPositioned { viewportTopY = it.positionInRoot().y }
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
