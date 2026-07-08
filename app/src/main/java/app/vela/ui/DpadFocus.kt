@@ -123,15 +123,19 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
     return fr
 }
 
-// Note (docs/dpad.md "Known limitations"): a Compose secondary window — a `DropdownMenu`'s Popup
-// or an `AlertDialog`'s Dialog — opens with WINDOW focus but no content Compose-focused, and
-// Compose sets that content focus ONLY on the first real key event. Nothing in-app pre-places it:
-// requestFocus (on the item / a custom focusable child), retry-until-onFocusEvent, outer-scope
-// delayed request, FocusManager.moveFocus(Down), and synthetic KeyEvent dispatch (to the popup
-// ComposeView and to its rootView, with and without a DPAD source) were ALL verified to fail
-// on-device (8 approaches, 2026-07-07). Menus/dialogs stay stock (fully navigable: OK/nav-key
-// enters, DOWN/UP walk, OK selects, BACK closes) so touch is byte-identical. Pre-highlighting
-// them would require replacing every menu/dialog with a custom in-window overlay.
+// Note (docs/dpad.md "Known limitations"): a Compose Material secondary window — a `DropdownMenu`'s
+// Popup or an `AlertDialog` — opens with WINDOW focus but no content Compose-focused, and Compose
+// sets that content focus ONLY on the first real key event. Nothing in-app pre-places it: for the
+// DropdownMenu, requestFocus (on the item / a custom focusable child), retry-until-onFocusEvent,
+// outer-scope delayed request, FocusManager.moveFocus(Down), and synthetic KeyEvent dispatch (to
+// the popup ComposeView and its rootView, with/without a DPAD source) ALL failed; for the
+// AlertDialog, requestFocus on a TextButton AND on a directly-`.clickable` Text both failed too
+// (~10 approaches, verified on-device 2026-07-07). The ONE thing that works is a hand-built RAW
+// `Dialog` with an explicit `.focusable()` element (the photo gallery does exactly this and DOES
+// auto-focus) — Material `AlertDialog`/`DropdownMenu` don't expose that. Menus/dialogs stay stock
+// (fully navigable: OK/nav-key enters, DOWN/UP walk, OK selects, BACK closes) so touch is
+// byte-identical. Pre-highlighting them would mean replacing every Material menu/dialog with a
+// custom raw-Dialog / in-window overlay — a large change that breaks the touch-parity rule.
 
 /**
  * Robust auto-focus Modifier — the version to use when the target may be **off-screen** (below
