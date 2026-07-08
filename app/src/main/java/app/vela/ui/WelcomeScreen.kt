@@ -16,10 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Favorite
@@ -42,10 +38,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -63,10 +59,11 @@ import app.vela.ui.dpadHighlight
 /** First-run welcome — what Vela is and why, then a single Get-started button. */
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
-    // Scrollable so the Get-started button is always reachable — on a small screen the fixed layout
-    // pushed the button off the bottom with no way to scroll to it. heightIn(min = screen height)
-    // keeps the content filling a tall screen; on short ones the column grows and scrolls. (The old
-    // weight(1f) spacers can't be used inside a verticalScroll — unbounded height — so they're fixed.)
+    // Scrollable so the Get-started button is always reachable — on a small D-pad screen
+    // (e.g. 480×640 keypad phone) the fixed layout pushed the button off the bottom with no
+    // way to scroll to it, so a D-pad user couldn't SEE it (it was focusable-when-clipped,
+    // but invisible — docs/dpad.md). heightIn(min = screen height) keeps the weight spacers
+    // centring the content on tall screens; on short ones the column grows and scrolls.
     val scroll = rememberScrollState()
     val minH = LocalConfiguration.current.screenHeightDp.dp
     // D-pad-first (docs/dpad.md): reveal the Get-started button (below the fold on a tiny screen)
