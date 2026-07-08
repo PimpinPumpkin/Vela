@@ -1085,6 +1085,12 @@ fun VelaMapView(
 
             frameMarkers && markers.isNotEmpty() && markers.hashCode() != lastFittedMarkersKey -> {
                 lastFittedMarkersKey = markers.hashCode()
+                // Consume the pending camera target: the results-sheet inset growing nulls
+                // lastCameraTarget (to re-frame a place against the sheet), and with it null the
+                // else-branch below re-fires on the STALE center (the VM center only updates on
+                // user gestures) — one recomposition after this frame it yanked the camera back
+                // to wherever you were before the search (device-seen 2026-07-09).
+                lastCameraTarget = cameraTarget
                 // Frame the result CLUSTER, not every last pin: a single stray hit hundreds of
                 // miles away (Google pads sparse local searches with far matches) used to zoom
                 // the camera out to a continental view. Median-center the pins and drop outliers
