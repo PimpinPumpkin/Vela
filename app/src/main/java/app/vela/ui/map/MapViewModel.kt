@@ -988,7 +988,29 @@ class MapViewModel @Inject constructor(
         fetchReviews(p)
         fetchPhotos(p)
         fetchPlaceDetails(p)
+        backfillOfflineAddress(p)
         rememberRecentPlace(SavedPlace.of(p))
+    }
+
+    /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
+     *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
+     *  index (nearest mapped house, else nearest street) so it still shows an address. Only when offline,
+     *  only when the place lacks one, and only if it's still the selected place when the lookup returns. */
+    private fun backfillOfflineAddress(p: Place) {
+        // Fire when there's no real street line, not only when address is fully blank: OSM often tags a POI
+        // with just `addr:state`/`addr:city` (Applebee's came back as bare "WA"), which is useless. Treat an
+        // address with no digit (no house number) as "needs a street".
+        if (isOnline() || (!p.address.isNullOrBlank() && p.address!!.any { it.isDigit() })) return
+        viewModelScope.launch {
+            val addr = withContext(Dispatchers.IO) {
+                runCatching { addressStore.reverseGeocode(p.location) }.getOrNull()
+            } ?: return@launch
+            _state.update { st ->
+                val sel = st.selected
+                val stillNeeds = sel?.id == p.id && (sel.address.isNullOrBlank() || sel.address!!.none { it.isDigit() })
+                if (stillNeeds) st.copy(selected = sel!!.copy(address = addr)) else st
+            }
+        }
     }
 
     /** Open a "People also search for" card: build a minimal Place from it and select it —
