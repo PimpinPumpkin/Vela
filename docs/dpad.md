@@ -243,7 +243,8 @@ components; extend the pass if a spot proves hard to see).
 | Search entry page (shortcut/saved/recent rows, menus) | `clickable` rows + `DropdownMenu`s — operable natively; rings added |
 | Search results list | rows/chips/chevron operable; top-sheet drag has button equivalents; rings added |
 | Map | `MapDpadController` + centre target (above) |
-| Place sheet | handle fixed; action buttons/tabs/rows are Material or `clickable` — operable |
+| Place sheet | handle fixed; action buttons/tabs/rows are Material or `clickable` — operable; Reviews tab search field got `dpadFieldEscape` (proven UP-escapes + dismisses the IME) |
+| Live reviews WebView (`ReviewsPanel`, "Read all reviews") | reachable (OK on the button) + exitable (BACK) proven; ↑/↓ now page-scroll the WebView (sweep fix); visual scroll not confirmable on the test network — see limitations |
 | Directions panel | handle ring; rows/chips/buttons (incl. stop reorder) are buttons — operable; body scroll-capped so **Start** is reachable with 4 alternates (sweep fix, helps touch too) |
 | Route steps sheet | rows `clickable`; rings added |
 | Nav (banner, controls, faster-route card, arrival card) | banner keys added; the rest are Material buttons |
@@ -280,7 +281,11 @@ to find anything still touch-only. That exhaustive pass surfaced the five refine
 Settings + reviews text fields, (3) Choose-on-map staying pannable to place the pin, (4) its
 cosmetic pill suppression, and (5) the directions-panel scroll cap so **Start** is reachable
 with 4 alternates. Nav was re-verified through Start → banner ←/→ step preview → voice-mute
-toggle → End. Nothing gesture-only remains outside the documented limitations below.
+toggle → End. The one remaining touch-only surface — the full-screen "Read all reviews"
+WebView — was also swept: it's now D-pad-scrollable (↑/↓ → `pageUp`/`pageDown`), and its reach
+(OK opens) + exit (BACK closes) were proven on-device; only its loaded-page visual scroll is
+unconfirmable on the test network (see limitations). Nothing gesture-only remains outside the
+documented limitations below.
 
 (GPS was mocked via a `gps` test provider to give routing a valid origin; the network's
 content filter otherwise leaves routing without a usable fix on this device.)
@@ -291,8 +296,21 @@ content filter otherwise leaves routing without a usable fix on this device.)
   NOT raise the soft IME — the keypad's physical keys type straight into the focused field
   (verified). A device with neither a hardware keyboard nor a D-pad-navigable IME would have
   no way to type; that's out of scope (such a device isn't "D-pad operable" to begin with).
-- **Live reviews panel** (`ReviewsPanel`, a WebView) — WebViews do their own key
-  navigation; readable but its scroll-sync was built for touch. Not exercised on-device.
+- **Live reviews panel** (`ReviewsPanel`, the full-screen "Read all reviews" WebView) —
+  **now D-pad-scrollable (sweep fix, 2026-07-07).** A raw WebView's default D-pad handling
+  hops focus between the page's links instead of scrolling, which is useless for reading. In
+  `fullScreen` mode the WebView now maps ↑/↓ to `pageUp`/`pageDown` (stable WebView APIs) via
+  an `OnKeyListener`, and `requestFocus()`es on page-finish so it receives the keys — so it
+  scrolls deterministically regardless of the page's focusables. The handler only fires on
+  hardware D-pad keys, so it's completely inert under touch, and only in `fullScreen` (the
+  inline scroll-sync path is untouched). **Proven on-device:** the panel is REACHABLE (OK on
+  the "All N reviews" button opens it) and EXITABLE (hardware BACK closes it back to the
+  sheet, via the `Dialog`'s `BackHandler`, which fires even while the WebView holds focus — so
+  it can never trap you). **Not visually confirmable on the test device:** its network content
+  filter throttles the reviews carve, and the panel keeps the WebView at `alpha=0` until the
+  carve is "ready", so the page never becomes visible here — it always falls back to the fully
+  D-pad-operable native reviews list. The page-scroll wiring is therefore verified-by-
+  construction (documented APIs, focus requested, inert-safe) rather than pixel-verified here.
 - **Photo pinch-zoom** has no key equivalent (view-only; ←/→ paging works).
 - **Map tilt** (two-finger drag) has no key equivalent; browse/nav don't need it.
 - **Tuning** still worth a pass: pan step (0.22 of view), OK-hold threshold (500 ms),
