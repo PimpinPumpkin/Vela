@@ -160,6 +160,8 @@
     <string name="mapvm_poipack_unavailable">Inget platspaket för %1$s ännu. Det dyker upp här när det publicerats.</string> <!-- format -->
     <string name="settings_demo_drive">Simulera körning (demo)</string>
     <string name="settings_demo_drive_hint">För demos, skärmbilder och tester: att trycka på Starta kör rutten som ett simulerat GPS-spår i stället för din verkliga plats — navigering fungerar var som helst. Stäng av för att navigera på riktigt.</string>
+    <string name="settings_sim_location">Simulera min plats (demo)</string>
+    <string name="settings_sim_location_hint">För demos och skärmbilder: låtsas att du är mitt på kartan just nu, så att platsprick, avstånd och vägbeskrivningar utgår därifrån i stället för din verkliga position. Stäng av för riktig GPS.</string>
     <string name="place_address_copied">Adress kopierad</string>
     <string name="place_copy_address">Kopiera adress</string>
     <string name="place_directions">Vägbeskrivning</string>
