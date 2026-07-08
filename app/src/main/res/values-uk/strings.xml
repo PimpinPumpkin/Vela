@@ -160,6 +160,8 @@
     <string name="mapvm_poipack_unavailable">Для регіону %1$s ще немає пакета місць. Він з\'явиться тут після публікації.</string> <!-- format -->
     <string name="settings_demo_drive">Симуляція поїздки (демо)</string>
     <string name="settings_demo_drive_hint">Для демонстрацій, знімків екрана й тестів: натискання «Почати» веде маршрутом як змодельований GPS-трек замість вашого справжнього розташування — навігація працює будь-де. Вимкніть для справжньої навігації.</string>
+    <string name="settings_sim_location">Симулювати місцезнаходження (демо)</string>
+    <string name="settings_sim_location_hint">Для демонстрацій і знімків екрана: удавайте, що ви зараз у центрі карти, щоб точка місцезнаходження, відстані та маршрути починалися звідти, а не з вашої справжньої позиції. Вимкніть для справжнього GPS.</string>
     <string name="place_address_copied">Адресу скопійовано</string>
     <string name="place_copy_address">Копіювати адресу</string>
     <string name="place_directions">Маршрут</string>
