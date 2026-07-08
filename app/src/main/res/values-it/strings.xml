@@ -219,6 +219,11 @@
     <string name="mapscreen_search_this_area">Cerca in questa zona</string>
     <string name="mapscreen_place">Luogo</string>
     <string name="mapscreen_your_location">La tua posizione</string>
+    <string name="mapscreen_choose_on_map">Scegli sulla mappa</string>
+    <string name="mapscreen_choose_origin_hint">Sposta la mappa per impostare il punto di partenza</string>
+    <string name="mapscreen_choose_stop_hint">Sposta la mappa per impostare la tappa</string>
+    <string name="mapscreen_choose_set_start">Imposta partenza</string>
+    <string name="mapscreen_choose_set_stop">Imposta tappa</string>
     <string name="mapscreen_destination">Destinazione</string>
     <string name="mapscreen_center_on_my_location">Centra sulla mia posizione</string>
     <string name="mapscreen_stop_replay">Interrompi riproduzione</string>

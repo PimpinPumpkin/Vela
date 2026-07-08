@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -231,6 +232,7 @@ fun MapScreen(
             (state.results.isNotEmpty() && !state.resultsCollapsed),
     ) {
         when {
+            state.pickOnMap != null -> vm.cancelChooseOnMap()
             searchOpen -> { focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
@@ -382,7 +384,7 @@ fun MapScreen(
                     // Report the banner's bottom edge so the compass can drop just below it (any height).
                     .onGloballyPositioned { navBannerBottomPx = (it.positionInRoot().y + it.size.height).roundToInt() },
             )
-        } else {
+        } else if (state.pickOnMap == null) {
             // While the search box is focused the whole thing becomes a full-screen
             // page (recent searches over an opaque background, like Google Maps);
             // otherwise it's the floating bar over the map. Running a search clears
@@ -433,6 +435,10 @@ fun MapScreen(
                             pickingStop = state.pickingStop,
                             onCancelPickStop = vm::cancelPickStop,
                             onUseMyLocation = vm::useMyLocationAsOrigin,
+                            onChooseOnMap = {
+                                focusManager.clearFocus()
+                                if (state.pickingOrigin) vm.chooseOriginOnMap() else vm.chooseStopOnMap()
+                            },
                             onPickSuggestion = {
                                 focusManager.clearFocus()
                                 vm.selectPlace(it)
@@ -681,7 +687,7 @@ fun MapScreen(
             // instead of burying it at the bottom of the place sheet.
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
-            state.directionsOpen && !searchOpen -> DirectionsPanel(
+            state.directionsOpen && !searchOpen && state.pickOnMap == null -> DirectionsPanel(
                 originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
                 else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
@@ -710,7 +716,7 @@ fun MapScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
-            state.selected != null && !searchOpen -> PlaceSheet(
+            state.selected != null && !searchOpen && state.pickOnMap == null -> PlaceSheet(
                 place = state.selected!!,
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
@@ -730,6 +736,16 @@ fun MapScreen(
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
                 modifier = Modifier.align(Alignment.BottomCenter),
+            )
+        }
+
+        // "Choose on map" crosshair — the map is visible; a fixed pin marks screen centre. Move the
+        // map under it (or long-press) and Confirm to set the start/stop from that point (Google-style).
+        state.pickOnMap?.let { target ->
+            ChooseOnMapOverlay(
+                target = target,
+                onConfirm = vm::confirmMapPick,
+                onCancel = vm::cancelChooseOnMap,
             )
         }
 
@@ -1171,6 +1187,72 @@ private fun CategoryChips(onPick: (String) -> Unit) {
     }
 }
 
+/** "Choose on map" mode: a full-screen overlay over the live map with a centre crosshair, a hint
+ *  banner and a Confirm button. Empty areas carry no gesture modifiers, so map pan/zoom pass straight
+ *  through to the MapLibre view below; only the banner and button consume touches. */
+@Composable
+private fun ChooseOnMapOverlay(
+    target: MapPick,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    Box(Modifier.fillMaxSize()) {
+        Surface(
+            color = MaterialTheme.colorScheme.inverseSurface,
+            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            shape = RoundedCornerShape(12.dp),
+            tonalElevation = 3.dp,
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(12.dp)
+                .fillMaxWidth(),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+            ) {
+                Text(
+                    stringResource(
+                        if (target == MapPick.ORIGIN) R.string.mapscreen_choose_origin_hint
+                        else R.string.mapscreen_choose_stop_hint,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onCancel) {
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.mapscreen_cancel))
+                }
+            }
+        }
+        // Pin whose tip points at the exact map centre (offset up by ~half its height).
+        Icon(
+            Icons.Default.Place,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(44.dp)
+                .offset(y = (-22).dp),
+        )
+        Button(
+            onClick = onConfirm,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .navigationBarsPadding()
+                .padding(bottom = 24.dp),
+        ) {
+            Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+            Text(
+                stringResource(
+                    if (target == MapPick.ORIGIN) R.string.mapscreen_choose_set_start
+                    else R.string.mapscreen_choose_set_stop,
+                ),
+            )
+        }
+    }
+}
+
 /** Full-screen search page body: saved places + recent searches, shown over an
  *  opaque background while the search box is focused (Google-style). */
 @Composable
@@ -1186,6 +1268,7 @@ private fun SearchEntryContent(
     pickingStop: Boolean = false,
     onCancelPickStop: () -> Unit = {},
     onUseMyLocation: () -> Unit = {},
+    onChooseOnMap: () -> Unit = {},
     onPickSuggestion: (Place) -> Unit,
     onPickSaved: (SavedPlace) -> Unit,
     onPickRecent: (String) -> Unit,
@@ -1235,6 +1318,17 @@ private fun SearchEntryContent(
                 tint = MaterialTheme.colorScheme.primary,
                 label = stringResource(R.string.mapscreen_your_location),
                 onClick = onUseMyLocation,
+            )
+            Divider()
+        }
+        // "Choose on map" — leave the search overlay and set this endpoint by moving a crosshair
+        // over the live map (or long-pressing), Google-style. Offered for both origin and stop.
+        if (pickingOrigin || pickingStop) {
+            SuggestionRow(
+                icon = Icons.Default.Place,
+                tint = MaterialTheme.colorScheme.primary,
+                label = stringResource(R.string.mapscreen_choose_on_map),
+                onClick = onChooseOnMap,
             )
             Divider()
         }
