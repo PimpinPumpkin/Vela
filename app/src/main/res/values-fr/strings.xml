@@ -160,6 +160,8 @@
     <string name="mapvm_poipack_unavailable">Pas encore de pack de lieux pour %1$s. Il apparaîtra ici dès sa publication.</string> <!-- format -->
     <string name="settings_demo_drive">Simuler la conduite (démo)</string>
     <string name="settings_demo_drive_hint">Pour les démos, captures d’écran et tests : appuyer sur Démarrer parcourt l’itinéraire comme une trace GPS simulée au lieu de votre position réelle — la navigation fonctionne partout. Désactivez pour naviguer réellement.</string>
+    <string name="settings_sim_location">Simuler ma position (démo)</string>
+    <string name="settings_sim_location_hint">Pour les démos et captures d\'écran : faites comme si vous étiez au centre de la carte, pour que le point de localisation, les distances et les itinéraires partent de là plutôt que de votre vraie position. Désactivez pour le vrai GPS.</string>
     <string name="place_address_copied">Adresse copiée</string>
     <string name="place_copy_address">Copier l\'adresse</string>
     <string name="place_directions">Itinéraire</string>
