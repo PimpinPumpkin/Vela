@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Download een natuurlijke stem op het toestel voor gesproken instructies — kies er hieronder een. De ★-stemmen klinken het meest als een kaartnavigator (Lessac en HFC komen het dichtst bij Google). Eenmalige download; wifi aanbevolen.</string>
     <string name="settings_voice_lib_lang_hint">Uw apptaal is %1$s — download hieronder een %2$s-stem zodat de gesproken instructies overeenkomen (een Engelse stem zou %3$s straatnamen verkeerd uitspreken).</string>
     <string name="settings_voice_search">Stemmen zoeken</string>
+    <string name="settings_voice_show_more">%1$d meer tonen</string>
+    <string name="settings_voice_show_less">Minder tonen</string>
     <string name="settings_voice_this_voice">deze stem</string>
     <string name="settings_voice_remove_title">%1$s verwijderen?</string>
     <string name="settings_voice_remove_body">Dit is uw enige Vela-stem. Gesproken instructies vallen terug op een systeem-tekst-naar-spraak-engine (of vallen stil als er geen is geïnstalleerd) totdat u een andere downloadt.</string>
