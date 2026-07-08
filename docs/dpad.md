@@ -59,7 +59,10 @@ but practically unusable.
   press a key just to *wake up* focus (see "Initial focus" below). Retries 20 × 50 ms because
   a freshly-composed focus node usually isn't attached on frame 1 (the first `requestFocus()`
   throws and nothing ends up focused — the exact reason the map-target acquisition retries).
-  Only requests on a D-pad-first device, so touch UX is byte-identical.
+  Only requests on a D-pad-first device, so touch UX is byte-identical. Its sibling
+  `Modifier.dpadAutoFocus()` does the same as a Modifier but keeps re-requesting **until
+  `onFocusEvent` confirms focus actually landed** (not just "requestFocus didn't throw") — use
+  it when the target may be off-screen; see Known limitations.
 - `Modifier.dpadFieldEscape()` — makes a text field **escapable** by D-pad: UP/DOWN move
   focus to the previous/next form control instead of being swallowed by the field's own
   cursor handling. A single- or multi-line `TextField`/`BasicTextField` otherwise eats the
@@ -331,6 +334,28 @@ content filter otherwise leaves routing without a usable fix on this device.)
 
 ## Known limitations / follow-ups (also on the ROADMAP)
 
+- **`DropdownMenu` items can't be pre-focused (Compose framework limit).** A Compose
+  `DropdownMenu` opens its Popup with **window** focus but **no item Compose-focused** — Compose
+  sets the initial item focus only on the first key event. So the menu opens un-highlighted and
+  the first DOWN "enters" it. Verified un-fixable on-device (2026-07-07): `FocusRequester.request-
+  Focus()` on the item, the same on a custom focusable Row, a retry-until-`onFocusEvent`-confirms
+  loop, an outer-scope delayed request, and `FocusManager.moveFocus(Down)` from inside the popup
+  — **five approaches, none land focus** (`mCurrentFocus` is the Pop-Up Window, yet no node is
+  focused until a key press). Rewriting the ~6 menus as custom in-window overlays *would* allow
+  pre-focus but would break the "touch stays byte-identical" rule, so they're left as stock
+  DropdownMenus. **Fully operable regardless:** OK opens, DOWN/UP walk the items, OK selects,
+  BACK closes the menu (not the sheet) — all proven on-device.
+- **Off-screen initial-focus targets (small screens).** Compose won't move focus to an element
+  it can't bring into view, so a primary control that starts **below the fold** can't be
+  auto-focused on open (measured: the Welcome screen's Get-started button on a 480×640 keypad
+  screen). `Modifier.dpadAutoFocus()` (the retry-until-`onFocusEvent`-confirms variant) lands it
+  when it's on-screen (normal phones); when it's off-screen the D-pad user presses DOWN to
+  reveal + focus it. Force-scrolling it into view on open was tried and reverted — it hides the
+  welcome intro on a once-seen screen, a worse tradeoff. `rememberDpadAutoFocus()` (the simpler
+  requester) is fine for on-screen targets; use `dpadAutoFocus()` when a target may be off-screen.
+- **Platform dialogs are AOSP, not Vela UI.** "Depart at / Arrive by" opens
+  `android.app.TimePickerDialog`, and confirmations use platform `AlertDialog`s — these take
+  window focus and are D-pad-navigable by Android itself, outside Vela's Compose focus system.
 - **Text entry relies on hardware keys.** In `dpadMode` Vela focuses the field but does
   NOT raise the soft IME — the keypad's physical keys type straight into the focused field
   (verified). A device with neither a hardware keyboard nor a D-pad-navigable IME would have
