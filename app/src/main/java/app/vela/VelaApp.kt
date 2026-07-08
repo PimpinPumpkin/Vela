@@ -36,6 +36,7 @@ class VelaApp : Application() {
         app.vela.ui.ShowReviews.init(this)
         app.vela.ui.LoadPhotos.init(this)
         app.vela.ui.HideAdult.init(this)
+        app.vela.ui.HideExternalLinks.init(this)
         app.vela.ui.Buildings3d.init(this)
         Onboarding.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
