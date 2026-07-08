@@ -136,6 +136,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadHighlight
+import app.vela.ui.dpadFieldEscape
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -1058,7 +1059,14 @@ fun DirectionsPanel(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             AnimatedVisibility(visible = !collapsed.value) {
-              Column {
+              // Scrollable + height-capped: with up to 4 alternates the mode tabs + route
+              // list + depart options + Start/Steps exceed the screen, and without a scroll
+              // container the Start button was pushed off-screen with no way to reach it
+              // (measured on-device — affects touch too). Cap to ~58% of the screen so the
+              // From/To header stays visible above; focus-to-Start now scrolls it into view.
+              val dirScroll = rememberScrollState()
+              val dirMaxH = (LocalConfiguration.current.screenHeightDp * 0.58f).dp
+              Column(Modifier.heightIn(max = dirMaxH).verticalScroll(dirScroll)) {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
@@ -1616,7 +1624,7 @@ private fun PanelControls(
             shape = RoundedCornerShape(24.dp),
             // No fixed height: OutlinedTextField reserves internal padding for a label line, so a
             // 52dp clamp clipped the text's descenders at the bottom. Natural height doesn't clip.
-            modifier = Modifier.weight(1f),
+            modifier = Modifier.weight(1f).dpadFieldEscape(),
         )
         Spacer(Modifier.width(6.dp))
         var sortOpen by remember { mutableStateOf(false) }
@@ -1917,7 +1925,7 @@ private fun ReviewsTab(
                         singleLine = true,
                         textStyle = MaterialTheme.typography.bodyMedium,
                         shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape(),
                     )
                 }
                 val q = reviewQuery.trim()

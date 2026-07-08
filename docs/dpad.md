@@ -53,6 +53,18 @@ but practically unusable.
   `onFocusEvent.hasFocus` covers both) holds focus **and** the UI is key-driven (honours
   `dpadFirst` directly, since a D-pad-first phone may still read `inputMode == Touch` until
   the first key event). Never appears under touch.
+- `Modifier.dpadFieldEscape()` — makes a text field **escapable** by D-pad: UP/DOWN move
+  focus to the previous/next form control instead of being swallowed by the field's own
+  cursor handling. A single- or multi-line `TextField`/`BasicTextField` otherwise eats the
+  vertical arrows, **trapping focus on the field so nothing below it is reachable** (measured
+  on-device: the Settings "Try the voice" / variant-jump / routing-filter / voice-search
+  fields, and the reviews search field — DOWN sat blinking in the field, the controls under
+  it never got focus). Fires via `onPreviewKeyEvent` (root→leaf) so it wins before the field
+  consumes the key, and swallows the matching key-up so the field never sees a half event.
+  Returns false at a list edge where focus can't move, so the field still behaves normally
+  there. Inert under touch (gated on `rememberDpadMode`). Apply to any text field sitting in
+  a vertical list of focusable controls. (The search bar's field solves the same trap inline —
+  see Trap C below — because it also needs the BACK/close handling in the same key handler.)
 
 ### The MapLibre `MapView` steals D-pad keys — the load-bearing fix
 
@@ -123,6 +135,19 @@ button, never reaching a result). Returning to the bare map re-acquires + re-eng
 attached on the first frame). Nav keeps the map primary (the banner is an overlay), so you
 can still pan to look around during nav.
 
+**Choose-on-map is the one exception (sweep fix, 2026-07-07).** "Choose on map" (setting a
+route origin/stop by placing a pin) opens with `directionsOpen` still true underneath, which
+`mapTargetHidden` would normally treat as a panel and unmount the map target — but this mode
+*requires* the map be pannable so the user can position the pin. Without the exception the
+arrows only moved focus to the cancel **✕** and the pin couldn't be moved (measured). So
+`mapTargetHidden` now has a leading `state.pickOnMap == null &&` guard: while a pick is in
+progress the map target stays mounted **and auto-engaged**, so arrows pan immediately and OK
+confirms the pick (hold-OK sets it directly). Two matching cosmetic tweaks: the "OK: move the
+map" focused pill is **suppressed** during a pick (`mapFocused && state.pickOnMap == null`) —
+there the arrows already pan and OK *confirms* rather than *enters* map control, so that pill
+would be a lie — and the crosshair/pin + "Move the map to set…" banner come from the existing
+`ChooseOnMapOverlay` instead.
+
 **Zoom buttons**: pinch has no 5-key equivalent, so a D-pad-mode `+`/`−` pair sits mid-right.
 Shown **only while browsing the bare map** (not during search / results / place sheet /
 directions / nav) — mid-right they sit in the vertical focus path of those panels and
@@ -159,6 +184,15 @@ causes, both fixed:
    (IME window eats the first to hide itself, the next closes) — deterministic, proven
    returning to the map.
 
+**Trap C: DOWN couldn't leave the field (sweep fix, 2026-07-07).** With the field armed and
+focused, the entry rows below it (Home / Work / saved places / recent searches / live
+suggestions) were **unreachable** — a single-line `BasicTextField` swallows DOWN as a
+cursor move, so focus never left the field. Fix: the field's existing `onPreviewKeyEvent`
+handler gained a `DirectionDown` case that calls `focusManager.moveFocus(Down)` and consumes
+the key, handing focus into the rows. (It lives inline in `SearchBar` rather than reusing the
+generic `dpadFieldEscape` because it shares the handler with the BACK/close logic above; the
+effect is identical.) Now: OK arms → type → DOWN walks into the suggestions → OK opens one.
+
 Touch phones are unaffected: all of the above is gated on `dpadMode`.
 
 ### Gesture alternatives
@@ -166,33 +200,27 @@ Touch phones are unaffected: all of the above is gated on `dpadMode`.
 - **Nav maneuver banner** (`NavOverlays.kt`): the banner is focusable; ←/→ walk the
   upcoming steps (the key mirror of the swipe), OK resumes live guidance while previewing
   (via the preview-mode `clickable`, which OK activates). The ←/→ key handler sits *before*
-  that clickable in the modifier chain (key events bubble leaf→root); a standalone
-  `focusable()` exists only when the clickable doesn't, so the banner is always one focus
-  stop. **Proven on-device**: RIGHT → next step, RIGHT → further, LEFT → back, OK → resume.
+  that clickable in the modifier chain (key events bubble leaf→root, i.e. from the focused
+  node up to its ancestors); a standalone `focusable()` exists only when the clickable
+  doesn't, so the banner is always exactly one focus stop. **Proven on-device**: RIGHT →
+  next step, RIGHT → further, LEFT → back, OK → resume.
 - **Place sheet handle** (`PlaceSheet.kt`): the tap-only `detectTapGestures` became a
   real `clickable` (focusable, OK toggles peek/expanded; identical under touch). The
   drag detector is untouched. Collapse-to-dismiss stays on BACK (already handled by
   MapScreen's peel `BackHandler`).
-- **Directions panel handle** (`PlaceSheet.kt`): already `clickable`; gained the focus
-  ring.
-
-### Gesture alternatives
-
-- **Nav maneuver banner** (`NavOverlays.kt`): the banner is focusable; ←/→ walk the
-  upcoming steps (the key mirror of the swipe), OK resumes live guidance while
-  previewing. The key handler sits *before* the preview-mode `clickable` in the
-  modifier chain because key events bubble from the focused node **up** to ancestors;
-  the standalone `focusable()` only exists when the clickable doesn't, so the banner is
-  always exactly one focus stop.
-- **Place sheet handle** (`PlaceSheet.kt`): the tap-only `detectTapGestures` became a
-  real `clickable` (focusable, OK toggles peek/expanded; identical under touch). The
-  drag detector is untouched. Collapse-to-dismiss stays on BACK (already handled by
-  MapScreen's peel `BackHandler`).
-- **Directions panel handle** (`PlaceSheet.kt`): already `clickable`; gained the focus
-  ring.
+- **Directions panel** (`PlaceSheet.kt`): the handle is `clickable` and gained the focus
+  ring. **Sweep fix (2026-07-07):** with up to 4 route alternates the mode tabs + route
+  list + depart options pushed the **Start** button off the bottom of the screen with no
+  way to reach it — a real layout bug that affects **touch too**, not just D-pad. The
+  `AnimatedVisibility` body is now a `verticalScroll` Column capped at ~58% of screen
+  height (`heightIn(max = screenHeightDp * 0.58)`), so the From/To header stays visible
+  above and focusing (or tapping) Start scrolls it into view.
 - **Photo viewer** (`PlaceSheet.kt` `PhotoGallery`): grabs focus on open (it's a
   `Dialog`, its own focus scope); ←/→ page through photos; BACK dismisses (Dialog
   default). Pinch-zoom has no key equivalent (accepted — see limitations).
+- **Text fields** (Settings + reviews search): `Modifier.dpadFieldEscape()` so UP/DOWN
+  leave the field instead of being trapped in it (see Core helpers, and Trap C for the
+  search bar's inline equivalent).
 - **Results list / sheets**: expand/collapse already had focusable buttons (chevron,
   "Hide results" bar); they gained rings. Scroll happens implicitly as focus walks the
   rows (`LazyColumn`/`verticalScroll` bring-into-view).
@@ -211,16 +239,16 @@ components; extend the pass if a spot proves hard to see).
 |---|---|
 | `WelcomeScreen` | **made scrollable** — its fixed `weight(1f)`-spacer layout pushed the Get-started button off the bottom of a small (480×640) screen with no way to scroll to it, so a D-pad user couldn't SEE it (focusable-when-clipped, but invisible). Now `verticalScroll` + `heightIn(min = screen)`; button reveals + activates on-device. |
 | Onboarding prompts (`VelaRoot`) | AlertDialogs + buttons — natively focusable (proven: "Offline maps" dismissed via D-pad) |
-| `SearchBar` | armed-field design (above) |
+| `SearchBar` | armed-field design + BACK-out + DOWN-escape into the entry rows (Traps A/B/C above) |
 | Search entry page (shortcut/saved/recent rows, menus) | `clickable` rows + `DropdownMenu`s — operable natively; rings added |
 | Search results list | rows/chips/chevron operable; top-sheet drag has button equivalents; rings added |
 | Map | `MapDpadController` + centre target (above) |
 | Place sheet | handle fixed; action buttons/tabs/rows are Material or `clickable` — operable |
-| Directions panel | handle ring; rows/chips/buttons (incl. stop reorder) are buttons — operable |
+| Directions panel | handle ring; rows/chips/buttons (incl. stop reorder) are buttons — operable; body scroll-capped so **Start** is reachable with 4 alternates (sweep fix, helps touch too) |
 | Route steps sheet | rows `clickable`; rings added |
 | Nav (banner, controls, faster-route card, arrival card) | banner keys added; the rest are Material buttons |
-| Choose-on-map | OK at the map target confirms the pick; hold-OK sets directly; Set/Cancel buttons focusable |
-| Settings | rows/switches/±steppers/text fields — all natively focusable; no gesture-only widgets (no sliders) |
+| Choose-on-map | map stays pannable to position the pin (the `pickOnMap` exception, sweep fix); OK confirms; hold-OK sets directly; Set/Cancel buttons focusable |
+| Settings | rows/switches/±steppers focusable; text fields got `dpadFieldEscape` so UP/DOWN escape them (sweep fix); no gesture-only widgets (no sliders) |
 | Trip replay pill, notices, info cards | buttons — operable |
 
 ## Proven on-device (MTK "M5" keypad phone, Android 13, no touch used)
@@ -243,6 +271,16 @@ assumed: `touchscreen=finger` (lies), `SOURCE_DPAD` only on the Virtual device,
 - **Nav banner**: RIGHT/RIGHT walked steps ("Turn left onto Avenue K" → "…Nostrand Ave" →
   "Arrive"), LEFT went back, OK resumed live guidance.
 - **End**: focus reached the End button; OK returned to the route preview.
+
+**Full-function sweep (2026-07-07).** Beyond the flows above, *every* surface of the app was
+driven end-to-end by D-pad — map browse, search entry, results filters, the whole place
+sheet, the directions panel, navigation controls, and every Settings section — specifically
+to find anything still touch-only. That exhaustive pass surfaced the five refinements marked
+"sweep fix" here: (1) the search field's DOWN-escape (Trap C), (2) `dpadFieldEscape` on the
+Settings + reviews text fields, (3) Choose-on-map staying pannable to place the pin, (4) its
+cosmetic pill suppression, and (5) the directions-panel scroll cap so **Start** is reachable
+with 4 alternates. Nav was re-verified through Start → banner ←/→ step preview → voice-mute
+toggle → End. Nothing gesture-only remains outside the documented limitations below.
 
 (GPS was mocked via a `gps` test provider to give routing a valid origin; the network's
 content filter otherwise leaves routing without a usable fix on this device.)

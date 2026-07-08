@@ -115,7 +115,9 @@ genuinely needs no doc edit, say why in the commit.
   that asset. Verify basemap edits on-device in **both** themes.
 - **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
   works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
-  `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`);
+  `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/
+  `Modifier.dpadFieldEscape` — the last makes a text field's UP/DOWN escape it instead of
+  being swallowed as a cursor move, so controls below the field stay reachable);
   the map is key-driven via `app/ui/map/MapDpadController.kt` (wired in `VelaMapView`, key
   handling + crosshair + zoom buttons in `MapScreen`). Rules when touching UI: (1) every new
   interactive element must be focusable with a visible ring (`dpadHighlight`) and every new
@@ -123,9 +125,12 @@ genuinely needs no doc edit, say why in the commit.
   lambda, `gestureMove`, `navUserZoom`) — never fork them; (3) all D-pad affordances gate on
   `dpadMode`/`noTouch` so touch UX stays byte-identical; (4) keep the diff merge-friendly —
   new behaviour in new files, shared-file edits as small anchored insertions (the one
-  commented import block per file). Search-overlay focus is subtle (armed field +
-  `searchHold` latch — two traps documented in docs/dpad.md); don't "simplify" it back to
-  bare field-focus.
+  commented import block per file). Search-overlay focus is subtle (armed field + explicit
+  `searchExpanded` flag — THREE traps documented in docs/dpad.md: opens-on-focus,
+  can't-BACK-out, and DOWN-must-escape-into-the-suggestions); don't "simplify" it back to
+  bare field-focus. The full-app D-pad sweep (2026-07-07) also made Choose-on-map keep the
+  map pannable to place the pin (a `pickOnMap` exception in `mapTargetHidden`) and scroll-cap
+  the directions panel so **Start** is reachable with 4 alternates (helps touch too).
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in

@@ -342,9 +342,14 @@ itself shows the traffic, not the whole map.
   crosshair, hold-OK = long-press, on-screen +/− zoom buttons), which REUSES the touch
   paths (same tap-resolution lambda, gesture flags, nav-zoom override) rather than forking
   them; every gesture has a key alternative (banner ←/→ step preview, sheet-handle OK
-  toggle, photo-viewer ←/→). New interactive UI must keep all three properties
-  (reachable, activatable, visibly focused). Full design + per-surface audit + upstream
-  merge policy: `docs/dpad.md`.
+  toggle, photo-viewer ←/→). Text fields must not trap focus — `Modifier.dpadFieldEscape`
+  makes UP/DOWN leave the field (the search bar does the same inline). Choose-on-map keeps
+  the map pannable to place the pin (a `pickOnMap` exception in `mapTargetHidden`), and any
+  panel taller than the screen (e.g. the directions panel with 4 alternates) must scroll so
+  its primary action stays reachable. New interactive UI must keep all three properties
+  (reachable, activatable, visibly focused). A full-function D-pad sweep (2026-07-07) proved
+  every surface end-to-end. Full design + per-surface audit + upstream merge policy:
+  `docs/dpad.md`.
 - **Compose UI**: place sheet (fixed Google-grey palette via `ui/SheetPalette`, NOT
   Material-You — deliberate), full-screen search page (Home/Work + saved + recent
   places + recent searches), directions panel (alternates, swap, depart-time chooser,
