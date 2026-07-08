@@ -113,6 +113,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   fetch in the ViewModel and the render in the place sheet, so off means no traffic, not just hidden UI.
   Device-verified: with both off, an Applebee's sheet opens with rating, hours, phone and attributes but no
   photos and no review section. Localized in all 11 languages.
+- ✅ **"Hide adult categories" toggle (2026-07-08).** Settings → Map, **off by default**. On = drops places whose
+  Google CATEGORY is adult / nightlife / alcohol / gambling / smoking (bars, clubs, casinos, liquor stores,
+  hookah, cannabis, adult, …) from **both** search results and the ambient map. Matching is on the free-text
+  category **only, never the name** (a place categorised "Restaurant" is always kept), and it's PRECISE — food
+  "…bar" categories (sushi/juice/coffee/salad bar) stay. Because Google returns the category **localized**
+  (`hl=<lang>`), the keyword list carries the equivalent terms for all 11 UI languages, so the filter works in
+  every locale, not just English. Pure `:core` `CategoryFilter` (unit-tested) applied at the data-source seam
+  (`GoogleMapsDataSource.search` + `nearbyPlaces`); gated by a `:core`-visible `enabled` flag the `HideAdult`
+  holder flips, so `:core` needn't depend on the app's reactive state. Localized in all 11 languages.
 - ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list — fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
 - ✅ **Address → business snap** — searching a raw address that *is* a business (e.g. "1020 Olive Dr, Davis") now lands on the **business** (In-N-Out Burger, rating/hours/category and all), not the bare address — Google lists the "at this place" business under the geocoded node (`[0][1][0][14][68]`) and Vela now reads it. *(verified on-device; unit-tested; the path is in calibration so it's remotely fixable)*

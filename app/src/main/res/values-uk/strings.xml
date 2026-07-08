@@ -55,6 +55,8 @@
     <string name="settings_show_reviews_hint">Вимк. = сторінки місць не показують відгуки, і Vela ніколи їх не завантажує.</string>
     <string name="settings_load_photos">Завантажувати фото</string>
     <string name="settings_load_photos_hint">Вимк. = сторінки місць не показують фото, і нічого не завантажується. Економить трафік.</string>
+    <string name="settings_hide_adult">Приховати дорослі категорії</string>
+    <string name="settings_hide_adult_hint">Увімк. = приховує бари, клуби, казино, магазини алкоголю та інші дорослі / нічні місця з пошуку та карти.</string>
     <string name="settings_offline">Офлайн</string>
     <string name="settings_offline_hint">Щоб користуватися картою без зв’язку, потрібні дві речі — ПЛИТКИ карти, які ви бачите, і ДОРОЖНЯ МЕРЕЖА, яка прокладає маршрут. Збереження ділянки карти завантажує обидві для цього місця; список регіонів нижче додає дорожню мережу для будь-де, куди ви прямуєте.</string>
     <string name="settings_offline_map_area">Ділянка карти</string>
