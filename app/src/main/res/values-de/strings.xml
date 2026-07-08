@@ -414,4 +414,5 @@
     <string name="transit_nav_from">ab %1$s</string> <!-- format -->
     <string name="transit_nav_get_off">Aussteigen bei %1$s</string> <!-- format -->
     <string name="transit_nav_next">Weiter</string>
+    <string name="place_last_available">Letzte Verbindung</string>
 </resources>
