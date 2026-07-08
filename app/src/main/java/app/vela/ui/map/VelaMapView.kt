@@ -880,9 +880,14 @@ fun VelaMapView(
         // being hidden behind it. Padding is the map's single source of truth, so
         // every camera move below respects it. Reset to 0 when no sheet is up.
         if (cameraBottomInsetPx != lastInsetPx) {
+            // Only re-frame when the sheet APPEARS or grows (lift the pin above it). When it
+            // shrinks to 0 (sheet closed) we must NOT null lastCameraTarget — doing so let the
+            // else-branch below re-center on the now-stale cameraTarget at a zoomed-out level,
+            // yanking the map back to the tapped place and zooming out after you'd panned away.
+            val grew = cameraBottomInsetPx > lastInsetPx
             lastInsetPx = cameraBottomInsetPx
             map.setPadding(0, 0, 0, cameraBottomInsetPx)
-            lastCameraTarget = null // re-frame the current target against the new inset
+            if (grew) lastCameraTarget = null // re-frame the current target against the new inset
         }
         when {
             // A recenter TAP always wins — even if we're already on the target (the

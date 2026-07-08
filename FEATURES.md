@@ -17,6 +17,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices — hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Camera stays put when you close a place sheet or exit Settings (2026-07-07, reported bug).** Two separate causes. (1) Closing a place sheet dropped the map's bottom inset to 0, which nulled `lastCameraTarget` in `VelaMapView` and let the fall-through camera branch re-center on the now-stale `state.center` (the tapped place) at the zoomed-out browse level, so the map jumped back to the place and zoomed out after you'd panned away. The inset handler now only re-frames when the sheet APPEARS or grows, never when it closes. (2) `VelaRoot` swapped `MapScreen` out for `SettingsScreen`, disposing the remembered MapLibre `MapView`; returning rebuilt the map from scratch and re-seeded it from the stale center at the default zoom. Settings now draws as an opaque overlay ON TOP of a still-composed `MapScreen`, so the map view (and its camera/zoom) survives the round trip.
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
 - ✅ Detailed open basemap: bundled OpenFreeMap Liberty + injected house numbers at z17; OpenMapTiles vector source pinned to OpenFreeMap's **versioned** tile path (the un-versioned path serves empty tiles — that was a blank-map bug)
 - ✅ Route line, **tappable Google-style search-result pins**, location dot as GeoJSON layers
