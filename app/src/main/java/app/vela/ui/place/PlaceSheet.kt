@@ -83,6 +83,7 @@ import androidx.compose.material.icons.filled.Train
 import androidx.compose.material.icons.filled.Tram
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.LocalCafe
@@ -169,6 +170,7 @@ import app.vela.core.model.TransitItinerary
 import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
 import app.vela.core.model.TransitStep
+import app.vela.core.model.TransitStopTime
 import app.vela.core.model.TravelMode
 import coil.compose.AsyncImage
 import app.vela.ui.RatingStars
@@ -1370,6 +1372,38 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 t.steps.forEach { TransitStepRow(it, ink, dim) }
             }
+            // Service alerts (detours / info) for the ridden lines.
+            if (t.alerts.isNotEmpty()) {
+                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                    t.alerts.take(4).forEach { alert ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.Top) {
+                            Icon(Icons.Default.Info, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.padding(top = 2.dp).size(15.dp))
+                            Text(alert, style = MaterialTheme.typography.labelSmall, color = dim)
+                        }
+                    }
+                }
+            }
+            // Tickets & info: fare (when the agency provides one) + agency name and a dialable phone
+            // (Google's "Tickets and information" footer).
+            if (t.fare != null || t.agencyPhone != null) {
+                val context = LocalContext.current
+                HorizontalDivider(color = dim.copy(alpha = 0.25f))
+                Text(stringResource(R.string.place_transit_tickets), style = MaterialTheme.typography.labelMedium, color = ink)
+                t.fare?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink) }
+                val info = listOfNotNull(t.agency, t.agencyPhone).joinToString("  ·  ")
+                if (info.isNotEmpty()) {
+                    val phone = t.agencyPhone
+                    Text(
+                        info,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (phone != null) MaterialTheme.colorScheme.primary else dim,
+                        modifier = if (phone != null) Modifier.clickable {
+                            val dialable = "tel:" + phone.filter { it.isDigit() || it == '+' }
+                            runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                        } else Modifier,
+                    )
+                }
+            }
         }
     }
 }
@@ -1378,22 +1412,88 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
  *  times·duration·distance subtitle ("Bus 42B / 5:48 AM – 6:41 AM · 53 min"). */
 @Composable
 private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color) {
+    if (s.line == null) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
+            Icon(transitModeIcon(s.mode), null, tint = dim, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+            Column {
+                Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
+                val sub = listOfNotNull(s.durationText, s.distanceText).joinToString("  ·  ")
+                if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+            }
+        }
+        return
+    }
+    val line = s.line ?: return // unreachable (walk branch returned) — re-narrows the cross-module type
+    val lineColor = parseHexColor(line.colorHex) ?: dim
+    var stopsOpen by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
-        Icon(
-            transitModeIcon(s.mode),
-            contentDescription = null,
-            tint = s.line?.colorHex?.let { parseHexColor(it) } ?: dim,
-            modifier = Modifier.padding(top = 2.dp).size(18.dp),
-        )
-        Column {
-            Text(s.line?.name ?: stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
-            val parts = listOfNotNull(
-                if (s.departText != null && s.arriveText != null) "${s.departText} – ${s.arriveText}" else null,
+        Icon(transitModeIcon(s.mode), null, tint = lineColor, modifier = Modifier.padding(top = 2.dp).size(18.dp))
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LinePill(line)
+                s.headsign?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, maxLines = 2) }
+            }
+            s.boardStop?.let { StopLine(it, ink, dim, emphasize = true, delay = s.delayText) }
+            val rideLabel = listOfNotNull(
                 s.durationText,
-                s.distanceText,
+                s.numStops?.let { stringResource(R.string.place_transit_stops, it) },
+            ).joinToString("  ·  ")
+            if (s.intermediateStops.isNotEmpty()) {
+                Row(
+                    Modifier.clickable { stopsOpen = !stopsOpen }.padding(vertical = 1.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
+                    Icon(
+                        if (stopsOpen) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (stopsOpen) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
+                        tint = dim, modifier = Modifier.size(18.dp),
+                    )
+                }
+                if (stopsOpen) {
+                    Column(Modifier.padding(start = 8.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        s.intermediateStops.forEach { StopLine(it, ink, dim, emphasize = false) }
+                    }
+                }
+            } else if (rideLabel.isNotEmpty()) {
+                Text(rideLabel, style = MaterialTheme.typography.bodySmall, color = dim)
+            }
+            s.alightStop?.let { StopLine(it, ink, dim, emphasize = true) }
+        }
+    }
+}
+
+/** One stop in the transit drill-down: its call time, name, and (for board/alight) the agency
+ *  stop code + any real-time delay. Emphasised for board/alight, lighter for the intermediate list. */
+@Composable
+private fun StopLine(stop: TransitStopTime, ink: Color, dim: Color, emphasize: Boolean, delay: String? = null) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
+        stop.timeText?.let {
+            Text(
+                it,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (delay != null) SheetPalette.TrafficRed else dim,
+                modifier = Modifier.widthIn(min = 54.dp),
             )
-            if (parts.isNotEmpty()) {
-                Text(parts.joinToString("  ·  "), style = MaterialTheme.typography.bodySmall, color = dim)
+        }
+        Column {
+            Text(
+                stop.name,
+                style = if (emphasize) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodySmall,
+                color = ink,
+            )
+            val meta = listOfNotNull(
+                delay,
+                stop.scheduledText?.takeIf { emphasize },
+                stop.code?.takeIf { emphasize }?.let { stringResource(R.string.place_transit_stop_id, it) },
+            ).joinToString("  ·  ")
+            if (meta.isNotEmpty()) {
+                Text(
+                    meta,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (delay != null) SheetPalette.TrafficRed else dim,
+                )
             }
         }
     }
