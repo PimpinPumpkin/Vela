@@ -122,6 +122,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   every locale, not just English. Pure `:core` `CategoryFilter` (unit-tested) applied at the data-source seam
   (`GoogleMapsDataSource.search` + `nearbyPlaces`); gated by a `:core`-visible `enabled` flag the `HideAdult`
   holder flips, so `:core` needn't depend on the app's reactive state. Localized in all 11 languages.
+- ✅ **"Hide website & external links" toggle (2026-07-08).** Settings → Map, **off by default**. On =
+  place pages don't show the **Website** pill/row, the **Street View** pano, or the **Book / Reserve /
+  Order** action, so no place-detail control launches an arbitrary external site. Internal actions
+  (dial, directions, share a `geo:` pin) are unaffected. Plain `HideExternalLinks` holder
+  (`ui/PlaceContent.kt`, same shape as `ShowReviews`/`LoadPhotos`). Localized in all 11 languages.
+  (Adapted from a community PR; the PR's separate "restricted" build flavor was not taken.)
 - ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list — fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
 - ✅ **Address → business snap** — searching a raw address that *is* a business (e.g. "1020 Olive Dr, Davis") now lands on the **business** (In-N-Out Burger, rating/hours/category and all), not the bare address — Google lists the "at this place" business under the geocoded node (`[0][1][0][14][68]`) and Vela now reads it. *(verified on-device; unit-tested; the path is in calibration so it's remotely fixable)*

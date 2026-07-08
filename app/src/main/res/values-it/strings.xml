@@ -57,6 +57,8 @@
     <string name="settings_load_photos_hint">Disattivato = le pagine dei luoghi non mostrano foto e non viene scaricato nulla. Risparmia dati.</string>
     <string name="settings_hide_adult">Nascondi categorie per adulti</string>
     <string name="settings_hide_adult_hint">Attivo = nasconde bar, discoteche, casinò, enoteche e altri luoghi per adulti / della vita notturna da ricerca e mappa.</string>
+    <string name="settings_hide_external_links">Nascondi sito web e link esterni</string>
+    <string name="settings_hide_external_links_hint">Attivo = le pagine dei luoghi non mostrano i pulsanti Sito web, Street View o Prenota / Ordina (nessun sito esterno arbitrario aperto).</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Usare la mappa senza segnale richiede due cose: i RIQUADRI della mappa che vedi e la RETE STRADALE che ti guida. Salvare un\'area della mappa scarica entrambi per quel punto; l\'elenco delle regioni qui sotto aggiunge la rete stradale ovunque tu stia viaggiando.</string>
     <string name="settings_offline_map_area">Area mappa</string>

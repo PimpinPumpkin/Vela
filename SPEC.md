@@ -427,6 +427,10 @@ itself shows the traffic, not the whole map.
   in every UI language; unit-tested). Applied at the `GoogleMapsDataSource.search`/`nearbyPlaces`
   seam, gated by `CategoryFilter.enabled` (a `:core` flag `HideAdult` flips — keeps `:core` free of
   the app's reactive holder).
+- **"Hide website & external links" toggle**: Settings → Map, `HideExternalLinks` holder (default
+  **off**). On hides the Website pill/row, the Street View pano and the Book/Reserve/Order action in
+  `PlaceSheet`, so nothing on a place page opens an arbitrary external site. Dial, directions and
+  `geo:` share stay.
 - **Nav puck motion model** (`VelaMapView`, `NavPuck`): the displayed position during
   nav is decoupled from the raw GPS fix. A `withFrameNanos` ticker glides the puck
   **monotonically forward along the route** by metres-along (`cumLengths`/`pointAtMeters`),
