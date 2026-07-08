@@ -494,6 +494,27 @@ fun MapScreen(
 
                         state.selected == null -> CategoryChips(onPick = vm::quickSearch)
                     }
+
+                    // Quiet offline marker: a small globe-with-a-slash chip tucked just under the category
+                    // chips, near the search box (pairs with the greyed "Offline" in the bar). Only on the
+                    // bare map — the same state the chips show in — so it never trails a results list.
+                    if (state.offline && !searchOpen && !state.navigating && !state.replaying &&
+                        state.selected == null && state.results.isEmpty()
+                    ) {
+                        Surface(
+                            color = SheetPalette.bg(darkTheme).copy(alpha = 0.82f),
+                            shape = CircleShape,
+                            shadowElevation = 2.dp,
+                            modifier = Modifier.padding(top = 8.dp, start = 2.dp).size(34.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.PublicOff,
+                                contentDescription = stringResource(R.string.search_offline),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(7.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -754,29 +775,6 @@ fun MapScreen(
                 onConfirm = vm::confirmMapPick,
                 onCancel = vm::cancelChooseOnMap,
             )
-        }
-
-        // Quiet offline marker on the basemap: a small globe-with-a-slash chip, bottom-left above the
-        // scale bar. Only on the bare map (nav/search have their own chrome). Pairs with the "Offline"
-        // label in the search bar, replacing the old heads-up banner.
-        if (state.offline && !state.navigating && !searchOpen && !state.replaying) {
-            Surface(
-                color = SheetPalette.bg(darkTheme).copy(alpha = 0.82f),
-                shape = CircleShape,
-                shadowElevation = 2.dp,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .navigationBarsPadding()
-                    .padding(start = 14.dp, bottom = 72.dp)
-                    .size(34.dp),
-            ) {
-                Icon(
-                    Icons.Default.PublicOff,
-                    contentDescription = stringResource(R.string.search_offline),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(7.dp),
-                )
-            }
         }
 
         // Replaying a recorded trip drives the dot + camera like a live drive; give the
