@@ -1709,6 +1709,13 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Turn-by-turn walking steps between two points (for a transit trip's walk legs), via the
+     *  normal walk router. Returns the maneuver instructions, or empty on failure. */
+    suspend fun walkDirections(from: LatLng, to: LatLng): List<String> = runCatching {
+        dataSource.directions(from, to, TravelMode.WALK).firstOrNull()
+            ?.maneuvers?.mapNotNull { it.instruction.takeIf { s -> s.isNotBlank() } }.orEmpty()
+    }.getOrDefault(emptyList())
+
     /** Transit can't self-route (no traffic-free open transit graph) and Google
      *  only serves it to a real browser engine, so it goes through the hidden
      *  WebView ([WebDirectionsFetcher]) rather than the OkHttp data source. We
