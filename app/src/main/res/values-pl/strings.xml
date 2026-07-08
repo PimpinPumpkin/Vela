@@ -55,6 +55,8 @@
     <string name="settings_show_reviews_hint">Wył. = strony miejsc nie pokazują recenzji i Vela nigdy ich nie pobiera.</string>
     <string name="settings_load_photos">Wczytuj zdjęcia</string>
     <string name="settings_load_photos_hint">Wył. = strony miejsc nie pokazują zdjęć i nic nie jest pobierane. Oszczędza dane.</string>
+    <string name="settings_hide_adult">Ukryj kategorie dla dorosłych</string>
+    <string name="settings_hide_adult_hint">Wł. = ukrywa bary, kluby, kasyna, sklepy monopolowe i inne miejsca dla dorosłych / nocnego życia z wyników i mapy.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Korzystanie z mapy bez zasięgu wymaga dwóch rzeczy — KAFELKÓW mapy, które widzisz, oraz SIECI DRÓG, która wyznacza trasę. Zapisanie obszaru mapy pobiera oba dla tego miejsca; lista regionów poniżej dodaje sieć dróg wszędzie tam, gdzie podróżujesz.</string>
     <string name="settings_offline_map_area">Obszar mapy</string>
