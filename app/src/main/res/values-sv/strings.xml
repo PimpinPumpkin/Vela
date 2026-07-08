@@ -265,6 +265,7 @@
     <string name="mapscreen_results_count">%1$d resultat</string>
     <string name="mapscreen_shrink_list">Krymp listan</string>
     <string name="mapscreen_expand_list">Expandera listan</string>
+    <string name="mapscreen_close_results">Stäng sökresultaten</string>
     <string name="mapscreen_filter_open_now">Öppet nu</string>
     <string name="mapscreen_filter_top_rated">4,0★</string>
     <string name="mapscreen_filter_price">Pris</string>
