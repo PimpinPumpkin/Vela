@@ -59,7 +59,12 @@ genuinely needs no doc edit, say why in the commit.
   builds + tests the APK (uploaded as an artifact) and publishes a **normal
   versioned GitHub release** `v0.2.<run>` (versionName `0.2.<run>`, versionCode
   `2000+run`) — kept as a revision history; Obtainium tracks the latest with no
-  pre-release toggle. (Switched off the rolling-nightly scheme 2026-06-16 — it
+  pre-release toggle. **Release notes are a real changelog** built from the commit
+  subjects since the previous `v0.2.*` tag (checkout is `fetch-depth: 0` so the tag
+  history is present; the publish step formats them + a compare link into `--notes`).
+  So **commit subjects ARE the user-facing changelog** — write them as plain-language
+  changelog lines (see the writing-style rule: no em-dashes, human voice), not terse
+  hashes. (Switched off the rolling-nightly scheme 2026-06-16 — it
   confused Obtainium. Bumped `0.1.<run>`/`1000+run` → `0.2.<run>`/`2000+run` on
   2026-06-18 after local dev builds were hand-set with `-PappVersionCode` in the
   1000s, got installed on a test phone, and left it *ahead* of the release line —
