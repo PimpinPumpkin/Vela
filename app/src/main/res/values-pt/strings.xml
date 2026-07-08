@@ -407,4 +407,11 @@
     <string name="place_transit_stops">%1$d paradas</string> <!-- format -->
     <string name="place_transit_stop_id">Parada %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Bilhetes e info</string>
+    <string name="transit_nav_arrived">Chegou.</string>
+    <string name="transit_nav_walk">Caminhe %1$s</string> <!-- format -->
+    <string name="transit_nav_take">Apanhe %1$s</string> <!-- format -->
+    <string name="transit_nav_towards">para %1$s</string> <!-- format -->
+    <string name="transit_nav_from">de %1$s</string> <!-- format -->
+    <string name="transit_nav_get_off">Saia em %1$s</string> <!-- format -->
+    <string name="transit_nav_next">Seguinte</string>
 </resources>
