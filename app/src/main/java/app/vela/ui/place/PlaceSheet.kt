@@ -1179,19 +1179,27 @@ private fun DepartTimeChooser(route: Route?, dim: Color) {
 
     val lo = range?.first ?: nowDur
     val hi = range?.second ?: nowDur
+    // Only claim "current traffic" when the route actually carries a live in-traffic ETA. An offline
+    // (GraphHopper) route, or any traffic-less route, has neither a typical range nor live traffic, so
+    // it shows no traffic note at all instead of a misleading "current traffic".
+    val hasLive = route?.hasLiveTraffic == true
+    // Resolve both traffic notes up front (composable calls must be at the top level, not inside a lambda).
+    val typicalNote = stringResource(R.string.place_in_typical_traffic)
+    val liveNoteDepart = stringResource(R.string.place_based_current_traffic)
+    val liveNoteNow = stringResource(R.string.place_current_traffic)
+    val departNote = when { range != null -> typicalNote; hasLive -> liveNoteDepart; else -> null }
     val (summary, note) = when (mode) {
         1 -> picked?.let { p ->
-            stringResource(R.string.place_depart_arrive, p.format(fmt), window(p, lo, hi, +1)) to
-                (if (range != null) stringResource(R.string.place_in_typical_traffic) else stringResource(R.string.place_based_current_traffic))
+            stringResource(R.string.place_depart_arrive, p.format(fmt), window(p, lo, hi, +1)) to departNote
         } ?: (null to null)
         2 -> picked?.let { p ->
             // Arrive by p → leave between p−hi and p−lo (earlier end first).
-            stringResource(R.string.place_arriveby_leave, p.format(fmt), window(p, hi, lo, -1)) to
-                (if (range != null) stringResource(R.string.place_in_typical_traffic) else stringResource(R.string.place_based_current_traffic))
+            stringResource(R.string.place_arriveby_leave, p.format(fmt), window(p, hi, lo, -1)) to departNote
         } ?: (null to null)
         else -> {
             val arrive = stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt))
-            arrive to (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) } ?: stringResource(R.string.place_current_traffic))
+            arrive to (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
+                ?: if (hasLive) liveNoteNow else null)
         }
     }
     summary?.let {
