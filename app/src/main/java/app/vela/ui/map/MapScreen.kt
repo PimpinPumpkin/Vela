@@ -214,6 +214,10 @@ fun MapScreen(
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
     // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
+    // Expanded detent of the results bottom sheet, hoisted here so the BACK gesture can step it
+    // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
+    var resultsExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(state.results) { if (state.results.isEmpty()) resultsExpanded = false }
     // The results sheet minimized to its short bottom bar — the chrome shows again then, but
     // lifted above the bar so the FAB / scale bar / Search this area never sit on top of it.
     val resultsMinimized = state.results.isNotEmpty() && state.selected == null && !searchOpen && state.resultsCollapsed
@@ -253,6 +257,9 @@ fun MapScreen(
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
+            // Results sheet: back steps ONE detent (expanded -> peek -> minimized), not straight
+            // to the bar.
+            resultsExpanded -> resultsExpanded = false
             else -> vm.collapseResults()
         }
     }
@@ -774,6 +781,8 @@ fun MapScreen(
             state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null -> SearchResults(
                 results = state.results,
                 collapsed = state.resultsCollapsed,
+                expanded = resultsExpanded,
+                onExpandedChange = { resultsExpanded = it },
                 onPick = {
                     focusManager.clearFocus()
                     vm.selectPlace(it)
@@ -971,6 +980,8 @@ private fun markersOf(state: MapUiState): List<MapMarker> =
 private fun SearchResults(
     results: List<Place>,
     collapsed: Boolean,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     onPick: (Place) -> Unit,
     onMinimize: () -> Unit,
     onExpand: () -> Unit,
@@ -978,16 +989,16 @@ private fun SearchResults(
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
     // MINIMIZED (a short "N results" bar, = the VM's resultsCollapsed so back agrees)
-    // ↔ PEEK (~0.42) ↔ EXPANDED (~0.82). Drag the handle (or the list at its top) DOWN
-    // to shrink a detent, UP to grow one; tap the handle to step up. No hide button.
-    val expandedState = remember { mutableStateOf(false) }
+    // ↔ PEEK (~0.42) ↔ EXPANDED (~0.82, hoisted to MapScreen so BACK steps it first).
+    // Drag the handle (or the list at its top) DOWN to shrink a detent, UP to grow
+    // one; tap the handle to step up. No hide button.
     var openOnly by remember { mutableStateOf(false) }
     var topRated by remember { mutableStateOf(false) }
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
     var priceMax by remember { mutableStateOf(0) }
     val screenH = LocalConfiguration.current.screenHeightDp
     val listMaxH by animateDpAsState(
-        if (expandedState.value) (screenH * 0.82f).dp else (screenH * 0.42f).dp,
+        if (expanded) (screenH * 0.82f).dp else (screenH * 0.42f).dp,
         label = "resultsListHeight",
     )
     // Bottom-sheet nested scroll, mirroring PlaceSheet.dismissConn: ONE detent step per
@@ -995,6 +1006,8 @@ private fun SearchResults(
     // detent (expanded → peek → minimized), an up-drag into the content grows to full.
     val listState = rememberLazyListState()
     val minimize = rememberUpdatedState(onMinimize)
+    val isExpanded = rememberUpdatedState(expanded)
+    val setExpanded = rememberUpdatedState(onExpandedChange)
     val dismissConn = remember(collapsed) {
         object : NestedScrollConnection {
             private var acc = 0f
@@ -1005,15 +1018,15 @@ private fun SearchResults(
                     acc += available.y
                     if (!steppedThisGesture) {
                         when {
-                            expandedState.value && acc > 90f -> { expandedState.value = false; steppedThisGesture = true; acc = 0f }
-                            !expandedState.value && !collapsed && acc > 150f -> { steppedThisGesture = true; acc = 0f; minimize.value() }
+                            isExpanded.value && acc > 90f -> { setExpanded.value(false); steppedThisGesture = true; acc = 0f }
+                            !isExpanded.value && !collapsed && acc > 150f -> { steppedThisGesture = true; acc = 0f; minimize.value() }
                         }
                     }
                     return available
                 }
                 if (available.y < 0f) {
                     acc = 0f
-                    if (!expandedState.value) expandedState.value = true
+                    if (!isExpanded.value) setExpanded.value(true)
                 }
                 return Offset.Zero
             }
@@ -1052,7 +1065,9 @@ private fun SearchResults(
     // Same fixed sheet grey as the place sheet, not the wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
     Card(
-        modifier.fillMaxWidth(),
+        // statusBarsPadding caps the sheet's growth below the status bar, so the handle pill
+        // never slides under the clock / camera cutout when expanded (user 2026-07-09).
+        modifier.statusBarsPadding().padding(top = 8.dp).fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark), contentColor = SheetPalette.ink(dark)),
     ) {
@@ -1064,12 +1079,12 @@ private fun SearchResults(
             Column(
                 Modifier
                     .fillMaxWidth()
-                    .pointerInput(collapsed) {
+                    .pointerInput(collapsed, expanded) {
                         detectTapGestures(onTap = {
-                            if (collapsed) onExpand() else expandedState.value = !expandedState.value
+                            if (collapsed) onExpand() else onExpandedChange(!expanded)
                         })
                     }
-                    .pointerInput(collapsed) {
+                    .pointerInput(collapsed, expanded) {
                         var total = 0f
                         detectVerticalDragGestures(
                             onDragStart = { total = 0f },
@@ -1077,8 +1092,8 @@ private fun SearchResults(
                             onDragEnd = {
                                 when {
                                     total < -40f && collapsed -> onExpand()
-                                    total < -40f -> expandedState.value = true
-                                    total > 40f && expandedState.value -> expandedState.value = false
+                                    total < -40f -> onExpandedChange(true)
+                                    total > 40f && expanded -> onExpandedChange(false)
                                     total > 40f && !collapsed -> onMinimize()
                                 }
                             },
@@ -1109,10 +1124,10 @@ private fun SearchResults(
                         color = SheetPalette.dim(dark),
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = { if (collapsed) onExpand() else expandedState.value = !expandedState.value }) {
+                    IconButton(onClick = { if (collapsed) onExpand() else onExpandedChange(!expanded) }) {
                         Icon(
-                            if (!collapsed && expandedState.value) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                            contentDescription = if (!collapsed && expandedState.value) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
+                            if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                            contentDescription = if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
                             tint = SheetPalette.dim(dark),
                         )
                     }
