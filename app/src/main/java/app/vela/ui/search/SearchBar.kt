@@ -156,6 +156,12 @@ fun SearchBar(
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChange,
+                    // Until armed in dpadMode the field is DISABLED, so it doesn't swallow a TOUCH tap
+                    // (a live but unfocusable field ate the tap and did nothing — the "can't tap the
+                    // search bar" bug on hybrid touch+keypad phones, Qin F21). Disabled lets the tap
+                    // reach the Box's arm-clickable, which arms it; the field stays MOUNTED (only the
+                    // enabled flag flips), so arming focuses it cleanly with no remount race.
+                    enabled = !dpadMode || fieldArmed,
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
