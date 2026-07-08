@@ -10,7 +10,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Map & rendering](#map--rendering) | Keyless OpenFreeMap/Protomaps vector tiles, Google-style POI markers, hillshade, in-app light/dark, scale bar |
 > | [Search & POIs](#search--pois-live-google-data) | Live keyless Google search — name/rating/reviews/hours/price/website/photos/popular-times/"people also search for" |
 > | [Routing & traffic](#routing--traffic) | OSRM turn-by-turn (primary) + Google traffic ETA & jam reroute; alternates; **offline on-device routing** (135-region world catalog) |
-> | [Navigation](#navigation) | Maneuver banner with a real lane diagram + highway shields, spoken + haptic guidance, speedometer, re-center, arrival summary |
+> | [Navigation](#navigation) | Maneuver banner with a real lane diagram + highway shields, spoken + haptic guidance, speedometer, re-center, arrival summary; **Android Auto (first cut)** |
 > | [Location](#location-degoogled) | AOSP LocationManager + rotation-vector heading — no GMS/Fused |
 > | [Offline](#offline) | Downloadable basemap tiles + OSM POI index + **address geocoder (typed address → route, no signal)** + **whole-state place packs (Organic-Maps-style offline search)** + routing graphs + open building-footprint overlay (Microsoft, ODbL); combined map+routing area download; quiet offline indicator (no banner) |
 > | [Platform](#platform--distribution) | GrapheneOS/no-GMS, CI-signed `v0.2.<run>` releases, Obtainium |
@@ -505,6 +505,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **Android Auto, first cut (2026-07-08, user request).** Vela registers as a navigation-category
+  templated car app, so a sideloaded install appears in the car launcher once Android Auto's developer
+  "Unknown sources" switch is on (same as PipePipe and friends). On the car screen you get the live Vela map
+  (same OpenFreeMap basemap, day/night recolour keyed to the CAR's own dark mode), a location puck from plain
+  AOSP LocationManager, the active route drawn on the map, camera follow with Re-center and +/− zoom actions,
+  and pan/zoom from the car's touch gestures. While navigating, the template shows the current maneuver and a
+  live distance (RoutingInfo card) driven by the same NavSession singleton the phone runs, so a route started
+  on the phone shows up in the car and the spoken guidance plays through the car speakers as usual. Under the
+  hood the Car App Library hands templated apps a raw drawing surface and MapLibre wants a real View, so the
+  renderer wraps the surface in a VirtualDisplay + Presentation holding a plain MapView (`app/car/`). Current
+  limits, by design of this first cut: you start and end navigation on the phone (no car-side search yet), and
+  the maneuver card needs the phone app alive (the map + puck work regardless). Verified: builds, installs,
+  and the car service registers with the NAVIGATION category; a real head-unit drive is the remaining check.
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute) —
   pure/Android-free, **unit-tested** (arrival-requires-final-maneuver, reroute
   fires once per off-route transition not per fix, off-route clears on return).
@@ -665,7 +678,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   up for everyone: re-bake + re-host the region graphs with `max_speed` (CI), then a fresh region download
   shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up).
 - ⬜ Speed-camera + hazard alerts (lane guidance ✅ done above)
-- ⬜ Android Auto (needs GMS — likely out of scope)
+- ✅ **Android Auto — first cut shipped 2026-07-08** (see the entry at the top of this section). The old
+  "needs GMS, out of scope" call was wrong: the car app library is plain androidx, and a sideload runs fine
+  with AA's Unknown sources on. Remaining: car-side search + route start, and a real head-unit drive.
 - ✅ **Arrival / trip summary** — on reaching the destination, a "You've arrived"
   card replaces the nav controls with the trip's total time and distance (and the
   destination name), and a Done button returns to a clean map. **Fixed 2026-06-20
