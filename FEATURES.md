@@ -318,7 +318,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   alternate re-snapped it through OSRM and swapped in a RECOMPUTED ETA in place, so a row's time could
   leapfrog its neighbours after the sort ("Fastest" tag below a slower first row). `nameRoute` now keeps the
   route's original Google duration/in-traffic figures; the snap contributes geometry, named turns and
-  congestion spans only. (4) **compass no longer buried under the nav card** — MapLibre's top-right
+  congestion spans only. *And the tag is singular now (2026-07-08):* a route under ~30 s slower rounded its
+  delta to 0 and ALSO wore "Fastest" (two tags, different displayed minutes); only the top row gets the tag,
+  near-ties just show their ETA. (4) **compass no longer buried under the nav card** — MapLibre's top-right
   compass is dropped ~112 dp below the top during nav so the full-width maneuver banner stops painting over
   it. *(Roundabout phrasing + route-sort both want one real drive to confirm against live data.)*
 - ✅ **Nav survives a process kill — "Resume navigation?" (2026-07-04).** On GrapheneOS the Android-14

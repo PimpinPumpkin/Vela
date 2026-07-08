@@ -1144,7 +1144,7 @@ fun DirectionsPanel(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         routes.forEachIndexed { i, r ->
                             val selected = r === activeRoute || (activeRoute == null && i == 0)
-                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
+                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == 0, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -1300,11 +1300,14 @@ private fun DepartTimeChooser(
  *  via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
  *  alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
 @Composable
-private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
+private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
     val etaSeconds = r.durationInTrafficSeconds ?: r.durationSeconds
     val eta = formatDuration(etaSeconds)
     val etaColor = trafficEtaColor(r) ?: ink
-    // Round to the nearest minute; anything under ~30 s slower is effectively "the same" → still "Fastest".
+    // Delta vs the fastest, rounded to the nearest minute. Only ONE route wears the "Fastest" tag
+    // (the caller passes isFastest for the top row — the list is sorted by this exact ETA). A
+    // near-tie under ~30 s used to round its delta to 0 and ALSO earn the tag, which read as two
+    // "Fastest" routes with different displayed times; now it just shows its ETA with no badge.
     val deltaMin = ((etaSeconds - fastestEtaSeconds) / 60.0).roundToInt()
     val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
     else SheetPalette.row(dark)
@@ -1322,7 +1325,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(eta, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = etaColor)
                 Spacer(Modifier.width(8.dp))
-                if (deltaMin <= 0) {
+                if (isFastest) {
                     Text(
                         stringResource(R.string.place_fastest),
                         style = MaterialTheme.typography.labelSmall,
@@ -1332,7 +1335,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     )
-                } else {
+                } else if (deltaMin >= 1) {
                     // "+5 min" vs the fastest — a quiet tag so the fastest still reads as primary.
                     Text(
                         stringResource(R.string.place_delta_min, deltaMin),
