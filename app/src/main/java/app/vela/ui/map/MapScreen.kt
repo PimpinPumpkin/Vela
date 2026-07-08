@@ -167,6 +167,10 @@ fun MapScreen(
     val cameraBottomInset = when {
         placeSheetUp -> (screenHeightPx * 0.56f).toInt()
         state.directionsOpen && !state.navigating -> (screenHeightPx * 0.58f).toInt()
+        // Results bottom sheet at peek covers ~the bottom half: frame the result pins
+        // in the visible top half, not behind the sheet.
+        state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
+            !state.navigating -> (screenHeightPx * 0.50f).toInt()
         else -> 0
     }
     // MapTiler (when a key is built in) gives the Google-like look + its own
@@ -246,7 +250,7 @@ fun MapScreen(
         enabled = searchOpen || state.showSteps || state.navigating || state.transitNav != null ||
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
             state.selected != null ||
-            (state.results.isNotEmpty() && !state.resultsCollapsed),
+            state.results.isNotEmpty(),
     ) {
         when {
             state.transitNav != null -> vm.endTransitNav()
@@ -257,10 +261,11 @@ fun MapScreen(
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
-            // Results sheet: back steps ONE detent (expanded -> peek -> minimized), not straight
-            // to the bar.
+            // Results sheet: back steps ONE detent (expanded -> peek -> minimized -> cleared),
+            // never straight out of the app (a back on the minimized bar used to exit Vela).
             resultsExpanded -> resultsExpanded = false
-            else -> vm.collapseResults()
+            !state.resultsCollapsed -> vm.collapseResults()
+            else -> vm.clearSearch()
         }
     }
 
@@ -328,7 +333,7 @@ fun MapScreen(
             altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
             onSelectAlternate = vm::selectRoute,
             markers = markersOf(state),
-            frameMarkers = state.results.isNotEmpty() && state.selected == null,
+            frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
