@@ -407,4 +407,11 @@
     <string name="place_transit_stops">%1$d hållplatser</string> <!-- format -->
     <string name="place_transit_stop_id">Hållplats %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Biljetter &amp; info</string>
+    <string name="transit_nav_arrived">Du har kommit fram.</string>
+    <string name="transit_nav_walk">Gå %1$s</string> <!-- format -->
+    <string name="transit_nav_take">Ta %1$s</string> <!-- format -->
+    <string name="transit_nav_towards">mot %1$s</string> <!-- format -->
+    <string name="transit_nav_from">från %1$s</string> <!-- format -->
+    <string name="transit_nav_get_off">Gå av vid %1$s</string> <!-- format -->
+    <string name="transit_nav_next">Nästa</string>
 </resources>

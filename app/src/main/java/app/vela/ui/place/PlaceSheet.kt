@@ -178,6 +178,7 @@ import app.vela.ui.RatingStars
 import app.vela.ui.SheetPalette
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
+import app.vela.ui.map.TransitNavState
 import kotlin.math.roundToInt
 import app.vela.ui.placeStatusColor
 import java.util.Locale
@@ -930,6 +931,7 @@ fun DirectionsPanel(
     onSteps: (() -> Unit)?,
     onSearchAlongRoute: (String) -> Unit,
     onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
+    onStartTransit: (TransitItinerary) -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1075,7 +1077,7 @@ fun DirectionsPanel(
                 }
             }
             if (currentMode == TravelMode.TRANSIT) {
-                TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections)
+                TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit)
             } else {
                 Spacer(Modifier.height(12.dp))
                 if (routes.isEmpty()) {
@@ -1302,6 +1304,7 @@ private fun TransitBoard(
     dim: Color,
     dark: Boolean,
     onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
+    onStartTransit: (TransitItinerary) -> Unit = {},
 ) {
     Spacer(Modifier.height(10.dp))
     when {
@@ -1314,13 +1317,71 @@ private fun TransitBoard(
         }
         trips.isEmpty() -> Text(stringResource(R.string.place_no_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
         else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            trips.take(6).forEach { TransitRow(it, ink, dim, dark, onWalkDirections) }
+            trips.take(6).forEach { TransitRow(it, ink, dim, dark, onWalkDirections, onStartTransit) }
+        }
+    }
+}
+
+/** Full-screen step-by-step transit guidance (Moovit-style): the current leg large, the remaining
+ *  legs as a timeline, Back / Next controls. Advances automatically as GPS reaches each leg's end. */
+@Composable
+fun TransitNavSheet(
+    nav: TransitNavState,
+    onNext: () -> Unit,
+    onBack: () -> Unit,
+    onEnd: () -> Unit,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<String>,
+) {
+    val dark = isAppInDarkTheme()
+    val ink = if (dark) InkDark else InkLight
+    val dim = if (dark) DimDark else DimLight
+    val itin = nav.itinerary
+    val step = itin.steps.getOrNull(nav.stepIndex)
+    Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    if (nav.arrived) stringResource(R.string.transit_nav_arrived)
+                    else "${nav.stepIndex + 1} / ${itin.steps.size}",
+                    style = MaterialTheme.typography.titleMedium, color = dim, modifier = Modifier.weight(1f),
+                )
+                IconButton(onClick = onEnd) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
+            }
+            Spacer(Modifier.height(8.dp))
+            // Current leg, large.
+            if (step != null && !nav.arrived) {
+                Column(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SheetPalette.row(dark)).padding(14.dp),
+                ) { TransitStepRow(step, ink, dim, onWalkDirections) }
+            } else {
+                Text(itin.arrivalText?.let { stringResource(R.string.place_arrive_approx, it) } ?: "", style = MaterialTheme.typography.bodyLarge, color = ink)
+            }
+            Spacer(Modifier.height(16.dp))
+            // Remaining legs as a compact timeline.
+            val remaining = itin.steps.drop(nav.stepIndex + 1)
+            if (remaining.isNotEmpty()) {
+                Text(stringResource(R.string.transit_nav_next), style = MaterialTheme.typography.labelMedium, color = dim)
+                Spacer(Modifier.height(6.dp))
+                Column(
+                    Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) { remaining.forEach { TransitStepRow(it, ink, dim) } }
+            }
+            Spacer(Modifier.weight(1f))
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.settings_back))
+                }
+                Button(onClick = onNext, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.transit_nav_next))
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }) {
+private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}) {
     var expanded by remember { mutableStateOf(false) }
     val canExpand = t.steps.isNotEmpty()
     Column(
@@ -1372,6 +1433,13 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
         if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
         if (expanded) {
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
+            // Step-by-step guidance (Moovit-style) for this itinerary.
+            if (t.steps.isNotEmpty()) {
+                Button(onClick = { onStartTransit(t) }, modifier = Modifier.fillMaxWidth()) {
+                    Icon(Icons.Default.Navigation, contentDescription = null, modifier = Modifier.padding(end = 8.dp).size(18.dp))
+                    Text(stringResource(R.string.place_start))
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 t.steps.forEach { TransitStepRow(it, ink, dim, onWalkDirections) }
             }
