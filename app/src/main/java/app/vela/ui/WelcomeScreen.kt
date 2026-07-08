@@ -129,14 +129,14 @@ private fun WelcomeFeature(icon: ImageVector, title: String, body: String) {
 /** The one-time, low-pressure donation prompt (see [Onboarding] for the etiquette). */
 @Composable
 fun DonatePrompt(onDonate: () -> Unit, onDismiss: () -> Unit) {
-    AlertDialog(
+    VelaDialog(
         onDismissRequest = onDismiss,
+        title = stringResource(R.string.welcome_donate_title),
+        confirmText = stringResource(R.string.welcome_donate_confirm),
+        onConfirm = onDonate,
+        dismissText = stringResource(R.string.welcome_donate_dismiss),
+        onDismiss = onDismiss,
         icon = { Icon(Icons.Default.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
-        title = { Text(stringResource(R.string.welcome_donate_title)) },
-        text = {
-            Text(stringResource(R.string.welcome_donate_body))
-        },
-        confirmButton = { TextButton(onClick = onDonate) { Text(stringResource(R.string.welcome_donate_confirm)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.welcome_donate_dismiss)) } },
+        text = { Text(stringResource(R.string.welcome_donate_body)) },
     )
 }
