@@ -75,7 +75,8 @@ import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ElevatedFilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
@@ -175,13 +176,6 @@ fun MapScreen(
     onOpenSettings: () -> Unit,
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
-    // True while the results panel is stretched to ~full screen; the bottom map chrome
-    // (scale bar, locate FAB, Search this area) hides then — it used to draw on top of
-    // the list (they live later in the Box, so they stacked above it).
-    var resultsFullscreen by remember { mutableStateOf(false) }
-    LaunchedEffect(state.results, state.resultsCollapsed) {
-        if (state.results.isEmpty() || state.resultsCollapsed) resultsFullscreen = false
-    }
     val darkTheme = isAppInDarkTheme()
     val hasMapTiler = USE_MAPTILER && BuildConfig.MAPTILER_KEY.isNotBlank()
     // When the place sheet is the active bottom UI it covers ~the bottom 56% of the
@@ -265,6 +259,11 @@ fun MapScreen(
     // The search overlay is open when the entry page is expanded OR we're picking a custom
     // directions origin/stop (that opens the same overlay WITHOUT focusing the field).
     val searchOpen = searchExpanded || state.pickingOrigin || state.pickingStop
+    // The results panel is open (not collapsed to the "N results" pill) → hide the bottom map
+    // chrome (scale bar / locate FAB / Search this area) so it never draws on top of the list at
+    // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
+    // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
+    val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
     var metersPerPixel by remember { mutableStateOf(0.0) }
     // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
     // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
@@ -720,7 +719,6 @@ fun MapScreen(
                                     vm.selectPlace(it)
                                 },
                                 onCollapse = vm::collapseResults,
-                                onExpandedChange = { resultsFullscreen = it },
                             )
 
                         state.results.isNotEmpty() && state.selected == null && state.resultsCollapsed ->
@@ -862,7 +860,7 @@ fun MapScreen(
             )
         }
 
-        if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen && !resultsFullscreen) {
+        if (!state.navigating && state.showSearchThisArea && state.selected == null && !searchOpen && !resultsShown) {
             ElevatedButton(
                 onClick = vm::searchThisArea,
                 modifier = Modifier
@@ -1064,7 +1062,7 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsFullscreen) {
+        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
             FloatingActionButton(
                 onClick = vm::recenter,
                 modifier = Modifier
@@ -1214,12 +1212,8 @@ private fun SearchResults(
     results: List<Place>,
     onPick: (Place) -> Unit,
     onCollapse: () -> Unit,
-    onExpandedChange: (Boolean) -> Unit = {},
 ) {
     val expandedState = remember { mutableStateOf(false) }
-    // Tell MapScreen when we're stretched (near) full screen so the bottom map chrome
-    // (scale bar / locate FAB / Search this area) gets out of the way.
-    LaunchedEffect(expandedState.value) { onExpandedChange(expandedState.value) }
     var openOnly by remember { mutableStateOf(false) }
     var topRated by remember { mutableStateOf(false) }
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
@@ -1354,38 +1348,57 @@ private fun SearchResults(
                     }
                 }
                 // Filter chips on their own horizontally-scrollable row, so a third (or
-                // future) chip never crowds the header or clips on a narrow screen.
+                // future) chip never crowds the header or clips on a narrow screen. Filled pills
+                // (a subtle tint when off, solid teal when on) so they read modern on the sheet —
+                // the default outlined M3 chip looked "old" against the filled category chips
+                // (user 2026-07-08). No border; a check icon marks an active toggle.
+                val chipColors = FilterChipDefaults.elevatedFilterChipColors(
+                    containerColor = if (dark) Color.White.copy(alpha = 0.09f) else Color.Black.copy(alpha = 0.05f),
+                    labelColor = SheetPalette.ink(dark),
+                    selectedContainerColor = MaterialTheme.colorScheme.primary,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                    selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
+                )
                 Row(
                     Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState())
                         .padding(start = 16.dp, end = 8.dp, bottom = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    FilterChip(
+                    ElevatedFilterChip(
                         selected = openOnly,
                         onClick = { openOnly = !openOnly },
                         label = { Text(stringResource(R.string.mapscreen_filter_open_now)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
+                        colors = chipColors,
+                        border = null,
                         leadingIcon = if (openOnly) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
-                    FilterChip(
+                    ElevatedFilterChip(
                         selected = topRated,
                         onClick = { topRated = !topRated },
                         label = { Text(stringResource(R.string.mapscreen_filter_top_rated)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
+                        colors = chipColors,
+                        border = null,
+                        leadingIcon = if (topRated) {
+                            { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
+                        } else null,
                     )
                     // Price: tap to cycle off → ≤$ → ≤$$ → ≤$$$ → ≤$$$$ → off.
-                    FilterChip(
+                    ElevatedFilterChip(
                         selected = priceMax > 0,
                         onClick = { priceMax = (priceMax + 1) % 5 },
                         label = { Text(if (priceMax == 0) stringResource(R.string.mapscreen_filter_price) else "≤ " + "$".repeat(priceMax)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
+                        colors = chipColors,
+                        border = null,
                     )
                     // Sort: tap to cycle relevance (Google's order) → rating → distance.
-                    FilterChip(
+                    ElevatedFilterChip(
                         selected = sortMode > 0,
                         onClick = { sortMode = (sortMode + 1) % 3 },
                         label = {
@@ -1398,6 +1411,8 @@ private fun SearchResults(
                             )
                         },
                         shape = androidx.compose.foundation.shape.CircleShape,
+                        colors = chipColors,
+                        border = null,
                     )
                 }
             }
@@ -1481,24 +1496,10 @@ private fun SearchResults(
                 Divider()
             }
         }
-            // The panel hangs from the TOP, so the natural "close" is a bar at its BOTTOM edge —
-            // clearer than the top handle alone (which reads backwards). Tap to retract to the
-            // "N results" pill; the back gesture still works too.
-            Divider()
-            Row(
-                Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp)).clickable { onCollapse() }.padding(vertical = 13.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Default.KeyboardArrowUp, contentDescription = null, tint = SheetPalette.dim(dark))
-                Text(
-                    stringResource(R.string.mapscreen_hide_results),
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = SheetPalette.dim(dark),
-                    modifier = Modifier.padding(start = 6.dp),
-                )
-            }
+            // No "hide results" button — collapse to the "N results" pill via the system BACK key
+            // (the BackHandler falls through to collapseResults() when results are shown, so it's
+            // the D-pad collapse path) or by swiping the handle up; the chevron toggles expand↔peek.
+            // Same drag-driven detents as the place sheet (user 2026-07-08).
         }
     }
 }
