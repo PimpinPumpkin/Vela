@@ -28,6 +28,11 @@ genuinely needs no doc edit, say why in the commit.
   during map scroll/nav. R8 lives in the `release`
   buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
+- **D-pad regression suite (`dpad_test_suite/`).** On-device, reproducible: `./run_all.sh` drives
+  the app with ONLY D-pad keys (via `adb input keyevent`) and asserts on the focused element per
+  surface (bare map → search bar, Settings/Welcome/dialog/menu auto-focus). Run it after any change
+  that touches focus. It's the scripted form of the manual `adb uiautomator dump` checks; see
+  `docs/dpad.md`.
 - **Auditing a real drive.** A saved trip stores the navigated route too (`core/replay/TripLog`
   format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
   cards/voice said against the plotted route from a shared trip CSV, call `TripLog.audit(csv)`
