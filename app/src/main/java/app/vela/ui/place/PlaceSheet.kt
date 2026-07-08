@@ -1060,7 +1060,12 @@ fun DirectionsPanel(
             AnimatedVisibility(visible = !collapsed.value) {
               Column {
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Scrollable so all four mode pills keep full size on a narrow screen — without this the
+            // 4th (Bike) overflowed the row and got clipped to the edge as an icon-only stub.
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 listOf(
                     Triple(TravelMode.DRIVE, stringResource(R.string.place_mode_drive), Icons.Default.DirectionsCar),
                     Triple(TravelMode.TRANSIT, stringResource(R.string.place_mode_transit), Icons.Default.DirectionsBus),
