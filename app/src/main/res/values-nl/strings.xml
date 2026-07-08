@@ -66,6 +66,9 @@
     <string name="settings_routing_no_match">Geen regio\'s komen overeen met “%1$s”.</string>
     <string name="settings_routing_downloading">Downloaden… %1$d%%</string>
     <string name="settings_routing_installed">Geïnstalleerd · routes hier offline</string>
+    <string name="settings_routing_installed_places">Geïnstalleerd · plaatsen offline doorzoekbaar</string>
+    <string name="settings_routing_places_downloading">Plaatsen opslaan · %1$d%%</string> <!-- format -->
+    <string name="settings_get_places">Plaatsen ophalen</string>
     <string name="settings_routing_size_here">%1$s MB · dekt uw locatie</string>
     <string name="settings_routing_size">%1$s MB</string>
     <string name="settings_routing_remove">Offline routering verwijderen</string>
@@ -143,6 +146,10 @@
     <string name="settings_traffic_lights_hint">"Rijd het stoplicht voorbij en sla dan af" bij kruispunten met verkeerslichten (voorlopig alleen Engelse spraak)</string>
     <string name="map_voice_downloading">Vela-stem wordt gedownload · %1$d %%</string>
     <string name="map_voice_installing">Vela-stem wordt geïnstalleerd…</string>
+    <string name="map_region_downloading">Routes voor %1$s downloaden · %2$d%%</string> <!-- format -->
+    <string name="map_region_places_downloading">Plaatsen in %1$s opslaan voor offline zoeken · %2$d%%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Plaatsen in %1$s zijn nu offline doorzoekbaar</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Nog geen plaatsenpakket voor %1$s. Het verschijnt hier zodra het is gepubliceerd.</string> <!-- format -->
     <string name="settings_demo_drive">Rijden simuleren (demo)</string>
     <string name="settings_demo_drive_hint">Voor demo’s, schermafbeeldingen en tests: op Start tikken rijdt de route als een gesimuleerd gps-spoor in plaats van je echte locatie — navigatie werkt overal. Zet uit om echt te navigeren.</string>
     <string name="place_address_copied">Adres gekopieerd</string>

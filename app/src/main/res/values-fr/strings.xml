@@ -66,6 +66,9 @@
     <string name="settings_routing_no_match">Aucune région ne correspond à « %1$s ».</string>
     <string name="settings_routing_downloading">Téléchargement… %1$d %%</string>
     <string name="settings_routing_installed">Installée · routage hors ligne ici</string>
+    <string name="settings_routing_installed_places">Installé · lieux consultables hors ligne</string>
+    <string name="settings_routing_places_downloading">Enregistrement des lieux · %1$d %%</string> <!-- format -->
+    <string name="settings_get_places">Obtenir les lieux</string>
     <string name="settings_routing_size_here">%1$s Mo · couvre votre position</string>
     <string name="settings_routing_size">%1$s Mo</string>
     <string name="settings_routing_remove">Supprimer le routage hors ligne</string>
@@ -143,6 +146,10 @@
     <string name="settings_traffic_lights_hint">Annonce « passez le feu, puis tournez » aux intersections à feux (annonces en anglais pour l’instant)</string>
     <string name="map_voice_downloading">Téléchargement de la voix Vela · %1$d %%</string>
     <string name="map_voice_installing">Installation de la voix Vela…</string>
+    <string name="map_region_downloading">Téléchargement de l\'itinéraire %1$s · %2$d %%</string> <!-- format -->
+    <string name="map_region_places_downloading">Enregistrement des lieux de %1$s pour la recherche hors ligne · %2$d %%</string> <!-- format -->
+    <string name="mapvm_poipack_ready">Les lieux de %1$s sont désormais consultables hors ligne</string> <!-- format -->
+    <string name="mapvm_poipack_unavailable">Pas encore de pack de lieux pour %1$s. Il apparaîtra ici dès sa publication.</string> <!-- format -->
     <string name="settings_demo_drive">Simuler la conduite (démo)</string>
     <string name="settings_demo_drive_hint">Pour les démos, captures d’écran et tests : appuyer sur Démarrer parcourt l’itinéraire comme une trace GPS simulée au lieu de votre position réelle — la navigation fonctionne partout. Désactivez pour naviguer réellement.</string>
     <string name="place_address_copied">Adresse copiée</string>

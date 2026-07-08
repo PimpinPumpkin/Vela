@@ -848,8 +848,9 @@ fun MapScreen(
         // card makes the ONBOARDING one-tap voice install visible (it used to run invisibly after
         // the prompt dismissed — progress only existed in Settings; user 2026-07-07).
         val downloadingVoiceId = state.voiceDownloadingId
+        val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
         if (!state.navigating && state.selected == null && !searchOpen &&
-            (state.notices.isNotEmpty() || downloadingVoiceId != null)
+            (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion)
         ) {
             Column(
                 Modifier
@@ -860,6 +861,16 @@ fun MapScreen(
             ) {
                 if (downloadingVoiceId != null) {
                     VoiceDownloadCard(installing = state.voiceInstalling, pct = state.kokoroDownloadPct ?: 0f)
+                }
+                // A region (state/country) download: the routing graph first, then its place pack —
+                // same progress card treatment as the voice download, so a Settings-started state
+                // download stays visible after backing out to the map.
+                if (downloadingRegion) {
+                    RegionDownloadCard(
+                        name = state.regionDownloadName ?: "",
+                        places = state.poiPackDownloadingId != null,
+                        pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                    )
                 }
                 state.notices.forEach { n ->
                     NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
@@ -1662,6 +1673,33 @@ private fun VoiceDownloadCard(installing: Boolean, pct: Float, modifier: Modifie
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
+        }
+    }
+}
+
+/** Progress card for a region (state/country) offline download — the routing graph, then the
+ *  region's place pack. Mirrors [VoiceDownloadCard] so a Settings-started download stays visible
+ *  on the map. */
+@Composable
+private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, modifier: Modifier = Modifier) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Text(
+                if (places) stringResource(R.string.map_region_places_downloading, name, pct)
+                else stringResource(R.string.map_region_downloading, name, pct),
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(8.dp))
+            androidx.compose.material3.LinearProgressIndicator(
+                progress = { (pct / 100f).coerceIn(0f, 1f) },
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }
