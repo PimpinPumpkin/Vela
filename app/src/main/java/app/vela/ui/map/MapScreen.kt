@@ -1829,7 +1829,9 @@ private fun NoticeCard(notice: Notice, onDismiss: () -> Unit, modifier: Modifier
         Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
             Text(notice.title, fontWeight = FontWeight.SemiBold)
             if (notice.body.isNotBlank()) {
-                Text(notice.body, style = MaterialTheme.typography.bodySmall)
+                // Cap a pushed notice's body so a long one can't grow the card past a small screen and
+                // shove the Dismiss/Learn-more buttons off the bottom (the notice overlay doesn't scroll).
+                Text(notice.body, style = MaterialTheme.typography.bodySmall, maxLines = 6, overflow = TextOverflow.Ellipsis)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 notice.url?.let { url ->
