@@ -138,6 +138,8 @@ import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadHighlight
 import app.vela.ui.dpadFieldEscape
 import app.vela.ui.rememberDpadAutoFocus // D-pad-first initial focus (docs/dpad.md)
+import app.vela.ui.VelaMenu // D-pad-first menu (docs/dpad.md)
+import app.vela.ui.item
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -535,23 +537,12 @@ fun PlaceSheet(
                     IconButton(onClick = { headerMenu = true }, modifier = Modifier.size(40.dp)) {
                         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.place_more_options), tint = dim, modifier = Modifier.size(20.dp))
                     }
-                    // D-pad-first (docs/dpad.md): a DropdownMenu opens with NO item focused,
-                    // wasting the first arrow press. Focus the first item from the outer scope
-                    // once the popup settles. No-op under touch.
-                    // D-pad note (docs/dpad.md): a Compose DropdownMenu opens with the popup
-                    // window focused but no item pre-highlighted — Compose sets popup item focus
-                    // only on the first key event, and NOTHING in-app can pre-place it (8 approaches
-                    // proven on-device). Fully navigable: OK opens, DOWN/UP walk, OK selects, BACK
-                    // closes. Stock DropdownMenu so touch stays byte-identical.
-                    DropdownMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.place_set_as_home)) },
-                            onClick = { headerMenu = false; onSetShortcut(ShortcutKind.HOME) },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.place_set_as_work)) },
-                            onClick = { headerMenu = false; onSetShortcut(ShortcutKind.WORK) },
-                        )
+                    // D-pad-first (docs/dpad.md): VelaMenu renders the normal anchored DropdownMenu
+                    // under touch, but a raw-Dialog chooser that AUTO-FOCUSES its first item under
+                    // D-pad (a DropdownMenu Popup can't be pre-focused; a raw Dialog can).
+                    VelaMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
+                        item(stringResource(R.string.place_set_as_home)) { headerMenu = false; onSetShortcut(ShortcutKind.HOME) }
+                        item(stringResource(R.string.place_set_as_work)) { headerMenu = false; onSetShortcut(ShortcutKind.WORK) }
                     }
                 }
                 IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
@@ -1660,9 +1651,9 @@ private fun PanelControls(
             IconButton(onClick = { sortOpen = true }) {
                 Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.place_sort_reviews), tint = dim)
             }
-            DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+            VelaMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
                 listOf("Most relevant", "Newest", "Highest rating", "Lowest rating").forEach { o ->
-                    DropdownMenuItem(text = { Text(o) }, onClick = { sortOpen = false; onSort(o) })
+                    item(o) { sortOpen = false; onSort(o) }
                 }
             }
         }
@@ -2139,26 +2130,14 @@ private fun ShareIconButton(place: Place, tint: Color) {
         IconButton(onClick = { open = true }, modifier = Modifier.size(40.dp)) {
             Icon(Icons.Default.Share, contentDescription = stringResource(R.string.place_share), tint = tint, modifier = Modifier.size(20.dp))
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.place_share_gmaps_link)) },
-                onClick = { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") },
-            )
+        VelaMenu(expanded = open, onDismissRequest = { open = false }) {
+            item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
             // degoogled-friendly way to send a pin.
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.place_share_map_pin)) },
-                onClick = { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") },
-            )
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.place_share_coordinates)) },
-                onClick = { share("$lat, $lng") },
-            )
+            item(stringResource(R.string.place_share_map_pin)) { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") }
+            item(stringResource(R.string.place_share_coordinates)) { share("$lat, $lng") }
             place.address?.let { addr ->
-                DropdownMenuItem(
-                    text = { Text(stringResource(R.string.place_share_address)) },
-                    onClick = { share("${place.name}\n$addr") },
-                )
+                item(stringResource(R.string.place_share_address)) { share("${place.name}\n$addr") }
             }
         }
     }
