@@ -113,9 +113,13 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
 private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit, onDismiss: () -> Unit) {
     var diag by remember { mutableStateOf(true) }
     var trips by remember { mutableStateOf(false) }
-    AlertDialog(
+    VelaDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.root_diag_title)) },
+        title = stringResource(R.string.root_diag_title),
+        confirmText = stringResource(R.string.root_diag_save),
+        onConfirm = { onChoose(diag, trips) },
+        dismissText = stringResource(R.string.root_not_now),
+        onDismiss = onDismiss,
         text = {
             Column {
                 Text(stringResource(R.string.root_diag_body))
@@ -145,8 +149,6 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onChoose(diag, trips) }) { Text(stringResource(R.string.root_diag_save)) } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.root_not_now)) } },
     )
 }
 
@@ -158,17 +160,19 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
  *  number can never go stale. */
 @Composable
 private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit) {
-    AlertDialog(
+    VelaDialog(
         onDismissRequest = onSkip,
-        title = { Text(stringResource(R.string.root_voice_title)) },
+        title = stringResource(R.string.root_voice_title),
+        confirmText = stringResource(R.string.root_voice_download),
+        onConfirm = onDownload,
+        dismissText = stringResource(R.string.root_not_now),
+        onDismiss = onSkip,
         text = {
             Text(
                 stringResource(R.string.root_voice_body_intro, sizeMb) + " " +
                     stringResource(R.string.root_voice_body_outro),
             )
         },
-        confirmButton = { TextButton(onClick = onDownload) { Text(stringResource(R.string.root_voice_download)) } },
-        dismissButton = { TextButton(onClick = onSkip) { Text(stringResource(R.string.root_not_now)) } },
     )
 }
 
@@ -177,11 +181,13 @@ private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit)
  *  they lose signal on the road, not after. "Set up" opens Settings straight to the Offline section. */
 @Composable
 private fun OfflinePrompt(onSetup: () -> Unit, onSkip: () -> Unit) {
-    AlertDialog(
+    VelaDialog(
         onDismissRequest = onSkip,
-        title = { Text(stringResource(R.string.root_offline_title)) },
+        title = stringResource(R.string.root_offline_title),
+        confirmText = stringResource(R.string.root_offline_setup),
+        onConfirm = onSetup,
+        dismissText = stringResource(R.string.root_not_now),
+        onDismiss = onSkip,
         text = { Text(stringResource(R.string.root_offline_body)) },
-        confirmButton = { TextButton(onClick = onSetup) { Text(stringResource(R.string.root_offline_setup)) } },
-        dismissButton = { TextButton(onClick = onSkip) { Text(stringResource(R.string.root_not_now)) } },
     )
 }
