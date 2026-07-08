@@ -28,11 +28,15 @@ genuinely needs no doc edit, say why in the commit.
   during map scroll/nav. R8 lives in the `release`
   buildType. Use `./gradlew :app:assembleDebug` only as a compile check.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
-- **D-pad regression suite (`dpad_test_suite/`).** On-device, reproducible: `./run_all.sh` drives
-  the app with ONLY D-pad keys (via `adb input keyevent`) and asserts on the focused element per
-  surface (bare map → search bar, Settings/Welcome/dialog/menu auto-focus). Run it after any change
-  that touches focus. It's the scripted form of the manual `adb uiautomator dump` checks; see
-  `docs/dpad.md`.
+- **D-pad regression suite (`dpad_test_suite/`).** On-device, reproducible. Run after any change
+  that touches focus (see `docs/dpad.md`):
+  - `run_all.sh` — per-surface focus assertions (bare map → search bar, Settings/Welcome/dialog/menu
+    auto-focus, Choose-on-map engages, Directions pill reachable).
+  - `audit_static.sh` — EXHAUSTIVE source scan (no device): every clickable/toggleable/selectable
+    has a `dpadHighlight` ring, every gesture has a key path, no bare `DropdownMenu`/`AlertDialog`,
+    no `isSystemInDarkTheme`; fails on any real violation. Wire it into CI.
+  - `audit_dynamic.sh` — EXHAUSTIVE on-device tour: every surface opens focused, focus is never lost
+    across a full traversal, BACK exits. "Nothing escapes the auditor."
 - **Auditing a real drive.** A saved trip stores the navigated route too (`core/replay/TripLog`
   format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
   cards/voice said against the plotted route from a shared trip CSV, call `TripLog.audit(csv)`
