@@ -150,9 +150,17 @@ genuinely needs no doc edit, say why in the commit.
   Handle TAP steps up; drag UP grows a detent, DOWN shrinks one; the nested-scroll connection steps
   ONE detent per gesture (re-armed in `onPreFling`) with an up-drag into the list expanding — a hard
   fling can cross two detents, which matches Google. **BACK also steps one detent** — `resultsExpanded`
-  is HOISTED to MapScreen so the BackHandler does expanded → peek → minimized instead of jumping to
-  the bar; and the sheet modifier carries `statusBarsPadding()` so the expanded handle pill stops
-  below the clock / camera cutout instead of sliding under it (both user 2026-07-09). There is **NO "hide results" button**. **Filter
+  is HOISTED to MapScreen so the BackHandler does expanded → peek → minimized → CLEARED (a back on the
+  minimized bar used to exit the app; now it runs `clearSearch()` to the bare map); and the sheet
+  modifier carries `statusBarsPadding()` so the expanded handle pill stops below the clock / camera
+  cutout instead of sliding under it (all user 2026-07-09). **Camera frames the result CLUSTER:** the
+  marker-fit branch in VelaMapView median-centers the pins and drops outliers past 4x the median
+  spread (min 40 km) so one stray far hit can't zoom the map to a continental view; it fits with the
+  results-sheet bottom inset (0.50 screen) so pins sit above the sheet; `lastFittedMarkersKey` re-arms
+  while the sheet is minimized so expanding re-frames; and the fit CONSUMES `lastCameraTarget` — the
+  inset-grow nulls it, and with it null the else-recenter branch re-fired on the STALE VM center one
+  recomposition later and yanked the camera back to wherever you were before the search (device-found
+  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
