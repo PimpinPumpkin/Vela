@@ -47,7 +47,12 @@ for m in re.finditer(r"<node [^>]*focused=\"true\"[^>]*>", d):
 # focused_stable  — 0 (true) if something is focused, RE-CHECKING once after a short settle. A
 # transient null sampled mid-scroll-animation (the focused row briefly off-screen) is not a real
 # focus loss; a genuine focus clear persists. Use this in traversal integrity, not raw `focused`.
-focused_stable() { [ -n "$(focused)" ] && return 0; sleep 0.3; [ -n "$(focused)" ]; }
+focused_stable() {
+  [ -n "$(focused)" ] && return 0
+  local t
+  for t in 0.3 0.5; do sleep "$t"; [ -n "$(focused)" ] && return 0; done   # settle a scroll animation
+  return 1
+}
 focused_bounds() { focused | cut -d"|" -f1; }
 focused_text()   { focused | cut -d"|" -f2; }
 focused_desc()   { focused | cut -d"|" -f3; }
@@ -89,18 +94,20 @@ on_screen_contains() { [ -n "$(find_text_contains "$1")" ]; }
 # ycenter <bounds>  — the vertical centre of an [x1,y1][x2,y2] bounds string.
 ycenter() { echo "$1" | sed -E 's/^\[[0-9]+,([0-9]+)\]\[[0-9]+,([0-9]+)\].*/\1 \2/' | awk '{print int(($1+$2)/2)}'; }
 # focus_and_ok <exact>  — press DOWN until the focused row vertically contains the node with that
-# text, then OK it. Robust to the exact number of rows (the focused clickable Row often has no text
-# of its own, so we match by position). Returns non-zero if it can't reach the row in 9 presses.
+# text, then OK it. RE-FINDS the target each iteration, so it works even when the target starts
+# BELOW the fold (a long Settings list scrolls it into view as we walk). Matches by position because
+# the focused clickable Row often has no text of its own. Returns non-zero if unreached in 30 presses.
 focus_and_ok() {
-  local want="$1" tb cy
-  tb="$(find_text "$want")"; [ -z "$tb" ] && return 1
-  cy="$(ycenter "$tb")"
-  for _ in $(seq 1 9); do
-    local fb fy1 fy2
-    fb="$(focused_bounds)"
-    fy1="$(echo "$fb" | sed -E 's/^\[[0-9]+,([0-9]+)\].*/\1/')"
-    fy2="$(echo "$fb" | sed -E 's/.*\]\[[0-9]+,([0-9]+)\]$/\1/')"
-    if [ -n "$fy1" ] && [ "$cy" -ge "$fy1" ] && [ "$cy" -le "$fy2" ] 2>/dev/null; then key "$K_OK" 2; return 0; fi
+  local want="$1" i tb cy fb fy1 fy2
+  for i in $(seq 1 30); do
+    tb="$(find_text "$want")"
+    if [ -n "$tb" ]; then
+      cy="$(ycenter "$tb")"
+      fb="$(focused_bounds)"
+      fy1="$(echo "$fb" | sed -E 's/^\[[0-9]+,([0-9]+)\].*/\1/')"
+      fy2="$(echo "$fb" | sed -E 's/.*\]\[[0-9]+,([0-9]+)\]$/\1/')"
+      if [ -n "$fy1" ] && [ "$cy" -ge "$fy1" ] && [ "$cy" -le "$fy2" ] 2>/dev/null; then key "$K_OK" 2; return 0; fi
+    fi
     key "$K_DOWN"
   done
   return 1

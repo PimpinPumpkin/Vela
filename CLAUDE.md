@@ -270,10 +270,13 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
      (`DpadFocus.kt`/`VelaMenu.kt`/`VelaDialog.kt`/`MapDpadController.kt`), shared-file edits as small
      anchored insertions, one commented D-pad import block per file. **Reuse the helpers — do not
      reinvent** `dpadHighlight`/`dpadAutoFocus`/`dpadSwallowHorizontal`/`dpadFieldEscape`.
-  9. **Enforcement (`dpad_test_suite/`):** `audit_static.sh` (no device — every rule above as a source
-     scan; **must be 0 violations**), `audit_dynamic.sh` (every surface opens focused, multi-axis
-     traversal never loses focus, BACK exits), `audit_dialogs.sh` (dialogs fit a feature-phone screen),
-     and `run_all.sh` (per-surface). A UI PR that fails any of these does not merge.
+  9. **Enforcement (two suites, mirror-imaged):** `dpad_test_suite/` — `audit_static.sh` (no device;
+     every rule above as a source scan; **must be 0 violations**, CI-ready), `audit_dynamic.sh` (every
+     surface opens focused, multi-axis DOWN/RIGHT/UP/LEFT traversal never loses focus + reaches all
+     distinct elements, BACK exits), `run_all.sh` (per-surface). `smallscreen_test_suite/` — the
+     feature-phone twin: `audit_smallscreen.sh` (shrinks the display; nothing clipped off-screen on any
+     surface) + `audit_dialogs.sh` (dialogs/menus scroll and keep buttons on-screen). A UI PR that fails
+     ANY of these does not merge. No regressions ever.
 - **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
   works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
   `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/
