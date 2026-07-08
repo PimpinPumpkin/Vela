@@ -86,8 +86,15 @@ import app.vela.ui.theme.AppTheme
 import app.vela.ui.theme.ThemeMode
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadFieldEscape
+import app.vela.ui.dpadSwallowHorizontal
 import app.vela.ui.rememberDpadAutoFocus
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,7 +131,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             TopAppBar(
                 title = { Text(stringResource(R.string.settings_title)) },
                 navigationIcon = {
-                    IconButton(onClick = onBack, modifier = Modifier.focusRequester(settingsAutoFocus)) {
+                    IconButton(onClick = onBack, modifier = Modifier.focusRequester(settingsAutoFocus).dpadSwallowHorizontal()) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
                     }
                 },
@@ -134,6 +141,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
         Column(
             Modifier
                 .padding(padding)
+                // D-pad (docs/dpad.md): Settings is a VERTICAL list — swallow bare LEFT/RIGHT so a
+                // no-target horizontal move can't clear focus. The vibrate FilterChips row (a real
+                // horizontal row) handles its own LEFT/RIGHT first, so this never runs for it.
+                .dpadSwallowHorizontal()
                 .onGloballyPositioned { viewportTopY = it.positionInRoot().y }
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
@@ -345,20 +356,39 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     TravelMode.WALK to stringResource(R.string.settings_mode_walking),
                     TravelMode.BICYCLE to stringResource(R.string.settings_mode_cycling),
                     TravelMode.TRANSIT to stringResource(R.string.settings_mode_transit),
-                ).forEach { (mode, label) ->
-                    var on by remember(mode) {
-                        val default = if (!prefs.getBoolean(Haptics.KEY, true)) false else Haptics.defaultFor(mode)
-                        mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), default))
+                ).let { modes ->
+                    // The ROOT swallows bare LEFT/RIGHT (see above), so this horizontal row drives its
+                    // OWN LEFT/RIGHT via FocusRequesters — requestFocus (not moveFocus) never clears at
+                    // the ends, and consuming the key stops it reaching the root swallow.
+                    val chipFocus = remember { List(modes.size) { FocusRequester() } }
+                    modes.forEachIndexed { i, (mode, label) ->
+                        var on by remember(mode) {
+                            val default = if (!prefs.getBoolean(Haptics.KEY, true)) false else Haptics.defaultFor(mode)
+                            mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), default))
+                        }
+                        FilterChip(
+                            selected = on,
+                            onClick = {
+                                on = !on
+                                prefs.edit().putBoolean(Haptics.keyFor(mode), on).apply()
+                            },
+                            label = { Text(label) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            modifier = Modifier
+                                .focusRequester(chipFocus[i])
+                                .onKeyEvent { ev ->
+                                    if (ev.key == Key.DirectionRight || ev.key == Key.DirectionLeft) {
+                                        if (ev.type == KeyEventType.KeyDown) {
+                                            if (ev.key == Key.DirectionRight && i < chipFocus.lastIndex) chipFocus[i + 1].requestFocus()
+                                            if (ev.key == Key.DirectionLeft && i > 0) chipFocus[i - 1].requestFocus()
+                                        }
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
+                        )
                     }
-                    FilterChip(
-                        selected = on,
-                        onClick = {
-                            on = !on
-                            prefs.edit().putBoolean(Haptics.keyFor(mode), on).apply()
-                        },
-                        label = { Text(label) },
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                    )
                 }
             }
             Hint(stringResource(R.string.settings_vibrate_hint))
@@ -969,7 +999,11 @@ private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit)
         Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = onClick)
+        // onClick = null: the RadioButton is display-only so the ROW is the single focus stop. A
+        // separately-focusable RadioButton made the row TWO focus stops, and a horizontal (LEFT/
+        // RIGHT) D-pad move into that nested target cleared focus with no way back (dpad audit
+        // 2026-07-08) — the Material "clickable row + indicator" pattern.
+        RadioButton(selected = selected, onClick = null)
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }

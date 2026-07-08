@@ -10,8 +10,12 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,7 +55,16 @@ fun VelaMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composab
         if (expanded) {
             Dialog(onDismissRequest = onDismissRequest) {
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, tonalElevation = 6.dp) {
-                    Column(Modifier.width(IntrinsicSize.Max).padding(vertical = 8.dp)) {
+                    // Cap to 85% of the screen and scroll — a long menu (many items) must not run off
+                    // a small screen with the bottom items unreachable. Focus follows into view as
+                    // DOWN walks past the fold.
+                    Column(
+                        Modifier
+                            .width(IntrinsicSize.Max)
+                            .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.85f).dp)
+                            .verticalScroll(rememberScrollState())
+                            .padding(vertical = 8.dp),
+                    ) {
                         VelaMenuScope(dpad = true).content()
                     }
                 }

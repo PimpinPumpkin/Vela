@@ -14,8 +14,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -62,15 +66,30 @@ fun VelaDialog(
             color = MaterialTheme.colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp,
         ) {
-            Column(Modifier.padding(24.dp), horizontalAlignment = if (icon != null) Alignment.CenterHorizontally else Alignment.Start) {
+            // Cap to 90% of the screen and SCROLL the body so a tall dialog (e.g. the diagnostics
+            // checkboxes) never pushes the buttons off a small screen — the title stays pinned at
+            // the top and the buttons at the bottom, only the middle scrolls. Without this, on a
+            // feature-phone-sized display the Confirm/Dismiss buttons fell off-screen, unreachable.
+            Column(
+                Modifier
+                    .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.9f).dp)
+                    .padding(24.dp),
+                horizontalAlignment = if (icon != null) Alignment.CenterHorizontally else Alignment.Start,
+            ) {
                 if (icon != null) {
                     icon()
                     Spacer(Modifier.height(16.dp))
                 }
                 Text(title, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
                 Spacer(Modifier.height(16.dp))
-                ProvideTextStyle(MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                    text()
+                // weight(1f, fill = false) + verticalScroll: the body takes only what it needs, but
+                // when the whole dialog would exceed the cap it shrinks and scrolls instead of
+                // shoving the buttons off-screen. Focusable body content (checkboxes) scrolls into
+                // view as D-pad focus moves through it.
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    ProvideTextStyle(MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                        text()
+                    }
                 }
                 Spacer(Modifier.height(24.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
