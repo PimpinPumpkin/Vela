@@ -53,6 +53,13 @@ but practically unusable.
   `onFocusEvent.hasFocus` covers both) holds focus **and** the UI is key-driven (honours
   `dpadFirst` directly, since a D-pad-first phone may still read `inputMode == Touch` until
   the first key event). Never appears under touch.
+- `rememberDpadAutoFocus(vararg keys)` — **D-pad-FIRST initial focus.** Returns a
+  `FocusRequester`; attach it to a screen's primary element via `Modifier.focusRequester(...)`
+  and focus is placed there the moment the screen/overlay appears — so the user never has to
+  press a key just to *wake up* focus (see "Initial focus" below). Retries 20 × 50 ms because
+  a freshly-composed focus node usually isn't attached on frame 1 (the first `requestFocus()`
+  throws and nothing ends up focused — the exact reason the map-target acquisition retries).
+  Only requests on a D-pad-first device, so touch UX is byte-identical.
 - `Modifier.dpadFieldEscape()` — makes a text field **escapable** by D-pad: UP/DOWN move
   focus to the previous/next form control instead of being swallowed by the field's own
   cursor handling. A single- or multi-line `TextField`/`BasicTextField` otherwise eats the
@@ -153,6 +160,38 @@ Shown **only while browsing the bare map** (not during search / results / place 
 directions / nav) — mid-right they sit in the vertical focus path of those panels and
 intercepted DOWN into their rows (measured). Behind a panel the map is covered anyway; zoom
 it via the engaged crosshair after closing the panel.
+
+### Initial focus on every screen (D-pad-first, hard rule — sweep 2026-07-07)
+
+**Rule: no screen or view may open with nothing focused.** On a D-pad-first device the app is
+driven entirely by keys, so a screen that appears un-focused wastes the user's first keypress
+just *establishing* focus instead of acting — that press should already be doing something.
+Every screen/overlay must land already focused on a sensible element.
+
+Compose does **not** give this for free: it only auto-focuses in a few cases, and when a
+focused element is removed (e.g. a results row → the place sheet), focus recovery is
+*nondeterministic* — measured on-device it landed sometimes on a photo, sometimes on the
+search bar behind the sheet, sometimes nowhere. The fix is `rememberDpadAutoFocus()` (Core
+helpers) attached to each surface's primary element:
+
+| Screen / overlay | Auto-focus target | Was broken? |
+|---|---|---|
+| Bare map | centre map target (pre-existing retry effect) | already OK |
+| **Settings** | back button (top of screen) | **nothing focused** — confirmed + fixed |
+| **Welcome** | Get-started button | fixed |
+| **Place sheet** | drag handle | focus leaked to the search bar behind it — fixed |
+| **Directions panel** | first travel-mode tab (Drive) | fixed |
+| **Route steps sheet** | first step row | fixed |
+| **Reviews WebView** (full-screen) | back arrow (until the WebView loads + grabs focus) | fixed |
+| Photo gallery | (pre-existing `galleryFocus`) | already OK |
+| Search overlay | armed search field | already OK (arming focuses it) |
+| Nav | map stays primary (the banner is an overlay) | already OK |
+
+Proven on-device (focus dumped immediately on open, **no keypress**): Settings → back button,
+place sheet → handle, directions panel → Drive tab all land focused. The three share the one
+helper, so the sheet/reviews/steps that attach it identically follow. Results after a search
+keep focus on the search field (Google-style — you can refine or press DOWN into the list);
+that's "already focused", so it's left as-is.
 
 ### The search overlay — the "can't get out of search" trap (MapScreen + SearchBar)
 
