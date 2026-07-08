@@ -49,6 +49,11 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var settingsOpenOffline by rememberSaveable { mutableStateOf(false) }
     Box {
+        // MapScreen stays composed even while Settings is open, and Settings draws OVER it as an
+        // opaque overlay. Swapping the two out instead disposed the remembered MapLibre MapView, so
+        // returning from Settings rebuilt the map from scratch and it snapped back to the stale
+        // center at the default zoom, losing the user's pan/zoom (a reported bug).
+        MapScreen(vm = vm, onOpenSettings = { showSettings = true })
         if (showSettings) {
             SettingsScreen(
                 vm = vm,
@@ -56,7 +61,6 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                 openOffline = settingsOpenOffline,
             )
         } else {
-            MapScreen(vm = vm, onOpenSettings = { showSettings = true })
             if (Onboarding.showVoicePrompt.value) {
                 VoicePrompt(
                     // The Vela voice is recommended for EVERYONE — the same prompt regardless of
