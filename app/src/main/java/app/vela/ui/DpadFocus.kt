@@ -123,6 +123,16 @@ fun rememberDpadAutoFocus(vararg keys: Any?): FocusRequester {
     return fr
 }
 
+// Note (docs/dpad.md "Known limitations"): a Compose secondary window — a `DropdownMenu`'s Popup
+// or an `AlertDialog`'s Dialog — opens with WINDOW focus but no content Compose-focused, and
+// Compose sets that content focus ONLY on the first real key event. Nothing in-app pre-places it:
+// requestFocus (on the item / a custom focusable child), retry-until-onFocusEvent, outer-scope
+// delayed request, FocusManager.moveFocus(Down), and synthetic KeyEvent dispatch (to the popup
+// ComposeView and to its rootView, with and without a DPAD source) were ALL verified to fail
+// on-device (8 approaches, 2026-07-07). Menus/dialogs stay stock (fully navigable: OK/nav-key
+// enters, DOWN/UP walk, OK selects, BACK closes) so touch is byte-identical. Pre-highlighting
+// them would require replacing every menu/dialog with a custom in-window overlay.
+
 /**
  * Robust auto-focus Modifier — the version to use when the target may be **off-screen** (below
  * the fold in a scroll container) or otherwise not laid out on the first frame. There,
