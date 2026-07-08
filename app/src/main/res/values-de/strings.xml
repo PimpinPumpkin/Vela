@@ -160,6 +160,8 @@
     <string name="mapvm_poipack_unavailable">Für %1$s gibt es noch kein Orte-Paket. Es erscheint hier, sobald es veröffentlicht ist.</string> <!-- format -->
     <string name="settings_demo_drive">Fahrt simulieren (Demo)</string>
     <string name="settings_demo_drive_hint">Für Demos, Screenshots und Tests: Mit Start wird die geplante Route als simulierte GPS-Spur statt deiner echten Position gefahren — Navigation funktioniert überall. Zum echten Navigieren ausschalten.</string>
+    <string name="settings_sim_location">Standort simulieren (Demo)</string>
+    <string name="settings_sim_location_hint">Für Demos und Screenshots: Tu so, als wärst du gerade in der Mitte der Karte, sodass Standortpunkt, Entfernungen und Routen von dort statt von deiner echten Position ausgehen. Zum Ausschalten für echtes GPS.</string>
     <string name="place_address_copied">Adresse kopiert</string>
     <string name="place_copy_address">Adresse kopieren</string>
     <string name="place_directions">Route</string>

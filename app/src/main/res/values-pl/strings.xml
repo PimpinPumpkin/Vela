@@ -160,6 +160,8 @@
     <string name="mapvm_poipack_unavailable">Brak jeszcze pakietu miejsc dla regionu %1$s. Pojawi się tutaj po opublikowaniu.</string> <!-- format -->
     <string name="settings_demo_drive">Symuluj jazdę (demo)</string>
     <string name="settings_demo_drive_hint">Do demonstracji, zrzutów ekranu i testów: dotknięcie Start prowadzi trasą jako symulowany ślad GPS zamiast Twojej rzeczywistej lokalizacji — nawigacja działa wszędzie. Wyłącz, aby nawigować naprawdę.</string>
+    <string name="settings_sim_location">Symuluj moją lokalizację (demo)</string>
+    <string name="settings_sim_location_hint">Do prezentacji i zrzutów ekranu: udawaj, że jesteś teraz na środku mapy, aby kropka lokalizacji, odległości i trasy zaczynały się stamtąd, a nie z Twojej prawdziwej pozycji. Wyłącz, aby używać prawdziwego GPS.</string>
     <string name="place_address_copied">Skopiowano adres</string>
     <string name="place_copy_address">Kopiuj adres</string>
     <string name="place_directions">Trasa</string>
