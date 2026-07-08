@@ -68,6 +68,39 @@ for m in re.finditer(r"<node [^>]*>", d):
 }
 # on_screen <exact>  — 0 (true) if a node with that exact text exists.
 on_screen() { [ -n "$(find_text "$1")" ]; }
+# find_text_contains <substr>  — bounds of the first node whose text CONTAINS <substr>.
+find_text_contains() {
+  $ADB shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
+  $ADB shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
+import sys, re
+d = sys.stdin.read(); want = sys.argv[1]
+for m in re.finditer(r"<node [^>]*>", d):
+    s = m.group(0); t = re.search(r"text=\"([^\"]*)\"", s); b = re.search(r"bounds=\"([^\"]*)\"", s)
+    if t and want in t.group(1):
+        print(b.group(1) if b else ""); break
+' "$1"
+}
+# on_screen_contains <substr>  — 0 (true) if any node's text contains <substr> (partial match).
+on_screen_contains() { [ -n "$(find_text_contains "$1")" ]; }
+# ycenter <bounds>  — the vertical centre of an [x1,y1][x2,y2] bounds string.
+ycenter() { echo "$1" | sed -E 's/^\[[0-9]+,([0-9]+)\]\[[0-9]+,([0-9]+)\].*/\1 \2/' | awk '{print int(($1+$2)/2)}'; }
+# focus_and_ok <exact>  — press DOWN until the focused row vertically contains the node with that
+# text, then OK it. Robust to the exact number of rows (the focused clickable Row often has no text
+# of its own, so we match by position). Returns non-zero if it can't reach the row in 9 presses.
+focus_and_ok() {
+  local want="$1" tb cy
+  tb="$(find_text "$want")"; [ -z "$tb" ] && return 1
+  cy="$(ycenter "$tb")"
+  for _ in $(seq 1 9); do
+    local fb fy1 fy2
+    fb="$(focused_bounds)"
+    fy1="$(echo "$fb" | sed -E 's/^\[[0-9]+,([0-9]+)\].*/\1/')"
+    fy2="$(echo "$fb" | sed -E 's/.*\]\[[0-9]+,([0-9]+)\]$/\1/')"
+    if [ -n "$fy1" ] && [ "$cy" -ge "$fy1" ] && [ "$cy" -le "$fy2" ] 2>/dev/null; then key "$K_OK" 2; return 0; fi
+    key "$K_DOWN"
+  done
+  return 1
+}
 
 # ---- assertions -----------------------------------------------------------------------------
 PASS=0; FAIL=0
@@ -96,6 +129,8 @@ assert_something_focused() {
 }
 assert_on_screen() { if on_screen "$1"; then pass "'$1' is on screen"; else fail "'$1' not on screen"; fi; }
 assert_not_on_screen() { if on_screen "$1"; then fail "'$1' still on screen"; else pass "'$1' gone"; fi; }
+assert_on_screen_contains() { if on_screen_contains "$1"; then pass "text containing '$1' is on screen"; else fail "no text contains '$1'"; fi; }
+assert_not_on_screen_contains() { if on_screen_contains "$1"; then fail "text '$1' still on screen"; else pass "'$1' gone"; fi; }
 
 # IME state (for text-field-escape tests): 0 (true) if soft keyboard shown.
 ime_shown() { $ADB shell dumpsys input_method 2>/dev/null | grep -q "mInputShown=true"; }
