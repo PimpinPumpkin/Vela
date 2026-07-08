@@ -726,14 +726,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Hint(stringResource(R.string.settings_no_trips_hint))
             }
             if (showTripConsent) {
-                AlertDialog(
+                app.vela.ui.VelaDialog(
                     onDismissRequest = { showTripConsent = false },
-                    title = { Text(stringResource(R.string.settings_trip_consent_title)) },
-                    text = {
-                        Text(stringResource(R.string.settings_trip_consent_body))
-                    },
-                    confirmButton = { TextButton(onClick = { vm.setTripRecording(true); showTripConsent = false }) { Text(stringResource(R.string.settings_turn_on)) } },
-                    dismissButton = { TextButton(onClick = { showTripConsent = false }) { Text(stringResource(R.string.settings_cancel)) } },
+                    title = stringResource(R.string.settings_trip_consent_title),
+                    confirmText = stringResource(R.string.settings_turn_on),
+                    onConfirm = { vm.setTripRecording(true); showTripConsent = false },
+                    dismissText = stringResource(R.string.settings_cancel),
+                    onDismiss = { showTripConsent = false },
+                    text = { Text(stringResource(R.string.settings_trip_consent_body)) },
                 )
             }
             var crashReports by remember { mutableStateOf(app.vela.diag.CrashCatcher.pending(context)) }
@@ -751,14 +751,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 }
             }
             if (showDiagConsent) {
-                AlertDialog(
+                app.vela.ui.VelaDialog(
                     onDismissRequest = { showDiagConsent = false },
-                    title = { Text(stringResource(R.string.settings_diag_consent_title)) },
-                    text = {
-                        Text(stringResource(R.string.settings_diag_consent_body))
-                    },
-                    confirmButton = { TextButton(onClick = { vm.setDiagnostics(true); showDiagConsent = false }) { Text(stringResource(R.string.settings_turn_on)) } },
-                    dismissButton = { TextButton(onClick = { showDiagConsent = false }) { Text(stringResource(R.string.settings_cancel)) } },
+                    title = stringResource(R.string.settings_diag_consent_title),
+                    confirmText = stringResource(R.string.settings_turn_on),
+                    onConfirm = { vm.setDiagnostics(true); showDiagConsent = false },
+                    dismissText = stringResource(R.string.settings_cancel),
+                    onDismiss = { showDiagConsent = false },
+                    text = { Text(stringResource(R.string.settings_diag_consent_body)) },
                 )
             }
 
@@ -990,12 +990,14 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
 
     confirmDeleteId?.let { id ->
         val nm = catalog.firstOrNull { it.id == id }?.displayName ?: stringResource(R.string.settings_voice_this_voice)
-        AlertDialog(
+        app.vela.ui.VelaDialog(
             onDismissRequest = { confirmDeleteId = null },
-            title = { Text(stringResource(R.string.settings_voice_remove_title, nm)) },
+            title = stringResource(R.string.settings_voice_remove_title, nm),
+            confirmText = stringResource(R.string.settings_voice_remove),
+            onConfirm = { vm.deleteVoice(id); confirmDeleteId = null },
+            dismissText = stringResource(R.string.settings_cancel),
+            onDismiss = { confirmDeleteId = null },
             text = { Text(stringResource(R.string.settings_voice_remove_body)) },
-            confirmButton = { TextButton(onClick = { vm.deleteVoice(id); confirmDeleteId = null }) { Text(stringResource(R.string.settings_voice_remove)) } },
-            dismissButton = { TextButton(onClick = { confirmDeleteId = null }) { Text(stringResource(R.string.settings_cancel)) } },
         )
     }
 }
