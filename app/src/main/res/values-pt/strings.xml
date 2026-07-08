@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Transfira uma voz natural no dispositivo para as indicações faladas — escolha uma abaixo. As vozes ★ soam mais como um navegador de mapas (Lessac e HFC são as mais próximas da Google). Transferência única; recomenda-se Wi-Fi.</string>
     <string name="settings_voice_lib_lang_hint">O idioma da sua aplicação é %1$s — transfira uma voz de %2$s abaixo para que as indicações faladas correspondam (uma voz de inglês pronunciaria mal os nomes das ruas em %3$s).</string>
     <string name="settings_voice_search">Pesquisar vozes</string>
+    <string name="settings_voice_show_more">Mostrar mais %1$d</string>
+    <string name="settings_voice_show_less">Mostrar menos</string>
     <string name="settings_voice_this_voice">esta voz</string>
     <string name="settings_voice_remove_title">Remover %1$s?</string>
     <string name="settings_voice_remove_body">Esta é a sua única voz Vela. As indicações faladas passam a usar um motor de texto para voz do sistema (ou ficam silenciosas se nenhum estiver instalado) até transferir outra.</string>

@@ -112,6 +112,8 @@
     <string name="settings_voice_lib_empty_hint">Завантажте природний голос на пристрій для голосових вказівок — виберіть один нижче. Голоси з ★ звучать найбільше схоже на навігатор карт (Lessac і HFC найближчі до Google). Одноразове завантаження; рекомендовано Wi-Fi.</string>
     <string name="settings_voice_lib_lang_hint">Мова застосунку — %1$s. Завантажте голос %2$s нижче, щоб голосові вказівки відповідали (англійський голос неправильно вимовляв би назви вулиць мовою %3$s).</string>
     <string name="settings_voice_search">Пошук голосів</string>
+    <string name="settings_voice_show_more">Показати ще %1$d</string>
+    <string name="settings_voice_show_less">Показати менше</string>
     <string name="settings_voice_this_voice">цей голос</string>
     <string name="settings_voice_remove_title">Видалити %1$s?</string>
     <string name="settings_voice_remove_body">Це єдиний ваш голос Vela. Голосові вказівки перейдуть на системний рушій синтезу мовлення (або замовкнуть, якщо жодного не встановлено), доки ви не завантажите інший.</string>
