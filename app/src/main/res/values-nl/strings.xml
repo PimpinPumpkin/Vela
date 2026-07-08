@@ -45,6 +45,8 @@
     <string name="settings_map">Kaart</string>
     <string name="settings_live_traffic">Live verkeerslaag</string>
     <string name="settings_live_traffic_hint">Kleurt wegen naar drukte terwijl u de kaart bekijkt (Googles sleutelloze verkeerstegels). Standaard uit — de navigatie kleurt uw route al op verkeer, dus dit is alleen om het bredere gebied te overzien. Het is een rasterlaag, dus iets korrelig.</string>
+    <string name="settings_transit_layer">Ov-lijnen markeren</string>
+    <string name="settings_transit_layer_hint">Tekent trein- en metrolijnen in kleur op de kaart, zodat je het spoor makkelijk volgt. Gebruikt de open kaartgegevens die al in de tegels zitten, zonder netwerk.</string>
     <string name="settings_read_all_reviews">Knop “Alle recensies lezen”</string>
     <string name="settings_read_all_reviews_hint">Recensies in het plaatsvenster zijn altijd Vela\'s eigen soepele native lijst. Dit voegt een knop “Alle recensies lezen” toe die Googles volledige recensiepagina SCHERMVULLEND opent — elke recensie (niet alleen de eerste ~50), Googles serverzijdige zoekfunctie, en videorecensies spelen af. Trackers/bakens worden geblokkeerd, maar Googles pagina draait wel in de app. Uit = alleen native lijst, geen Google-pagina voor recensies.</string>
     <string name="settings_offline">Offline</string>

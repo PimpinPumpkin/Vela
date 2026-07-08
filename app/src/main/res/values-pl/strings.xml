@@ -45,6 +45,8 @@
     <string name="settings_map">Mapa</string>
     <string name="settings_live_traffic">Warstwa ruchu na żywo</string>
     <string name="settings_live_traffic_hint">Cieniuje drogi według natężenia ruchu podczas przeglądania mapy (bezkluczowe kafelki ruchu Google). Domyślnie wyłączone — nawigacja i tak koloruje Twoją trasę według ruchu, więc to tylko do oglądania szerszej okolicy. To warstwa rastrowa, więc jest nieco ziarnista.</string>
+    <string name="settings_transit_layer">Wyróżnij linie transportu</string>
+    <string name="settings_transit_layer_hint">Rysuje linie kolejowe i metra na mapie kolorem, aby łatwo śledzić tory. Używa otwartych danych już zawartych w kafelkach, bez sieci.</string>
     <string name="settings_read_all_reviews">Przycisk „Czytaj wszystkie opinie”</string>
     <string name="settings_read_all_reviews_hint">Opinie w karcie miejsca to zawsze płynna, natywna lista Vela. To dodaje przycisk „Czytaj wszystkie opinie”, który otwiera pełną stronę opinii Google na CAŁYM EKRANIE — każdą opinię (nie tylko pierwsze ~50), wyszukiwanie po stronie serwera Google i odtwarzanie opinii wideo. Trackery i beacony są blokowane, ale strona Google działa wtedy w aplikacji. Wyłączone = tylko natywna lista, bez strony Google do opinii.</string>
     <string name="settings_offline">Offline</string>

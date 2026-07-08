@@ -45,6 +45,8 @@
     <string name="settings_map">Mappa</string>
     <string name="settings_live_traffic">Overlay traffico in tempo reale</string>
     <string name="settings_live_traffic_hint">Colora le strade in base alla congestione mentre esplori la mappa (riquadri di traffico senza chiave di Google). Disattivo per impostazione predefinita: la navigazione colora già il percorso in base al traffico, quindi serve solo per osservare l\'area circostante. È un overlay raster, perciò risulta un po\' granuloso.</string>
+    <string name="settings_transit_layer">Evidenzia le linee di trasporto</string>
+    <string name="settings_transit_layer_hint">Disegna le linee di treno e metropolitana a colori sulla mappa, così è facile seguire la ferrovia. Usa i dati aperti già presenti nei riquadri, senza rete.</string>
     <string name="settings_read_all_reviews">Pulsante “Leggi tutte le recensioni”</string>
     <string name="settings_read_all_reviews_hint">Le recensioni nella scheda del luogo sono sempre l\'elenco nativo e fluido di Vela. Questo aggiunge un pulsante “Leggi tutte le recensioni” che apre la pagina completa delle recensioni di Google A SCHERMO INTERO: ogni recensione (non solo le prime ~50), la ricerca lato server di Google e le recensioni video. Tracker e beacon sono bloccati, ma la pagina di Google viene comunque eseguita nell\'app. Disattivo = solo elenco nativo, nessuna pagina Google per le recensioni.</string>
     <string name="settings_offline">Offline</string>
