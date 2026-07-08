@@ -196,6 +196,12 @@ helper, so the sheet/reviews/steps that attach it identically follow. Results af
 keep focus on the search field (Google-style — you can refine or press DOWN into the list);
 that's "already focused", so it's left as-is.
 
+**Reproducible verification: [`../dpad_test_suite/`](../dpad_test_suite/).** The manual `adb`
+focus-dump checks used throughout this doc are scripted there — `./run_all.sh` drives the app with
+only D-pad keys and asserts on the focused element for each surface (bare map → search bar,
+Settings back button, Welcome/dialog auto-focus, place-sheet handle + `VelaMenu`). Run it after any
+change that touches focus.
+
 **The bare map is the ONE intentional exception (2026-07-08).** It used to auto-focus AND
 auto-engage the centre map target on open, so arrows immediately panned and you had to press
 BACK before you could reach the search bar (user report). Now the map neither auto-focuses nor
