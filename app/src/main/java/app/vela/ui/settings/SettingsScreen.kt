@@ -81,6 +81,7 @@ import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.AppTheme
 import app.vela.ui.theme.ThemeMode
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
+import app.vela.ui.dpadFieldEscape
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -407,7 +408,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 OutlinedTextField(
                     value = tryText,
                     onValueChange = { tryText = it },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
                     label = { Text(stringResource(R.string.settings_voice_try_label)) },
                     maxLines = 3,
                 )
@@ -467,7 +468,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                                 imeAction = ImeAction.Go,
                             ),
                             keyboardActions = KeyboardActions(onGo = { goToVariant() }),
-                            modifier = Modifier.width(150.dp),
+                            modifier = Modifier.width(150.dp).dpadFieldEscape(),
                         )
                         Spacer(Modifier.width(8.dp))
                         OutlinedButton(onClick = goToVariant, enabled = jump.isNotBlank()) { Text(stringResource(R.string.settings_voice_variant_go)) }
@@ -571,7 +572,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     OutlinedTextField(
                         value = routeFilter,
                         onValueChange = { routeFilter = it },
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).dpadFieldEscape(),
                         singleLine = true,
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                         trailingIcon = {
@@ -977,7 +978,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
             leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
             label = { Text(stringResource(R.string.settings_voice_search)) },
             singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+            modifier = Modifier.fillMaxWidth().padding(top = 4.dp).dpadFieldEscape(),
         )
     }
     fun matches(v: PiperVoice) = query.isBlank() ||

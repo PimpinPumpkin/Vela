@@ -14,10 +14,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.unit.dp
 
@@ -91,6 +98,37 @@ fun rememberDpadMode(): Boolean {
  * key-driven, so it never appears under touch. Apply it to any interactive element; pass
  * the element's own [shape] so the ring hugs it.
  */
+/**
+ * Makes a text field D-pad ESCAPABLE: UP/DOWN move focus to the previous/next form control
+ * instead of being swallowed by the field's own cursor handling. Without this, a single- or
+ * multi-line `TextField`/`BasicTextField` eats the vertical arrows, trapping focus on the
+ * field so nothing below it is reachable (measured on-device: the search field, and the
+ * "Try the voice" / filter fields in Settings). Apply to any text field that sits in a
+ * vertical list of focusable controls. Inert under touch. Fires via `onPreviewKeyEvent`
+ * (root→leaf) so it wins before the field consumes the key. Falls through (returns false)
+ * at a list edge where focus can't move, so the field still behaves normally there.
+ */
+fun Modifier.dpadFieldEscape(): Modifier = composed {
+    val dpad = rememberDpadMode()
+    val focusManager = LocalFocusManager.current
+    if (!dpad) {
+        this
+    } else {
+        this.onPreviewKeyEvent { ev ->
+            if (ev.type != KeyEventType.KeyDown) {
+                // Swallow the matching key-up too, so the field never sees a half event.
+                ev.key == Key.DirectionDown || ev.key == Key.DirectionUp
+            } else {
+                when (ev.key) {
+                    Key.DirectionDown -> focusManager.moveFocus(FocusDirection.Down)
+                    Key.DirectionUp -> focusManager.moveFocus(FocusDirection.Up)
+                    else -> false
+                }
+            }
+        }
+    }
+}
+
 fun Modifier.dpadHighlight(shape: Shape = RoundedCornerShape(14.dp)): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
     val dpadFirst = rememberDpadFirstDevice()
