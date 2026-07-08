@@ -127,19 +127,22 @@ genuinely needs no doc edit, say why in the commit.
   `shape = androidx.compose.foundation.shape.CircleShape` — full-radius pills, Google-style. The M3
   default 8dp-corner chip read "dated" (user 2026-07-08). Keep any new chip on CircleShape; monochrome
   leading icons (tint `onSurface`, not the teal primary) so it reads single-ink like Google's.
-- **Search-results sheet detents (rebuilt 2026-07-08 to mirror the POI viewer, `MapScreen.SearchResults`).**
-  It's a TOP sheet (hangs under the search bar), the MIRROR of the place bottom sheet: pull DOWN grows
-  a detent, push UP shrinks one (expanded ~0.94 → peek ~0.52 → the collapsed "N results" pill via
-  `onCollapse`). Same stepping polish as `PlaceSheet.dismissConn` — **one detent per gesture**
-  (`steppedThisGesture` guard, re-armed in `onPreFling` so a long drag can't blow through), swipe
-  anywhere on the list (a down-overscroll at the list top grows it), and **tap the handle to step**
-  (peek↔expanded). **Full-screen hides the bottom map chrome:** `resultsFullscreen` (set from
-  `SearchResults.onExpandedChange`) gates OUT the scale bar, the locate FAB and "Search this area" with
-  `&& !resultsFullscreen`, and is force-reset when results empty/collapse — the fix for the panel
-  rendering UNDER those overlays (later Box children stacked above it). The compass is MapLibre's
-  built-in (`setCompassMargins`), which fades when the map faces north (Google's behaviour) and
-  reappears when rotated/tilted or during heading-up nav — it wasn't removed, it's just north-hidden
-  on the browse map.
+- **Search-results sheet — TOP sheet with drag detents (`MapScreen.SearchResults`, 2026-07-08).**
+  It STAYS a top sheet (hangs under the search bar), NOT a bottom sheet — the user was explicit about
+  that; only the detent *sizing* should feel like the POI viewer. Pull DOWN grows a detent, push UP
+  shrinks one (expanded ~0.94 → peek ~0.52 → the collapsed "N results" pill via `onCollapse`); the
+  handle also TAPS to toggle peek↔expanded. There is **NO "hide results" button** — collapse to the
+  pill by swiping the handle up (or the system back gesture). **Filter chips are `ElevatedFilterChip`
+  with an explicit filled `chipColors`** (a subtle White/Black-alpha tint when off, solid `primary`
+  teal + check icon when on, `border = null`) so they read modern like the category pills — the
+  default outlined M3 chip looked "old" on the sheet. **Chrome hides whenever the results panel is
+  OPEN, not just full screen:** MapScreen computes `resultsShown = results.isNotEmpty() && selected ==
+  null && !searchOpen && !resultsCollapsed` and gates the scale bar / locate FAB / "Search this area"
+  with `&& !resultsShown`. The earlier `resultsFullscreen` (expanded-only) gate let those overlays
+  draw on top at the peek size (user 2026-07-08); gating on `resultsShown` covers every size. The
+  compass is MapLibre's built-in (`setCompassMargins`), which fades when the map faces north (Google's
+  behaviour) and reappears when rotated/tilted or during heading-up nav — it wasn't removed, it's just
+  north-hidden on the browse map.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
