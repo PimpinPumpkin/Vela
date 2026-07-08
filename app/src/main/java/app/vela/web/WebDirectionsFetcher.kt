@@ -82,7 +82,7 @@ class WebDirectionsFetcher @Inject constructor(
             pending.remove(id)
         }
         if (raw.isNullOrEmpty()) emptyList()
-        else runCatching { TransitParser.parse(raw) }.getOrDefault(emptyList())
+        else runCatching { TransitParser.parse(raw, origin, destination) }.getOrDefault(emptyList())
     }
 
     @SuppressLint("SetJavaScriptEnabled")

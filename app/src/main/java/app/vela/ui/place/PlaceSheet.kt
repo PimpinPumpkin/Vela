@@ -162,6 +162,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.vela.core.model.AboutSection
+import app.vela.core.model.LatLng
 import app.vela.core.model.Place
 import app.vela.core.model.ShortcutKind
 import app.vela.core.model.Review
@@ -928,6 +929,7 @@ fun DirectionsPanel(
     onStartNav: () -> Unit,
     onSteps: (() -> Unit)?,
     onSearchAlongRoute: (String) -> Unit,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1073,7 +1075,7 @@ fun DirectionsPanel(
                 }
             }
             if (currentMode == TravelMode.TRANSIT) {
-                TransitBoard(transit, transitLoading, ink, dim, dark)
+                TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections)
             } else {
                 Spacer(Modifier.height(12.dp))
                 if (routes.isEmpty()) {
@@ -1299,6 +1301,7 @@ private fun TransitBoard(
     ink: Color,
     dim: Color,
     dark: Boolean,
+    onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
 ) {
     Spacer(Modifier.height(10.dp))
     when {
@@ -1311,13 +1314,13 @@ private fun TransitBoard(
         }
         trips.isEmpty() -> Text(stringResource(R.string.place_no_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
         else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            trips.take(6).forEach { TransitRow(it, ink, dim, dark) }
+            trips.take(6).forEach { TransitRow(it, ink, dim, dark, onWalkDirections) }
         }
     }
 }
 
 @Composable
-private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean) {
+private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }) {
     var expanded by remember { mutableStateOf(false) }
     val canExpand = t.steps.isNotEmpty()
     Column(
@@ -1370,7 +1373,7 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
         if (expanded) {
             HorizontalDivider(color = dim.copy(alpha = 0.25f))
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                t.steps.forEach { TransitStepRow(it, ink, dim) }
+                t.steps.forEach { TransitStepRow(it, ink, dim, onWalkDirections) }
             }
             // Service alerts (detours / info) for the ridden lines.
             if (t.alerts.isNotEmpty()) {
@@ -1411,14 +1414,47 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
 /** One leg in the expanded drill-down: a mode glyph + the line/"Walk" title and a
  *  times·duration·distance subtitle ("Bus 42B / 5:48 AM – 6:41 AM · 53 min"). */
 @Composable
-private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color) {
+private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }) {
+    // Walk leg — "Walk · 11 min · 0.5 mi", tap to expand turn-by-turn walking directions
+    // (fetched on demand via the walk router between this leg's endpoints).
     if (s.line == null) {
+        val from = s.walkFrom; val to = s.walkTo
+        val canExpand = from != null && to != null
+        var open by remember { mutableStateOf(false) }
+        var steps by remember(from, to) { mutableStateOf<List<String>?>(null) }
+        if (open && canExpand) {
+            LaunchedEffect(from, to) { steps = onWalkDirections(from!!, to!!) }
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             Icon(transitModeIcon(s.mode), null, tint = dim, modifier = Modifier.padding(top = 2.dp).size(18.dp))
-            Column {
-                Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
-                val sub = listOfNotNull(s.durationText, s.distanceText).joinToString("  ·  ")
-                if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+            Column(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier.then(if (canExpand) Modifier.clickable { open = !open } else Modifier),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.bodyMedium, color = ink)
+                        val sub = listOfNotNull(s.durationText, s.distanceText).joinToString("  ·  ")
+                        if (sub.isNotEmpty()) Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+                    }
+                    if (canExpand) Icon(
+                        if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (open) stringResource(R.string.place_hide_steps) else stringResource(R.string.place_show_steps),
+                        tint = dim, modifier = Modifier.size(18.dp),
+                    )
+                }
+                if (open && canExpand) {
+                    Column(Modifier.padding(start = 4.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        when (val list = steps) {
+                            null -> CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+                            else -> if (list.isEmpty()) {
+                                Text(stringResource(R.string.place_walk), style = MaterialTheme.typography.labelSmall, color = dim)
+                            } else list.forEach { instr ->
+                                Text("•  $instr", style = MaterialTheme.typography.labelSmall, color = dim)
+                            }
+                        }
+                    }
+                }
             }
         }
         return
