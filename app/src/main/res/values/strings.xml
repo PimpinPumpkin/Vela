@@ -66,6 +66,8 @@
     <string name="mapvm_poipack_unavailable">No place pack for %1$s yet. It\'ll appear here once it\'s published.</string> <!-- format -->
     <string name="settings_demo_drive">Simulate driving (demo)</string>
     <string name="settings_demo_drive_hint">For demos, screenshots and testing: tapping Start drives the planned route as a simulated GPS trace instead of using your real location, so navigation works anywhere. Turn off to navigate for real.</string>
+    <string name="settings_sim_location">Simulate my location (demo)</string>
+    <string name="settings_sim_location_hint">For demos and screenshots: pretend you\'re at the centre of the map right now, so the location dot, distances and directions all start from there instead of your real position. Turn off to use real GPS.</string>
     <string name="settings_map">Map</string>
     <string name="settings_live_traffic">Live traffic overlay</string>
     <string name="settings_live_traffic_hint">Shades roads by congestion while browsing the map (Google\'s keyless traffic tiles). Off by default. Navigation already colours your route by traffic, so this is just for scanning the wider area. It\'s a raster overlay, so it\'s a touch grainy.</string>
