@@ -49,6 +49,10 @@
     <string name="settings_transit_layer_hint">Disegna le linee di treno e metropolitana a colori sulla mappa, così è facile seguire la ferrovia. Usa i dati aperti già presenti nei riquadri, senza rete.</string>
     <string name="settings_read_all_reviews">Pulsante “Leggi tutte le recensioni”</string>
     <string name="settings_read_all_reviews_hint">Le recensioni nella scheda del luogo sono sempre l\'elenco nativo e fluido di Vela. Questo aggiunge un pulsante “Leggi tutte le recensioni” che apre la pagina completa delle recensioni di Google A SCHERMO INTERO: ogni recensione (non solo le prime ~50), la ricerca lato server di Google e le recensioni video. Tracker e beacon sono bloccati, ma la pagina di Google viene comunque eseguita nell\'app. Disattivo = solo elenco nativo, nessuna pagina Google per le recensioni.</string>
+    <string name="settings_show_reviews">Mostra recensioni</string>
+    <string name="settings_show_reviews_hint">Disattivato = le pagine dei luoghi non mostrano recensioni e Vela non le scarica mai.</string>
+    <string name="settings_load_photos">Carica foto</string>
+    <string name="settings_load_photos_hint">Disattivato = le pagine dei luoghi non mostrano foto e non viene scaricato nulla. Risparmia dati.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Usare la mappa senza segnale richiede due cose: i RIQUADRI della mappa che vedi e la RETE STRADALE che ti guida. Salvare un\'area della mappa scarica entrambi per quel punto; l\'elenco delle regioni qui sotto aggiunge la rete stradale ovunque tu stia viaggiando.</string>
     <string name="settings_offline_map_area">Area mappa</string>

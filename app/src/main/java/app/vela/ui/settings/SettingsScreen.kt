@@ -430,6 +430,30 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             Hint(stringResource(R.string.settings_read_all_reviews_hint))
 
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_show_reviews), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.ShowReviews.on.value,
+                    onCheckedChange = { app.vela.ui.ShowReviews.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_show_reviews_hint))
+
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_load_photos), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.LoadPhotos.on.value,
+                    onCheckedChange = { app.vela.ui.LoadPhotos.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_load_photos_hint))
+
             Spacer(Modifier.height(20.dp).onGloballyPositioned { offlineSectionY = it.positionInRoot().y })
             // Collapsed by default — the routing-region list can be long, so don't make the user
             // scroll past all of it to reach the sections below. Opens expanded when the onboarding
