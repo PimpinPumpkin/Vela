@@ -242,7 +242,15 @@ genuinely needs no doc edit, say why in the commit.
   screen attaches `rememberDpadAutoFocus()` to a primary element (Settings→back, Welcome→Get
   started, place sheet→handle, directions→Drive tab, steps→first row, reviews→back arrow);
   the map + photo gallery already self-focus. When adding a screen, give it an auto-focus
-  target.
+  target. **Menus & dialogs (the hard one): a Compose `DropdownMenu` Popup / `AlertDialog` can
+  NOT be pre-focused (~10 approaches proven to fail — requestFocus/moveFocus/synthetic KeyEvent);
+  only a hand-built RAW `Dialog` with an explicit `.focusable()` element auto-focuses.** So use
+  **`VelaMenu`** (`ui/VelaMenu.kt`, drop-in DropdownMenu: anchored DropdownMenu under touch,
+  auto-focusing raw-Dialog chooser under D-pad) and **`VelaDialog`** (`ui/VelaDialog.kt`, drop-in
+  two-button AlertDialog that auto-focuses its dismiss button) — NEVER a bare `DropdownMenu`/
+  `AlertDialog` for new D-pad UI. Their buttons/items focus via `.focusable()`+`.onKeyEvent`
+  (OK) + `pointerInput` (touch), NOT `.clickable` (whose nested focusable won't take requestFocus
+  in a Dialog window).
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
   holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
   picks it. (1) **Spoken nav** — the GENERATED turn-by-turn text is a per-language `NavStrings` table in
