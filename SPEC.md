@@ -389,6 +389,17 @@ itself shows the traffic, not the whole map.
   windowed projection in `projectAlong` — not global-nearest) so "remaining" and "distance to
   next turn" stay **along-route** and honest on routes that pass near themselves
   (switchback / cloverleaf / out-and-back); off-route it holds rather than snapping to a far leg.
+- **Android Auto (first cut)**: `app/car/` — a NAVIGATION-category `CarAppService`
+  (`VelaCarAppService`, host validator open because sideloads already require AA's
+  "Unknown sources" developer switch) whose one screen (`CarMapScreen`) renders the live
+  map on the car display and, while navigating, a RoutingInfo card with the current
+  maneuver + distance from the same `@Singleton NavSession` the phone drives. Rendering:
+  templated car apps get a raw surface, MapLibre needs a View, so the renderer wraps the
+  surface in a `VirtualDisplay` + `Presentation` holding a plain `MapView`, styled with
+  the same Liberty URI + `applyDark`/`applyLight` recolour keyed to the car's own
+  day/night. Puck = its own AOSP `LocationManager` listener; pan/zoom = `onScroll`/`onScale`
+  camera math; recenter + zoom actions in the strip. The phone app runs nav and voice;
+  the car is a display for it.
 - **Place-content toggles**: Settings → Map, `ShowReviews` / `LoadPhotos` holders
   (default on). Off gates BOTH the fetch (`fetchReviews`/`fetchPhotos` in the VM) and the
   render (review tab / photo strip in `PlaceSheet`), so off means no scrape traffic at
