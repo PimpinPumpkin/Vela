@@ -247,6 +247,9 @@
     <string name="mapscreen_choose_set_stop">Ange stopp</string>
     <string name="mapscreen_destination">Mål</string>
     <string name="mapscreen_center_on_my_location">Centrera på min plats</string>
+    <string name="mapscreen_zoom_in">Zooma in</string>
+    <string name="mapscreen_zoom_out">Zooma ut</string>
+    <string name="mapscreen_dpad_engage">OK: flytta kartan</string>
     <string name="mapscreen_stop_replay">Stoppa uppspelning</string>
     <string name="mapscreen_psds_tip_title">Långsam GPS-låsning?</string>
     <string name="mapscreen_psds_tip_body">Aktivera PSDS i Inställningar → Plats för en mycket snabbare positionering (på GrapheneOS går det via deras proxy).</string>

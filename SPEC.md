@@ -377,6 +377,16 @@ itself shows the traffic, not the whole map.
   glyphs + bundling blanks the map; don't re-chase).
 - **MapTiler** Streets is wired as an alternative (needs the `MAPTILER_KEY` secret,
   never committed) but **off** (`USE_MAPTILER=false`) for keyless full control.
+- **D-pad-only operation (constraint — don't regress)**: the whole UI must stay drivable
+  with a 5-key D-pad and no touchscreen; touch is a bonus. Every interactive element is a
+  focus target with a visible ring in key-driven input mode (`app/ui/DpadFocus.kt`); the
+  map is key-drivable through `MapDpadController` (arrows pan, OK = tap at the centre
+  crosshair, hold-OK = long-press, on-screen +/− zoom buttons), which REUSES the touch
+  paths (same tap-resolution lambda, gesture flags, nav-zoom override) rather than forking
+  them; every gesture has a key alternative (banner ←/→ step preview, sheet-handle OK
+  toggle, photo-viewer ←/→). New interactive UI must keep all three properties
+  (reachable, activatable, visibly focused). Full design + per-surface audit + upstream
+  merge policy: `docs/dpad.md`.
 - **Compose UI**: place sheet (fixed Google-grey palette via `ui/SheetPalette`, NOT
   Material-You — deliberate), full-screen search page (Home/Work + saved + recent
   places + recent searches), directions panel (alternates, swap, depart-time chooser,

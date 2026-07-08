@@ -127,6 +127,7 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Navigation (banner, voice, haptics)** | Pure `NavEngine` turn logic (unit-tested) → maneuver banner (lane diagram / shields), AOSP TTS, direction-coded vibration | `core/nav/`, `app/ui/nav/`, `core/voice/`, `core/feedback/` |
 | **Android Auto (first cut)** | Navigation-category CarAppService; the MapLibre map draws onto the car surface through a VirtualDisplay + Presentation; maneuver card from the shared NavSession. Sideloads show up with AA's "Unknown sources" on | `app/car/VelaCarAppService.kt`, `app/car/CarMapScreen.kt` |
 | **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor — never GMS/Fused | `core/location/` |
+| **D-pad-only operation** | The whole UI works with a 5-key D-pad, no touchscreen (touch is a bonus): key-drivable map (arrows pan, OK-at-crosshair taps, hold-OK drops a pin, on-screen zoom buttons), focus rings, key alternatives for every gesture | [`docs/dpad.md`](docs/dpad.md), `app/ui/DpadFocus.kt`, `app/ui/map/MapDpadController.kt` |
 | **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
 | **Distribution** | Push to `main` → signed nightly prerelease; weekly promote to stable (same APK); Obtainium tracks stable by default, nightlies via the prerelease toggle | `.github/workflows/ci.yml` + `promote-stable.yml` |
 
@@ -140,6 +141,7 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |
 | [`PRIVACY.md`](PRIVACY.md) | Exactly what each Google endpoint receives, per request |
 | [`CLAUDE.md`](CLAUDE.md) | Build rules, module layout, and the hard-won gotchas — for contributors (human or AI) |
+| [`docs/dpad.md`](docs/dpad.md) | D-pad / no-touchscreen operation — design, findings, per-surface audit, and the merge-with-upstream policy |
 
 ## Architecture
 
