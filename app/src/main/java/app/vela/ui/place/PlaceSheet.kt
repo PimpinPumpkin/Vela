@@ -503,6 +503,7 @@ fun PlaceSheet(
                                 .size(width = 152.dp, height = 110.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .background(dim.copy(alpha = 0.2f))
+                                .dpadHighlight(RoundedCornerShape(12.dp))
                                 .clickable { galleryStart = i },
                         )
                     }
@@ -758,7 +759,7 @@ fun PlaceSheet(
             // are the fast path; these are the detail for when you want to see/copy the number or URL.
             place.phone?.let { ph ->
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }.padding(vertical = 8.dp),
@@ -771,7 +772,7 @@ fun PlaceSheet(
             }
             place.website?.let { site ->
                 Row(
-                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).clickable {
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                     }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -796,6 +797,7 @@ fun PlaceSheet(
                     Modifier.fillMaxWidth().padding(top = 10.dp)
                         .clip(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+                        .dpadHighlight(RoundedCornerShape(12.dp))
                         .clickable {
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(place.actionUrl))) }
                         }
@@ -869,7 +871,7 @@ fun PlaceSheet(
                 Text(stringResource(R.string.place_also_at_location), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = ink)
                 placesHere.forEach { other ->
                     Row(
-                        Modifier.fillMaxWidth().clickable { onOpenPlace(other) }.padding(vertical = 10.dp),
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable { onOpenPlace(other) }.padding(vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Column(Modifier.weight(1f)) {
@@ -898,6 +900,7 @@ fun PlaceSheet(
                         Column(
                             Modifier.width(150.dp).clip(RoundedCornerShape(12.dp))
                                 .background(dim.copy(alpha = 0.10f))
+                                .dpadHighlight(RoundedCornerShape(12.dp))
                                 .clickable { onOpenSimilar(s) }
                                 .padding(12.dp),
                         ) {
@@ -990,7 +993,7 @@ fun DirectionsPanel(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = if (onEditOrigin != null) {
-                            Modifier.clip(RoundedCornerShape(6.dp)).clickable { onEditOrigin() }.padding(vertical = 2.dp)
+                            Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditOrigin() }.padding(vertical = 2.dp)
                         } else Modifier,
                     ) {
                         Icon(Icons.Default.TripOrigin, contentDescription = null, tint = dim, modifier = Modifier.size(14.dp))
@@ -1037,7 +1040,7 @@ fun DirectionsPanel(
                         if (onAddStop != null) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).clickable { onAddStop() }.padding(vertical = 2.dp),
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onAddStop() }.padding(vertical = 2.dp),
                             ) {
                                 Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                                 Spacer(Modifier.width(8.dp))
@@ -1051,7 +1054,7 @@ fun DirectionsPanel(
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = if (onEditDestination != null) {
-                            Modifier.clip(RoundedCornerShape(6.dp)).clickable { onEditDestination() }.padding(vertical = 2.dp)
+                            Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditDestination() }.padding(vertical = 2.dp)
                         } else Modifier,
                     ) {
                         Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
@@ -1297,6 +1300,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
+            .dpadHighlight(RoundedCornerShape(12.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1445,7 +1449,7 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(SheetPalette.row(dark))
-            .then(if (canExpand) Modifier.clickable { expanded = !expanded } else Modifier)
+            .then(if (canExpand) Modifier.dpadHighlight(RoundedCornerShape(12.dp)).clickable { expanded = !expanded } else Modifier)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
@@ -2156,7 +2160,7 @@ private fun ReviewsTab(
             // intermittent), so this is a load FAILURE, not a review-less place. Say so and
             // let the user retry instead of lying with "No reviews available."
             reviews.isEmpty() && (place.reviewCount ?: 0) > 0 -> Row(
-                Modifier.fillMaxWidth().clickable { onRetry() }.padding(vertical = 8.dp),
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable { onRetry() }.padding(vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
@@ -2181,7 +2185,7 @@ private fun ReviewsTab(
                             {
                                 Icon(
                                     Icons.Default.Close, contentDescription = stringResource(R.string.place_clear_review_search), tint = dim,
-                                    modifier = Modifier.size(18.dp).clip(CircleShape).clickable { reviewQuery = "" },
+                                    modifier = Modifier.size(18.dp).clip(CircleShape).dpadHighlight(CircleShape).clickable { reviewQuery = "" },
                                 )
                             }
                         } else null,
@@ -2276,6 +2280,7 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<
                         modifier = Modifier.size(104.dp)
                             .clip(RoundedCornerShape(10.dp))
                             .background(dim.copy(alpha = 0.12f))
+                            .dpadHighlight(RoundedCornerShape(10.dp))
                             .clickable { onPhotoTap(review.photos, i, caption) },
                     )
                 }
@@ -2331,6 +2336,7 @@ private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = f
         Modifier
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
+            .dpadHighlight(RoundedCornerShape(20.dp))
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2416,7 +2422,7 @@ private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color
                     style = MaterialTheme.typography.bodySmall,
                     color = if (sel) accent else dim,
                     fontWeight = if (sel) FontWeight.Bold else FontWeight.Normal,
-                    modifier = Modifier.clip(CircleShape).clickable { selectedDow = d.dayOfWeek }
+                    modifier = Modifier.clip(CircleShape).dpadHighlight(CircleShape).clickable { selectedDow = d.dayOfWeek }
                         .padding(horizontal = 10.dp, vertical = 4.dp),
                 )
             }
@@ -2528,6 +2534,7 @@ private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
             Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
+                .dpadHighlight(RoundedCornerShape(8.dp))
                 .clickable { expanded = !expanded }
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
