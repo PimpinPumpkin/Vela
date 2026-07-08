@@ -55,6 +55,10 @@
     <string name="settings_show_reviews_hint">Av = platssidor visar inga recensioner och Vela hämtar dem aldrig.</string>
     <string name="settings_load_photos">Ladda foton</string>
     <string name="settings_load_photos_hint">Av = platssidor visar inga foton och inget laddas ner. Sparar data.</string>
+    <string name="settings_hide_adult">Dölj vuxenkategorier</string>
+    <string name="settings_hide_adult_hint">På = döljer barer, klubbar, kasinon, spritbutiker och andra vuxen- / nöjeslivsplatser från sökning och karta.</string>
+    <string name="settings_hide_external_links">Dölj webbplats och externa länkar</string>
+    <string name="settings_hide_external_links_hint">På = platssidor visar inte knapparna Webbplats, Street View eller Boka / Beställ (inga godtyckliga externa webbplatser öppnas).</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Att använda kartan utan täckning kräver två saker – KARTRUTORNA du ser och VÄGNÄTET som beräknar rutter åt dig. Att spara ett kartområde hämtar båda för den platsen; regionlistan nedan lägger till vägnätet för dit du reser.</string>
     <string name="settings_offline_map_area">Kartområde</string>

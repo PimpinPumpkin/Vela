@@ -81,6 +81,10 @@
     <string name="settings_show_reviews_hint">Off = place pages show no reviews, and Vela never fetches them.</string>
     <string name="settings_load_photos">Load photos</string>
     <string name="settings_load_photos_hint">Off = place pages show no photos, and nothing gets downloaded for them. Saves data.</string>
+    <string name="settings_hide_adult">Hide adult categories</string>
+    <string name="settings_hide_adult_hint">On = hide bars, clubs, casinos, liquor stores and other adult / nightlife places from search and the map.</string>
+    <string name="settings_hide_external_links">Hide website &amp; external links</string>
+    <string name="settings_hide_external_links_hint">On = place pages don’t show the Website, Street View, or Book / Reserve / Order buttons (no launching arbitrary external sites).</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Using the map without signal takes two things: the map TILES you see, and the ROAD NETWORK that routes you. Saving a map area grabs both for that spot; the region list below adds the road network for anywhere you\'re travelling.</string>
     <string name="settings_offline_map_area">Map area</string>

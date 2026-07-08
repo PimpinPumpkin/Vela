@@ -113,6 +113,21 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   fetch in the ViewModel and the render in the place sheet, so off means no traffic, not just hidden UI.
   Device-verified: with both off, an Applebee's sheet opens with rating, hours, phone and attributes but no
   photos and no review section. Localized in all 11 languages.
+- ✅ **"Hide adult categories" toggle (2026-07-08).** Settings → Map, **off by default**. On = drops places whose
+  Google CATEGORY is adult / nightlife / alcohol / gambling / smoking (bars, clubs, casinos, liquor stores,
+  hookah, cannabis, adult, …) from **both** search results and the ambient map. Matching is on the free-text
+  category **only, never the name** (a place categorised "Restaurant" is always kept), and it's PRECISE — food
+  "…bar" categories (sushi/juice/coffee/salad bar) stay. Because Google returns the category **localized**
+  (`hl=<lang>`), the keyword list carries the equivalent terms for all 11 UI languages, so the filter works in
+  every locale, not just English. Pure `:core` `CategoryFilter` (unit-tested) applied at the data-source seam
+  (`GoogleMapsDataSource.search` + `nearbyPlaces`); gated by a `:core`-visible `enabled` flag the `HideAdult`
+  holder flips, so `:core` needn't depend on the app's reactive state. Localized in all 11 languages.
+- ✅ **"Hide website & external links" toggle (2026-07-08).** Settings → Map, **off by default**. On =
+  place pages don't show the **Website** pill/row, the **Street View** pano, or the **Book / Reserve /
+  Order** action, so no place-detail control launches an arbitrary external site. Internal actions
+  (dial, directions, share a `geo:` pin) are unaffected. Plain `HideExternalLinks` holder
+  (`ui/PlaceContent.kt`, same shape as `ShowReviews`/`LoadPhotos`). Localized in all 11 languages.
+  (Adapted from a community PR; the PR's separate "restricted" build flavor was not taken.)
 - ✅ Place search — name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list — fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
 - ✅ **Address → business snap** — searching a raw address that *is* a business (e.g. "1020 Olive Dr, Davis") now lands on the **business** (In-N-Out Burger, rating/hours/category and all), not the bare address — Google lists the "at this place" business under the geocoded node (`[0][1][0][14][68]`) and Vela now reads it. *(verified on-device; unit-tested; the path is in calibration so it's remotely fixable)*
@@ -299,7 +314,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (11 languages) phrases the exit number ("take exit N onto …"). (3) **fastest route reliably leads the
   picker** — the sort key put traffic-inflated Google alts on a different axis than un-inflated free-flow
   OSRM routes; now every route is normalised onto one in-traffic axis (`?: durationSeconds * gRatio`) with a
-  provisional/named tie-break. (4) **compass no longer buried under the nav card** — MapLibre's top-right
+  provisional/named tie-break. *Second hole closed 2026-07-08:* naming a picked (or top-sorted) provisional
+  alternate re-snapped it through OSRM and swapped in a RECOMPUTED ETA in place, so a row's time could
+  leapfrog its neighbours after the sort ("Fastest" tag below a slower first row). `nameRoute` now keeps the
+  route's original Google duration/in-traffic figures; the snap contributes geometry, named turns and
+  congestion spans only. (4) **compass no longer buried under the nav card** — MapLibre's top-right
   compass is dropped ~112 dp below the top during nav so the full-width maneuver banner stops painting over
   it. *(Roundabout phrasing + route-sort both want one real drive to confirm against live data.)*
 - ✅ **Nav survives a process kill — "Resume navigation?" (2026-07-04).** On GrapheneOS the Android-14

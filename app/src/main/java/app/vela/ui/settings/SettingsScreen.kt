@@ -280,6 +280,30 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             Hint(stringResource(R.string.settings_load_photos_hint))
 
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_hide_adult), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.HideAdult.on.value,
+                    onCheckedChange = { app.vela.ui.HideAdult.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_hide_adult_hint))
+
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_hide_external_links), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.HideExternalLinks.on.value,
+                    onCheckedChange = { app.vela.ui.HideExternalLinks.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_hide_external_links_hint))
+
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_navigation))
             val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }

@@ -711,20 +711,22 @@ fun PlaceSheet(
                         runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
                     }
                 }
-                place.website?.let { site ->
-                    ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                if (!app.vela.ui.HideExternalLinks.on.value) {
+                    place.website?.let { site ->
+                        ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                        }
                     }
-                }
-                // Street View — opens Google's KEYLESS consumer pano (documented map_action=pano deep
-                // link) EXTERNALLY (Google Maps app or the browser). The interactive pano is keyless but
-                // renders black in an in-app WebView on some devices (ANGLE GL driver + the SV SPA served
-                // a degraded page), so we hand it off rather than embed a maybe-black panel (see ROADMAP).
-                ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view)) {
-                    val loc = place.location
-                    val pano = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=" +
-                        "%.6f,%.6f".format(java.util.Locale.US, loc.lat, loc.lng)
-                    runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pano))) }
+                    // Street View — opens Google's KEYLESS consumer pano (documented map_action=pano deep
+                    // link) EXTERNALLY (Google Maps app or the browser). The interactive pano is keyless but
+                    // renders black in an in-app WebView on some devices (ANGLE GL driver + the SV SPA served
+                    // a degraded page), so we hand it off rather than embed a maybe-black panel (see ROADMAP).
+                    ActionPill(Icons.Filled.Streetview, stringResource(R.string.place_street_view)) {
+                        val loc = place.location
+                        val pano = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=" +
+                            "%.6f,%.6f".format(java.util.Locale.US, loc.lat, loc.lng)
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pano))) }
+                    }
                 }
             }
 
@@ -770,7 +772,7 @@ fun PlaceSheet(
                     Text(ph, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
                 }
             }
-            place.website?.let { site ->
+            place.website?.takeIf { !app.vela.ui.HideExternalLinks.on.value }?.let { site ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable {
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
@@ -792,7 +794,7 @@ fun PlaceSheet(
 
             // Action link (Book online / Reserve a table / Order online) — Google shows this
             // as a prominent button. Rendered only when the parse found a real URL + label.
-            if (place.actionUrl != null && !place.actionLabel.isNullOrBlank()) {
+            if (place.actionUrl != null && !place.actionLabel.isNullOrBlank() && !app.vela.ui.HideExternalLinks.on.value) {
                 Row(
                     Modifier.fillMaxWidth().padding(top = 10.dp)
                         .clip(RoundedCornerShape(12.dp))
@@ -1176,7 +1178,16 @@ fun DirectionsPanel(
                                 selected = false,
                                 onClick = { onSearchAlongRoute(query) },
                                 label = { Text(stringResource(labelRes)) },
-                                leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                                leadingIcon = {
+                                    Icon(
+                                        icon,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = ink,
+                                    )
+                                },
+                                // Stadium pill, matching the map category chips + the mode chips above.
+                                shape = androidx.compose.foundation.shape.CircleShape,
                             )
                         }
                     }
@@ -1240,10 +1251,12 @@ private fun DepartTimeChooser(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) })
-            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) })
-            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) })
-            if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) })
+            // Stadium pills, matching every other Vela chip (CLAUDE.md chip style).
+            val pill = androidx.compose.foundation.shape.CircleShape
+            FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) }, shape = pill)
+            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) }, shape = pill)
+            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) }, shape = pill)
+            if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) }, shape = pill)
         }
         // Time + date pickers for depart/arrive (Google-style: a time field AND a date field).
         if (mode == 1 || mode == 2) {

@@ -55,6 +55,10 @@
     <string name="settings_show_reviews_hint">Desligado = as páginas de locais não mostram avaliações e o Vela nunca as transfere.</string>
     <string name="settings_load_photos">Carregar fotos</string>
     <string name="settings_load_photos_hint">Desligado = as páginas de locais não mostram fotos e nada é transferido. Poupa dados.</string>
+    <string name="settings_hide_adult">Ocultar categorias adultas</string>
+    <string name="settings_hide_adult_hint">Ativado = oculta bares, casas noturnas, casinos, lojas de bebidas e outros locais adultos / noturnos da pesquisa e do mapa.</string>
+    <string name="settings_hide_external_links">Ocultar site e links externos</string>
+    <string name="settings_hide_external_links_hint">Ativado = as páginas de locais não mostram os botões Site, Street View ou Reservar / Pedir (não abre sites externos arbitrários).</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Usar o mapa sem sinal requer duas coisas — os MOSAICOS do mapa que vê e a REDE VIÁRIA que traça os percursos. Guardar uma área do mapa obtém ambos para esse local; a lista de regiões abaixo adiciona a rede viária para onde estiver a viajar.</string>
     <string name="settings_offline_map_area">Área do mapa</string>

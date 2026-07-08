@@ -5,6 +5,7 @@ import app.vela.core.config.CalibrationStore
 import app.vela.core.config.JsTransforms
 import app.vela.core.diag.DiagLog
 import app.vela.core.data.CalibrationNeededException
+import app.vela.core.data.CategoryFilter
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
@@ -115,7 +116,7 @@ class GoogleMapsDataSource @Inject constructor(
                 "",
             )
         }
-        SearchResult(query, jsTransforms.refineSearch(places))
+        SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
     }
 
     override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> = io {
@@ -160,7 +161,7 @@ class GoogleMapsDataSource @Inject constructor(
         val deduped = all.distinctBy {
             it.featureId ?: "${it.name}@${(it.location.lat * 1e4).toInt()},${(it.location.lng * 1e4).toInt()}"
         }
-        rankAmbientPlaces(deduped)
+        rankAmbientPlaces(CategoryFilter.applyIfEnabled(deduped))
     }
 
     override suspend fun placeDetails(id: String): Place = io {
@@ -432,7 +433,16 @@ class GoogleMapsDataSource @Inject constructor(
         val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
         val named = RouteGeometry.routeVia(http, vias, mode).firstOrNull()
             ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
-        if (named != null) applyTraffic(named, route).copy(provisional = false)
+        // Keep the route's OWN time figures through the snap. The picker sorted and displayed this
+        // route by its Google per-route ETA; applyTraffic here would swap in a recomputed one
+        // (OSRM free-flow x the ratio) IN PLACE, which can leapfrog a neighbouring row and leave
+        // the "Fastest" tag sitting below a slower first row. Naming is for geometry + named
+        // turn-by-turn (and the congestion spans remapped onto that geometry), not a new ETA.
+        if (named != null) applyTraffic(named, route).copy(
+            provisional = false,
+            durationSeconds = route.durationSeconds,
+            durationInTrafficSeconds = route.durationInTrafficSeconds,
+        )
         else route.copy(provisional = false)
     }
 
