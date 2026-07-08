@@ -61,22 +61,29 @@ class OfflinePoiStore @Inject constructor(
         .rawQuery("SELECT COUNT(*) FROM poi", null)
         .use { if (it.moveToFirst()) it.getInt(0) else 0 }
 
-    /** Name/category match, nearest first. Common category words ("gas", "coffee", "food", the map's
-     *  own category chips) are expanded to the OSM tag values we actually store — a gas station is
-     *  category "Fuel" (from `amenity=fuel`), not "gas", so a plain LIKE would miss it. */
+    /** Name/category match, nearest first. Robust to a few things a plain LIKE misses:
+     *  - Category words ("gas", "coffee", "food", the map's chips) are expanded to the OSM tag values
+     *    we actually store — a gas station is category "Fuel" (from `amenity=fuel`), not "gas".
+     *  - Multi-word queries ("mexican restaurant", "coffee shop") match the whole phrase OR any single
+     *    word, so "mexican restaurant" finds "Ixtapa Mexican Restaurant" and the restaurant category,
+     *    instead of returning nothing because no name contains the exact phrase.
+     */
     fun search(query: String, near: LatLng?, limit: Int = 30): List<Place> {
         val term = query.trim()
-        val like = "%$term%"
-        // name/category direct match, plus a category LIKE per expanded OSM keyword.
-        val where = StringBuilder("name LIKE ? OR category LIKE ?")
-        val args = ArrayList<String>().apply { add(like); add(like) }
-        for (c in categoryKeywords(term)) {
-            where.append(" OR category LIKE ?")
-            args.add("%$c%")
-        }
+        // name/category LIKE targets: the whole query, plus each word ≥3 chars (multi-word only).
+        val nameCat = LinkedHashSet<String>().apply { add(term) }
+        val words = term.split(Regex("\\s+")).filter { it.length >= 3 }
+        if (words.size > 1) nameCat.addAll(words)
+        // category-tag targets: keywords for the whole query and for each word.
+        val cats = LinkedHashSet<String>().apply { addAll(categoryKeywords(term)); words.forEach { addAll(categoryKeywords(it)) } }
+
+        val clauses = ArrayList<String>()
+        val args = ArrayList<String>()
+        for (t in nameCat) { clauses.add("name LIKE ?"); args.add("%$t%"); clauses.add("category LIKE ?"); args.add("%$t%") }
+        for (c in cats) { clauses.add("category LIKE ?"); args.add("%$c%") }
         val rows = ArrayList<Place>()
         helper.readableDatabase.rawQuery(
-            "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE $where LIMIT 400",
+            "SELECT id,name,lat,lng,category,address,phone,website,hours FROM poi WHERE ${clauses.joinToString(" OR ")} LIMIT 400",
             args.toTypedArray(),
         ).use { c ->
             while (c.moveToNext()) {
@@ -96,7 +103,15 @@ class OfflinePoiStore @Inject constructor(
                 )
             }
         }
-        return rows.sortedBy { it.distanceMeters ?: Double.MAX_VALUE }.take(limit)
+        // Rank by how many query words hit the name/category (so "mexican restaurant" leads with the
+        // Mexican restaurant, not a random one), then by distance.
+        val qWords = (if (words.size > 1) words else listOf(term)).map { it.lowercase() }
+        return rows.sortedWith(
+            compareByDescending<Place> { p ->
+                val hay = (p.name + " " + (p.category ?: "")).lowercase()
+                qWords.count { hay.contains(it) }
+            }.thenBy { it.distanceMeters ?: Double.MAX_VALUE },
+        ).take(limit)
     }
 
     companion object {
