@@ -241,6 +241,9 @@ fun MapScreen(
     val mapDpad = remember { MapDpadController() }
     var mapFocused by remember { mutableStateOf(false) }
     var mapEngaged by remember { mutableStateOf(false) } // arrows pan only while engaged (docs/dpad.md)
+    // Focuses the centre map target. Used ONLY for Choose-on-map (entered mid-session, so
+    // requestFocus lands) — the cold-open bare map deliberately does not auto-focus it (docs/dpad.md).
+    val mapFocusRequester = remember { FocusRequester() }
     // D-pad (docs/dpad.md): under touch the overlay tracks field focus (blur = close), but
     // under D-pad focus must be able to WALK the overlay's rows without it snapping shut the
     // instant the field blurs — AND back must be able to definitively close it. A derived
@@ -334,6 +337,20 @@ fun MapScreen(
     // which IS the search bar (measured). Net: no map engage, no BACK, one arrow reaches search.
     // This is the ONE screen that intentionally opens un-focused (the map is ambient; the first key
     // isn't wasted — it goes straight to search). (Was: auto-engage the map — user report 2026-07-08.)
+    // Choose-on-map (pickOnMap) is the EXCEPTION to the exception: there the whole task IS moving the
+    // map to place a pin, so we DO auto-focus + engage the map target the moment pick mode opens, so
+    // arrows pan immediately and OK confirms (the crosshair/pill are suppressed in pick mode because
+    // the ChooseOnMapOverlay draws the pin + "Move the map" banner). This is entered mid-session (from
+    // the search entry), so focus already exists and requestFocus lands — unlike the cold-open bare map.
+    val pickingOnMap = state.pickOnMap != null
+    LaunchedEffect(pickingOnMap, dpadFirst) {
+        if (dpadFirst && pickingOnMap) {
+            repeat(20) {
+                if (runCatching { mapFocusRequester.requestFocus() }.isSuccess) { mapEngaged = true; return@LaunchedEffect }
+                kotlinx.coroutines.delay(50)
+            }
+        }
+    }
 
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
@@ -440,7 +457,8 @@ fun MapScreen(
         //    +/−/zoom keys zoom, BACK disengages (focus stays on the target).
         // Shown only when the MAP is the primary surface — with a list/sheet/panel open the
         // panel owns focus (a centre crosshair + focus stop over the results list stole DOWN
-        // traversal into the rows). Closing the panel re-acquires + engages the map below.
+        // traversal into the rows). Closing a panel returns to the bare map un-engaged (the first
+        // arrow reaches the search bar); only Choose-on-map auto-engages the target (see above).
         if (dpadMode && !mapTargetHidden) {
             if (mapEngaged) {
                 // Screen-edge ring: unmistakable "the MAP has the keys now" signal.
@@ -455,6 +473,7 @@ fun MapScreen(
                 Modifier
                     .align(Alignment.Center)
                     .size(140.dp)
+                    .focusRequester(mapFocusRequester)
                     .onFocusChanged {
                         mapFocused = it.isFocused
                         if (!it.isFocused) mapEngaged = false
