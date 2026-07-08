@@ -49,6 +49,10 @@
     <string name="settings_transit_layer_hint">Desenha as linhas de comboio e metro a cores no mapa, para seguir o carril com facilidade. Usa os dados abertos já presentes nos mosaicos, sem rede.</string>
     <string name="settings_read_all_reviews">Botão “Ler todas as avaliações”</string>
     <string name="settings_read_all_reviews_hint">As avaliações na ficha do local são sempre a lista nativa e fluida do próprio Vela. Isto adiciona um botão “Ler todas as avaliações” que abre a página completa de avaliações da Google em ECRÃ INTEIRO — todas as avaliações (não apenas as primeiras ~50), a pesquisa no servidor da Google e a reprodução de avaliações em vídeo. Rastreadores/balizas são bloqueados, mas executa a página da Google dentro da aplicação. Desligado = apenas a lista nativa, sem página da Google para avaliações.</string>
+    <string name="settings_show_reviews">Mostrar avaliações</string>
+    <string name="settings_show_reviews_hint">Desligado = as páginas de locais não mostram avaliações e o Vela nunca as transfere.</string>
+    <string name="settings_load_photos">Carregar fotos</string>
+    <string name="settings_load_photos_hint">Desligado = as páginas de locais não mostram fotos e nada é transferido. Poupa dados.</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Usar o mapa sem sinal requer duas coisas — os MOSAICOS do mapa que vê e a REDE VIÁRIA que traça os percursos. Guardar uma área do mapa obtém ambos para esse local; a lista de regiões abaixo adiciona a rede viária para onde estiver a viajar.</string>
     <string name="settings_offline_map_area">Área do mapa</string>
