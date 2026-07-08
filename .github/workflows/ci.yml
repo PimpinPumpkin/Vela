@@ -104,9 +104,11 @@ jobs:
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
 
-      - name: Publish release
-        # Every push to main → a normal (non-prerelease) GitHub release, kept as a
-        # revision history. Obtainium tracks the latest with zero configuration.
+      - name: Publish nightly (prerelease)
+        # Every push to main → a PRERELEASE (the nightly channel). Obtainium users who
+        # want nightlies turn on "include prereleases"; everyone else keeps tracking the
+        # latest stable release, which the weekly promote-stable workflow produces by
+        # flipping the newest healthy nightly to a full release (same APK, no rebuild).
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -129,5 +131,6 @@ jobs:
           gh release create "v${VER}" \
             --title "Vela $VER" \
             --target "$GITHUB_SHA" \
+            --prerelease \
             --notes "$NOTES" \
             "vela-maps-v${VER}.apk"

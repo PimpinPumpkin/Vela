@@ -11,9 +11,11 @@ GrapheneOS and other no-GMS ROMs.
 [<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela)
 
 Tap the badge (or add the repo URL `https://github.com/PimpinPumpkin/Vela` in
-**[Obtainium](https://github.com/ImranR98/Obtainium)**) and it auto-tracks every
-signed `v0.3.<run>` release — no Play Store, no account. Or grab the APK straight
-from [Releases](https://github.com/PimpinPumpkin/Vela/releases). F-Droid submission
+**[Obtainium](https://github.com/ImranR98/Obtainium)**) and it auto-tracks the
+**weekly stable** release — no Play Store, no account. Want fresher builds? Turn on
+"include prereleases" in Obtainium and you get the **nightly** channel instead
+(every push to main). Or grab an APK straight from
+[Releases](https://github.com/PimpinPumpkin/Vela/releases). F-Droid submission
 is planned.
 
 ---
@@ -73,7 +75,8 @@ The map itself, the streets, the labels, and the house numbers all come from Ope
 >   markers, hillshade relief, a **map scale bar**, and **offline** basemap + POI
 >   download.
 >
-> Every push to `main` publishes a signed, Obtainium-friendly `v0.3.<run>` release.
+> Every push to `main` publishes a signed nightly prerelease; a weekly job promotes
+> the newest nightly to the stable release Obtainium tracks by default.
 > `MockMapDataSource` stays as an offline fallback; both build types are green.
 >
 > See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
@@ -126,7 +129,7 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor — never GMS/Fused | `core/location/` |
 | **D-pad-only operation** | The whole UI works with a 5-key D-pad, no touchscreen (touch is a bonus): key-drivable map (arrows pan, OK-at-crosshair taps, hold-OK drops a pin, on-screen zoom buttons), focus rings, key alternatives for every gesture | [`docs/dpad.md`](docs/dpad.md), `app/ui/DpadFocus.kt`, `app/ui/map/MapDpadController.kt` |
 | **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
-| **Distribution** | Every push to `main` → CI builds + signs → `v0.3.<run>` GitHub release; Obtainium tracks it | `.github/workflows/ci.yml` |
+| **Distribution** | Push to `main` → signed nightly prerelease; weekly promote to stable (same APK); Obtainium tracks stable by default, nightlies via the prerelease toggle | `.github/workflows/ci.yml` + `promote-stable.yml` |
 
 ## Docs — where to look
 
@@ -214,7 +217,8 @@ debug keystore so `adb install` still works.
 
 **CI** (`.github/workflows/`): every push to `main` builds + tests the APK,
 uploads it as an artifact, and publishes a **normal versioned release**
-(`v0.3.<run>`, versionCode `2000+run`) — kept as a revision history, so Obtainium
+(`v0.3.<run>`, versionCode `2000+run`) — nightlies as prereleases, the weekly
+promoted stable as the normal release, so Obtainium
 tracks the latest with zero configuration and no pre-release toggle. The release APK is signed with the keystore from repo secrets
 `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (without them
 it's debug-signed — installable, but not update-compatible across builds). An

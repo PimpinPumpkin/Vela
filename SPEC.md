@@ -560,8 +560,10 @@ enforces same-package/same-signature. Launch check throttled to ~daily behind th
   compileSdk 35, minSdk 26, Java 17**, Compose + Hilt + version catalog. **R8 in the
   `release` buildType** — always build release for on-device (debug lags the map).
 - **CI** (`.github/workflows/ci.yml`): every push to `main` builds + tests + signs the
-  APK and publishes a normal versioned GitHub release **`v0.3.<run>`** (versionName
-  `0.3.<run>`, versionCode `2000+run`). Obtainium tracks the latest.
+  APK and publishes a nightly PRERELEASE **`v0.3.<run>`** (versionName
+  `0.3.<run>`, versionCode `2000+run`); a weekly workflow promotes the newest
+  nightly to the stable release (same APK). Obtainium tracks stable by default,
+  nightlies via its prerelease toggle; the in-app updater follows stable.
 - **APK signing**: release keystore `~/.vela-signing/vela-release.jks` (alias `vela`,
   password in `credentials.txt`); CI secrets `VELA_KEYSTORE_BASE64` /
   `_PASSWORD` / `VELA_KEY_ALIAS`. **`CN=Vela Maps`**. **Keystore lives outside the repo

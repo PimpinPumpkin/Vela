@@ -407,4 +407,15 @@
     <string name="settings_update_found">Update verfügbar! Geh zurück zur Karte, um es zu installieren.</string>
     <string name="settings_update_none">Du bist auf der neuesten Version.</string>
     <string name="settings_place_pages">Ortsseiten</string>
+    <string name="place_transit_stops">%1$d Haltestellen</string> <!-- format -->
+    <string name="place_transit_stop_id">Haltestelle %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Tickets &amp; Infos</string>
+    <string name="transit_nav_arrived">Sie sind angekommen.</string>
+    <string name="transit_nav_walk">%1$s laufen</string> <!-- format -->
+    <string name="transit_nav_take">Nimm %1$s</string> <!-- format -->
+    <string name="transit_nav_towards">Richtung %1$s</string> <!-- format -->
+    <string name="transit_nav_from">ab %1$s</string> <!-- format -->
+    <string name="transit_nav_get_off">Aussteigen bei %1$s</string> <!-- format -->
+    <string name="transit_nav_next">Weiter</string>
+    <string name="place_last_available">Letzte Verbindung</string>
 </resources>

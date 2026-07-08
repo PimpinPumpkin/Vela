@@ -407,4 +407,15 @@
     <string name="settings_update_found">Uppdatering tillgänglig! Gå tillbaka till kartan för att installera.</string>
     <string name="settings_update_none">Du har den senaste versionen.</string>
     <string name="settings_place_pages">Platssidor</string>
+    <string name="place_transit_stops">%1$d hållplatser</string> <!-- format -->
+    <string name="place_transit_stop_id">Hållplats %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Biljetter &amp; info</string>
+    <string name="transit_nav_arrived">Du har kommit fram.</string>
+    <string name="transit_nav_walk">Gå %1$s</string> <!-- format -->
+    <string name="transit_nav_take">Ta %1$s</string> <!-- format -->
+    <string name="transit_nav_towards">mot %1$s</string> <!-- format -->
+    <string name="transit_nav_from">från %1$s</string> <!-- format -->
+    <string name="transit_nav_get_off">Gå av vid %1$s</string> <!-- format -->
+    <string name="transit_nav_next">Nästa</string>
+    <string name="place_last_available">Sista tillgängliga</string>
 </resources>
