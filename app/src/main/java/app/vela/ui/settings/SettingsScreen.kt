@@ -379,6 +379,20 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             Hint(stringResource(R.string.settings_demo_drive_hint))
 
+            // Simulated location — pretend to be at the current map centre (for demos / screenshots
+            // without leaking where you actually are). Reactive holder so the switch reflects state.
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_sim_location), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.SimLocation.on,
+                    onCheckedChange = { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() },
+                )
+            }
+            Hint(stringResource(R.string.settings_sim_location_hint))
+
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_voice))
             // Vela's own on-device neural voices — offer a one-tap download for whichever isn't
