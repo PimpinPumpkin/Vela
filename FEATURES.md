@@ -689,6 +689,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   index now **keeps the POI detail** OSM carries — **address, phone, website and
   opening hours** (from the `addr:*` / `phone` / `website` / `opening_hours` tags) —
   so an offline place sheet isn't just a name on a pin (sparser than Google, but real).
+  **Category words work offline now (2026-07-07):** the index is populated from OSM tags, so a gas
+  station is stored as category "Fuel" (from `amenity=fuel`), not "gas" — a plain name/category LIKE
+  missed it, so searching "gas" (or tapping the Gas chip) returned nothing and wrongly said "download an
+  area". `OfflinePoiStore` now expands common words and the map's own category chips to the OSM tag
+  values it stores (gas → fuel, coffee → cafe, food → restaurant/fast food, groceries →
+  supermarket/convenience, pharmacy, hotel, bank, …), so offline category search works. Device-verified:
+  airplane mode + "gas" → Safeway Fuel Station. And when you DO have a downloaded area but nothing
+  matches, the message is now "no offline results for X in your saved area" instead of telling you to
+  download one you already have.
   **Graceful when there's nothing to show (2026-07-07):** searching with no connection (or on a
   wifi that's connected but has no real internet, so the Google call fails with a host/timeout error)
   and no downloaded area now shows the plain guidance *"You're offline. Download an area in Settings ▸
