@@ -404,4 +404,7 @@
     <string name="settings_update_found">Доступно обновление! Вернитесь на карту, чтобы установить.</string>
     <string name="settings_update_none">У вас самая новая версия.</string>
     <string name="settings_place_pages">Страницы мест</string>
+    <string name="place_transit_stops">%1$d остановок</string> <!-- format -->
+    <string name="place_transit_stop_id">Остановка %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Билеты и информация</string>
 </resources>
