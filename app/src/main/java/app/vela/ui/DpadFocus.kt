@@ -187,6 +187,34 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
 }
 
 /**
+ * Swallows bare LEFT/RIGHT D-pad keys so a horizontal move with NO target can't CLEAR focus.
+ * In a `Column(verticalScroll)` Compose's focus search clears focus outright on a no-target
+ * directional move (and there's no way back via arrows — dpad audit 2026-07-08; `moveFocus`
+ * clears, `focusGroup` doesn't help). Put this on a vertical-list container AND on any lone
+ * control that lives outside it (e.g. a top-bar back button). It fires via `onKeyEvent`
+ * (leaf→root) so a focused child that WANTS LEFT/RIGHT — a chip row driving its own nav with
+ * FocusRequesters — handles the key first and this never runs for it. Other keys pass through.
+ *
+ * When [upTarget] is set it ALSO owns UP: it moves focus up within the list, and if that can't
+ * move at the TOP edge (Compose would otherwise clear focus) it requests [upTarget] instead — for
+ * a screen whose back button lives in a separate TopAppBar container the Column can't reach by
+ * arrow (Settings; dpad audit 2026-07-08 found UP-at-top cleared focus instead of landing on Back).
+ */
+fun Modifier.dpadSwallowHorizontal(upTarget: FocusRequester? = null): Modifier = composed {
+    val fm = LocalFocusManager.current
+    this.onKeyEvent { ev ->
+        when (ev.key) {
+            Key.DirectionLeft, Key.DirectionRight -> true
+            Key.DirectionUp -> if (upTarget == null) false else {
+                if (ev.type == KeyEventType.KeyDown && !fm.moveFocus(FocusDirection.Up)) runCatching { upTarget.requestFocus() }
+                true
+            }
+            else -> false
+        }
+    }
+}
+
+/**
  * Makes a text field D-pad ESCAPABLE: UP/DOWN move focus to the previous/next form control
  * instead of being swallowed by the field's own cursor handling. Without this, a single- or
  * multi-line `TextField`/`BasicTextField` eats the vertical arrows, trapping focus on the
@@ -196,17 +224,6 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
  * (root→leaf) so it wins before the field consumes the key. Falls through (returns false)
  * at a list edge where focus can't move, so the field still behaves normally there.
  */
-/**
- * Swallows bare LEFT/RIGHT D-pad keys so a horizontal move with NO target can't CLEAR focus.
- * In a `Column(verticalScroll)` Compose's focus search clears focus outright on a no-target
- * directional move (and there's no way back via arrows — dpad audit 2026-07-08; `moveFocus`
- * clears, `focusGroup` doesn't help). Put this on a vertical-list container AND on any lone
- * control that lives outside it (e.g. a top-bar back button). It fires via `onKeyEvent`
- * (leaf→root) so a focused child that WANTS LEFT/RIGHT — a chip row driving its own nav with
- * FocusRequesters — handles the key first and this never runs for it. Other keys pass through.
- */
-fun Modifier.dpadSwallowHorizontal(): Modifier =
-    this.onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
 
 fun Modifier.dpadFieldEscape(): Modifier = composed {
     val dpad = rememberDpadMode()
