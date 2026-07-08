@@ -9,7 +9,6 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
-import java.io.InputStream
 import java.util.zip.ZipInputStream
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -125,15 +124,5 @@ class RoutingGraphStore @Inject constructor(
             arr.put(JSONObject().put("id", id).put("bbox", JSONArray().put(b[0]).put(b[1]).put(b[2]).put(b[3])))
         }
         indexFile.writeText(arr.toString())
-    }
-
-    /** Counts bytes pulled from the network so download progress can be reported. */
-    private class CountingInputStream(private val wrapped: InputStream, private val onRead: (Long) -> Unit) : InputStream() {
-        private var count = 0L
-        override fun read(): Int = wrapped.read().also { if (it >= 0) onRead(++count) }
-        override fun read(b: ByteArray, off: Int, len: Int): Int =
-            wrapped.read(b, off, len).also { if (it > 0) { count += it; onRead(count) } }
-        override fun available(): Int = wrapped.available()
-        override fun close() = wrapped.close()
     }
 }
