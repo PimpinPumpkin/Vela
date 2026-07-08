@@ -57,6 +57,8 @@
     <string name="settings_load_photos_hint">Wył. = strony miejsc nie pokazują zdjęć i nic nie jest pobierane. Oszczędza dane.</string>
     <string name="settings_hide_adult">Ukryj kategorie dla dorosłych</string>
     <string name="settings_hide_adult_hint">Wł. = ukrywa bary, kluby, kasyna, sklepy monopolowe i inne miejsca dla dorosłych / nocnego życia z wyników i mapy.</string>
+    <string name="settings_hide_external_links">Ukryj stronę WWW i linki zewnętrzne</string>
+    <string name="settings_hide_external_links_hint">Wł. = strony miejsc nie pokazują przycisków Strona WWW, Street View ani Rezerwuj / Zamów (bez otwierania dowolnych zewnętrznych stron).</string>
     <string name="settings_offline">Offline</string>
     <string name="settings_offline_hint">Korzystanie z mapy bez zasięgu wymaga dwóch rzeczy — KAFELKÓW mapy, które widzisz, oraz SIECI DRÓG, która wyznacza trasę. Zapisanie obszaru mapy pobiera oba dla tego miejsca; lista regionów poniżej dodaje sieć dróg wszędzie tam, gdzie podróżujesz.</string>
     <string name="settings_offline_map_area">Obszar mapy</string>

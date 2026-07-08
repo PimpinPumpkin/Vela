@@ -82,7 +82,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                     },
                     onSkip = { Onboarding.dismissOfflinePrompt(context) },
                 )
-            } else if (Onboarding.showDonatePrompt.value) {
+            } else if (Onboarding.showDonatePrompt.value && !app.vela.ui.ContentPolicy.locked) {
                 DonatePrompt(
                     onDonate = {
                         runCatching {

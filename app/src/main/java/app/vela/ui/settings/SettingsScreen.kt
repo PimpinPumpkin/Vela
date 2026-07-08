@@ -274,6 +274,18 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 )
             }
             Hint(stringResource(R.string.settings_hide_adult_hint))
+
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_hide_external_links), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.HideExternalLinks.on.value,
+                    onCheckedChange = { app.vela.ui.HideExternalLinks.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_hide_external_links_hint))
             } // end !ContentPolicy.locked (Place pages section)
 
             Spacer(Modifier.height(20.dp))
@@ -832,6 +844,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_about))
             Hint(stringResource(R.string.settings_about_hint))
+            // Restricted (locked) build: no external donation launch either.
+            if (!app.vela.ui.ContentPolicy.locked) {
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_support))
             Hint(stringResource(R.string.settings_support_hint))
@@ -845,6 +859,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             ) {
                 Icon(Icons.Default.Favorite, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                 Text(stringResource(R.string.settings_support_button))
+            }
             }
 
             Spacer(Modifier.height(20.dp))

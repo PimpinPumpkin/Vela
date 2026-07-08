@@ -74,3 +74,12 @@ object HideAdult : LockableToggle(key = "hide_adult", default = false, lockedVal
         app.vela.core.data.CategoryFilter.enabled = value // gate the :core data-source seam
     }
 }
+
+/**
+ * Whether to hide links that launch arbitrary EXTERNAL web content from a place: the Website pill/row,
+ * the Street View pano (opens Google externally), and the Book online / Reserve / Order online action.
+ * OFF by default (everything shown); ON suppresses those so no place-detail control opens an arbitrary
+ * site. Internal actions (dial, directions, share a `geo:` pin) are unaffected. Locked ON in the
+ * restricted build.
+ */
+object HideExternalLinks : LockableToggle(key = "hide_external_links", default = false, lockedValue = true)
