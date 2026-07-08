@@ -1428,8 +1428,12 @@ private fun SearchResults(
                 // (a subtle tint when off, solid teal when on) so they read modern on the sheet —
                 // the default outlined M3 chip looked "old" against the filled category chips
                 // (user 2026-07-08). No border; a check icon marks an active toggle.
+                // OPAQUE container colours: these are ELEVATED chips, and a translucent container
+                // let the elevation SHADOW show through the pill — invisible on the dark sheet but
+                // a muddy near-black blob on the light one (user report 2026-07-08). The solids are
+                // the translucent values composited over each sheet colour.
                 val chipColors = FilterChipDefaults.elevatedFilterChipColors(
-                    containerColor = if (dark) Color.White.copy(alpha = 0.09f) else Color.Black.copy(alpha = 0.05f),
+                    containerColor = if (dark) Color(0xFF333539) else Color(0xFFF1F3F4),
                     labelColor = SheetPalette.ink(dark),
                     selectedContainerColor = MaterialTheme.colorScheme.primary,
                     selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
