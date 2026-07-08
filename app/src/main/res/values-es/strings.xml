@@ -320,6 +320,7 @@
     <string name="mapvm_shortcut_set">%1$s establecido en %2$s</string>
     <string name="mapvm_search_needs_recalibration">La búsqueda necesita recalibración: %1$s</string>
     <string name="mapvm_offline_no_data">Estás sin conexión. Descarga una zona en Ajustes ▸ Sin conexión para buscar sin conexión.</string>
+    <string name="mapvm_offline_no_match">Sin resultados sin conexión para \"%1$s\" en tu zona guardada. La búsqueda sin conexión incluye los lugares de OpenStreetMap que descargaste.</string>
     <string name="mapvm_offline_results">Resultados sin conexión (sin conexión)</string>
     <string name="mapvm_search_failed_reason">Error en la búsqueda: %1$s</string>
     <string name="mapvm_none_found_along_route">No se encontró \"%1$s\" a lo largo de tu ruta</string>

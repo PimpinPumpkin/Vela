@@ -353,6 +353,7 @@
     <string name="mapvm_shortcut_set">%1$s set to %2$s</string> <!-- format -->
     <string name="mapvm_search_needs_recalibration">Search needs recalibration: %1$s</string> <!-- format -->
     <string name="mapvm_offline_no_data">You\'re offline. Download an area in Settings ▸ Offline to search without a connection.</string>
+    <string name="mapvm_offline_no_match">No offline results for \"%1$s\" in your saved area. Offline search covers OpenStreetMap places you downloaded.</string>
     <string name="mapvm_offline_results">Offline results (no connection)</string>
     <string name="mapvm_search_failed_reason">Search failed: %1$s</string> <!-- format -->
     <string name="mapvm_none_found_along_route">No \"%1$s\" found along your route</string> <!-- format -->
