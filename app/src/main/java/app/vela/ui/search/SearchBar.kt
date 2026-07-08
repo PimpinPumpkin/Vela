@@ -43,6 +43,8 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.input.InputMode
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import app.vela.ui.dpadHighlight
 import androidx.compose.ui.input.key.Key
@@ -81,10 +83,16 @@ fun SearchBar(
     val fieldFocus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
+    val inputMode = LocalInputModeManager.current
     LaunchedEffect(fieldArmed) {
         if (fieldArmed) {
             runCatching { fieldFocus.requestFocus() }
-            if (dpadMode) keyboard?.hide() else keyboard?.show()
+            // Show/hide the soft keyboard by HOW the field was armed, not the static device type.
+            // On a hybrid touch+keypad phone (e.g. Qin F21) `dpadMode` is always true, so keying off
+            // it hid the keyboard even when the user TAPPED the bar — they couldn't type by touch and
+            // had to use the physical D-pad (tester report 2026-07-08). Keying off the live input mode
+            // shows the keyboard for a touch tap and hides it for a D-pad OK, which is what each wants.
+            if (inputMode.inputMode == InputMode.Keyboard) keyboard?.hide() else keyboard?.show()
         }
     }
     // Match the darker tone of the category chips (elevated chips sit on
