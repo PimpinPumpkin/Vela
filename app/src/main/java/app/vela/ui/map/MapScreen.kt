@@ -850,7 +850,7 @@ fun MapScreen(
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
         if (!state.navigating && state.selected == null && !searchOpen &&
-            (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion)
+            (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null)
         ) {
             Column(
                 Modifier
@@ -870,6 +870,15 @@ fun MapScreen(
                         name = state.regionDownloadName ?: "",
                         places = state.poiPackDownloadingId != null,
                         pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                    )
+                }
+                // A newer release on GitHub (self-updater; the check is a Settings toggle).
+                state.updateInfo?.let { u ->
+                    UpdateCard(
+                        versionName = u.versionName,
+                        downloadPct = state.updateDownloadPct,
+                        onUpdate = { vm.downloadUpdate() },
+                        onDismiss = { vm.dismissUpdate() },
                     )
                 }
                 state.notices.forEach { n ->
@@ -1706,6 +1715,41 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, modifier
 
 /** A notice pushed through the signed calibration channel — level-tinted, with an
  *  optional "Learn more" link and a per-id Dismiss. */
+/** "A newer Vela is out" card (self-updater): download with progress, then the system
+ *  installer takes over. "Not now" silences this version until a newer one appears. */
+@Composable
+private fun UpdateCard(
+    versionName: String,
+    downloadPct: Int?,
+    onUpdate: () -> Unit,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ),
+    ) {
+        Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 4.dp)) {
+            Text(stringResource(R.string.update_available_title, versionName), fontWeight = FontWeight.SemiBold)
+            if (downloadPct != null) {
+                Text(stringResource(R.string.update_downloading, downloadPct), style = MaterialTheme.typography.bodySmall)
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { downloadPct / 100f },
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp),
+                )
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.update_later)) }
+                    TextButton(onClick = onUpdate) { Text(stringResource(R.string.update_install)) }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun NoticeCard(notice: Notice, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
