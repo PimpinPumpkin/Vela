@@ -1484,6 +1484,52 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Tap on a house-number LABEL (the map's own `addr:housenumber` or the address overlay's
+     *  `number`). Unlike a long-press we KNOW the number the user aimed at, so we LEAD the pin with
+     *  that exact number and use the reverse-geocode only for the street/city — otherwise Google's
+     *  reverse-geocode can snap to a neighbour (tapped 6110, got 6138), which is exactly the "doesn't
+     *  snap to the house number" complaint. A real business sitting on the point still wins. */
+    fun onAddressLabelTap(number: String, location: LatLng) {
+        if (_state.value.pickOnMap != null) { onMapLongPress(location); return } // pick-mode reuses the endpoint flow
+        reviewsJob?.cancel()
+        val id = "addr:$number@${location.lat},${location.lng}"
+        val immediate = Place(id = id, name = number, location = location)
+        _state.update {
+            it.copy(
+                selected = immediate,
+                results = emptyList(),
+                resultsCollapsed = false,
+                showSearchThisArea = false,
+                placesHere = emptyList(),
+                reviews = emptyList(),
+                reviewsLoading = false,
+                reviewsFound = 0,
+                photosLoading = false,
+                loadingDetails = false,
+                pickingOrigin = false,
+                pickingStop = false,
+            )
+        }
+        viewModelScope.launch {
+            val geo = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
+            val place = when {
+                geo == null -> immediate.copy(address = number)
+                // A real POI (has a rating/category) at that spot — show it, the user gets the business.
+                geo.rating != null || geo.category != null -> geo
+                else -> {
+                    val base = geo.address ?: geo.name
+                    if (base.any { it.isLetter() }) {
+                        // Strip any house number the reverse-geocode led with, then prepend the tapped one.
+                        val rest = base.replaceFirst(Regex("^\\s*\\d+\\S*\\s+"), "")
+                        val addr = "$number $rest"
+                        immediate.copy(name = addr.substringBefore(",").trim(), address = addr)
+                    } else immediate.copy(address = number)
+                }
+            }
+            if (_state.value.selected?.id == id) _state.update { it.copy(selected = place) }
+        }
+    }
+
     fun quickSearch(category: String) {
         _state.update { it.copy(query = category) }
         search()
