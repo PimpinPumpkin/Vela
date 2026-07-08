@@ -194,25 +194,9 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
  * control that lives outside it (e.g. a top-bar back button). It fires via `onKeyEvent`
  * (leaf→root) so a focused child that WANTS LEFT/RIGHT — a chip row driving its own nav with
  * FocusRequesters — handles the key first and this never runs for it. Other keys pass through.
- *
- * When [upTarget] is set it ALSO owns UP: it moves focus up within the list, and if that can't
- * move at the TOP edge (Compose would otherwise clear focus) it requests [upTarget] instead — for
- * a screen whose back button lives in a separate TopAppBar container the Column can't reach by
- * arrow (Settings; dpad audit 2026-07-08 found UP-at-top cleared focus instead of landing on Back).
  */
-fun Modifier.dpadSwallowHorizontal(upTarget: FocusRequester? = null): Modifier = composed {
-    val fm = LocalFocusManager.current
-    this.onKeyEvent { ev ->
-        when (ev.key) {
-            Key.DirectionLeft, Key.DirectionRight -> true
-            Key.DirectionUp -> if (upTarget == null) false else {
-                if (ev.type == KeyEventType.KeyDown && !fm.moveFocus(FocusDirection.Up)) runCatching { upTarget.requestFocus() }
-                true
-            }
-            else -> false
-        }
-    }
-}
+fun Modifier.dpadSwallowHorizontal(): Modifier =
+    this.onKeyEvent { ev -> ev.key == Key.DirectionLeft || ev.key == Key.DirectionRight }
 
 /**
  * Makes a text field D-pad ESCAPABLE: UP/DOWN move focus to the previous/next form control
