@@ -71,7 +71,10 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsBoat
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsSubway
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.DirectionsTransit
@@ -1052,15 +1055,18 @@ fun DirectionsPanel(
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(
-                    TravelMode.DRIVE to stringResource(R.string.place_mode_drive),
-                    TravelMode.TRANSIT to stringResource(R.string.place_mode_transit),
-                    TravelMode.WALK to stringResource(R.string.place_mode_walk),
-                    TravelMode.BICYCLE to stringResource(R.string.place_mode_bike),
-                ).forEach { (mode, label) ->
+                    Triple(TravelMode.DRIVE, stringResource(R.string.place_mode_drive), Icons.Default.DirectionsCar),
+                    Triple(TravelMode.TRANSIT, stringResource(R.string.place_mode_transit), Icons.Default.DirectionsBus),
+                    Triple(TravelMode.WALK, stringResource(R.string.place_mode_walk), Icons.AutoMirrored.Filled.DirectionsWalk),
+                    Triple(TravelMode.BICYCLE, stringResource(R.string.place_mode_bike), Icons.AutoMirrored.Filled.DirectionsBike),
+                ).forEach { (mode, label, icon) ->
+                    // Google-style mode pills: stadium shape + a mode glyph, not bare squarish chips.
                     FilterChip(
                         selected = currentMode == mode,
                         onClick = { onModeSelected(mode) },
                         label = { Text(label) },
+                        leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
                     )
                 }
             }
