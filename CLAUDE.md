@@ -110,6 +110,23 @@ genuinely needs no doc edit, say why in the commit.
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
   + the photo-hero `if`), so off = zero scrape traffic. Keep any new review/photo surface behind them.
+- **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
+  `v0.2.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
+  card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
+  `filesDir/updates/` (FileProvider `updates` path) → ACTION_VIEW package-archive; the OS verifies
+  same package + signature. Launch check ~daily behind `self_update_check` (Settings → Version,
+  default on); manual Check-for-updates button there too. "Not now" stores `update_dismissed_code`
+  (only a NEWER release re-offers). The tag→versionCode parse assumes the `v0.2.<run>` scheme —
+  update `SelfUpdater.check` if the release line ever changes.
+- **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
+  to compose when mpp moved >1% — an unconditional write recomposed the scale bar every pan frame;
+  keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
+  carry `textIgnorePlacement(true)`: they still YIELD to icons (allow-overlap stays false) but never
+  enter the collision index — cheaper placement at street zoom and numbers can't evict icons
+  whatever the layer order. (3) `ui/Buildings3d` holder + Settings → Map "3D buildings" toggle sets
+  visibility on the basemap `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns
+  visibility; applyLight/applyDark only colour it) — extrusion is the fragment-heavy layer, the
+  documented 5a-class stutter source at z16+.
 - **Light/dark is `AppTheme` (`ui/theme/AppTheme.kt`), not the OS.** Read the
   in-app theme with the composable **`isAppInDarkTheme()`** — never call
   `isSystemInDarkTheme()` directly in app UI (it ignores the user's Light/Dark/
@@ -483,7 +500,7 @@ genuinely needs no doc edit, say why in the commit.
   path. **No backend needed for any of this** (the serverless constraint holds).
 - **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
   Pure-JVM, runs on ART — **validated end-to-end on a Pixel 5a** (`:ghprobe`, a throwaway instrumented
-  test; delete once this is wired). Chosen over Valhalla (no maintained Android map-matching binding) /
+  probe — the routing shipped long ago; the module is safe to delete whenever). Chosen over Valhalla (no maintained Android map-matching binding) /
   BRouter (no street names) / Mapbox (token-gated). It's wired as a `:core` dep
   (`libs.graphhopper.mapmatching`, **OSM-import deps excluded** — osmosis/protobuf/woodstox/xmlgraphics
   are Android-hostile + only needed to *build* graphs, which we do off-device). **Three ART workarounds,
@@ -656,7 +673,7 @@ genuinely needs no doc edit, say why in the commit.
   real deployment should host the PMTiles behind a CDN for snappier range reads. `OVERLAY_MANIFEST_URL`
   BuildConfig overridable `-PoverlayManifestUrl=` like routing. BREAKING-ish: an overlay is DATA (ODbL), orthogonal
   to the app's GPLv3, obligation met by tippecanoe `--attribution` + the release publishing derived tiles under ODbL.
-  **World catalog (`tools/overlay-regions.json`, 250 regions):** TWO Microsoft sources picked by each row's
+  **World catalog (`tools/overlay-regions.json`, 361 rows — ~250 base regions plus chunk pieces):** TWO Microsoft sources picked by each row's
   `source`, both handled by the ONE build script (`SOURCE` env): **`us-legacy`** = a US state's single
   `.geojson.zip` (Microsoft US Building Footprints, 51 states+DC); **`ms-global`** = a world country's
   quadkey-partitioned GeoJSONL from Microsoft's **Global ML Building Footprints** (`global-buildings/dataset-links.csv`

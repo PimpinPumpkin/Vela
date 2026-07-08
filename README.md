@@ -78,7 +78,7 @@ The map itself, the streets, the labels, and the house numbers all come from Ope
 >
 > See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
 > resilience-layer specification (the rebuild target), and **[`ROADMAP.md`](ROADMAP.md)**
-> for what's planned (opt-in telemetry, a Vela-own traffic layer, popular times, …).
+> for what's planned (opt-in telemetry, a Vela-own traffic layer, predictive depart-time ETA, …).
 
 ## Privacy
 
@@ -119,7 +119,7 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Offline routing** | On-device **GraphHopper** CH graphs, one per region, downloaded from a 135-region world catalog | `core/data/GraphHopperRouteEngine.kt`, `app/offline/RoutingGraphStore.kt`, `tools/routing-regions.json` |
 | **Offline address geocoding** | Typed street address → coordinate → GraphHopper route with no signal; keyless OSM `addr:housenumber` + named-road centrelines indexed on area download (house-precise, interpolated, or street-level fallback) | `core/data/OfflineAddressStore.kt`, `core/data/OverpassPois.kt` |
 | **Offline place packs** | Downloading a state also pulls its whole-region place pack (CI-baked SQLite of every OSM POI/address/street), so offline search covers the entire state, Organic-Maps-style. Packs rebuild monthly from fresh OSM; installed ones update in place with small row-level deltas | `app/offline/PoiPackStore.kt`, `core/data/OfflinePacks.kt`, `scripts/build-poi-region.sh`, `scripts/poipack_delta.py`, `.github/workflows/poi-packs.yml` |
-| **Open building overlay** | Microsoft building footprints (ODbL) as per-region PMTiles, rendered beneath OSM to fill areas OSM never mapped; world catalog of 51 US states + ~199 countries (US + Global ML sources) | `app/offline/OverlayTileStore.kt`, `app/ui/map/VelaMapView.kt`, `scripts/build-overlay-region.sh`, `tools/overlay-regions.json` |
+| **Open building overlay** | Microsoft building footprints (ODbL) as per-region PMTiles, rendered beneath OSM to fill areas OSM never mapped; world catalog of 51 US states + ~185 countries (US + Global ML sources) | `app/offline/OverlayTileStore.kt`, `app/ui/map/VelaMapView.kt`, `scripts/build-overlay-region.sh`, `tools/overlay-regions.json` |
 | **Open house-number overlay** | OpenAddresses address points as per-state PMTiles, streamed + rendered as a house-number SymbolLayer where OSM lacks `addr:housenumber` | `app/ui/map/VelaMapView.kt`, `scripts/build-address-region.sh`, `tools/address-regions.json` |
 | **Navigation (banner, voice, haptics)** | Pure `NavEngine` turn logic (unit-tested) → maneuver banner (lane diagram / shields), AOSP TTS, direction-coded vibration | `core/nav/`, `app/ui/nav/`, `core/voice/`, `core/feedback/` |
 | **Android Auto (first cut)** | Navigation-category CarAppService; the MapLibre map draws onto the car surface through a VirtualDisplay + Presentation; maneuver card from the shared NavSession. Sideloads show up with AA's "Unknown sources" on | `app/car/VelaCarAppService.kt`, `app/car/CarMapScreen.kt` |
@@ -453,6 +453,8 @@ without an app release.
 - [x] Turn-by-turn — maneuver banner (real lane diagram / exit shields / swipe-ahead), spoken + haptic guidance, **speedometer**, **re-center**, arrival summary
 - [x] **Android Auto (first cut)** — launchable in the car (with AA "Unknown sources"), live map + puck + route + current-maneuver card; start routes on the phone for now
 - [x] Settings toggles to **hide reviews** and **skip photo loading** (place pages stay lean, nothing is fetched)
+- [x] **In-app updater** — checks the newest GitHub release about once a day (Settings toggle), downloads the APK and installs through Android's normal installer; Obtainium still works as before
+- [x] **11 languages** — UI, spoken turn-by-turn, and Google place content localized (English + de es fr it nl pl pt ru sv uk)
 - [x] **Foreground navigation service** — screen-off guidance, notification, faster-route re-checks
 - [x] **Offline routing on-device (GraphHopper)** — a downloadable **135-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief
