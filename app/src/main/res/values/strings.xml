@@ -427,4 +427,7 @@
     <string name="settings_update_found">Update available! Go back to the map to install it.</string>
     <string name="settings_update_none">You\'re on the latest version.</string>
     <string name="settings_place_pages">Place pages</string>
+    <string name="place_transit_stops">%1$d stops</string> <!-- format -->
+    <string name="place_transit_stop_id">Stop %1$s</string> <!-- format -->
+    <string name="place_transit_tickets">Tickets &amp; info</string>
 </resources>
