@@ -315,6 +315,7 @@
     <string name="welcome_donate_dismiss">Можливо, згодом</string>
     <string name="search_close_cd">Закрити пошук</string>
     <string name="search_placeholder">Пошук</string>
+    <string name="search_offline">Офлайн</string>
     <string name="search_clear_cd">Очистити пошук</string>
     <string name="search_settings_cd">Налаштування</string>
     <string name="mapvm_shortcut_set">%1$s задано як %2$s</string>
@@ -350,6 +351,7 @@
     <string name="mapvm_offline_routing_failed">Не вдалося завантажити офлайн-маршрутизацію</string>
     <string name="mapvm_offline_routing_removed">Офлайн-маршрутизацію видалено</string>
     <string name="mapvm_saved_places_offline">Збережено %1$d місць для офлайн-пошуку</string>
+    <string name="mapvm_saved_addresses_offline">Збережено %1$d адрес і %2$d вулиць для офлайн-маршрутів</string> <!-- format -->
     <string name="navservice_notif_title_arrived">Прибули</string>
     <string name="navservice_notif_title_navigating">Навігація</string>
     <string name="navservice_notif_title_in_distance">Через %1$s · %2$s</string>
