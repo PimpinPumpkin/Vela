@@ -45,6 +45,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -834,9 +835,13 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
             .any { it.contains(query.trim(), ignoreCase = true) }
 
     // Grouped by language — the app's language first (Google-style), then English, then by endonym.
+    // Each language is its own collapsible sub-group so the ~40-voice list isn't one long scroll: a
+    // group opens by default only when it's the app's language or already has a voice installed, so you
+    // see your own language + what you've got and the rest stays folded away. A search forces all open.
     val langOrder = PiperCatalog.languageCodes().let { codes ->
         if (appLang in codes) listOf(appLang) + codes.filter { it != appLang } else codes
     }
+    val langExpanded = remember { mutableStateMapOf<String, Boolean>() }
     langOrder.forEach { lang ->
         val group = catalog.filter { it.langCode == lang && matches(it) }.sortedWith(
             compareByDescending<PiperVoice> { it.id in installed }
@@ -847,9 +852,37 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                 .thenBy { it.displayName },
         )
         if (group.isNotEmpty()) {
+            val installedHere = group.count { it.id in installed }
+            val defaultOpen = lang == appLang || installedHere > 0
+            // A live search reveals every match; otherwise honour the user's toggle, falling back to the default.
+            val expanded = if (query.isNotBlank()) true else (langExpanded[lang] ?: defaultOpen)
             Spacer(Modifier.height(10.dp))
-            Text(PiperCatalog.languageLabel(lang), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            group.forEach { v ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = query.isBlank()) { langExpanded[lang] = !expanded }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    PiperCatalog.languageLabel(lang),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    if (installedHere > 0) "$installedHere/${group.size}" else "${group.size}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.width(6.dp))
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            if (expanded) group.forEach { v ->
                 VoiceRow(
                     v = v,
                     installed = v.id in installed,
