@@ -20,8 +20,9 @@ bad() { echo "  FAIL $1"; FAILS=$((FAILS + 1)); }
 SCREEN_H() { $ADB shell wm size | grep -oE '[0-9]+x[0-9]+' | head -1 | cut -dx -f2; }
 
 # Always restore the real screen on exit.
-restore() { $ADB shell wm size reset >/dev/null 2>&1; $ADB shell wm density reset >/dev/null 2>&1; }
+restore() { $ADB shell wm size reset >/dev/null 2>&1; $ADB shell wm density reset >/dev/null 2>&1; $ADB shell settings delete global vela_force_dpad >/dev/null 2>&1; }
 trap restore EXIT
+$ADB shell settings put global vela_force_dpad 1 >/dev/null 2>&1   # feature phone = small + D-pad
 
 echo "== shrinking display to a feature-phone size (360x480) =="
 $ADB shell wm size 360x480 >/dev/null 2>&1
