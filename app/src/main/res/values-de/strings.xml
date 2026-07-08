@@ -219,6 +219,11 @@
     <string name="mapscreen_search_this_area">In diesem Bereich suchen</string>
     <string name="mapscreen_place">Ort</string>
     <string name="mapscreen_your_location">Ihr Standort</string>
+    <string name="mapscreen_choose_on_map">Auf Karte wählen</string>
+    <string name="mapscreen_choose_origin_hint">Karte verschieben, um den Startpunkt zu setzen</string>
+    <string name="mapscreen_choose_stop_hint">Karte verschieben, um den Zwischenstopp zu setzen</string>
+    <string name="mapscreen_choose_set_start">Start setzen</string>
+    <string name="mapscreen_choose_set_stop">Stopp setzen</string>
     <string name="mapscreen_destination">Ziel</string>
     <string name="mapscreen_center_on_my_location">Auf meinen Standort zentrieren</string>
     <string name="mapscreen_stop_replay">Wiedergabe stoppen</string>
