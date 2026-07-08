@@ -80,6 +80,10 @@ fun StepsSheet(
     currentStep: Int?,
     onStep: (Int) -> Unit,
     onClose: () -> Unit,
+    // Destination lines for the ARRIVE row (name + address; either may be blank — offline
+    // routing can have only a street, an address, or nothing but the tapped coordinates).
+    destName: String? = null,
+    destAddress: String? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -149,6 +153,18 @@ fun StepsSheet(
                                     verticalArrangement = Arrangement.spacedBy(4.dp),
                                     modifier = Modifier.padding(top = 3.dp),
                                 ) { signs.forEach { SignChip(it) } }
+                            }
+                            // The arrive row names WHERE the trip ends (business + address), same
+                            // dedupe rules as the banner: no line that just repeats another.
+                            if (m.type == ManeuverType.ARRIVE) {
+                                val name = destName?.trim().orEmpty()
+                                val addr = destAddress?.trim()?.takeIf { it.isNotEmpty() && !it.equals(name, ignoreCase = true) }
+                                if (name.isNotEmpty() && !m.instruction.contains(name, ignoreCase = true)) {
+                                    Text(name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium, color = ink)
+                                }
+                                addr?.let {
+                                    Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
+                                }
                             }
                             m.road?.let {
                                 Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
