@@ -23,6 +23,14 @@ object MapLinkParser {
     private val COORD = Regex("""(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)""")
     private val AT = Regex("""@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)""")
 
+    /** A pasted share link worth resolving over the network (short links carry nothing
+     *  parseable locally) — a single URL token, not a text query that mentions maps. */
+    fun isShareLink(raw: String): Boolean {
+        val t = raw.trim()
+        if (t.any { it.isWhitespace() }) return false
+        return "maps.app.goo.gl/" in t || "goo.gl/maps/" in t || "google.com/maps/placelists" in t
+    }
+
     fun parse(raw: String): MapLink? {
         val link = when {
             raw.startsWith("geo:", ignoreCase = true) -> parseGeo(raw)
