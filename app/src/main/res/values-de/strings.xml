@@ -467,4 +467,6 @@
     <string name="place_save_to_list">In Liste speichern</string>
     <string name="place_edit_note">Notiz bearbeiten</string>
     <string name="place_note_label">Notiz</string>
+    <string name="map_save_list">Liste speichern · %1$d Orte</string>
+    <string name="map_list_saved">„%1$s“ in deinen Listen gespeichert</string>
 </resources>
