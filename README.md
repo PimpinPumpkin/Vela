@@ -17,7 +17,9 @@ Tap a badge - no Play Store, no account. Obtainium auto-tracks the
 F-Droid client and serves the same signed APKs. Or grab an APK straight from
 [Releases](https://github.com/PimpinPumpkin/Vela/releases).
 
-**F-Droid setup:** add the repo to your client and install/update from there:
+**F-Droid setup:** add the repo to your client and install/update from there.
+It follows the weekly stable by default; nightlies are there too if you enable
+unstable updates for Vela in your client (details in [FDROID.md](FDROID.md)):
 
 ```
 https://pimpinpumpkin.github.io/Vela/repo
