@@ -162,9 +162,18 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   *(Wired into `MapViewModel.fetchReviews`; the cid = the low half of the `0x..:0x..` feature id as
   decimal. The old `listentitiesreviews` path/`ReviewsParser`/calibration `reviewsPb` are now dead
   but left in place.)* ~~pulled from Google's keyless `listentitiesreviews` endpoint by feature id.~~ **Review photos are collected by URL shape, not a fixed index** (recalibrated 2026-06-20): `ReviewsParser` takes only a reviewer's **uploaded** FIFE photos (`/gps-cs`, `/geougc`, `/p/AF1Qip`) and never their **avatar** (`/a/`, `/a-/`, `ACg8oc`, `ALV-`). This fixes a bug where the old "photos hang under `review[12]`" calibration was sweeping the reviewer's **profile picture** into the thumbnail strip - every review showed the author's face as if it were an uploaded photo. ⚠️ This RPC turns out to return **only avatars**, so the strip currently shows nothing; **real per-review uploaded photos need a separate source** (the photo-inclusion flag resisted discovery - see ROADMAP). Unit-tested (avatars excluded at `[0][2]`/`[12]`/`[60]`, genuine UGC collected). **Intermittent "no reviews" fixed (2026-06-21):** the RPC sometimes returns an empty page (a bot-degraded reply / rate blip), which used to stick as "no reviews" until you reopened the place (seen on Sandy Cove Park + The Black Dog). `fetchReviews` now **retries with backoff (up to 4 tries across ~3 s - widened after a tap-to-retry confirmed a fresh call clears the flake within seconds) when the place's own review *count* is >0 but the fetch came back empty** - that count-vs-zero mismatch is the transient-miss tell - while a genuinely review-less place (count 0/unknown) still stops after one try, so review-less places are never hammered. **Plus an honest UI state:** when the count says there ARE reviews but the list is still empty, the tab shows **"Couldn't load reviews. Tap to retry."** (a load failure, distinguished from a real zero by the count-vs-empty mismatch) instead of the misleading "No reviews available", so a sticky outage that outlasts the auto-retry is one tap from recovering - `MapViewModel.retryReviews()`. *(Seen showing rating + count but no list on Sandy Cove Park; the count proves the featureId loaded, so it's purely the RPC flaking.)*
+- ✅ **Save my parking spot (2026-07-08, device-verified end to end).** Long-press the locate
+  button and Vela remembers where the car is (prefs, survives restarts). A compact "P Parked"
+  chip sits above the locate button while a spot is set: tap it and the spot becomes a WALK-mode
+  directions destination named "Parked car"; hold it to clear. All strings in 11 locales.
+  *(Implementation note: the locate control is a clickable Surface styled as the FAB - a real
+  FloatingActionButton's internal clickable consumes the down so an outer long-press detector
+  never fires; the inner detector owns both touch gestures and the Surface onClick serves D-pad.)*
 - ✅ **In-store department hours (2026-07-08).** A department store's sheet lists each department
   under the main hours - Pharmacy, Fuel Station, Liquor, Delivery/Pickup windows - each with its
   own colour-coded status ("Closed · Opens 9 AM Thu") and an expandable 7-day table, split shifts
+  included - NESTED inside the main Hours expansion (2026-07-08 follow-up), so the collapsed sheet
+  stays one clean line and the whole schedule story lives behind one tap. Split shifts
   included ("9 AM–1:30 PM, 2–9 PM"). Parsed from the whole `[118]` response list, the same block
   whose FIRST entry used to be misread as the store's status (the "closes soon at 10 PM over a
   5 AM–1 AM table" bug - the fix and this feature are the same discovery); store-name prefixes are
