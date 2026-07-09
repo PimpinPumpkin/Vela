@@ -410,17 +410,22 @@ itself shows the traffic, not the whole map.
   windowed projection in `projectAlong` — not global-nearest) so "remaining" and "distance to
   next turn" stay **along-route** and honest on routes that pass near themselves
   (switchback / cloverleaf / out-and-back); off-route it holds rather than snapping to a far leg.
-- **Android Auto (first cut)**: `app/car/` — a NAVIGATION-category `CarAppService`
-  (`VelaCarAppService`, host validator open because sideloads already require AA's
-  "Unknown sources" developer switch) whose one screen (`CarMapScreen`) renders the live
-  map on the car display and, while navigating, a RoutingInfo card with the current
-  maneuver + distance from the same `@Singleton NavSession` the phone drives. Rendering:
-  templated car apps get a raw surface, MapLibre needs a View, so the renderer wraps the
-  surface in a `VirtualDisplay` + `Presentation` holding a plain `MapView`, styled with
-  the same Liberty URI + `applyDark`/`applyLight` recolour keyed to the car's own
-  day/night. Puck = its own AOSP `LocationManager` listener; pan/zoom = `onScroll`/`onScale`
-  camera math; recenter + zoom actions in the strip. The phone app runs nav and voice;
-  the car is a display for it.
+- **Android Auto (full car-side nav, PR #17)**: `app/car/` — a NAVIGATION-category
+  `CarAppService` (`VelaCarAppService`, host validator open because sideloads already
+  require AA's "Unknown sources" developer switch). Screens under `car/screen/`:
+  `MainCarScreen` (Home/Work/recents/saved) → `SearchCarScreen` (debounced
+  `MapDataSource.search`) → `RoutePreviewCarScreen` (up to 3 live-traffic alternates,
+  names provisional routes before start) → `ActiveNavCarScreen` (turn card, "then" step,
+  lane diagram via `LaneImage`, faster-route action, mute; `NavigationManager`
+  navigationStarted/updateTrip for the cluster). `CarDeps` bundles the Hilt singletons and
+  owns ONE shared `CarMapRenderer` per session (per-screen renderers freeze the map).
+  Rendering = MapLibre `MapSnapshotter` → bitmap → car surface (the old
+  VirtualDisplay+Presentation hack is gone), with route map-matching (40 m snap), eased
+  puck/bearing at 70 ms ticks, speed-adaptive zoom, look-ahead camera
+  (`LatLng.destinationPoint`, the one `:core` addition), day/night from the host's
+  `isDarkMode`. `VelaCarSession` feeds GPS to the same `@Singleton NavSession` the phone
+  drives and handles `androidx.car.app.action.NAVIGATE` geo intents (opaque-URI parsing).
+  The phone stays the nav brain and voice.
 - **Place-content toggles**: Settings → Map, `ShowReviews` / `LoadPhotos` holders
   (default on). Off gates BOTH the fetch (`fetchReviews`/`fetchPhotos` in the VM) and the
   render (review tab / photo strip in `PlaceSheet`), so off means no scrape traffic at

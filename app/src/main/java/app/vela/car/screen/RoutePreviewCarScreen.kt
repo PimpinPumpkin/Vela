@@ -142,7 +142,14 @@ class RoutePreviewCarScreen(
             val named = if (picked.provisional) {
                 runCatching { deps.mapDataSource.nameRoute(picked, from, dest, TravelMode.DRIVE) }.getOrDefault(picked)
             } else picked
-            deps.navSession.start(named, dest, destName, null, emptyList(), TravelMode.DRIVE)
+            // Speak through the user's chosen TTS engine, not the system default. Same
+            // stale-neural mapping as the phone's init path (a removed vela.* voice falls
+            // back to null = system TTS; the in-process neural synth is phone-side only).
+            val savedRaw = carContext.applicationContext
+                .getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+                .getString("voice_engine", null)
+            val engine = if (savedRaw == null || savedRaw.startsWith("vela.")) null else savedRaw
+            deps.navSession.start(named, dest, destName, engine, emptyList(), TravelMode.DRIVE)
             runCatching { NavigationService.start(carContext.applicationContext) }
             screenManager.push(ActiveNavCarScreen(carContext, deps))
         }
