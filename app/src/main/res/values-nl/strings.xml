@@ -439,4 +439,9 @@
     <string name="car_unmute">Geluid aan</string>
     <string name="car_faster_route">Sneller −%1$d min</string>
     <string name="car_no_route">Geen route — controleer je locatie</string>
+    <string name="map_parking_saved">Parkeerplek opgeslagen</string>
+    <string name="map_parking_no_fix">Wachten op locatie</string>
+    <string name="map_parking_chip">Geparkeerd</string>
+    <string name="map_parking_cleared">Parkeerplek gewist</string>
+    <string name="map_parked_car">Geparkeerde auto</string>
 </resources>

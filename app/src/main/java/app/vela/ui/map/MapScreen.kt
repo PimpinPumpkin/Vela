@@ -16,6 +16,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Restaurant
@@ -1134,16 +1136,92 @@ fun MapScreen(
         if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
             // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
             // and reverted — every surface tone melted into the dark tiles.
-            FloatingActionButton(
+            // LONG-PRESS saves the parking spot (ROADMAP "Save my parking spot": no new chrome;
+            // the chip below appears while one is set). The FAB's own tap still recenters.
+            val parkingSavedMsg = stringResource(R.string.map_parking_saved)
+            val parkingNoFixMsg = stringResource(R.string.map_parking_no_fix)
+            // A clickable Surface styled as the FAB, NOT FloatingActionButton: the FAB's
+            // internal clickable consumes the down, so an outer pointerInput never saw the
+            // long-press (measured on-device). Here the INNER Box gets the main pass first,
+            // its long-press fires and consumes the up, and a plain tap falls through to the
+            // Surface's onClick (ripple + D-pad focus preserved).
+            Surface(
                 onClick = vm::recenter,
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                shadowElevation = 6.dp,
                 modifier = Modifier
-                    .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(16.dp)
-                    .padding(bottom = chromeLift),
+                    .padding(bottom = chromeLift)
+                    .dpadHighlight(RoundedCornerShape(16.dp)),
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                Box(
+                    Modifier
+                        .size(56.dp)
+                        // The detector owns BOTH touch gestures (it consumes the down, so the
+                        // Surface's clickable never completes under touch); the Surface onClick
+                        // still serves D-pad OK, which bypasses pointer input entirely.
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { vm.recenter() },
+                                onLongPress = {
+                                    val msg = if (vm.saveParkingSpot()) parkingSavedMsg else parkingNoFixMsg
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                }
+            }
+            // "Parked" chip — tap walks you back to the car, hold clears the spot.
+            state.parkingSpot?.let {
+                val parkedCarLabel = stringResource(R.string.map_parked_car)
+                val parkingClearedMsg = stringResource(R.string.map_parking_cleared)
+                Surface(
+                    shape = RoundedCornerShape(50),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shadowElevation = 4.dp,
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .navigationBarsPadding()
+                        .padding(end = 16.dp, bottom = chromeLift + 88.dp)
+                        .dpadHighlight(RoundedCornerShape(50))
+                        // The detector owns both touch gestures (its down-consumption starves
+                        // the clickable under touch); clickable remains as the D-pad OK path.
+                        .clickable { vm.walkToParkingSpot(parkedCarLabel) }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { vm.walkToParkingSpot(parkedCarLabel) },
+                                onLongPress = {
+                                    vm.clearParkingSpot()
+                                    Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        },
+                ) {
+                    Row(
+                        Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.LocalParking,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            stringResource(R.string.map_parking_chip),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                }
             }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
             // niche browse-only layer, and nav now shows per-segment route traffic,
