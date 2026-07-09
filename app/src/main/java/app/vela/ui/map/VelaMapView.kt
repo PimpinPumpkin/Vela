@@ -317,8 +317,10 @@ fun VelaMapView(
     LaunchedEffect(navMode, styleRef) {
         val style = styleRef ?: return@LaunchedEffect
         val vis = if (navMode) Property.NONE else Property.VISIBLE
-        listOf("poi_r1", "poi_r7", "poi_r20", "poi_transit").forEach { id ->
-            style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis))
+        runCatching {
+            listOf("poi_r1", "poi_r7", "poi_r20", "poi_transit").forEach { id ->
+                style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis))
+            }
         }
     }
 
@@ -331,11 +333,13 @@ fun VelaMapView(
     // building colour, indistinguishable from a real OSM footprint).
     LaunchedEffect(buildingOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
-        style.layers.filter { it.id.startsWith("vela-ovl-") }.forEach { runCatching { style.removeLayer(it) } }
-        style.sources.filter { it.id.startsWith("vela-ovl-src-") }.forEach { runCatching { style.removeSource(it) } }
+        // runCatching the enumerations too: the style can die between the null-check and this walk
+        // (theme flip mid-effect), and a dead style throws on ANY access, not just mutation.
+        runCatching { style.layers.filter { it.id.startsWith("vela-ovl-") }.forEach { style.removeLayer(it) } }
+        runCatching { style.sources.filter { it.id.startsWith("vela-ovl-src-") }.forEach { style.removeSource(it) } }
         val fill = if (darkTheme) "#323f54" else "#dde1e7" // == the OSM building fill (applyLight/applyDark)
         val line = if (darkTheme) "#3f4e66" else "#c4c9d1"
-        val below = style.getLayer("building")?.id // beneath OSM buildings so they win wherever OSM has them
+        val below = runCatching { style.getLayer("building")?.id }.getOrNull() // beneath OSM buildings so they win wherever OSM has them
         buildingOverlays.forEachIndexed { i, uri ->
             runCatching {
                 val srcId = "vela-ovl-src-$i"
@@ -362,13 +366,15 @@ fun VelaMapView(
     // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
     LaunchedEffect(addressOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
-        style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { runCatching { style.removeLayer(it) } }
-        style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { runCatching { style.removeSource(it) } }
+        runCatching { style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { style.removeLayer(it) } }
+        runCatching { style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { style.removeSource(it) } }
         // The overlay statewide data covers what OSM has too — hide the basemap number layer while the overlay
         // is active, or the SAME address renders twice at a slight offset (device-seen: "5611" / "5607" doubled).
-        style.getLayer("vela-housenumber")?.setProperties(
-            PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE),
-        )
+        runCatching {
+            style.getLayer("vela-housenumber")?.setProperties(
+                PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE),
+            )
+        }
         val txt = if (darkTheme) "#9aa0a6" else "#8a8a8a"
         val halo = if (darkTheme) "#1b2432" else "#ffffff"
         addressOverlays.forEachIndexed { i, uri ->
@@ -408,9 +414,11 @@ fun VelaMapView(
     // but never touch visibility, so this effect owns it (re-applied on style reload too).
     val buildings3d = app.vela.ui.Buildings3d.on.value
     LaunchedEffect(buildings3d, styleRef) {
-        styleRef?.getLayer("building-3d")?.setProperties(
-            PropertyFactory.visibility(if (buildings3d) Property.VISIBLE else Property.NONE),
-        )
+        runCatching {
+            styleRef?.getLayer("building-3d")?.setProperties(
+                PropertyFactory.visibility(if (buildings3d) Property.VISIBLE else Property.NONE),
+            )
+        }
     }
 
     // Nav puck motion model (Google-style): a per-frame ticker glides the displayed
@@ -998,6 +1006,12 @@ fun VelaMapView(
             } else {
                 Style.Builder().fromUri(styleUri)
             }
+            // The moment setStyle is called the OLD Style object is dead: any access (even
+            // .layers) throws "Calling getLayers when a newer style is loading". The manual
+            // light/dark flip crashed exactly here - the overlay effects are keyed on darkTheme
+            // too, so they re-ran in the load window against the stale reference. Null the ref
+            // FIRST so every effect bails until the new style lands in the callback.
+            styleRef = null
             map.setStyle(builder) { style ->
                 styleRef = style
                 ensureLayers(style)
