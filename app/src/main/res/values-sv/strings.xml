@@ -446,4 +446,25 @@
     <string name="map_parking_save">Spara parkeringsplats</string>
     <string name="map_import_failed">Kunde inte importera listan. Kontrollera länken och försök igen.</string>
     <string name="place_clear_parking">Rensa parkering</string>
+    <string name="parking_history_title">Parkeringshistorik</string>
+    <string name="parking_history_clear_all">Rensa alla</string>
+    <string name="parking_history_current">Aktuell</string>
+    <string name="parking_history_delete">Ta bort</string>
+    <string name="parking_history_restore">Återställ</string>
+    <string name="settings_parking_history">Parkeringshistorik</string>
+    <string name="settings_parking_history_hint">Senaste parkeringsplatser. Tryck på Återställ om du skrev över din plats av misstag.</string>
+    <string name="mapscreen_section_lists">Dina listor</string>
+    <string name="mapscreen_new_list">Ny</string>
+    <string name="list_edit">Redigera lista</string>
+    <string name="list_new_title">Ny lista</string>
+    <string name="list_edit_title">Redigera lista</string>
+    <string name="list_name_label">Listnamn</string>
+    <string name="list_icon_label">Ikon</string>
+    <string name="list_color_label">Färg</string>
+    <string name="list_delete">Ta bort</string>
+    <string name="list_cancel">Avbryt</string>
+    <string name="list_save">Spara</string>
+    <string name="place_save_to_list">Spara i lista</string>
+    <string name="place_edit_note">Redigera anteckning</string>
+    <string name="place_note_label">Anteckning</string>
 </resources>

@@ -66,6 +66,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
@@ -229,6 +232,11 @@ fun PlaceSheet(
     onSetShortcut: (ShortcutKind) -> Unit = {},
     onRetryReviews: () -> Unit = {},
     onClearParking: () -> Unit = {},
+    lists: List<app.vela.core.model.PlaceList> = emptyList(),
+    onAddToList: (listId: String) -> Unit = {},
+    onRemoveFromList: (listId: String) -> Unit = {},
+    onCreateListWith: (name: String) -> Unit = {},
+    onSetNote: (String?) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -237,6 +245,10 @@ fun PlaceSheet(
     val dim = if (dark) DimDark else DimLight
     // The saved parking spot's own sheet: car glyph beside the name, a Clear action pill.
     val isParking = place.id.startsWith("parking:")
+    val containingLists = lists.filter { l -> l.places.any { it.id == place.id } }
+    val inAnyList = containingLists.isNotEmpty()
+    var showListChooser by remember(place.id) { mutableStateOf(false) }
+    var showNoteEditor by remember(place.id) { mutableStateOf(false) }
     // A tapped photo opens the full-screen gallery; resets when the sheet switches place.
     var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
     // Gallery category filter (null = All); resets per place. Chips appear only when Google tagged photos.
@@ -570,6 +582,10 @@ fun PlaceSheet(
                     // under touch, but a raw-Dialog chooser that AUTO-FOCUSES its first item under
                     // D-pad (a DropdownMenu Popup can't be pre-focused; a raw Dialog can).
                     VelaMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
+                        if (!isParking) {
+                            item(stringResource(R.string.place_save_to_list)) { headerMenu = false; showListChooser = true }
+                            if (inAnyList) item(stringResource(R.string.place_edit_note)) { headerMenu = false; showNoteEditor = true }
+                        }
                         item(stringResource(R.string.place_set_as_home)) { headerMenu = false; onSetShortcut(ShortcutKind.HOME) }
                         item(stringResource(R.string.place_set_as_work)) { headerMenu = false; onSetShortcut(ShortcutKind.WORK) }
                     }
@@ -963,6 +979,119 @@ fun PlaceSheet(
 
     galleryStart?.let { start ->
         PhotoGallery(place.photoUrls, place.photoDates.map { d -> d?.let { context.getString(R.string.place_photo_caption, it) } }, start) { galleryStart = null }
+    }
+
+    if (showListChooser) {
+        SaveToListSheet(
+            lists = lists,
+            containingIds = containingLists.mapTo(HashSet()) { it.id },
+            onToggle = { listId, add -> if (add) onAddToList(listId) else onRemoveFromList(listId) },
+            onCreateWith = { name -> onCreateListWith(name) },
+            onDismiss = { showListChooser = false },
+        )
+    }
+    if (showNoteEditor) {
+        NoteEditorDialog(
+            initial = place.savedNote,
+            onSave = { onSetNote(it); showNoteEditor = false },
+            onDismiss = { showNoteEditor = false },
+        )
+    }
+}
+
+/** "Save to list" — check the lists this place belongs to; create a new one inline. */
+@Composable
+private fun SaveToListSheet(
+    lists: List<app.vela.core.model.PlaceList>,
+    containingIds: Set<String>,
+    onToggle: (listId: String, add: Boolean) -> Unit,
+    onCreateWith: (name: String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var creating by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf("") }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
+                Text(
+                    stringResource(R.string.place_save_to_list),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+                )
+                LazyColumn(Modifier.heightIn(max = 320.dp)) {
+                    items(lists, key = { it.id }) { list ->
+                        val checked = list.id in containingIds
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onToggle(list.id, !checked) }.padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                if (checked) Icons.Default.Check else Icons.Default.BookmarkBorder,
+                                contentDescription = null,
+                                tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(22.dp),
+                            )
+                            Spacer(Modifier.width(16.dp))
+                            Text(list.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                            Text("${list.places.size}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
+                if (creating) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedTextField(
+                            value = newName, onValueChange = { newName = it },
+                            label = { Text(stringResource(R.string.list_name_label)) }, singleLine = true,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Button(onClick = { if (newName.isNotBlank()) { onCreateWith(newName.trim()); newName = ""; creating = false } }, enabled = newName.isNotBlank()) {
+                            Text(stringResource(R.string.list_save))
+                        }
+                    }
+                } else {
+                    TextButton(onClick = { creating = true }, modifier = Modifier.padding(horizontal = 12.dp)) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.mapscreen_new_list))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Edit the owner's note on a place in a list. */
+@Composable
+private fun NoteEditorDialog(
+    initial: String?,
+    onSave: (String?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var text by remember { mutableStateOf(initial.orEmpty()) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(20.dp).widthIn(max = 420.dp)) {
+                Text(stringResource(R.string.place_edit_note), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = text, onValueChange = { text = it },
+                    label = { Text(stringResource(R.string.place_note_label)) },
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 96.dp),
+                )
+                Spacer(Modifier.height(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.list_cancel)) }
+                    Spacer(Modifier.width(4.dp))
+                    Button(onClick = { onSave(text.trim().ifBlank { null }) }) { Text(stringResource(R.string.list_save)) }
+                }
+            }
+        }
     }
 }
 

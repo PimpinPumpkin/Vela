@@ -446,4 +446,25 @@
     <string name="map_parking_save">Parkeerplek opslaan</string>
     <string name="map_import_failed">Kon die lijst niet importeren. Controleer de link en probeer opnieuw.</string>
     <string name="place_clear_parking">Parkeerplek wissen</string>
+    <string name="parking_history_title">Parkeergeschiedenis</string>
+    <string name="parking_history_clear_all">Alles wissen</string>
+    <string name="parking_history_current">Huidig</string>
+    <string name="parking_history_delete">Verwijderen</string>
+    <string name="parking_history_restore">Herstellen</string>
+    <string name="settings_parking_history">Parkeergeschiedenis</string>
+    <string name="settings_parking_history_hint">Recente parkeerplekken. Tik op Herstellen als je je plek per ongeluk hebt overschreven.</string>
+    <string name="mapscreen_section_lists">Je lijsten</string>
+    <string name="mapscreen_new_list">Nieuw</string>
+    <string name="list_edit">Lijst bewerken</string>
+    <string name="list_new_title">Nieuwe lijst</string>
+    <string name="list_edit_title">Lijst bewerken</string>
+    <string name="list_name_label">Lijstnaam</string>
+    <string name="list_icon_label">Pictogram</string>
+    <string name="list_color_label">Kleur</string>
+    <string name="list_delete">Verwijderen</string>
+    <string name="list_cancel">Annuleren</string>
+    <string name="list_save">Opslaan</string>
+    <string name="place_save_to_list">In lijst opslaan</string>
+    <string name="place_edit_note">Notitie bewerken</string>
+    <string name="place_note_label">Notitie</string>
 </resources>
