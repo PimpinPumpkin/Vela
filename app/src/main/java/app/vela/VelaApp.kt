@@ -10,6 +10,7 @@ import app.vela.ui.Traffic
 import app.vela.ui.TransitLayer
 import app.vela.ui.Units
 import app.vela.ui.theme.AppTheme
+import app.vela.ui.theme.DynamicColor
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 
@@ -28,6 +29,7 @@ class VelaApp : Application() {
         super.onCreate()
         Units.init(this)
         AppTheme.init(this)
+        DynamicColor.init(this)
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
         Traffic.init(this)
         TransitLayer.init(this)

@@ -19,6 +19,7 @@ import app.vela.R
 import android.graphics.Bitmap
 import app.vela.core.model.ManeuverType
 import app.vela.core.nav.NavSession
+import app.vela.ui.theme.DynamicColor
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import dagger.hilt.android.AndroidEntryPoint
@@ -57,8 +58,10 @@ class NavigationService : Service() {
     private var observing = false
 
     // One-entry glyph cache (state ticks ~1 Hz; the type changes only at each turn).
+    // Keyed on the accent too, so flipping Material You mid-drive recolours the arrow.
     private var cachedGlyph: Bitmap? = null
     private var cachedGlyphType: ManeuverType? = null
+    private var cachedGlyphAccent: Int = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -169,18 +172,26 @@ class NavigationService : Service() {
         } else {
             s.route?.maneuvers?.getOrNull(s.nav.stepIndex)?.type
         }
+        // Material You (issue #15): the arrow tile + accent row follow the system accent when
+        // the user opted into dynamic colour; Vela teal otherwise (matches the in-app theme).
+        val accent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && DynamicColor.isOn(this)) {
+            getColor(android.R.color.system_accent1_600)
+        } else {
+            NavGlyphs.TEAL
+        }
         val largeIcon = maneuverType?.let { t ->
-            cachedGlyph?.takeIf { cachedGlyphType == t } ?: NavGlyphs.bitmap(
+            cachedGlyph?.takeIf { cachedGlyphType == t && cachedGlyphAccent == accent } ?: NavGlyphs.bitmap(
                 t,
                 resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width).coerceAtLeast(96),
-            ).also { cachedGlyph = it; cachedGlyphType = t }
+                background = accent,
+            ).also { cachedGlyph = it; cachedGlyphType = t; cachedGlyphAccent = accent }
         }
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_nav)
             .setContentTitle(title)
             .setContentText(text)
             .setLargeIcon(largeIcon)
-            .setColor(NavGlyphs.TEAL) // VelaTeal accent on the action/app name row
+            .setColor(accent) // dynamic accent when Material You is on, VelaTeal otherwise
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false) // the post time is noise on a continuously-updating nav card

@@ -6,6 +6,8 @@
     <string name="settings_theme_light">Licht</string>
     <string name="settings_theme_dark">Donker</string>
     <string name="settings_appearance_hint">Licht/donker geldt alleen voor Vela — het thema van uw telefoon wordt niet gewijzigd.</string>
+    <string name="settings_dynamic_color">Material You-kleuren</string>
+    <string name="settings_dynamic_color_hint">Kleurt knoppen, chips en accenten naar je achtergrond (Android 12+). Uit = Vela\'s eigen groenblauw. De kaart zelf blijft neutraal zodat wegen en labels hun contrast houden.</string>
     <string name="settings_map_style">Kaartstijl</string>
     <string name="settings_map_style_hint">OpenFreeMap (de standaard) werkt zonder sleutel en is gedetailleerd. Protomaps vereist een API-sleutel; de demostijl toont alleen de contouren van landen.</string>
     <string name="settings_units">Eenheden</string>

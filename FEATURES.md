@@ -188,6 +188,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Also fixed: starred places on the search page drew their name in BLACK in dark mode - the
   page is a plain background Box, not a Surface, so a colourless Text falls back to black; the
   row now uses the same on-surface colour as every neighbouring row in both themes.
+- ✅ **Material You dynamic colour (issue #15, 2026-07-09, device-verified light + dark).** A
+  Settings -> Appearance toggle (Android 12+ only) tints every themed surface - buttons, chips,
+  FABs, dialogs, the focus ring, the nav notification's arrow tile and accent row - from the
+  system wallpaper palette. Off by default (Vela teal stays the stock look). Accents stay legible
+  because everything uses the scheme's paired slots (primary/onPrimary etc.), which Android
+  generates at accessible contrast in both themes; the dynamic scheme is also sanity-checked
+  (background luminance must match the requested theme) and falls back to Vela's own colours on
+  ROMs that hand back a broken palette (seen on GrapheneOS once). The map tiles, route line and
+  location dot stay neutral on purpose - road/label contrast beats wallpaper vibes, same call
+  Google makes.
 - ✅ **List notes stick to chain stores + show in the list (2026-07-09, device-verified).** Notes on a
   chain place (a Safeway with several co-located Google listings) silently vanished: list membership
   was keyed on a volatile internal id that could point at a different listing next visit, so the note

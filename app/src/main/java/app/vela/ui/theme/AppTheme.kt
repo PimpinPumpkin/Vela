@@ -41,3 +41,29 @@ fun isAppInDarkTheme(): Boolean = when (AppTheme.mode.value) {
     ThemeMode.DARK -> true
     ThemeMode.SYSTEM -> isSystemInDarkTheme()
 }
+
+/**
+ * Material You dynamic colour preference (issue #15). Same reactive-holder shape as
+ * [AppTheme]: flip it in Settings and every MaterialTheme surface recomposes with the
+ * wallpaper palette. Off by default - Vela teal is the out-of-the-box look, dynamic
+ * colour is the opt-in customization. Android 12+ only; the toggle is hidden below that.
+ */
+object DynamicColor {
+    val on = mutableStateOf(false)
+
+    fun init(context: Context) {
+        on.value = prefs(context).getBoolean(KEY, false)
+    }
+
+    fun set(context: Context, value: Boolean) {
+        on.value = value
+        prefs(context).edit().putBoolean(KEY, value).apply()
+    }
+
+    /** For non-compose readers (the nav notification): the persisted value, straight
+     *  from prefs, so a Service path needs no compose state. */
+    fun isOn(context: Context): Boolean = prefs(context).getBoolean(KEY, false)
+
+    private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+    private const val KEY = "dynamic_color"
+}

@@ -83,6 +83,7 @@ import app.vela.core.voice.VoiceEngine
 import app.vela.ui.map.MapUiState
 import app.vela.ui.map.MapViewModel
 import app.vela.ui.theme.AppTheme
+import app.vela.ui.theme.DynamicColor
 import app.vela.ui.theme.ThemeMode
 import app.vela.ui.dpadHighlight // D-pad-only operation (docs/dpad.md)
 import app.vela.ui.dpadFieldEscape
@@ -181,6 +182,16 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 onClick = { AppTheme.set(context, ThemeMode.DARK) },
             )
             Hint(stringResource(R.string.settings_appearance_hint))
+            // Material You (issue #15): tint the app's buttons, chips and accents from the
+            // wallpaper palette. Android 12+ only - below S there is no dynamic palette, so
+            // the row is not shown at all rather than shown dead.
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                Spacer(Modifier.height(8.dp))
+                ToggleRow(stringResource(R.string.settings_dynamic_color), DynamicColor.on.value) {
+                    DynamicColor.set(context, it)
+                }
+                Hint(stringResource(R.string.settings_dynamic_color_hint))
+            }
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_map_style))

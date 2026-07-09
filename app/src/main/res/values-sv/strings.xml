@@ -6,6 +6,8 @@
     <string name="settings_theme_light">Ljust</string>
     <string name="settings_theme_dark">Mörkt</string>
     <string name="settings_appearance_hint">Ljust/Mörkt gäller endast Vela – det påverkar inte telefonens systemtema.</string>
+    <string name="settings_dynamic_color">Material You-färger</string>
+    <string name="settings_dynamic_color_hint">Färgar knappar, chips och accenter efter din bakgrund (Android 12+). Av = Velas egen turkos. Själva kartan förblir neutral så att vägar och etiketter behåller kontrasten.</string>
     <string name="settings_map_style">Kartstil</string>
     <string name="settings_map_style_hint">OpenFreeMap (standard) är nyckellös och detaljerad. Protomaps kräver en API-nyckel; demostilen visar bara landsgränser.</string>
     <string name="settings_units">Enheter</string>

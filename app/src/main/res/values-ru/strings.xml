@@ -6,6 +6,8 @@
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
     <string name="settings_appearance_hint">Светлая или тёмная тема применяется только к Vela — системная тема телефона не меняется.</string>
+    <string name="settings_dynamic_color">Цвета Material You</string>
+    <string name="settings_dynamic_color_hint">Окрашивает кнопки, чипы и акценты по обоям (Android 12+). Выключено = фирменный бирюзовый Vela. Сама карта остаётся нейтральной, чтобы дороги и подписи сохраняли контраст.</string>
     <string name="settings_map_style">Стиль карты</string>
     <string name="settings_map_style_hint">OpenFreeMap (по умолчанию) не требует ключа и содержит много деталей. Для Protomaps нужен ключ API; демо-стиль показывает только контуры стран.</string>
     <string name="settings_units">Единицы измерения</string>
