@@ -46,7 +46,7 @@ class MainCarScreen(carContext: CarContext, private val deps: CarDeps) :
         val rows = buildList {
             deps.shortcuts.get(ShortcutKind.HOME)?.let { add(it.name to it.location) }
             deps.shortcuts.get(ShortcutKind.WORK)?.let { add(it.name to it.location) }
-            deps.recentPlaces.recent().forEach { add(it.name to it.location) }
+            deps.recentPlaces.recent().forEach { add(it.place.name to it.place.location) }
             deps.savedPlaces.saved().forEach { add(it.name to it.location) }
         }.distinctBy { it.second.lat to it.second.lng }.take(MAX_ROWS)
 
