@@ -280,8 +280,7 @@
     <string name="mapscreen_permanently_closed">Permanent stängt</string>
     <string name="mapscreen_section_saved">Sparade</string>
     <string name="mapscreen_section_recent">Senaste</string>
-    <string name="mapscreen_section_recent_searches">Senaste sökningar</string>
-    <string name="mapscreen_clear_recent_searches">Rensa senaste sökningar</string>
+    <string name="mapscreen_clear_recents">Rensa senaste</string>
     <string name="mapscreen_search_empty_hint">Sök efter platser, adresser och kategorier.</string>
     <string name="mapscreen_set_shortcut_address">Ange adress för %1$s</string>
     <string name="mapscreen_edit_shortcut">Redigera %1$s</string>
