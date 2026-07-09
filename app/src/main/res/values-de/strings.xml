@@ -182,6 +182,9 @@
     <string name="place_move_stop_down">Halt nach unten verschieben</string>
     <string name="place_remove_stop">Halt entfernen</string>
     <string name="place_add_stop">Halt hinzufügen</string>
+    <string name="stops_editor_title">Zwischenstopps</string>
+    <string name="stops_edit">Zwischenstopps bearbeiten</string>
+    <string name="stops_drag_reorder">Zum Neuordnen ziehen</string>
     <string name="place_change_destination">Ziel ändern</string>
     <string name="place_swap_start_destination">Start und Ziel tauschen</string>
     <string name="place_close_directions">Route schließen</string>
