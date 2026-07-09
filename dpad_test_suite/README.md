@@ -1,7 +1,7 @@
 # D-pad test suite
 
 Reproducible, on-device checks that Vela stays fully operable with a **5-key D-pad** (↑ ↓ ← → +
-OK, plus BACK) and **no touchscreen** — the scripted version of the manual `adb` checks used while
+OK, plus BACK) and **no touchscreen** - the scripted version of the manual `adb` checks used while
 building the D-pad support. See [`../docs/dpad.md`](../docs/dpad.md) for the design.
 
 Each test drives the app with **only** `adb shell input keyevent` and asserts on the **focused
@@ -24,7 +24,7 @@ ADB="adb -s emulator-5554" ./run_all.sh   # pick a device
 ```
 
 `run_all.sh` first calls `setup.sh` (grants location + installs a mock GPS provider at Brooklyn so
-search/routing have a fix — override with `VELA_LAT`/`VELA_LNG`). Then it runs `tests/*.sh` in
+search/routing have a fix - override with `VELA_LAT`/`VELA_LNG`). Then it runs `tests/*.sh` in
 order; each prints `PASS:`/`FAIL:` lines and a per-suite verdict. Exit code is non-zero if any
 suite failed (usable in CI once a device is attached).
 
@@ -32,7 +32,7 @@ suite failed (usable in CI once a device is attached).
 
 | Test | Asserts |
 |---|---|
-| `01_map_opens_on_search` | the bare map opens ambient (nothing focused, not engaged); the first ↓ lands on the search bar — no BACK-to-move |
+| `01_map_opens_on_search` | the bare map opens ambient (nothing focused, not engaged); the first ↓ lands on the search bar - no BACK-to-move |
 | `02_settings_autofocus` | Settings opens already focused on the back button (the original "opened un-focused" bug) |
 | `03_welcome_and_dialog_autofocus` | first-run Welcome opens focused on Get-started; each onboarding `VelaDialog` opens focused on "Not now" |
 | `04_place_sheet_and_menu_autofocus` | the place sheet opens focused on its handle; the ⋮ overflow (`VelaMenu`) opens focused on its first item; ↓ walks it; BACK closes the menu not the sheet |
@@ -66,4 +66,4 @@ Key helpers (in `lib.sh`): `focused` / `focused_text` / `focused_desc` / `focus_
 - These assert **focus & navigation**, not pixels. For a visual check, `shot out.png` grabs a
   screenshot at any point.
 - Menus/dialogs are `VelaMenu`/`VelaDialog` (raw-Dialog based) specifically so they *can* be
-  auto-focused — a stock Compose `DropdownMenu`/`AlertDialog` cannot (see docs/dpad.md).
+  auto-focused - a stock Compose `DropdownMenu`/`AlertDialog` cannot (see docs/dpad.md).
