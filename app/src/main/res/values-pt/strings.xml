@@ -441,7 +441,9 @@
     <string name="car_no_route">Sem rota — verifique a localização</string>
     <string name="map_parking_saved">Estacionamento guardado</string>
     <string name="map_parking_no_fix">A aguardar a localização</string>
-    <string name="map_parking_chip">Estacionado</string>
     <string name="map_parking_cleared">Estacionamento removido</string>
     <string name="map_parked_car">Carro estacionado</string>
+    <string name="map_parking_save">Guardar estacionamento</string>
+    <string name="map_import_failed">Não foi possível importar a lista. Verifique o link e tente novamente.</string>
+    <string name="place_clear_parking">Remover estacionamento</string>
 </resources>

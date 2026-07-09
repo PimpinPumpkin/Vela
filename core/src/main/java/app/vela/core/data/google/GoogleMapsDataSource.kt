@@ -10,6 +10,7 @@ import app.vela.core.data.MapDataSource
 import app.vela.core.data.RouteEngine
 import app.vela.core.data.RouteGeometry
 import app.vela.core.data.google.parse.DirectionsParser
+import app.vela.core.data.google.parse.EntityListParser
 import app.vela.core.data.google.parse.PhotosParser
 import app.vela.core.data.google.parse.ReviewsParser
 import app.vela.core.data.google.parse.SearchParser
@@ -468,6 +469,24 @@ class GoogleMapsDataSource @Inject constructor(
                 else RouteGeometry.reposition(r, geoms.getOrNull(i) ?: listOf(origin, destination))
             }
         }
+    }
+
+    /** Google Maps shared-list import (issue #1), fully keyless. The share link resolves
+     *  logged-out to the list page, whose HTML embeds a READY-MADE prefetch URL for the
+     *  `/maps/preview/entitylist/getlist` RPC (list id + page session token included) —
+     *  lift it verbatim, call it, parse. No pb construction, so a Google-side pb change
+     *  can't break the URL builder (only the parser paths, which are documented in
+     *  [EntityListParser]). Calibrated live 2026-07-08. */
+    override suspend fun importList(shareUrl: String): app.vela.core.model.ImportedList? = io {
+        runCatching {
+            session.ensure()
+            val html = get(shareUrl.trim())
+            val href = Regex("""(/maps/preview/entitylist/getlist\?[^"'\s]+)""")
+                .find(html)?.groupValues?.get(1)
+                ?.replace("&amp;", "&")
+                ?: return@runCatching null
+            EntityListParser.parse(get("https://www.google.com$href"))
+        }.getOrNull()
     }
 
     // --- plumbing -----------------------------------------------------------
