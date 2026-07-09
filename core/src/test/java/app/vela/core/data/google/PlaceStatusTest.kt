@@ -45,7 +45,7 @@ class PlaceStatusTest {
     }
 
     /** Owner-set temporary closure → first-class flag (the place-sheet banner + hours suppression;
-     *  the "the temp-closure case" resilience ask — when the owner DOES tell Google, Vela must be loud about it).
+     *  the temp-closure resilience ask — when the owner DOES tell Google, Vela must be loud about it).
      *  Multilingual CONTAINS matching: several languages put the closed word first. */
     @Test fun `temporary closure is detected across languages, and only when present`() {
         assertEquals(true, SearchParser.isTemporarilyClosed("Temporarily closed"))
