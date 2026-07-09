@@ -478,4 +478,5 @@
     <string name="mapvm_export_lists_chooser">Експортувати списки</string>
     <string name="lists_empty_hint">Поки немає списків. Натисніть «Новий» або збережіть місце з його сторінки.</string>
     <string name="lists_place_count">%1$d місць</string>
+    <string name="navservice_notif_eta">Прибуття %1$s</string>
 </resources>
