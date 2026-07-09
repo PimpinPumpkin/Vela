@@ -42,6 +42,20 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
     no `isSystemInDarkTheme`; fails on any real violation. Wire it into CI.
   - `audit_dynamic.sh` — EXHAUSTIVE on-device tour: every surface opens focused, focus is never lost
     across a full traversal, BACK exits. "Nothing escapes the auditor."
+- **Dead-code gate (two engines, both in CI, `main`).** ACCURACY IS THE CONTRACT: neither may flag
+  anything actually needed (a false positive is a bug; a false negative is tolerated).
+  - `./gradlew :core:detekt :app:detekt` — parser-level dead code detekt finds and grep CANNOT:
+    unused imports (delegate-aware, so Compose `by remember` `getValue`/`setValue` imports are not
+    false-flagged), unused private members, unreachable code. Scoped to dead-code rules ONLY
+    (`config/detekt/detekt.yml`, `buildUponDefaultConfig = false`) on the two shipped modules; NOT a
+    style/complexity linter. detekt runs without type resolution, so it needs no compile classpath.
+  - `deadcode_test_suite/audit_deadcode.sh` — the whole-tree half (host-side python, no JDK): fails
+    on any public/internal top-level declaration the ENTIRE tree (every module, .kt + .xml + .kts)
+    never references, counting a name used ANYWHERE (even only in its own file) as live and skipping
+    every reflection/DI/framework ENTRY POINT (`@Composable`/`@Inject`/`@Provides`/`@HiltViewModel`/
+    `@AndroidEntryPoint`/`@Module`/`@Serializable`/`@Preview`/`@Test`/`@Keep`/`@JvmStatic`, the
+    R8-kept `core/.../model` package, the four manifest entry classes). Also surfaces whole DEAD
+    MODULES (`:ghprobe`) as an advisory CHECK, not a hard fail. Mirrors `audit_static.sh` in shape.
 - **Auditing a real drive.** A saved trip stores the navigated route too (`core/replay/TripLog`
   format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
   cards/voice said against the plotted route from a shared trip CSV, call `TripLog.audit(csv)`

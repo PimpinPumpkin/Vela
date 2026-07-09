@@ -262,7 +262,6 @@
     <string name="mapscreen_got_it">Verstanden</string>
     <string name="mapscreen_heads_up">Hinweis</string>
     <string name="mapscreen_dismiss">Schließen</string>
-    <string name="mapscreen_results_count">%1$d Ergebnisse</string>
     <string name="mapscreen_shrink_list">Liste verkleinern</string>
     <string name="mapscreen_expand_list">Liste vergrößern</string>
     <string name="mapscreen_close_results">Suchergebnisse schließen</string>
@@ -273,7 +272,6 @@
     <string name="mapscreen_sort_rating">Sortierung: Bewertung</string>
     <string name="mapscreen_sort_distance">Sortierung: Entfernung</string>
     <string name="mapscreen_permanently_closed">Dauerhaft geschlossen</string>
-    <string name="mapscreen_hide_results">Ergebnisse ausblenden</string>
     <string name="mapscreen_section_saved">Gespeichert</string>
     <string name="mapscreen_section_recent">Zuletzt verwendet</string>
     <string name="mapscreen_section_recent_searches">Letzte Suchen</string>
@@ -304,10 +302,8 @@
     <string name="root_not_now">Jetzt nicht</string>
     <string name="root_voice_title">Sprachausgabe der Navigation</string>
     <string name="root_voice_body_intro">Vela hat eine eigene, hochwertige Stimme, die vollständig auf Ihrem Telefon läuft – die natürlichsten Ansagen, ohne Konto oder Zusatz-App. Empfohlen. Es ist ein einmaliger Download von ~%1$d MB (WLAN empfohlen).</string>
-    <string name="root_voice_body_system">Lieber nicht? Sie können stattdessen eine bereits auf Ihrem Telefon installierte Text-zu-Sprache-Stimme verwenden.</string>
     <string name="root_voice_body_outro">Sie können dies jederzeit unter Einstellungen → Stimme ändern.</string>
     <string name="root_voice_download">Vela-Stimme herunterladen</string>
-    <string name="root_voice_use_system">Systemstimme verwenden</string>
     <string name="root_offline_title">Offline-Karten</string>
     <string name="root_offline_body">Vela bezieht Orte, Suche und Routen von Google. Ohne Signal funktionieren daher nur Gebiete, die du heruntergeladen hast. Richte jetzt ein Gebiet ein, damit du abgesichert bist, wenn der Empfang wegfällt.</string>
     <string name="root_offline_setup">Offline einrichten</string>
@@ -349,7 +345,6 @@
     <string name="mapvm_search_needs_recalibration">Suche muss neu kalibriert werden: %1$s</string>
     <string name="mapvm_offline_no_data">Du bist offline. Lade unter Einstellungen ▸ Offline einen Bereich herunter, um ohne Verbindung zu suchen.</string>
     <string name="mapvm_offline_no_match">Keine Offline-Ergebnisse für \"%1$s\" in deinem gespeicherten Bereich. Die Offline-Suche umfasst die heruntergeladenen OpenStreetMap-Orte.</string>
-    <string name="mapvm_offline_results">Offline-Ergebnisse (keine Verbindung)</string>
     <string name="mapvm_search_failed_reason">Suche fehlgeschlagen: %1$s</string>
     <string name="mapvm_none_found_along_route">Kein \"%1$s\" entlang Ihrer Route gefunden</string>
     <string name="mapvm_search_failed">Suche fehlgeschlagen</string>

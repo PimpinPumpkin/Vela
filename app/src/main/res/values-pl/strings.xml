@@ -262,7 +262,6 @@
     <string name="mapscreen_got_it">OK</string>
     <string name="mapscreen_heads_up">Uwaga</string>
     <string name="mapscreen_dismiss">Odrzuć</string>
-    <string name="mapscreen_results_count">%1$d wyników</string>
     <string name="mapscreen_shrink_list">Zwiń listę</string>
     <string name="mapscreen_expand_list">Rozwiń listę</string>
     <string name="mapscreen_close_results">Zamknij wyniki wyszukiwania</string>
@@ -273,7 +272,6 @@
     <string name="mapscreen_sort_rating">Sortowanie: Ocena</string>
     <string name="mapscreen_sort_distance">Sortowanie: Odległość</string>
     <string name="mapscreen_permanently_closed">Zamknięte na stałe</string>
-    <string name="mapscreen_hide_results">Ukryj wyniki</string>
     <string name="mapscreen_section_saved">Zapisane</string>
     <string name="mapscreen_section_recent">Ostatnie</string>
     <string name="mapscreen_section_recent_searches">Ostatnie wyszukiwania</string>
@@ -304,10 +302,8 @@
     <string name="root_not_now">Nie teraz</string>
     <string name="root_voice_title">Głos nawigacji mówionej</string>
     <string name="root_voice_body_intro">Vela ma własny głos wysokiej jakości, który działa w całości na Twoim telefonie — najbardziej naturalne wskazówki głosowe, bez konta i dodatkowej aplikacji. Zalecany. To jednorazowe pobranie ~%1$d MB (zalecane wifi).</string>
-    <string name="root_voice_body_system">Wolisz nie? Możesz zamiast tego użyć głosu syntezy mowy już zainstalowanego na telefonie.</string>
     <string name="root_voice_body_outro">Możesz to zmienić w dowolnej chwili w Ustawienia → Głos.</string>
     <string name="root_voice_download">Pobierz głos Vela</string>
-    <string name="root_voice_use_system">Użyj głosu systemowego</string>
     <string name="root_offline_title">Mapy offline</string>
     <string name="root_offline_body">Vela pobiera miejsca, wyszukiwanie i trasy z Google, więc bez sygnału zadziałają tylko obszary, które pobrałeś. Skonfiguruj obszar teraz, aby mieć pokrycie, gdy stracisz zasięg.</string>
     <string name="root_offline_setup">Skonfiguruj offline</string>
@@ -349,7 +345,6 @@
     <string name="mapvm_search_needs_recalibration">Wyszukiwanie wymaga rekalibracji: %1$s</string>
     <string name="mapvm_offline_no_data">Jesteś offline. Pobierz obszar w Ustawieniach ▸ Offline, aby wyszukiwać bez połączenia.</string>
     <string name="mapvm_offline_no_match">Brak wyników offline dla \"%1$s\" w zapisanym obszarze. Wyszukiwanie offline obejmuje pobrane miejsca OpenStreetMap.</string>
-    <string name="mapvm_offline_results">Wyniki offline (brak połączenia)</string>
     <string name="mapvm_search_failed_reason">Wyszukiwanie nie powiodło się: %1$s</string>
     <string name="mapvm_none_found_along_route">Nie znaleziono „%1$s” wzdłuż Twojej trasy</string>
     <string name="mapvm_search_failed">Wyszukiwanie nie powiodło się</string>

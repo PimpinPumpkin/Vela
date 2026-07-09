@@ -7,7 +7,6 @@ import app.vela.core.model.Route
 import app.vela.core.model.distanceTo
 import kotlin.math.cos
 import kotlin.math.hypot
-import kotlin.math.roundToInt
 
 /**
  * Pure turn-by-turn logic: given a [Route], the previous [NavState] and a fresh

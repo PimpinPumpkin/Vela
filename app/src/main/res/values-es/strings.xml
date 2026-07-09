@@ -262,7 +262,6 @@
     <string name="mapscreen_got_it">Entendido</string>
     <string name="mapscreen_heads_up">Atención</string>
     <string name="mapscreen_dismiss">Descartar</string>
-    <string name="mapscreen_results_count">%1$d resultados</string>
     <string name="mapscreen_shrink_list">Reducir lista</string>
     <string name="mapscreen_expand_list">Expandir lista</string>
     <string name="mapscreen_close_results">Cerrar los resultados de búsqueda</string>
@@ -273,7 +272,6 @@
     <string name="mapscreen_sort_rating">Orden: Valoración</string>
     <string name="mapscreen_sort_distance">Orden: Distancia</string>
     <string name="mapscreen_permanently_closed">Cerrado permanentemente</string>
-    <string name="mapscreen_hide_results">Ocultar resultados</string>
     <string name="mapscreen_section_saved">Guardados</string>
     <string name="mapscreen_section_recent">Recientes</string>
     <string name="mapscreen_section_recent_searches">Búsquedas recientes</string>
@@ -304,10 +302,8 @@
     <string name="root_not_now">Ahora no</string>
     <string name="root_voice_title">Voz de navegación hablada</string>
     <string name="root_voice_body_intro">Vela tiene su propia voz de alta calidad que se ejecuta por completo en tu teléfono: las indicaciones habladas más naturales, sin cuenta ni apps adicionales. Recomendada. Es una descarga única de ~%1$d MB (se recomienda wifi).</string>
-    <string name="root_voice_body_system">¿Prefieres no hacerlo? Puedes usar en su lugar una voz de texto a voz que ya tengas instalada en el teléfono.</string>
     <string name="root_voice_body_outro">Puedes cambiar esto cuando quieras en Ajustes → Voz.</string>
     <string name="root_voice_download">Descargar voz de Vela</string>
-    <string name="root_voice_use_system">Usar voz del sistema</string>
     <string name="root_offline_title">Mapas sin conexión</string>
     <string name="root_offline_body">Vela obtiene lugares, búsqueda e indicaciones de Google, así que sin señal solo funcionarán las zonas que hayas descargado. Configura una zona ahora para estar cubierto cuando pierdas la conexión.</string>
     <string name="root_offline_setup">Configurar sin conexión</string>
@@ -349,7 +345,6 @@
     <string name="mapvm_search_needs_recalibration">La búsqueda necesita recalibración: %1$s</string>
     <string name="mapvm_offline_no_data">Estás sin conexión. Descarga una zona en Ajustes ▸ Sin conexión para buscar sin conexión.</string>
     <string name="mapvm_offline_no_match">Sin resultados sin conexión para \"%1$s\" en tu zona guardada. La búsqueda sin conexión incluye los lugares de OpenStreetMap que descargaste.</string>
-    <string name="mapvm_offline_results">Resultados sin conexión (sin conexión)</string>
     <string name="mapvm_search_failed_reason">Error en la búsqueda: %1$s</string>
     <string name="mapvm_none_found_along_route">No se encontró \"%1$s\" a lo largo de tu ruta</string>
     <string name="mapvm_search_failed">Error en la búsqueda</string>
