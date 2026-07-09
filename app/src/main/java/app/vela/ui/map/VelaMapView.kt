@@ -64,6 +64,11 @@ private const val ROUTE_LAYER = "vela-route"
 // so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
 private const val ROUTE_DASH_LAYER = "vela-route-dash"
 private const val ROUTE_DOT_IMG = "vela-route-dot"
+private const val ROUTE_DOT_SRC = "vela-route-dot-src"
+// Target centre-to-centre dot spacing in MapLibre's density-independent px (dp) — the unit
+// getMetersPerPixelAtLatitude works in. ~17dp = a ~10dp dot + a ~7dp gap, Google's dense chain.
+// Held constant at EVERY zoom by regenerating the dot POINTS ourselves (see regenRouteDots).
+private const val ROUTE_DOT_SPACING_PX = 17.0
 // The AHEAD half of the nav route. During nav the driven/ahead cut is a GEOMETRY split, not a
 // gradient stop: MapLibre rasterizes line-gradient into a 256×1 LINEAR-filtered texture, so a
 // "hard" step() cut renders as a grey→blue fade of routeLength/256 metres (~39 m on a 10 km
@@ -774,7 +779,16 @@ fun VelaMapView(
                     }
                     Unit
                 }
-                map.addOnCameraMoveListener { reportScale() }
+                map.addOnCameraMoveListener {
+                    reportScale()
+                    // Keep the walk/bike dot spacing constant WHILE zooming, not just at idle —
+                    // gated to ~0.2-zoom steps so it's a handful of cheap regens per zoom doubling.
+                    if (dashDotPoly.isNotEmpty() &&
+                        kotlin.math.abs(map.cameraPosition.zoom - dashDotZoom) > 0.2
+                    ) {
+                        map.getStyle { st -> regenRouteDots(map, st, dashDotPoly) }
+                    }
+                }
                 reportScale()
                 // Press-and-hold anywhere → drop a pin and reverse-geocode it.
                 map.addOnMapLongClickListener { p ->
@@ -980,13 +994,13 @@ fun VelaMapView(
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(map, style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(map, it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
             }
@@ -1200,9 +1214,12 @@ private fun ensureLayers(style: Style) {
         // cram together zoomed out (user report 2026-07-08). The dot is an SDF template so
         // iconColor can restyle it like lineColor did.
         if (style.getImage(ROUTE_DOT_IMG) == null) style.addImage(ROUTE_DOT_IMG, routeDotBitmap(), true)
-        val routeDash = SymbolLayer(ROUTE_DASH_LAYER, ROUTE_SRC).withProperties(
-            PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
-            PropertyFactory.symbolSpacing(13f),
+        // POINT features on their own source, regenerated per zoom (regenRouteDots) — MapLibre's
+        // line-placed symbol spacing is computed in tile space and stretches up to ~2x between
+        // integer zooms (user: "the gaps between integers are rough"), so we do the spacing math
+        // ourselves and the gap is EXACTLY constant on screen at every zoom.
+        style.addSource(GeoJsonSource(ROUTE_DOT_SRC))
+        val routeDash = SymbolLayer(ROUTE_DASH_LAYER, ROUTE_DOT_SRC).withProperties(
             PropertyFactory.iconImage(ROUTE_DOT_IMG),
             PropertyFactory.iconColor("#1F6FEB"),
             // The dots ARE the route line: they must never be collision-culled or thinned.
@@ -1802,6 +1819,40 @@ private class NavPuck {
 }
 
 /** Cumulative along-route distance (m) at each polyline vertex (cum[0] = 0). */
+// The polyline currently dotted (walk/bike route) + the zoom its dots were computed at, so a
+// zoom change past ~0.2 regenerates them (camera-move listener) and route swaps re-dot.
+private var dashDotPoly: List<LatLng> = emptyList()
+private var dashDotZoom: Double = -1e9
+
+/** Regenerate the walk/bike dot POINTS for the current zoom: one dot every
+ *  [ROUTE_DOT_SPACING_PX] screen pixels' worth of metres along the route. */
+private fun regenRouteDots(map: org.maplibre.android.maps.MapLibreMap, style: Style, poly: List<LatLng>) {
+    val src = style.getSourceAs<GeoJsonSource>(ROUTE_DOT_SRC) ?: return
+    dashDotPoly = poly
+    dashDotZoom = map.cameraPosition.zoom
+    if (poly.size < 2) {
+        src.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+        return
+    }
+    val mpp = map.projection.getMetersPerPixelAtLatitude(poly.first().lat)
+    val spacingM = mpp * ROUTE_DOT_SPACING_PX
+    val cum = cumLengths(poly)
+    val total = cum.last()
+    // Cap the dot count so a cross-town bike route zoomed all the way in can't explode the
+    // source; past the cap the spacing grows, which only ever affects far-off-screen dots.
+    val count = (total / spacingM).toInt().coerceAtMost(3000)
+    val feats = ArrayList<Feature>(count + 1)
+    var d = 0.0
+    var i = 0
+    while (d <= total && i <= count) {
+        val (pt, _) = pointAtMeters(poly, cum, d)
+        feats.add(Feature.fromGeometry(Point.fromLngLat(pt.lng, pt.lat)))
+        d += spacingM
+        i += 1
+    }
+    src.setGeoJson(FeatureCollection.fromFeatures(feats))
+}
+
 private fun cumLengths(poly: List<LatLng>): DoubleArray {
     val cum = DoubleArray(poly.size)
     for (i in 1 until poly.size) cum[i] = cum[i - 1] + poly[i - 1].distanceTo(poly[i])
@@ -1916,6 +1967,7 @@ private fun routeGradient(
 }
 
 private fun applyData(
+    map: org.maplibre.android.maps.MapLibreMap,
     style: Style,
     route: List<LatLng>,
     routeColor: String,
@@ -1971,18 +2023,24 @@ private fun applyData(
     // 0 when not navigating (no driven-grey); only floor to a visible sliver once moving.
     val p = if (routeProgress <= 0f) 0f else routeProgress.coerceIn(0.001f, 0.998f)
     if (routeDashed) {
-        // Walking / biking: show the dashed line (solid colour, no traffic gradient — there
-        // isn't any for foot/bike), hide the solid one.
+        // Walking / biking: show the dotted line (solid colour, no traffic gradient — there
+        // isn't any for foot/bike), hide the solid one. Re-dot when the route swapped or the
+        // zoom moved enough to change the on-screen spacing (identity + 0.2-zoom gates keep
+        // this cheap on the per-recomposition applyData path).
         style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
         style.getLayer(ROUTE_DASH_LAYER)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
             PropertyFactory.iconColor(routeInt),
         )
+        if (dashDotPoly !== route || kotlin.math.abs(map.cameraPosition.zoom - dashDotZoom) > 0.2) {
+            regenRouteDots(map, style, route)
+        }
     } else if (!navMode) {
         // Driving, not navigating (preview / route picker): the solid traffic-coloured line,
         // no driven-grey. The nav ahead-suffix layer is cleared ONCE on the nav→browse
         // transition so the last drive's remnant doesn't linger under previews.
         style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        if (dashDotPoly.isNotEmpty()) regenRouteDots(map, style, emptyList())
         style.getLayer(ROUTE_LAYER)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
             PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
@@ -2176,10 +2234,10 @@ private fun navPuckBitmap(): Bitmap {
 private fun routeDotBitmap(): Bitmap {
     // Small dot: line-placed symbols must FIT the line (tight curves skip icons that don't),
     // so a compact dot keeps the chain continuous through bends.
-    val d = 14
+    val d = 26
     val bmp = Bitmap.createBitmap(d, d, Bitmap.Config.ARGB_8888)
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
-    Canvas(bmp).drawCircle(d / 2f, d / 2f, d / 2f - 1.5f, paint)
+    Canvas(bmp).drawCircle(d / 2f, d / 2f, d / 2f - 2f, paint)
     return bmp
 }
 
