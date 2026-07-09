@@ -110,12 +110,17 @@ object SearchParser {
         val lat = field("lat").dbl() ?: return null
         val lng = field("lng").dbl() ?: return null
         val loc = LatLng(lat, lng)
-        // ONE status string feeds BOTH the open/closed boolean AND the displayed text, resolved in the
-        // SAME order (richest first: status118 → statusRich → openStatus). They used to read in OPPOSITE
-        // orders (openNow openStatus-first, statusText status118-first), so when the [203]/[118] status
-        // nodes disagreed the colour contradicted the words the user saw (audit 2026-07-06). Deriving the
-        // boolean from the exact string displayed makes that impossible.
-        val statusStr = field("status118").str() ?: field("statusRich").str() ?: field("openStatus").str()
+        // ONE status string feeds BOTH the open/closed boolean AND the displayed text (they used to
+        // read in OPPOSITE orders, so the colour could contradict the words - audit 2026-07-06).
+        // [203] FIRST, and hours must come from the SAME block as the status (live probe 2026-07-08,
+        // the "Safeway closes soon at 10 PM but the hours say 5 AM-1 AM" report): [203] is the MAIN
+        // entity's schedule while [118] carries a DEPARTMENT'S sub-schedule (a Safeway's [118] read
+        // "9 AM-5 PM" - the pharmacy - while its [203] read "6 AM-12 AM", the store; Google's own UI
+        // shows the [203] pair). We used to take status from [118] and hours from [203], which
+        // mismatched on every department store.
+        val rich = field("statusRich").str()
+        val s118 = field("status118").str()
+        val statusStr = rich ?: s118 ?: field("openStatus").str()
         return Place(
             id = "g:" + name.hashCode() + ":" + (lat * 1e4).toInt(),
             name = name,
@@ -166,7 +171,9 @@ object SearchParser {
             temporarilyClosed = isTemporarilyClosed(
                 field("status118").str(), field("statusRich").str(), field("openStatus").str(),
             ),
-            hours = parseHours(entry, paths),
+            // Coherent pairing: when the displayed status came from [118] (no [203] status), take
+            // the hours from [118] first too - status and table then describe the same schedule.
+            hours = parseHours(entry, paths, prefer118 = rich == null && s118 != null),
             photoUrls = parsePhotos(entry, paths),
             featuredReview = field("featuredReview").str()
                 ?.trim()?.trim('"', '“', '”')?.ifBlank { null },
@@ -350,12 +357,16 @@ object SearchParser {
         }
     }
 
-    /** Weekly hours — `hours203` first, falling back to `hours118`. Both are a
-     *  7-entry array starting today; each day = name `[0]` + text `[3][0][0]`
+    /** Weekly hours — `hours203` (the main entity's schedule) first, falling back to `hours118`
+     *  (a department's sub-schedule, e.g. the pharmacy inside a grocery store); [prefer118] flips
+     *  the order when the displayed STATUS came from [118], so the table matches the status. Both
+     *  are a 7-entry array starting today; each day = name `[0]` + text `[3][0][0]`
      *  (leaf indices stable). */
-    private fun parseHours(entry: JsonElement, paths: Map<String, List<Int>>): List<String> =
-        readHours(entry.atPath(pathOf(paths, "hours203")))
-            .ifEmpty { readHours(entry.atPath(pathOf(paths, "hours118"))) }
+    private fun parseHours(entry: JsonElement, paths: Map<String, List<Int>>, prefer118: Boolean = false): List<String> {
+        val h203 = { readHours(entry.atPath(pathOf(paths, "hours203"))) }
+        val h118 = { readHours(entry.atPath(pathOf(paths, "hours118"))) }
+        return if (prefer118) h118().ifEmpty(h203) else h203().ifEmpty(h118)
+    }
 
     /** "People also search for": the root-level similar-places list (`similar` = `[2][11][0]`,
      *  present when a search focuses on one result). Each entry is
