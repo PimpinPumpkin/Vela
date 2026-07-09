@@ -16,6 +16,8 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
 import app.vela.MainActivity
 import app.vela.R
+import android.graphics.Bitmap
+import app.vela.core.model.ManeuverType
 import app.vela.core.nav.NavSession
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
@@ -26,6 +28,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import java.text.DateFormat
+import java.util.Date
 import javax.inject.Inject
 
 /**
@@ -51,6 +55,10 @@ class NavigationService : Service() {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var observing = false
+
+    // One-entry glyph cache (state ticks ~1 Hz; the type changes only at each turn).
+    private var cachedGlyph: Bitmap? = null
+    private var cachedGlyphType: ManeuverType? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -128,8 +136,8 @@ class NavigationService : Service() {
         } else {
             // "12 min · 3.4 mi · Arrive 12:45" - the ETA clock is what a passenger glancing at
             // the shade actually wants, same line Google puts there.
-            val eta = java.text.DateFormat.getTimeInstance(java.text.DateFormat.SHORT)
-                .format(java.util.Date(System.currentTimeMillis() + (s.remainingDuration * 1000).toLong()))
+            val eta = DateFormat.getTimeInstance(DateFormat.SHORT)
+                .format(Date(System.currentTimeMillis() + (s.remainingDuration * 1000).toLong()))
             getString(
                 R.string.navservice_notif_text_remaining,
                 formatDuration(s.remainingDuration),
@@ -157,7 +165,7 @@ class NavigationService : Service() {
         // notification shows WHAT to do, not just how far. Cached per type - state ticks every
         // second and re-rasterizing an identical bitmap each tick is waste.
         val maneuverType = if (s.arrived) {
-            app.vela.core.model.ManeuverType.ARRIVE
+            ManeuverType.ARRIVE
         } else {
             s.route?.maneuvers?.getOrNull(s.nav.stepIndex)?.type
         }
@@ -172,7 +180,7 @@ class NavigationService : Service() {
             .setContentTitle(title)
             .setContentText(text)
             .setLargeIcon(largeIcon)
-            .setColor(0xFF14857A.toInt()) // VelaTeal accent on the action/app name row
+            .setColor(NavGlyphs.TEAL) // VelaTeal accent on the action/app name row
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setShowWhen(false) // the post time is noise on a continuously-updating nav card
@@ -184,9 +192,6 @@ class NavigationService : Service() {
             .build()
     }
 
-    // One-entry glyph cache (state ticks ~1 Hz; the type changes only at each turn).
-    private var cachedGlyph: android.graphics.Bitmap? = null
-    private var cachedGlyphType: app.vela.core.model.ManeuverType? = null
 
     private fun startForegroundCompat(notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

@@ -92,8 +92,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.ElevatedFilterChip
 import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -1336,7 +1334,7 @@ fun MapScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (downloadingVoiceId != null) {
-                    VoiceDownloadCard(installing = state.voiceInstalling, pct = state.kokoroDownloadPct ?: 0f)
+                    VoiceDownloadCard(installing = state.voiceInstalling, pct = state.voiceDownloadPct ?: 0f)
                 }
                 // A region (state/country) download: the routing graph first, then its place pack —
                 // same progress card treatment as the voice download, so a Settings-started state
@@ -2266,8 +2264,6 @@ private fun RegionDownloadCard(name: String, places: Boolean, pct: Int, modifier
     }
 }
 
-/** A notice pushed through the signed calibration channel — level-tinted, with an
- *  optional "Learn more" link and a per-id Dismiss. */
 /** "A newer Vela is out" card (self-updater): download with progress, then the system
  *  installer takes over. "Not now" silences this version until a newer one appears. */
 @Composable
@@ -2303,6 +2299,8 @@ private fun UpdateCard(
     }
 }
 
+/** A notice pushed through the signed calibration channel - level-tinted, with an
+ *  optional "Learn more" link and a per-id Dismiss. */
 @Composable
 private fun NoticeCard(notice: Notice, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -2371,14 +2369,8 @@ private fun FasterRouteCard(
     }
 }
 
-/**
- * The posted speed-limit sign shown by the speedometer during nav — US MUTCD style (white rounded
- * rectangle, "SPEED LIMIT" + number) in imperial units, EU/RoW style (white disc, red ring, number)
- * in metric. The number turns red when the current GPS speed exceeds the limit by a tolerance (GPS
- * speed is noisy, so a plain > would flap). [limitKmh] is the OSM/GraphHopper value in km/h.
- */
-/** Parking history menu (long-press the P button). Restore an older spot after an accidental
- *  overwrite; delete stale entries. Newest first; the one matching the current spot is tagged. */
+/** Manage-lists dialog (Your lists): create, rename, restyle or delete a list;
+ *  tapping one opens its places. */
 @Composable
 private fun ListsSheet(
     lists: List<app.vela.core.model.PlaceList>,
@@ -2470,6 +2462,8 @@ private fun ListsSheet(
     }
 }
 
+/** Parking history menu (long-press the P button). Restore an older spot after an accidental
+ *  overwrite; delete stale entries. Newest first; the one matching the current spot is tagged. */
 @Composable
 private fun ParkingHistorySheet(
     history: List<app.vela.core.model.ParkedSpot>,
@@ -2652,6 +2646,12 @@ private fun ListEditorDialog(
     }
 }
 
+/**
+ * The posted speed-limit sign shown by the speedometer during nav - US MUTCD style (white rounded
+ * rectangle, "SPEED LIMIT" + number) in imperial units, EU/RoW style (white disc, red ring, number)
+ * in metric. The number turns red when the current GPS speed exceeds the limit by a tolerance (GPS
+ * speed is noisy, so a plain > would flap). [limitKmh] is the OSM/GraphHopper value in km/h.
+ */
 @Composable
 private fun SpeedLimitSign(
     limitKmh: Double,

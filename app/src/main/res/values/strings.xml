@@ -296,7 +296,6 @@
     <string name="mapscreen_sort_rating">Sort: Rating</string>
     <string name="mapscreen_sort_distance">Sort: Distance</string>
     <string name="mapscreen_permanently_closed">Permanently closed</string>
-    <string name="mapscreen_hide_results">Hide results</string>
     <string name="mapscreen_section_saved">Saved</string>
     <string name="mapscreen_section_recent">Recent</string>
     <string name="mapscreen_section_recent_searches">Recent searches</string>

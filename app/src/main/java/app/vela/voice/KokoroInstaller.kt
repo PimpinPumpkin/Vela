@@ -14,9 +14,9 @@ import javax.inject.Singleton
 
 /**
  * Downloads a Vela neural-voice model (a sherpa-onnx `.tar.bz2` from the `tts-models` GitHub release)
- * into a target dir under `filesDir`, extracting it, reporting 0f..1f progress. Generic over the voice
- * (Kokoro / Piper / Matcha). Matcha additionally needs a separate vocoder `.onnx` — pass [extraUrl]/
- * [extraName] and it's fetched into the same dir. Best-effort: any failure wipes the partial model.
+ * into a target dir under `filesDir`, extracting it, reporting 0f..1f progress. Best-effort: any
+ * failure wipes the partial model. (Named for the original Kokoro voice; today it fetches the Piper
+ * catalog models, and the multi-part Kokoro/Matcha plumbing is gone with those voices.)
  */
 @Singleton
 class KokoroInstaller @Inject constructor(
@@ -30,14 +30,12 @@ class KokoroInstaller @Inject constructor(
         .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
         .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .build()
-    /** Download [url] into [destDir] (extracting the archive's single top-level folder into it), and,
-     *  if given, an [extraUrl] file saved as [extraName] alongside it. [onProgress] is 0f..1f. */
+    /** Download [url] into [destDir] (extracting the archive's single top-level folder into it).
+     *  [onProgress] is 0f..1f. */
     suspend fun download(
         url: String,
         destDir: File,
         sizeEst: Long,
-        extraUrl: String? = null,
-        extraName: String? = null,
         onExtracting: () -> Unit = {},
         onProgress: (Float) -> Unit,
     ): Boolean = withContext(Dispatchers.IO) {
@@ -47,11 +45,8 @@ class KokoroInstaller @Inject constructor(
             // The download progress bar is the DOWNLOAD only (honest + fast). The bunzip2+untar of the
             // ~67 MB archive is seconds of CPU that no % can meaningfully track, so instead of mapping it
             // into the tail (which read as a download "hanging at 98%" / crawling the last 10%, user
-            // 2026-07-07) we flip to a separate "Installing…" phase via [onExtracting]. One-part voices
-            // (all shipped Piper voices) use the whole bar for the download; the two-part Matcha path keeps
-            // its vocoder tail.
-            val tarSpan = if (extraUrl != null) 0.6f else 1.0f
-            if (!stream(url, tmp, sizeEst, 0f, tarSpan, onProgress)) return@withContext false
+            // 2026-07-07) we flip to a separate "Installing…" phase via [onExtracting].
+            if (!stream(url, tmp, sizeEst, 0f, 1f, onProgress)) return@withContext false
 
             onExtracting()
             staging.deleteRecursively(); staging.mkdirs()
@@ -60,11 +55,6 @@ class KokoroInstaller @Inject constructor(
             destDir.deleteRecursively()
             if (!inner.renameTo(destDir)) inner.copyRecursively(destDir, overwrite = true)
 
-            if (extraUrl != null && extraName != null) {
-                if (!stream(extraUrl, File(destDir, extraName), VOCODER_SIZE_EST, 0.6f, 0.4f, onProgress)) {
-                    destDir.deleteRecursively(); return@withContext false
-                }
-            }
             onProgress(1f)
             true
         } catch (t: Throwable) {
@@ -115,22 +105,5 @@ class KokoroInstaller @Inject constructor(
                 }
             }
         }
-    }
-
-    companion object {
-        // sherpa-onnx tts-models release .tar.bz2 sources + fallback sizes.
-        const val KOKORO_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/kokoro-multi-lang-v1_0.tar.bz2"
-        const val KOKORO_SIZE = 349_418_188L
-        const val PIPER_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-libritts_r-medium.tar.bz2"
-        const val PIPER_SIZE = 82_000_000L
-        const val MATCHA_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/matcha-icefall-en_US-ljspeech.tar.bz2"
-        const val MATCHA_SIZE = 76_739_916L
-        // Matcha's vocoder lives in the separate vocoder-models release.
-        const val VOCODER_URL =
-            "https://github.com/k2-fsa/sherpa-onnx/releases/download/vocoder-models/vocos-22khz-univ.onnx"
-        const val VOCODER_SIZE_EST = 53_884_024L
     }
 }
