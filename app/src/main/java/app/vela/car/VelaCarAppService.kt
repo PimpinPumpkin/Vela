@@ -1,39 +1,50 @@
 package app.vela.car
 
-import android.content.Intent
 import androidx.car.app.CarAppService
 import androidx.car.app.Session
-import androidx.car.app.Screen
 import androidx.car.app.validation.HostValidator
+import app.vela.car.screen.CarDeps
+import app.vela.core.data.MapDataSource
+import app.vela.core.data.PlaceShortcutStore
+import app.vela.core.data.RecentPlaceStore
+import app.vela.core.data.RouteEngine
+import app.vela.core.data.SavedPlaceStore
+import app.vela.core.location.LocationProvider
 import app.vela.core.nav.NavSession
+import app.vela.core.voice.VoiceGuide
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
 /**
- * Android Auto entry point. Vela registers as a NAVIGATION-category templated car
- * app (see the manifest + automotive_app_desc.xml), so it shows up in the car
- * launcher next to Google Maps. The car UI is deliberately thin: the phone app
- * stays the brain (NavSession is the same singleton the phone feeds), the car
- * screen renders the shared map + the active turn.
+ * Android Auto / AAOS entry point. A [CarAppService] is a bound Service, so Hilt (`@AndroidEntryPoint`)
+ * injects the same process-wide `:core` singletons the phone app uses — one [NavSession], one
+ * [LocationProvider], one [MapDataSource]. The car UI reuses them entirely (see [CarDeps]); it adds
+ * no routing/nav/voice logic of its own (voice already speaks from [NavSession] events).
  *
- * Sideload note: a non-Play install only appears in AA after enabling
- * "Unknown sources" in Android Auto's developer settings, same as any
- * sideloaded car app. That also means the host is a developer-enabled one, so
- * the permissive host validator below doesn't widen anything in practice.
+ * NB projected Android Auto requires Google Play Services on the phone, and Google allowlists
+ * NAVIGATION apps for production AA — so on a degoogled phone the car UI is reachable only via
+ * Android Auto developer mode. The realistic GMS-free target is embedded AAOS. See the plan/ROADMAP.
  */
 @AndroidEntryPoint
 class VelaCarAppService : CarAppService() {
 
     @Inject lateinit var navSession: NavSession
+    @Inject lateinit var locationProvider: LocationProvider
+    @Inject lateinit var mapDataSource: MapDataSource
+    @Inject lateinit var recentPlaces: RecentPlaceStore
+    @Inject lateinit var savedPlaces: SavedPlaceStore
+    @Inject lateinit var shortcuts: PlaceShortcutStore
+    @Inject lateinit var voiceGuide: VoiceGuide
+    @Inject lateinit var routeEngine: RouteEngine
 
-    // Accept whatever host the user's device runs (the real AA host, or a dev
-    // head unit). Template apps expose no data a hostile "host" could pull that
-    // it couldn't get from the phone screen itself.
+    // Allow ANY Android Auto / AAOS host to connect. Vela is sideloaded (never on Play), targets kosher
+    // feature-phones + AAOS, and must "just work" on whatever head unit / DHU the user plugs into — the
+    // standard release allowlist (hosts_allowlist_sample) rejects hosts it doesn't recognise, which
+    // manifested as the app appearing but refusing to open. The host-spoofing risk this guards against
+    // is negligible for a non-Play, self-distributed nav app. (2026-07-07)
     override fun createHostValidator(): HostValidator = HostValidator.ALLOW_ALL_HOSTS_VALIDATOR
 
-    override fun onCreateSession(): Session = VelaCarSession(navSession)
-}
-
-class VelaCarSession(private val navSession: NavSession) : Session() {
-    override fun onCreateScreen(intent: Intent): Screen = CarMapScreen(carContext, navSession)
+    override fun onCreateSession(): Session = VelaCarSession(
+        CarDeps(navSession, locationProvider, mapDataSource, recentPlaces, savedPlaces, shortcuts, voiceGuide, routeEngine),
+    )
 }
