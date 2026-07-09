@@ -92,6 +92,8 @@ data class MapUiState(
                                      // when coarse fixes keep the ordinary stale timer from firing
     val compassHeading: Float? = null, // device facing (rotation-vector sensor) — browse cone when stopped
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
+    val parkingSpot: LatLng? = null, // one-tap "parked here" pin — survives restarts (prefs)
+    val parkedAtMillis: Long = 0L,   // when it was saved (for the chip's age label)
     val offline: Boolean = false, // no usable internet — drives the subtle offline indicator
     val query: String = "",
     val results: List<Place> = emptyList(),
@@ -263,6 +265,7 @@ class MapViewModel @Inject constructor(
         val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
+        restoreParkingSpot() // a saved "parked here" pin survives restarts
         refreshBuildingOverlays() // surface any installed open building overlays for the map to render
         observeConnectivity() // drive the subtle offline indicator (globe-slash + "Offline" in the bar)
         // Open any downloaded offline place packs so the POI/address stores can query them right away.
@@ -1615,6 +1618,52 @@ class MapViewModel @Inject constructor(
         // pick-mode left over from a previous place's directions.
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
         route(_state.value.travelMode)
+    }
+
+    // ---- Parking spot ----------------------------------------------------------------
+    // Long-press the locate button: remember where the car is. Persisted so it survives
+    // app restarts; the map shows a small "Parked" chip while one is set.
+
+    /** Saves the current fix as the parking spot. False when there's no location yet. */
+    fun saveParkingSpot(): Boolean {
+        val here = _state.value.myLocation ?: return false
+        val now = System.currentTimeMillis()
+        settingsPrefs.edit()
+            .putString("parking_lat", here.lat.toString())
+            .putString("parking_lng", here.lng.toString())
+            .putLong("parking_at", now)
+            .apply()
+        _state.update { it.copy(parkingSpot = here, parkedAtMillis = now) }
+        return true
+    }
+
+    fun clearParkingSpot() {
+        settingsPrefs.edit().remove("parking_lat").remove("parking_lng").remove("parking_at").apply()
+        _state.update { it.copy(parkingSpot = null, parkedAtMillis = 0L) }
+    }
+
+    /** Walk-back: the spot becomes the directions destination in WALK mode, one tap from
+     *  the chip. [label] is the localized "Parked car" (the VM stays string-free). */
+    fun walkToParkingSpot(label: String) {
+        val spot = _state.value.parkingSpot ?: return
+        val p = Place(id = "parking:${spot.lat},${spot.lng}", name = label, location = spot)
+        _state.update {
+            it.copy(
+                selected = p, directionsOpen = true, directionsReversed = false,
+                directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(),
+                pickingStop = false, results = emptyList(), resultsCollapsed = false, query = "",
+            )
+        }
+        if (_state.value.travelMode != TravelMode.WALK) setTravelMode(TravelMode.WALK) else route(TravelMode.WALK)
+    }
+
+    private fun restoreParkingSpot() {
+        // Fresh handle, not `settingsPrefs`: this runs from init{}, which executes BEFORE the
+        // later-declared settingsPrefs field is assigned (same trap the update-check hit).
+        val p = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+        val lat = p.getString("parking_lat", null)?.toDoubleOrNull() ?: return
+        val lng = p.getString("parking_lng", null)?.toDoubleOrNull() ?: return
+        _state.update { it.copy(parkingSpot = LatLng(lat, lng), parkedAtMillis = p.getLong("parking_at", 0L)) }
     }
 
     /** Swap origin and destination — route the other way (you ⇄ the place). The stop list is

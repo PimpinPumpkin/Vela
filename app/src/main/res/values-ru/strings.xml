@@ -439,4 +439,9 @@
     <string name="car_unmute">Включить звук</string>
     <string name="car_faster_route">Быстрее −%1$d мин</string>
     <string name="car_no_route">Маршрут недоступен — проверьте местоположение</string>
+    <string name="map_parking_saved">Место парковки сохранено</string>
+    <string name="map_parking_no_fix">Ожидание определения местоположения</string>
+    <string name="map_parking_chip">Припарковано</string>
+    <string name="map_parking_cleared">Место парковки удалено</string>
+    <string name="map_parked_car">Припаркованная машина</string>
 </resources>

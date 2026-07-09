@@ -439,4 +439,9 @@
     <string name="car_unmute">Włącz dźwięk</string>
     <string name="car_faster_route">Szybciej −%1$d min</string>
     <string name="car_no_route">Brak trasy — sprawdź lokalizację</string>
+    <string name="map_parking_saved">Zapisano miejsce parkowania</string>
+    <string name="map_parking_no_fix">Oczekiwanie na lokalizację</string>
+    <string name="map_parking_chip">Zaparkowano</string>
+    <string name="map_parking_cleared">Usunięto miejsce parkowania</string>
+    <string name="map_parked_car">Zaparkowany samochód</string>
 </resources>

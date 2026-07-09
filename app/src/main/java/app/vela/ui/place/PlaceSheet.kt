@@ -755,17 +755,17 @@ fun PlaceSheet(
 
             // A permanently-closed POI already says so in red above — don't also
             // nag "Hours not listed" beneath it (the dead-POI hours are moot).
+            // Departments (pharmacy / fuel / liquor / delivery-pickup windows) nest INSIDE the
+            // Hours expansion — the collapsed sheet stays one clean "Hours" line, and the whole
+            // schedule story (store week + every department) lives behind one tap. When a place
+            // somehow has departments but no main hours, they still show standalone.
+            val showDepartments = place.departments.isNotEmpty() && !place.permanentlyClosed && !place.temporarilyClosed
             if (place.hours.isNotEmpty()) {
-                HoursSection(place.hours, ink, dim)
+                HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
+            } else if (showDepartments) {
+                DepartmentsSection(place.departments, ink, dim)
             } else if (place.category != null && !place.permanentlyClosed) {
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
-            }
-            // In-store departments (pharmacy / fuel / liquor / delivery windows), each with its
-            // own status + expandable weekly hours — Google shows these and the schedules genuinely
-            // differ (a store open to 1 AM whose pharmacy closes at 9 PM). Suppressed with the main
-            // hours when the place is closed for good.
-            if (place.departments.isNotEmpty() && !place.permanentlyClosed && !place.temporarilyClosed) {
-                DepartmentsSection(place.departments, ink, dim)
             }
 
             // Phone + website as their own tappable rows showing the actual number / domain — placed
@@ -2679,7 +2679,12 @@ private fun DepartmentsSection(departments: List<app.vela.core.model.Department>
 }
 
 @Composable
-private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
+private fun HoursSection(
+    hours: List<String>,
+    ink: Color,
+    dim: Color,
+    departments: List<app.vela.core.model.Department> = emptyList(),
+) {
     var expanded by remember { mutableStateOf(false) }
     val days = remember(hours) {
         hours.map {
@@ -2734,23 +2739,30 @@ private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
             )
         }
         AnimatedVisibility(expanded) {
-            Column(Modifier.padding(start = 26.dp, top = 2.dp, bottom = 2.dp)) {
-                days.forEachIndexed { i, dt ->
-                    Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
-                        Text(
-                            dt[0],
-                            modifier = Modifier.weight(1f),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (i == 0) ink else dim,
-                            fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Normal,
-                        )
-                        Text(
-                            dt[1],
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (i == 0) ink else dim,
-                            fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Normal,
-                        )
+            Column {
+                Column(Modifier.padding(start = 26.dp, top = 2.dp, bottom = 2.dp)) {
+                    days.forEachIndexed { i, dt ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                            Text(
+                                dt[0],
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (i == 0) ink else dim,
+                                fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Normal,
+                            )
+                            Text(
+                                dt[1],
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (i == 0) ink else dim,
+                                fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        }
                     }
+                }
+                // Department schedules ride inside the same expansion, so the collapsed
+                // sheet stays one line and the full schedule story is one tap away.
+                if (departments.isNotEmpty()) {
+                    DepartmentsSection(departments, ink, dim)
                 }
             }
         }
