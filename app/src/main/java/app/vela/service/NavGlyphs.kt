@@ -16,7 +16,7 @@ import app.vela.core.model.ManeuverType
  */
 object NavGlyphs {
 
-    private const val TEAL = 0xFF14857A.toInt() // ui.theme.VelaTeal
+    const val TEAL = 0xFF14857A.toInt() // ui.theme.VelaTeal; also the notification accent
 
     fun bitmap(type: ManeuverType, sizePx: Int): Bitmap {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)

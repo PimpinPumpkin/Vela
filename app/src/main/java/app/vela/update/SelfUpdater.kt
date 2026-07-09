@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import javax.inject.Inject
@@ -63,26 +64,19 @@ class SelfUpdater @Inject constructor(
                     .firstOrNull { it.getString("name").endsWith(".apk") } ?: return null
                 return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"))
             }
+            fun getJson(url: String): String = http.newCall(
+                Request.Builder().url(url).header("Accept", "application/vnd.github+json").build(),
+            ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
             val candidate = if (includePrerelease) {
                 // The nightlies live in the full releases list (prereleases). Pick the highest code.
-                val json = http.newCall(
-                    Request.Builder()
-                        .url("https://api.github.com/repos/PimpinPumpkin/Vela/releases?per_page=15")
-                        .header("Accept", "application/vnd.github+json").build(),
-                ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
-                val arr = org.json.JSONArray(json)
+                val arr = JSONArray(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases?per_page=15"))
                 (0 until arr.length())
                     .map { arr.getJSONObject(it) }
                     .filterNot { it.optBoolean("draft") }
                     .mapNotNull { releaseToInfo(it) }
                     .maxByOrNull { it.versionCode }
             } else {
-                val json = http.newCall(
-                    Request.Builder()
-                        .url("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")
-                        .header("Accept", "application/vnd.github+json").build(),
-                ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
-                releaseToInfo(JSONObject(json))
+                releaseToInfo(JSONObject(getJson("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")))
             }
             candidate?.takeIf { it.versionCode > currentVersionCode }
         }.getOrNull()
