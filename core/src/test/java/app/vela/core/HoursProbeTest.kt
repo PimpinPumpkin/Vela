@@ -50,6 +50,17 @@ class HoursProbeTest {
             sb.appendLine("  openStatus = ${node.at(203, 1, 8, 0).str()}")
             sb.appendLine("  hours203   = ${SearchParser.readHours(node.at(203, 0))}")
             sb.appendLine("  hours118   = ${SearchParser.readHours(node.at(118, 0, 3, 0))}")
+            // Full [118] structure: is it a LIST of named departments?
+            node.at(118).arr()?.forEachIndexed { i, dep ->
+                sb.appendLine("  [118][$i] leaves:")
+                (0..8).forEach { k ->
+                    val v = dep.at(k)
+                    val s = v.str() ?: v.arr()?.let { a -> "arr(${a.size}) first=${a.firstOrNull().toString().take(90)}" }
+                    if (s != null) sb.appendLine("      [$k] = ${s.take(140)}")
+                }
+                sb.appendLine("      hours  = ${SearchParser.readHours(dep.at(3, 0))}")
+                sb.appendLine("      status = ${dep.at(3, 1, 4, 0).str()}")
+            }
         }
         dump(sb)
     }

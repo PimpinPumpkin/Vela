@@ -243,6 +243,7 @@
     <string name="place_popular_times">Stoßzeiten</string>
     <string name="place_busyness_right_now">Gerade %1$s</string>
     <string name="place_hours">Öffnungszeiten</string>
+    <string name="place_departments">Abteilungen</string>
     <string name="place_collapse_hours">Öffnungszeiten einklappen</string>
     <string name="place_expand_hours">Öffnungszeiten ausklappen</string>
     <string name="mapscreen_recenter">Neu zentrieren</string>
