@@ -439,4 +439,9 @@
     <string name="car_unmute">Увімкнути звук</string>
     <string name="car_faster_route">Швидше −%1$d хв</string>
     <string name="car_no_route">Немає маршруту — перевірте місцезнаходження</string>
+    <string name="map_parking_saved">Місце паркування збережено</string>
+    <string name="map_parking_no_fix">Очікування місцезнаходження</string>
+    <string name="map_parking_chip">Припарковано</string>
+    <string name="map_parking_cleared">Місце паркування видалено</string>
+    <string name="map_parked_car">Припаркована машина</string>
 </resources>
