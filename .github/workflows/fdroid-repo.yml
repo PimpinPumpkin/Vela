@@ -46,13 +46,16 @@ jobs:
           mkdir -p fdroid/repo
           stable_tag=$(gh release view --json tagName -q .tagName --repo "$GITHUB_REPOSITORY")
           echo "stable: $stable_tag"
-          gh release download "$stable_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY"
+          # Both downloads are best-effort (a release can have no APK asset, e.g. right
+          # after the tag is cut); the guard below is what actually fails the job.
+          gh release download "$stable_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY" || true
           newest_tag=$(gh release list --limit 1 --json tagName -q '.[0].tagName' --repo "$GITHUB_REPOSITORY")
           echo "newest: $newest_tag"
           if [ "$newest_tag" != "$stable_tag" ]; then
             gh release download "$newest_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY" || true
           fi
           ls -la fdroid/repo
+          ls fdroid/repo/*.apk >/dev/null 2>&1 || { echo "no APKs to serve"; exit 1; }
 
       - name: Write config + keystore
         env:

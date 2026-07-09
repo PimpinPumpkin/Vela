@@ -1558,7 +1558,7 @@ private fun SearchResults(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "${shown.size} result${if (shown.size == 1) "" else "s"}",
+                        stringResource(R.string.mapscreen_results_count, shown.size),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
                         color = SheetPalette.dim(dark),

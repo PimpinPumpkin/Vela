@@ -17,15 +17,19 @@ class RecentPlaceStore @Inject constructor(
 ) {
     private val prefs = context.getSharedPreferences("vela_recent_places", Context.MODE_PRIVATE)
 
+    // ignoreUnknownKeys: a newer build's extra field must not fail the decode here,
+    // or the getOrDefault(empty) wipes the data on the next write (see PlaceListStore).
+    private val json = Json { ignoreUnknownKeys = true }
+
     fun recent(): List<SavedPlace> =
-        runCatching { Json.decodeFromString<List<SavedPlace>>(prefs.getString(KEY, "[]") ?: "[]") }
+        runCatching { json.decodeFromString<List<SavedPlace>>(prefs.getString(KEY, "[]") ?: "[]") }
             .getOrDefault(emptyList())
 
     /** Record [place] as most-recent (moving it up if already present). */
     fun add(place: SavedPlace) {
         if (place.name.isBlank()) return
         val updated = (listOf(place) + recent().filterNot { it.id == place.id }).take(CAP)
-        prefs.edit().putString(KEY, Json.encodeToString(updated)).apply()
+        prefs.edit().putString(KEY, json.encodeToString(updated)).apply()
     }
 
     fun clear() = prefs.edit().remove(KEY).apply()

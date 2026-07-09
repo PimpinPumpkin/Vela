@@ -16,12 +16,16 @@ class PlaceListStore @Inject constructor(
 ) {
     private val prefs = context.getSharedPreferences("vela_lists", Context.MODE_PRIVATE)
 
+    // ignoreUnknownKeys: a field added by a newer build must not make an older build's
+    // decode throw - the getOrDefault(empty) below would then WIPE the data on next write.
+    private val json = Json { ignoreUnknownKeys = true }
+
     fun lists(): List<PlaceList> =
-        runCatching { Json.decodeFromString<List<PlaceList>>(prefs.getString(KEY, "[]") ?: "[]") }
+        runCatching { json.decodeFromString<List<PlaceList>>(prefs.getString(KEY, "[]") ?: "[]") }
             .getOrDefault(emptyList())
 
     private fun write(lists: List<PlaceList>): List<PlaceList> {
-        prefs.edit().putString(KEY, Json.encodeToString(lists)).apply()
+        prefs.edit().putString(KEY, json.encodeToString(lists)).apply()
         return lists
     }
 
@@ -58,12 +62,12 @@ class PlaceListStore @Inject constructor(
         lists().filter { l -> l.places.any { it.id == placeId } }
 
     /** All lists as a portable JSON document (export / backup). */
-    fun exportJson(): String = Json.encodeToString(lists())
+    fun exportJson(): String = json.encodeToString(lists())
 
     /** Merge exported [json] lists in, de-duped by list id (existing lists keep their
      *  places; a brand-new list is appended whole). Returns how many lists were added. */
     fun importMerge(json: String): Int {
-        val incoming = runCatching { Json.decodeFromString<List<PlaceList>>(json) }.getOrNull() ?: return 0
+        val incoming = runCatching { this.json.decodeFromString<List<PlaceList>>(json) }.getOrNull() ?: return 0
         val current = lists()
         val existingIds = current.mapTo(HashSet()) { it.id }
         val added = incoming.filterNot { it.id in existingIds }
