@@ -46,35 +46,45 @@ class SelfUpdater @Inject constructor(
         .build()
 
     /** Newest release if it's newer than this build, else null. Null on any error too
-     *  (the check is best-effort; a launch must never block or complain about it). */
-    suspend fun check(currentVersionCode: Int): UpdateInfo? = withContext(Dispatchers.IO) {
+     *  (the check is best-effort; a launch must never block or complain about it).
+     *  [includePrerelease] = the nightly channel: consider prereleases too and pick the
+     *  highest version code across ALL releases, not just the newest STABLE. */
+    suspend fun check(currentVersionCode: Int, includePrerelease: Boolean = false): UpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
-            val json = http.newCall(
-                Request.Builder()
-                    .url("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")
-                    .header("Accept", "application/vnd.github+json")
-                    .build(),
-            ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
-            val o = JSONObject(json)
-            val tag = o.getString("tag_name") // v0.<minor>.<run>
-            // Parse the RUN, not a hardcoded minor: the line moved 0.2 -> 0.3 once already and a
-            // prefix-pinned parse would have silently stopped updating anyone on the old parse.
-            val run = Regex("""^v0\.\d+\.(\d+)$""").find(tag)?.groupValues?.get(1)?.toIntOrNull()
-                ?: return@runCatching null
-            val code = 2000 + run
-            if (code <= currentVersionCode) return@runCatching null
-            val assets = o.getJSONArray("assets")
-            val apk = (0 until assets.length())
-                .map { assets.getJSONObject(it) }
-                .firstOrNull { it.getString("name").endsWith(".apk") }
-                ?: return@runCatching null
-            UpdateInfo(
-                versionName = tag.removePrefix("v"),
-                versionCode = code,
-                apkUrl = apk.getString("browser_download_url"),
-                sizeBytes = apk.optLong("size"),
-                notes = o.optString("body"),
-            )
+            fun releaseToInfo(o: JSONObject): UpdateInfo? {
+                val tag = o.getString("tag_name") // v0.<minor>.<run>
+                // Parse the RUN, not a hardcoded minor: the line moved 0.2 -> 0.3 once already and a
+                // prefix-pinned parse would have silently stopped updating anyone on the old parse.
+                val run = Regex("""^v0\.\d+\.(\d+)$""").find(tag)?.groupValues?.get(1)?.toIntOrNull() ?: return null
+                val code = 2000 + run
+                val assets = o.getJSONArray("assets")
+                val apk = (0 until assets.length())
+                    .map { assets.getJSONObject(it) }
+                    .firstOrNull { it.getString("name").endsWith(".apk") } ?: return null
+                return UpdateInfo(tag.removePrefix("v"), code, apk.getString("browser_download_url"), apk.optLong("size"), o.optString("body"))
+            }
+            val candidate = if (includePrerelease) {
+                // The nightlies live in the full releases list (prereleases). Pick the highest code.
+                val json = http.newCall(
+                    Request.Builder()
+                        .url("https://api.github.com/repos/PimpinPumpkin/Vela/releases?per_page=15")
+                        .header("Accept", "application/vnd.github+json").build(),
+                ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
+                val arr = org.json.JSONArray(json)
+                (0 until arr.length())
+                    .map { arr.getJSONObject(it) }
+                    .filterNot { it.optBoolean("draft") }
+                    .mapNotNull { releaseToInfo(it) }
+                    .maxByOrNull { it.versionCode }
+            } else {
+                val json = http.newCall(
+                    Request.Builder()
+                        .url("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")
+                        .header("Accept", "application/vnd.github+json").build(),
+                ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
+                releaseToInfo(JSONObject(json))
+            }
+            candidate?.takeIf { it.versionCode > currentVersionCode }
         }.getOrNull()
     }
 

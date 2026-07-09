@@ -469,4 +469,11 @@
     <string name="place_note_label">Nota</string>
     <string name="map_save_list">Guardar lista · %1$d locais</string>
     <string name="map_list_saved">“%1$s” guardada nas suas listas</string>
+    <string name="settings_update_nightly">Incluir compilações nightly</string>
+    <string name="settings_update_nightly_hint">Atualizar para a nightly mais recente (pré-lançamento) em vez de apenas versões estáveis. As nightly são mais recentes mas menos testadas.</string>
+    <string name="settings_lists_export_hint">Faça uma cópia das suas listas num ficheiro ou restaure-as noutro dispositivo.</string>
+    <string name="settings_lists_imported">%1$d lista(s) importada(s)</string>
+    <string name="settings_no_lists">Ainda não há listas para exportar</string>
+    <string name="mapvm_export_lists_subject">Listas Vela (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Exportar listas</string>
 </resources>
