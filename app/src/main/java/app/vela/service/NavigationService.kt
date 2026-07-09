@@ -10,7 +10,7 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
-import android.util.Log
+import timber.log.Timber
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.getSystemService
@@ -68,7 +68,7 @@ class NavigationService : Service() {
         try {
             startForegroundCompat(buildNotification())
         } catch (t: Throwable) {
-            Log.w(TAG, "foreground start failed; continuing without the nav service", t)
+            Timber.tag(TAG).w(t, "foreground start failed; continuing without the nav service")
             stopSelf()
             return START_NOT_STICKY
         }
@@ -209,7 +209,7 @@ class NavigationService : Service() {
         fun start(context: Context) {
             runCatching {
                 ContextCompat.startForegroundService(context, Intent(context, NavigationService::class.java))
-            }.onFailure { Log.w(TAG, "could not start nav service", it) }
+            }.onFailure { Timber.tag(TAG).w(it, "could not start nav service") }
         }
 
         fun stop(context: Context) {

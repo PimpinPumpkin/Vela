@@ -36,18 +36,30 @@ object CrashCatcher {
         }
     }
 
-    private fun dir(context: Context) = File(context.filesDir, "diag/crash").apply { mkdirs() }
+    /** The shared crash/ANR/exit-info report directory. */
+    fun reportDir(context: Context) = File(context.filesDir, "diag/crash").apply { mkdirs() }
 
     private fun writeReport(context: Context, ex: Throwable, crumbs: List<DiagEvent>) {
         val sw = StringWriter()
         ex.printStackTrace(PrintWriter(sw))
+        write(context, "crash-${System.currentTimeMillis()}.txt", "crash report",
+            "=== stack trace ===\n" + sw.toString(), crumbs)
+    }
+
+    /**
+     * Write a report into the shared crash dir in the standard header format so it auto-surfaces in
+     * Settings → Diagnostics ([pending] lists any `crash-*.txt`). Reused by [ExitInfoReader] (ANR /
+     * native-crash / low-memory kills) and [AnrWatchdog], not just the uncaught-exception path.
+     * [name] MUST start with `crash-`.
+     */
+    fun write(context: Context, name: String, title: String, body: String, crumbs: List<DiagEvent>) {
         val text = buildString {
-            append("Vela crash report\n")
+            append("Vela ").append(title).append('\n')
             append("when: ").append(System.currentTimeMillis()).append('\n')
             append("version: ").append(BuildConfig.VERSION_NAME).append(" (").append(BuildConfig.VERSION_CODE).append(")\n")
             append("android: API ").append(Build.VERSION.SDK_INT)
                 .append(" — ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append("\n\n")
-            append("=== stack trace ===\n").append(sw.toString()).append('\n')
+            append(body).append("\n\n")
             append("=== breadcrumbs (").append(crumbs.size).append(") ===\n")
             crumbs.forEach { e ->
                 append(e.epochMs).append(" [").append(e.kind).append("] ").append(e.summary)
@@ -55,19 +67,20 @@ object CrashCatcher {
                 append('\n')
             }
         }
-        File(dir(context), "crash-${System.currentTimeMillis()}.txt").writeText(text)
+        File(reportDir(context), name).writeText(text)
         prune(context)
     }
 
-    /** Keep only the few most recent reports so this can't grow unbounded. */
-    private fun prune(context: Context, keep: Int = 5) {
+    /** Keep only the few most recent reports so this can't grow unbounded. ExitInfo/ANR reports
+     *  share this budget with exception reports, so keep enough that a burst can't evict a crash. */
+    private fun prune(context: Context, keep: Int = 10) {
         val files = pending(context)
         if (files.size > keep) files.dropLast(keep).forEach { runCatching { it.delete() } }
     }
 
     /** Crash reports on disk, oldest first. */
     fun pending(context: Context): List<File> =
-        dir(context).listFiles { f -> f.isFile && f.name.startsWith("crash-") }?.sortedBy { it.name } ?: emptyList()
+        reportDir(context).listFiles { f -> f.isFile && f.name.startsWith("crash-") }?.sortedBy { it.name } ?: emptyList()
 
     fun clear(context: Context) {
         pending(context).forEach { runCatching { it.delete() } }
