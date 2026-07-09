@@ -32,6 +32,8 @@ carApp = "1.4.0"
 # clean "name Google's path" always-snap). Pure JVM; runs on ART with 3 workarounds
 # (MMAP / SpeedWeighting factory / close()-swallow) — see RouteEngine + ROADMAP.
 graphhopper = "11.0"
+# Timber — thin logging facade; a custom tree also forwards WARN/ERROR into the diagnostics ring.
+timber = "5.0.1"
 
 [libraries]
 androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
@@ -67,6 +69,7 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+timber = { group = "com.jakewharton.timber", name = "timber", version.ref = "timber" }
 rhino-runtime = { group = "org.mozilla", name = "rhino-runtime", version.ref = "rhino" }
 graphhopper-mapmatching = { group = "com.graphhopper", name = "graphhopper-map-matching", version.ref = "graphhopper" }
 

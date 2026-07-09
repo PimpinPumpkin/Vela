@@ -4,7 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
-import android.util.Log
+import timber.log.Timber
 import app.vela.core.voice.NeuralSynth
 import app.vela.core.voice.SpeechText
 import app.vela.core.voice.VelaPiper
@@ -112,10 +112,10 @@ class PiperSynth @Inject constructor(
                 runCatching { engine.generate(text = " ", sid = 0, speed = SPEED) }
                 tts = engine
                 loadedVoiceId = r.voiceId
-                Log.i(TAG, "loaded ${r.voiceId}: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
+                Timber.tag(TAG).i("loaded ${r.voiceId}: sampleRate=${engine.sampleRate()} speakers=$numSpeakers")
                 return engine
             } catch (t: Throwable) {
-                Log.e(TAG, "model load failed (attempt ${attempt + 1}): ${t.message}", t)
+                Timber.tag(TAG).e(t, "model load failed (attempt ${attempt + 1}): ${t.message}")
                 if (attempt == 0) runCatching { Thread.sleep(200) } // let a just-written model settle, then retry
             }
         }
@@ -231,9 +231,9 @@ class PiperSynth @Inject constructor(
                     }
                     if (myGen == generation) Thread.sleep(INTER_PROMPT_GAP_MS)
                 }
-                Log.i(TAG, "spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${frags.size} frag.) in ${genMs}ms")
+                Timber.tag(TAG).i("spoke ${"%.1f".format(samples.size / sampleRate.toFloat())}s audio (${frags.size} frag.) in ${genMs}ms")
             } catch (t: Throwable) {
-                Log.e(TAG, "speak failed: ${t.message}", t)
+                Timber.tag(TAG).e(t, "speak failed: ${t.message}")
             } finally {
                 onDone()
             }

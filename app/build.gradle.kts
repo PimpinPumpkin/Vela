@@ -19,7 +19,7 @@ android {
         // Overridable from CI: -PappVersionCode / -PappVersionName (ci.yml derives
         // them from the run number → 0.3.<run> / 2000+run). Defaults are local/dev only.
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = (project.findProperty("appVersionName") as String?) ?: "0.3.0"
+        versionName = (project.findProperty("appVersionName") as String?) ?: "0.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -84,6 +84,21 @@ android {
     }
 
     buildTypes {
+        debug {
+            // R8 is what keeps map scroll/nav smooth — MapLibre draws natively (unaffected by
+            // `debuggable`), so the jank is the Compose/Kotlin overlay, which R8 optimizes. Keeping
+            // `debuggable=true` (AGP default) means breakpoints + Timber/StrictMode still work; only
+            // the build gets slower (R8 runs each time). `proguard-rules.pro` is MANDATORY here or
+            // sherpa-onnx's FindClass-by-name JNI SIGABRTs; `proguard-rules-debug.pro` keeps stacks
+            // readable (-dontobfuscate). Use the `staging` variant below for true non-debuggable perf.
+            isMinifyEnabled = true
+            isShrinkResources = false
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+                "proguard-rules-debug.pro",
+            )
+        }
         release {
             // Always ship release: R8 here is what keeps map scroll/nav smooth
             // (debug builds visibly lag).
@@ -96,6 +111,16 @@ android {
             } else {
                 signingConfigs.getByName("debug")
             }
+        }
+        // Non-debuggable, release-optimized variant for measuring the TRUE production frame profile
+        // (Perfetto / `dumpsys gfxinfo framestats`) without the small `debuggable` ART deopt. Not
+        // attachable to a debugger — use `debug` for stepping, `staging` for "is it actually smooth".
+        create("staging") {
+            initWith(getByName("release"))
+            isDebuggable = false
+            applicationIdSuffix = ".staging"
+            matchingFallbacks += "release"
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
@@ -155,6 +180,7 @@ dependencies {
     ksp(libs.hilt.compiler)
 
     implementation(libs.coil.compose)
+    implementation(libs.timber)
 
     // MapLibre Native — the renderer. Only the app module touches it; :core
     // stays UI-agnostic.

@@ -13,6 +13,14 @@
 -keep class com.k2fsa.sherpa.onnx.** { *; }
 -dontwarn com.k2fsa.sherpa.onnx.**
 
+# Timber: physically strip verbose/debug calls (call site + argument building) from the RELEASE dex.
+# WARN/ERROR are deliberately NOT stripped — they feed the opt-in on-device diagnostics ring
+# (DiagTree → DiagLog → crash/ANR reports). This file is release-only; the debug variant keeps them.
+-assumenosideeffects class timber.log.Timber {
+    public static void v(...);
+    public static void d(...);
+}
+
 # kotlinx.serialization (also in :core consumer rules; harmless to repeat).
 -keepclasseswithmembers class **$$serializer { *; }
 -keepclassmembers class **.Companion {
