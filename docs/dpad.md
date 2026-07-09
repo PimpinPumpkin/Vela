@@ -354,6 +354,11 @@ buttons, steps-sheet rows, both sheet handles, the maneuver banner. Material
 buttons/switches/dialogs keep their built-in focus indication (adequate on those
 components; extend the pass if a spot proves hard to see).
 
+The search bar's text region insets its content 10 dp inside the ring (2026-07-09):
+the ring is drawn on the Box whose edge is exactly where the first typed letter
+starts, so with no inset the 2 dp stroke cut straight through that letter on every
+keypad-phone search.
+
 ## Everything checked, file by file
 
 | Surface | Verdict |
