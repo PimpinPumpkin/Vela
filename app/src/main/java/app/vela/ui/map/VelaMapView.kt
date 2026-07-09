@@ -362,7 +362,7 @@ fun VelaMapView(
     // `number` field, STREAMED for the region in view — fills in house numbers where OSM has no `addr:housenumber`
     // (the same gap the building overlay fills for footprints). Matched to the basemap `vela-housenumber` style
     // (Noto Sans 10, grey + white halo). minZoom 17.5 so numbers only appear at street level (Google-style) and
-    // collision thins dense blocks. INSERTED BELOW the traffic-controls layer (which sits below the ambient POI
+    // collision thins dense blocks. INSERTED BELOW the controls CLAIM layer (which sits below the ambient POI
     // icons) — NOT addLayer/top: MapLibre places symbols TOPMOST-LAYER-FIRST, so numbers stacked above the
     // ambient layer grabbed their collision boxes before the business icons placed, EVICTING them at z16+
     // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
@@ -403,10 +403,16 @@ fun VelaMapView(
                             PropertyFactory.textIgnorePlacement(true),
                         )
                     }
-                if (style.getLayer(CONTROLS_LAYER) != null) {
-                    style.addLayerBelow(layer, CONTROLS_LAYER) // below controls → below ambient icons (see above)
-                } else {
-                    style.addLayer(layer) // controls layer missing (defensive) — top is better than absent
+                // Anchor to the CLAIM twin, which sits where the visible controls layer used to
+                // (above the basemap labels, below the ambient icons). Anchoring to the VISIBLE
+                // controls layer broke the moment it moved to the bottom of the symbol stack
+                // (2026-07-09): the numbers sank with it, below bridge geometry and the building
+                // extrusions - drawn "under the buildings", and yielding to every basemap label
+                // so only the odd out-of-footprint number survived.
+                when {
+                    style.getLayer(CONTROLS_CLAIM_LAYER) != null -> style.addLayerBelow(layer, CONTROLS_CLAIM_LAYER)
+                    style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(layer, AMBIENT_LAYER)
+                    else -> style.addLayer(layer) // defensive - top is better than absent
                 }
             }
         }
