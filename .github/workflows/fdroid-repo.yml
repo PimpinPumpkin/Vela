@@ -31,9 +31,12 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install fdroidserver
+        # pip, NOT apt: Ubuntu's fdroidserver 2.2.1 ships an androguard too old to parse
+        # APKs built by modern AGP ("res1 must be zero!"). Current fdroidserver pulls
+        # androguard 4.x, which handles them. apksigner comes from the runner's Android SDK.
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y -q fdroidserver
+          pip install --upgrade fdroidserver
+          fdroid --version
 
       - name: Fetch the APKs to serve (latest stable + newest nightly if ahead)
         env:
