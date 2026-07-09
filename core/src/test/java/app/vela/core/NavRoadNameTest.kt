@@ -17,7 +17,7 @@ import org.junit.Test
  * missing (only hearing/seeing "turn right").
  *
  * Uses VERBATIM keyless `<step>` markup captured live from `/maps/preview/directions`
- * (the suburb WA, 2026-06-28), parses it with the real [DirectionsParser], then **drives the
+ * (a real suburban drive, 2026-06-28), parses it with the real [DirectionsParser], then **drives the
  * route through [NavEngine]** and checks the spoken announcements carry the street name. It
  * proves regular turns keep their road, and pins the fact that Google's keyless feed **omits
  * the road on some turns** (those legitimately stay a bare "Turn left").

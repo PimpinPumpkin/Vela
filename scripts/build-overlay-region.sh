@@ -2,7 +2,7 @@
 # Build + publish ONE region's OPEN BUILDING-FOOTPRINT overlay as a PMTiles archive to the
 # `building-overlays` GitHub release, merged into building-overlay-manifest.json. The app
 # (OverlayTileStore) downloads it and renders the footprints BENEATH the OSM building layer, filling gaps
-# where OSM lacks buildings (suburbs the Microsoft→OSM import never reached, e.g. the test suburb). Sibling of
+# where OSM lacks buildings (suburbs the Microsoft-to-OSM import never reached). Sibling of
 # build-routing-region.sh.
 #
 # TWO data sources (both Microsoft, both ODbL), picked by the SOURCE env var:
