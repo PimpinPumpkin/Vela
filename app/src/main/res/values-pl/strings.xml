@@ -280,8 +280,7 @@
     <string name="mapscreen_permanently_closed">Zamknięte na stałe</string>
     <string name="mapscreen_section_saved">Zapisane</string>
     <string name="mapscreen_section_recent">Ostatnie</string>
-    <string name="mapscreen_section_recent_searches">Ostatnie wyszukiwania</string>
-    <string name="mapscreen_clear_recent_searches">Wyczyść ostatnie wyszukiwania</string>
+    <string name="mapscreen_clear_recents">Wyczyść ostatnie</string>
     <string name="mapscreen_search_empty_hint">Szukaj miejsc, adresów i kategorii.</string>
     <string name="mapscreen_set_shortcut_address">Ustaw adres %1$s</string>
     <string name="mapscreen_edit_shortcut">Edytuj %1$s</string>

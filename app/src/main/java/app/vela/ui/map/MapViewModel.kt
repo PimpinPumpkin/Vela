@@ -12,6 +12,8 @@ import app.vela.core.data.google.ambientProminence
 import app.vela.core.data.MapLink
 import app.vela.core.data.MapLinkParser
 import app.vela.core.data.OfflinePoiStore
+import app.vela.core.data.RecentPlace
+import app.vela.core.data.RecentQuery
 import app.vela.core.data.RouteCorridor
 import app.vela.core.data.OverpassPois
 import app.vela.core.data.PlaceShortcutStore
@@ -176,8 +178,8 @@ data class MapUiState(
     val selectedEngine: VoiceEngine? = null,
     val searching: Boolean = false,
     val resultsCollapsed: Boolean = false,
-    val recents: List<String> = emptyList(),
-    val recentPlaces: List<SavedPlace> = emptyList(),
+    val recents: List<RecentQuery> = emptyList(),
+    val recentPlaces: List<RecentPlace> = emptyList(),
     val saved: List<SavedPlace> = emptyList(),
     val home: SavedPlace? = null,
     val work: SavedPlace? = null,

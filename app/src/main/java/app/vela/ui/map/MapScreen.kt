@@ -136,6 +136,8 @@ import app.vela.core.config.Notice
 import app.vela.core.model.LatLng
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Place
+import app.vela.core.data.RecentPlace
+import app.vela.core.data.RecentQuery
 import app.vela.core.model.SavedPlace
 import app.vela.core.model.ShortcutKind
 import app.vela.ui.RatingStars
@@ -1895,8 +1897,8 @@ private fun ChooseOnMapOverlay(
 private fun SearchEntryContent(
     suggestions: List<Place>,
     saved: List<SavedPlace>,
-    recents: List<String>,
-    recentPlaces: List<SavedPlace>,
+    recents: List<RecentQuery>,
+    recentPlaces: List<RecentPlace>,
     home: SavedPlace?,
     work: SavedPlace?,
     assigning: ShortcutKind?,
@@ -1980,32 +1982,37 @@ private fun SearchEntryContent(
                 Divider()
             }
         }
-        // Recently-opened places (pin icon) — one tap back to a place you just viewed.
-        if (recentPlaces.isNotEmpty()) {
+        // ONE chronological "Recent" list — Google mixes recently-viewed places and recent
+        // searches by time rather than bucketing them; the icon tells them apart (pin for a
+        // place you opened, clock for a query you typed).
+        if (recentPlaces.isNotEmpty() || recents.isNotEmpty()) {
             SectionLabel(stringResource(R.string.mapscreen_section_recent))
-            recentPlaces.forEach { rp ->
-                SuggestionRow(
-                    icon = Icons.Default.Place,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    label = rp.name,
-                    onClick = { onPickRecentPlace(rp) },
-                )
-                Divider()
+            val merged: List<Any> = (recentPlaces + recents).sortedByDescending { entry ->
+                when (entry) {
+                    is RecentPlace -> entry.at
+                    is RecentQuery -> entry.at
+                    else -> 0L
+                }
             }
-        }
-        if (recents.isNotEmpty()) {
-            SectionLabel(stringResource(R.string.mapscreen_section_recent_searches))
-            recents.forEach { q ->
-                SuggestionRow(
-                    icon = Icons.Default.History,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    label = q,
-                    onClick = { onPickRecent(q) },
-                )
+            merged.forEach { entry ->
+                when (entry) {
+                    is RecentPlace -> SuggestionRow(
+                        icon = Icons.Default.Place,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        label = entry.place.name,
+                        onClick = { onPickRecentPlace(entry.place) },
+                    )
+                    is RecentQuery -> SuggestionRow(
+                        icon = Icons.Default.History,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        label = entry.query,
+                        onClick = { onPickRecent(entry.query) },
+                    )
+                }
                 Divider()
             }
             TextButton(onClick = onClearRecents, modifier = Modifier.padding(start = 8.dp)) {
-                Text(stringResource(R.string.mapscreen_clear_recent_searches))
+                Text(stringResource(R.string.mapscreen_clear_recents))
             }
         }
         if (saved.isEmpty() && recents.isEmpty() && recentPlaces.isEmpty()) {
@@ -2090,11 +2097,23 @@ private fun SavedRow(
     ) {
         Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.width(16.dp))
-        Text(place.name, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        // Explicit colours: the search page is a background()-Box, not a Surface, so
+        // LocalContentColor is unset and a colourless Text/Icon renders BLACK in dark
+        // mode (same trap ShortcutRow documents). Match the SuggestionRow siblings.
+        Text(
+            place.name,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+        )
         var menu by remember { mutableStateOf(false) }
         Box {
             IconButton(onClick = { menu = true }) {
-                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mapscreen_saved_place_options))
+                Icon(
+                    Icons.Default.MoreVert,
+                    contentDescription = stringResource(R.string.mapscreen_saved_place_options),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
             VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
                 item(stringResource(R.string.mapscreen_set_as_home)) { menu = false; onPinAs(place, ShortcutKind.HOME) }

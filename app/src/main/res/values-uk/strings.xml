@@ -280,8 +280,7 @@
     <string name="mapscreen_permanently_closed">Закрито назавжди</string>
     <string name="mapscreen_section_saved">Збережені</string>
     <string name="mapscreen_section_recent">Нещодавні</string>
-    <string name="mapscreen_section_recent_searches">Нещодавні пошуки</string>
-    <string name="mapscreen_clear_recent_searches">Очистити нещодавні пошуки</string>
+    <string name="mapscreen_clear_recents">Очистити нещодавні</string>
     <string name="mapscreen_search_empty_hint">Шукайте місця, адреси та категорії.</string>
     <string name="mapscreen_set_shortcut_address">Задати адресу «%1$s»</string>
     <string name="mapscreen_edit_shortcut">Редагувати «%1$s»</string>
