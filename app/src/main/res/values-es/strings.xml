@@ -478,4 +478,5 @@
     <string name="mapvm_export_lists_chooser">Exportar listas</string>
     <string name="lists_empty_hint">Aún no hay listas. Toca Nueva o guarda un lugar desde su página.</string>
     <string name="lists_place_count">%1$d lugares</string>
+    <string name="navservice_notif_eta">Llegada %1$s</string>
 </resources>
