@@ -1000,7 +1000,10 @@ fun MapScreen(
                 onEditOrigin = if (state.directionsReversed) null else vm::beginPickOrigin,
                 onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else null,
                 stops = state.directionsWaypoints.map { it.name },
-                onAddStop = vm::beginPickStop,
+                // EVERY stop action goes through the stops editor (one mental model): Add stop
+                // opens the editor too, and its own Add stop row arms the place picker. Tapping
+                // the summary row and tapping Add stop now land in the same place.
+                onAddStop = vm::openStopsEditor,
                 onEditStops = vm::openStopsEditor,
                 onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
