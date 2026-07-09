@@ -128,6 +128,21 @@ Defaults that make the safe path the easy one:
   (Google computes them off `mapCenter`), so those read local from wherever the map is centred, with
   or without this toggle; sim-location is specifically about the dot + route origin. **Turn it OFF
   for real navigation.**
+- **GitHub releases are TWO different things - check the tag before touching one (2026-07-09).**
+  `v0.*` tags are app releases (nightly prereleases, weekly stables). Every OTHER tag is
+  **infrastructure file hosting**: `tts-runtime` (the sherpa-onnx AAR CI fetches at build time),
+  `routing-graphs` (137 region graph zips + manifest), `poi-packs` (state place packs + manifest),
+  `address-overlays` and `building-overlays` (PMTiles + manifests). Those assets exist NOWHERE
+  else - not in git, not on any server - the release IS the download backend the app's manifest
+  URLs point at. Deleting one takes the corresponding offline feature down globally until its
+  workflow rebuilds everything (hours). This is not hypothetical: the first nightly-prune run
+  (2026-07-09) deleted four of the five and broke every offline download; `routing-graphs`
+  survived only because the repo has 400+ releases and it sat past the query's `--limit 200`
+  window. TWO standing rules: (1) any automation or cleanup that deletes/edits releases must
+  select by tag pattern `v0.*`, never by "prerelease" or "old" (the infra releases are old
+  prereleases by design, to stay off `releases/latest`); (2) any `gh release list` logic must
+  assume 400+ releases and paginate or bound by tag - unpaginated list queries caused both the
+  deletion and a wrong damage report.
 - CI: **nightly + weekly channels (2026-07-08).** `.github/workflows/ci.yml`: every push to
   `main` builds + tests the APK and publishes a **PRERELEASE** `v0.3.<run>` (versionName
   `0.3.<run>`, versionCode `2000+run`) - the nightly channel; Obtainium users opt in with
