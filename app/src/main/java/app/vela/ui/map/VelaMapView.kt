@@ -1191,14 +1191,26 @@ private fun ensureLayers(style: Style) {
         val firstLabel = (if (lastBridge >= 0) style.layers.drop(lastBridge + 1) else style.layers)
             .firstOrNull { it is SymbolLayer }?.id
         if (firstLabel != null) style.addLayerBelow(routeLine, firstLabel) else style.addLayer(routeLine)
-        // The dashed foot/bike variant (hidden until a walk/bike route is shown). Round caps +
-        // a short on/off pattern read as Google's walking dots.
+        // The dashed foot/bike variant (hidden until a walk/bike route is shown). A ZERO-length
+        // dash + round caps renders a true circular dot (diameter = line width), like Google's
+        // walking dots. Two scaling rules learned the hard way (user report: "fine zoomed in,
+        // crammed zoomed out"): (1) dasharray units are LINE-WIDTHS, so the width must shrink at
+        // low zoom or the dots keep their screen size while the geometry shrinks under them;
+        // (2) MapLibre quantises the dash texture to integer zooms and compresses the pattern up
+        // to ~2x between them, so the gap needs headroom (2.6 widths) or dots touch at z.9.
         val routeDash = LineLayer(ROUTE_DASH_LAYER, ROUTE_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
-            PropertyFactory.lineWidth(6f),
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.exponential(1.5f), Expression.zoom(),
+                    Expression.stop(11f, 3f),
+                    Expression.stop(15f, 6f),
+                    Expression.stop(19f, 9f),
+                ),
+            ),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-            PropertyFactory.lineDasharray(arrayOf(0.4f, 1.8f)),
+            PropertyFactory.lineDasharray(arrayOf(0f, 2.6f)),
             PropertyFactory.visibility(Property.NONE),
         )
         if (firstLabel != null) style.addLayerBelow(routeDash, firstLabel) else style.addLayer(routeDash)
