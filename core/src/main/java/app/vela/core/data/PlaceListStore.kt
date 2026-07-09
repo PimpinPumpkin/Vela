@@ -38,28 +38,32 @@ class PlaceListStore @Inject constructor(
 
     fun delete(listId: String): List<PlaceList> = write(lists().filterNot { it.id == listId })
 
-    /** Adds [place] to [listId] (idempotent by place id; keeps the existing note if re-added). */
+    /** Adds [place] to [listId] (idempotent via [ListPlace.matches] — the same chain store
+     *  re-resolved under a fresh volatile id must not become a duplicate entry). */
     fun addPlace(listId: String, place: ListPlace): List<PlaceList> = write(
         lists().map { l ->
-            if (l.id != listId || l.places.any { it.id == place.id }) l
+            if (l.id != listId || l.places.any { it.matches(place.id, place.featureId) }) l
             else l.copy(places = l.places + place)
         },
     )
 
-    fun removePlace(listId: String, placeId: String): List<PlaceList> = write(
-        lists().map { l -> if (l.id != listId) l else l.copy(places = l.places.filterNot { it.id == placeId }) },
+    fun removePlace(listId: String, placeId: String, featureId: String? = null): List<PlaceList> = write(
+        lists().map { l -> if (l.id != listId) l else l.copy(places = l.places.filterNot { it.matches(placeId, featureId) }) },
     )
 
-    /** Sets (or clears with null) the note on a place across every list it appears in. */
-    fun setNote(placeId: String, note: String?): List<PlaceList> = write(
+    /** Sets (or clears with null) the note on a place across every list it appears in.
+     *  Matching by feature id too, not just the volatile place id — a note written on a
+     *  re-resolved chain listing (fresh id, same feature id) used to match nothing and
+     *  silently vanish (the Safeway bug). */
+    fun setNote(placeId: String, note: String?, featureId: String? = null): List<PlaceList> = write(
         lists().map { l ->
-            l.copy(places = l.places.map { if (it.id == placeId) it.copy(note = note?.ifBlank { null }) else it })
+            l.copy(places = l.places.map { if (it.matches(placeId, featureId)) it.copy(note = note?.ifBlank { null }) else it })
         },
     )
 
-    /** True if [placeId] is in any list (drives the sheet's "in a list" affordances). */
-    fun listsContaining(placeId: String): List<PlaceList> =
-        lists().filter { l -> l.places.any { it.id == placeId } }
+    /** The lists holding this place (drives the sheet's "in a list" affordances). */
+    fun listsContaining(placeId: String, featureId: String? = null): List<PlaceList> =
+        lists().filter { l -> l.places.any { it.matches(placeId, featureId) } }
 
     /** All lists as a portable JSON document (export / backup). */
     fun exportJson(): String = json.encodeToString(lists())

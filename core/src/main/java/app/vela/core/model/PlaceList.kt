@@ -15,6 +15,13 @@ data class ListPlace(
 ) {
     val location: LatLng get() = LatLng(lat, lng)
 
+    /** Same real-world place? The volatile [id] ("g:" + name hash + coarse lat) can differ
+     *  between visits for a multi-listing chain (the tap-resolve may pick a different
+     *  co-located listing next time), so membership/note matching prefers the STABLE
+     *  Google [featureId] and keeps [id] as the fallback for places that lack one. */
+    fun matches(id: String, featureId: String?): Boolean =
+        this.id == id || (featureId != null && this.featureId == featureId)
+
     fun toPlace(): Place = Place(
         id = id,
         name = name,

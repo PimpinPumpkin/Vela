@@ -76,6 +76,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Park
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
@@ -122,6 +123,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import app.vela.R
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -1066,9 +1068,9 @@ fun MapScreen(
                 },
                 lists = state.lists,
                 onAddToList = { listId -> vm.addPlaceToList(listId, state.selected!!) },
-                onRemoveFromList = { listId -> vm.removePlaceFromList(listId, state.selected!!.id) },
+                onRemoveFromList = { listId -> vm.removePlaceFromList(listId, state.selected!!) },
                 onCreateListWith = { name -> val id = vm.createList(name); vm.addPlaceToList(id, state.selected!!) },
-                onSetNote = { note -> vm.setPlaceNote(state.selected!!.id, note) },
+                onSetNote = { note -> vm.setPlaceNote(state.selected!!, note) },
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
@@ -1091,6 +1093,7 @@ fun MapScreen(
                 onMinimize = vm::collapseResults,
                 onExpand = vm::expandResults,
                 onClose = vm::clearSearch,
+                listName = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id }?.name },
                 modifier = Modifier.align(Alignment.BottomCenter),
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
@@ -1422,6 +1425,7 @@ private fun SearchResults(
     onMinimize: () -> Unit,
     onExpand: () -> Unit,
     onClose: () -> Unit,
+    listName: String? = null, // set when the results ARE an open list — shown as the sheet title
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -1555,11 +1559,16 @@ private fun SearchResults(
                         .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = if (collapsed) 8.dp else 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // An open list leads with its NAME (the count alone didn't say which
+                    // list you were looking at); plain searches keep the count.
                     Text(
-                        stringResource(R.string.mapscreen_results_count, shown.size),
+                        listName?.let { "$it · ${shown.size}" }
+                            ?: stringResource(R.string.mapscreen_results_count, shown.size),
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.Medium,
-                        color = SheetPalette.dim(dark),
+                        color = if (listName != null) SheetPalette.ink(dark) else SheetPalette.dim(dark),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
                     IconButton(onClick = { if (collapsed) onExpand() else onExpandedChange(!expanded) }) {
@@ -1728,6 +1737,28 @@ private fun SearchResults(
                             color = placeStatusColor(status, place.openNow),
                             modifier = Modifier.padding(top = 3.dp),
                         )
+                    }
+                    // The owner's note on a saved place — the whole point of putting it in a
+                    // list ("this restaurant's fish is better than its chicken"), so the list
+                    // view must show it, not just the place sheet.
+                    place.savedNote?.let { note ->
+                        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.Top) {
+                            Icon(
+                                Icons.Default.FormatQuote,
+                                contentDescription = null,
+                                tint = SheetPalette.dim(dark),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(6.dp))
+                            Text(
+                                note,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontStyle = FontStyle.Italic,
+                                color = SheetPalette.ink(dark),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
                 }
                 Divider()
