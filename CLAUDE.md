@@ -112,9 +112,12 @@ Defaults that make the safe path the easy one:
   cancels the demo job (its `finally` resumes live GPS + resets the dot/route). **Turn it OFF to
   navigate for real** - while on, every "Start" simulates instead of using GPS.
 - **Simulate-my-location (demo)** (`ui/SimLocation.kt`, Settings → Navigation, off by default,
-  pref `sim_location` in `vela_settings`). The sim branch in `startLocation()` also CANCELS the
-  stale-location timer (2026-07-09): the pinned demo dot gets no fresh fixes, so a timer armed by
-  the last real fix greyed the dot ~30 s in and nothing ever turned it blue again. A sibling of demo-drive for demos/screenshots: when on,
+  pref `sim_location` in `vela_settings`). BOTH sim entry points CANCEL the stale-location timer
+  (2026-07-09): the pinned demo dot gets no fresh fixes, so a timer armed by the last real fix
+  greyed the dot ~30 s in and nothing ever turned it blue again. The sim branch in `startLocation()`
+  covers app restart with the toggle already on; `simulateLocationHere()` covers flipping the toggle
+  mid-session (it cancels `locationJob` but the timer the collector armed outlives that cancel - the
+  first fix was missed there and the bug came straight back). A sibling of demo-drive for demos/screenshots: when on,
   Vela pretends to be at the map centre (captured when you flip the toggle), so the location dot,
   the directions ORIGIN ("Your location"), and recenter all read from there instead of your real
   GPS - that is how every Davis/Sacramento screenshot was shot from elsewhere without leaking a real
@@ -321,7 +324,11 @@ Defaults that make the safe path the easy one:
   bundled `liberty-roboto.json` asset (which DOES pin a dated `planet/<snapshot>` path) is **parked +
   unused** - the `asset://`/`fromJson` path in `VelaMapView` is dead code kept only as reference (a bundled
   copy blanked the vector tiles on-device; see the project memory). Don't be misled by the stale path in
-  that asset. Verify basemap edits on-device in **both** themes.
+  that asset. Verify basemap edits on-device in **both** themes. (4) **Road-name halos are
+  WIDER than the blanket** (2026-07-09): applyDark/applyLight give the three `highway-name-*`
+  symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
+  dotted walking line run right under street names and made them unreadable; the fatter halo
+  is the "underlay tint" (Google does the same). Keep the exception if the blanket pass changes.
 - **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
   works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
   `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/

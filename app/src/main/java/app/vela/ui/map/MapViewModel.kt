@@ -2786,6 +2786,9 @@ class MapViewModel @Inject constructor(
         val here = mapCenter ?: _state.value.myLocation ?: return
         app.vela.ui.SimLocation.set(appContext, here)
         locationJob?.cancel(); locationJob = null // sim owns the puck — no live fixes
+        // The timer armed by the collector's LAST fix keeps ticking after the cancel and would
+        // grey the pinned dot ~30 s in (same hole as the startLocation() sim branch).
+        staleTimerJob?.cancel(); staleTimerJob = null
         _state.update {
             it.copy(myLocation = here, center = here, recenterTick = it.recenterTick + 1, myLocationStale = false)
         }
