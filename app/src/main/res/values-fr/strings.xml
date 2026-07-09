@@ -441,7 +441,9 @@
     <string name="car_no_route">Aucun itinéraire — vérifiez votre position</string>
     <string name="map_parking_saved">Place de parking enregistrée</string>
     <string name="map_parking_no_fix">En attente de la position</string>
-    <string name="map_parking_chip">Garé</string>
     <string name="map_parking_cleared">Place de parking effacée</string>
     <string name="map_parked_car">Voiture garée</string>
+    <string name="map_parking_save">Enregistrer la place de parking</string>
+    <string name="map_import_failed">Impossible d\'importer cette liste. Vérifiez le lien et réessayez.</string>
+    <string name="place_clear_parking">Effacer le parking</string>
 </resources>

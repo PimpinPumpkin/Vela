@@ -31,6 +31,9 @@ data class Place(
     // station, liquor counter, delivery/pickup windows) — Google's [118] list. Names have
     // the redundant store prefix stripped ("Safeway Pharmacy" → "Pharmacy").
     val departments: List<Department> = emptyList(),
+    // The owner's personal note on a place imported from a Google Maps shared list
+    // ("this restaurant's fish is better than its chicken") — shown on the sheet.
+    val savedNote: String? = null,
     val photoUrls: List<String> = emptyList(),
     // "Posted" label per gallery photo ("May 2026"), index-aligned with [photoUrls].
     // Empty for the search-response preview; the WebView gallery fills it in (the dates
@@ -101,6 +104,16 @@ data class PlaceDetails(
 /** One in-store department's schedule: [hours] shaped like [Place.hours] (7 day strings
  *  starting today), [statusText] Google's own line ("Closed · Opens 9 AM Thu"),
  *  [openNow] parsed from that text (null when it is ambiguous). */
+/** A Google Maps shared list pulled through the keyless getlist RPC (issue #1):
+ *  the list's [title]/[description]/[author] plus its [places], each carrying the
+ *  owner's personal note in [Place.savedNote]. */
+data class ImportedList(
+    val title: String,
+    val description: String? = null,
+    val author: String? = null,
+    val places: List<Place> = emptyList(),
+)
+
 data class Department(
     val name: String,
     val hours: List<String> = emptyList(),
