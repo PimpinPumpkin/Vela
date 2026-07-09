@@ -2103,6 +2103,9 @@ class MapViewModel @Inject constructor(
                 navSession.replayMode = true
                 navSession.start(route, dest, label, engine)
                 replayOwnsNav = true
+                // Demo mode presents as REAL nav, so the ongoing turn notification is part of
+                // what's being demoed (and how it gets verified without a drive).
+                NavigationService.start(appContext)
                 locationProvider.replay(fixes, speedup = 1f).collect { loc ->
                     if (replayJob !== coroutineContext[Job]) return@collect // superseded
                     val here = LatLng(loc.latitude, loc.longitude)
@@ -2120,6 +2123,7 @@ class MapViewModel @Inject constructor(
                     replayJob = null
                     navSession.replayMode = false
                     if (replayOwnsNav) { navSession.stop(); replayOwnsNav = false; destination = null }
+                    NavigationService.stop(appContext)
                     clearSpeedLimit()
                     _state.update {
                         it.copy(
