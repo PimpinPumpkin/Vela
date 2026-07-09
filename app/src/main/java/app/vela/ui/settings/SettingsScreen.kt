@@ -705,7 +705,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     val n = vm.importSavedFromUri(uri)
                     android.widget.Toast.makeText(
                         context,
-                        if (n > 0) "Imported $n place${if (n == 1) "" else "s"}" else context.getString(R.string.settings_import_nothing),
+                        if (n > 0) context.getString(R.string.settings_places_imported, n) else context.getString(R.string.settings_import_nothing),
                         android.widget.Toast.LENGTH_SHORT,
                     ).show()
                 }
@@ -1028,7 +1028,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         if (installed.isEmpty())
             stringResource(R.string.settings_voice_lib_empty_hint)
         else
-            "Installed: $installedMb MB · ${installed.size} voice${if (installed.size == 1) "" else "s"}. Tap Use to switch (plays a sample); the trash icon frees the space.",
+            stringResource(R.string.settings_voice_lib_installed_hint, installedMb, installed.size),
     )
     if (appLang != "en" && !hasAppLangVoice) {
         val langLabel = PiperCatalog.languageLabel(appLang)
