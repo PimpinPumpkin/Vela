@@ -77,6 +77,14 @@ from the `directions` diag), offline highway refs (a graph rebuild - parked).
 
 ## Near-term (next up)
 
+- **Save my parking spot**: a one-tap button on the main map that drops a "parked here"
+  pin at your current position (timestamp now, maybe a note or photo later). The spot
+  survives app restarts, shows a small chip while set, and tapping it routes you back to
+  the car on foot; clearing it is one tap. Open questions: where the button lives
+  (long-press the locate button vs its own control), whether Vela should offer to save it
+  automatically when a drive ends, and whether the chip shows distance/bearing. Related:
+  the custom saved-lists request in issue #1 covers a manual "Parked" list as one workflow.
+
 - **D-pad polish** (base support SHIPPED + full-function sweep done 2026-07-07 - see
   `docs/dpad.md`): a real-device pass on D-pad hardware to tune the pan step / OK-hold
   threshold / focus-ring visibility and traversal order; **pixel-verify the full-screen

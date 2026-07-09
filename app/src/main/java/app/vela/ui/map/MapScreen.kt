@@ -1132,16 +1132,26 @@ fun MapScreen(
         }
 
         if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
+            // Google-style locate button: a plain surface circle with the crosshair, not a
+            // coloured M3 FAB — reads as map chrome rather than an action button.
             FloatingActionButton(
                 onClick = vm::recenter,
+                shape = androidx.compose.foundation.shape.CircleShape,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(16.dp)
-                    .padding(bottom = chromeLift),
+                    .padding(bottom = chromeLift)
+                    .size(48.dp)
+                    .dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+                Icon(
+                    Icons.Default.MyLocation,
+                    contentDescription = stringResource(R.string.mapscreen_center_on_my_location),
+                    modifier = Modifier.size(22.dp),
+                )
             }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
             // niche browse-only layer, and nav now shows per-segment route traffic,

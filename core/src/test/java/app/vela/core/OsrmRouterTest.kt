@@ -69,7 +69,7 @@ class OsrmRouterTest {
 
     @Test fun divergenceDetectsRerouting() {
         val north = (0..10).map { LatLng(38.55 + it * 0.002, -121.74) }      // straight north
-        val nearNorth = (0..10).map { LatLng(38.55 + it * 0.002, -121.739) } // ~75 m east, parallel
+        val nearNorth = (0..10).map { LatLng(38.55 + it * 0.002, -121.739) } // ~87 m east, parallel
         val eastSwing = (0..10).map { LatLng(38.55, -121.74 + it * 0.006) }  // peels off east instead
         assertFalse("parallel ~75m route is NOT a reroute", RouteGeometry.divergent(route(north), route(nearNorth)))
         assertTrue("a route that peels far off IS a reroute", RouteGeometry.divergent(route(north), route(eastSwing)))
@@ -86,9 +86,9 @@ class OsrmRouterTest {
     }
 
     @Test fun sampleViasDegradesOnTinyPolylines() {
-        assertTrue(RouteGeometry.sampleVias((0..1).map { LatLng(38.5 + it, -122.0) }).isEmpty())
+        assertTrue(RouteGeometry.sampleVias((0..1).map { LatLng(38.5 + it, -121.7) }).isEmpty())
         // a 3-point line has exactly one interior point → one via, no crash
-        assertEquals(1, RouteGeometry.sampleVias((0..2).map { LatLng(38.5 + it * 0.01, -122.0) }).size)
+        assertEquals(1, RouteGeometry.sampleVias((0..2).map { LatLng(38.5 + it * 0.01, -121.7) }).size)
     }
 
     private fun man(t: ManeuverType, dist: Double) =
@@ -96,7 +96,7 @@ class OsrmRouterTest {
 
     // ~150 m eastbound line; DEPART at the start, TURN_LEFT at the end (so a signal on the approach counts).
     private fun straightRoute(): Route {
-        val poly = (0..4).map { LatLng(38.5, -122.0 + it * 0.0005) }
+        val poly = (0..4).map { LatLng(38.5, -121.7 + it * 0.0005) }
         val mans = listOf(
             app.vela.core.model.Maneuver(ManeuverType.DEPART, "Head east", poly[0], 150.0, 0.0),
             app.vela.core.model.Maneuver(ManeuverType.TURN_LEFT, "Turn left onto Main Street", poly[4], 0.0, 0.0),
@@ -105,7 +105,7 @@ class OsrmRouterTest {
     }
 
     @Test fun lightGuidanceAddsClauseForOneSignalBeforeATurn() {
-        val onApproach = LatLng(38.5, -122.0 + 0.001) // sits on the driven line, before the turn
+        val onApproach = LatLng(38.5, -121.7 + 0.001) // sits on the driven line, before the turn
         val out = RouteGeometry.enrichWithLights(straightRoute(), listOf(onApproach))
         val turn = out.legs[0].maneuvers.last()
         assertTrue("clause prepended", turn.instruction.startsWith("Pass the traffic light, then turn left"))
@@ -116,15 +116,15 @@ class OsrmRouterTest {
         // no signals → unchanged
         assertEquals("Turn left onto Main Street", turnOf(emptyList()))
         // a signal ~1 km off the route → not counted → unchanged
-        assertEquals("Turn left onto Main Street", turnOf(listOf(LatLng(38.51, -122.0))))
+        assertEquals("Turn left onto Main Street", turnOf(listOf(LatLng(38.51, -121.7))))
         // 3+ signals on the approach → "pass 4 lights" is unhelpful, Google-style → unchanged
-        assertEquals("Turn left onto Main Street", turnOf((1..3).map { LatLng(38.5, -122.0 + it * 0.0004) }))
+        assertEquals("Turn left onto Main Street", turnOf((1..3).map { LatLng(38.5, -121.7 + it * 0.0004) }))
     }
 
     @Test fun lightAtTheTurnVertexItselfIsNotCounted() {
         // A signal exactly at the turn intersection is the one you turn AT, not one to "pass" first
         // (the approach walk starts at poly[toIdx], the turn vertex) — exclude it (audit 2026-07-06).
-        val atTurn = LatLng(38.5, -122.0 + 0.002) // poly[4], the TURN_LEFT vertex
+        val atTurn = LatLng(38.5, -121.7 + 0.002) // poly[4], the TURN_LEFT vertex
         val turn = RouteGeometry.enrichWithLights(straightRoute(), listOf(atTurn)).legs[0].maneuvers.last()
         assertEquals("Turn left onto Main Street", turn.instruction)
     }
@@ -133,8 +133,8 @@ class OsrmRouterTest {
         // OSM maps one traffic_signals node per approach/carriageway at a junction (~20 m apart); they must
         // count as ONE intersection, not "pass 2 lights" (audit 2026-07-06). The 3-signal silence test above
         // uses ~30.4 m spacing, which stays UN-clustered at the strict < 30 m radius, so it still passes.
-        val a = LatLng(38.5, -122.0 + 0.001)
-        val b = LatLng(38.5, -122.0 + 0.00125) // ~19 m from a, same physical junction
+        val a = LatLng(38.5, -121.7 + 0.001)
+        val b = LatLng(38.5, -121.7 + 0.00125) // ~22 m from a, same physical junction
         val turn = RouteGeometry.enrichWithLights(straightRoute(), listOf(a, b)).legs[0].maneuvers.last()
         assertTrue("clustered to one light", turn.instruction.startsWith("Pass the traffic light, then turn left"))
     }
