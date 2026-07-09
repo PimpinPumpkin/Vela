@@ -172,9 +172,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **In-store department hours (2026-07-08).** A department store's sheet lists each department
   under the main hours - Pharmacy, Fuel Station, Liquor, Delivery/Pickup windows - each with its
   own colour-coded status ("Closed · Opens 9 AM Thu") and an expandable 7-day table, split shifts
-  included - NESTED inside the main Hours expansion (2026-07-08 follow-up), so the collapsed sheet
-  stays one clean line and the whole schedule story lives behind one tap. Split shifts
-  included ("9 AM–1:30 PM, 2–9 PM"). Parsed from the whole `[118]` response list, the same block
+  included ("9 AM–1:30 PM, 2–9 PM"). The whole block is NESTED inside the main Hours expansion
+  (2026-07-08 follow-up), so the collapsed sheet stays one clean line and the full schedule story
+  lives behind one tap. Parsed from the whole `[118]` response list, the same block
   whose FIRST entry used to be misread as the store's status (the "closes soon at 10 PM over a
   5 AM–1 AM table" bug - the fix and this feature are the same discovery); store-name prefixes are
   stripped ("Safeway Pharmacy" → "Pharmacy"). Unit-tested + device-verified on a 5-department
