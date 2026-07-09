@@ -160,6 +160,8 @@ dependencies {
     // stays UI-agnostic.
     implementation(libs.maplibre.android)
     implementation(libs.androidx.car.app) // Android Auto (projection): templates + car surface
+    implementation(libs.androidx.car.app.projected) // projected host connector (phone → car)
+    testImplementation(libs.androidx.car.app.testing) // car-template unit tests (ManeuverMapper)
 
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
