@@ -48,6 +48,10 @@ class RoutingGraphStore @Inject constructor(
     private val graphsRoot = File(context.filesDir, "graphs")
     private val indexFile = File(graphsRoot, "index.json")
 
+    // Guards the index.json read-modify-write: a download finishing while delete() runs
+    // (or two parallel downloads) must not lose an entry (same guard as OverlayTileStore).
+    private val indexLock = Any()
+
     // Region graphs (tens–hundreds of MB) can outrun the shared client's 12s callTimeout (a scrape bound,
     // not a download bound) on a slow link or a big region — the call aborts, runCatching eats it, the
     // graph silently never installs. Derive an unbounded-call client for the body download (same fix as
@@ -104,7 +108,7 @@ class RoutingGraphStore @Inject constructor(
             check(File(tmp, "properties").exists()) { "downloaded graph is incomplete (no 'properties')" }
             dir.deleteRecursively()
             check(tmp.renameTo(dir)) { "could not install graph (rename failed)" }
-            writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e)))
+            synchronized(indexLock) { writeIndex(readIndex() + (region.id to doubleArrayOf(region.s, region.w, region.n, region.e))) }
             onProgress(100)
             true
         }.getOrElse { tmp.deleteRecursively(); false }
@@ -112,7 +116,7 @@ class RoutingGraphStore @Inject constructor(
 
     fun delete(id: String) {
         File(graphsRoot, id).deleteRecursively()
-        writeIndex(readIndex() - id)
+        synchronized(indexLock) { writeIndex(readIndex() - id) }
     }
 
     private fun readIndex(): Map<String, DoubleArray> = runCatching {
