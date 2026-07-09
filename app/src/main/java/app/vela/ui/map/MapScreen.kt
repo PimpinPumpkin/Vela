@@ -1132,31 +1132,18 @@ fun MapScreen(
         }
 
         if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
-            // Google-style locate button: a plain surface circle with the crosshair, not a
-            // coloured M3 FAB — reads as map chrome rather than an action button.
+            // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
+            // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
                 onClick = vm::recenter,
-                shape = androidx.compose.foundation.shape.CircleShape,
-                // Same explicit container pair as the category chips (which read clearly on the
-                // map in both themes) - every tonal surface colour tried here melted into the
-                // dark tiles (two rounds of user feedback). Lifted well above the gesture bar
-                // / scale line too.
-                containerColor = if (isAppInDarkTheme()) Color(0xFF333539) else Color(0xFFF1F3F4),
-                contentColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
+                    .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(16.dp)
-                    .padding(bottom = chromeLift + 48.dp)
-                    .size(56.dp)
-                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, androidx.compose.foundation.shape.CircleShape)
-                    .dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    .padding(bottom = chromeLift),
             ) {
-                Icon(
-                    Icons.Default.MyLocation,
-                    contentDescription = stringResource(R.string.mapscreen_center_on_my_location),
-                    modifier = Modifier.size(24.dp),
-                )
+                Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
             }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
             // niche browse-only layer, and nav now shows per-segment route traffic,
