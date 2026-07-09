@@ -1213,7 +1213,7 @@ private fun ensureLayers(style: Style) {
         // dash texture to integer zooms (compressing up to ~2x in between), so dash dots always
         // cram together zoomed out (user report 2026-07-08). The dot is an SDF template so
         // iconColor can restyle it like lineColor did.
-        if (style.getImage(ROUTE_DOT_IMG) == null) style.addImage(ROUTE_DOT_IMG, routeDotBitmap(), true)
+        if (style.getImage(ROUTE_DOT_IMG) == null) style.addImage(ROUTE_DOT_IMG, routeDotBitmap())
         // POINT features on their own source, regenerated per zoom (regenRouteDots) — MapLibre's
         // line-placed symbol spacing is computed in tile space and stretches up to ~2x between
         // integer zooms (user: "the gaps between integers are rough"), so we do the spacing math
@@ -1221,7 +1221,6 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(ROUTE_DOT_SRC))
         val routeDash = SymbolLayer(ROUTE_DASH_LAYER, ROUTE_DOT_SRC).withProperties(
             PropertyFactory.iconImage(ROUTE_DOT_IMG),
-            PropertyFactory.iconColor("#1F6FEB"),
             // The dots ARE the route line: they must never be collision-culled or thinned.
             PropertyFactory.iconAllowOverlap(true),
             PropertyFactory.iconIgnorePlacement(true),
@@ -2028,10 +2027,13 @@ private fun applyData(
         // zoom moved enough to change the on-screen spacing (identity + 0.2-zoom gates keep
         // this cheap on the per-recomposition applyData path).
         style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(
-            PropertyFactory.visibility(Property.VISIBLE),
-            PropertyFactory.iconColor(routeInt),
-        )
+        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+        // Walk/bike shows ONLY the dots: the solid grey alternate lines (and any leftover nav
+        // ahead-suffix) read as "the car route is still drawn" next to them (user 2026-07-08).
+        // Alternates stay pickable from the route list.
+        style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+        style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
         if (dashDotPoly !== route || kotlin.math.abs(map.cameraPosition.zoom - dashDotZoom) > 0.2) {
             regenRouteDots(map, style, route)
         }
@@ -2041,6 +2043,8 @@ private fun applyData(
         // transition so the last drive's remnant doesn't linger under previews.
         style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
         if (dashDotPoly.isNotEmpty()) regenRouteDots(map, style, emptyList())
+        // Back on a solid (drive) route: the alternates line returns (walk/bike hides it).
+        style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
         style.getLayer(ROUTE_LAYER)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
             PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
@@ -2230,14 +2234,17 @@ private fun navPuckBitmap(): Bitmap {
 }
 
 /** A Google-style red map pin with a white centre dot, anchored at its bottom tip. */
-/** A solid circle template for the walk/bike route dots (SDF, tinted via iconColor). */
+/** The walk/bike route dot: route-blue fill with a WHITE outline (Google's look — the ring
+ *  keeps the chain readable over dark roads and the blue casing alike). Colours are baked in
+ *  (not SDF-tinted): an SDF is single-colour, and the walk/bike line is always route-blue. */
 private fun routeDotBitmap(): Bitmap {
-    // Small dot: line-placed symbols must FIT the line (tight curves skip icons that don't),
-    // so a compact dot keeps the chain continuous through bends.
     val d = 26
     val bmp = Bitmap.createBitmap(d, d, Bitmap.Config.ARGB_8888)
-    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
-    Canvas(bmp).drawCircle(d / 2f, d / 2f, d / 2f - 2f, paint)
+    val canvas = Canvas(bmp)
+    val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    val blue = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1F6FEB.toInt() }
+    canvas.drawCircle(d / 2f, d / 2f, d / 2f - 1f, white)
+    canvas.drawCircle(d / 2f, d / 2f, d / 2f - 4f, blue)
     return bmp
 }
 
