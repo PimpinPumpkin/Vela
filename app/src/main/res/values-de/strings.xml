@@ -476,4 +476,6 @@
     <string name="settings_no_lists">Noch keine Listen zum Exportieren</string>
     <string name="mapvm_export_lists_subject">Vela-Listen (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Listen exportieren</string>
+    <string name="lists_empty_hint">Noch keine Listen. Tippe auf Neu oder speichere einen Ort von seiner Seite.</string>
+    <string name="lists_place_count">%1$d Orte</string>
 </resources>
