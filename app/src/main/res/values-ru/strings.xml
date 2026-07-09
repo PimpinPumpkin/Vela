@@ -476,4 +476,6 @@
     <string name="settings_no_lists">Пока нет списков для экспорта</string>
     <string name="mapvm_export_lists_subject">Списки Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Экспорт списков</string>
+    <string name="lists_empty_hint">Пока нет списков. Нажмите «Новый» или сохраните место с его страницы.</string>
+    <string name="lists_place_count">%1$d мест</string>
 </resources>
