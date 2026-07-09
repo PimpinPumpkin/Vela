@@ -32,8 +32,9 @@ https://pimpinpumpkin.github.io/Vela/repo?fingerprint=F374920F2F5F38D7508D0B0421
 - The newest **nightly** build when it is ahead of stable, so you can opt into
   the fresh one by picking the higher version in your client.
 
-The repo index is rebuilt automatically by CI on every release
-(`.github/workflows/fdroid-repo.yml`) and hosted on GitHub Pages. The index is
+The repo index is rebuilt automatically after every successful CI run and
+weekly stable promotion (`.github/workflows/fdroid-repo.yml`) and hosted on
+GitHub Pages. The index is
 signed with a dedicated repo key; the APKs carry the same Vela signing key as
 the GitHub releases and the in-app updater, so switching install sources never
 forces a reinstall.
