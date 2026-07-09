@@ -23,7 +23,7 @@ import androidx.compose.material.icons.filled.DragHandle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material.icons.filled.TripOrigin
+import androidx.compose.material.icons.filled.SportsScore
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,6 +69,7 @@ private val ROW_HEIGHT = 56.dp
 @Composable
 fun StopsEditorSheet(
     originName: String,
+    originIsMe: Boolean = true,
     destinationName: String,
     stops: List<Place>,
     onApply: (List<Place>) -> Unit,
@@ -112,7 +113,14 @@ fun StopsEditorSheet(
             }
             // Origin — fixed (the trip starts where it starts; edit it from the panel's From row).
             Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.TripOrigin, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                // Same glyph grammar as the panel: PIN = where you start (LOCATION-BLUE when it's
+                // your current position — the non-verbal "this is you"), checkered FLAG = finish.
+                Icon(
+                    Icons.Default.Place,
+                    contentDescription = null,
+                    tint = if (originIsMe) androidx.compose.ui.graphics.Color(0xFF4285F4) else dim,
+                    modifier = Modifier.size(18.dp),
+                )
                 Spacer(Modifier.width(14.dp))
                 Text(originName, style = MaterialTheme.typography.bodyLarge, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
@@ -203,7 +211,7 @@ fun StopsEditorSheet(
             }
             // Destination — pinned last.
             Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.SportsScore, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(14.dp))
                 Text(
                     destinationName,
