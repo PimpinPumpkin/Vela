@@ -99,6 +99,7 @@ private const val AMBIENT_SRC = "vela-ambient-src"
 private const val AMBIENT_LAYER = "vela-ambient"
 private const val CONTROLS_SRC = "vela-controls-src" // OSM traffic lights + stop signs drawn at high zoom
 private const val CONTROLS_LAYER = "vela-controls"
+private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible collision box over the labels
 private const val SIGNAL_IMG = "vela-signal"
 private const val STOP_IMG = "vela-stop"
 private const val AMBIENT_INDEX_PROP = "vela-ambient-index"
@@ -224,7 +225,10 @@ fun VelaMapView(
     val compassTopPx = when {
         navMode && navBannerBottomPx > 0 -> navBannerBottomPx + gap8Px
         navMode -> statusBarTopPx + with(density) { 176.dp.roundToPx() }
-        else -> statusBarTopPx + gap8Px
+        // Browse: below the floating search bar AND the category-chip row - 8dp under the
+        // status bar put the compass exactly behind the bar (a half-hidden circle peeking
+        // out its right end, clearly visible in light mode).
+        else -> statusBarTopPx + with(density) { 122.dp.roundToPx() }
     }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
@@ -1367,27 +1371,43 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(STOP_IMG) == null) style.addImage(STOP_IMG, stopSignBitmap())
     if (style.getSource(CONTROLS_SRC) == null) {
         style.addSource(GeoJsonSource(CONTROLS_SRC))
+        val controlsSize = Expression.interpolate(
+            Expression.linear(), Expression.zoom(),
+            Expression.stop(15.5f, 0.75f),
+            Expression.stop(17f, 1.05f),
+            Expression.stop(19f, 1.5f),
+        )
+        // The VISIBLE controls draw at the very BOTTOM of the symbol stack — beneath every
+        // basemap label (street names, cities) and all Vela layers — so a stop sign can never
+        // cover text or a POI icon (user 2026-07-09: signs were stomping street names). They
+        // still always draw (allowOverlap + ignorePlacement): sparse, one per junction.
+        val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
+        val visible = SymbolLayer(CONTROLS_LAYER, CONTROLS_SRC).apply {
+            setMinZoom(16f)
+            setProperties(
+                PropertyFactory.iconImage(Expression.get("icon")),
+                // Zoom-scaled so they read at nav zoom (~16-17.5) and grow as you zoom in — the flat 0.55
+                // was too small to spot, especially tilted in nav (user 2026-07-06 wanted them bigger).
+                PropertyFactory.iconSize(controlsSize),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconPadding(2f),
+            )
+        }
+        if (firstSymbol != null) style.addLayerBelow(visible, firstSymbol) else style.addLayerBelow(visible, AMBIENT_LAYER)
+        // An INVISIBLE claim twin sits where the visible layer used to (above the basemap
+        // labels, below Vela's own pins/POIs): it places first with a real collision box, so
+        // street names shift away from sign positions instead of printing right next to or on
+        // one. Vela's own layers are above it and place before it, so it can never evict a POI.
         style.addLayerBelow(
-            SymbolLayer(CONTROLS_LAYER, CONTROLS_SRC).apply {
+            SymbolLayer(CONTROLS_CLAIM_LAYER, CONTROLS_SRC).apply {
                 setMinZoom(16f)
                 setProperties(
                     PropertyFactory.iconImage(Expression.get("icon")),
-                    // Zoom-scaled so they read at nav zoom (~16-17.5) and grow as you zoom in — the flat 0.55
-                    // was too small to spot, especially tilted in nav (user 2026-07-06 wanted them bigger).
-                    PropertyFactory.iconSize(
-                        Expression.interpolate(
-                            Expression.linear(), Expression.zoom(),
-                            Expression.stop(15.5f, 0.75f),
-                            Expression.stop(17f, 1.05f),
-                            Expression.stop(19f, 1.5f),
-                        ),
-                    ),
-                    // Traffic controls are SPARSE (one per junction) — draw them all instead of letting the
-                    // denser POI layer collide them away, so they're actually visible on the browse map too
-                    // (Google shows all of them at street zoom). This reverses the earlier "collision keeps a
-                    // dense grid legible" — the user wants to see them, and at z16+ junctions are well-separated.
-                    PropertyFactory.iconAllowOverlap(true),
-                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconSize(controlsSize),
+                    PropertyFactory.iconOpacity(0f),
+                    PropertyFactory.iconAllowOverlap(true), // always claims (never yields itself)
+                    PropertyFactory.iconIgnorePlacement(false), // ...and others must dodge the claim
                     PropertyFactory.iconPadding(2f),
                 )
             },

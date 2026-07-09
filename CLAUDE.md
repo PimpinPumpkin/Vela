@@ -112,7 +112,9 @@ Defaults that make the safe path the easy one:
   cancels the demo job (its `finally` resumes live GPS + resets the dot/route). **Turn it OFF to
   navigate for real** - while on, every "Start" simulates instead of using GPS.
 - **Simulate-my-location (demo)** (`ui/SimLocation.kt`, Settings → Navigation, off by default,
-  pref `sim_location` in `vela_settings`). A sibling of demo-drive for demos/screenshots: when on,
+  pref `sim_location` in `vela_settings`). The sim branch in `startLocation()` also CANCELS the
+  stale-location timer (2026-07-09): the pinned demo dot gets no fresh fixes, so a timer armed by
+  the last real fix greyed the dot ~30 s in and nothing ever turned it blue again. A sibling of demo-drive for demos/screenshots: when on,
   Vela pretends to be at the map centre (captured when you flip the toggle), so the location dot,
   the directions ORIGIN ("Your location"), and recenter all read from there instead of your real
   GPS - that is how every Davis/Sacramento screenshot was shot from elsewhere without leaking a real
@@ -243,6 +245,8 @@ Defaults that make the safe path the easy one:
   `chromeLift` (76dp) so nothing sits on the minimized bar. The compass is MapLibre's built-in
   (`setCompassMargins`), which fades facing north (Google's behaviour) and reappears when
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
+  Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
+  category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
@@ -943,7 +947,16 @@ Defaults that make the safe path the easy one:
   is a zoom-interpolated expression (~0.75 at z15.5 → 1.05 at z17 → 1.5 at z19) - the flat 0.55 was too small to
   spot, especially tilted in nav; and `iconAllowOverlap(true)`+`iconIgnorePlacement(true)` so they ALWAYS draw
   (controls are sparse - one per junction - and the earlier collision-off-below-POIs was culling them away on the
-  browse map, so the user couldn't see them; Google shows all of them at street zoom). Data is keyless Overpass (sibling of the
+  browse map, so the user couldn't see them; Google shows all of them at street zoom).
+  **Z-ORDER (2026-07-09, device-verified downtown Davis):** the VISIBLE controls layer inserts at the very
+  BOTTOM of the symbol stack (below the first basemap SymbolLayer), so a stop sign can never cover a street
+  name, city label, or POI icon/text - they were stomping labels when the layer sat above the basemap. An
+  INVISIBLE claim twin (`vela-controls-claim`, iconOpacity 0, allowOverlap true + ignorePlacement FALSE)
+  stays at the old spot above the basemap labels: it places first and claims a collision box, so street
+  names shift away from sign positions instead of printing on/next to one. Vela's own layers sit above the
+  claim and place before it, so it can never evict a POI. Don't collapse the two layers back into one -
+  draw order and placement order are the same thing in MapLibre, so "draws under labels" and "labels avoid
+  it" genuinely need two layers. Data is keyless Overpass (sibling of the
   `fetchAlong` nav-landmark fetch + `OverpassPois`), fetched by `MapViewModel.refreshTrafficControls` from
   `onViewport` **only at z ≥ `CONTROLS_MIN_ZOOM` (16)**. Controls are STATIC, so it fetches a box padded 50%
   beyond the viewport and **reuses it while the center stays in the inner half** (`controlsBox`) - panning/driving
