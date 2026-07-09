@@ -83,18 +83,13 @@ from the `directions` diag), offline highway refs (a graph rebuild - parked).
   "Parked car" destination, and clears with a hold. Follow-up ideas: offer to save
   automatically when a drive ends; distance/age on the chip; a note or photo.
 
-- **Import Google Maps saved lists** (issue #1): paste or share a maps.app.goo.gl list
-  link into Vela and get the places as a savable list. **Feasibility PROVEN keyless on a
-  real shared list (2026-07-08):** the share link resolves logged-out to a maps URL whose
-  data blob carries the list id, and the page HTML embeds a ready-made prefetch link to
-  `/maps/preview/entitylist/getlist` (session token included) - calling it returns the
-  full list as JSON: title, description, author, and per item the display name, address,
-  lat/lng, feature id (decimal int64 pair convertible to the 0x..:0x.. reviews id) and
-  the owner's personal NOTE on the place. So the extractor is: fetch share link → lift
-  the embedded getlist URL → parse. Remaining work: ListImporter in :core (+ unit tests
-  on a captured payload), a paste/share entry point in the UI, and somewhere to PUT the
-  places (either flat saves or first-class local lists - the latter is what issue #1
-  really asks for).
+- **Import Google Maps saved lists** (issue #1) - **first cut SHIPPED 2026-07-08,
+  device-verified**: paste a share link into the search bar → the list's places land as
+  results with the owner's per-place notes shown on each sheet (extraction documented in
+  SPEC: share link resolves logged-out, page embeds a complete getlist request, parser
+  unit-tested). Remaining: first-class LOCAL lists (create/rename/icon, import INTO a
+  list, per-place notes editable) - the full issue #1 ask - plus a share-TO-Vela intent
+  so the link never needs copying.
 
 - **D-pad polish** (base support SHIPPED + full-function sweep done 2026-07-07 - see
   `docs/dpad.md`): a real-device pass on D-pad hardware to tune the pan step / OK-hold
