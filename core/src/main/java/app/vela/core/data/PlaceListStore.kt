@@ -57,6 +57,21 @@ class PlaceListStore @Inject constructor(
     fun listsContaining(placeId: String): List<PlaceList> =
         lists().filter { l -> l.places.any { it.id == placeId } }
 
+    /** All lists as a portable JSON document (export / backup). */
+    fun exportJson(): String = Json.encodeToString(lists())
+
+    /** Merge exported [json] lists in, de-duped by list id (existing lists keep their
+     *  places; a brand-new list is appended whole). Returns how many lists were added. */
+    fun importMerge(json: String): Int {
+        val incoming = runCatching { Json.decodeFromString<List<PlaceList>>(json) }.getOrNull() ?: return 0
+        val current = lists()
+        val existingIds = current.mapTo(HashSet()) { it.id }
+        val added = incoming.filterNot { it.id in existingIds }
+        if (added.isEmpty()) return 0
+        write(current + added)
+        return added.size
+    }
+
     private companion object {
         const val KEY = "lists"
     }

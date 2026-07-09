@@ -492,4 +492,11 @@
     <string name="place_note_label">Note</string>
     <string name="map_save_list">Save list · %1$d places</string>
     <string name="map_list_saved">Saved “%1$s” to your lists</string>
+    <string name="settings_update_nightly">Include nightly builds</string>
+    <string name="settings_update_nightly_hint">Update to the newest nightly (prerelease) instead of only stable releases. Nightlies are fresher but less tested.</string>
+    <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device.</string>
+    <string name="settings_lists_imported">Imported %1$d list(s)</string>
+    <string name="settings_no_lists">No lists to export yet</string>
+    <string name="mapvm_export_lists_subject">Vela lists (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Export lists</string>
 </resources>
