@@ -1,0 +1,98 @@
+name: F-Droid repo
+
+# Publishes Vela's own F-Droid repository to GitHub Pages. Users add the repo URL
+# (see FDROID.md) to any F-Droid client and get updates like from any other repo.
+# Runs on every release event (nightly prereleases and weekly stable promotions
+# both fire "published"/"edited") and on manual dispatch.
+#
+# The repo serves the latest STABLE release plus the newest NIGHTLY when it is
+# ahead, so both channels are installable. The index is signed with a dedicated
+# repo key (secrets FDROID_KEYSTORE_BASE64 / FDROID_KEYSTORE_PASS); the APKs
+# keep the normal Vela app signature.
+
+on:
+  release:
+    types: [published, edited, released]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: fdroid-repo
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install fdroidserver
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q fdroidserver
+
+      - name: Fetch the APKs to serve (latest stable + newest nightly if ahead)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          mkdir -p fdroid/repo
+          stable_tag=$(gh release view --json tagName -q .tagName --repo "$GITHUB_REPOSITORY")
+          echo "stable: $stable_tag"
+          gh release download "$stable_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY"
+          newest_tag=$(gh release list --limit 1 --json tagName -q '.[0].tagName' --repo "$GITHUB_REPOSITORY")
+          echo "newest: $newest_tag"
+          if [ "$newest_tag" != "$stable_tag" ]; then
+            gh release download "$newest_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY" || true
+          fi
+          ls -la fdroid/repo
+
+      - name: Write config + keystore
+        env:
+          FDROID_KEYSTORE_BASE64: ${{ secrets.FDROID_KEYSTORE_BASE64 }}
+          FDROID_KEYSTORE_PASS: ${{ secrets.FDROID_KEYSTORE_PASS }}
+        run: |
+          set -e
+          echo "$FDROID_KEYSTORE_BASE64" | base64 -d > fdroid/keystore.p12
+          cat > fdroid/config.yml <<EOF
+          repo_url: https://pimpinpumpkin.github.io/Vela/repo
+          repo_name: Vela Maps
+          repo_icon: icon.png
+          repo_description: >-
+            Official repository for Vela Maps, the degoogled Google Maps
+            replacement. Serves the latest stable release and the newest
+            nightly build.
+          archive_older: 0
+          keystore: keystore.p12
+          repo_keyalias: fdroidrepo
+          keystorepass: $FDROID_KEYSTORE_PASS
+          keypass: $FDROID_KEYSTORE_PASS
+          EOF
+          chmod 0600 fdroid/config.yml
+
+      - name: Build the signed repo index
+        run: |
+          cd fdroid
+          fdroid update --pretty
+          # Never ship the key material or the passworded config with the site.
+          rm -f keystore.p12 config.yml
+          ls -la repo
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: fdroid
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

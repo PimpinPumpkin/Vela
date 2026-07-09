@@ -179,6 +179,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
+- ✅ **Self-hosted F-Droid repository (2026-07-09).** CI builds a signed F-Droid repo index on
+  every release and publishes it to GitHub Pages (`fdroid-repo.yml`); users add
+  `https://pimpinpumpkin.github.io/Vela/repo` to any F-Droid client (fingerprint in FDROID.md).
+  Serves latest stable + the newest nightly when it's ahead. The index key is a dedicated repo
+  keystore (`~/.vela-signing/fdroid.p12`, secrets FDROID_KEYSTORE_BASE64/_PASS); APKs keep the
+  normal Vela signature so install sources are interchangeable.
 - ✅ **Lists map shortcut + export/import + light-mode status bar + nightly updates (2026-07-09).**
   A ribbon (bookmark) button leads the category-chip row and opens Your lists in its own dialog (lists no longer clutter the search page). Lists export/import
   to a JSON file from Settings (same flow as saved places). The system status-bar icons (clock, wifi,
