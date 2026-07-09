@@ -1920,6 +1920,10 @@ private fun AssignBanner(kind: ShortcutKind, onCancel: () -> Unit) {
         Text(
             stringResource(R.string.mapscreen_assign_shortcut_hint, kind.label.lowercase()),
             style = MaterialTheme.typography.bodyMedium,
+            // Explicit colour: the search page is a plain background()-Box, not a Surface, so
+            // LocalContentColor is NOT set for it — a colourless Text falls back to BLACK and
+            // vanishes on the dark sheet. Same convention as SuggestionRow.
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onCancel) { Text(stringResource(R.string.mapscreen_cancel)) }
@@ -1941,6 +1945,9 @@ private fun PickStopBanner(onCancel: () -> Unit) {
         Text(
             stringResource(R.string.mapscreen_pick_stop_hint),
             style = MaterialTheme.typography.bodyMedium,
+            // Explicit colour, same reason as AssignBanner: no Surface on the search page means
+            // no LocalContentColor — a colourless Text renders BLACK on the dark sheet.
+            color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
         )
         TextButton(onClick = onCancel) { Text(stringResource(R.string.mapscreen_cancel)) }
