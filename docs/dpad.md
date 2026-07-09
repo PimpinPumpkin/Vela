@@ -252,6 +252,16 @@ consuming the key stops it reaching the root swallow), so it still walks Driving
 Transit. `SelectableRow`'s RadioButton is also `onClick = null` (display-only) so the row is a single
 focus stop. Any new *vertical-list* screen with a lone horizontal row wants the same shape.
 
+**Switch rows follow the same single-focus-stop pattern (fixed 2026-07-08, user report).** The
+Settings toggles used to be a bare `Row` + focusable `Switch`: traversal stopped on the Switch,
+whose only focus indication is Material's faint state-layer halo, invisible against the dark
+theme. From the Map section to the updater (nine sections, 15 toggles) a D-pad user lost the
+cursor completely and the screen read as "not D-pad compatible". Fix: **`ToggleRow`**
+(SettingsScreen.kt) mirrors `SelectableRow` - `dpadHighlight` ring + `clickable` on the ROW,
+`Switch(onCheckedChange = null)` display-only. Bonus for touch: the whole row is now tappable,
+like every platform settings app. Don't add a bare focusable `Switch`/`Checkbox` anywhere; wrap
+it in a ringed row.
+
 **The bare map is the ONE intentional exception (2026-07-08).** It used to auto-focus AND
 auto-engage the centre map target on open, so arrows immediately panned and you had to press
 BACK before you could reach the search bar (user report). Now the map neither auto-focuses nor

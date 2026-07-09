@@ -224,103 +224,31 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_map))
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_live_traffic), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.Traffic.on.value,
-                    onCheckedChange = { app.vela.ui.Traffic.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_live_traffic), app.vela.ui.Traffic.on.value) { app.vela.ui.Traffic.set(context, it) }
             Hint(stringResource(R.string.settings_live_traffic_hint))
 
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_transit_layer), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.TransitLayer.on.value,
-                    onCheckedChange = { app.vela.ui.TransitLayer.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) { app.vela.ui.TransitLayer.set(context, it) }
             Hint(stringResource(R.string.settings_transit_layer_hint))
 
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_buildings_3d), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.Buildings3d.on.value,
-                    onCheckedChange = { app.vela.ui.Buildings3d.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_buildings_3d), app.vela.ui.Buildings3d.on.value) { app.vela.ui.Buildings3d.set(context, it) }
             Hint(stringResource(R.string.settings_buildings_3d_hint))
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_place_pages))
 
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_show_reviews), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.ShowReviews.on.value,
-                    onCheckedChange = { app.vela.ui.ShowReviews.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_show_reviews), app.vela.ui.ShowReviews.on.value) { app.vela.ui.ShowReviews.set(context, it) }
             Hint(stringResource(R.string.settings_show_reviews_hint))
 
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_read_all_reviews), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.LiveReviews.on.value,
-                    onCheckedChange = { app.vela.ui.LiveReviews.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_read_all_reviews), app.vela.ui.LiveReviews.on.value) { app.vela.ui.LiveReviews.set(context, it) }
             Hint(stringResource(R.string.settings_read_all_reviews_hint))
 
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_load_photos), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.LoadPhotos.on.value,
-                    onCheckedChange = { app.vela.ui.LoadPhotos.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_load_photos), app.vela.ui.LoadPhotos.on.value) { app.vela.ui.LoadPhotos.set(context, it) }
             Hint(stringResource(R.string.settings_load_photos_hint))
 
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_hide_adult), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.HideAdult.on.value,
-                    onCheckedChange = { app.vela.ui.HideAdult.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_hide_adult), app.vela.ui.HideAdult.on.value) { app.vela.ui.HideAdult.set(context, it) }
             Hint(stringResource(R.string.settings_hide_adult_hint))
 
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_hide_external_links), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.HideExternalLinks.on.value,
-                    onCheckedChange = { app.vela.ui.HideExternalLinks.set(context, it) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_hide_external_links), app.vela.ui.HideExternalLinks.on.value) { app.vela.ui.HideExternalLinks.set(context, it) }
             Hint(stringResource(R.string.settings_hide_external_links_hint))
 
             Spacer(Modifier.height(20.dp))
@@ -328,34 +256,16 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
 
             var keepAwake by remember { mutableStateOf(prefs.getBoolean("keep_screen_on_nav", true)) }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_keep_screen_on), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = keepAwake,
-                    onCheckedChange = {
-                        keepAwake = it
-                        prefs.edit().putBoolean("keep_screen_on_nav", it).apply()
-                    },
-                )
+            ToggleRow(stringResource(R.string.settings_keep_screen_on), keepAwake) {
+                keepAwake = it
+                prefs.edit().putBoolean("keep_screen_on_nav", it).apply()
             }
             Hint(stringResource(R.string.settings_keep_screen_on_hint))
 
             var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_traffic_lights), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = trafficLights,
-                    onCheckedChange = {
-                        trafficLights = it
-                        prefs.edit().putBoolean("nav_traffic_lights", it).apply()
-                    },
-                )
+            ToggleRow(stringResource(R.string.settings_traffic_lights), trafficLights) {
+                trafficLights = it
+                prefs.edit().putBoolean("nav_traffic_lights", it).apply()
             }
             Hint(stringResource(R.string.settings_traffic_lights_hint))
             Text(stringResource(R.string.settings_vibrate_on_turns), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
@@ -409,33 +319,15 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             Hint(stringResource(R.string.settings_vibrate_hint))
 
             var demoDrive by remember { mutableStateOf(prefs.getBoolean("demo_drive", false)) }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_demo_drive), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = demoDrive,
-                    onCheckedChange = {
-                        demoDrive = it
-                        prefs.edit().putBoolean("demo_drive", it).apply()
-                    },
-                )
+            ToggleRow(stringResource(R.string.settings_demo_drive), demoDrive) {
+                demoDrive = it
+                prefs.edit().putBoolean("demo_drive", it).apply()
             }
             Hint(stringResource(R.string.settings_demo_drive_hint))
 
             // Simulated location — pretend to be at the current map centre (for demos / screenshots
             // without leaking where you actually are). Reactive holder so the switch reflects state.
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_sim_location), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = app.vela.ui.SimLocation.on,
-                    onCheckedChange = { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_sim_location), app.vela.ui.SimLocation.on) { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() }
             Hint(stringResource(R.string.settings_sim_location_hint))
 
             Spacer(Modifier.height(20.dp))
@@ -806,16 +698,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             LaunchedEffect(Unit) { vm.refreshDiagnostics() }
             Hint(stringResource(R.string.settings_diagnostics_hint))
             var showDiagConsent by remember { mutableStateOf(false) }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_share_diagnostics), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = state.diagnosticsEnabled,
-                    onCheckedChange = { on -> if (on) showDiagConsent = true else vm.setDiagnostics(false) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_share_diagnostics), state.diagnosticsEnabled) { on -> if (on) showDiagConsent = true else vm.setDiagnostics(false) }
             if (state.diagnosticsEnabled) {
                 OutlinedButton(onClick = {
                     val intent = vm.diagShareIntent()
@@ -837,16 +720,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             // a restart (the list was otherwise only refreshed after a delete).
             LaunchedEffect(Unit) { trips = vm.recordedTrips() }
             Spacer(Modifier.height(8.dp))
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_save_trips), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = state.tripRecordingEnabled,
-                    onCheckedChange = { on -> if (on) showTripConsent = true else vm.setTripRecording(false) },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_save_trips), state.tripRecordingEnabled) { on -> if (on) showTripConsent = true else vm.setTripRecording(false) }
             Hint(stringResource(R.string.settings_save_trips_hint))
             if (trips.isNotEmpty()) {
                 Spacer(Modifier.height(4.dp))
@@ -946,16 +820,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
             // The offer itself is a card on the map; the system installer does the install.
             var selfUpdate by remember { mutableStateOf(prefs.getBoolean("self_update_check", true)) }
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(stringResource(R.string.settings_update_auto), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(
-                    checked = selfUpdate,
-                    onCheckedChange = { selfUpdate = it; prefs.edit().putBoolean("self_update_check", it).apply() },
-                )
-            }
+            ToggleRow(stringResource(R.string.settings_update_auto), selfUpdate) { selfUpdate = it; prefs.edit().putBoolean("self_update_check", it).apply() }
             Hint(stringResource(R.string.settings_update_auto_hint))
             // A clear gap between the hint paragraph and the button (they read as one clump otherwise).
             Spacer(Modifier.height(10.dp))
@@ -1005,6 +870,21 @@ private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: (
             contentDescription = if (expanded) stringResource(R.string.settings_collapse) else stringResource(R.string.settings_expand),
             tint = MaterialTheme.colorScheme.primary,
         )
+    }
+}
+
+@Composable
+private fun ToggleRow(label: String, checked: Boolean, onToggle: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable { onToggle(!checked) }.padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+        // onCheckedChange = null: the Switch is display-only so the ROW is the single focus
+        // stop with a visible ring — same pattern as SelectableRow's RadioButton below. A
+        // separately-focusable Switch shows only Material's faint halo, so a D-pad user
+        // walking Settings loses the cursor for nine straight sections (report 2026-07-08).
+        Switch(checked = checked, onCheckedChange = null)
     }
 }
 
