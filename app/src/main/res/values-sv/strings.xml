@@ -478,4 +478,5 @@
     <string name="mapvm_export_lists_chooser">Exportera listor</string>
     <string name="lists_empty_hint">Inga listor än. Tryck på Ny eller spara en plats från dess sida.</string>
     <string name="lists_place_count">%1$d platser</string>
+    <string name="navservice_notif_eta">Ankomst %1$s</string>
 </resources>
