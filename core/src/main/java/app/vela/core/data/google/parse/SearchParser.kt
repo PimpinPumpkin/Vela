@@ -9,6 +9,7 @@ import app.vela.core.data.google.int
 import app.vela.core.data.google.str
 import app.vela.core.model.AboutSection
 import app.vela.core.model.DayBusyness
+import app.vela.core.model.Department
 import app.vela.core.model.HourBusyness
 import app.vela.core.model.LatLng
 import app.vela.core.model.Place
@@ -174,6 +175,7 @@ object SearchParser {
             // Coherent pairing: when the displayed status came from [118] (no [203] status), take
             // the hours from [118] first too - status and table then describe the same schedule.
             hours = parseHours(entry, paths, prefer118 = rich == null && s118 != null),
+            departments = parseDepartments(entry, paths, name),
             photoUrls = parsePhotos(entry, paths),
             featuredReview = field("featuredReview").str()
                 ?.trim()?.trim('"', '“', '”')?.ifBlank { null },
@@ -366,6 +368,26 @@ object SearchParser {
         val h203 = { readHours(entry.atPath(pathOf(paths, "hours203"))) }
         val h118 = { readHours(entry.atPath(pathOf(paths, "hours118"))) }
         return if (prefer118) h118().ifEmpty(h203) else h203().ifEmpty(h118)
+    }
+
+    /** Named in-store departments — the whole `[118]` list ("Safeway Pharmacy", "Delivery",
+     *  "Pickup"), each with its own weekly hours and status. Same leaf shape as the legacy
+     *  first-entry paths: name `[0]`, hours `[3][0]` ([readHours]), status `[3][1][4][0]`.
+     *  The redundant store prefix is stripped from names ("Safeway Pharmacy" → "Pharmacy");
+     *  service windows like "Delivery" pass through as-is. Best-effort: a nameless or
+     *  schedule-less entry is skipped, never a parse error. */
+    internal fun parseDepartments(entry: JsonElement, paths: Map<String, List<Int>>, storeName: String): List<Department> {
+        val list = entry.atPath(pathOf(paths, "departments")).arr() ?: return emptyList()
+        return list.mapNotNull { dep ->
+            val raw = dep.at(0).str()?.trim()?.ifBlank { null } ?: return@mapNotNull null
+            val name = if (raw.startsWith(storeName, ignoreCase = true) && raw.length > storeName.length) {
+                raw.substring(storeName.length).trim().ifBlank { raw }
+            } else raw
+            val hours = readHours(dep.at(3, 0))
+            val status = dep.at(3, 1, 4, 0).str()?.trim()?.ifBlank { null }
+            if (hours.isEmpty() && status == null) return@mapNotNull null
+            Department(name = name, hours = hours, statusText = status, openNow = parseOpenNow(status))
+        }
     }
 
     /** "People also search for": the root-level similar-places list (`similar` = `[2][11][0]`,

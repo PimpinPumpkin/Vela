@@ -243,6 +243,7 @@
     <string name="place_popular_times">Heures d\'affluence</string>
     <string name="place_busyness_right_now">%1$s en ce moment</string>
     <string name="place_hours">Horaires</string>
+    <string name="place_departments">Rayons et services</string>
     <string name="place_collapse_hours">Réduire les horaires</string>
     <string name="place_expand_hours">Développer les horaires</string>
     <string name="mapscreen_recenter">Recentrer</string>
