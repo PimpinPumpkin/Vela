@@ -568,19 +568,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
-- ✅ **Android Auto, first cut (2026-07-08, user request).** Vela registers as a navigation-category
-  templated car app, so a sideloaded install appears in the car launcher once Android Auto's developer
-  "Unknown sources" switch is on (same as PipePipe and friends). On the car screen you get the live Vela map
-  (same OpenFreeMap basemap, day/night recolour keyed to the CAR's own dark mode), a location puck from plain
-  AOSP LocationManager, the active route drawn on the map, camera follow with Re-center and +/− zoom actions,
-  and pan/zoom from the car's touch gestures. While navigating, the template shows the current maneuver and a
-  live distance (RoutingInfo card) driven by the same NavSession singleton the phone runs, so a route started
-  on the phone shows up in the car and the spoken guidance plays through the car speakers as usual. Under the
-  hood the Car App Library hands templated apps a raw drawing surface and MapLibre wants a real View, so the
-  renderer wraps the surface in a VirtualDisplay + Presentation holding a plain MapView (`app/car/`). Current
-  limits, by design of this first cut: you start and end navigation on the phone (no car-side search yet), and
-  the maneuver card needs the phone app alive (the map + puck work regardless). Verified: builds, installs,
-  and the car service registers with the NAVIGATION category; a real head-unit drive is the remaining check.
+- ✅ **Android Auto, full car-side navigation (2026-07-08, PR #17 by jacobjeger; replaces the first cut).**
+  Vela registers as a navigation-category templated car app (sideloads appear once AA's developer "Unknown
+  sources" switch is on). The car now runs the WHOLE flow by itself: a home screen (Home/Work, recents,
+  saved), car-side search (debounced, biased to your location), a route preview with up to 3 live-traffic
+  alternates, and active turn-by-turn with the turn card, a "then" step, the lane diagram, a faster-route
+  action, mute, and instrument-cluster support (NavigationManager navigationStarted/updateTrip — without
+  which the old cut never showed a turn card). Rendering moved off the fragile VirtualDisplay+Presentation
+  hack onto MapLibre's supported MapSnapshotter (bitmap → car surface) with route MAP-MATCHING (puck snapped
+  to the route within 40 m), eased puck/bearing interpolation, speed-adaptive zoom, a look-ahead camera, the
+  traffic-coloured route line, a speed badge + offline speed-limit disc, and auto-recenter after a pan.
+  Assistant `geo:` intents route into it (with a fix for opaque-URI parsing that crashed the old handler).
+  The phone stays the nav brain: the same NavSession singleton drives both, so a trip started in the car
+  shows on the phone and vice versa. Day/night keys off the host's own dark-mode signal.
 - ✅ Turn-by-turn engine (step advancement, off-route detection, reroute) —
   pure/Android-free, **unit-tested** (arrival-requires-final-maneuver, reroute
   fires once per off-route transition not per fix, off-route clears on return).
