@@ -41,7 +41,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Switch
 import androidx.compose.material3.TextButton
@@ -376,14 +375,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_voice))
-            // Vela's own on-device neural voices — offer a one-tap download for whichever isn't
-            // present yet; once downloaded each shows in the engine list below (selectable). No
-            // standalone TTS app needed. Kokoro = premium/slower, Piper = fast.
+            // Vela's own on-device neural voices (the Piper catalog) — download in the Voice
+            // library below; once downloaded each shows in the engine list (selectable). No
+            // standalone TTS app needed.
             // A download in flight shows a compact progress line here too, so it's visible even when the
             // Voice library (below) is collapsed. The per-voice controls live in the library.
             state.voiceDownloadingId?.let { id ->
                 val nm = vm.voiceCatalog().firstOrNull { it.id == id }?.displayName ?: stringResource(R.string.settings_voice_fallback_name)
-                val pct = state.kokoroDownloadPct ?: 0f
+                val pct = state.voiceDownloadPct ?: 0f
                 Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
                 Spacer(Modifier.height(6.dp))
                 LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
@@ -1111,7 +1110,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
                         installed = v.id in installed,
                         active = v.id == selected,
                         downloading = state.voiceDownloadingId == v.id,
-                        downloadPct = if (state.voiceDownloadingId == v.id) state.kokoroDownloadPct ?: 0f else 0f,
+                        downloadPct = if (state.voiceDownloadingId == v.id) state.voiceDownloadPct ?: 0f else 0f,
                         anyDownloading = state.voiceDownloadingId != null,
                         onDownload = { vm.downloadVoice(v.id) },
                         onUse = { vm.selectVoice(v.id) },

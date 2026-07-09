@@ -3,7 +3,7 @@ package app.vela.core.voice
 /**
  * An in-process neural TTS backend that [VoiceGuide] can drive instead of Android [android.speech.tts.TextToSpeech].
  *
- * Implemented in `:app` (KokoroSynth, wrapping the sherpa-onnx AAR) — that native runtime can't live
+ * Implemented in `:app` (PiperSynth, wrapping the sherpa-onnx AAR) — that native runtime can't live
  * in the `:core` library module, so this interface is the seam: `:core`'s VoiceGuide holds a nullable
  * [NeuralSynth] that `:app` wires in. Calls come from the main thread; the implementation must run the
  * actual synthesis off it. [onDone] lets VoiceGuide release audio focus when an utterance finishes.
