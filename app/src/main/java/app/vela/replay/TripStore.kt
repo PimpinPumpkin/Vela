@@ -138,5 +138,10 @@ class TripStore @Inject constructor(
         TripMeta(f.nameWithoutExtension, label, startedAt, countFixes(f), dest)
     }.getOrNull()
 
-    private fun countFixes(f: File): Int = runCatching { (f.readLines().size - 1).coerceAtLeast(0) }.getOrDefault(0)
+    // Count only the `lat,...` fix lines. A trip with a saved route also holds RP/RD/M
+    // lines; lines-minus-header counted those as fixes, inflating the count and letting
+    // a no-fix trip slip past the too-short-to-keep delete check.
+    private fun countFixes(f: File): Int = runCatching {
+        f.useLines { lines -> lines.count { it.substringBefore(',').toDoubleOrNull() != null } }
+    }.getOrDefault(0)
 }
