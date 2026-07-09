@@ -11,17 +11,25 @@ too).
 1. **No backend, no shared keys.** Every install talks to Google like one logged-out
    browser, from the user's own IP. Never embed a static Google API key, never add a
    Vela server. This is the project's legal footing and it is not negotiable.
-2. **Degoogled at runtime.** AOSP `LocationManager` only (never Fused), AOSP
+2. **Keep your own location out of the repo.** Working on a maps app means your test
+   coordinates, screenshots, sample addresses and even commit messages naturally come
+   from wherever you are, and together they pin you on a map, permanently, in public
+   git history. All fixtures use the project's standard Davis / Sacramento, CA area,
+   screenshots come from the built-in location simulator, and commit messages never
+   name your local streets or businesses. The full checklist is in CLAUDE.md under
+   "Location hygiene"; it applies to humans and AI assistants equally, so if an AI
+   writes your patch, hand it that section first.
+3. **Degoogled at runtime.** AOSP `LocationManager` only (never Fused), AOSP
    `TextToSpeech`, no GMS, no Firebase, no Play Integrity. The app must work fully on
    GrapheneOS with no Google services installed.
-3. **The module boundary is real.** `:core` is a UI-agnostic extractor (the
+4. **The module boundary is real.** `:core` is a UI-agnostic extractor (the
    NewPipeExtractor pattern); `:app` is the Compose UI. MapLibre and Android UI types
    never leak into `:core`. The one seam between them is `core/data/MapDataSource`.
-4. **Docs move with code, in the same commit.** When behaviour changes, update
+5. **Docs move with code, in the same commit.** When behaviour changes, update
    `README.md`, `FEATURES.md`, `SPEC.md` and `CLAUDE.md` as the change needs. Stale
    docs are treated as a bug. If a change genuinely needs no doc edit, say why in the
    commit message.
-5. **Every user-facing string ships in all 11 languages.** Add it to
+6. **Every user-facing string ships in all 11 languages.** Add it to
    `res/values/strings.xml` and each `res/values-<lang>/strings.xml` (de es fr it nl
    pl pt ru sv uk). Match placeholder types to the arguments (an Int needs `%d`; a
    `%d` fed a String crashes). Place names, addresses and reviews are data and are
