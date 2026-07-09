@@ -34,7 +34,7 @@ class SearchSnapTest {
 
     /** "People also search for": the focused result's sibling list at root[2][11][0], each
      *  entry [featureId, name, [[_,_,lat,lng], …, rating@6]]. (Verified on-device against a
-     *  real response — 8 related salons for "a nail salon".) */
+     *  real response: 8 related salons for a focused nail-salon search.) */
     @Test fun parsesPeopleAlsoSearchFor() {
         val geo = arr(7, 0 to "[null,null,38.58,-121.49]", 6 to "4.7")     // [0]=coords, [6]=rating
         val entry = arr(3, 0 to "\"0xAAA:0xBBB\"", 1 to "\"Glow Nails Spa\"", 2 to geo)
@@ -73,14 +73,14 @@ class SearchSnapTest {
         val rating = arr(9, 7 to "4.5", 8 to "305")                 // [4][7]=rating, [4][8]=count
         val geo = arr(4, 2 to "38.58", 3 to "-121.49")             // [9][2]/[9][3]=lat/lng
         val place = arr(40, 4 to rating, 9 to geo, 10 to "\"0xAAA:0xBBB\"",
-            11 to "\"Test Spa\"", 39 to "\"123 Main St, Davis, CA\"")
+            11 to "\"Test Spa\"", 39 to "\"123 Main St, Sacramento, CA\"")
         val z = arr(15, 14 to place)                                // single result at [0][1][0][14]
         val x = arr(2, 1 to "[$z]")
         val body = ")]}'\n[$x]"
 
         val d = PopularTimesParser.parse(body, "0xAAA:0xBBB")
         assertEquals(305, d!!.reviewCount)
-        assertEquals("123 Main St, Davis, CA", d.address)
+        assertEquals("123 Main St, Sacramento, CA", d.address)
         assertEquals(4.5, d.rating!!, 1e-9)
     }
 
