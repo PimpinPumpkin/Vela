@@ -476,4 +476,6 @@
     <string name="settings_no_lists">Inga listor att exportera än</string>
     <string name="mapvm_export_lists_subject">Vela-listor (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exportera listor</string>
+    <string name="lists_empty_hint">Inga listor än. Tryck på Ny eller spara en plats från dess sida.</string>
+    <string name="lists_place_count">%1$d platser</string>
 </resources>
