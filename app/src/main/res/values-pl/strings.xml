@@ -425,4 +425,14 @@
     <string name="transit_nav_get_off">Wysiądź na %1$s</string> <!-- format -->
     <string name="transit_nav_next">Dalej</string>
     <string name="place_last_available">Ostatni dostępny</string>
+    <!-- Android Auto -->
+    <string name="car_search">Szukaj</string>
+    <string name="car_no_destinations">Brak zapisanych lub ostatnich celów</string>
+    <string name="car_search_hint">Wpisz, aby wyszukać cel</string>
+    <string name="car_go">Jedź</string>
+    <string name="car_end">Zakończ</string>
+    <string name="car_mute">Wycisz</string>
+    <string name="car_unmute">Włącz dźwięk</string>
+    <string name="car_faster_route">Szybciej −%1$d min</string>
+    <string name="car_no_route">Brak trasy — sprawdź lokalizację</string>
 </resources>

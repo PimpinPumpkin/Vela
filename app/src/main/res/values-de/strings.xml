@@ -425,4 +425,14 @@
     <string name="transit_nav_get_off">Aussteigen bei %1$s</string> <!-- format -->
     <string name="transit_nav_next">Weiter</string>
     <string name="place_last_available">Letzte Verbindung</string>
+    <!-- Android Auto -->
+    <string name="car_search">Suchen</string>
+    <string name="car_no_destinations">Noch keine gespeicherten oder letzten Ziele</string>
+    <string name="car_search_hint">Tippen, um ein Ziel zu suchen</string>
+    <string name="car_go">Los</string>
+    <string name="car_end">Beenden</string>
+    <string name="car_mute">Stumm</string>
+    <string name="car_unmute">Ton an</string>
+    <string name="car_faster_route">Schneller −%1$d Min</string>
+    <string name="car_no_route">Keine Route — Standort prüfen</string>
 </resources>

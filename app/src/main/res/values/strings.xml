@@ -448,4 +448,14 @@
     <string name="transit_nav_get_off">Get off at %1$s</string> <!-- format -->
     <string name="transit_nav_next">Next</string>
     <string name="place_last_available">Last available</string>
+    <!-- Android Auto -->
+    <string name="car_search">Search</string>
+    <string name="car_no_destinations">No saved or recent destinations yet</string>
+    <string name="car_search_hint">Type to search for a destination</string>
+    <string name="car_go">Go</string>
+    <string name="car_end">End</string>
+    <string name="car_mute">Mute</string>
+    <string name="car_unmute">Unmute</string>
+    <string name="car_faster_route">Faster −%1$d min</string>
+    <string name="car_no_route">No route available — check your location</string>
 </resources>

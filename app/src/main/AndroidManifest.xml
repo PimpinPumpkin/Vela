@@ -20,6 +20,9 @@
          car screen's surface. Both are car-library permissions, not runtime ones. -->
     <uses-permission android:name="androidx.car.app.NAVIGATION_TEMPLATES" />
     <uses-permission android:name="androidx.car.app.ACCESS_SURFACE" />
+    <!-- AAOS only: read the vehicle's own speed via CarHardware instead of GPS-derived speed.
+         No-op on projected Android Auto. -->
+    <uses-permission android:name="android.car.permission.CAR_INFO" />
 
     <!-- So a phone with NO text-to-speech engine (common on degoogled ROMs) can be
          offered a one-tap install of an open-source voice (eSpeak NG / RHVoice from
@@ -116,6 +119,15 @@
             <intent-filter>
                 <action android:name="androidx.car.app.CarAppService" />
                 <category android:name="androidx.car.app.category.NAVIGATION" />
+                <!-- Render turn-by-turn on the instrument cluster too (fed by NavigationManager.updateTrip). -->
+                <category android:name="androidx.car.app.category.FEATURE_CLUSTER" />
+            </intent-filter>
+            <!-- Accept a navigation intent (assistant "navigate to X" / another app's geo: URI) and go
+                 straight to the route preview. Handled in VelaCarSession.onNewIntent. -->
+            <intent-filter>
+                <action android:name="androidx.car.app.action.NAVIGATE" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="geo" />
             </intent-filter>
         </service>
     </application>
