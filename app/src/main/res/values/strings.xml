@@ -20,6 +20,8 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_appearance_hint">Light/Dark applies to Vela only. It won\'t touch your phone\'s system theme.</string>
+    <string name="settings_dynamic_color">Material You colours</string>
+    <string name="settings_dynamic_color_hint">Tints buttons, chips and accents from your wallpaper (Android 12+). Off = Vela\'s own teal. The map itself stays neutral so roads and labels keep their contrast.</string>
     <string name="settings_map_style">Map style</string>
     <string name="settings_map_style_hint">OpenFreeMap (the default) is keyless and detailed. Protomaps needs an API key; the demo style is country outlines only.</string>
     <string name="settings_units">Units</string>

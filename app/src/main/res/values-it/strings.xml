@@ -6,6 +6,8 @@
     <string name="settings_theme_light">Chiaro</string>
     <string name="settings_theme_dark">Scuro</string>
     <string name="settings_appearance_hint">Chiaro/Scuro si applica solo a Vela, non modifica il tema di sistema del telefono.</string>
+    <string name="settings_dynamic_color">Colori Material You</string>
+    <string name="settings_dynamic_color_hint">Colora pulsanti, chip e accenti in base allo sfondo (Android 12+). Disattivato = il verde acqua di Vela. La mappa resta neutra così strade ed etichette mantengono il contrasto.</string>
     <string name="settings_map_style">Stile mappa</string>
     <string name="settings_map_style_hint">OpenFreeMap (predefinito) è dettagliato e non richiede chiave. Protomaps richiede una chiave API; lo stile demo mostra solo i contorni dei Paesi.</string>
     <string name="settings_units">Unità</string>
