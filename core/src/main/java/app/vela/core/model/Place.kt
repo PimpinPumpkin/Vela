@@ -27,6 +27,10 @@ data class Place(
                                             // Google-style ("resilient when the owner updates the notice")
 
     val hours: List<String> = emptyList(),
+    // In-store departments with their OWN schedules (a grocery store's pharmacy, fuel
+    // station, liquor counter, delivery/pickup windows) — Google's [118] list. Names have
+    // the redundant store prefix stripped ("Safeway Pharmacy" → "Pharmacy").
+    val departments: List<Department> = emptyList(),
     val photoUrls: List<String> = emptyList(),
     // "Posted" label per gallery photo ("May 2026"), index-aligned with [photoUrls].
     // Empty for the search-response preview; the WebView gallery fills it in (the dates
@@ -93,6 +97,16 @@ data class PlaceDetails(
         website == null && statusText == null && openNow == null && priceText == null && priceLevel == null &&
         about.isEmpty() && featuredReview == null
 }
+
+/** One in-store department's schedule: [hours] shaped like [Place.hours] (7 day strings
+ *  starting today), [statusText] Google's own line ("Closed · Opens 9 AM Thu"),
+ *  [openNow] parsed from that text (null when it is ambiguous). */
+data class Department(
+    val name: String,
+    val hours: List<String> = emptyList(),
+    val statusText: String? = null,
+    val openNow: Boolean? = null,
+)
 
 /** One day: [dayOfWeek] is 1=Mon … 7=Sun; [hours] are the open-hour buckets. */
 data class DayBusyness(val dayOfWeek: Int, val hours: List<HourBusyness>)

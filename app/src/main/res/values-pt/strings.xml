@@ -243,6 +243,7 @@
     <string name="place_popular_times">Horas de maior movimento</string>
     <string name="place_busyness_right_now">%1$s neste momento</string>
     <string name="place_hours">Horário</string>
+    <string name="place_departments">Departamentos</string>
     <string name="place_collapse_hours">Recolher horário</string>
     <string name="place_expand_hours">Expandir horário</string>
     <string name="mapscreen_recenter">Recentrar</string>
