@@ -23,7 +23,7 @@ class NavStopMarksTest {
 
     // A straight west→east route at constant latitude.
     private val poly = listOf(
-        LatLng(38.55, -121.90), LatLng(38.55, -121.80), LatLng(38.55, -121.74),
+        LatLng(38.55, -121.90), LatLng(38.55, -121.80), LatLng(38.55, -121.70),
     )
 
     @Test fun waypointOnTheLineMarksAtItsAlongRouteDistance() {
@@ -53,9 +53,9 @@ class NavStopMarksTest {
         // would give B its FIRST (outbound) pass — before A — firing its cue early and out of order; the
         // windowed projection must place mark(B) after mark(A).
         val outAndBack = listOf(
-            LatLng(38.55, -121.90), LatLng(38.55, -121.74), LatLng(38.55, -121.80),
+            LatLng(38.55, -121.90), LatLng(38.55, -121.70), LatLng(38.55, -121.80),
         )
-        val a = LatLng(38.55, -121.74)
+        val a = LatLng(38.55, -121.70)
         val b = LatLng(38.55, -121.80)
         val marks = NavEngine.stopMarks(route(outAndBack), listOf(a, b))
         assertNotNull(marks[0]); assertNotNull(marks[1])

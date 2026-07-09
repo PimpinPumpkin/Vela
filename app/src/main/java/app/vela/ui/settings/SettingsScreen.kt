@@ -899,6 +899,7 @@ private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit,
         // RIGHT) D-pad move into that nested target cleared focus with no way back (dpad audit
         // 2026-07-08) — the Material "clickable row + indicator" pattern.
         RadioButton(selected = selected, onClick = null)
+        Spacer(Modifier.width(10.dp))
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }
 }
