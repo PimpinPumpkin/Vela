@@ -85,6 +85,12 @@ but practically unusable.
   a vertical list of focusable controls. (The search bar's field solves the same trap inline —
   see Trap C below — because it also needs the BACK/close handling in the same key handler.)
 
+- **UP at the top of a `TopAppBar` screen** (Settings): the back button lives in the `TopAppBar`, a
+  separate container from the scroll `Column`, so Compose's directional UP can't bridge them and an
+  UP from the top row *clears* focus (nothing focused, no way back via arrows). Settings tracks when
+  its top row holds focus and routes that UP to the back button with `requestFocus` — `moveFocus(Up)`
+  can't be used here because it itself clears focus at the top edge before it returns.
+
 ### The MapLibre `MapView` steals D-pad keys — the load-bearing fix
 
 **Finding 0 (the reason "nothing happened"):** MapLibre's `MapView` calls `requestFocus()`

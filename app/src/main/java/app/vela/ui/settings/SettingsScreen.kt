@@ -90,6 +90,7 @@ import app.vela.ui.dpadSwallowHorizontal
 import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -126,6 +127,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
     // button (top of screen) so the first arrow press enters the content, never a wasted
     // "wake up focus" press. No-op under touch.
     val settingsAutoFocus = rememberDpadAutoFocus()
+    var atTopItem by remember { mutableStateOf(false) }   // top content row focused? (routes its UP to Back)
     Scaffold(
         topBar = {
             TopAppBar(
@@ -145,6 +147,17 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 // no-target horizontal move can't clear focus. The vibrate FilterChips row (a real
                 // horizontal row) handles its own LEFT/RIGHT first, so this never runs for it.
                 .dpadSwallowHorizontal()
+                // The back button lives in the TopAppBar, a SEPARATE container Compose's directional
+                // UP can't reach, so an UP from the TOP row cleared focus (leaving nothing focused,
+                // no way back via arrows). When the top row holds focus (atTopItem) route its UP
+                // straight to Back via requestFocus (proven to land — it's how opening auto-focuses
+                // Back); NEVER moveFocus, which itself clears at the top edge. Other UP falls through.
+                .onKeyEvent { ev ->
+                    if (ev.key == Key.DirectionUp && atTopItem) {
+                        if (ev.type == KeyEventType.KeyDown) runCatching { settingsAutoFocus.requestFocus() }
+                        true
+                    } else false
+                }
                 .onGloballyPositioned { viewportTopY = it.positionInRoot().y }
                 .verticalScroll(scrollState)
                 .padding(horizontal = 16.dp),
@@ -154,6 +167,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 label = stringResource(R.string.settings_follow_system),
                 selected = AppTheme.mode.value == ThemeMode.SYSTEM,
                 onClick = { AppTheme.set(context, ThemeMode.SYSTEM) },
+                // The top focusable row: track when it holds focus so the Column routes its UP to Back.
+                modifier = Modifier.onFocusEvent { atTopItem = it.isFocused },
             )
             SelectableRow(
                 label = stringResource(R.string.settings_theme_light),
@@ -994,9 +1009,9 @@ private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: (
 }
 
 @Composable
-private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Row(
-        Modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
+        modifier.fillMaxWidth().dpadHighlight(DpadShape(6.dp)).clickable(onClick = onClick).padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // onClick = null: the RadioButton is display-only so the ROW is the single focus stop. A
