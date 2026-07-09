@@ -94,7 +94,10 @@ data class MapUiState(
     val compassHeading: Float? = null, // device facing (rotation-vector sensor) — browse cone when stopped
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
     val parkingSpot: LatLng? = null, // one-tap "parked here" pin — survives restarts (prefs)
-    val parkedAtMillis: Long = 0L,   // when it was saved (for the chip's age label)
+    val parkedAtMillis: Long = 0L,   // when it was saved (for the sheet/history labels)
+    val parkingHistory: List<app.vela.core.model.ParkedSpot> = emptyList(), // recent saves, newest first — accidental-overwrite insurance
+    val lists: List<app.vela.core.model.PlaceList> = emptyList(), // user place-lists (issue #1), newest first
+    val openListId: String? = null, // the list currently shown as results (its name is in the bar)
     val offline: Boolean = false, // no usable internet — drives the subtle offline indicator
     val query: String = "",
     val results: List<Place> = emptyList(),
@@ -214,6 +217,8 @@ class MapViewModel @Inject constructor(
     private val recentStore: RecentSearchStore,
     private val recentPlaceStore: RecentPlaceStore,
     private val savedStore: SavedPlaceStore,
+    private val parkingStore: app.vela.core.data.ParkingStore,
+    private val listStore: app.vela.core.data.PlaceListStore,
     private val shortcutStore: PlaceShortcutStore,
     private val calibration: CalibrationStore,
     private val offlinePoiStore: OfflinePoiStore,
@@ -267,6 +272,7 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
         maybeOfferResume() // a drive that was cut off by a process-kill → offer to pick it back up
         restoreParkingSpot() // a saved "parked here" pin survives restarts
+        _state.update { it.copy(lists = listStore.lists()) } // user place-lists (issue #1)
         refreshBuildingOverlays() // surface any installed open building overlays for the map to render
         observeConnectivity() // drive the subtle offline indicator (globe-slash + "Offline" in the bar)
         // Open any downloaded offline place packs so the POI/address stores can query them right away.
@@ -729,7 +735,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 query = "", results = emptyList(), suggestions = emptyList(), selected = null,
-                resultsCollapsed = false, showSearchThisArea = false,
+                resultsCollapsed = false, showSearchThisArea = false, openListId = null,
             )
         }
     }
@@ -996,15 +1002,26 @@ class MapViewModel @Inject constructor(
             // as results (title in the bar) and each is savable/openable like any search hit.
             if (MapLinkParser.isShareLink(q)) {
                 val imported = withContext(Dispatchers.IO) { runCatching { dataSource.importList(q) }.getOrNull() }
-                _state.update {
-                    if (imported != null && imported.places.isNotEmpty()) {
+                if (imported != null && imported.places.isNotEmpty()) {
+                    // Persist it as a local list (bookmark icon) so it survives — the import isn't
+                    // just a one-off result set. Reuse a same-named list if the user re-imports.
+                    val existing = listStore.lists().firstOrNull { it.name == imported.title }
+                    val listId = existing?.id ?: ("list:import:" + imported.title.hashCode().toString(16))
+                    val listPlaces = imported.places.map { app.vela.core.model.ListPlace.of(it) }
+                    val list = app.vela.core.model.PlaceList(
+                        id = listId, name = imported.title, icon = "bookmark",
+                        description = imported.description, places = listPlaces,
+                    )
+                    val lists = if (existing != null) listStore.update(list) else listStore.create(list)
+                    _state.update {
                         it.copy(
-                            results = imported.places, query = imported.title, searching = false,
-                            selected = null, status = null, resultsCollapsed = false,
+                            lists = lists, results = imported.places, query = imported.title,
+                            openListId = listId, searching = false, selected = null, status = null,
+                            resultsCollapsed = false,
                         )
-                    } else {
-                        it.copy(searching = false, status = appContext.getString(R.string.map_import_failed))
                     }
+                } else {
+                    _state.update { it.copy(searching = false, status = appContext.getString(R.string.map_import_failed)) }
                 }
                 return@launch
             }
@@ -1644,22 +1661,98 @@ class MapViewModel @Inject constructor(
     // Long-press the locate button: remember where the car is. Persisted so it survives
     // app restarts; the map shows a small "Parked" chip while one is set.
 
-    /** Saves the current fix as the parking spot. False when there's no location yet. */
+    /** Saves the current fix as the parking spot. False when there's no location yet.
+     *  Every save also lands in the HISTORY (newest first, capped), so an accidental
+     *  overwrite is recoverable from the P button's long-press or Settings. */
     fun saveParkingSpot(): Boolean {
         val here = _state.value.myLocation ?: return false
         val now = System.currentTimeMillis()
-        settingsPrefs.edit()
-            .putString("parking_lat", here.lat.toString())
-            .putString("parking_lng", here.lng.toString())
-            .putLong("parking_at", now)
-            .apply()
-        _state.update { it.copy(parkingSpot = here, parkedAtMillis = now) }
+        val history = parkingStore.save(app.vela.core.model.ParkedSpot(here.lat, here.lng, now))
+        _state.update { it.copy(parkingSpot = here, parkedAtMillis = now, parkingHistory = history) }
         return true
     }
 
     fun clearParkingSpot() {
-        settingsPrefs.edit().remove("parking_lat").remove("parking_lng").remove("parking_at").apply()
+        // Only the CURRENT spot clears — history stays (it's the safety net).
+        parkingStore.clearCurrent()
         _state.update { it.copy(parkingSpot = null, parkedAtMillis = 0L) }
+    }
+
+    /** Makes a history entry the current spot again (accidental-overwrite recovery). */
+    fun restoreParkingFromHistory(entry: app.vela.core.model.ParkedSpot) {
+        parkingStore.restore(entry)
+        _state.update { it.copy(parkingSpot = entry.location, parkedAtMillis = entry.savedAtMillis) }
+    }
+
+    fun deleteParkingHistoryEntry(entry: app.vela.core.model.ParkedSpot) {
+        val history = parkingStore.deleteFromHistory(entry)
+        _state.update { it.copy(parkingHistory = history) }
+    }
+
+    fun clearParkingHistory() {
+        parkingStore.clearHistory()
+        _state.update { it.copy(parkingHistory = emptyList()) }
+    }
+
+    // ---- Place lists (issue #1) -------------------------------------------------------
+
+    /** Creates a list and returns its id (so the caller can immediately add a place to it). */
+    fun createList(name: String, icon: String = "bookmark", color: Long = 0xFF1A73E8): String {
+        val id = "list:" + name.hashCode().toString(16) + ":" + _state.value.lists.size
+        _state.update { it.copy(lists = listStore.create(app.vela.core.model.PlaceList(id, name.trim(), icon, color))) }
+        return id
+    }
+
+    fun updateList(list: app.vela.core.model.PlaceList) {
+        _state.update { it.copy(lists = listStore.update(list)) }
+    }
+
+    fun deleteList(listId: String) {
+        _state.update {
+            it.copy(
+                lists = listStore.delete(listId),
+                // If we were viewing it, drop back to the map.
+                results = if (it.openListId == listId) emptyList() else it.results,
+                openListId = if (it.openListId == listId) null else it.openListId,
+                query = if (it.openListId == listId) "" else it.query,
+            )
+        }
+    }
+
+    fun addPlaceToList(listId: String, place: Place) {
+        _state.update { it.copy(lists = listStore.addPlace(listId, app.vela.core.model.ListPlace.of(place))) }
+    }
+
+    fun removePlaceFromList(listId: String, placeId: String) {
+        _state.update { it.copy(lists = listStore.removePlace(listId, placeId)) }
+    }
+
+    /** Sets/clears the owner's note on a place across every list, and reflects it on the
+     *  open sheet so the change shows immediately. */
+    fun setPlaceNote(placeId: String, note: String?) {
+        val lists = listStore.setNote(placeId, note)
+        _state.update {
+            it.copy(
+                lists = lists,
+                selected = it.selected?.let { s -> if (s.id == placeId) s.copy(savedNote = note?.ifBlank { null }) else s },
+            )
+        }
+    }
+
+    /** Which lists a place is in (drives the sheet's "Saved in <list>" + checkmarks). */
+    fun listsContaining(placeId: String): List<app.vela.core.model.PlaceList> =
+        _state.value.lists.filter { l -> l.places.any { it.id == placeId } }
+
+    /** Opens a list as search results (its places), the list name in the search bar. */
+    fun openList(listId: String) {
+        val list = _state.value.lists.firstOrNull { it.id == listId } ?: return
+        val places = list.places.map { it.toPlace() }
+        _state.update {
+            it.copy(
+                results = places, query = list.name, openListId = listId,
+                selected = null, resultsCollapsed = false, searching = false, status = null,
+            )
+        }
     }
 
     /** Opens the parked car as a place sheet (tap the map pin, or the P button while a
@@ -1679,13 +1772,17 @@ class MapViewModel @Inject constructor(
     }
 
     private fun restoreParkingSpot() {
-        // Fresh handle, not `settingsPrefs`: this runs from init{}, which executes BEFORE the
-        // later-declared settingsPrefs field is assigned (same trap the update-check hit).
-        val p = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
-        val lat = p.getString("parking_lat", null)?.toDoubleOrNull() ?: return
-        val lng = p.getString("parking_lng", null)?.toDoubleOrNull() ?: return
-        _state.update { it.copy(parkingSpot = LatLng(lat, lng), parkedAtMillis = p.getLong("parking_at", 0L)) }
+        val history = parkingStore.history()
+        val current = parkingStore.current()
+        _state.update {
+            it.copy(
+                parkingHistory = history,
+                parkingSpot = current?.let { c -> LatLng(c.lat, c.lng) },
+                parkedAtMillis = current?.savedAtMillis ?: 0L,
+            )
+        }
     }
+
 
     /** Swap origin and destination — route the other way (you ⇄ the place). The stop list is
      *  physically reversed too, so STORED order always == DISPLAYED order == TRAVEL order — otherwise

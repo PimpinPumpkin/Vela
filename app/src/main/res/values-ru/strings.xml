@@ -446,4 +446,25 @@
     <string name="map_parking_save">Сохранить место парковки</string>
     <string name="map_import_failed">Не удалось импортировать список. Проверьте ссылку и попробуйте снова.</string>
     <string name="place_clear_parking">Удалить парковку</string>
+    <string name="parking_history_title">История парковок</string>
+    <string name="parking_history_clear_all">Очистить всё</string>
+    <string name="parking_history_current">Текущая</string>
+    <string name="parking_history_delete">Удалить</string>
+    <string name="parking_history_restore">Восстановить</string>
+    <string name="settings_parking_history">История парковок</string>
+    <string name="settings_parking_history_hint">Недавние места парковки. Нажмите «Восстановить», если случайно перезаписали своё место.</string>
+    <string name="mapscreen_section_lists">Ваши списки</string>
+    <string name="mapscreen_new_list">Новый</string>
+    <string name="list_edit">Изменить список</string>
+    <string name="list_new_title">Новый список</string>
+    <string name="list_edit_title">Изменить список</string>
+    <string name="list_name_label">Название списка</string>
+    <string name="list_icon_label">Значок</string>
+    <string name="list_color_label">Цвет</string>
+    <string name="list_delete">Удалить</string>
+    <string name="list_cancel">Отмена</string>
+    <string name="list_save">Сохранить</string>
+    <string name="place_save_to_list">Сохранить в список</string>
+    <string name="place_edit_note">Изменить заметку</string>
+    <string name="place_note_label">Заметка</string>
 </resources>

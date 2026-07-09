@@ -446,4 +446,25 @@
     <string name="map_parking_save">Zapisz miejsce parkowania</string>
     <string name="map_import_failed">Nie udało się zaimportować listy. Sprawdź link i spróbuj ponownie.</string>
     <string name="place_clear_parking">Usuń parkowanie</string>
+    <string name="parking_history_title">Historia parkowania</string>
+    <string name="parking_history_clear_all">Wyczyść wszystko</string>
+    <string name="parking_history_current">Bieżące</string>
+    <string name="parking_history_delete">Usuń</string>
+    <string name="parking_history_restore">Przywróć</string>
+    <string name="settings_parking_history">Historia parkowania</string>
+    <string name="settings_parking_history_hint">Ostatnie miejsca parkowania. Dotknij Przywróć, jeśli przez pomyłkę nadpisałeś miejsce.</string>
+    <string name="mapscreen_section_lists">Twoje listy</string>
+    <string name="mapscreen_new_list">Nowa</string>
+    <string name="list_edit">Edytuj listę</string>
+    <string name="list_new_title">Nowa lista</string>
+    <string name="list_edit_title">Edytuj listę</string>
+    <string name="list_name_label">Nazwa listy</string>
+    <string name="list_icon_label">Ikona</string>
+    <string name="list_color_label">Kolor</string>
+    <string name="list_delete">Usuń</string>
+    <string name="list_cancel">Anuluj</string>
+    <string name="list_save">Zapisz</string>
+    <string name="place_save_to_list">Zapisz na liście</string>
+    <string name="place_edit_note">Edytuj notatkę</string>
+    <string name="place_note_label">Notatka</string>
 </resources>

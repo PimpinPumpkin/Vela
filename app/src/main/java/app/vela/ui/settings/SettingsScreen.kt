@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Search
@@ -329,6 +330,49 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             // without leaking where you actually are). Reactive holder so the switch reflects state.
             ToggleRow(stringResource(R.string.settings_sim_location), app.vela.ui.SimLocation.on) { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() }
             Hint(stringResource(R.string.settings_sim_location_hint))
+
+            // Parking history — recent "parked here" saves, so an accidental overwrite is
+            // recoverable (also reachable by long-pressing the P button on the map).
+            if (state.parkingHistory.isNotEmpty()) {
+                Spacer(Modifier.height(20.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    SectionTitle(stringResource(R.string.settings_parking_history))
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
+                }
+                Hint(stringResource(R.string.settings_parking_history_hint))
+                state.parkingHistory.forEach { entry ->
+                    val isCurrent = entry.savedAtMillis == state.parkedAtMillis
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.LocalParking,
+                            contentDescription = null,
+                            tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                                .format(java.util.Date(entry.savedAtMillis)),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (isCurrent) {
+                            Text(stringResource(R.string.parking_history_current), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            TextButton(onClick = { vm.restoreParkingFromHistory(entry) }) { Text(stringResource(R.string.parking_history_restore)) }
+                            IconButton(onClick = { vm.deleteParkingHistoryEntry(entry) }) {
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_voice))
