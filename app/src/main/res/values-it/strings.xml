@@ -446,4 +446,25 @@
     <string name="map_parking_save">Salva parcheggio</string>
     <string name="map_import_failed">Impossibile importare la lista. Controlla il link e riprova.</string>
     <string name="place_clear_parking">Rimuovi parcheggio</string>
+    <string name="parking_history_title">Cronologia parcheggi</string>
+    <string name="parking_history_clear_all">Cancella tutto</string>
+    <string name="parking_history_current">Attuale</string>
+    <string name="parking_history_delete">Elimina</string>
+    <string name="parking_history_restore">Ripristina</string>
+    <string name="settings_parking_history">Cronologia parcheggi</string>
+    <string name="settings_parking_history_hint">Parcheggi recenti. Tocca Ripristina se hai sovrascritto il posto per errore.</string>
+    <string name="mapscreen_section_lists">Le tue liste</string>
+    <string name="mapscreen_new_list">Nuova</string>
+    <string name="list_edit">Modifica lista</string>
+    <string name="list_new_title">Nuova lista</string>
+    <string name="list_edit_title">Modifica lista</string>
+    <string name="list_name_label">Nome della lista</string>
+    <string name="list_icon_label">Icona</string>
+    <string name="list_color_label">Colore</string>
+    <string name="list_delete">Elimina</string>
+    <string name="list_cancel">Annulla</string>
+    <string name="list_save">Salva</string>
+    <string name="place_save_to_list">Salva nella lista</string>
+    <string name="place_edit_note">Modifica nota</string>
+    <string name="place_note_label">Nota</string>
 </resources>
