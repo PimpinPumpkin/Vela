@@ -78,22 +78,24 @@ class VelaCarSession(private val deps: CarDeps) : Session(), DefaultLifecycleObs
 
     /** Parse an `androidx.car.app.action.NAVIGATE` intent's `geo:` URI into a destination. Handles
      *  `geo:lat,lng` and `geo:0,0?q=lat,lng(Label)`; a free-text `q=` (needs geocoding) returns null
-     *  (the app just opens normally). */
+     *  (the app just opens normally). NB `geo:` URIs are OPAQUE (non-hierarchical), so `Uri
+     *  .getQueryParameter()` THROWS ("This isn't a hierarchical URI") — we parse the scheme-specific
+     *  part by hand instead. */
     private fun parseNavDest(intent: Intent): Pair<LatLng, String>? {
         if (intent.action != CarContext.ACTION_NAVIGATE) return null
         val uri: Uri = intent.data ?: return null
-        val coordRe = Regex("""^\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*(?:\((.*)\))?\s*$""")
-        uri.getQueryParameter("q")?.let { q ->
-            coordRe.find(q)?.let { m ->
-                val lat = m.groupValues[1].toDoubleOrNull(); val lng = m.groupValues[2].toDoubleOrNull()
-                if (lat != null && lng != null) return LatLng(lat, lng) to m.groupValues[3].ifBlank { "Destination" }
+        val ssp = uri.schemeSpecificPart ?: return null
+        val coordRe = Regex("""(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*(?:\((.*)\))?""")
+        // Prefer a `q=` payload (geo:0,0?q=lat,lng(Label)); else the bare `geo:lat,lng` coords.
+        val qVal = ssp.substringAfter("q=", "").takeIf { it.isNotBlank() }
+        val target = qVal ?: ssp.substringBefore('?')
+        coordRe.find(target)?.let { m ->
+            val lat = m.groupValues[1].toDoubleOrNull(); val lng = m.groupValues[2].toDoubleOrNull()
+            // Reject the placeholder 0,0 only when it came from the bare coords (a real q= 0,0 is unheard of).
+            if (lat != null && lng != null && !(qVal == null && lat == 0.0 && lng == 0.0)) {
+                return LatLng(lat, lng) to m.groupValues[3].ifBlank { "Destination" }
             }
-            return null // free-text query — geocoding is a follow-up
         }
-        val coords = (uri.schemeSpecificPart ?: return null).substringBefore('?').split(',')
-        val lat = coords.getOrNull(0)?.trim()?.toDoubleOrNull()
-        val lng = coords.getOrNull(1)?.trim()?.toDoubleOrNull()
-        if (lat != null && lng != null && !(lat == 0.0 && lng == 0.0)) return LatLng(lat, lng) to "Destination"
         return null
     }
 }
