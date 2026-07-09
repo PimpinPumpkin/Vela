@@ -98,6 +98,12 @@ android {
                 "proguard-rules.pro",
                 "proguard-rules-debug.pro",
             )
+            // Distinct applicationId (app.vela.debug) so the debuggable diagnosis build installs
+            // SIDE BY SIDE with a normal release install instead of replacing it. The FileProvider
+            // authority is ${applicationId}.fileprovider (manifest) / packageName + ".fileprovider"
+            // (code), so it follows the suffix automatically; nothing hardcodes app.vela.
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
         }
         release {
             // Always ship release: R8 here is what keeps map scroll/nav smooth
@@ -132,6 +138,17 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    lint {
+        // Dead-RESOURCE half of the dead-code gate (the code halves are detekt + audit_deadcode.sh).
+        // checkOnly restricts lint to JUST unused resources, so its unrelated pre-existing findings
+        // (NewApi, MissingPermission, GradleDependency, ...) don't run and can't fail this gate;
+        // UnusedResources is promoted to fatal so a dead drawable/string/layout fails CI. Accurate
+        // here because the app does no dynamic getIdentifier() resource lookup.
+        checkOnly += "UnusedResources"
+        fatal += "UnusedResources"
+        abortOnError = true
+        warningsAsErrors = false
     }
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }

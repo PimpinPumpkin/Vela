@@ -262,7 +262,6 @@
     <string name="mapscreen_got_it">Uppfattat</string>
     <string name="mapscreen_heads_up">Obs</string>
     <string name="mapscreen_dismiss">Stäng</string>
-    <string name="mapscreen_results_count">%1$d resultat</string>
     <string name="mapscreen_shrink_list">Krymp listan</string>
     <string name="mapscreen_expand_list">Expandera listan</string>
     <string name="mapscreen_close_results">Stäng sökresultaten</string>
@@ -273,7 +272,6 @@
     <string name="mapscreen_sort_rating">Sortering: Betyg</string>
     <string name="mapscreen_sort_distance">Sortering: Avstånd</string>
     <string name="mapscreen_permanently_closed">Permanent stängt</string>
-    <string name="mapscreen_hide_results">Dölj resultat</string>
     <string name="mapscreen_section_saved">Sparade</string>
     <string name="mapscreen_section_recent">Senaste</string>
     <string name="mapscreen_section_recent_searches">Senaste sökningar</string>
@@ -304,10 +302,8 @@
     <string name="root_not_now">Inte nu</string>
     <string name="root_voice_title">Röst för talad navigering</string>
     <string name="root_voice_body_intro">Vela har en egen högkvalitativ röst som körs helt på din telefon – de mest naturliga talade vägbeskrivningarna, utan konto eller extra app. Rekommenderas. Det är en engångshämtning på ~%1$d MB (wifi rekommenderas).</string>
-    <string name="root_voice_body_system">Vill du hellre inte? Du kan använda en text-till-tal-röst som redan är installerad på din telefon istället.</string>
     <string name="root_voice_body_outro">Du kan ändra detta när som helst i Inställningar → Röst.</string>
     <string name="root_voice_download">Hämta Vela-röst</string>
-    <string name="root_voice_use_system">Använd systemröst</string>
     <string name="root_offline_title">Offlinekartor</string>
     <string name="root_offline_body">Vela hämtar platser, sökning och vägbeskrivningar från Google, så utan signal fungerar bara områden du har laddat ner. Ställ in ett område nu så att du är täckt när du tappar täckning.</string>
     <string name="root_offline_setup">Ställ in offline</string>
@@ -349,7 +345,6 @@
     <string name="mapvm_search_needs_recalibration">Sökning behöver omkalibrering: %1$s</string>
     <string name="mapvm_offline_no_data">Du är offline. Ladda ner ett område under Inställningar ▸ Offline för att söka utan anslutning.</string>
     <string name="mapvm_offline_no_match">Inga offlineresultat för \"%1$s\" i ditt sparade område. Offlinesökning omfattar de OpenStreetMap-platser du laddat ner.</string>
-    <string name="mapvm_offline_results">Offlineresultat (ingen anslutning)</string>
     <string name="mapvm_search_failed_reason">Sökning misslyckades: %1$s</string>
     <string name="mapvm_none_found_along_route">Inga \"%1$s\" hittades längs din rutt</string>
     <string name="mapvm_search_failed">Sökning misslyckades</string>

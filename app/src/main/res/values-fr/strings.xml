@@ -262,7 +262,6 @@
     <string name="mapscreen_got_it">Compris</string>
     <string name="mapscreen_heads_up">À noter</string>
     <string name="mapscreen_dismiss">Ignorer</string>
-    <string name="mapscreen_results_count">%1$d résultats</string>
     <string name="mapscreen_shrink_list">Réduire la liste</string>
     <string name="mapscreen_expand_list">Agrandir la liste</string>
     <string name="mapscreen_close_results">Fermer les résultats de recherche</string>
@@ -273,7 +272,6 @@
     <string name="mapscreen_sort_rating">Tri : Note</string>
     <string name="mapscreen_sort_distance">Tri : Distance</string>
     <string name="mapscreen_permanently_closed">Définitivement fermé</string>
-    <string name="mapscreen_hide_results">Masquer les résultats</string>
     <string name="mapscreen_section_saved">Enregistrés</string>
     <string name="mapscreen_section_recent">Récents</string>
     <string name="mapscreen_section_recent_searches">Recherches récentes</string>
@@ -304,10 +302,8 @@
     <string name="root_not_now">Pas maintenant</string>
     <string name="root_voice_title">Voix de navigation</string>
     <string name="root_voice_body_intro">Vela dispose de sa propre voix de haute qualité qui fonctionne entièrement sur votre téléphone — les instructions vocales les plus naturelles, sans compte ni application supplémentaire. Recommandée. C\'est un téléchargement unique d\'environ %1$d Mo (Wi-Fi recommandé).</string>
-    <string name="root_voice_body_system">Vous préférez éviter ? Vous pouvez utiliser à la place une voix de synthèse vocale déjà installée sur votre téléphone.</string>
     <string name="root_voice_body_outro">Vous pouvez changer cela à tout moment dans Paramètres → Voix.</string>
     <string name="root_voice_download">Télécharger la voix Vela</string>
-    <string name="root_voice_use_system">Utiliser la voix du système</string>
     <string name="root_offline_title">Cartes hors ligne</string>
     <string name="root_offline_body">Vela obtient les lieux, la recherche et les itinéraires depuis Google, donc sans réseau seules les zones que vous avez téléchargées fonctionneront. Configurez une zone maintenant pour rester couvert quand vous perdez le signal.</string>
     <string name="root_offline_setup">Configurer hors ligne</string>
@@ -349,7 +345,6 @@
     <string name="mapvm_search_needs_recalibration">La recherche nécessite un recalibrage : %1$s</string>
     <string name="mapvm_offline_no_data">Vous êtes hors ligne. Téléchargez une zone dans Réglages ▸ Hors ligne pour rechercher sans connexion.</string>
     <string name="mapvm_offline_no_match">Aucun résultat hors ligne pour \"%1$s\" dans votre zone enregistrée. La recherche hors ligne couvre les lieux OpenStreetMap que vous avez téléchargés.</string>
-    <string name="mapvm_offline_results">Résultats hors ligne (aucune connexion)</string>
     <string name="mapvm_search_failed_reason">Échec de la recherche : %1$s</string>
     <string name="mapvm_none_found_along_route">Aucun « %1$s » trouvé le long de votre itinéraire</string>
     <string name="mapvm_search_failed">Échec de la recherche</string>

@@ -1,0 +1,55 @@
+# Vela dead-code detekt config.
+#
+# This is NOT a general lint config. We run detekt ONLY for the handful of rules that find
+# genuinely DEAD code and that a grep-based auditor cannot detect accurately (unused imports
+# are the classic trap: `import ...getValue`/`setValue` are used by Compose `by remember`
+# delegates, never as literal text, so grep false-positives on them; detekt understands the
+# delegate and does not). Everything that is style / complexity / naming / formatting is OFF
+# on purpose. If you want to add a rule here, it must be about code that is dead, not code
+# that is ugly.
+#
+# Applied to :app and :core only (see root build.gradle.kts). buildUponDefaultConfig = false,
+# so only what is listed here runs.
+
+config:
+  validation: true
+  warningsAsErrors: false
+  # Any finding fails the build (this is a CI gate for dead code).
+  # excludes is applied per-rule below where needed.
+
+# --- rulesets we deliberately keep entirely OFF (nothing here is about dead code) ---
+comments:
+  active: false
+complexity:
+  active: false
+coroutines:
+  active: false
+empty-blocks:
+  active: false
+exceptions:
+  active: false
+naming:
+  active: false
+performance:
+  active: false
+
+# --- dead-code rules we DO want ---
+potential-bugs:
+  active: true
+  # Only UnreachableCode is dead-code; the rest of potential-bugs is correctness, not our job.
+  UnreachableCode:
+    active: true
+
+style:
+  active: true
+  UnusedImports:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  UnusedPrivateMember:
+    active: true
+    # Compose @Preview functions and DI/reflection entry points are "used" invisibly.
+    ignoreAnnotated: [ 'Preview', 'Composable', 'Inject', 'Provides', 'Test' ]
+  UnusedPrivateProperty:
+    active: true
+    ignoreAnnotated: [ 'Preview', 'Composable', 'Inject', 'Provides', 'Test' ]

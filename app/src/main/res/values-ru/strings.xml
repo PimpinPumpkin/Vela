@@ -262,7 +262,6 @@
     <string name="mapscreen_got_it">Понятно</string>
     <string name="mapscreen_heads_up">Обратите внимание</string>
     <string name="mapscreen_dismiss">Закрыть</string>
-    <string name="mapscreen_results_count">%1$d результатов</string>
     <string name="mapscreen_shrink_list">Свернуть список</string>
     <string name="mapscreen_expand_list">Развернуть список</string>
     <string name="mapscreen_close_results">Закрыть результаты поиска</string>
@@ -273,7 +272,6 @@
     <string name="mapscreen_sort_rating">Сортировка: Рейтинг</string>
     <string name="mapscreen_sort_distance">Сортировка: Расстояние</string>
     <string name="mapscreen_permanently_closed">Закрыто навсегда</string>
-    <string name="mapscreen_hide_results">Скрыть результаты</string>
     <string name="mapscreen_section_saved">Сохранённые</string>
     <string name="mapscreen_section_recent">Недавние</string>
     <string name="mapscreen_section_recent_searches">Недавние запросы</string>
@@ -304,10 +302,8 @@
     <string name="root_not_now">Не сейчас</string>
     <string name="root_voice_title">Голос навигации</string>
     <string name="root_voice_body_intro">У Vela есть собственный высококачественный голос, работающий целиком на вашем телефоне, — самые естественные голосовые подсказки без учётной записи и дополнительного приложения. Рекомендуется. Разовая загрузка ~%1$d МБ (рекомендуется Wi-Fi).</string>
-    <string name="root_voice_body_system">Не хотите? Вместо этого можно использовать движок синтеза речи, уже установленный на телефоне.</string>
     <string name="root_voice_body_outro">Это можно изменить в любой момент в «Настройки → Голос».</string>
     <string name="root_voice_download">Загрузить голос Vela</string>
-    <string name="root_voice_use_system">Использовать системный голос</string>
     <string name="root_offline_title">Офлайн-карты</string>
     <string name="root_offline_body">Vela получает места, поиск и маршруты из Google, поэтому без сигнала будут работать только загруженные вами области. Настройте область сейчас, чтобы оставаться на связи при потере сети.</string>
     <string name="root_offline_setup">Настроить офлайн</string>
@@ -349,7 +345,6 @@
     <string name="mapvm_search_needs_recalibration">Поиску нужна перекалибровка: %1$s</string>
     <string name="mapvm_offline_no_data">Нет подключения. Загрузите область в Настройках ▸ Офлайн, чтобы искать без сети.</string>
     <string name="mapvm_offline_no_match">Нет офлайн-результатов для \"%1$s\" в сохранённой области. Офлайн-поиск охватывает загруженные места OpenStreetMap.</string>
-    <string name="mapvm_offline_results">Офлайн-результаты (нет подключения)</string>
     <string name="mapvm_search_failed_reason">Не удалось выполнить поиск: %1$s</string>
     <string name="mapvm_none_found_along_route">«%1$s» не найдено вдоль вашего маршрута</string>
     <string name="mapvm_search_failed">Не удалось выполнить поиск</string>

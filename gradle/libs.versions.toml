@@ -34,6 +34,9 @@ carApp = "1.4.0"
 graphhopper = "11.0"
 # Timber — thin logging facade; a custom tree also forwards WARN/ERROR into the diagnostics ring.
 timber = "5.0.1"
+# detekt — static analysis; we use it ONLY for its delegate-aware dead-code rules (unused
+# imports / private members / unreachable code), which grep cannot detect accurately.
+detekt = "1.23.8"
 
 [libraries]
 androidx-car-app = { group = "androidx.car.app", name = "app", version.ref = "carApp" }
@@ -88,3 +91,4 @@ kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
 kotlin-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 hilt = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }
+detekt = { id = "io.gitlab.arturbosch.detekt", version.ref = "detekt" }
