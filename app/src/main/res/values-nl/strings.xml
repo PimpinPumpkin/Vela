@@ -425,4 +425,14 @@
     <string name="transit_nav_get_off">Stap uit bij %1$s</string> <!-- format -->
     <string name="transit_nav_next">Volgende</string>
     <string name="place_last_available">Laatste beschikbaar</string>
+    <!-- Android Auto -->
+    <string name="car_search">Zoeken</string>
+    <string name="car_no_destinations">Nog geen opgeslagen of recente bestemmingen</string>
+    <string name="car_search_hint">Typ om een bestemming te zoeken</string>
+    <string name="car_go">Ga</string>
+    <string name="car_end">Beëindigen</string>
+    <string name="car_mute">Dempen</string>
+    <string name="car_unmute">Geluid aan</string>
+    <string name="car_faster_route">Sneller −%1$d min</string>
+    <string name="car_no_route">Geen route — controleer je locatie</string>
 </resources>
