@@ -1011,7 +1011,9 @@ fun DirectionsPanel(
                             Icon(
                                 Icons.Default.Place,
                                 contentDescription = null,
-                                tint = if (originIsMe) Color(0xFF4285F4) else dim,
+                                // Teal = "the app means YOU" (red is the map's result-pin colour,
+                                // blue read as a foreign accent; teal matches the rest of the UI).
+                                tint = if (originIsMe) MaterialTheme.colorScheme.primary else dim,
                                 modifier = Modifier.size(17.dp),
                             )
                         }
@@ -1096,7 +1098,9 @@ fun DirectionsPanel(
                         } else Modifier,
                     ) {
                         Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Default.SportsScore, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            // Flag in INK (theme-reactive white/black) — the finish marker is about
+                            // the PLACE, not an accent; teal is reserved for "you" (the origin pin).
+                            Icon(Icons.Default.SportsScore, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(8.dp))
                         Text(
