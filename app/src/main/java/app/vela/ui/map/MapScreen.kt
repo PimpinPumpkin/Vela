@@ -20,6 +20,7 @@ import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.material3.surfaceColorAtElevation
 import app.vela.ui.theme.isAppInDarkTheme
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -1759,13 +1760,15 @@ private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Ribbon shortcut to Your lists — leads the row, visually separate (a round icon button,
-        // theme-tinted) so it doesn't read as another category chip.
+        // Ribbon shortcut to Your lists — leads the row, a round icon button. Light mode keeps
+        // the subtle green secondaryContainer (user liked it); dark mode matches the chips'
+        // neutral elevated grey — the green container read "too green" against the dark map.
+        val dark = isAppInDarkTheme()
         Surface(
             onClick = onOpenLists,
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            color = if (dark) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = if (dark) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondaryContainer,
             shadowElevation = 2.dp,
             modifier = Modifier.dpadHighlight(CircleShape).size(40.dp),
         ) {
