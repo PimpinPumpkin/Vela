@@ -425,4 +425,14 @@
     <string name="transit_nav_get_off">Выйдите на %1$s</string> <!-- format -->
     <string name="transit_nav_next">Далее</string>
     <string name="place_last_available">Последний рейс</string>
+    <!-- Android Auto -->
+    <string name="car_search">Поиск</string>
+    <string name="car_no_destinations">Пока нет сохранённых или недавних пунктов назначения</string>
+    <string name="car_search_hint">Введите текст для поиска пункта назначения</string>
+    <string name="car_go">Ехать</string>
+    <string name="car_end">Завершить</string>
+    <string name="car_mute">Без звука</string>
+    <string name="car_unmute">Включить звук</string>
+    <string name="car_faster_route">Быстрее −%1$d мин</string>
+    <string name="car_no_route">Маршрут недоступен — проверьте местоположение</string>
 </resources>
