@@ -195,9 +195,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   because everything uses the scheme's paired slots (primary/onPrimary etc.), which Android
   generates at accessible contrast in both themes; the dynamic scheme is also sanity-checked
   (background luminance must match the requested theme) and falls back to Vela's own colours on
-  ROMs that hand back a broken palette (seen on GrapheneOS once). The map tiles, route line and
-  location dot stay neutral on purpose - road/label contrast beats wallpaper vibes, same call
-  Google makes.
+  ROMs that hand back a broken palette (seen on GrapheneOS once). The tinting is deliberately
+  split: chrome and transient surfaces follow the wallpaper (search bar, menus, dialogs, chips,
+  FABs, Settings, the notification), while the place/results sheets keep their fixed greys and
+  the map keeps its own colours - those are reading surfaces full of meaning-bearing colour
+  (open/closed status, stars, the route line) that has to stay legible on every wallpaper.
+  Worth knowing: Google Maps itself never adopted dynamic colour at all, so even the chrome
+  tinting goes further than the app Vela replaces.
 - ✅ **List notes stick to chain stores + show in the list (2026-07-09, device-verified).** Notes on a
   chain place (a Safeway with several co-located Google listings) silently vanished: list membership
   was keyed on a volatile internal id that could point at a different listing next visit, so the note
