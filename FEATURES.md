@@ -180,7 +180,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
 - ✅ **Lists map shortcut + export/import + light-mode status bar + nightly updates (2026-07-09).**
-  A ribbon (bookmark) button leads the category-chip row and opens Your lists. Lists export/import
+  A ribbon (bookmark) button leads the category-chip row and opens Your lists in its own dialog (lists no longer clutter the search page). Lists export/import
   to a JSON file from Settings (same flow as saved places). The system status-bar icons (clock, wifi,
   battery) now flip DARK in Vela's light theme - they were white-on-white and unreadable over the
   light map. And Settings -> "Include nightly builds" points the self-updater at the newest

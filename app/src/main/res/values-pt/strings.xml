@@ -476,4 +476,6 @@
     <string name="settings_no_lists">Ainda não há listas para exportar</string>
     <string name="mapvm_export_lists_subject">Listas Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exportar listas</string>
+    <string name="lists_empty_hint">Ainda sem listas. Toque em Nova ou guarde um local a partir da sua página.</string>
+    <string name="lists_place_count">%1$d locais</string>
 </resources>
