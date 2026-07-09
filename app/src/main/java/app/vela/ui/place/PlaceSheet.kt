@@ -256,7 +256,6 @@ fun PlaceSheet(
     // scroll handler watches the body — when it's at the top, a downward drag first
     // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
     val bodyScroll = rememberScrollState()
-    val onCloseUpdated = rememberUpdatedState(onClose)
     val dismissConn = remember(place.id) {
         object : NestedScrollConnection {
             private var acc = 0f
@@ -272,7 +271,7 @@ fun PlaceSheet(
                             // steps want a more deliberate pull so a gentle swipe doesn't overshoot.
                             expandedState.value && acc > 90f -> { expandedState.value = false; steppedThisGesture = true; acc = 0f }
                             !minimizedState.value && acc > 150f -> { minimizedState.value = true; steppedThisGesture = true; acc = 0f }
-                            minimizedState.value && acc > 150f -> { steppedThisGesture = true; acc = 0f; onCloseUpdated.value() }
+                            // Minimized is the floor — a swipe never closes the sheet (X / back do).
                         }
                     }
                     return available
@@ -288,14 +287,14 @@ fun PlaceSheet(
                 return Offset.Zero
             }
             // The fling phase runs at the end of every drag (even at zero velocity) — use it as the
-            // gesture boundary that re-arms stepping for the next swipe. A hard downward flick from
-            // peek/minimized dismisses outright (the "dramatic swipe closes" case); an expanded flick
-            // just collapses to peek via onPreScroll above.
+            // gesture boundary that re-arms stepping for the next swipe. Google's grammar: the
+            // fling VELOCITY picks the detent, and the hardest downward flick lands on MINIMIZED
+            // from anywhere (skipping peek) — a swipe never closes the sheet outright.
             override suspend fun onPreFling(available: Velocity): Velocity {
-                val dramatic = available.y > 2400f && bodyScroll.value == 0 && !expandedState.value
+                val dramatic = available.y > 2400f && bodyScroll.value == 0
                 acc = 0f
                 steppedThisGesture = false
-                if (dramatic) onCloseUpdated.value()
+                if (dramatic) { expandedState.value = false; minimizedState.value = true }
                 return Velocity.Zero
             }
         }
@@ -324,7 +323,7 @@ fun PlaceSheet(
                     when {
                         expandedState.value && pull[0] > 90f -> { expandedState.value = false; reviewsEngaged.value = false; pull[0] = 0f; pull[2] = 1f }
                         !minimizedState.value && pull[0] > 150f -> { minimizedState.value = true; reviewsEngaged.value = false; pull[0] = 0f; pull[2] = 1f }
-                        minimizedState.value && pull[0] > 150f -> { pull[0] = 0f; pull[2] = 1f; reviewsEngaged.value = false; onCloseUpdated.value() }
+                        // Minimized is the floor here too — a pull never closes the sheet.
                     }
                 }
             }
@@ -405,13 +404,14 @@ fun PlaceSheet(
                                         if (minimizedState.value) minimizedState.value = false
                                         else expandedState.value = true
                                     }
-                                    // A big deliberate swipe down closes outright ("dramatic swipe").
-                                    total > 220f -> onClose()
-                                    // A gentle swipe down shrinks one detent (expanded→peek→minimized→close).
+                                    // A big deliberate swipe down goes straight to MINIMIZED (Google:
+                                    // the strongest fling minimises, a swipe NEVER closes the sheet —
+                                    // only the X / back do, so a flick can't destroy your place).
+                                    total > 220f -> { expandedState.value = false; minimizedState.value = true }
+                                    // A gentle swipe down shrinks one detent (expanded→peek→minimized).
                                     total > 40f -> when {
                                         expandedState.value -> expandedState.value = false
-                                        !minimizedState.value -> minimizedState.value = true
-                                        else -> onClose()
+                                        else -> minimizedState.value = true
                                     }
                                 }
                             },
@@ -940,8 +940,7 @@ fun DirectionsPanel(
     onEditDestination: (() -> Unit)? = null,
     stops: List<String> = emptyList(),
     onAddStop: (() -> Unit)? = null,
-    onRemoveStop: (Int) -> Unit = {},
-    onMoveStop: (Int, Int) -> Unit = { _, _ -> },
+    onEditStops: () -> Unit = {},
     onSwap: () -> Unit,
     currentMode: TravelMode,
     routes: List<Route>,
@@ -1017,27 +1016,29 @@ fun DirectionsPanel(
                     // Intermediate stops (multi-stop), between From and To like Google — each removable,
                     // then an "Add stop" row. Only shown for drive/walk/bike (transit has no waypoints).
                     if (currentMode != TravelMode.TRANSIT) {
-                        stops.forEachIndexed { i, stopName ->
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Stops live in the dedicated editor now (drag to reorder, one reroute on
+                        // Done) — the header shows ONE compact tappable summary row instead of
+                        // stacking every stop with arrow/X buttons (that cram didn't scale past
+                        // two stops and invited mis-taps; user 2026-07-08).
+                        if (stops.isNotEmpty()) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditStops() }.padding(vertical = 2.dp),
+                            ) {
                                 Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
                                 Spacer(Modifier.width(11.dp))
-                                Text(stopName, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                                // Reorder arrows (only with 2+ stops): up unless first, down unless last.
-                                // IconButtons (like the Swap/Close controls in this header), NOT raw 18-20dp
-                                // clickable Icons — three tiny targets 2dp apart invite remove-instead-of-
-                                // reorder mis-taps, and removal re-routes immediately with no undo.
-                                if (stops.size > 1) {
-                                    if (i > 0) IconButton(onClick = { onMoveStop(i, -1) }, modifier = Modifier.size(36.dp)) {
-                                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.place_move_stop_up), tint = dim, modifier = Modifier.size(20.dp))
-                                    }
-                                    if (i < stops.size - 1) IconButton(onClick = { onMoveStop(i, 1) }, modifier = Modifier.size(36.dp)) {
-                                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.place_move_stop_down), tint = dim, modifier = Modifier.size(20.dp))
-                                    }
-                                }
-                                IconButton(onClick = { onRemoveStop(i) }, modifier = Modifier.size(36.dp)) {
-                                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_remove_stop), tint = dim, modifier = Modifier.size(18.dp))
-                                }
+                                Text(
+                                    stops.joinToString("  ·  "),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = dim,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f, fill = false),
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.stops_edit), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                             }
+                            Spacer(Modifier.height(3.dp))
                         }
                         if (onAddStop != null) {
                             Row(
