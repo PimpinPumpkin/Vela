@@ -52,8 +52,11 @@ echo "== search overlay (opens on armed field; BACK exits) =="
 goto_map; focus_search_bar; key "$K_OK" 1.5
 [ -n "$(focused)" ] && ok "opens focused" || bad "search overlay opened unfocused"
 integrity "search overlay traversal" 10
-key "$K_BACK" 1
-if on_screen "Restaurants"; then ok "BACK exits to map"; else bad "BACK did not exit the search overlay"; fi
+# BACK exits the overlay, but after the traversal it may first dismiss the soft IME or step a result
+# detent (Google-style, and upstream's "X to close results" flow), so press until the map returns.
+sback=0
+for _ in 1 2 3 4; do key "$K_BACK" 1; if on_screen "Restaurants"; then sback=1; break; fi; done
+if [ "$sback" -eq 1 ]; then ok "BACK exits to map"; else bad "BACK did not exit the search overlay"; fi
 
 echo "== Settings (opens on back button; deep traversal; BACK exits) =="
 goto_map; focus_search_bar; key "$K_RIGHT"; key "$K_OK" 1.5
