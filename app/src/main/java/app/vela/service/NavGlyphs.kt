@@ -18,10 +18,10 @@ object NavGlyphs {
 
     const val TEAL = 0xFF14857A.toInt() // ui.theme.VelaTeal; also the notification accent
 
-    fun bitmap(type: ManeuverType, sizePx: Int): Bitmap {
+    fun bitmap(type: ManeuverType, sizePx: Int, background: Int = TEAL): Bitmap {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
-        val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TEAL }
+        val bg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = background }
         val r = sizePx * 0.22f
         c.drawRoundRect(RectF(0f, 0f, sizePx.toFloat(), sizePx.toFloat()), r, r, bg)
         val s = sizePx / 96f // glyph coordinate space

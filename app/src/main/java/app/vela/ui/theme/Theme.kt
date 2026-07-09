@@ -7,6 +7,7 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 
 // Containers are set to teal tints too — otherwise Material's defaults leave
@@ -35,22 +36,30 @@ private val DarkColors = darkColorScheme(
 )
 
 /**
- * App theme. Uses Vela's explicit teal light/dark schemes rather than Material You
- * dynamic colour: the in-app Light/Dark switch is the contract, and on some ROMs
- * (observed on GrapheneOS) `dynamicDarkColorScheme` hands back a *light* background,
- * which broke "Dark" for every MaterialTheme surface (Settings etc.). `dynamicColor`
- * stays as an opt-in param but defaults off so the switch is always honoured.
+ * App theme. Vela's explicit teal light/dark schemes by default; Material You dynamic
+ * colour (issue #15) when the user opts in via Settings -> Appearance ([DynamicColor]).
+ *
+ * The dynamic scheme is sanity-checked before use: on some ROMs (observed on GrapheneOS)
+ * `dynamicDarkColorScheme` handed back a *light* background, which broke "Dark" for every
+ * MaterialTheme surface (Settings etc.). If the scheme's background luminance contradicts
+ * the requested theme, Vela falls back to its own colours - the Light/Dark switch is the
+ * contract and always wins. Accent legibility comes from using the scheme's PAIRED slots
+ * everywhere (primary with onPrimary, container with onContainer), which the system
+ * generates at accessible contrast in both themes.
  */
 @Composable
 fun VelaTheme(
     darkTheme: Boolean = isAppInDarkTheme(),
-    dynamicColor: Boolean = false,
+    dynamicColor: Boolean = DynamicColor.on.value,
     content: @Composable () -> Unit,
 ) {
     val context = LocalContext.current
     val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val dyn = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            val saneBackground = if (darkTheme) dyn.background.luminance() < 0.4f else dyn.background.luminance() > 0.6f
+            if (saneBackground) dyn else if (darkTheme) DarkColors else LightColors
+        }
         darkTheme -> DarkColors
         else -> LightColors
     }

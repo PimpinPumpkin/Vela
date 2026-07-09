@@ -6,6 +6,8 @@
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Oscuro</string>
     <string name="settings_appearance_hint">Claro/Oscuro se aplica solo a Vela; no cambia el tema del sistema de tu teléfono.</string>
+    <string name="settings_dynamic_color">Colores Material You</string>
+    <string name="settings_dynamic_color_hint">Tiñe botones, chips y acentos según tu fondo de pantalla (Android 12+). Desactivado = el verde azulado propio de Vela. El mapa se mantiene neutro para que las carreteras y etiquetas conserven su contraste.</string>
     <string name="settings_map_style">Estilo del mapa</string>
     <string name="settings_map_style_hint">OpenFreeMap (el predeterminado) no necesita clave y es detallado. Protomaps requiere una clave de API; el estilo de demostración solo muestra los contornos de los países.</string>
     <string name="settings_units">Unidades</string>

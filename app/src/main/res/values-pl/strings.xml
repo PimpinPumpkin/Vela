@@ -6,6 +6,8 @@
     <string name="settings_theme_light">Jasny</string>
     <string name="settings_theme_dark">Ciemny</string>
     <string name="settings_appearance_hint">Tryb jasny/ciemny dotyczy tylko Vela — nie zmienia motywu systemowego telefonu.</string>
+    <string name="settings_dynamic_color">Kolory Material You</string>
+    <string name="settings_dynamic_color_hint">Barwi przyciski, chipy i akcenty według tapety (Android 12+). Wyłączone = własny morski kolor Veli. Sama mapa pozostaje neutralna, by drogi i etykiety zachowały kontrast.</string>
     <string name="settings_map_style">Styl mapy</string>
     <string name="settings_map_style_hint">OpenFreeMap (domyślny) nie wymaga klucza i jest szczegółowy. Protomaps wymaga klucza API; styl demonstracyjny pokazuje wyłącznie zarysy granic państw.</string>
     <string name="settings_units">Jednostki</string>
