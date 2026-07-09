@@ -8,17 +8,16 @@ GrapheneOS and other no-GMS ROMs.
 
 ## Install
 
-[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela)
+[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://add/https://github.com/PimpinPumpkin/Vela)&nbsp;&nbsp;[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on F-Droid (Vela's own repo)" height="54">](FDROID.md)
 
-Tap the badge (or add the repo URL `https://github.com/PimpinPumpkin/Vela` in
-**[Obtainium](https://github.com/ImranR98/Obtainium)**) and it auto-tracks the
-**weekly stable** release - no Play Store, no account. Want fresher builds? Turn on
-"include prereleases" in Obtainium and you get the **nightly** channel instead
-(every push to main). Or grab an APK straight from
+Tap a badge - no Play Store, no account. Obtainium auto-tracks the
+**weekly stable** release; turn on "include prereleases" and you get the
+**nightly** channel instead (every push to main). The F-Droid badge is
+**Vela's own repository**, not the f-droid.org catalog - it works in any
+F-Droid client and serves the same signed APKs. Or grab an APK straight from
 [Releases](https://github.com/PimpinPumpkin/Vela/releases).
 
-**F-Droid user?** Vela has its own F-Droid repository - add it to any F-Droid
-client and install/update from there:
+**F-Droid setup:** add the repo to your client and install/update from there:
 
 ```
 https://pimpinpumpkin.github.io/Vela/repo
