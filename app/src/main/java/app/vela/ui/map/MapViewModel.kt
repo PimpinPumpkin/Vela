@@ -1165,7 +1165,7 @@ class MapViewModel @Inject constructor(
         suggestJob?.cancel()
         _state.update {
             it.copy(
-                selected = p, center = p.location, reviews = emptyList(), suggestions = emptyList(),
+                selected = withListNote(p), center = p.location, reviews = emptyList(), suggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
             )
         }
@@ -1505,7 +1505,7 @@ class MapViewModel @Inject constructor(
             }.getOrNull()
             val full = resolved?.first
             if (full != null && _state.value.selected == placeholder) {
-                _state.update { it.copy(selected = full, placesHere = othersAt(full, resolved.second)) }
+                _state.update { it.copy(selected = withListNote(full), placesHere = othersAt(full, resolved.second)) }
                 fetchReviews(full)
                 fetchPhotos(full)
                 fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
@@ -1722,25 +1722,49 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(lists = listStore.addPlace(listId, app.vela.core.model.ListPlace.of(place))) }
     }
 
-    fun removePlaceFromList(listId: String, placeId: String) {
-        _state.update { it.copy(lists = listStore.removePlace(listId, placeId)) }
+    fun removePlaceFromList(listId: String, place: Place) {
+        val lists = listStore.removePlace(listId, place.id, place.featureId)
+        _state.update { it.copy(lists = lists, results = refreshedOpenList(it, lists) ?: it.results) }
     }
 
+    /** When the results sheet is showing an open list, rebuild it from [lists] so a
+     *  note edit / removal shows immediately (the rows are a snapshot from openList()). */
+    private fun refreshedOpenList(st: MapUiState, lists: List<app.vela.core.model.PlaceList>): List<Place>? =
+        st.openListId?.let { id -> lists.firstOrNull { it.id == id }?.places?.map { it.toPlace() } }
+
     /** Sets/clears the owner's note on a place across every list, and reflects it on the
-     *  open sheet so the change shows immediately. */
-    fun setPlaceNote(placeId: String, note: String?) {
-        val lists = listStore.setNote(placeId, note)
+     *  open sheet so the change shows immediately. Keyed by feature id AND place id — the
+     *  volatile id alone lost notes on re-resolved chain listings (the Safeway bug). */
+    fun setPlaceNote(place: Place, note: String?) {
+        val lists = listStore.setNote(place.id, note, place.featureId)
         _state.update {
             it.copy(
                 lists = lists,
-                selected = it.selected?.let { s -> if (s.id == placeId) s.copy(savedNote = note?.ifBlank { null }) else s },
+                results = refreshedOpenList(it, lists) ?: it.results,
+                selected = it.selected?.let { s ->
+                    if (s.id == place.id || (place.featureId != null && s.featureId == place.featureId)) {
+                        s.copy(savedNote = note?.ifBlank { null })
+                    } else s
+                },
             )
         }
     }
 
     /** Which lists a place is in (drives the sheet's "Saved in <list>" + checkmarks). */
-    fun listsContaining(placeId: String): List<app.vela.core.model.PlaceList> =
-        _state.value.lists.filter { l -> l.places.any { it.id == placeId } }
+    fun listsContaining(place: Place): List<app.vela.core.model.PlaceList> =
+        _state.value.lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }
+
+    /** Carry the user's saved list note onto a freshly opened place: a place opened from the
+     *  map or search is rebuilt from Google data (savedNote = null) even when a list holds a
+     *  note for it, so without this the note only ever showed when opened FROM the list. */
+    private fun withListNote(p: Place): Place {
+        if (p.savedNote != null) return p
+        val note = _state.value.lists.asSequence()
+            .flatMap { it.places.asSequence() }
+            .firstOrNull { it.matches(p.id, p.featureId) }
+            ?.note
+        return if (note != null) p.copy(savedNote = note) else p
+    }
 
     /** Saves the currently-previewed imported Google list into Your lists (the Save banner).
      *  Reuses a same-named list on re-import. Returns the new/updated list id. */
