@@ -141,15 +141,18 @@ jobs:
 
       - name: Prune old nightlies
         # Keep the releases page readable: nightlies pile up fast (one per push), so
-        # everything past the newest 14 PRERELEASES gets deleted, tag included. Stable
-        # releases are never prereleases (the promote workflow flips the flag), so the
-        # stable history is untouched, and so is anything a user currently tracks.
+        # every v0.* PRERELEASE past the newest 14 gets deleted, tag included. Stables
+        # are never prereleases so their history is untouched. The tag filter is LOAD
+        # BEARING: the infrastructure releases (tts-runtime, poi-packs, routing-graphs,
+        # address-overlays, building-overlays) are prereleases too, and the first run
+        # of this step deleted ALL of them, taking down every offline download until
+        # they were rebuilt. Only v0.* tags are nightlies; never widen this filter.
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release list --limit 200 --json tagName,isPrerelease \
-            -q '[.[] | select(.isPrerelease)] | .[14:] | .[].tagName' |
+            -q '[.[] | select(.isPrerelease and (.tagName | startswith("v0.")))] | .[14:] | .[].tagName' |
           while read -r tag; do
             [ -n "$tag" ] || continue
             echo "pruning nightly $tag"
