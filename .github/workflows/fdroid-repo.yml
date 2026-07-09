@@ -13,6 +13,14 @@ name: F-Droid repo
 on:
   release:
     types: [published, edited, released]
+  # Releases created by CI's own GITHUB_TOKEN don't fire release events for other
+  # workflows (GitHub's anti-recursion rule), so nightly publishes never triggered
+  # this on their own - the index went stale until someone dispatched it by hand.
+  # workflow_run is the sanctioned workaround: rebuild whenever CI or the weekly
+  # promote finishes on main.
+  workflow_run:
+    workflows: ["CI", "Promote weekly stable"]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -27,6 +35,9 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # For workflow_run triggers, only rebuild after a SUCCESSFUL main run - a red CI
+    # didn't publish anything, so there's nothing new to serve.
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     steps:
       - uses: actions/checkout@v4
 
