@@ -1023,7 +1023,7 @@ private fun SaveToListSheet(
                     items(lists, key = { it.id }) { list ->
                         val checked = list.id in containingIds
                         Row(
-                            Modifier.fillMaxWidth().clickable { onToggle(list.id, !checked) }.padding(horizontal = 20.dp, vertical = 12.dp),
+                            Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp)).clickable { onToggle(list.id, !checked) }.padding(horizontal = 20.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             Icon(

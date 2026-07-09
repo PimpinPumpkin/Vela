@@ -469,4 +469,11 @@
     <string name="place_note_label">Notiz</string>
     <string name="map_save_list">Liste speichern · %1$d Orte</string>
     <string name="map_list_saved">„%1$s“ in deinen Listen gespeichert</string>
+    <string name="settings_update_nightly">Nightly-Builds einschließen</string>
+    <string name="settings_update_nightly_hint">Auf den neuesten Nightly (Vorabversion) aktualisieren statt nur auf stabile Versionen. Nightlies sind aktueller, aber weniger getestet.</string>
+    <string name="settings_lists_export_hint">Sichere deine Listen in einer Datei oder stelle sie auf einem anderen Gerät wieder her.</string>
+    <string name="settings_lists_imported">%1$d Liste(n) importiert</string>
+    <string name="settings_no_lists">Noch keine Listen zum Exportieren</string>
+    <string name="mapvm_export_lists_subject">Vela-Listen (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Listen exportieren</string>
 </resources>
