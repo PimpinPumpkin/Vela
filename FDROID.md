@@ -28,9 +28,14 @@ https://pimpinpumpkin.github.io/Vela/repo?fingerprint=F374920F2F5F38D7508D0B0421
 
 ## What the repo serves
 
-- The latest **stable** release (promoted weekly from the nightly line).
-- The newest **nightly** build when it is ahead of stable, so you can opt into
-  the fresh one by picking the higher version in your client.
+- The latest **stable** release (promoted weekly from the nightly line). This is
+  what the repo suggests, so a normal install only ever updates on stables.
+- The newest **nightly** build when it is ahead of stable. Nightlies sit above
+  the suggested version, so clients treat them as unstable: to get them, enable
+  unstable/beta updates for Vela in your client (in the official F-Droid client
+  that's Settings -> Expert -> Unstable updates; Droid-ify and Neo Store have a
+  per-app release-channel toggle). Or track nightlies straight from GitHub with
+  Obtainium's "include prereleases".
 
 The repo index is rebuilt automatically after every successful CI run and
 weekly stable promotion (`.github/workflows/fdroid-repo.yml`) and hosted on
