@@ -166,8 +166,13 @@ fun StepsSheet(
                                     Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
                                 }
                             }
-                            m.road?.let {
-                                Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
+                            // On ARRIVE the destination lines above already say where the trip ends —
+                            // the raw street name under a full address is noise. Keep it only when
+                            // there's no name/address at all (it's then the only locator we have).
+                            if (m.type != ManeuverType.ARRIVE || (destName.isNullOrBlank() && destAddress.isNullOrBlank())) {
+                                m.road?.let {
+                                    Text(it, style = MaterialTheme.typography.bodySmall, color = dim)
+                                }
                             }
                             if (m.lanes.isNotEmpty()) {
                                 LaneDiagram(m.lanes, m.type, on = ink, modifier = Modifier.padding(top = 3.dp))
