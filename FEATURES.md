@@ -179,6 +179,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
+- ✅ **Nav notification v2 (2026-07-09, device-verified).** The ongoing notification now shows a
+  large maneuver ARROW (white on teal, drawn per turn type incl. U-turn/merge/fork/roundabout/
+  arrival flag), the turn instruction with distance, and "N min - X mi - Arrive HH:MM". Teal
+  accent, lock-screen public, no stale timestamp. Demo-drive mode now runs the same foreground
+  service so the notification is part of the demo (and screenshot-verifiable without a drive).
 - ✅ **Self-hosted F-Droid repository (2026-07-09).** CI builds a signed F-Droid repo index on
   every release and publishes it to GitHub Pages (`fdroid-repo.yml`); users add
   `https://pimpinpumpkin.github.io/Vela/repo` to any F-Droid client (fingerprint in FDROID.md).
