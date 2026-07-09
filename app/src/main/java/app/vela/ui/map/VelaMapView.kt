@@ -88,6 +88,10 @@ private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 private const val PIN_IMG = "vela-pin"
+// The saved parking spot: one teal "P" pin, tappable (opens the parked-car sheet).
+private const val PARKING_SRC = "vela-parking-src"
+private const val PARKING_LAYER = "vela-parking"
+private const val PARKING_IMG = "vela-parking-img"
 private const val MARKER_INDEX_PROP = "vela-marker-index"
 // Ambient Google POIs — small category dots (reusing PoiIcons' `vela-poi-<group>` images), the
 // "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
@@ -135,6 +139,8 @@ data class MapMarker(val name: String, val location: LatLng, val category: Strin
 // source is empty and must repopulate). Single map instance, so file scope is fine.
 private var lastAppliedMarkers: List<MapMarker>? = null
 private var lastAppliedAmbient: List<MapMarker>? = null
+private var lastAppliedParking: LatLng? = null
+private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
@@ -190,6 +196,8 @@ fun VelaMapView(
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
+    parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
+    onParkingTap: () -> Unit = {},
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
@@ -222,6 +230,7 @@ fun VelaMapView(
     val poiTap = rememberUpdatedState(onPoiTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
     val ambientTap = rememberUpdatedState(onAmbientTap)
+    val parkingTap = rememberUpdatedState(onParkingTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
@@ -627,6 +636,11 @@ fun VelaMapView(
                     // a tight box made the bigger markers feel un-tappable.
                     val r = density.density * 24f
                     val feats = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r))
+                    // The parking pin outranks everything — it's a single deliberate object.
+                    if (map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r), PARKING_LAYER).isNotEmpty()) {
+                        parkingTap.value()
+                        return@handleTap true
+                    }
                     // Our own search-result pins take priority over basemap POI labels.
                     val pin = feats.firstOrNull { it.hasProperty(MARKER_INDEX_PROP) }
                     if (pin != null) {
@@ -988,19 +1002,20 @@ fun VelaMapView(
                 styleRef = style
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
+                parkingApplied = false
                 lastAppliedAmbient = null
                 lastAppliedControls = null
                 lastAppliedRouteLine = null
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(map, style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(map, style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(map, it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
             }
@@ -1258,6 +1273,19 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
                 PropertyFactory.iconImage(PIN_IMG),
+                PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+            ),
+        )
+    }
+    // The saved parking spot: one teal "P" pin above the search pins, tappable.
+    if (style.getImage(PARKING_IMG) == null) style.addImage(PARKING_IMG, parkingBitmap())
+    if (style.getSource(PARKING_SRC) == null) {
+        style.addSource(GeoJsonSource(PARKING_SRC))
+        style.addLayer(
+            SymbolLayer(PARKING_LAYER, PARKING_SRC).withProperties(
+                PropertyFactory.iconImage(PARKING_IMG),
                 PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
@@ -1983,7 +2011,16 @@ private fun applyData(
     preview: LatLng?,
     routeProgress: Float,
     navMode: Boolean,
+    parkingSpot: LatLng? = null,
 ) {
+    // The parking pin (identity-gated like the markers below).
+    if (!parkingApplied || parkingSpot != lastAppliedParking) {
+        val fc = if (parkingSpot == null) FeatureCollection.fromFeatures(emptyList<Feature>())
+        else FeatureCollection.fromFeatures(listOf(Feature.fromGeometry(Point.fromLngLat(parkingSpot.lng, parkingSpot.lat))))
+        style.getSourceAs<GeoJsonSource>(PARKING_SRC)?.setGeoJson(fc)
+        lastAppliedParking = parkingSpot
+        parkingApplied = true
+    }
     // Identity-gate the route geometry upload (same pattern as markers/ambient below): applyData
     // runs on EVERY recomposition — during nav that's each fix/speedo tick — and re-tessellating
     // a thousands-of-vertices linestring that hasn't changed burned frame budget exactly while
@@ -2268,6 +2305,34 @@ private fun pinBitmap(): Bitmap {
     canvas.drawPath(tail, red)
     canvas.drawCircle(cx, headCy, headR, red)
     canvas.drawCircle(cx, headCy, headR * 0.40f, white)
+    return bmp
+}
+
+/** The parking pin: same silhouette as the search pin, teal head with a bold white "P". */
+private fun parkingBitmap(): Bitmap {
+    val w = 60
+    val h = 80
+    val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bmp)
+    val cx = w / 2f
+    val headR = w * 0.38f
+    val headCy = headR + 4f
+    val teal = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF00897B.toInt() }
+    val tail = Path().apply {
+        moveTo(cx - headR * 0.72f, headCy + headR * 0.70f)
+        lineTo(cx + headR * 0.72f, headCy + headR * 0.70f)
+        lineTo(cx, h - 3f)
+        close()
+    }
+    canvas.drawPath(tail, teal)
+    canvas.drawCircle(cx, headCy, headR, teal)
+    val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFFFFF.toInt()
+        textSize = headR * 1.25f
+        typeface = android.graphics.Typeface.DEFAULT_BOLD
+        textAlign = Paint.Align.CENTER
+    }
+    canvas.drawText("P", cx, headCy - (text.ascent() + text.descent()) / 2f, text)
     return bmp
 }
 

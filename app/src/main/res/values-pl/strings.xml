@@ -441,7 +441,9 @@
     <string name="car_no_route">Brak trasy — sprawdź lokalizację</string>
     <string name="map_parking_saved">Zapisano miejsce parkowania</string>
     <string name="map_parking_no_fix">Oczekiwanie na lokalizację</string>
-    <string name="map_parking_chip">Zaparkowano</string>
     <string name="map_parking_cleared">Usunięto miejsce parkowania</string>
     <string name="map_parked_car">Zaparkowany samochód</string>
+    <string name="map_parking_save">Zapisz miejsce parkowania</string>
+    <string name="map_import_failed">Nie udało się zaimportować listy. Sprawdź link i spróbuj ponownie.</string>
+    <string name="place_clear_parking">Usuń parkowanie</string>
 </resources>
