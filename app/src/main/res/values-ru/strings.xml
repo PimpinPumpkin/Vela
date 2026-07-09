@@ -467,4 +467,6 @@
     <string name="place_save_to_list">Сохранить в список</string>
     <string name="place_edit_note">Изменить заметку</string>
     <string name="place_note_label">Заметка</string>
+    <string name="map_save_list">Сохранить список · %1$d мест</string>
+    <string name="map_list_saved">«%1$s» сохранён в ваших списках</string>
 </resources>

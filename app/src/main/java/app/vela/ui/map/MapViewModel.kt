@@ -98,6 +98,7 @@ data class MapUiState(
     val parkingHistory: List<app.vela.core.model.ParkedSpot> = emptyList(), // recent saves, newest first — accidental-overwrite insurance
     val lists: List<app.vela.core.model.PlaceList> = emptyList(), // user place-lists (issue #1), newest first
     val openListId: String? = null, // the list currently shown as results (its name is in the bar)
+    val pendingImport: app.vela.core.model.ImportedList? = null, // an imported Google list shown but NOT yet saved
     val offline: Boolean = false, // no usable internet — drives the subtle offline indicator
     val query: String = "",
     val results: List<Place> = emptyList(),
@@ -735,7 +736,7 @@ class MapViewModel @Inject constructor(
         _state.update {
             it.copy(
                 query = "", results = emptyList(), suggestions = emptyList(), selected = null,
-                resultsCollapsed = false, showSearchThisArea = false, openListId = null,
+                resultsCollapsed = false, showSearchThisArea = false, openListId = null, pendingImport = null,
             )
         }
     }
@@ -1003,21 +1004,14 @@ class MapViewModel @Inject constructor(
             if (MapLinkParser.isShareLink(q)) {
                 val imported = withContext(Dispatchers.IO) { runCatching { dataSource.importList(q) }.getOrNull() }
                 if (imported != null && imported.places.isNotEmpty()) {
-                    // Persist it as a local list (bookmark icon) so it survives — the import isn't
-                    // just a one-off result set. Reuse a same-named list if the user re-imports.
-                    val existing = listStore.lists().firstOrNull { it.name == imported.title }
-                    val listId = existing?.id ?: ("list:import:" + imported.title.hashCode().toString(16))
-                    val listPlaces = imported.places.map { app.vela.core.model.ListPlace.of(it) }
-                    val list = app.vela.core.model.PlaceList(
-                        id = listId, name = imported.title, icon = "bookmark",
-                        description = imported.description, places = listPlaces,
-                    )
-                    val lists = if (existing != null) listStore.update(list) else listStore.create(list)
+                    // Show the places as results and OFFER to save (a banner over the results),
+                    // rather than silently persisting a list on every peeked link — user choice
+                    // 2026-07-09. Nothing lands in Your lists until they tap Save.
                     _state.update {
                         it.copy(
-                            lists = lists, results = imported.places, query = imported.title,
-                            openListId = listId, searching = false, selected = null, status = null,
-                            resultsCollapsed = false,
+                            results = imported.places, query = imported.title, pendingImport = imported,
+                            searching = false, selected = null, status = null, resultsCollapsed = false,
+                            openListId = null,
                         )
                     }
                 } else {
@@ -1742,6 +1736,21 @@ class MapViewModel @Inject constructor(
     /** Which lists a place is in (drives the sheet's "Saved in <list>" + checkmarks). */
     fun listsContaining(placeId: String): List<app.vela.core.model.PlaceList> =
         _state.value.lists.filter { l -> l.places.any { it.id == placeId } }
+
+    /** Saves the currently-previewed imported Google list into Your lists (the Save banner).
+     *  Reuses a same-named list on re-import. Returns the new/updated list id. */
+    fun saveImportedList(): String? {
+        val imp = _state.value.pendingImport ?: return null
+        val existing = listStore.lists().firstOrNull { it.name == imp.title }
+        val listId = existing?.id ?: ("list:import:" + imp.title.hashCode().toString(16))
+        val list = app.vela.core.model.PlaceList(
+            id = listId, name = imp.title, icon = "bookmark",
+            description = imp.description, places = imp.places.map { app.vela.core.model.ListPlace.of(it) },
+        )
+        val lists = if (existing != null) listStore.update(list) else listStore.create(list)
+        _state.update { it.copy(lists = lists, pendingImport = null, openListId = listId) }
+        return listId
+    }
 
     /** Opens a list as search results (its places), the list name in the search bar. */
     fun openList(listId: String) {

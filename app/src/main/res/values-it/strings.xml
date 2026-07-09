@@ -467,4 +467,6 @@
     <string name="place_save_to_list">Salva nella lista</string>
     <string name="place_edit_note">Modifica nota</string>
     <string name="place_note_label">Nota</string>
+    <string name="map_save_list">Salva lista · %1$d luoghi</string>
+    <string name="map_list_saved">“%1$s” salvata nelle tue liste</string>
 </resources>

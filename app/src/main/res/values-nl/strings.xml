@@ -467,4 +467,6 @@
     <string name="place_save_to_list">In lijst opslaan</string>
     <string name="place_edit_note">Notitie bewerken</string>
     <string name="place_note_label">Notitie</string>
+    <string name="map_save_list">Lijst opslaan · %1$d plaatsen</string>
+    <string name="map_list_saved">“%1$s” opgeslagen in je lijsten</string>
 </resources>
