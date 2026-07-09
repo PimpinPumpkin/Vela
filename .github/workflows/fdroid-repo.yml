@@ -57,6 +57,13 @@ jobs:
           mkdir -p fdroid/repo
           stable_tag=$(gh release view --json tagName -q .tagName --repo "$GITHUB_REPOSITORY")
           echo "stable: $stable_tag"
+          # Remember the stable's version for the metadata pin below: the repo SUGGESTS the
+          # stable, so default F-Droid users only ever see weekly releases; the newer nightly
+          # in the index is treated as unstable and shown only to users who opt into
+          # unstable/beta updates for Vela in their client.
+          run_no="${stable_tag##*.}"
+          echo "STABLE_NAME=${stable_tag#v}" >> "$GITHUB_ENV"
+          echo "STABLE_CODE=$((2000 + run_no))" >> "$GITHUB_ENV"
           # Both downloads are best-effort (a release can have no APK asset, e.g. right
           # after the tag is cut); the guard below is what actually fails the job.
           gh release download "$stable_tag" -p '*.apk' -D fdroid/repo --repo "$GITHUB_REPOSITORY" || true
@@ -90,6 +97,12 @@ jobs:
           keypass: $FDROID_KEYSTORE_PASS
           EOF
           chmod 0600 fdroid/config.yml
+          # Pin the suggested version to the stable (see the fetch step). Appended at build
+          # time so the committed metadata never goes stale.
+          {
+            echo "CurrentVersion: $STABLE_NAME"
+            echo "CurrentVersionCode: $STABLE_CODE"
+          } >> fdroid/metadata/app.vela.yml
 
       - name: Build the signed repo index
         run: |
