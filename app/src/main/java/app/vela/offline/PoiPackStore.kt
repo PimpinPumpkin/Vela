@@ -79,7 +79,11 @@ class PoiPackStore @Inject constructor(
         JSONObject(File(packsRoot, "revs.json").readText())
     }.getOrDefault(JSONObject())
 
-    private fun writeRev(id: String, rev: Int) {
+    // Guards the revs.json read-modify-write (parallel downloads / update + delete),
+    // same shape as the index guard in OverlayTileStore and RoutingGraphStore.
+    private val revsLock = Any()
+
+    private fun writeRev(id: String, rev: Int) = synchronized(revsLock) {
         packsRoot.mkdirs()
         File(packsRoot, "revs.json").writeText(readRevs().put(id, rev).toString())
     }
@@ -207,8 +211,10 @@ class PoiPackStore @Inject constructor(
 
     fun delete(id: String) {
         File(packsRoot, "$id.db").delete()
-        packsRoot.mkdirs()
-        File(packsRoot, "revs.json").writeText(readRevs().apply { remove(id) }.toString())
+        synchronized(revsLock) {
+            packsRoot.mkdirs()
+            File(packsRoot, "revs.json").writeText(readRevs().apply { remove(id) }.toString())
+        }
         registerPacks()
     }
 

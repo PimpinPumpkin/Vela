@@ -3,7 +3,6 @@ package app.vela.diag
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.core.content.FileProvider
 import app.vela.BuildConfig
 import app.vela.core.diag.DiagEvent
 import java.io.File
@@ -76,14 +75,12 @@ object CrashCatcher {
     /** Share the most recent crash report via the system sheet, or null if none. */
     fun shareIntent(context: Context): Intent? {
         val newest = pending(context).lastOrNull() ?: return null
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", newest)
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "text/plain"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Vela crash report")
-            putExtra(Intent.EXTRA_TEXT, "Attached: a Vela crash report (stack trace + diagnostics).")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        return Intent.createChooser(send, "Share crash report").apply { addFlags(Intent.FLAG_ACTIVITY_NEW_TASK) }
+        return shareFileIntent(
+            context, newest,
+            mime = "text/plain",
+            subject = "Vela crash report",
+            text = "Attached: a Vela crash report (stack trace + diagnostics).",
+            title = "Share crash report",
+        )
     }
 }

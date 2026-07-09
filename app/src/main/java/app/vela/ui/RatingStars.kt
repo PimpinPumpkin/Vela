@@ -18,12 +18,14 @@ import kotlin.math.roundToInt
 val StarGold = Color(0xFFF5B400)
 
 /** Google-style status colour: green when open, amber when closing/opening soon,
- *  red when closed/temporarily/permanently. [openNow] (from Google's locale-independent
- *  numeric status code) drives the colour so it's right in EVERY language; the English
- *  text checks are a fallback for when the code is absent (keeps en behaviour identical).
- *  Green requires an affirmative signal AND no contradiction: a wrongly-true [openNow]
- *  must never paint text that literally reads closed ("Closed ⋅ Opens 5 AM") green —
- *  and "Opens …" ≠ "Open"/"Open 24 hours" (the prefix hole that greened a closed place). */
+ *  red when closed/temporarily/permanently. [openNow] comes from parseOpenNow's
+ *  per-language keyword table over the STATUS TEXT (closed words checked first; the
+ *  once-assumed numeric status code was disproven 2026-07-04, see CLAUDE.md), so the
+ *  colour is right in every language; the English prefix checks below are the fallback
+ *  when it's absent. Green requires an affirmative signal AND no contradiction: a
+ *  wrongly-true [openNow] must never paint text that literally reads closed
+ *  ("Closed ⋅ Opens 5 AM") green - and "Opens …" ≠ "Open"/"Open 24 hours" (the prefix
+ *  hole that greened a closed place). */
 fun placeStatusColor(status: String, openNow: Boolean? = null): Color {
     val s = status.trim()
     val textSaysClosed = s.startsWith("Closed") || s.startsWith("Opens") || s.startsWith("Opening") ||
