@@ -182,6 +182,9 @@
     <string name="place_move_stop_down">Sposta tappa giù</string>
     <string name="place_remove_stop">Rimuovi tappa</string>
     <string name="place_add_stop">Aggiungi tappa</string>
+    <string name="stops_editor_title">Fermate</string>
+    <string name="stops_edit">Modifica fermate</string>
+    <string name="stops_drag_reorder">Trascina per riordinare</string>
     <string name="place_change_destination">Cambia destinazione</string>
     <string name="place_swap_start_destination">Inverti partenza e destinazione</string>
     <string name="place_close_directions">Chiudi indicazioni</string>

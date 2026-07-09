@@ -116,6 +116,7 @@ data class MapUiState(
     val pickingOrigin: Boolean = false,      // the next search pick sets the origin, not a destination
     val directionsWaypoints: List<Place> = emptyList(), // intermediate stops, in order (multi-stop)
     val pickingStop: Boolean = false,        // the next search pick is added as a stop
+    val editingStops: Boolean = false,       // the dedicated stops editor sheet is open
     // Set while browsing search-along-route results: the trip's DESTINATION, stashed so the trip
     // survives the browse. A result pick adds a STOP to the trip (Google-style) instead of opening
     // the place's own sheet, and closing the results returns to the directions panel.
@@ -1386,7 +1387,7 @@ class MapViewModel @Inject constructor(
                 showSteps = false, previewStepIndex = null,
                 directionsOrigin = null, pickingOrigin = false, directionsReversed = false,
                 directionsWaypoints = emptyList(), pickingStop = false, pickOnMap = null,
-                alongRouteDest = null,
+                alongRouteDest = null, editingStops = false,
             )
         }
     }
@@ -1674,7 +1675,20 @@ class MapViewModel @Inject constructor(
 
     /** Tapped "Add stop" → the next search pick becomes an intermediate stop (multi-stop routing).
      *  [addStop]/[cancelPickStop] ends the mode. */
-    fun beginPickStop() = _state.update { it.copy(pickingStop = true, query = "", suggestions = emptyList()) }
+    fun beginPickStop() = _state.update { it.copy(pickingStop = true, editingStops = false, query = "", suggestions = emptyList()) }
+
+    /** The dedicated stops editor (reorder / remove / add in one sheet, one reroute on Done). */
+    fun openStopsEditor() = _state.update { it.copy(editingStops = true) }
+
+    fun closeStopsEditor() = _state.update { it.copy(editingStops = false) }
+
+    /** Apply the editor's final ordering in ONE shot — a single reroute per visit, not one per
+     *  micro-edit like the old inline arrows. */
+    fun applyStops(stops: List<Place>) {
+        val changed = stops != _state.value.directionsWaypoints
+        _state.update { it.copy(directionsWaypoints = stops, editingStops = false) }
+        if (changed) route(_state.value.travelMode)
+    }
 
     fun cancelPickStop() = _state.update { it.copy(pickingStop = false) }
 
@@ -1688,23 +1702,6 @@ class MapViewModel @Inject constructor(
                 // directionsOpen BEFORE route() also keeps its stillWanted() guard satisfied.
                 directionsOpen = true, results = emptyList(), query = "", resultsCollapsed = false,
             )
-        }
-        route(_state.value.travelMode)
-    }
-
-    /** Remove the stop at [index] and re-route. */
-    fun removeStop(index: Int) {
-        _state.update { it.copy(directionsWaypoints = it.directionsWaypoints.filterIndexed { i, _ -> i != index }) }
-        route(_state.value.travelMode)
-    }
-
-    /** Move the stop at [index] by [delta] (−1 up / +1 down) and re-route through the new order. */
-    fun moveStop(index: Int, delta: Int) {
-        _state.update { s ->
-            val list = s.directionsWaypoints.toMutableList()
-            val to = index + delta
-            if (index in list.indices && to in list.indices) list.add(to, list.removeAt(index))
-            s.copy(directionsWaypoints = list)
         }
         route(_state.value.travelMode)
     }

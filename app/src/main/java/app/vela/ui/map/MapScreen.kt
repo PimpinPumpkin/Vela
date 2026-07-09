@@ -318,6 +318,7 @@ fun MapScreen(
                 state.selected == null &&
                 (state.results.isEmpty() || state.resultsCollapsed) -> mapEngaged = false
             searchOpen -> { searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
+            state.editingStops -> vm.closeStopsEditor()
             state.showSteps -> vm.closeSteps()
             state.navigating -> vm.stopNav()
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
@@ -967,6 +968,20 @@ fun MapScreen(
                     .onGloballyPositioned { navBarHeightPx = it.size.height },
             )
 
+            // The dedicated stops editor covers the directions panel while open (drag to
+            // reorder, remove, add; one reroute on Done).
+            state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null -> app.vela.ui.place.StopsEditorSheet(
+                originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
+                else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
+                destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
+                else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
+                stops = state.directionsWaypoints,
+                onApply = vm::applyStops,
+                onAddStop = vm::beginPickStop,
+                onDismiss = vm::closeStopsEditor,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
+
             // Tapping "Directions" opens a dedicated panel (popup) — mode tabs, the
             // route option(s) with traffic-aware ETAs, selectable alternates, Start —
             // instead of burying it at the bottom of the place sheet.
@@ -984,8 +999,7 @@ fun MapScreen(
                 onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else null,
                 stops = state.directionsWaypoints.map { it.name },
                 onAddStop = vm::beginPickStop,
-                onRemoveStop = vm::removeStop,
-                onMoveStop = vm::moveStop,
+                onEditStops = vm::openStopsEditor,
                 onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
