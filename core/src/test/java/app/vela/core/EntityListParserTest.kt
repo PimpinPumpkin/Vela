@@ -35,6 +35,16 @@ class EntityListParserTest {
     }
 
     @Test
+    fun `small feature ids are zero-padded to the canonical 16-hex form`() {
+        // hex of 1 is "1"; unpadded it would render "0x1:0x2", which never matches the
+        // canonical padded ids Google uses (dedup and popular-times key off this string).
+        val tiny = """)]}'
+[[null,null,null,["Author"],"Title","Desc",null,null,[[null,[null,null,null,null,"Addr",[null,null,10.5,-20.25],["1","2"]],"Tiny",null]]]]"""
+        val place = EntityListParser.parse(tiny)!!.places.single()
+        assertEquals("0x0000000000000001:0x0000000000000002", place.featureId)
+    }
+
+    @Test
     fun `garbage and non-list payloads return null, never throw`() {
         assertNull(EntityListParser.parse(")]}'\n[[]]"))
         assertNull(EntityListParser.parse("<!doctype html><html>consent wall</html>"))

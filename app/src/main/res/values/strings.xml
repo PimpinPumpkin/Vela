@@ -153,6 +153,7 @@
     <string name="settings_collapse">Collapse</string>
     <string name="settings_expand">Expand</string>
     <string name="settings_voice_lib_empty_hint">Download a natural on-device voice for spoken directions. Pick one below. The ★ voices sound the most like a maps navigator (Lessac and HFC are closest to Google). One-time download; wifi recommended.</string>
+    <string name="settings_voice_lib_installed_hint">Installed: %1$d MB · %2$d voice(s). Tap Use to switch (plays a sample); the trash icon frees the space.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">Your app language is %1$s. Download a %2$s voice below so spoken directions match (an English voice would mispronounce %3$s street names).</string> <!-- format -->
     <string name="settings_voice_search">Search voices</string>
     <string name="settings_voice_show_more">Show %1$d more</string>
@@ -496,6 +497,7 @@
     <string name="settings_update_nightly_hint">Update to the newest nightly (prerelease) instead of only stable releases. Nightlies are fresher but less tested.</string>
     <string name="settings_lists_export_hint">Back up your lists to a file, or restore them on another device.</string>
     <string name="settings_lists_imported">Imported %1$d list(s)</string>
+    <string name="settings_places_imported">Imported %1$d place(s)</string> <!-- format -->
     <string name="settings_no_lists">No lists to export yet</string>
     <string name="mapvm_export_lists_subject">Vela lists (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Export lists</string>
