@@ -6,6 +6,8 @@
     <string name="settings_theme_light">Hell</string>
     <string name="settings_theme_dark">Dunkel</string>
     <string name="settings_appearance_hint">Hell/Dunkel gilt nur für Vela – das System-Design Ihres Telefons wird nicht verändert.</string>
+    <string name="settings_dynamic_color">Material-You-Farben</string>
+    <string name="settings_dynamic_color_hint">Färbt Schaltflächen, Chips und Akzente nach Ihrem Hintergrundbild (Android 12+). Aus = Velas eigenes Türkis. Die Karte selbst bleibt neutral, damit Straßen und Beschriftungen ihren Kontrast behalten.</string>
     <string name="settings_map_style">Kartenstil</string>
     <string name="settings_map_style_hint">OpenFreeMap (Standard) ist detailliert und braucht keinen Schlüssel. Protomaps benötigt einen API-Schlüssel; der Demo-Stil zeigt nur Ländergrenzen.</string>
     <string name="settings_units">Einheiten</string>
