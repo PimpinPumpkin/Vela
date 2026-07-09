@@ -441,7 +441,9 @@
     <string name="car_no_route">No hay ruta disponible: comprueba tu ubicación</string>
     <string name="map_parking_saved">Aparcamiento guardado</string>
     <string name="map_parking_no_fix">Esperando la ubicación</string>
-    <string name="map_parking_chip">Aparcado</string>
     <string name="map_parking_cleared">Aparcamiento borrado</string>
     <string name="map_parked_car">Coche aparcado</string>
+    <string name="map_parking_save">Guardar aparcamiento</string>
+    <string name="map_import_failed">No se pudo importar la lista. Comprueba el enlace e inténtalo de nuevo.</string>
+    <string name="place_clear_parking">Borrar aparcamiento</string>
 </resources>

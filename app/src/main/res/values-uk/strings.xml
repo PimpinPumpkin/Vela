@@ -441,7 +441,9 @@
     <string name="car_no_route">Немає маршруту — перевірте місцезнаходження</string>
     <string name="map_parking_saved">Місце паркування збережено</string>
     <string name="map_parking_no_fix">Очікування місцезнаходження</string>
-    <string name="map_parking_chip">Припарковано</string>
     <string name="map_parking_cleared">Місце паркування видалено</string>
     <string name="map_parked_car">Припаркована машина</string>
+    <string name="map_parking_save">Зберегти місце паркування</string>
+    <string name="map_import_failed">Не вдалося імпортувати список. Перевірте посилання та спробуйте ще раз.</string>
+    <string name="place_clear_parking">Видалити паркування</string>
 </resources>

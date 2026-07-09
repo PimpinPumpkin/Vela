@@ -68,6 +68,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
@@ -170,6 +171,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -226,12 +228,15 @@ fun PlaceSheet(
     onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
     onSetShortcut: (ShortcutKind) -> Unit = {},
     onRetryReviews: () -> Unit = {},
+    onClearParking: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
+    // The saved parking spot's own sheet: car glyph beside the name, a Clear action pill.
+    val isParking = place.id.startsWith("parking:")
     // A tapped photo opens the full-screen gallery; resets when the sheet switches place.
     var galleryStart by remember(place.id) { mutableStateOf<Int?>(null) }
     // Gallery category filter (null = All); resets per place. Chips appear only when Google tagged photos.
@@ -524,6 +529,15 @@ fun PlaceSheet(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isParking) {
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp).padding(end = 2.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
                 Text(
                     place.name,
                     // titleLarge (22sp) not headlineSmall (24sp) so a longer name ("Starbucks Coffee
@@ -710,6 +724,9 @@ fun PlaceSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                if (isParking) {
+                    ActionPill(Icons.Default.Delete, stringResource(R.string.place_clear_parking), onClick = onClearParking)
+                }
                 place.phone?.let { ph ->
                     ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
@@ -755,6 +772,17 @@ fun PlaceSheet(
 
             // A permanently-closed POI already says so in red above — don't also
             // nag "Hours not listed" beneath it (the dead-POI hours are moot).
+            // The list owner's personal note, carried over from an imported Google Maps list
+            // ("this restaurant's fish is better than its chicken") — the part of a shared
+            // list Google itself throws away on export, kept front and centre here.
+            place.savedNote?.let { note ->
+                Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.Top) {
+                    Icon(Icons.Default.FormatQuote, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(note, style = MaterialTheme.typography.bodyMedium, fontStyle = FontStyle.Italic, color = ink)
+                }
+            }
+
             // Departments (pharmacy / fuel / liquor / delivery-pickup windows) nest INSIDE the
             // Hours expansion — the collapsed sheet stays one clean "Hours" line, and the whole
             // schedule story (store week + every department) lives behind one tap. When a place
@@ -2616,15 +2644,17 @@ private fun DepartmentsSection(departments: List<app.vela.core.model.Department>
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Spacer(Modifier.width(26.dp))
+                // Fixed columns so every row's status ends at the same x: name takes what's
+                // left, the status is RIGHT-aligned against a chevron slot that is always
+                // reserved (ragged status edges across rows read as misalignment).
                 Text(
                     dep.name,
                     style = MaterialTheme.typography.bodyMedium,
                     color = ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f, fill = false),
+                    modifier = Modifier.weight(0.8f),
                 )
-                Spacer(Modifier.weight(1f))
                 if (!expanded) {
                     dep.statusText?.let { status ->
                         // Same treatment as the headline status: the Open/Closed word colored,
@@ -2640,17 +2670,21 @@ private fun DepartmentsSection(departments: List<app.vela.core.model.Department>
                             style = MaterialTheme.typography.bodySmall,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.widthIn(max = 190.dp),
+                            textAlign = TextAlign.End,
+                            modifier = Modifier.weight(1.2f),
                         )
-                        Spacer(Modifier.width(6.dp))
-                    }
+                    } ?: Spacer(Modifier.weight(1.2f))
+                } else {
+                    Spacer(Modifier.weight(1.2f))
                 }
-                if (days.isNotEmpty()) {
-                    Icon(
-                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                        contentDescription = if (expanded) stringResource(R.string.place_collapse_hours) else stringResource(R.string.place_expand_hours),
-                        tint = dim,
-                    )
+                Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterEnd) {
+                    if (days.isNotEmpty()) {
+                        Icon(
+                            if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (expanded) stringResource(R.string.place_collapse_hours) else stringResource(R.string.place_expand_hours),
+                            tint = dim,
+                        )
+                    }
                 }
             }
             AnimatedVisibility(expanded) {

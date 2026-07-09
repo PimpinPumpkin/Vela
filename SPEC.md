@@ -161,6 +161,18 @@ un-automatable → it's login/Android-app-only. We surface the typical spread (`
 above) as the honest keyless stand-in; a true per-minute ETA needs one captured real
 depart-at request (mitmproxy on the Android app - see `ROADMAP.md`).
 
+### Shared-list import (`/maps/preview/entitylist/getlist`, calibrated 2026-07-08)
+
+A maps.app.goo.gl share link fetched LOGGED-OUT redirects to `/maps/@/data=!4m3!11m2!2s<LISTID>!3e3`,
+and that page's HTML embeds a ready-made prefetch URL for the getlist RPC (list id + page session
+token included) - `GoogleMapsDataSource.importList` lifts it verbatim (regex on
+`/maps/preview/entitylist/getlist?...`, `&amp;`-unescaped), so no pb is constructed anywhere.
+Response after the `)]}'` guard: `root[0][4]`=title · `[5]`=description · `[3][0]`=author ·
+`[8]`=items, each `[2]`=display name, `[3]`=the owner's personal NOTE, `[1][4]`=address,
+`[1][5][2..3]`=lat/lng, `[1][6]`=feature id as a DECIMAL signed-int64 pair (two's-complement hex
+= the `0x..:0x..` reviews id — `EntityListParser.featureId`). Parser: `EntityListParser`
+(best-effort, unit-tested on a captured payload).
+
 ### Hours node (`[1][203][0]`) - date-specific, holidays baked in (observed 2026-07-01)
 Each day entry is `[name, dow(1=Mon..7=Sun), [Y,M,D], ranges, flag, flag, special?]` - a **rolling next-7-days**
 list keyed to the ACTUAL date, so **holiday overrides are already in it**: a Jul-4 bank showed

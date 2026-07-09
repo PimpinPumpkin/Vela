@@ -10,6 +10,7 @@ import app.vela.core.data.CalibrationNeededException
 import app.vela.core.data.MapDataSource
 import app.vela.core.data.google.ambientProminence
 import app.vela.core.data.MapLink
+import app.vela.core.data.MapLinkParser
 import app.vela.core.data.OfflinePoiStore
 import app.vela.core.data.RouteCorridor
 import app.vela.core.data.OverpassPois
@@ -990,6 +991,23 @@ class MapViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             // A fresh typed search leaves any along-route browse: picks open places normally again.
             _state.update { it.copy(searching = true, suggestions = emptyList(), showSearchThisArea = false, resultsCollapsed = false, alongRouteDest = null) }
+            // A pasted Google Maps SHARE LINK: try the shared-list import (issue #1). The link
+            // resolves keylessly to the list's places, each carrying the owner's note; they land
+            // as results (title in the bar) and each is savable/openable like any search hit.
+            if (MapLinkParser.isShareLink(q)) {
+                val imported = withContext(Dispatchers.IO) { runCatching { dataSource.importList(q) }.getOrNull() }
+                _state.update {
+                    if (imported != null && imported.places.isNotEmpty()) {
+                        it.copy(
+                            results = imported.places, query = imported.title, searching = false,
+                            selected = null, status = null, resultsCollapsed = false,
+                        )
+                    } else {
+                        it.copy(searching = false, status = appContext.getString(R.string.map_import_failed))
+                    }
+                }
+                return@launch
+            }
             // No connection → skip the Google scrape entirely (it would just hang to the socket timeout,
             // the "search does nothing offline" report) and search the on-device OSM index straight away.
             // Empty index = no area downloaded yet, so point the user at the download (issue #3).
@@ -1613,11 +1631,13 @@ class MapViewModel @Inject constructor(
     }
 
     fun routeToSelected() {
-        if (_state.value.selected == null) return
+        val sel = _state.value.selected ?: return
         // Start each directions session clean — don't inherit a custom origin, stops, or
         // pick-mode left over from a previous place's directions.
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
-        route(_state.value.travelMode)
+        // Walking back to the car is the parking spot's whole point — default to WALK there.
+        val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else _state.value.travelMode
+        if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
     }
 
     // ---- Parking spot ----------------------------------------------------------------
@@ -1642,19 +1662,20 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(parkingSpot = null, parkedAtMillis = 0L) }
     }
 
-    /** Walk-back: the spot becomes the directions destination in WALK mode, one tap from
-     *  the chip. [label] is the localized "Parked car" (the VM stays string-free). */
-    fun walkToParkingSpot(label: String) {
+    /** Opens the parked car as a place sheet (tap the map pin, or the P button while a
+     *  spot is set). Sets `selected` directly — a synthetic place must not trigger the
+     *  Google detail fetches [selectPlace] runs. [label] is the localized "Parked car". */
+    fun showParkedCar(label: String) {
         val spot = _state.value.parkingSpot ?: return
         val p = Place(id = "parking:${spot.lat},${spot.lng}", name = label, location = spot)
+        // Frame the spot too — opened from the P button while browsing another city, the
+        // sheet alone doesn't tell you WHERE the car is.
         _state.update {
             it.copy(
-                selected = p, directionsOpen = true, directionsReversed = false,
-                directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(),
-                pickingStop = false, results = emptyList(), resultsCollapsed = false, query = "",
+                selected = p, results = emptyList(), query = "", directionsOpen = false,
+                center = spot, recenterTick = it.recenterTick + 1,
             )
         }
-        if (_state.value.travelMode != TravelMode.WALK) setTravelMode(TravelMode.WALK) else route(TravelMode.WALK)
     }
 
     private fun restoreParkingSpot() {

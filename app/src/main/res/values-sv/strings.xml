@@ -441,7 +441,9 @@
     <string name="car_no_route">Ingen rutt — kontrollera platsen</string>
     <string name="map_parking_saved">Parkeringsplats sparad</string>
     <string name="map_parking_no_fix">Väntar på position</string>
-    <string name="map_parking_chip">Parkerad</string>
     <string name="map_parking_cleared">Parkeringsplats rensad</string>
     <string name="map_parked_car">Parkerad bil</string>
+    <string name="map_parking_save">Spara parkeringsplats</string>
+    <string name="map_import_failed">Kunde inte importera listan. Kontrollera länken och försök igen.</string>
+    <string name="place_clear_parking">Rensa parkering</string>
 </resources>

@@ -441,7 +441,9 @@
     <string name="car_no_route">Geen route — controleer je locatie</string>
     <string name="map_parking_saved">Parkeerplek opgeslagen</string>
     <string name="map_parking_no_fix">Wachten op locatie</string>
-    <string name="map_parking_chip">Geparkeerd</string>
     <string name="map_parking_cleared">Parkeerplek gewist</string>
     <string name="map_parked_car">Geparkeerde auto</string>
+    <string name="map_parking_save">Parkeerplek opslaan</string>
+    <string name="map_import_failed">Kon die lijst niet importeren. Controleer de link en probeer opnieuw.</string>
+    <string name="place_clear_parking">Parkeerplek wissen</string>
 </resources>
