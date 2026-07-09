@@ -317,6 +317,13 @@ Defaults that make the safe path the easy one:
   (id OR stable Google featureId) is the ONE membership predicate - PlaceListStore add/remove/
   setNote/listsContaining, the sheet's containingLists and MapViewModel's withListNote all use it.
   Never compare bare `it.id == place.id` for list/saved semantics on Google-backed places.
+- **LocationListener must be an explicit object, never the SAM lambda (2026-07-09).** The lambda
+  implements ONLY onLocationChanged; onProviderEnabled/onProviderDisabled/onStatusChanged got
+  default bodies in the Android 11 SDK, so it compiles clean - but on Android 10 and below the
+  framework interface has no defaults and the OS calls onProviderDisabled the moment a registered
+  provider is off (degoogled devices often carry a present-but-disabled NETWORK provider) ->
+  AbstractMethodError, crash on every launch (user report, Android 10/Adreno 308). Override all
+  four callbacks explicitly in any android.location.LocationListener implementation.
 - **Recents stores are timestamped under NEW pref keys (2026-07-09).** `RecentQuery`/`RecentPlace`
   carry `at` (epoch ms) so the search page can interleave queries and places chronologically.
   They persist under `queries2`/`places2`; the legacy `queries`/`places` payloads are READ ONCE
