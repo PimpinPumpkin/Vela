@@ -243,6 +243,7 @@
     <string name="place_popular_times">Drukke tijden</string>
     <string name="place_busyness_right_now">%1$s op dit moment</string>
     <string name="place_hours">Openingstijden</string>
+    <string name="place_departments">Afdelingen</string>
     <string name="place_collapse_hours">Openingstijden inklappen</string>
     <string name="place_expand_hours">Openingstijden uitklappen</string>
     <string name="mapscreen_recenter">Centreren</string>
