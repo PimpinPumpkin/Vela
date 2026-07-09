@@ -1081,7 +1081,8 @@ fun MapScreen(
             // Search results as a BOTTOM sheet, Google-style — same detent family as the place
             // sheet (minimized bar ↔ peek ↔ expanded). Reached only when nothing above matched,
             // so a selected place / directions / nav always win the bottom slot.
-            state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null -> SearchResults(
+            state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null -> {
+              SearchResults(
                 results = state.results,
                 collapsed = state.resultsCollapsed,
                 expanded = resultsExpanded,
@@ -1094,7 +1095,40 @@ fun MapScreen(
                 onExpand = vm::expandResults,
                 onClose = vm::clearSearch,
                 modifier = Modifier.align(Alignment.BottomCenter),
-            )
+              )
+            // Imported Google list preview: offer to save (nothing persisted until tapped).
+            // A pill under the search bar, clear of the results sheet at the bottom.
+            state.pendingImport?.let { imp ->
+                val savedMsg = stringResource(R.string.map_list_saved, imp.title)
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    shadowElevation = 6.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .statusBarsPadding()
+                        .padding(top = 76.dp)
+                        .clickable {
+                            vm.saveImportedList()
+                            Toast.makeText(context, savedMsg, Toast.LENGTH_SHORT).show()
+                        },
+                ) {
+                    Row(
+                        Modifier.padding(start = 16.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(Icons.Default.BookmarkBorder, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            stringResource(R.string.map_save_list, imp.places.size),
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+            }
         }
 
         // Full-screen transit step-by-step guidance (Moovit-style) — covers everything while active.
