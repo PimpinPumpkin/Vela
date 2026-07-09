@@ -1137,20 +1137,22 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = vm::recenter,
                 shape = androidx.compose.foundation.shape.CircleShape,
-                containerColor = MaterialTheme.colorScheme.surface,
+                // surfaceContainerHigh, not surface: on the dark map a surface-coloured circle
+                // nearly disappears; this keeps the Google look but visibly lifted.
+                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
                 contentColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(16.dp)
                     .padding(bottom = chromeLift)
-                    .size(48.dp)
+                    .size(56.dp)
                     .dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             ) {
                 Icon(
                     Icons.Default.MyLocation,
                     contentDescription = stringResource(R.string.mapscreen_center_on_my_location),
-                    modifier = Modifier.size(22.dp),
+                    modifier = Modifier.size(24.dp),
                 )
             }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
