@@ -76,7 +76,7 @@ jobs:
           echo "code=$(( 2000 + ${{ github.run_number }} ))" >> "$GITHUB_OUTPUT"
 
       - name: Fetch TTS runtime AAR
-        # sherpa-onnx neural-TTS runtime (Kokoro voice). It's a 57 MB prebuilt AAR (no Maven
+        # sherpa-onnx neural-TTS runtime (the Piper voices). It's a 57 MB prebuilt AAR (no Maven
         # artifact) hosted on the fixed-tag `tts-runtime` release, gitignored out of the repo —
         # fetch it into app/libs/ so :app can package the arm64 .so. Verify the size so a truncated
         # download fails loud instead of producing a runtime-crashing APK.

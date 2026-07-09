@@ -160,7 +160,7 @@ data class MapUiState(
     val arrivedSeconds: Double = 0.0,
     val status: String? = null,
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
-    val kokoroDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
+    val voiceDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
     val installedVoiceIds: Set<String> = emptySet(), // Piper voices present on disk (the voice browser)
     val selectedVoiceId: String? = null, // the active Piper voice id (null = none installed)
     val voiceDownloadingId: String? = null, // the ONE voice currently downloading (one-at-a-time), else null
@@ -944,9 +944,6 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    /** Is there a usable internet connection right now? Used to skip the Google scrape when offline (it
-     *  would only hang to the socket timeout). Fails OPEN — if the check itself errors, assume online so a
-     *  quirk can never block search. */
     /** Track connectivity so the UI can show a quiet offline indicator (no more banner). Seeds now and
      *  updates on every network change; fails safe to "online" so a quirk never falsely greys the app. */
     private fun observeConnectivity() {
@@ -965,6 +962,9 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Is there a usable internet connection right now? Used to skip the Google scrape when offline (it
+     *  would only hang to the socket timeout). Fails OPEN - if the check itself errors, assume online so a
+     *  quirk can never block search. */
     private fun isOnline(): Boolean = runCatching {
         val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as android.net.ConnectivityManager
         val caps = cm.getNetworkCapabilities(cm.activeNetwork ?: return false) ?: return false
@@ -2656,17 +2656,17 @@ class MapViewModel @Inject constructor(
             return
         }
         val firstEver = VelaPiper.installedVoiceIds(appContext).isEmpty()
-        _state.update { it.copy(voiceDownloadingId = id, kokoroDownloadPct = 0f, voiceInstalling = false) }
+        _state.update { it.copy(voiceDownloadingId = id, voiceDownloadPct = 0f, voiceInstalling = false) }
         viewModelScope.launch {
             val ok = kokoroInstaller.download(
                 PiperCatalog.downloadUrl(id), VelaPiper.modelDirFor(appContext, id), v.sizeBytes,
                 onExtracting = { _state.update { if (it.voiceDownloadingId == id) it.copy(voiceInstalling = true) else it } },
-            ) { p -> _state.update { if (it.voiceDownloadingId == id) it.copy(kokoroDownloadPct = p) else it } }
+            ) { p -> _state.update { if (it.voiceDownloadingId == id) it.copy(voiceDownloadPct = p) else it } }
             // Clear the downloading state + refresh the installed set in ONE update (no "Download"
             // flicker between finishing and appearing installed).
             _state.update {
                 it.copy(
-                    voiceDownloadingId = null, kokoroDownloadPct = null, voiceInstalling = false,
+                    voiceDownloadingId = null, voiceDownloadPct = null, voiceInstalling = false,
                     installedVoiceIds = VelaPiper.installedVoiceIds(appContext).toSet(),
                     selectedVoiceId = VelaPiper.effectiveVoiceId(appContext),
                 )

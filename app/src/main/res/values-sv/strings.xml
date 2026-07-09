@@ -278,7 +278,6 @@
     <string name="mapscreen_sort_rating">Sortering: Betyg</string>
     <string name="mapscreen_sort_distance">Sortering: Avstånd</string>
     <string name="mapscreen_permanently_closed">Permanent stängt</string>
-    <string name="mapscreen_hide_results">Dölj resultat</string>
     <string name="mapscreen_section_saved">Sparade</string>
     <string name="mapscreen_section_recent">Senaste</string>
     <string name="mapscreen_section_recent_searches">Senaste sökningar</string>

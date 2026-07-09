@@ -18,10 +18,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Vela's FAST neural voice: a Piper VITS model via sherpa-onnx [OfflineTts] → [AudioTrack]. Same
- * pipeline as [KokoroSynth] (single worker thread, generation-counter interrupt, full-utterance-then-
- * play) but a VITS config — Piper runs at/above realtime, so nav prompts are timely. Lower fidelity
- * than Kokoro; the user picks per taste. Sample rate is read from the generated audio (Piper=22050).
+ * Vela's neural voice: a Piper VITS model via sherpa-onnx [OfflineTts] → [AudioTrack]. Single
+ * worker thread, generation-counter interrupt, full-utterance-then-play. Piper runs at/above
+ * realtime, so nav prompts are timely (the slower Kokoro/Matcha models were dropped 2026-07).
+ * Sample rate is read from the generated audio (Piper=22050).
  */
 @Singleton
 class PiperSynth @Inject constructor(

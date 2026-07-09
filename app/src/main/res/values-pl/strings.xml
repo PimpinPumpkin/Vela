@@ -278,7 +278,6 @@
     <string name="mapscreen_sort_rating">Sortowanie: Ocena</string>
     <string name="mapscreen_sort_distance">Sortowanie: Odległość</string>
     <string name="mapscreen_permanently_closed">Zamknięte na stałe</string>
-    <string name="mapscreen_hide_results">Ukryj wyniki</string>
     <string name="mapscreen_section_saved">Zapisane</string>
     <string name="mapscreen_section_recent">Ostatnie</string>
     <string name="mapscreen_section_recent_searches">Ostatnie wyszukiwania</string>

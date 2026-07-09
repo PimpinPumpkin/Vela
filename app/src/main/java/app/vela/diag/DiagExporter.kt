@@ -3,7 +3,6 @@ package app.vela.diag
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import androidx.core.content.FileProvider
 import app.vela.BuildConfig
 import app.vela.core.diag.DiagLog
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -49,17 +48,13 @@ class DiagExporter @Inject constructor(
         val file = File(dir, "vela-diag-${System.currentTimeMillis()}.json")
         file.writeText(json)
 
-        val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        val send = Intent(Intent.ACTION_SEND).apply {
-            type = "application/json"
-            putExtra(Intent.EXTRA_STREAM, uri)
-            putExtra(Intent.EXTRA_SUBJECT, "Vela debug session (${events.size} events)")
-            putExtra(Intent.EXTRA_TEXT, "Attached: a Vela diagnostics export to help debug an issue.")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-        return Intent.createChooser(send, "Share debug session").apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
+        return shareFileIntent(
+            context, file,
+            mime = "application/json",
+            subject = "Vela debug session (${events.size} events)",
+            text = "Attached: a Vela diagnostics export to help debug an issue.",
+            title = "Share debug session",
+        )
     }
 
     private fun quote(s: String): String {
