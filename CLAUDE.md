@@ -22,6 +22,41 @@ features, or structure, update - in the *same* commit:
 Stale docs are treated as a bug. Code-only commits are not OK; if a change
 genuinely needs no doc edit, say why in the commit.
 
+## ⚠️ Location hygiene (read first, human or AI)
+
+Never let your real-world location into the repo. Not in code, not in test
+fixtures, not in comments, docs, screenshots, commit messages, recorded trips,
+or diagnostics exports. A maps app makes this brutally easy to get wrong:
+everything you test naturally happens around you, so your test coordinates,
+your "verified on a drive to X" commit lines, your screenshot corners and your
+sample addresses all quietly triangulate where you live. And git history is
+forever; scrubbing a leak after the fact means rewriting history, which breaks
+every fork and open PR. Catch it before commit, every time.
+
+Concretely:
+
+- **Fixtures use the project's standard area: Davis / Sacramento, CA.**
+  Bounding box `38.30,-122.00` to `38.90,-121.20`; the standard example
+  address is `1451 W Covell Blvd, Davis, CA 95616`; use San Francisco
+  (`37.7749,-122.4194`) when you need a generic big city, or an abstract grid
+  like `37.0,-122.0`. Never coordinates near where you actually are, not even
+  rounded ones. A synthetic test grid at your local latitude is still a pin
+  on your suburb.
+- **Commit messages describe behaviour, not your errand.** No local street
+  names, business names, neighborhoods, or route stories. "Verified on a
+  10-step suburban route" says everything "Verified driving Main St to the
+  Northgate Safeway" does, without the map pin.
+- **Screenshots** for the README or docs: drive them with the demo tools
+  (Settings → Navigation → Simulate my location / Simulate driving), never
+  your real map view. Check the corners before committing: search recents,
+  nearby POI labels, and the visible street names all leak.
+- **Recorded trips, diagnostics exports and adb dumps carry raw GPS.** Never
+  attach them to issues, commits, or CI artifacts. If a maintainer needs one,
+  share it privately.
+- **Before you commit, grep the diff** for anything that looks like a
+  coordinate pair, a street with a number, or a zip code, and ask whether it
+  points at you. If it does, relocate it to the Davis box first.
+
 ## Build
 
 - **Always build release** for anything run on-device - debug builds visibly lag
