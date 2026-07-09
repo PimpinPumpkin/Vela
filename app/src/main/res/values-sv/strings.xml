@@ -425,4 +425,14 @@
     <string name="transit_nav_get_off">Gå av vid %1$s</string> <!-- format -->
     <string name="transit_nav_next">Nästa</string>
     <string name="place_last_available">Sista tillgängliga</string>
+    <!-- Android Auto -->
+    <string name="car_search">Sök</string>
+    <string name="car_no_destinations">Inga sparade eller senaste destinationer än</string>
+    <string name="car_search_hint">Skriv för att söka efter en destination</string>
+    <string name="car_go">Kör</string>
+    <string name="car_end">Avsluta</string>
+    <string name="car_mute">Ljud av</string>
+    <string name="car_unmute">Ljud på</string>
+    <string name="car_faster_route">Snabbare −%1$d min</string>
+    <string name="car_no_route">Ingen rutt — kontrollera platsen</string>
 </resources>
