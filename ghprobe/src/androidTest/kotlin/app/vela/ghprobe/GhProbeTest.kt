@@ -85,7 +85,7 @@ class GhProbeTest {
         Log.i(tag, "metro graph: ${dir.list()?.size} files unzipped in ${System.currentTimeMillis() - tUnzip}ms")
 
         val hopper = loadGraph(dir, useCH = true) // CH = fast routing (no-CH flexible was 7.6 s on-device)
-        // the real test trip: the test suburb (the test city) -> Raising Cane's (the metro)
+        // the real test trip: Davis -> Sacramento
         val tRoute = System.currentTimeMillis()
         val rsp = hopper.route(GHRequest(38.55, -121.74, 38.58, -121.49).setProfile("car"))
         val routeMs = System.currentTimeMillis() - tRoute

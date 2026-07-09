@@ -312,8 +312,8 @@ behind an obfuscated continuation token, deliberately not chased.
 `[1][72][0][i][6][0]` (the immediate hero; Google **moved this block `[105]`→`[72]`
 on 2026-06-27**, which briefly blanked every hero strip - hot-fixed via calibration
 `v7`, no app update) - **de-duped** (Google now serves the single hero **twice**) plus
-a small `[1][204][0][i][1][2][0][0]` block that **only landmark places carry** (Space
-Needle → ~4; an ordinary business → **1**). The **full gallery (~9–25 photos) is scraped from the place's own page**, and that
+a small `[1][204][0][i][1][2][0][0]` block that **only landmark places carry** (a famous
+landmark → ~4; an ordinary business → **1**). The **full gallery (~9-25 photos) is scraped from the place's own page**, and that
 **replaced** the bare `hspqX` photo RPC. That RPC
 (`POST …/batchexecute?rpcids=hspqX`, `/MapsPhotoService.ListEntityPhotos`) is **bot-degraded
 per-session** to a Street-View-only reply - on-device logging showed byte-identical degraded
