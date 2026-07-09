@@ -1137,16 +1137,19 @@ fun MapScreen(
             FloatingActionButton(
                 onClick = vm::recenter,
                 shape = androidx.compose.foundation.shape.CircleShape,
-                // surfaceContainerHigh, not surface: on the dark map a surface-coloured circle
-                // nearly disappears; this keeps the Google look but visibly lifted.
-                containerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                // Same explicit container pair as the category chips (which read clearly on the
+                // map in both themes) - every tonal surface colour tried here melted into the
+                // dark tiles (two rounds of user feedback). Lifted well above the gesture bar
+                // / scale line too.
+                containerColor = if (isAppInDarkTheme()) Color(0xFF333539) else Color(0xFFF1F3F4),
                 contentColor = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(16.dp)
-                    .padding(bottom = chromeLift)
+                    .padding(bottom = chromeLift + 48.dp)
                     .size(56.dp)
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, androidx.compose.foundation.shape.CircleShape)
                     .dpadHighlight(androidx.compose.foundation.shape.CircleShape),
             ) {
                 Icon(
