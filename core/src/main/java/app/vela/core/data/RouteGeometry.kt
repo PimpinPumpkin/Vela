@@ -420,7 +420,7 @@ object RouteGeometry {
     }
 
     /** A human instruction (OSRM ships no text; `osrm-text-instructions` is a JS lib we inline the
-     *  gist of) — "Turn right onto the local street", "Continue onto I 80", "Take exit 15 toward Sacramento".
+     *  gist of) — "Turn right onto Mace Blvd", "Continue onto I 80", "Take exit 15 toward Sacramento".
      *  [road] is the name-or-ref of the road being entered; [dest] is a ramp's sign destination
      *  ("I-80 East: Sacramento"); [exitNo] is a ramp's exit number; [rbExit] is a roundabout exit count. */
     // The instruction TEXT is localized: it delegates to the active NavStrings (English by default,
