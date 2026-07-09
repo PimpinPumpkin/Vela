@@ -85,7 +85,8 @@ from the `directions` diag), offline highway refs (a graph rebuild - parked).
 
 - **Import Google Maps saved lists** (issue #1) - **first cut SHIPPED 2026-07-08,
   device-verified**: paste a share link into the search bar → the list's places land as
-  results with the owner's per-place notes shown on each sheet (extraction documented in
+  results with a Save-list pill (opt-in; nothing saved until tapped) and the owner's
+  per-place notes shown on each sheet (extraction documented in
   SPEC: share link resolves logged-out, page embeds a complete getlist request, parser
   unit-tested). Remaining: first-class LOCAL lists (create/rename/icon, import INTO a
   list, per-place notes editable) - the full issue #1 ask - plus a share-TO-Vela intent
