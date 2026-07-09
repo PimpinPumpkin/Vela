@@ -476,4 +476,6 @@
     <string name="settings_no_lists">Nog geen lijsten om te exporteren</string>
     <string name="mapvm_export_lists_subject">Vela-lijsten (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Lijsten exporteren</string>
+    <string name="lists_empty_hint">Nog geen lijsten. Tik op Nieuw of sla een plaats op vanaf zijn pagina.</string>
+    <string name="lists_place_count">%1$d plaatsen</string>
 </resources>

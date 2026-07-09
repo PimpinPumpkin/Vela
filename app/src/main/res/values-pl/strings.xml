@@ -476,4 +476,6 @@
     <string name="settings_no_lists">Brak list do wyeksportowania</string>
     <string name="mapvm_export_lists_subject">Listy Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Eksportuj listy</string>
+    <string name="lists_empty_hint">Brak list. Dotknij Nowa lub zapisz miejsce z jego strony.</string>
+    <string name="lists_place_count">%1$d miejsc</string>
 </resources>

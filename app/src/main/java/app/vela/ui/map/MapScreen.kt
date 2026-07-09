@@ -244,6 +244,8 @@ fun MapScreen(
     }
 
     var searchFocused by remember { mutableStateOf(false) }
+    // The ribbon button's own menu: Your lists live here now, not inside the search page.
+    var listsSheetOpen by remember { mutableStateOf(false) }
 
     // --- D-pad-only operation (docs/dpad.md) -------------------------------------
     // dpadMode = user is driving with keys right now (always true with no touchscreen);
@@ -746,14 +748,6 @@ fun MapScreen(
                             onCancelAssign = vm::cancelAssign,
                             onPinSavedAs = vm::pinSavedAs,
                             onRemoveSaved = vm::removeSaved,
-                            lists = state.lists,
-                            onOpenList = {
-                                focusManager.clearFocus()
-                                vm.openList(it)
-                            },
-                            onCreateList = { name -> vm.createList(name) },
-                            onUpdateList = vm::updateList,
-                            onDeleteList = vm::deleteList,
                         )
 
                         // Results now live in a BOTTOM sheet (rendered with the other bottom
@@ -761,7 +755,7 @@ fun MapScreen(
                         // chips, and only on the bare map.
                         state.selected == null && state.results.isEmpty() -> CategoryChips(
                             onPick = vm::quickSearch,
-                            onOpenLists = { searchExpanded = true },
+                            onOpenLists = { listsSheetOpen = true },
                         )
                     }
 
@@ -1273,6 +1267,16 @@ fun MapScreen(
                     onDelete = { vm.deleteParkingHistoryEntry(it) },
                     onClearAll = { vm.clearParkingHistory(); showParkingHistory = false },
                     onDismiss = { showParkingHistory = false },
+                )
+            }
+            if (listsSheetOpen) {
+                ListsSheet(
+                    lists = state.lists,
+                    onOpenList = { listsSheetOpen = false; vm.openList(it) },
+                    onCreateList = { name -> vm.createList(name) },
+                    onUpdateList = vm::updateList,
+                    onDeleteList = vm::deleteList,
+                    onDismiss = { listsSheetOpen = false },
                 )
             }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
@@ -1880,11 +1884,6 @@ private fun SearchEntryContent(
     onCancelAssign: () -> Unit,
     onPinSavedAs: (SavedPlace, ShortcutKind) -> Unit,
     onRemoveSaved: (SavedPlace) -> Unit,
-    lists: List<app.vela.core.model.PlaceList> = emptyList(),
-    onOpenList: (String) -> Unit = {},
-    onCreateList: (String) -> String = { "" },
-    onUpdateList: (app.vela.core.model.PlaceList) -> Unit = {},
-    onDeleteList: (String) -> Unit = {},
 ) {
     // While typing, live place suggestions take over the page (Google-style);
     // with an empty box it's the Home/Work + saved + recents shortlist.
@@ -1942,67 +1941,6 @@ private fun SearchEntryContent(
         Divider()
         ShortcutRow(ShortcutKind.WORK, work, onPickShortcut, onAssignShortcut, onClearShortcut)
         Divider()
-        // Your lists (issue #1): each opens as results; the pencil edits name/icon/colour.
-        run {
-            var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
-            var creating by remember { mutableStateOf(false) }
-            Row(
-                Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.mapscreen_section_lists),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = { creating = true }) {
-                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.width(4.dp))
-                    Text(stringResource(R.string.mapscreen_new_list))
-                }
-            }
-            lists.forEach { list ->
-                Row(
-                    Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp)).clickable { onOpenList(list.id) }.padding(horizontal = 16.dp, vertical = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Icon(
-                        listIcon(list.icon),
-                        contentDescription = null,
-                        tint = Color(list.color),
-                        modifier = Modifier.size(22.dp),
-                    )
-                    Spacer(Modifier.width(16.dp))
-                    Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
-                    Text(
-                        "${list.places.size}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    IconButton(onClick = { editing = list }) {
-                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
-                    }
-                }
-                Divider()
-            }
-            if (creating) {
-                ListEditorDialog(
-                    initial = null,
-                    onSave = { name, icon, color -> onCreateList(name); creating = false },
-                    onDelete = null,
-                    onDismiss = { creating = false },
-                )
-            }
-            editing?.let { list ->
-                ListEditorDialog(
-                    initial = list,
-                    onSave = { name, icon, color -> onUpdateList(list.copy(name = name, icon = icon, color = color)); editing = null },
-                    onDelete = { onDeleteList(list.id); editing = null },
-                    onDismiss = { editing = null },
-                )
-            }
-        }
         if (saved.isNotEmpty()) {
             SectionLabel(stringResource(R.string.mapscreen_section_saved))
             saved.forEach { sp ->
@@ -2438,6 +2376,97 @@ private fun FasterRouteCard(
  */
 /** Parking history menu (long-press the P button). Restore an older spot after an accidental
  *  overwrite; delete stale entries. Newest first; the one matching the current spot is tagged. */
+@Composable
+private fun ListsSheet(
+    lists: List<app.vela.core.model.PlaceList>,
+    onOpenList: (String) -> Unit,
+    onCreateList: (String) -> String,
+    onUpdateList: (app.vela.core.model.PlaceList) -> Unit,
+    onDeleteList: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
+    var creating by remember { mutableStateOf(false) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.mapscreen_section_lists),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = { creating = true }) {
+                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text(stringResource(R.string.mapscreen_new_list))
+                    }
+                }
+                if (lists.isEmpty()) {
+                    Text(
+                        stringResource(R.string.lists_empty_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+                    )
+                }
+                LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                    items(lists, key = { it.id }) { list ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .dpadHighlight(RoundedCornerShape(8.dp))
+                                .clickable { onOpenList(list.id) }
+                                .padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                listIcon(list.icon),
+                                contentDescription = null,
+                                tint = Color(list.color),
+                                modifier = Modifier.size(22.dp),
+                            )
+                            Spacer(Modifier.width(16.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+                                Text(
+                                    stringResource(R.string.lists_place_count, list.places.size),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            IconButton(onClick = { editing = list }) {
+                                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                        Divider()
+                    }
+                }
+            }
+        }
+    }
+    if (creating) {
+        ListEditorDialog(
+            initial = null,
+            onSave = { name, icon, color -> onCreateList(name); creating = false },
+            onDelete = null,
+            onDismiss = { creating = false },
+        )
+    }
+    editing?.let { list ->
+        ListEditorDialog(
+            initial = list,
+            onSave = { name, icon, color -> onUpdateList(list.copy(name = name, icon = icon, color = color)); editing = null },
+            onDelete = { onDeleteList(list.id); editing = null },
+            onDismiss = { editing = null },
+        )
+    }
+}
+
 @Composable
 private fun ParkingHistorySheet(
     history: List<app.vela.core.model.ParkedSpot>,
