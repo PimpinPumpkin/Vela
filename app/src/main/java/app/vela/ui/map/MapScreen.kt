@@ -65,6 +65,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Bookmarks
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Flag
@@ -758,7 +759,10 @@ fun MapScreen(
                         // Results now live in a BOTTOM sheet (rendered with the other bottom
                         // surfaces below, Google-style); the top bar keeps only the category
                         // chips, and only on the bare map.
-                        state.selected == null && state.results.isEmpty() -> CategoryChips(onPick = vm::quickSearch)
+                        state.selected == null && state.results.isEmpty() -> CategoryChips(
+                            onPick = vm::quickSearch,
+                            onOpenLists = { searchExpanded = true },
+                        )
                     }
 
                     // Quiet offline marker: a small globe-with-a-slash chip tucked just under the category
@@ -1732,7 +1736,7 @@ private fun SearchResults(
 }
 
 @Composable
-private fun CategoryChips(onPick: (String) -> Unit) {
+private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}) {
     // (localized label, STABLE English search query, icon) — the query is the logic key sent to Google
     // search (works in any locale), the label is what the user sees, so the chips localize without
     // changing what's searched.
@@ -1749,7 +1753,22 @@ private fun CategoryChips(onPick: (String) -> Unit) {
     Row(
         Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
+        // Ribbon shortcut to Your lists — leads the row, visually separate (a round icon button,
+        // theme-tinted) so it doesn't read as another category chip.
+        Surface(
+            onClick = onOpenLists,
+            shape = CircleShape,
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            shadowElevation = 2.dp,
+            modifier = Modifier.dpadHighlight(CircleShape).size(40.dp),
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Icon(Icons.Default.Bookmarks, contentDescription = stringResource(R.string.mapscreen_section_lists), modifier = Modifier.size(20.dp))
+            }
+        }
         categories.forEach { (labelRes, query, icon) ->
             ElevatedAssistChip(
                 onClick = { onPick(query) },
@@ -1945,7 +1964,7 @@ private fun SearchEntryContent(
             }
             lists.forEach { list ->
                 Row(
-                    Modifier.fillMaxWidth().clickable { onOpenList(list.id) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(8.dp)).clickable { onOpenList(list.id) }.padding(horizontal = 16.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
@@ -2450,6 +2469,7 @@ private fun ParkingHistorySheet(
                         Row(
                             Modifier
                                 .fillMaxWidth()
+                                .dpadHighlight(RoundedCornerShape(8.dp))
                                 .clickable { onRestore(entry) }
                                 .padding(horizontal = 20.dp, vertical = 12.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -2556,7 +2576,7 @@ private fun ListEditorDialog(
                             shape = CircleShape,
                             color = if (sel) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
                             border = if (sel) BorderStroke(2.dp, Color(color)) else null,
-                            modifier = Modifier.size(44.dp).clickable { icon = key },
+                            modifier = Modifier.size(44.dp).dpadHighlight(CircleShape).clickable { icon = key },
                         ) {
                             Box(contentAlignment = Alignment.Center) {
                                 Icon(vec, contentDescription = key, tint = Color(color), modifier = Modifier.size(22.dp))
@@ -2576,6 +2596,7 @@ private fun ListEditorDialog(
                                 .clip(CircleShape)
                                 .background(Color(c))
                                 .then(if (sel) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                                .dpadHighlight(CircleShape)
                                 .clickable { color = c },
                         )
                     }

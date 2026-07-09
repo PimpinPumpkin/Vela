@@ -721,6 +721,34 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     runCatching { importLauncher.launch(arrayOf("application/json", "*/*")) }
                 }) { Text(stringResource(R.string.settings_import)) }
             }
+
+            // Lists export / import (issue #1) — same JSON-file flow as saved places.
+            Spacer(Modifier.height(16.dp))
+            SectionTitle(stringResource(R.string.mapscreen_section_lists))
+            Hint(stringResource(R.string.settings_lists_export_hint))
+            val listImportLauncher = rememberLauncherForActivityResult(
+                ActivityResultContracts.OpenDocument(),
+            ) { uri ->
+                if (uri != null) {
+                    val n = vm.importListsFromUri(uri)
+                    android.widget.Toast.makeText(
+                        context,
+                        if (n > 0) context.getString(R.string.settings_lists_imported, n) else context.getString(R.string.settings_import_nothing),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                OutlinedButton(onClick = {
+                    val intent = vm.exportListsIntent()
+                    if (intent != null) runCatching { context.startActivity(intent) }
+                    else android.widget.Toast.makeText(context, context.getString(R.string.settings_no_lists), android.widget.Toast.LENGTH_SHORT).show()
+                }) { Text(stringResource(R.string.settings_export)) }
+                Spacer(Modifier.width(8.dp))
+                OutlinedButton(onClick = {
+                    runCatching { listImportLauncher.launch(arrayOf("application/json", "*/*")) }
+                }) { Text(stringResource(R.string.settings_import)) }
+            }
             Spacer(Modifier.height(8.dp))
 
             SectionTitle(stringResource(R.string.settings_data_privacy))
@@ -866,6 +894,10 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             var selfUpdate by remember { mutableStateOf(prefs.getBoolean("self_update_check", true)) }
             ToggleRow(stringResource(R.string.settings_update_auto), selfUpdate) { selfUpdate = it; prefs.edit().putBoolean("self_update_check", it).apply() }
             Hint(stringResource(R.string.settings_update_auto_hint))
+            // Nightly channel: check against prereleases (the newest CI build) instead of stable.
+            var nightly by remember { mutableStateOf(prefs.getBoolean("update_nightly", false)) }
+            ToggleRow(stringResource(R.string.settings_update_nightly), nightly) { nightly = it; prefs.edit().putBoolean("update_nightly", it).apply() }
+            Hint(stringResource(R.string.settings_update_nightly_hint))
             // A clear gap between the hint paragraph and the button (they read as one clump otherwise).
             Spacer(Modifier.height(10.dp))
             var updateStatus by remember { mutableStateOf<String?>(null) }

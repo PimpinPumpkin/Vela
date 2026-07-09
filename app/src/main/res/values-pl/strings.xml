@@ -469,4 +469,11 @@
     <string name="place_note_label">Notatka</string>
     <string name="map_save_list">Zapisz listę · %1$d miejsc</string>
     <string name="map_list_saved">Zapisano „%1$s” na twoich listach</string>
+    <string name="settings_update_nightly">Uwzględnij kompilacje nightly</string>
+    <string name="settings_update_nightly_hint">Aktualizuj do najnowszej wersji nightly (przedpremierowej) zamiast tylko stabilnych. Nightly są nowsze, ale mniej przetestowane.</string>
+    <string name="settings_lists_export_hint">Utwórz kopię zapasową list do pliku lub przywróć je na innym urządzeniu.</string>
+    <string name="settings_lists_imported">Zaimportowano %1$d list(y)</string>
+    <string name="settings_no_lists">Brak list do wyeksportowania</string>
+    <string name="mapvm_export_lists_subject">Listy Vela (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Eksportuj listy</string>
 </resources>
