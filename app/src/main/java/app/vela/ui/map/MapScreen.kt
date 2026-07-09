@@ -323,7 +323,7 @@ fun MapScreen(
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
             // Results sheet: back steps ONE detent (expanded -> peek -> minimized -> cleared),
-            // never straight out of the app (a back on the minimized bar used to exit Vela).
+            // never straight out of the app (a back on the minimized bar must not exit Vela).
             resultsExpanded -> resultsExpanded = false
             !state.resultsCollapsed -> vm.collapseResults()
             else -> vm.clearSearch()
@@ -344,8 +344,8 @@ fun MapScreen(
     // Reset engagement the moment a panel takes over (the target unmounts under it).
     LaunchedEffect(mapTargetHidden) { if (mapTargetHidden) mapEngaged = false }
     // D-pad-first, the bare map (docs/dpad.md): the map does NOT auto-focus or auto-engage on open.
-    // The user asked for the search bar to be the landing focus, not the engaged map (which used to
-    // force a BACK press to move). Compose won't let us programmatically pre-place focus on the
+    // The search bar is the landing focus, not the engaged map (which would force a BACK press to
+    // move). Compose won't let us programmatically pre-place focus on the
     // SEARCH BAR on the app's opening screen (verified ~13 ways: requestFocus no-ops with no prior
     // focus; moveFocus lands only on the centre map target; moveFocus(Up)/Enter and synthetic
     // KeyEvents don't take), so instead nothing is focused on open and the user's first arrow
@@ -1123,9 +1123,9 @@ fun MapScreen(
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
             }
-            // (The live-traffic overlay toggle moved to Settings → Map — it's a
-            // niche browse-only layer, and nav now shows per-segment route traffic,
-            // so it no longer earns a spot on the map.)
+            // (The live-traffic overlay toggle lives in Settings → Map — it's a
+            // niche browse-only layer, and nav shows per-segment route traffic,
+            // so it doesn't belong on the map.)
             // Scale bar, bottom-left just past the attribution ⓘ.
             ScaleBar(
                 metersPerPixel = metersPerPixel,
@@ -1164,8 +1164,8 @@ fun MapScreen(
         }
         // Pushed notices (signed calibration channel) + the voice-download progress card — on the
         // bare map only, so they don't cover the nav banner / search / a place sheet. The download
-        // card makes the ONBOARDING one-tap voice install visible (it used to run invisibly after
-        // the prompt dismissed — progress only existed in Settings; user 2026-07-07).
+        // card makes the ONBOARDING one-tap voice install visible, rather than running invisibly
+        // with progress only in Settings.
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
         if (!state.navigating && state.selected == null && !searchOpen &&

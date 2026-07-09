@@ -218,7 +218,7 @@ fun SearchBar(
                 }
             }
             // Quiet offline indicator: a greyed globe-with-a-slash + "Offline", shown when there's no
-            // connection (replaces the old banner). Hidden while typing so it doesn't crowd the clear "X".
+            // connection. Hidden while typing so it doesn't crowd the clear "X".
             if (offline && query.isEmpty() && onBack == null) {
                 Icon(
                     Icons.Default.PublicOff,

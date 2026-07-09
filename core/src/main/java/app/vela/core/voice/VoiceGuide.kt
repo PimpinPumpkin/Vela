@@ -102,9 +102,9 @@ class VoiceGuide @Inject constructor(
         synchronized(focusLock) { if (activeUtterances == 0) abandonFocus() }
     }
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
-        // A phone call / VOIP taking focus must SILENCE guidance — the old request had no
-        // listener at all, so Vela kept announcing turns over ringing and active calls. The
-        // next scheduled prompt re-fires naturally once the call releases focus.
+        // A phone call / VOIP taking focus must SILENCE guidance — without this listener Vela
+        // would announce turns over ringing and active calls. The next scheduled prompt re-fires
+        // naturally once the call releases focus.
         if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
             tts?.stop()
             neural?.stop()
@@ -394,7 +394,7 @@ class VoiceGuide @Inject constructor(
                 .also { focusRequest = it }
         }
         // Track whether we actually got focus — a FAILED request means the media app never ducked
-        // (Vela used to speak over full-volume audio and never know); GRANTED or DELAYED both hold.
+        // (so Vela would speak over full-volume audio and never know); GRANTED or DELAYED both hold.
         focusHeld = am.requestAudioFocus(req) != AudioManager.AUDIOFOCUS_REQUEST_FAILED
     }
 

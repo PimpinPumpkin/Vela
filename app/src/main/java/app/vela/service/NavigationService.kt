@@ -80,8 +80,8 @@ class NavigationService : Service() {
                     when {
                         !s.navigating && !s.arrived -> teardown()
                         s.arrived -> {
-                            // Arrival is TERMINAL for the service: the old `!navigating &&
-                            // !arrived` condition kept the location-typed FGS, the ongoing
+                            // Arrival is TERMINAL for the service: a bare `!navigating &&
+                            // !arrived` condition would keep the location-typed FGS, the ongoing
                             // notification and 1 Hz GPS alive INDEFINITELY if the driver
                             // pocketed the phone without tapping Done. DETACH FIRST, then post
                             // the dismissable arrival notification — posting before the detach

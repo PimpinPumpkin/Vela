@@ -34,9 +34,9 @@ object OverpassPois {
     ): List<Place> = try {
         val bbox = "$south,$west,$north,$east"
         // leisure/amenity/tourism are the categories OSM overwhelmingly maps as AREAS (a park/playground,
-        // a school/hospital campus, a museum/zoo footprint), so those clauses are `nwr` — the old `node`-only
-        // query silently dropped every area-mapped park (the common tagging for leisure=park) from the offline
-        // index (audit 2026-07-06). shop/public_transport stay `node` (storefronts + stops are point-tagged,
+        // a school/hospital campus, a museum/zoo footprint), so those clauses are `nwr` — a `node`-only
+        // query silently drops every area-mapped park (the common tagging for leisure=park) from the offline
+        // index. shop/public_transport stay `node` (storefronts + stops are point-tagged,
         // bounding the extra Overpass load). boundary=national_park catches big parks tagged as a boundary.
         // `out center` gives every way/relation a representative point (a no-op for nodes, which already have
         // lat/lon) — toPlace reads `center` when top-level lat/lon is absent.

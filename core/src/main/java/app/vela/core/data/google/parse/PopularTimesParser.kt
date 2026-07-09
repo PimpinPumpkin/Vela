@@ -28,7 +28,7 @@ object PopularTimesParser {
     ): PlaceDetails? {
         val root = runCatching { GoogleResponse.parse(body) }.getOrNull() ?: return null
         // Thread the LIVE calibrated paths through so a remote paths fix reaches the WebView
-        // details/popular-times path too (it used to pin DEFAULT_PATHS — audit 2026-07-06).
+        // details/popular-times path too, rather than pinning DEFAULT_PATHS.
         val places = runCatching { SearchParser.parse("", root, paths = paths).places }.getOrDefault(emptyList())
 
         // The focused place: the feature-id match if we have one, else the first entry

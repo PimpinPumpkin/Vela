@@ -891,8 +891,8 @@ class MapViewModel @Inject constructor(
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
         _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false) }
         rememberRecentPlace(sp)
-        // A saved place has no feature id, so it used to open with no photos/reviews.
-        // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
+        // A saved place has no feature id, so enrich it via a search (like a POI tap)
+        // to pull photos/reviews; keep the saved id so
         // the star stays filled.
         viewModelScope.launch {
             val full = runCatching {
@@ -1112,8 +1112,8 @@ class MapViewModel @Inject constructor(
     fun selectPlace(p: Place) {
         if (consumeAssign(SavedPlace.of(p))) return
         // Search-along-route pick: the tapped place becomes a STOP on the stashed trip (Google's
-        // flow), not a new destination — tapping "Directions" on it used to silently replace the
-        // whole trip. Restore the destination first so the panel reopens showing the real trip;
+        // flow), not a new destination — tapping "Directions" on it would otherwise silently replace
+        // the whole trip. Restore the destination first so the panel reopens showing the real trip;
         // picking the destination itself just returns to the panel (a stop AT the destination is
         // nonsense).
         _state.value.alongRouteDest?.let { dest ->
@@ -1358,8 +1358,8 @@ class MapViewModel @Inject constructor(
             )
         }
         // Opening a place pans the camera to centre it, so the ambient POIs (loaded for the previous
-        // centre) can be off-screen once we're back on the bare map. Closing no longer moves the camera
-        // (that was the "camera spazz"), so nothing fires a camera-idle to reload them. Do it here.
+        // centre) can be off-screen once we're back on the bare map. Closing doesn't move the camera,
+        // so nothing fires a camera-idle to reload them. Do it here.
         refreshAmbientForCurrentView()
     }
 
@@ -1419,7 +1419,7 @@ class MapViewModel @Inject constructor(
         reviewsJob?.cancel() // the old place's scrape holds the WebView/mutex — free it for this one
         // Capture the placeholder so the async resolve can gate on FULL equality (name AND location) — two
         // same-named POIs tapped in quick succession (a chain's two branches) otherwise let the slower
-        // resolve for the first hijack the second's sheet, since the old gate matched name only (audit 2026-07-06).
+        // resolve for the first hijack the second's sheet — a name-only gate can't tell them apart.
         val placeholder = Place(id = "poi:" + name.hashCode(), name = name, location = location)
         _state.update {
             it.copy(
@@ -2102,7 +2102,7 @@ class MapViewModel @Inject constructor(
                 // each reroute/faster-route swap as its own RP/RD/M block). The replay starts on
                 // the FIRST route and swaps at the recorded fix positions — HERMETICALLY: no live
                 // fetches (replayMode suppresses reroute + the faster-route recheck; a live fetch
-                // used to swap the route mid-replay and match the trace against a route the
+                // would swap the route mid-replay and match the trace against a route the
                 // driver never drove — arrow on another street, faster-route sheet over a replay).
                 val segments = tripStore.rawCsv(meta.id)
                     ?.let { app.vela.core.replay.TripLog.parse(it).segments }

@@ -346,7 +346,7 @@ object RouteGeometry {
         val lng = loc.getOrNull(0)?.jsonPrimitive?.doubleOrNull ?: return null
         val name = s["name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         // Highways identify by REF ("I 80"), not name — OSRM puts the name empty and the ref in `ref`.
-        // Dropping it (the old bug) left highway steps nameless → generic "take the exit" AND no shield
+        // Dropping it leaves highway steps nameless → generic "take the exit" AND no shield
         // (the banner parses shields out of the instruction text). `destinations` is where a ramp goes
         // ("I-80 East: Sacramento"). road = name ?: ref so surface streets read by name, highways by shield.
         val ref = s["ref"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }

@@ -111,10 +111,10 @@ object SearchParser {
         val lng = field("lng").dbl() ?: return null
         val loc = LatLng(lat, lng)
         // ONE status string feeds BOTH the open/closed boolean AND the displayed text, resolved in the
-        // SAME order (richest first: status118 → statusRich → openStatus). They used to read in OPPOSITE
-        // orders (openNow openStatus-first, statusText status118-first), so when the [203]/[118] status
-        // nodes disagreed the colour contradicted the words the user saw (audit 2026-07-06). Deriving the
-        // boolean from the exact string displayed makes that impossible.
+        // SAME order (richest first: status118 → statusRich → openStatus). Resolving them in DIFFERENT
+        // orders lets the colour contradict the words the user saw when the [203]/[118] status
+        // nodes disagree. Deriving the boolean from the exact string displayed makes that
+        // impossible.
         val statusStr = field("status118").str() ?: field("statusRich").str() ?: field("openStatus").str()
         return Place(
             id = "g:" + name.hashCode() + ":" + (lat * 1e4).toInt(),
@@ -374,8 +374,8 @@ object SearchParser {
         val arr = days.arr() ?: return emptyList()
         return arr.mapNotNull { day ->
             val name = day.at(0).str() ?: return@mapNotNull null
-            // day[3] = ALL of the date's ranges, each `[text, [[openH],[closeH]]]`; join them — we used to read
-            // only the first, so a split-shift day ("9 AM–12 PM, 1–5 PM") showed just the morning. Google bakes
+            // day[3] = ALL of the date's ranges, each `[text, [[openH],[closeH]]]`; join them — reading
+            // only the first drops the afternoon of a split-shift day ("9 AM–12 PM, 1–5 PM"). Google bakes
             // HOLIDAY hours straight into day[3] (Jul 4 → "Closed"), and day[6][1] carries the label
             // ("4th of July") — surface it after a " · " (OpeningHours strips it before parsing the times).
             val hrs = day.at(3).arr()?.mapNotNull { it.at(0).str()?.ifBlank { null } }

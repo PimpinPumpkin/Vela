@@ -1306,8 +1306,8 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
     val etaColor = trafficEtaColor(r) ?: ink
     // Delta vs the fastest, rounded to the nearest minute. Only ONE route wears the "Fastest" tag
     // (the caller passes isFastest for the top row — the list is sorted by this exact ETA). A
-    // near-tie under ~30 s used to round its delta to 0 and ALSO earn the tag, which read as two
-    // "Fastest" routes with different displayed times; now it just shows its ETA with no badge.
+    // near-tie under ~30 s rounds its delta to 0 but must NOT also earn the tag (that reads as two
+    // "Fastest" routes with different displayed times); it just shows its ETA with no badge.
     val deltaMin = ((etaSeconds - fastestEtaSeconds) / 60.0).roundToInt()
     val bg = if (selected) MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
     else SheetPalette.row(dark)
@@ -2121,7 +2121,7 @@ private fun ReviewsTab(
             }
         }
         // Entry to the full-screen live Google reviews — all of them, plus Google's own SORT and
-        // server-side search. The label says so (the button used to just say "Read all").
+        // server-side search. The label says so.
         onReadAll?.let { open ->
             OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
                 Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
