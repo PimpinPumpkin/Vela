@@ -127,6 +127,7 @@
     <string name="settings_collapse">Recolher</string>
     <string name="settings_expand">Expandir</string>
     <string name="settings_voice_lib_empty_hint">Transfira uma voz natural no dispositivo para as indicações faladas — escolha uma abaixo. As vozes ★ soam mais como um navegador de mapas (Lessac e HFC são as mais próximas da Google). Transferência única; recomenda-se Wi-Fi.</string>
+    <string name="settings_voice_lib_installed_hint">Instalado: %1$d MB · %2$d voz(es). Toque em Usar para mudar (reproduz uma amostra); o ícone do lixo liberta o espaço.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">O idioma da sua aplicação é %1$s — transfira uma voz de %2$s abaixo para que as indicações faladas correspondam (uma voz de inglês pronunciaria mal os nomes das ruas em %3$s).</string>
     <string name="settings_voice_search">Pesquisar vozes</string>
     <string name="settings_voice_show_more">Mostrar mais %1$d</string>
@@ -473,6 +474,7 @@
     <string name="settings_update_nightly_hint">Atualizar para a nightly mais recente (pré-lançamento) em vez de apenas versões estáveis. As nightly são mais recentes mas menos testadas.</string>
     <string name="settings_lists_export_hint">Faça uma cópia das suas listas num ficheiro ou restaure-as noutro dispositivo.</string>
     <string name="settings_lists_imported">%1$d lista(s) importada(s)</string>
+    <string name="settings_places_imported">%1$d local(is) importado(s)</string> <!-- format -->
     <string name="settings_no_lists">Ainda não há listas para exportar</string>
     <string name="mapvm_export_lists_subject">Listas Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exportar listas</string>

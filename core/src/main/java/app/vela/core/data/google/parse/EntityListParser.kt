@@ -49,10 +49,12 @@ object EntityListParser {
     }.getOrNull()
 
     /** ["-8654527782550677995","-8127173087487969012"] → "0x781f4e...:0x8f..." — the decimal
-     *  signed int64 pair rendered as two's-complement hex is the standard feature id. */
+     *  signed int64 pair rendered as two's-complement hex is the standard feature id.
+     *  Zero-padded to 16 digits: Google's canonical form pads, and an unpadded id never
+     *  matches it (dedup in GoogleMapsDataSource and the popular-times lookup key off it). */
     private fun featureId(hi: String?, lo: String?): String? {
         val h = hi?.toLongOrNull() ?: return null
         val l = lo?.toLongOrNull() ?: return null
-        return "0x${java.lang.Long.toHexString(h)}:0x${java.lang.Long.toHexString(l)}"
+        return String.format("0x%016x:0x%016x", h, l)
     }
 }

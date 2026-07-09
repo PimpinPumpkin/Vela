@@ -127,6 +127,7 @@
     <string name="settings_collapse">Réduire</string>
     <string name="settings_expand">Développer</string>
     <string name="settings_voice_lib_empty_hint">Téléchargez une voix naturelle sur l\'appareil pour les instructions vocales — choisissez-en une ci-dessous. Les voix ★ ressemblent le plus à une voix de navigation (Lessac et HFC sont les plus proches de Google). Téléchargement unique ; le Wi-Fi est recommandé.</string>
+    <string name="settings_voice_lib_installed_hint">Installé : %1$d Mo · %2$d voix. Touchez Utiliser pour changer (joue un extrait) ; l\'icône corbeille libère l\'espace.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">La langue de votre application est %1$s — téléchargez une voix %2$s ci-dessous pour que les instructions vocales correspondent (une voix anglaise prononcerait mal les noms de rues en %3$s).</string>
     <string name="settings_voice_search">Rechercher des voix</string>
     <string name="settings_voice_show_more">Afficher %1$d de plus</string>
@@ -473,6 +474,7 @@
     <string name="settings_update_nightly_hint">Mettre à jour vers la dernière version nightly (préversion) plutôt que seulement les versions stables. Les nightly sont plus récentes mais moins testées.</string>
     <string name="settings_lists_export_hint">Sauvegardez vos listes dans un fichier ou restaurez-les sur un autre appareil.</string>
     <string name="settings_lists_imported">%1$d liste(s) importée(s)</string>
+    <string name="settings_places_imported">%1$d lieu(x) importé(s)</string> <!-- format -->
     <string name="settings_no_lists">Aucune liste à exporter</string>
     <string name="mapvm_export_lists_subject">Listes Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exporter les listes</string>
