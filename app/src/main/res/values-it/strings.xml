@@ -469,4 +469,11 @@
     <string name="place_note_label">Nota</string>
     <string name="map_save_list">Salva lista · %1$d luoghi</string>
     <string name="map_list_saved">“%1$s” salvata nelle tue liste</string>
+    <string name="settings_update_nightly">Includi build nightly</string>
+    <string name="settings_update_nightly_hint">Aggiorna all\'ultima nightly (anteprima) invece che solo alle versioni stabili. Le nightly sono più recenti ma meno testate.</string>
+    <string name="settings_lists_export_hint">Salva le tue liste in un file o ripristinale su un altro dispositivo.</string>
+    <string name="settings_lists_imported">%1$d lista/e importata/e</string>
+    <string name="settings_no_lists">Nessuna lista da esportare</string>
+    <string name="mapvm_export_lists_subject">Liste Vela (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Esporta liste</string>
 </resources>
