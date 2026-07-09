@@ -11,14 +11,17 @@ too).
 1. **No backend, no shared keys.** Every install talks to Google like one logged-out
    browser, from the user's own IP. Never embed a static Google API key, never add a
    Vela server. This is the project's legal footing and it is not negotiable.
-2. **Keep your own location out of the repo.** Working on a maps app means your test
-   coordinates, screenshots, sample addresses and even commit messages naturally come
-   from wherever you are, and together they pin you on a map, permanently, in public
-   git history. All fixtures use the project's standard Davis / Sacramento, CA area,
-   screenshots come from the built-in location simulator, and commit messages never
-   name your local streets or businesses. The full checklist is in CLAUDE.md under
-   "Location hygiene"; it applies to humans and AI assistants equally, so if an AI
-   writes your patch, hand it that section first.
+2. **Don't let your own location leak in by accident.** Working on a maps app means
+   test coordinates, screenshots, sample addresses and commit messages all naturally
+   come from wherever you are, and together they pin you on a map, permanently, in
+   public git history. Deliberate is fine: naming a specific business because its
+   data is broken is a good bug report. Incidental is the problem: fixtures default
+   to the project's Davis / Sacramento, CA area unless there's a reason otherwise,
+   screenshots default to the built-in location simulator, and commit messages name
+   places only when the place is the point. The full checklist is in CLAUDE.md under
+   "Location hygiene"; it applies to humans and AI assistants equally (AI agents
+   with memory files are especially prone to writing down where their user lives),
+   so if an AI writes your patch, hand it that section first.
 3. **Degoogled at runtime.** AOSP `LocationManager` only (never Fused), AOSP
    `TextToSpeech`, no GMS, no Firebase, no Play Integrity. The app must work fully on
    GrapheneOS with no Google services installed.
