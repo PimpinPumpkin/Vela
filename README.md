@@ -15,8 +15,16 @@ Tap the badge (or add the repo URL `https://github.com/PimpinPumpkin/Vela` in
 **weekly stable** release - no Play Store, no account. Want fresher builds? Turn on
 "include prereleases" in Obtainium and you get the **nightly** channel instead
 (every push to main). Or grab an APK straight from
-[Releases](https://github.com/PimpinPumpkin/Vela/releases). F-Droid submission
-is planned.
+[Releases](https://github.com/PimpinPumpkin/Vela/releases).
+
+**F-Droid user?** Vela has its own F-Droid repository - add it to any F-Droid
+client and install/update from there:
+
+```
+https://pimpinpumpkin.github.io/Vela/repo
+```
+
+Fingerprint and full instructions in [FDROID.md](FDROID.md).
 
 ---
 
