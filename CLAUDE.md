@@ -357,6 +357,22 @@ Defaults that make the safe path the easy one:
   for migration (synthesized descending stamps) and then LEFT IN PLACE - a downgraded build
   reads its old keys untouched instead of hitting a format it can't decode and wiping the data.
   Follow the same new-key pattern for any future store format change.
+- **Material You participation is a hard SPLIT - know which side a surface is on (2026-07-09,
+  issue #15).** `DynamicColor` (Settings -> Appearance, off by default, Android 12+) makes
+  `VelaTheme` use the wallpaper scheme, so EVERYTHING drawn from `MaterialTheme.colorScheme`
+  tints for free: the search bar (surfaceContainerLow), VelaMenu popups (surfaceContainerHigh),
+  chips, FABs, dialogs, Settings, the dpadHighlight ring, and the nav notification accent
+  (NavigationService reads system_accent1_600 when the pref is on). PINNED NEUTRAL on purpose:
+  the place/results sheets (SheetPalette's fixed greys - they're reading surfaces dense with
+  meaning-bearing colour: open/closed green/red, star gold, note quotes, photos - and several
+  solids were hand-composited against those exact greys, e.g. the opaque filter-chip containers)
+  and every map-drawn colour (tiles, route blue, puck). Rules when adding UI: new chrome or
+  transient surfaces take colorScheme tokens (they'll theme themselves); content inside a sheet
+  takes SheetPalette; don't mix the two on one surface or one of the theme x dynamic combos
+  will look wrong. The dynamic scheme is luminance-sanity-checked in VelaTheme (a ROM handing a
+  light background for the dark scheme falls back to Vela colours - seen on GrapheneOS). NB
+  Google Maps itself is a dynamic-colour HOLDOUT (M3 components, zero wallpaper tinting) -
+  Vela tinting its chrome already exceeds it; the split is our own design call.
 - **Basemap layer gotchas (`VelaMapView.ensureLayers`/`applyLight`/`applyDark`, OpenFreeMap Liberty).**
   (1) **`maxzoom` is EXCLUSIVE** - the bundled `building` FILL layer is `minzoom 13 / maxzoom 14`, so
   `setMinZoom(14f)` alone collapses its range to empty and the flat footprints never paint (you'd see only
