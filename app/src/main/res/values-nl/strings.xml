@@ -127,6 +127,7 @@
     <string name="settings_collapse">Inklappen</string>
     <string name="settings_expand">Uitklappen</string>
     <string name="settings_voice_lib_empty_hint">Download een natuurlijke stem op het toestel voor gesproken instructies — kies er hieronder een. De ★-stemmen klinken het meest als een kaartnavigator (Lessac en HFC komen het dichtst bij Google). Eenmalige download; wifi aanbevolen.</string>
+    <string name="settings_voice_lib_installed_hint">Geïnstalleerd: %1$d MB · %2$d stem(men). Tik op Gebruiken om te wisselen (speelt een voorbeeld af); het prullenbak-icoon maakt de ruimte vrij.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">Uw apptaal is %1$s — download hieronder een %2$s-stem zodat de gesproken instructies overeenkomen (een Engelse stem zou %3$s straatnamen verkeerd uitspreken).</string>
     <string name="settings_voice_search">Stemmen zoeken</string>
     <string name="settings_voice_show_more">%1$d meer tonen</string>
@@ -473,6 +474,7 @@
     <string name="settings_update_nightly_hint">Werk bij naar de nieuwste nightly (voorlopige versie) in plaats van alleen stabiele versies. Nightlies zijn verser maar minder getest.</string>
     <string name="settings_lists_export_hint">Maak een back-up van je lijsten naar een bestand of herstel ze op een ander apparaat.</string>
     <string name="settings_lists_imported">%1$d lijst(en) geïmporteerd</string>
+    <string name="settings_places_imported">%1$d plaats(en) geïmporteerd</string> <!-- format -->
     <string name="settings_no_lists">Nog geen lijsten om te exporteren</string>
     <string name="mapvm_export_lists_subject">Vela-lijsten (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Lijsten exporteren</string>

@@ -127,6 +127,7 @@
     <string name="settings_collapse">Einklappen</string>
     <string name="settings_expand">Ausklappen</string>
     <string name="settings_voice_lib_empty_hint">Laden Sie eine natürliche Stimme direkt auf dem Gerät für gesprochene Ansagen herunter – wählen Sie unten eine aus. Die ★-Stimmen klingen am ehesten wie eine Navigationsstimme (Lessac und HFC kommen Google am nächsten). Einmaliger Download; WLAN empfohlen.</string>
+    <string name="settings_voice_lib_installed_hint">Installiert: %1$d MB · %2$d Stimme(n). Tippen Sie auf Verwenden, um zu wechseln (spielt eine Hörprobe ab); das Papierkorb-Symbol gibt den Speicherplatz frei.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">Ihre App-Sprache ist %1$s – laden Sie unten eine %2$s-Stimme herunter, damit die Ansagen passen (eine englische Stimme würde %3$s Straßennamen falsch aussprechen).</string>
     <string name="settings_voice_search">Stimmen suchen</string>
     <string name="settings_voice_show_more">%1$d weitere anzeigen</string>
@@ -473,6 +474,7 @@
     <string name="settings_update_nightly_hint">Auf den neuesten Nightly (Vorabversion) aktualisieren statt nur auf stabile Versionen. Nightlies sind aktueller, aber weniger getestet.</string>
     <string name="settings_lists_export_hint">Sichere deine Listen in einer Datei oder stelle sie auf einem anderen Gerät wieder her.</string>
     <string name="settings_lists_imported">%1$d Liste(n) importiert</string>
+    <string name="settings_places_imported">%1$d Ort(e) importiert</string> <!-- format -->
     <string name="settings_no_lists">Noch keine Listen zum Exportieren</string>
     <string name="mapvm_export_lists_subject">Vela-Listen (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Listen exportieren</string>
