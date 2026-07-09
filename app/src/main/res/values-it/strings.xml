@@ -441,7 +441,9 @@
     <string name="car_no_route">Nessun percorso — controlla la posizione</string>
     <string name="map_parking_saved">Parcheggio salvato</string>
     <string name="map_parking_no_fix">In attesa della posizione</string>
-    <string name="map_parking_chip">Parcheggiato</string>
     <string name="map_parking_cleared">Parcheggio rimosso</string>
     <string name="map_parked_car">Auto parcheggiata</string>
+    <string name="map_parking_save">Salva parcheggio</string>
+    <string name="map_import_failed">Impossibile importare la lista. Controlla il link e riprova.</string>
+    <string name="place_clear_parking">Rimuovi parcheggio</string>
 </resources>

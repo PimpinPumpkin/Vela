@@ -441,7 +441,9 @@
     <string name="car_no_route">Маршрут недоступен — проверьте местоположение</string>
     <string name="map_parking_saved">Место парковки сохранено</string>
     <string name="map_parking_no_fix">Ожидание определения местоположения</string>
-    <string name="map_parking_chip">Припарковано</string>
     <string name="map_parking_cleared">Место парковки удалено</string>
     <string name="map_parked_car">Припаркованная машина</string>
+    <string name="map_parking_save">Сохранить место парковки</string>
+    <string name="map_import_failed">Не удалось импортировать список. Проверьте ссылку и попробуйте снова.</string>
+    <string name="place_clear_parking">Удалить парковку</string>
 </resources>

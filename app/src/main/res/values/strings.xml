@@ -464,7 +464,9 @@
     <string name="car_no_route">No route available — check your location</string>
     <string name="map_parking_saved">Parking spot saved</string>
     <string name="map_parking_no_fix">Waiting for a location fix</string>
-    <string name="map_parking_chip">Parked</string>
     <string name="map_parking_cleared">Parking spot cleared</string>
     <string name="map_parked_car">Parked car</string>
+    <string name="map_parking_save">Save parking spot</string>
+    <string name="map_import_failed">Couldn\'t import that list. Check the link and try again.</string>
+    <string name="place_clear_parking">Clear parking</string>
 </resources>
