@@ -243,7 +243,9 @@ fun PlaceSheet(
     val dim = if (dark) DimDark else DimLight
     // The saved parking spot's own sheet: car glyph beside the name, a Clear action pill.
     val isParking = place.id.startsWith("parking:")
-    val containingLists = lists.filter { l -> l.places.any { it.id == place.id } }
+    // Match by feature id too — the volatile place id can change between visits for a
+    // multi-listing chain, which hid the "Edit note"/"Saved" affordances (see ListPlace.matches).
+    val containingLists = lists.filter { l -> l.places.any { it.matches(place.id, place.featureId) } }
     val inAnyList = containingLists.isNotEmpty()
     var showListChooser by remember(place.id) { mutableStateOf(false) }
     var showNoteEditor by remember(place.id) { mutableStateOf(false) }
