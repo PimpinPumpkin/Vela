@@ -159,7 +159,7 @@ object SearchParser {
             permanentlyClosed = field("closedFlag").int() == 1 || isPermanentlyClosed(
                 field("status118").str(), field("statusRich").str(), field("openStatus").str(),
             ),
-            // Owner-set TEMPORARY closure (the "the temp-closure case" resilience ask): when an owner marks the
+            // Owner-set TEMPORARY closure: when an owner marks the
             // business temporarily closed, Google replaces the status text with "Temporarily closed"
             // (localized) — surface it first-class so the UI can banner it and suppress the now-
             // misleading weekly hours, instead of quietly relying on the red status colour alone.
@@ -251,7 +251,7 @@ object SearchParser {
         return urls.take(12)
     }
 
-    /** Drop a leading business-name from a formatted address ("Safeway, 1451 W Covell Blvd" → "1451 …").
+    /** Drop a leading business-name from a formatted address ("Safeway, 1451 W Covell Blvd" to "1451 ...").
      *  The sheet shows the name on its own line, so a name-prefixed address reads it twice. Strips ONLY
      *  when what follows the name is an explicit separator (","/"·"/dash) or goes straight to the street
      *  NUMBER — a bare space alone is NOT a boundary ("Safeway Plaza, …", "Boeing Access Rd" must survive),
