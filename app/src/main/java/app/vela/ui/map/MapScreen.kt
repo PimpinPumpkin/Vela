@@ -973,6 +973,7 @@ fun MapScreen(
             state.editingStops && state.directionsOpen && !searchOpen && state.pickOnMap == null -> app.vela.ui.place.StopsEditorSheet(
                 originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
                 else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
+                originIsMe = !state.directionsReversed && state.directionsOrigin == null,
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
                 stops = state.directionsWaypoints,
@@ -990,6 +991,7 @@ fun MapScreen(
             state.directionsOpen && !searchOpen && state.pickOnMap == null -> DirectionsPanel(
                 originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
                 else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
+                originIsMe = !state.directionsReversed && state.directionsOrigin == null,
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
                 // Tap the custom endpoint to route to/from somewhere other than your

@@ -93,6 +93,7 @@ import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.TripOrigin
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.SportsScore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Search
@@ -438,6 +439,9 @@ fun PlaceSheet(
             // like Google's collapsed sheet. At this small height leading with the photo hero showed
             // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
             if (minimizedState.value) {
+                // A single tap ANYWHERE on the minimized card pops it back to peek (Google) —
+                // the Directions pill keeps its own tap since inner clickables win their bounds.
+                Column(Modifier.fillMaxWidth().clickable { minimizedState.value = false }) {
                 Text(
                     place.name,
                     style = MaterialTheme.typography.titleLarge,
@@ -461,6 +465,7 @@ fun PlaceSheet(
                 }
                 Spacer(Modifier.height(10.dp))
                 ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                }
                 return@Column
             }
             // Photo hero at the top (Google-style) — always visible, even at the
@@ -935,6 +940,7 @@ fun PlaceSheet(
 @Composable
 fun DirectionsPanel(
     originName: String,
+    originIsMe: Boolean = true,
     destinationName: String,
     onEditOrigin: (() -> Unit)? = null,
     onEditDestination: (() -> Unit)? = null,
@@ -997,7 +1003,18 @@ fun DirectionsPanel(
                             Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditOrigin() }.padding(vertical = 2.dp)
                         } else Modifier,
                     ) {
-                        Icon(Icons.Default.TripOrigin, contentDescription = null, tint = dim, modifier = Modifier.size(14.dp))
+                        // Origin wears the PIN — LOCATION-BLUE when it's your current position (the
+                        // non-verbal "this is you", like the map dot) — and the destination the
+                        // checkered FLAG. Every header row leads with the same fixed-width icon
+                        // slot so the glyphs align into one rail (the mixed sizes read "weird").
+                        Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Place,
+                                contentDescription = null,
+                                tint = if (originIsMe) Color(0xFF4285F4) else dim,
+                                modifier = Modifier.size(17.dp),
+                            )
+                        }
                         Spacer(Modifier.width(8.dp))
                         Text(
                             originName,
@@ -1025,16 +1042,32 @@ fun DirectionsPanel(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditStops() }.padding(vertical = 2.dp),
                             ) {
-                                Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
-                                Spacer(Modifier.width(11.dp))
+                                Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
+                                    Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
+                                }
+                                Spacer(Modifier.width(8.dp))
+                                // First stop + a "+N" count, not every name joined (that still
+                                // read crammed with 2+ stops); the editor holds the full list.
                                 Text(
-                                    stops.joinToString("  ·  "),
+                                    stops.first(),
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = dim,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
                                     modifier = Modifier.weight(1f, fill = false),
                                 )
+                                if (stops.size > 1) {
+                                    Spacer(Modifier.width(6.dp))
+                                    Text(
+                                        "+${stops.size - 1}",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = dim,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(dim.copy(alpha = 0.15f))
+                                            .padding(horizontal = 5.dp, vertical = 1.dp),
+                                    )
+                                }
                                 Spacer(Modifier.width(6.dp))
                                 Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.stops_edit), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
                             }
@@ -1045,7 +1078,9 @@ fun DirectionsPanel(
                                 verticalAlignment = Alignment.CenterVertically,
                                 modifier = Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onAddStop() }.padding(vertical = 2.dp),
                             ) {
-                                Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
+                                Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
+                                    Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
+                                }
                                 Spacer(Modifier.width(8.dp))
                                 Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                             }
@@ -1060,8 +1095,10 @@ fun DirectionsPanel(
                             Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditDestination() }.padding(vertical = 2.dp)
                         } else Modifier,
                     ) {
-                        Icon(Icons.Default.Place, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.width(6.dp))
+                        Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
+                            Icon(Icons.Default.SportsScore, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        }
+                        Spacer(Modifier.width(8.dp))
                         Text(
                             destinationName,
                             style = MaterialTheme.typography.titleMedium,
