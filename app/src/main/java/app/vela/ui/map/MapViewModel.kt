@@ -781,8 +781,9 @@ class MapViewModel @Inject constructor(
         val now = System.currentTimeMillis()
         if (now - prefs.getLong("last_update_check_ms", 0L) < 20 * 60 * 60_000L) return
         prefs.edit().putLong("last_update_check_ms", now).apply()
+        val nightly = prefs.getBoolean("update_nightly", false)
         viewModelScope.launch {
-            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE) ?: return@launch
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE, nightly) ?: return@launch
             if (info.versionCode <= prefs.getInt("update_dismissed_code", 0)) return@launch
             _state.update { it.copy(updateInfo = info) }
         }
@@ -791,8 +792,9 @@ class MapViewModel @Inject constructor(
     /** Settings "Check for updates" button — unthrottled, reports back via [onResult]
      *  (true = an update was found and the card is up; false = already current / check failed). */
     fun checkForUpdateNow(onResult: (Boolean) -> Unit) {
+        val nightly = settingsPrefs.getBoolean("update_nightly", false)
         viewModelScope.launch {
-            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE)
+            val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE, nightly)
             if (info != null) _state.update { it.copy(updateInfo = info) }
             onResult(info != null)
         }
@@ -2401,6 +2403,39 @@ class MapViewModel @Inject constructor(
             android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_export_saved_chooser))
                 .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
         }.getOrNull()
+    }
+
+    /** A share/save intent for ALL user lists as a portable JSON file, or null when there
+     *  are none. Same FileProvider path as the saved-places export. */
+    fun exportListsIntent(): android.content.Intent? {
+        val lists = listStore.lists()
+        if (lists.isEmpty()) return null
+        return runCatching {
+            val dir = java.io.File(appContext.cacheDir, "export").apply { mkdirs() }
+            val file = java.io.File(dir, "vela-lists.json")
+            file.writeText(listStore.exportJson())
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                appContext, "${appContext.packageName}.fileprovider", file,
+            )
+            val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "application/json"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                putExtra(android.content.Intent.EXTRA_SUBJECT, appContext.getString(R.string.mapvm_export_lists_subject, lists.size))
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            android.content.Intent.createChooser(send, appContext.getString(R.string.mapvm_export_lists_chooser))
+                .apply { addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK) }
+        }.getOrNull()
+    }
+
+    /** Import lists from a picked file [uri]; returns how many lists were newly added. */
+    fun importListsFromUri(uri: android.net.Uri): Int {
+        val json = runCatching {
+            appContext.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+        }.getOrNull() ?: return 0
+        val added = listStore.importMerge(json)
+        if (added > 0) _state.update { it.copy(lists = listStore.lists()) }
+        return added
     }
 
     /** Import saved places from a picked file [uri]; returns how many were newly added
