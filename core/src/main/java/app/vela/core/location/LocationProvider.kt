@@ -78,9 +78,22 @@ class LocationProvider @Inject constructor(
     fun updates(minIntervalMs: Long = 1_000L, minDistanceM: Float = 0f): Flow<Location> =
         callbackFlow {
             val mgr = lm ?: run { close(); return@callbackFlow }
-            val listener = LocationListener { loc ->
-                cache(loc)
-                trySend(loc)
+            // NOT a SAM lambda: compiled against compileSdk 35 a `LocationListener { }`
+            // implements only onLocationChanged, relying on the default methods LocationListener
+            // gained in API 30. On our API 26–29 targets (Android 10 kosher phones) those methods
+            // are still ABSTRACT, so the first onProviderDisabled/onStatusChanged the OS delivers
+            // throws AbstractMethodError and crashes the app. Implement the full interface.
+            val listener = object : LocationListener {
+                override fun onLocationChanged(loc: Location) {
+                    cache(loc)
+                    trySend(loc)
+                }
+
+                override fun onProviderDisabled(provider: String) {}
+                override fun onProviderEnabled(provider: String) {}
+
+                @Deprecated("Required abstract on API < 30", ReplaceWith(""))
+                override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
             }
             val active = PROVIDERS.filter { mgr.allProviders.contains(it) }
             active.forEach { p ->

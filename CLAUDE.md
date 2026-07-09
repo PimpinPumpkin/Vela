@@ -562,6 +562,12 @@ Defaults that make the safe path the easy one:
   frozen-speedo/creeping-puck bug). Measured speeds pass a SYMMETRIC accel-bounded gate against the
   last ACCEPTED value (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided
   spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+  **The `LocationListener` in `LocationProvider.updates` MUST be a full `object :`, never a SAM lambda
+  (2026-07-09 crash fix):** compiled against compileSdk 35 a `LocationListener { }` implements only
+  `onLocationChanged` and leans on the default methods the interface gained in API 30 - but on our
+  minSdk-26 targets (Android 10 / API 29 phones) `onProviderDisabled`/`onProviderEnabled`/
+  `onStatusChanged` are still ABSTRACT, so the first provider toggle threw `AbstractMethodError` and
+  hard-crashed the app on launch. Keep all four overrides.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
   `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
   the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
