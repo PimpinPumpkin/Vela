@@ -149,6 +149,14 @@ Defaults that make the safe path the easy one:
   files + the in-app updater. The versionCode base stays `2000+run` because the run
   number is global/monotonic, so vc keeps rising across the minor bump; only the
   *name*'s minor changed.)
+  **F-Droid repo channel (2026-07-09):** `.github/workflows/fdroid-repo.yml` rebuilds a signed
+  self-hosted F-Droid repo (latest stable + newest nightly) on every release event and deploys it
+  to GitHub Pages (`https://pimpinpumpkin.github.io/Vela/repo`, fingerprint + user instructions in
+  `FDROID.md`, metadata in `fdroid/metadata/app.vela.yml`). Pages is set to build_type=workflow.
+  The index-signing keystore is `~/.vela-signing/fdroid.p12` (secrets `FDROID_KEYSTORE_BASE64` /
+  `FDROID_KEYSTORE_PASS`; password + fingerprint in `~/.vela-signing/fdroid.env` - back both up).
+  This is NOT the official f-droid.org catalog (their from-source build can't take the bundled
+  sherpa-onnx runtime); it's our own repo any F-Droid client can add.
   Release signing uses repo secrets `VELA_KEYSTORE_BASE64`,
   `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`,
   outside the repo - back it up). Without them the APK is debug-signed. Version
