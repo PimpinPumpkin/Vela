@@ -89,7 +89,7 @@ object OverpassPois {
     /** Named road centrelines in the bbox → sampled representative points per street, for the offline
      *  geocoder's STREET-LEVEL fallback: OSM maps roads far more completely than house numbers, so a
      *  suburb with no `addr:housenumber` points still has every named street here — enough to route to
-     *  "the local street" even when no individual house on it is mapped. Vehicle-routable highway classes
+     *  "West Covell Boulevard" even when no individual house on it is mapped. Vehicle-routable highway classes
      *  only (skips footways/paths/tracks). Geometry comes back inline via `out geom`; we thin it to ~one
      *  point per [SAMPLE_M] metres so the table stays bounded while "nearest point on the street" stays
      *  accurate. Long-timeout client (a metro's road network is a big body). */

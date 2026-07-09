@@ -110,7 +110,7 @@ class OfflineAddressStore @Inject constructor(
      * Reverse-geocode a point to a display address, so an offline POI that OSM never tagged with an
      * `addr:*` (most US chain locations) still shows *something* Google-like. Prefers the nearest mapped
      * house within [REV_ADDR_M] (usually the POI's own building), else falls back to the nearest street
-     * name within [REV_STREET_M] ("on the local street"), else null. Bounded by a small lat/lng box so it
+     * name within [REV_STREET_M] ("on W Covell Blvd"), else null. Bounded by a small lat/lng box so it
      * scans only nearby rows, not the whole index.
      */
     fun reverseGeocode(loc: LatLng): String? {
