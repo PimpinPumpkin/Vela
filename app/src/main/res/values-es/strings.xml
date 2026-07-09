@@ -439,4 +439,9 @@
     <string name="car_unmute">Activar sonido</string>
     <string name="car_faster_route">Más rápido −%1$d min</string>
     <string name="car_no_route">No hay ruta disponible: comprueba tu ubicación</string>
+    <string name="map_parking_saved">Aparcamiento guardado</string>
+    <string name="map_parking_no_fix">Esperando la ubicación</string>
+    <string name="map_parking_chip">Aparcado</string>
+    <string name="map_parking_cleared">Aparcamiento borrado</string>
+    <string name="map_parked_car">Coche aparcado</string>
 </resources>

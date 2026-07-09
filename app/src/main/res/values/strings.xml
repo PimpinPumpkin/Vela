@@ -462,4 +462,9 @@
     <string name="car_unmute">Unmute</string>
     <string name="car_faster_route">Faster −%1$d min</string>
     <string name="car_no_route">No route available — check your location</string>
+    <string name="map_parking_saved">Parking spot saved</string>
+    <string name="map_parking_no_fix">Waiting for a location fix</string>
+    <string name="map_parking_chip">Parked</string>
+    <string name="map_parking_cleared">Parking spot cleared</string>
+    <string name="map_parked_car">Parked car</string>
 </resources>
