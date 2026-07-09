@@ -310,6 +310,13 @@ Defaults that make the safe path the easy one:
   reactive `mutableStateOf` (same shape as `ui/Units`), persisted to
   `vela_settings`, `init()`-ed in `VelaApp`; flipping it recomposes the theme and
   reloads the map style (`VelaMapView`'s styleKey carries `dark=`).
+- **List membership matches on featureId, not the volatile place id (2026-07-09).** A Place's `id`
+  is `"g:" + name hash + coarse lat` - for a multi-listing chain (Safeway + its pharmacy/bakery
+  listings) the tap-resolve can pick a different co-located listing next visit, so the id changes
+  and anything keyed on it silently misses (the "note kept not saving" bug). `ListPlace.matches`
+  (id OR stable Google featureId) is the ONE membership predicate - PlaceListStore add/remove/
+  setNote/listsContaining, the sheet's containingLists and MapViewModel's withListNote all use it.
+  Never compare bare `it.id == place.id` for list/saved semantics on Google-backed places.
 - **Basemap layer gotchas (`VelaMapView.ensureLayers`/`applyLight`/`applyDark`, OpenFreeMap Liberty).**
   (1) **`maxzoom` is EXCLUSIVE** - the bundled `building` FILL layer is `minzoom 13 / maxzoom 14`, so
   `setMinZoom(14f)` alone collapses its range to empty and the flat footprints never paint (you'd see only
@@ -318,7 +325,11 @@ Defaults that make the safe path the easy one:
   browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
   numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, `minZoom 17.5` - Google shows house numbers only at street level; 16 surfaced them too soon, user 2026-07-06) - 
   OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
-  coverage is OSM `addr:housenumber` (partial), not a render bug. (3) The runtime loads the style from the **LIVE** URL `MapStyle.LIBERTY.uri =
+  coverage is OSM `addr:housenumber` (partial), not a render bug. The `vela-addr-*` overlay number
+  layers anchor to `CONTROLS_CLAIM_LAYER` (above basemap labels, below the ambient icons) - NOT the
+  visible `CONTROLS_LAYER`, which lives at the BOTTOM of the symbol stack since 2026-07-09; anchoring
+  there sank the numbers under the building extrusions and every basemap label (the "numbers under
+  the buildings" regression). (3) The runtime loads the style from the **LIVE** URL `MapStyle.LIBERTY.uri =
   https://tiles.openfreemap.org/styles/liberty` (`fromUri`), and offline downloads use the same URL - both
   **auto-follow OpenFreeMap's current tile snapshot**, so there is NO dated-path/blank-basemap risk. The
   bundled `liberty-roboto.json` asset (which DOES pin a dated `planet/<snapshot>` path) is **parked +
