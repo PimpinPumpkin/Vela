@@ -469,4 +469,11 @@
     <string name="place_note_label">Anteckning</string>
     <string name="map_save_list">Spara lista · %1$d platser</string>
     <string name="map_list_saved">”%1$s” sparad i dina listor</string>
+    <string name="settings_update_nightly">Inkludera nightly-versioner</string>
+    <string name="settings_update_nightly_hint">Uppdatera till den senaste nightly (förhandsversion) istället för bara stabila versioner. Nightlies är färskare men mindre testade.</string>
+    <string name="settings_lists_export_hint">Säkerhetskopiera dina listor till en fil eller återställ dem på en annan enhet.</string>
+    <string name="settings_lists_imported">Importerade %1$d lista/or</string>
+    <string name="settings_no_lists">Inga listor att exportera än</string>
+    <string name="mapvm_export_lists_subject">Vela-listor (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Exportera listor</string>
 </resources>

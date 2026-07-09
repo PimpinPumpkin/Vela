@@ -469,4 +469,11 @@
     <string name="place_note_label">Note</string>
     <string name="map_save_list">Enregistrer la liste · %1$d lieux</string>
     <string name="map_list_saved">« %1$s » enregistrée dans vos listes</string>
+    <string name="settings_update_nightly">Inclure les versions nightly</string>
+    <string name="settings_update_nightly_hint">Mettre à jour vers la dernière version nightly (préversion) plutôt que seulement les versions stables. Les nightly sont plus récentes mais moins testées.</string>
+    <string name="settings_lists_export_hint">Sauvegardez vos listes dans un fichier ou restaurez-les sur un autre appareil.</string>
+    <string name="settings_lists_imported">%1$d liste(s) importée(s)</string>
+    <string name="settings_no_lists">Aucune liste à exporter</string>
+    <string name="mapvm_export_lists_subject">Listes Vela (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Exporter les listes</string>
 </resources>

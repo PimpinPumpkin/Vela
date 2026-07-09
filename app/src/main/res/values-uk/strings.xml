@@ -469,4 +469,11 @@
     <string name="place_note_label">Нотатка</string>
     <string name="map_save_list">Зберегти список · %1$d місць</string>
     <string name="map_list_saved">«%1$s» збережено у ваших списках</string>
+    <string name="settings_update_nightly">Включати нічні збірки</string>
+    <string name="settings_update_nightly_hint">Оновлюватися до найновішої нічної збірки (передрелізу), а не лише до стабільних версій. Нічні свіжіші, але менш перевірені.</string>
+    <string name="settings_lists_export_hint">Створіть резервну копію списків у файл або відновіть їх на іншому пристрої.</string>
+    <string name="settings_lists_imported">Імпортовано списків: %1$d</string>
+    <string name="settings_no_lists">Поки немає списків для експорту</string>
+    <string name="mapvm_export_lists_subject">Списки Vela (%1$d)</string>
+    <string name="mapvm_export_lists_chooser">Експортувати списки</string>
 </resources>

@@ -39,7 +39,17 @@ class MainActivity : ComponentActivity() {
             // Read the theme at the call site (a recomposing scope) and pass it in
             // — reading it inside VelaTheme's default arg didn't reliably invalidate
             // VelaTheme, so MaterialTheme never flipped when the user changed it.
-            VelaTheme(darkTheme = isAppInDarkTheme()) {
+            val dark = isAppInDarkTheme()
+            // The system status/nav bar ICONS (clock, wifi, battery) must contrast with the
+            // MAP under them, which follows Vela's own theme — not the system's. In light mode
+            // the map is white, so the icons must go DARK; edge-to-edge alone left them light
+            // (white-on-white, unreadable). Flip the appearance whenever the app theme changes.
+            androidx.compose.runtime.LaunchedEffect(dark) {
+                val controller = androidx.core.view.WindowCompat.getInsetsController(window, window.decorView)
+                controller.isAppearanceLightStatusBars = !dark
+                controller.isAppearanceLightNavigationBars = !dark
+            }
+            VelaTheme(darkTheme = dark) {
                 VelaRoot(vm = vm)
             }
         }
