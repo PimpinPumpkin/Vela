@@ -182,6 +182,9 @@
     <string name="place_move_stop_down">Переместить остановку вниз</string>
     <string name="place_remove_stop">Удалить остановку</string>
     <string name="place_add_stop">Добавить остановку</string>
+    <string name="stops_editor_title">Остановки</string>
+    <string name="stops_edit">Изменить остановки</string>
+    <string name="stops_drag_reorder">Перетащите, чтобы изменить порядок</string>
     <string name="place_change_destination">Изменить пункт назначения</string>
     <string name="place_swap_start_destination">Поменять местами отправление и назначение</string>
     <string name="place_close_directions">Закрыть маршрут</string>

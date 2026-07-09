@@ -182,6 +182,9 @@
     <string name="place_move_stop_down">Flytta stopp nedåt</string>
     <string name="place_remove_stop">Ta bort stopp</string>
     <string name="place_add_stop">Lägg till stopp</string>
+    <string name="stops_editor_title">Stopp</string>
+    <string name="stops_edit">Redigera stopp</string>
+    <string name="stops_drag_reorder">Dra för att ändra ordning</string>
     <string name="place_change_destination">Ändra mål</string>
     <string name="place_swap_start_destination">Byt start och mål</string>
     <string name="place_close_directions">Stäng vägbeskrivning</string>
