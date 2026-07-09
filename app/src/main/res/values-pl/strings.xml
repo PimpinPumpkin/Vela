@@ -467,4 +467,6 @@
     <string name="place_save_to_list">Zapisz na liście</string>
     <string name="place_edit_note">Edytuj notatkę</string>
     <string name="place_note_label">Notatka</string>
+    <string name="map_save_list">Zapisz listę · %1$d miejsc</string>
+    <string name="map_list_saved">Zapisano „%1$s” na twoich listach</string>
 </resources>
