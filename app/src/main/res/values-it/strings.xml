@@ -439,4 +439,9 @@
     <string name="car_unmute">Riattiva</string>
     <string name="car_faster_route">Più veloce −%1$d min</string>
     <string name="car_no_route">Nessun percorso — controlla la posizione</string>
+    <string name="map_parking_saved">Parcheggio salvato</string>
+    <string name="map_parking_no_fix">In attesa della posizione</string>
+    <string name="map_parking_chip">Parcheggiato</string>
+    <string name="map_parking_cleared">Parcheggio rimosso</string>
+    <string name="map_parked_car">Auto parcheggiata</string>
 </resources>
