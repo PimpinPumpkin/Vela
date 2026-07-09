@@ -966,7 +966,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 vm.checkForUpdateNow { found -> updateStatus = if (found) foundText else noneText }
             }) { Text(stringResource(R.string.settings_update_check_now)) }
             updateStatus?.let { Hint(it) }
-            // Breathing room under the last control — the button used to sit right on the
+            // Breathing room under the last control so the button doesn't sit right on the
             // gesture bar at the end of the scroll.
             Spacer(Modifier.height(56.dp))
         }

@@ -66,7 +66,7 @@ class LocationProvider @Inject constructor(
      * Cold stream of fixes from GPS + NETWORK. Caller must hold
      * ACCESS_FINE_LOCATION (checked at the UI layer before collecting).
      */
-    // minDistanceM MUST stay 0: a distance filter (the old 2 m) makes LocationManager deliver
+    // minDistanceM MUST stay 0: a distance filter makes LocationManager deliver
     // NOTHING while the device is stationary — so the last fix delivered while braking (with its
     // nonzero doppler speed) was the freshest data for an entire red light. The speedometer froze
     // at the braking speed, the puck's Kalman never measured 0, and the dead-reckoned puck crept

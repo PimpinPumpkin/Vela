@@ -33,18 +33,14 @@ Services** (GrapheneOS / no-GMS ROMs), distributed via F-Droid/Obtainium, GPLv3.
 
 ### Non-goals
 - In-app Street View panos (WebGL renders black in a WebView; a pill opens Google’s
-  keyless pano in the browser instead), account sync. (Turn-by-turn *offline* routing
-  and photo author/date, once non-goals, are now DONE — GraphHopper + the reviews DOM
-  scrape.) See `FEATURES.md` "Known debts."
-- **Popular/busy times — DONE keyless (2026-06-19), not a non-goal.** Earlier I wrongly
-  ruled it sign-in-gated: the histogram (`[84]`) is stripped from the keyless **OkHttp**
+  keyless pano in the browser instead), account sync. See `FEATURES.md` "Known debts."
+- **Popular/busy times — DONE keyless.** The histogram (`[84]`) is stripped from the keyless **OkHttp**
   search (bot-degraded, like photos/transit), but a **warmed hidden WebView's same-origin
   search returns the full response with `[84]`** (`WebPopularTimesFetcher` + `Popular-
   TimesParser`, same trick as photos). **Load-bearing nuance:** the WebView query must be
-  **specific (name + address)** — a bare-name search still comes back as a 20-result
+  **specific (name + address)** — a bare-name search comes back as a 20-result
   `[64]` list trimmed of `[84]`, whereas name+address resolves to the single focused
-  result (`[0][1][0][14]`) that keeps it. Lesson: a "needs login" call from the OkHttp
-  response alone should be re-checked through a real WebView engine.
+  result (`[0][1][0][14]`) that keeps it.
 
 ---
 
@@ -115,7 +111,7 @@ dollar *range* "$10–20", not a 1–4 level — the tier flag lives in the `[1]
 bucket tree; `SearchParser.priceLevelOf` derives a 1–4 from the label for the filter) ·
 open-status `[1][203][1][8][0]` · rich status `[1][203][1][4][0]` · **feature id**
 `[1][10]` (`0x..:0x..` → reviews) · place id `[1][78]` · photos
-`[1][72][0][i][6][0]` (FIFE URLs, re-size `=w500-h350`; **moved from `[105]` 2026-06-27 — fix shipped via calibration v7**) · featured review
+`[1][72][0][i][6][0]` (FIFE URLs, re-size `=w500-h350`; moved from `[105]`, fix shipped via calibration v7) · featured review
 `[1][142][1][0][1][0][0]` · About sections `[1][100][1]` (title `[s][1]`, items
 `[s][2][j][1]`) · **editorial one-liner** `[1][32][1][1]` · **owner "From the owner"
 blurb** `[1][154][0][0]` · weekly hours `[1][203][0]` (fallback `[1][118][0][3][0]`; 7
@@ -130,7 +126,7 @@ The same focused re-fetch **backfills the fields a *summary* node drops** — a 
 multi-tenant address snaps to a light node missing review count / full hours / address /
 phone / price / attributes; the focused result is a full node, so `PopularTimesParser`
 lifts them into `PlaceDetails` (**feature-id-gated**) and `MapViewModel.fetchPlaceDetails`
-merges them into any blank field (additive; no match → unchanged).
+merges them into any blank field (additive).
 
 ### Directions response (`root[0][1][r]`, summary `[0]`)
 distance m `[2][0]` · typical dur s `[3][0]` · **traffic dur s `[10][0][0]`** ·
@@ -144,18 +140,17 @@ node, NOT the `[0]` summary) = `[level, startMeters, lengthMeters]` spans, only 
 non-free-flow stretches → `Route.trafficSpans` → the route line's colour bands. Steps
 are `<step maneuver=… meters=…>` markup; lane hints ("Use the right 2 lanes…") split
 into `Maneuver.laneHint`. Each maneuver is placed at `cumulativeStepMeters/polyLength`
-along the geometry — **except the final (ARRIVE), which is pinned to the route end**:
-step distances total a few % short of the geometry, so the cumulative undershoots and
-once placed "arrive" ~15 km before a 134 km route's end (firing the 25 m arrival trigger
-there — a real test-drive bug, fixed 2026-06-20).
-**Predictive per-departure field: confirmed unreachable keyless** (2026-06-20, 6th probe):
+along the geometry — **except the final (ARRIVE), which is pinned to the route end**
+(step distances total a few % short of the geometry, so a cumulative placement undershoots
+and fires the 25 m arrival trigger far before the true end).
+**Predictive per-departure field: confirmed unreachable keyless** —
 the response has no time-of-day curve, our `pb` is byte-identical to Google's live web
 client, injected time fields are ignored/400, and the web depart-time control is
-un-automatable → it's login/Android-app-only. We surface the typical spread (`[10][4]`,
-above) as the honest keyless stand-in; a true per-minute ETA needs one captured real
+un-automatable → it's login/Android-app-only. We surface the typical spread (`[10][4]`)
+as the keyless stand-in; a true per-minute ETA needs one captured real
 depart-at request (mitmproxy on the Android app — see `ROADMAP.md`).
 
-### Hours node (`[1][203][0]`) — date-specific, holidays baked in (observed 2026-07-01)
+### Hours node (`[1][203][0]`) — date-specific, holidays baked in
 Each day entry is `[name, dow(1=Mon..7=Sun), [Y,M,D], ranges, flag, flag, special?]` — a **rolling next-7-days**
 list keyed to the ACTUAL date, so **holiday overrides are already in it**: a Jul-4 bank showed
 `["Saturday",6,[2026,7,4],[["Closed"]],1,2,["4th of July hours","4th of July",1]]`. `ranges` = `[[text,[[openH],[closeH]]], …]`
@@ -167,9 +162,8 @@ PRIMARY (it's the only source for an owner's ad-hoc "closed today", which is NOT
 ### Directions — untapped capabilities (observed on the wire, not from the binary)
 A running "port these into our own code" list, derived purely from the response we already receive
 (clean-room = protocol observation, never decompilation):
-- **Per-route in-traffic ETA → RE-RANK (DONE 2026-07-01).** Each route's `[10][0][0]` is *its own*
-  `duration_in_traffic` (not one shared figure — the earlier "can't re-rank" note was wrong). `directions()`
-  now sorts the returned list by it, so the fastest-right-now route leads, Google-style.
+- **Per-route in-traffic ETA → RE-RANK (DONE).** Each route's `[10][0][0]` is *its own*
+  `duration_in_traffic`. `directions()` sorts the returned list by it, so the fastest-right-now route leads, Google-style.
 - **Overall per-route traffic grade `[10][2]`** — a coarse congestion score per alternate; candidate for
   colouring the ETA chip / a "heavy traffic" badge on a route without walking every span.
 - **Lane guidance inside Google's `<step>` markup** — Google's own per-step lane data (we currently take
@@ -179,51 +173,49 @@ A running "port these into our own code" list, derived purely from the response 
 - **Not-yet-parsed response nodes:** route warnings/advisories, toll cost, per-step road-name/ref (would
   give named turns without OSRM), and the rest of the `[10]` node beyond `[0]/[2]/[4]`.
 - **The nav "polish" is NOT in this protocol** — GPS-jitter attenuation, accelerometer-fused dead
-  reckoning, junk-fix rejection, buttery puck — that's client-side **sensor fusion** (Kalman/complementary
-  filter + IMU dead-reckoning + accuracy-gated outlier rejection + map-match smoothing), documented in
+  reckoning, junk-fix rejection — that's client-side **sensor fusion** (Kalman/complementary
+  filter + IMU dead-reckoning + accuracy-gated outlier rejection + map-match smoothing), from
   public literature, NOT Google's binary. Vela already does the biggest lever (map-match snap during nav);
-  the gaps (IMU dead-reckon, accuracy gating) build straight from raw `SensorManager`. Spec it from the
-  literature + on-device tuning when prioritised — no disassembly, fully portable.
+  the gaps (IMU dead-reckon, accuracy gating) build straight from raw `SensorManager`.
 
-### Traffic-aware path (option 3) — why dense-via, not map-matching (measured 2026-06-28)
+### Traffic-aware path (option 3) — why dense-via, not map-matching
 Google's `[0][7][i]` polyline is **complete** even when its steps are abbreviated (3.3 km of
 steps seen on a 6.4 km line), so we *can* trace Google's exact jam-avoiding path. The clean way
 is **map-matching** (snap a trace → roads + turns), but public infra won't give it: FOSSGIS
 **`/match` caps at 10 coords** (`TooBig` past that; ~0.01 confidence that sparse) and public
 **Valhalla `/trace_route` times out**. So `RouteGeometry` snaps via **dense-waypoint `/route`**
 instead — `sampleVias` takes ~12 interior points of Google's line, `routeVia` routes OSRM through
-them (no coord cap; path reproduced exactly, 0 U-turn artifacts). Tradeoff, measured: a via that
+them (no coord cap; path reproduced exactly). Tradeoff: a via that
 lands *on* a turn is encoded as a via arrive/depart, not a turn — **~1-in-10 named turns lost** at
-60 vias. So we keep vias modest (12) and gate the whole thing behind real divergence
-(`divergent`, >700 m), leaving the free-flow majority as pure-OSRM with perfect turns. We also
-**only LEAD with the snapped route when it earns it** — its live in-traffic ETA must be within
-`SNAP_ETA_MARGIN` (×1.2) of OSRM's free-flow best, so a divergent-but-not-actually-faster snap steps
-aside for OSRM's clean route instead of being forced to the top (the `directions` diag logs `gEta`/`osrmFF`
-to tune this from real side-by-side data). Per-alternate re-rank IS done (2026-07-01): each Google alternate in `root[0][1]` carries its OWN
-`duration_in_traffic`, so the list is sorted by live in-traffic ETA — the fastest-shown route leads. And
-that order survives naming (fix 2026-07-08): `nameRoute` (the OSRM snap that runs when a provisional
-alternate is picked, or auto-runs when one sorts to the top) keeps the route's ORIGINAL Google
-duration/in-traffic figures instead of adopting the snap's recomputed ETA — the recomputed figure could
-leapfrog a neighbouring row in place and leave the "Fastest" tag below a slower first row. The
+60 vias. So vias stay modest (12) and the whole thing is gated behind real divergence
+(`divergent`, >700 m), leaving the free-flow majority as pure-OSRM with perfect turns. The snapped
+route only **LEADS when it earns it** — its live in-traffic ETA must be within
+`SNAP_ETA_MARGIN` (×1.2) of OSRM's free-flow best, else a divergent-but-not-faster snap steps
+aside for OSRM's clean route (the `directions` diag logs `gEta`/`osrmFF`
+to tune from real side-by-side data). Per-alternate re-rank IS done: each Google alternate in `root[0][1]` carries its OWN
+`duration_in_traffic`, so the list is sorted by live in-traffic ETA — the fastest-shown route leads. That
+order survives naming: `nameRoute` (the OSRM snap that runs when a provisional
+alternate is picked or auto-runs when one sorts to the top) keeps the route's ORIGINAL Google
+duration/in-traffic figures instead of the snap's recomputed ETA (which could
+leapfrog a neighbouring row and leave the "Fastest" tag below a slower first row). The
 cleaner unconditional "Google routes, OSRM names turns" wants **on-device map-matching** — now shipped as
 the offline router (next para); using it to clean up the online snap is the Phase-2 follow-up (`ROADMAP.md`).
 
-**Multi-stop (waypoints, DONE 2026-07-01).** `directions(origin, dest, mode, waypoints)` — when `waypoints`
+**Multi-stop (waypoints, DONE).** `directions(origin, dest, mode, waypoints)` — when `waypoints`
 is non-empty it reuses the same `routeVia` machinery (OSRM through `origin → stops… → dest`, the per-via
 arrive/depart already filtered into one continuous trip) and overlays Google's in-traffic ratio for the ETA
 (`applyTrafficRatio` — scales duration only; the direct-path congestion spans wouldn't align to a through
 path so they're dropped). A waypointed trip returns a **single** route (the alternates/divergence-snap logic
 is skipped). The app holds the stops as `MapViewModel.directionsWaypoints` (a stop-pick mode mirrors the
-origin picker). **Follow-ups DONE 2026-07-01:** `NavEngine.stopMarks(route, stops)` projects each waypoint
+origin picker). `NavEngine.stopMarks(route, stops)` projects each waypoint
 onto the route line → its along-route metre "pass mark" (or null if >150 m off the line); `NavSession` holds
 the stops + marks + a `passedStops` counter and fires a **per-stop voice cue** ("You've reached &lt;stop&gt;")
 in order as `traveledM` passes each mark (unit-tested `NavStopMarksTest`; `NavEngine` stays pure). `reroute`
-and the faster-route `maybeRecheck` now call `directions(loc, dest, mode, remainingStops)` where
-`remainingStops = stops.drop(passedStops)` — so going off-route (or taking a faster route) keeps the stops
-you haven't reached, instead of dropping them; the `reaches(dest)` guards are unchanged (the route still ends
-at the same final dest). The panel has up/down **reorder** arrows (`moveStop`).
+and the faster-route `maybeRecheck` call `directions(loc, dest, mode, remainingStops)` where
+`remainingStops = stops.drop(passedStops)` — so going off-route (or taking a faster route) keeps the
+unreached stops; the `reaches(dest)` guards are unchanged. The panel has up/down **reorder** arrows (`moveStop`).
 
-**Offline routing (on-device, DONE 2026-06-30).** When OSRM is unreachable, `directions()` routes fully
+**Offline routing (on-device, DONE).** When OSRM is unreachable, `directions()` routes fully
 on the phone via **GraphHopper** (`core/data/GraphHopperRouteEngine`, pure-JVM on ART — three workarounds:
 MMAP data-access, a Janino-free `SpeedWeighting` factory, swallowed `close()`; Contraction Hierarchies →
 ~200 ms). Region **CH graphs are built off-device** (`tools/graphbuilder`, same weighting + CH) and **hosted
@@ -233,20 +225,19 @@ GitHub-Actions build matrix → `routing-manifest.json`). The app downloads regi
 region box covering both endpoints** (boxes overlap at borders; falls through to the next-smallest). A trip
 must fit one region's monolithic graph; cross-region falls online.
 
-**Offline place packs (whole-region search, DONE 2026-07-07).** Downloading a state's routing region also
+**Offline place packs (whole-region search, DONE).** Downloading a state's routing region also
 pulls its PLACE PACK — a CI-baked SQLite db (`scripts/build-poi-region.sh` from the same Geofabrik PBF the
 graph uses; workflow `poi-packs.yml`; release `poi-packs`) holding the entire region's named OSM POIs
 (address/phone/website/hours), address points and street names, so offline search/geocoding covers the whole
-state (Organic-Maps-style), not just saved map areas. The pack schema is normalized (street names deduped
+state, not just saved map areas. The pack schema is normalized (street names deduped
 into an int-keyed `streetname` table; `addr`/`streetpt` reference them by sid) — Washington is 143 MB zipped
 for 163k POIs + 2.8M addresses — and queries match street names first (~90k-row scan) so the million-row
 tables are only ever hit through indexes. `OfflinePacks` (:core) registers the downloaded dbs;
 `OfflinePoiStore`/`OfflineAddressStore` query them alongside their own index. Packs install after the
 region's graph, delete with it, and show the same heads-up progress card as the voice download; graphs
-installed before packs existed get a "Get places" button. Device-verified: offline "pel meni" from
-Yolo County → Pel'Meni Dumpling Tzar, Fremont, with address.
+installed before packs existed get a "Get places" button.
 
-**Place pack freshness (rev + monthly cron + row-level deltas, DONE 2026-07-07).** `poi-packs.yml` also runs
+**Place pack freshness (rev + monthly cron + row-level deltas, DONE).** `poi-packs.yml` also runs
 on a monthly cron that rebuilds every published region; each rebuild bumps the region's `rev` in the manifest
 (alongside `updatedAt` and per-table row counts). Installed revs live in `poipacks/revs.json`; a newer
 manifest rev puts an "Update places" button on the region's Settings row. CI diffs each rebuild against the
@@ -254,52 +245,47 @@ previous rev (`scripts/poipack_delta.py`, one SQL EXCEPT per table producing del
 the delta zip only when it is under half the full pack size. `PoiPackStore.applyDelta` (valid only when
 installed rev == the delta's fromRev, else full download) applies it in one transaction: delete by full-row
 match driven through each table's index (NULL-safe `IS` matching), insert the ins_ rows, then verify every
-table's count against the manifest before committing; any mismatch rolls back and the caller falls back to a
+table's count against the manifest before committing; any mismatch rolls back to a
 full download. Street-name sids are stable content hashes (SHA-1 of the normalized name, truncated to a
 positive 63-bit int; the build fails on a collision), not insertion counters, so a rebuild leaves unchanged
-rows byte-identical and deltas stay small (a Washington test delta: 5.6 KB vs the 143 MB pack). The
+rows byte-identical and deltas stay small. The
 `TABLE_COLUMNS` map in PoiPackStore mirrors `poipack_build.py`/`poipack_delta.py`; keep all three in sync.
 
-**Offline address geocoding (on-device, DONE 2026-07-07).** So an arbitrary typed street address routes with
+**Offline address geocoding (on-device, DONE).** So an arbitrary typed street address routes with
 no signal, not just addresses that are an indexed POI. Downloading a map area builds a SQLite forward geocoder
 (`core/data/OfflineAddressStore`) from keyless Overpass (`OverpassPois.fetchAddresses`/`fetchStreets`) over a
-bbox **padded to a ~15 km min span** around the viewport (`GEOCODE_PAD_DEG`) — the tile-viewport box was too
-small (8 addresses in a dense suburb; the padded box → 8591 addresses + 1466 streets). Two OSM sources: `addr:
+bbox **padded to a ~15 km min span** around the viewport (`GEOCODE_PAD_DEG`, so a saved area covers the
+surrounding metro, not just the on-screen tiles). Two OSM sources: `addr:
 housenumber` points (house-precise) and named-road centrelines thinned to ~1 pt/120 m (street-level fallback
 where OSM maps the road but no house numbers — the US-suburb reality). `geocode()` layers exact → interpolated
 between bracketing numbers → nearest house on street → nearest centreline point; street names are
 abbreviation-normalized both ways. The result Place routes through the same GraphHopper offline engine.
-Device-verified wifi-off (South Davis). A **quiet offline indicator** (reactive `ConnectivityManager` →
-`MapUiState.offline`) replaced the old banner: a greyed globe-slash + "Offline" in the search bar and a
+A **quiet offline indicator** (reactive `ConnectivityManager` →
+`MapUiState.offline`): a greyed globe-slash + "Offline" in the search bar and a
 globe-slash chip on the basemap.
 
 ### Reviews / Photos / Transit (the hard ones)
 - **Reviews**: DOM-scraped from the place's own `?cid=` page in a hidden anonymous desktop-UA WebView
   (`WebReviewsFetcher`) — the keyless `listentitiesreviews` RPC is **dead** (404) and only ever served
-  avatars anyway. `?cid=` = the `LOW` half of the `0xHIGH:0xLOW` feature id as unsigned decimal. **Three
-  things that were silently capping it at ~3, fixed 2026-07-01:** (1) the hidden WebView is never attached,
-  so it was **0×0**; Google's review list is **virtualized/lazy-loaded off the scroll viewport**, so at
-  0×0 it renders the chrome (rating histogram, topic filters) but **no review cards** — `measure`+`layout`
-  the WebView to a real **1200×3200 offscreen viewport** and the `m6QErb` scroll pane becomes real +
-  pages. (2) cards are **`.jJc9Ad`** each with a unique **`data-review-id`**; the scraper selects those
-  directly and **accumulates across scroll windows de-duped by review-id** (the panel recycles DOM nodes,
-  so one snapshot = ~10; the union = the list). (3) **on busy business pages** (food/retail — attractions
-  were unaffected) the list takes **~8 s to render** after the tab click, and the idle-termination
-  (`atBottom && noGrow`) mistook that blank pre-render window for "done", bailing with only the 3 overview
-  cards. Two guards fix it: open via the **`[role="tab"]` "Reviews" tab**, clicked-until-`aria-selected`
-  (a click on a not-yet-hydrated tab retries rather than no-opping; a selected-but-loading list is never
-  re-clicked — re-clicking restarts its render, which regressed busy pages back to 3), and **gate the
-  idle-bail on cards being rendered at bail time** (`cardsNow`, checked per tick — NOT a once-latched
-  flag: the overview's 3 preview cards latch just before the tab click blanks the panel, and that
-  timing hole still bailed with 3 on unlucky loads; a no-tab/no-button layout gets a 14-tick leash
-  then returns what's rendered). Per card: author
-  `.d4r55`, text `.wiI7pd`, rel-date `.rsqaWe`, star aria, avatar + **uploaded photos** (googleusercontent
-  background-images, avatars/ALV-/ACg8oc filtered). A "More reviews" button is the fallback for layouts
-  with no Reviews tab; dwells at the bottom to let the lazy-loader page in more, caps at 50. **Per-review
-  photos ARE delivered this way** (the old RPC's avatars-only limitation doesn't apply to the rendered
-  page). Device-verified: Taco Bell **3 → 50**, Pike Place Chowder **3 → 37**, Space Needle **37 → 46**.
-  The place sheet adds a **"Search reviews"** box (≥5 loaded) that live-filters the loaded set by
-  text/author. **Default path since 2026-07-01 is the LIVE PANEL** (`app/web/ReviewsPanel.kt`,
+  avatars anyway. `?cid=` = the `LOW` half of the `0xHIGH:0xLOW` feature id as unsigned decimal. Three
+  requirements to page the full list: (1) the hidden WebView must be **`measure`+`layout` to a real
+  1200×3200 offscreen viewport** — Google's review list is **virtualized/lazy-loaded off the scroll
+  viewport**, so at 0×0 it renders only the chrome (rating histogram, topic filters), no review cards;
+  a real viewport makes the `m6QErb` scroll pane real + pages. (2) cards are **`.jJc9Ad`** each with a
+  unique **`data-review-id`**; the scraper selects those directly and **accumulates across scroll windows
+  de-duped by review-id** (the panel recycles DOM nodes, so one snapshot = ~10; the union = the list).
+  (3) on busy business pages the list takes **~8 s to render** after the tab click, so the idle-termination
+  (`atBottom && noGrow`) must not mistake the blank pre-render window for "done": open via the
+  **`[role="tab"]` "Reviews" tab**, clicked-until-`aria-selected` (a click on a not-yet-hydrated tab retries
+  rather than no-opping; a selected-but-loading list is never re-clicked — re-clicking restarts its render),
+  and **gate the idle-bail on cards being rendered at bail time** (`cardsNow`, checked per tick, NOT a
+  once-latched flag; a no-tab/no-button layout gets a 14-tick leash then returns what's rendered). Per card:
+  author `.d4r55`, text `.wiI7pd`, rel-date `.rsqaWe`, star aria, avatar + **uploaded photos**
+  (googleusercontent background-images, avatars/ALV-/ACg8oc filtered). A "More reviews" button is the
+  fallback for layouts with no Reviews tab; dwells at the bottom to let the lazy-loader page in more, caps
+  at 50. **Per-review photos ARE delivered this way** (the old RPC's avatars-only limitation doesn't apply to
+  the rendered page). The place sheet adds a **"Search reviews"** box (≥5 loaded) that live-filters the loaded
+  set by text/author. **Default path is the LIVE PANEL** (`app/web/ReviewsPanel.kt`,
   `LiveReviews` toggle): Google's reviews pane in a VISIBLE WebView, CSS-carved — pixel-sized (vh
   units are 0 in an embedded WebView), ancestor chain un-clipped/un-transformed (else nothing
   paints), scroller stretched only after the Reviews tab reports `aria-selected`, trackers/beacons
@@ -308,22 +294,20 @@ globe-slash chip on the basemap.
   the automatic fallback (toggle off / carve failure). While the scrape runs (~10–40 s on busy places) the scraper **streams its running count**
   (`onProgress` → "Loading reviews… N of ~min(count,50)" + a determinate bar) **and the accumulated
   reviews themselves** (`onPartial` → the list fills in under the bar live). The streaming state update
-  is gated on `reviewsLoading` inside the atomic CAS (the final result clears the flag in the same copy
-  — no straggler-partial overwrite), and an empty final after partials keeps the streamed set. **Idle
+  is gated on `reviewsLoading` inside the atomic CAS (the final result clears the flag in the same copy),
+  and an empty final after partials keeps the streamed set. **Idle
   patience:** the opened list's "done" test is 8 no-growth / 6 at-bottom ticks — Google's pager takes
-  >2.2 s per page on busy places and the old 4/4 bailed mid-list (Taco Bell ~15 of 612 → now 50/cap).
-- **Photos**: the full gallery is **scraped from the place's own `?cid=` page** (2026-06-28),
+  >2.2 s per page on busy places.
+- **Photos**: the full gallery is **scraped from the place's own `?cid=` page**,
   *not* the `hspqX` RPC — that RPC is **bot-degraded per-session** to a Street-View-only reply
-  (an on-device log showed byte-identical degraded replies across retries, so retrying never
-  recovers it). `app/web/WebPhotoFetcher` loads the `?cid=` page in a **hidden, anonymous,
-  desktop-UA WebView**, lets Google's JS render it, and a self-polling script scrapes
-  `googleusercontent` photo URLs from the DOM (avatars + Street View filtered, de-duped by
-  image id, clicks the "Photos" affordance + scrolls to surface more) — **same pattern as
-  `WebReviewsFetcher`**; a rendered page is far harder to bot-degrade than a naked RPC POST.
-  ~9–25 photos/place, on-device-verified; a shimmer row (`MapState.photosLoading`) shows while
+  (retrying never recovers it). `app/web/WebPhotoFetcher`
+  loads the `?cid=` page in a **hidden, anonymous, desktop-UA WebView**, lets Google's JS render it, and a
+  self-polling script scrapes `googleusercontent` photo URLs from the DOM (avatars + Street View filtered,
+  de-duped by image id, clicks the "Photos" affordance + scrolls to surface more) — **same pattern as
+  `WebReviewsFetcher`**. ~9–25 photos/place; a shimmer row (`MapState.photosLoading`) shows while
   it's in flight. Gotchas: desktop UA (mobile → `intent://`), block non-http(s) redirects,
   `Handler` not `View.postDelayed` (headless WebView never attaches). No contributor name from a DOM
-  scrape (that was an `hspqX`-only field). **Categories (2026-07-01):** Google keeps the gallery tabs
+  scrape (that was an `hspqX`-only field). **Categories:** Google keeps the gallery tabs
   (Menu / Food & drink / Vibe / By owner) in the `?cid=` DOM, so the scraper **visits each tab** (click →
   scroll → tag its photos) then sweeps "All" for the rest, returning `category⇥url` lines → `Photo.category`
   / index-aligned `Place.photoCategories` → filter chips on the sheet. **Posted-dates deferred:** the tiles
@@ -339,16 +323,15 @@ Basemap POI icons/labels are **OSM** (OpenFreeMap), the opened sheet is **live
 Google** — the two can disagree (an OSM `drinking_water` node that's really a "Primo
 Water" kiosk inside a store). `onPoiTap` searches the OSM name on Google and, among
 listings within 35 m, picks the most-reviewed **only when it clearly dominates**
-(`canonical.reviews >= 2·nearest.reviews + 5`) so co-located-but-distinct shops aren't
+(`canonical.reviews >= 2·nearest.reviews + 5`) so co-located distinct shops aren't
 wrongly merged; "Also at this location" lists the others.
 
 **Ambient POI icon = category, with a NAME fallback** (`PoiIcons.groupFor(name, category)`).
 Google's keyless data sometimes returns a generic administrative category
 ("Non-profit organization", "Establishment") that themes to the grey `default` teardrop even
-though the place is really a gym/church/school — and the OSM basemap POI *does* classify it, so
-the grey ambient dot flipped to a themed OSM icon the moment the ambient layer cleared on select
-(the "grey Davis Community pool on the map, orange weight 'YMCA' when I tap it" inconsistency —
-the OSM `leisure=sports_centre` twin showing through). When the category resolves to `default` the
+though the place is really a gym/church/school, while the OSM basemap POI *does* classify it — so
+the grey ambient dot flipped to a themed OSM icon the moment the ambient layer cleared on select.
+When the category resolves to `default` the
 NAME breaks the tie ("…YMCA"→sport, "…Church"→civic, "…Elementary"→edu, conservatively), so the
 ambient dot gets the same icon Google and the OSM POI give it. Category stays authoritative.
 
@@ -357,14 +340,13 @@ Two layers. **(1) Whole-map raster** — `/maps/vt` PNG tiles on `www.google.com
 (public, keyless, not bot-gated; the `incidents` params carry the data, NOT the
 map-version epoch); `VelaMapView.ensureTraffic` adds a `RasterLayer`. A manual toggle on
 the bare map; **off during navigation** (it washed every road). **(2) Per-segment route
-line** — the directions JSON *does* carry per-segment congestion after all
-(`route[3][5][0]`, see above); `VelaMapView.routeGradient` supplies the per-segment
+line** — the directions JSON carries per-segment congestion (`route[3][5][0]`, see above);
+`VelaMapView.routeGradient` supplies the per-segment
 Google-style congestion bands. During nav the driven/ahead cut is a **geometry split**, not a
 gradient stop: a traversed-grey full line under an **ahead-suffix layer** (`ROUTE_AHEAD_LAYER`/
 `ROUTE_AHEAD_SRC`) trimmed exactly at the puck, with the traffic bands remapped onto the suffix —
 MapLibre bakes line-gradients into a 256-texel texture (so a "hard" cut smears ~routeLength/256 m)
-and has no `line-trim-offset`, so geometry is the only pixel-exact cut. So during nav the route
-itself shows the traffic, not the whole map.
+and has no `line-trim-offset`, so geometry is the only pixel-exact cut.
 
 ---
 
@@ -393,8 +375,7 @@ itself shows the traffic, not the whole map.
   the map pannable to place the pin (a `pickOnMap` exception in `mapTargetHidden`), and any
   panel taller than the screen (e.g. the directions panel with 4 alternates) must scroll so
   its primary action stays reachable. New interactive UI must keep all three properties
-  (reachable, activatable, visibly focused). A full-function D-pad sweep (2026-07-07) proved
-  every surface end-to-end. Full design + per-surface audit + upstream merge policy:
+  (reachable, activatable, visibly focused). Full design + per-surface audit + upstream merge policy:
   `docs/dpad.md`.
 - **Compose UI**: place sheet (fixed Google-grey palette via `ui/SheetPalette`, NOT
   Material-You — deliberate), full-screen search page (Home/Work + saved + recent
@@ -441,21 +422,19 @@ itself shows the traffic, not the whole map.
   **dead-reckoned** and **eased** (τ≈0.25 s), with **heading smoothed** (`smoothBearing`,
   τ≈0.2 s). The dead-reckoned speed is a **1-D Kalman fusion** (`core/location/SpeedKalman`,
   pure + unit-tested): each GPS fix is the measurement update, and between fixes the
-  **accelerometer steers the prediction** — `MotionProvider` (`core/location`, raw
+  **accelerometer steers the prediction** — `MotionProvider` (`core/location`,
   `TYPE_LINEAR_ACCELERATION` + `TYPE_ROTATION_VECTOR`, no GMS) emits world-frame horizontal
   acceleration, `forwardAccel()` projects it onto the travel bearing, and the ticker runs
   `kalman.predict(a, dt)` per frame — so braking collapses the modelled speed immediately
-  instead of the puck gliding at the stale fix speed into the monotonic-progress trap (the
-  "puck sits ahead of me when I stop" bug). The advance is the **integral** of that speed
+  instead of the puck gliding at the stale fix speed. The advance is the **integral** of that speed
   (`reckonedM += v·dt`, reset per fix, blind-capped at 2 s). Missing sensor → `a = 0` →
-  the old constant-speed reckoning. Each fix is snapped (`snapToRoute`, §honest-snap) then
+  constant-speed reckoning. Each fix is snapped (`snapToRoute`, §honest-snap) then
   its metres-along advance is **plausibility-clamped** (`speed·Δt·2.5 + 60 m`) so a
   self-approaching route can't teleport the puck to a far leg. The **follow-camera targets the puck's smoothed point** (`NavPuck.drawn`), not
   the raw fix, so map + puck move as one. The ticker owns `ME_SRC` while navigating;
   `applyData` only drives it in browse / off-route. **Heading/speed are derived from
   consecutive fixes** (`MapViewModel`, `bearingBetween`) when a `Location` lacks them — gated
-  on real movement — so the puck still points and dead-reckons on bearing-less fixes. (Whole
-  nav stack verified on-device 2026-06-21 via a mock-GPS drive of a real Davis→Sacramento route.)
+  on real movement — so the puck still points and dead-reckons on bearing-less fixes.
 - **Deep links**: `MainActivity` is `singleTop` with intent-filters for `geo:` and
   Google-Maps web links; `MapLinkParser` (`:core`, pure-Kotlin, unit-tested) →
   `openDeepLink`. Sharing a place emits a keyless `geo:` pin too.
@@ -466,20 +445,18 @@ itself shows the traffic, not the whole map.
   an accepted faster route) is its OWN `RP`/`RD`/`M` block, activated at the fix where it
   appears (`TripLog.parse().segments` → `List<RouteSegment>`). Replay/audit are segment-aware —
   each block is diffed against exactly the fixes driven on it — so a trip that switched routes is
-  never mashed into one Franken-route. Replay is **HERMETIC**: `NavSession.replayMode` suppresses
+  never mashed into one route. Replay is **HERMETIC**: `NavSession.replayMode` suppresses
   all live reroute/faster-route fetches, the recorded swaps play back via `replaySetRoute`, and
-  the map view scales the puck's physics clocks by `replaySpeedup` so a fast-forwarded replay
-  glides like a live drive. `nav/NavReplay` replays the fixes back through the real `NavEngine`
+  the map view scales the puck's physics clocks by `replaySpeedup`. `nav/NavReplay` replays the fixes back through the real `NavEngine`
   to **diff cards/voice against the maneuver positions** — per-maneuver announce-distance /
   turn-now / worst card-error / nearest-approach, flagging silent turns, too-early announcements
   and lying distances. `TripLog.audit(csv)` is the one-call entry (segment-merged report), also
   runnable on a shared CSV via `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog'
   -DvelaTrip=<abs.csv>` (the `velaTrip` property is forwarded to the test JVM in
-  `core/build.gradle.kts`). Unit-tested clean-drive + flag-logic + CSV round-trip. (Pure `:core`,
-  Android-free.)
+  `core/build.gradle.kts`). Unit-tested. (Pure `:core`, Android-free.)
 - **Demo / simulate-driving mode** (Settings → Navigation, off by default, pref `demo_drive`): a
   synthetic-trace path that reuses the replay machinery so nav can be driven **anywhere** without a
-  real fix (demos, screenshots, testing). `DemoTrace.fromRoute(polyline)` (pure `:core`) densifies the
+  real fix. `DemoTrace.fromRoute(polyline)` (pure `:core`) densifies the
   planned route into one clean `ReplayFix`/sec (cruise speed → real bearing + speed + monotonic time),
   and `startDemoDrive` in `MapViewModel` starts nav through the SAME hermetic `LocationProvider.replay`
   path a recorded trip uses (`replayMode`, puck physics, follow-camera, voice, speed-limit badge). It's

@@ -404,7 +404,7 @@ class NavSession @Inject constructor(
             voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
         }
         // Reroute THROUGH the stops you haven't reached yet — not straight to the final destination
-        // (that used to silently drop your remaining stops on any off-route wobble).
+        // (going straight to it would silently drop your remaining stops on any off-route wobble).
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         val gen = sessionGen
         // The route we were following when we went off-route. If the driver returns to THIS line while

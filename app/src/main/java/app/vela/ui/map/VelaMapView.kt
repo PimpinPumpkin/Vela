@@ -679,8 +679,8 @@ fun VelaMapView(
                         return@handleTap true
                     }
                     // An unnamed POI icon (has a class but no name — an apartment
-                    // gym, an unnamed park/playground, …) used to be a dead tap.
-                    // Reverse-geocode the spot to a pin + address, like a long-press.
+                    // gym, an unnamed park/playground, …):
+                    // reverse-geocode the spot to a pin + address, like a long-press.
                     if (feats.any { it.geometry() is Point && it.hasProperty("class") }) {
                         longPress.value(LatLng(tapped.latitude, tapped.longitude))
                         return@handleTap true
@@ -933,7 +933,7 @@ fun VelaMapView(
             }
             // The fix's OWN (spike-filtered) measurement is the Kalman MEASUREMENT; the
             // accelerometer steers between fixes (predict step in the frame ticker). Feeding the
-            // held state speed here — the old code — re-injected the stale braking speed at
+            // held state speed here re-injects the stale braking speed at
             // near-unity gain through every stop: the stuck-mph/creeping-puck bug. A doppler-less
             // fix simply doesn't measure (predict + decay carry the model).
             mySpeedRaw?.let { navPuck.kalman.update(it.toDouble()) }
@@ -1011,7 +1011,7 @@ fun VelaMapView(
         if (!frameMarkers) lastFittedMarkersKey = null
         when {
             // A recenter TAP always wins — even if we're already on the target (the
-            // `target != lastCameraTarget` guard below used to swallow it after a manual pan) or a
+            // `target != lastCameraTarget` guard below would otherwise swallow it after a manual pan) or a
             // route/markers would otherwise hold the camera. Force a move to the user, once per tap.
             recenterTick != lastRecenterTick -> {
                 lastRecenterTick = recenterTick
@@ -1092,9 +1092,9 @@ fun VelaMapView(
                 // to wherever you were before the search (device-seen 2026-07-09).
                 lastCameraTarget = cameraTarget
                 // Frame the result CLUSTER, not every last pin: a single stray hit hundreds of
-                // miles away (Google pads sparse local searches with far matches) used to zoom
+                // miles away (Google pads sparse local searches with far matches) would zoom
                 // the camera out to a continental view. Median-center the pins and drop outliers
-                // beyond 4x the median spread (min 40 km) before fitting (user 2026-07-09).
+                // beyond 4x the median spread (min 40 km) before fitting.
                 val pts = markers.map { it.location }
                 val medLat = pts.map { it.lat }.sorted()[pts.size / 2]
                 val medLng = pts.map { it.lng }.sorted()[pts.size / 2]

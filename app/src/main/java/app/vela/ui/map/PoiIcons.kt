@@ -160,8 +160,8 @@ object PoiIcons {
                     // Label placement MATCHES the ambient Google-POI layer exactly (variable anchor:
                     // prefer left-of-icon at a tight 1.4-em gap, fall back to under-icon on collision).
                     // These OSM layers show whenever ambient ISN'T (fresh area pre-fetch, offline, nav,
-                    // search) — the old fixed -2.6 offset here was the "state where labels are too far
-                    // from the icon until they re-render" (the re-render = ambient taking over).
+                    // search) — a fixed -2.6 offset here leaves labels too far from the icon until they
+                    // re-render (the re-render = ambient taking over).
                     PropertyFactory.textVariableAnchor(
                         arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
                     ),
