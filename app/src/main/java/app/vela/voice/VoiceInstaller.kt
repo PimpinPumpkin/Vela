@@ -74,7 +74,12 @@ class VoiceInstaller @Inject constructor(
                 apk.outputStream().use { out -> body.byteStream().copyTo(out) }
                 true
             }
-            if (ok && apk.length() >= 10_000L) { launchInstaller(apk); true } else { apk.delete(); false }
+            // Same zip-magic check as SelfUpdater: size alone lets an F-Droid error page
+            // (HTML, easily >10 KB) reach the system installer as a "corrupt APK".
+            val looksLikeApk = ok && apk.length() >= 10_000L && apk.inputStream().use { s ->
+                val m = ByteArray(2); s.read(m); m[0] == 'P'.code.toByte() && m[1] == 'K'.code.toByte()
+            }
+            if (looksLikeApk) { launchInstaller(apk); true } else { apk.delete(); false }
         }.getOrDefault(false)
         if (downloaded) return@withContext null
         // Fallback: hand off to F-Droid's page so the user can grab the right split.

@@ -127,6 +127,7 @@
     <string name="settings_collapse">Свернуть</string>
     <string name="settings_expand">Развернуть</string>
     <string name="settings_voice_lib_empty_hint">Загрузите естественный голос на устройство для голосовых подсказок — выберите один из списка ниже. Голоса, отмеченные ★, звучат наиболее похоже на навигатор (Lessac и HFC ближе всего к Google). Разовая загрузка; рекомендуется Wi-Fi.</string>
+    <string name="settings_voice_lib_installed_hint">Установлено: %1$d МБ · голосов: %2$d. Нажмите «Выбрать», чтобы переключиться (проигрывается образец); значок корзины освобождает место.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">Язык приложения — %1$s. Загрузите голос (%2$s) ниже, чтобы голосовые подсказки совпадали (английский голос неправильно произнёс бы названия улиц (%3$s)).</string>
     <string name="settings_voice_search">Поиск голосов</string>
     <string name="settings_voice_show_more">Показать ещё %1$d</string>
@@ -473,6 +474,7 @@
     <string name="settings_update_nightly_hint">Обновляться до новейшей ночной сборки (предрелиз), а не только до стабильных версий. Ночные свежее, но менее протестированы.</string>
     <string name="settings_lists_export_hint">Сохраните списки в файл или восстановите их на другом устройстве.</string>
     <string name="settings_lists_imported">Импортировано списков: %1$d</string>
+    <string name="settings_places_imported">Импортировано мест: %1$d</string> <!-- format -->
     <string name="settings_no_lists">Пока нет списков для экспорта</string>
     <string name="mapvm_export_lists_subject">Списки Vela (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Экспорт списков</string>

@@ -16,8 +16,12 @@ class SavedPlaceStore @Inject constructor(
 ) {
     private val prefs = context.getSharedPreferences("vela_saved", Context.MODE_PRIVATE)
 
+    // ignoreUnknownKeys: a newer build's extra field must not fail the decode here,
+    // or the getOrDefault(empty) wipes the data on the next write (see PlaceListStore).
+    private val json = Json { ignoreUnknownKeys = true }
+
     fun saved(): List<SavedPlace> =
-        runCatching { Json.decodeFromString<List<SavedPlace>>(prefs.getString(KEY, "[]") ?: "[]") }
+        runCatching { json.decodeFromString<List<SavedPlace>>(prefs.getString(KEY, "[]") ?: "[]") }
             .getOrDefault(emptyList())
 
     /** Toggle [place]; returns true if it is now saved. */
@@ -25,25 +29,25 @@ class SavedPlaceStore @Inject constructor(
         val current = saved()
         val exists = current.any { it.id == place.id }
         val updated = if (exists) current.filterNot { it.id == place.id } else listOf(place) + current
-        prefs.edit().putString(KEY, Json.encodeToString(updated)).apply()
+        prefs.edit().putString(KEY, json.encodeToString(updated)).apply()
         return !exists
     }
 
     fun isSaved(id: String): Boolean = saved().any { it.id == id }
 
     /** The saved list as a portable JSON document (for export / backup). */
-    fun exportJson(): String = Json.encodeToString(saved())
+    fun exportJson(): String = json.encodeToString(saved())
 
     /** Merge a previously-exported [json] list into the saved set, de-duped by id
      *  (existing entries kept, new ones appended). Returns how many were newly added;
      *  0 on a parse failure or nothing new. */
     fun importMerge(json: String): Int {
-        val incoming = runCatching { Json.decodeFromString<List<SavedPlace>>(json) }.getOrNull() ?: return 0
+        val incoming = runCatching { this.json.decodeFromString<List<SavedPlace>>(json) }.getOrNull() ?: return 0
         val current = saved()
         val existing = current.mapTo(HashSet()) { it.id }
         val added = incoming.filterNot { it.id in existing }
         if (added.isEmpty()) return 0
-        prefs.edit().putString(KEY, Json.encodeToString(current + added)).apply()
+        prefs.edit().putString(KEY, this.json.encodeToString(current + added)).apply()
         return added.size
     }
 

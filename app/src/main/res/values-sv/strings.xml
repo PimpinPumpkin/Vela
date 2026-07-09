@@ -127,6 +127,7 @@
     <string name="settings_collapse">Fäll ihop</string>
     <string name="settings_expand">Expandera</string>
     <string name="settings_voice_lib_empty_hint">Hämta en naturlig röst på enheten för talade vägbeskrivningar – välj en nedan. ★-rösterna låter mest som en kartnavigator (Lessac och HFC ligger närmast Google). Engångshämtning; wifi rekommenderas.</string>
+    <string name="settings_voice_lib_installed_hint">Installerat: %1$d MB · %2$d röst(er). Tryck på Använd för att byta (spelar upp ett prov); papperskorgsikonen frigör utrymmet.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">Ditt appspråk är %1$s – hämta en %2$s-röst nedan så att talade vägbeskrivningar matchar (en engelsk röst skulle uttala %3$s gatunamn fel).</string>
     <string name="settings_voice_search">Sök röster</string>
     <string name="settings_voice_show_more">Visa %1$d till</string>
@@ -473,6 +474,7 @@
     <string name="settings_update_nightly_hint">Uppdatera till den senaste nightly (förhandsversion) istället för bara stabila versioner. Nightlies är färskare men mindre testade.</string>
     <string name="settings_lists_export_hint">Säkerhetskopiera dina listor till en fil eller återställ dem på en annan enhet.</string>
     <string name="settings_lists_imported">Importerade %1$d lista/or</string>
+    <string name="settings_places_imported">Importerade %1$d plats(er)</string> <!-- format -->
     <string name="settings_no_lists">Inga listor att exportera än</string>
     <string name="mapvm_export_lists_subject">Vela-listor (%1$d)</string>
     <string name="mapvm_export_lists_chooser">Exportera listor</string>

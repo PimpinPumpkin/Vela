@@ -19,6 +19,10 @@ class ParkingStore @Inject constructor(
 ) {
     private val prefs = context.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
 
+    // ignoreUnknownKeys: a newer build's extra field must not fail the decode here,
+    // or the getOrDefault(empty) wipes the data on the next write (see PlaceListStore).
+    private val json = Json { ignoreUnknownKeys = true }
+
     data class Current(val lat: Double, val lng: Double, val savedAtMillis: Long)
 
     fun current(): Current? {
@@ -28,7 +32,7 @@ class ParkingStore @Inject constructor(
     }
 
     fun history(): List<ParkedSpot> =
-        runCatching { Json.decodeFromString<List<ParkedSpot>>(prefs.getString(KEY_HISTORY, "[]") ?: "[]") }
+        runCatching { json.decodeFromString<List<ParkedSpot>>(prefs.getString(KEY_HISTORY, "[]") ?: "[]") }
             .getOrDefault(emptyList())
 
     /** Saves [spot] as current AND prepends it to history (de-duped by ~1 m cell, capped). */
@@ -40,7 +44,7 @@ class ParkingStore @Inject constructor(
             .putString(KEY_LAT, spot.lat.toString())
             .putString(KEY_LNG, spot.lng.toString())
             .putLong(KEY_AT, spot.savedAtMillis)
-            .putString(KEY_HISTORY, Json.encodeToString(history))
+            .putString(KEY_HISTORY, json.encodeToString(history))
             .apply()
         return history
     }
@@ -61,7 +65,7 @@ class ParkingStore @Inject constructor(
 
     fun deleteFromHistory(spot: ParkedSpot): List<ParkedSpot> {
         val history = history().filterNot { it == spot }
-        prefs.edit().putString(KEY_HISTORY, Json.encodeToString(history)).apply()
+        prefs.edit().putString(KEY_HISTORY, json.encodeToString(history)).apply()
         return history
     }
 
