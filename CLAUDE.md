@@ -170,9 +170,21 @@ Defaults that make the safe path the easy one:
   number is global/monotonic, so vc keeps rising across the minor bump; only the
   *name*'s minor changed.)
   **F-Droid repo channel (2026-07-09):** `.github/workflows/fdroid-repo.yml` rebuilds a signed
-  self-hosted F-Droid repo (latest stable + newest nightly) on every release event and deploys it
-  to GitHub Pages (`https://pimpinpumpkin.github.io/Vela/repo`, fingerprint + user instructions in
-  `FDROID.md`, metadata in `fdroid/metadata/app.vela.yml`). Pages is set to build_type=workflow.
+  self-hosted F-Droid repo (latest stable + newest nightly) and deploys it to GitHub Pages
+  (`https://pimpinpumpkin.github.io/Vela/repo`, fingerprint + user instructions in `FDROID.md`,
+  metadata in `fdroid/metadata/app.vela.yml`). Pages is set to build_type=workflow.
+  **Triggers: `workflow_run` on CI / Promote weekly stable completing green on main** - NOT the
+  release event alone: releases created by CI's own GITHUB_TOKEN never fire events for other
+  workflows (GitHub anti-recursion), so a release-event-only trigger left the index stale until a
+  manual dispatch (found 2026-07-09). The release trigger stays but only fires for user-token
+  release actions. **Channels: the build appends `CurrentVersion(Code)` of the LATEST STABLE to
+  the app metadata**, so the index SUGGESTS the stable - default F-Droid users update weekly on
+  stables, and the newer nightly in the same index is "unstable", offered only to users who
+  enable unstable/beta updates for Vela in their client (before the pin, clients offered the
+  highest version = everyone was silently on nightlies). GitHub/Obtainium stays the native
+  nightly channel. GOTCHA: never re-run only a FAILED deploy job on this workflow - the Pages
+  artifact belongs to the original attempt and a deploy-only rerun 404s it; dispatch a fresh
+  run instead.
   The index-signing keystore is `~/.vela-signing/fdroid.p12` (secrets `FDROID_KEYSTORE_BASE64` /
   `FDROID_KEYSTORE_PASS`; password + fingerprint in `~/.vela-signing/fdroid.env` - back both up).
   This is NOT the official f-droid.org catalog (their from-source build can't take the bundled
