@@ -44,6 +44,20 @@ panel (alternates, depart-time, search-along-route); turn-by-turn navigation wit
 the maneuver banner + speedometer; and the in-app **light/dark** themes (decoupled
 from the OS).*
 
+## Everyday features in ten seconds
+
+- **Save your parking**: tap the **P** button on the map when you park. Tap the teal
+  pin later for walking directions back, or the pin's Clear button when you leave.
+  Long-press **P** for your parking history in case you overwrote a spot by mistake.
+- **Lists**: the bookmark button next to the category chips opens **Your lists**.
+  Create one there, or add any place from its page (⋮ → Save to list), with a note
+  per place. Lists back up to a file from Settings.
+- **Import a Google Maps list**: paste a `maps.app.goo.gl` share link into the
+  search bar. The list's places show up as results with the owner's notes; tap
+  **Save list** to keep a local copy.
+- **Nightly builds**: Settings → Version → "Include nightly builds" updates you to
+  the newest build instead of weekly stable.
+
 ## Why a degoogled app uses Google
 
 A phone without Google Play Services cannot run Google Maps, and the open map
@@ -136,8 +150,10 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 | **Android Auto (full nav)** | Navigation-category CarAppService with car-side search, route preview with live-traffic alternates, and active turn-by-turn (turn card, "then" step, lane diagram, cluster support). The map renders through MapLibre's MapSnapshotter with route map-matching and smoothed puck motion. Sideloads show up with AA's "Unknown sources" on | `app/car/` (`VelaCarAppService.kt`, `CarMapRenderer.kt`, `screen/`) |
 | **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor - never GMS/Fused | `core/location/` |
 | **D-pad-only operation** | The whole UI works with a 5-key D-pad, no touchscreen (touch is a bonus): key-drivable map (arrows pan, OK-at-crosshair taps, hold-OK drops a pin, on-screen zoom buttons), focus rings, key alternatives for every gesture | [`docs/dpad.md`](docs/dpad.md), `app/ui/DpadFocus.kt`, `app/ui/map/MapDpadController.kt` |
+| **Lists & Google Maps list import** | Local place lists (icon + colour, notes per place, export/import to a file); pasting a Google Maps share link previews the list's places with a one-tap Save | `core/data/PlaceListStore.kt`, `core/data/google/parse/EntityListParser.kt` |
+| **Parking spot memory** | One tap on the P button saves where you parked (teal pin, walking directions back); long-press for the history so an accidental overwrite never loses the car | `core/data/ParkingStore.kt` |
 | **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
-| **Distribution** | Push to `main` → signed nightly prerelease; weekly promote to stable (same APK); Obtainium tracks stable by default, nightlies via the prerelease toggle | `.github/workflows/ci.yml` + `promote-stable.yml` |
+| **Distribution** | Push to `main` → signed nightly prerelease; weekly promote to stable (same APK); Obtainium tracks stable by default, nightlies via the prerelease toggle; a self-hosted F-Droid repo serves both channels ([FDROID.md](FDROID.md)) | `.github/workflows/ci.yml` + `promote-stable.yml` + `fdroid-repo.yml` |
 
 ## Docs - where to look
 
