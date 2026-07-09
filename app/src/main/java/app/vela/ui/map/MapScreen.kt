@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -60,7 +61,17 @@ import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.LocalGroceryStore
 import androidx.compose.material.icons.filled.LocalPharmacy
 import androidx.compose.material.icons.filled.AddLocationAlt
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Flag
+import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.Restaurant
@@ -734,6 +745,14 @@ fun MapScreen(
                             onCancelAssign = vm::cancelAssign,
                             onPinSavedAs = vm::pinSavedAs,
                             onRemoveSaved = vm::removeSaved,
+                            lists = state.lists,
+                            onOpenList = {
+                                focusManager.clearFocus()
+                                vm.openList(it)
+                            },
+                            onCreateList = { name -> vm.createList(name) },
+                            onUpdateList = vm::updateList,
+                            onDeleteList = vm::deleteList,
                         )
 
                         // Results now live in a BOTTOM sheet (rendered with the other bottom
@@ -1048,6 +1067,11 @@ fun MapScreen(
                     vm.clearSelection()
                     Toast.makeText(context, context.getString(R.string.map_parking_cleared), Toast.LENGTH_SHORT).show()
                 },
+                lists = state.lists,
+                onAddToList = { listId -> vm.addPlaceToList(listId, state.selected!!) },
+                onRemoveFromList = { listId -> vm.removePlaceFromList(listId, state.selected!!.id) },
+                onCreateListWith = { name -> val id = vm.createList(name); vm.addPlaceToList(id, state.selected!!) },
+                onSetNote = { note -> vm.setPlaceNote(state.selected!!.id, note) },
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
@@ -1154,37 +1178,63 @@ fun MapScreen(
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
             }
-            // Parking button, its OWN control above the locate FAB (a long-press was tried and
-            // reverted: undiscoverable + a Compose gesture minefield). No spot set → tap saves
-            // one here; spot set (teal) → tap opens the parked-car sheet, where Clear lives.
+            // Parking button, its OWN control above the locate FAB. TAP: no spot → save here;
+            // spot set (teal) → open the parked-car sheet (Clear lives there). LONG-PRESS opens
+            // the history menu — accidental-overwrite insurance. A Surface, not SmallFAB: the
+            // FAB's clickable eats the down so an outer long-press never fires; the inner Box
+            // detector owns both gestures (same seam the locate FAB needed, 2026-07-08).
             val parkingSavedMsg = stringResource(R.string.map_parking_saved)
             val parkingNoFixMsg = stringResource(R.string.map_parking_no_fix)
             val parkedCarLabel = stringResource(R.string.map_parked_car)
             val parkingSet = state.parkingSpot != null
-            SmallFloatingActionButton(
-                onClick = {
-                    if (parkingSet) {
-                        vm.showParkedCar(parkedCarLabel)
-                    } else {
-                        val msg = if (vm.saveParkingSpot()) parkingSavedMsg else parkingNoFixMsg
-                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                    }
-                },
-                containerColor = if (parkingSet) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary
-                else MaterialTheme.colorScheme.onSecondaryContainer,
+            var showParkingHistory by remember { mutableStateOf(false) }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (parkingSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                shadowElevation = 6.dp,
                 modifier = Modifier
-                    .dpadHighlight(RoundedCornerShape(12.dp))
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(end = 24.dp, bottom = chromeLift + 92.dp),
+                    .padding(end = 24.dp, bottom = chromeLift + 92.dp)
+                    .dpadHighlight(RoundedCornerShape(12.dp)),
             ) {
-                Icon(
-                    Icons.Default.LocalParking,
-                    contentDescription = stringResource(
-                        if (parkingSet) R.string.map_parked_car else R.string.map_parking_save,
-                    ),
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .pointerInput(parkingSet, state.parkingHistory.size) {
+                            detectTapGestures(
+                                onTap = {
+                                    if (parkingSet) {
+                                        vm.showParkedCar(parkedCarLabel)
+                                    } else {
+                                        val msg = if (vm.saveParkingSpot()) parkingSavedMsg else parkingNoFixMsg
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                onLongPress = {
+                                    if (state.parkingHistory.isNotEmpty()) showParkingHistory = true
+                                },
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.LocalParking,
+                        contentDescription = stringResource(
+                            if (parkingSet) R.string.map_parked_car else R.string.map_parking_save,
+                        ),
+                    )
+                }
+            }
+            if (showParkingHistory) {
+                ParkingHistorySheet(
+                    history = state.parkingHistory,
+                    currentAtMillis = state.parkedAtMillis,
+                    onRestore = { vm.restoreParkingFromHistory(it); showParkingHistory = false },
+                    onDelete = { vm.deleteParkingHistoryEntry(it) },
+                    onClearAll = { vm.clearParkingHistory(); showParkingHistory = false },
+                    onDismiss = { showParkingHistory = false },
                 )
             }
             // (The live-traffic overlay toggle moved to Settings → Map — it's a
@@ -1777,6 +1827,11 @@ private fun SearchEntryContent(
     onCancelAssign: () -> Unit,
     onPinSavedAs: (SavedPlace, ShortcutKind) -> Unit,
     onRemoveSaved: (SavedPlace) -> Unit,
+    lists: List<app.vela.core.model.PlaceList> = emptyList(),
+    onOpenList: (String) -> Unit = {},
+    onCreateList: (String) -> String = { "" },
+    onUpdateList: (app.vela.core.model.PlaceList) -> Unit = {},
+    onDeleteList: (String) -> Unit = {},
 ) {
     // While typing, live place suggestions take over the page (Google-style);
     // with an empty box it's the Home/Work + saved + recents shortlist.
@@ -1834,6 +1889,67 @@ private fun SearchEntryContent(
         Divider()
         ShortcutRow(ShortcutKind.WORK, work, onPickShortcut, onAssignShortcut, onClearShortcut)
         Divider()
+        // Your lists (issue #1): each opens as results; the pencil edits name/icon/colour.
+        run {
+            var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
+            var creating by remember { mutableStateOf(false) }
+            Row(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 10.dp, bottom = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.mapscreen_section_lists),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { creating = true }) {
+                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(4.dp))
+                    Text(stringResource(R.string.mapscreen_new_list))
+                }
+            }
+            lists.forEach { list ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { onOpenList(list.id) }.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        listIcon(list.icon),
+                        contentDescription = null,
+                        tint = Color(list.color),
+                        modifier = Modifier.size(22.dp),
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Text(list.name, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+                    Text(
+                        "${list.places.size}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    IconButton(onClick = { editing = list }) {
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.list_edit), tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    }
+                }
+                Divider()
+            }
+            if (creating) {
+                ListEditorDialog(
+                    initial = null,
+                    onSave = { name, icon, color -> onCreateList(name); creating = false },
+                    onDelete = null,
+                    onDismiss = { creating = false },
+                )
+            }
+            editing?.let { list ->
+                ListEditorDialog(
+                    initial = list,
+                    onSave = { name, icon, color -> onUpdateList(list.copy(name = name, icon = icon, color = color)); editing = null },
+                    onDelete = { onDeleteList(list.id); editing = null },
+                    onDismiss = { editing = null },
+                )
+            }
+        }
         if (saved.isNotEmpty()) {
             SectionLabel(stringResource(R.string.mapscreen_section_saved))
             saved.forEach { sp ->
@@ -2267,6 +2383,188 @@ private fun FasterRouteCard(
  * in metric. The number turns red when the current GPS speed exceeds the limit by a tolerance (GPS
  * speed is noisy, so a plain > would flap). [limitKmh] is the OSM/GraphHopper value in km/h.
  */
+/** Parking history menu (long-press the P button). Restore an older spot after an accidental
+ *  overwrite; delete stale entries. Newest first; the one matching the current spot is tagged. */
+@Composable
+private fun ParkingHistorySheet(
+    history: List<app.vela.core.model.ParkedSpot>,
+    currentAtMillis: Long,
+    onRestore: (app.vela.core.model.ParkedSpot) -> Unit,
+    onDelete: (app.vela.core.model.ParkedSpot) -> Unit,
+    onClearAll: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val dark = isAppInDarkTheme()
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.parking_history_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    TextButton(onClick = onClearAll) { Text(stringResource(R.string.parking_history_clear_all)) }
+                }
+                LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                    items(history, key = { it.savedAtMillis }) { entry ->
+                        val isCurrent = entry.savedAtMillis == currentAtMillis
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onRestore(entry) }
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.LocalParking,
+                                contentDescription = null,
+                                tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                // DateUtils = localized relative age ("5 min ago" / "2 hours ago"),
+                                // no hand-rolled English.
+                                Text(
+                                    android.text.format.DateUtils.getRelativeTimeSpanString(
+                                        entry.savedAtMillis, System.currentTimeMillis(),
+                                        android.text.format.DateUtils.MINUTE_IN_MILLIS,
+                                    ).toString(),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                )
+                                Text(
+                                    java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                                        .format(java.util.Date(entry.savedAtMillis)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (isCurrent) {
+                                Text(
+                                    stringResource(R.string.parking_history_current),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else {
+                                IconButton(onClick = { onDelete(entry) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// The list icon set (keys stored in PlaceList.icon). Small, recognisable, Google-list-like.
+private val LIST_ICONS: List<Pair<String, androidx.compose.ui.graphics.vector.ImageVector>> = listOf(
+    "bookmark" to Icons.Default.Bookmark,
+    "star" to Icons.Default.Star,
+    "favorite" to Icons.Default.Favorite,
+    "flag" to Icons.Default.Flag,
+    "place" to Icons.Default.Place,
+    "restaurant" to Icons.Default.Restaurant,
+    "car" to Icons.Default.DirectionsCar,
+    "home" to Icons.Default.Home,
+    "work" to Icons.Default.Work,
+    "shopping" to Icons.Default.ShoppingCart,
+)
+private val LIST_COLORS: List<Long> = listOf(
+    0xFF1A73E8, 0xFF00897B, 0xFFE8710A, 0xFFD93025, 0xFF9334E6, 0xFF1E8E3E, 0xFFF9AB00, 0xFF5F6368,
+)
+
+private fun listIcon(key: String): androidx.compose.ui.graphics.vector.ImageVector =
+    LIST_ICONS.firstOrNull { it.first == key }?.second ?: Icons.Default.Bookmark
+
+/** Create / edit a place-list: name, icon and colour; Delete when editing. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@Composable
+private fun ListEditorDialog(
+    initial: app.vela.core.model.PlaceList?,
+    onSave: (name: String, icon: String, color: Long) -> Unit,
+    onDelete: (() -> Unit)?,
+    onDismiss: () -> Unit,
+) {
+    var name by remember { mutableStateOf(initial?.name ?: "") }
+    var icon by remember { mutableStateOf(initial?.icon ?: "bookmark") }
+    var color by remember { mutableStateOf(initial?.color ?: LIST_COLORS.first()) }
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(20.dp).widthIn(max = 420.dp)) {
+                Text(
+                    stringResource(if (initial == null) R.string.list_new_title else R.string.list_edit_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text(stringResource(R.string.list_name_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.list_icon_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LIST_ICONS.forEach { (key, vec) ->
+                        val sel = key == icon
+                        Surface(
+                            shape = CircleShape,
+                            color = if (sel) Color(color).copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant,
+                            border = if (sel) BorderStroke(2.dp, Color(color)) else null,
+                            modifier = Modifier.size(44.dp).clickable { icon = key },
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(vec, contentDescription = key, tint = Color(color), modifier = Modifier.size(22.dp))
+                            }
+                        }
+                    }
+                }
+                Spacer(Modifier.height(16.dp))
+                Text(stringResource(R.string.list_color_label), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Spacer(Modifier.height(6.dp))
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LIST_COLORS.forEach { c ->
+                        val sel = c == color
+                        Box(
+                            Modifier
+                                .size(34.dp)
+                                .clip(CircleShape)
+                                .background(Color(c))
+                                .then(if (sel) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape) else Modifier)
+                                .clickable { color = c },
+                        )
+                    }
+                }
+                Spacer(Modifier.height(20.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (onDelete != null) {
+                        TextButton(onClick = onDelete) {
+                            Text(stringResource(R.string.list_delete), color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.list_cancel)) }
+                    Spacer(Modifier.width(4.dp))
+                    Button(onClick = { if (name.isNotBlank()) onSave(name.trim(), icon, color) }, enabled = name.isNotBlank()) {
+                        Text(stringResource(R.string.list_save))
+                    }
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun SpeedLimitSign(
     limitKmh: Double,

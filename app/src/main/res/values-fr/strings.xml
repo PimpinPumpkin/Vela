@@ -446,4 +446,25 @@
     <string name="map_parking_save">Enregistrer la place de parking</string>
     <string name="map_import_failed">Impossible d\'importer cette liste. Vérifiez le lien et réessayez.</string>
     <string name="place_clear_parking">Effacer le parking</string>
+    <string name="parking_history_title">Historique de stationnement</string>
+    <string name="parking_history_clear_all">Tout effacer</string>
+    <string name="parking_history_current">Actuel</string>
+    <string name="parking_history_delete">Supprimer</string>
+    <string name="parking_history_restore">Restaurer</string>
+    <string name="settings_parking_history">Historique de stationnement</string>
+    <string name="settings_parking_history_hint">Places de parking récentes. Touchez Restaurer si vous avez écrasé votre place par erreur.</string>
+    <string name="mapscreen_section_lists">Vos listes</string>
+    <string name="mapscreen_new_list">Nouvelle</string>
+    <string name="list_edit">Modifier la liste</string>
+    <string name="list_new_title">Nouvelle liste</string>
+    <string name="list_edit_title">Modifier la liste</string>
+    <string name="list_name_label">Nom de la liste</string>
+    <string name="list_icon_label">Icône</string>
+    <string name="list_color_label">Couleur</string>
+    <string name="list_delete">Supprimer</string>
+    <string name="list_cancel">Annuler</string>
+    <string name="list_save">Enregistrer</string>
+    <string name="place_save_to_list">Enregistrer dans une liste</string>
+    <string name="place_edit_note">Modifier la note</string>
+    <string name="place_note_label">Note</string>
 </resources>

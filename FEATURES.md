@@ -170,6 +170,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking pill. The camera frames the spot when opened from afar. All strings in 11 locales.
   *(v1 was a long-press on the locate FAB + a chip - reverted: undiscoverable, and Compose's
   FloatingActionButton consumes the down so outer long-press detectors never fire.)*
+- ✅ **Local place lists (issue #1, 2026-07-08, device-verified).** Google-Maps-style saved lists:
+  a **Your lists** section on the search page, each list a coloured icon + name + count that opens as
+  results. Create/edit via a dialog with a **name, a 10-icon picker and an 8-colour picker** (the
+  "custom icons" the requester asked for). Any place's ⋮ menu has **Save to list** (a checkbox chooser,
+  create-new inline, live count) and **Edit note** once it's in a list; the note shows on the sheet as
+  an italic quote. Persisted in `vela_lists` (PlaceListStore). Imported Google lists land here too, so
+  they stick. Remaining: reorder, share-out, a dedicated full-screen list view.
+- ✅ **Parking history (2026-07-08, device-verified).** Every "save parking" is kept in a capped,
+  newest-first history so an accidental overwrite is recoverable: **long-press the P button** for a
+  restore menu, or **Settings → Parking history** to restore/delete individual spots. Clearing the
+  current spot never wipes the history.
 - ✅ **Import a Google Maps shared list (2026-07-08, first cut, device-verified).** Paste a
   maps.app.goo.gl share link into the search bar and the list's places land as results - the
   list title fills the bar, the map frames the pins, and each place opens/saves like any search

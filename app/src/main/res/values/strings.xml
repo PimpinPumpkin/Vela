@@ -469,4 +469,25 @@
     <string name="map_parking_save">Save parking spot</string>
     <string name="map_import_failed">Couldn\'t import that list. Check the link and try again.</string>
     <string name="place_clear_parking">Clear parking</string>
+    <string name="parking_history_title">Parking history</string>
+    <string name="parking_history_clear_all">Clear all</string>
+    <string name="parking_history_current">Current</string>
+    <string name="parking_history_delete">Delete</string>
+    <string name="parking_history_restore">Restore</string>
+    <string name="settings_parking_history">Parking history</string>
+    <string name="settings_parking_history_hint">Recent parking spots. Tap Restore if you overwrote your spot by mistake.</string>
+    <string name="mapscreen_section_lists">Your lists</string>
+    <string name="mapscreen_new_list">New</string>
+    <string name="list_edit">Edit list</string>
+    <string name="list_new_title">New list</string>
+    <string name="list_edit_title">Edit list</string>
+    <string name="list_name_label">List name</string>
+    <string name="list_icon_label">Icon</string>
+    <string name="list_color_label">Colour</string>
+    <string name="list_delete">Delete</string>
+    <string name="list_cancel">Cancel</string>
+    <string name="list_save">Save</string>
+    <string name="place_save_to_list">Save to list</string>
+    <string name="place_edit_note">Edit note</string>
+    <string name="place_note_label">Note</string>
 </resources>

@@ -446,4 +446,25 @@
     <string name="map_parking_save">Зберегти місце паркування</string>
     <string name="map_import_failed">Не вдалося імпортувати список. Перевірте посилання та спробуйте ще раз.</string>
     <string name="place_clear_parking">Видалити паркування</string>
+    <string name="parking_history_title">Історія паркування</string>
+    <string name="parking_history_clear_all">Очистити все</string>
+    <string name="parking_history_current">Поточне</string>
+    <string name="parking_history_delete">Видалити</string>
+    <string name="parking_history_restore">Відновити</string>
+    <string name="settings_parking_history">Історія паркування</string>
+    <string name="settings_parking_history_hint">Нещодавні місця паркування. Торкніться «Відновити», якщо випадково перезаписали своє місце.</string>
+    <string name="mapscreen_section_lists">Ваші списки</string>
+    <string name="mapscreen_new_list">Новий</string>
+    <string name="list_edit">Редагувати список</string>
+    <string name="list_new_title">Новий список</string>
+    <string name="list_edit_title">Редагувати список</string>
+    <string name="list_name_label">Назва списку</string>
+    <string name="list_icon_label">Значок</string>
+    <string name="list_color_label">Колір</string>
+    <string name="list_delete">Видалити</string>
+    <string name="list_cancel">Скасувати</string>
+    <string name="list_save">Зберегти</string>
+    <string name="place_save_to_list">Зберегти в список</string>
+    <string name="place_edit_note">Редагувати нотатку</string>
+    <string name="place_note_label">Нотатка</string>
 </resources>
