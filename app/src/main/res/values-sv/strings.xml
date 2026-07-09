@@ -467,4 +467,6 @@
     <string name="place_save_to_list">Spara i lista</string>
     <string name="place_edit_note">Redigera anteckning</string>
     <string name="place_note_label">Anteckning</string>
+    <string name="map_save_list">Spara lista · %1$d platser</string>
+    <string name="map_list_saved">”%1$s” sparad i dina listor</string>
 </resources>
