@@ -128,6 +128,10 @@ data class Calibration(
             "status118" to listOf(1, 118, 0, 3, 1, 4, 0),
             "hours203" to listOf(1, 203, 0),
             "hours118" to listOf(1, 118, 0, 3, 0),
+            // The whole [118] list: named in-store departments ("Safeway Pharmacy", "Delivery"),
+            // one entry each — name@[0], weekly hours@[3][0] (readHours shape), status@[3][1][4][0].
+            // status118/hours118 above read its FIRST entry; kept for older remote bundles.
+            "departments" to listOf(1, 118),
             // Permanently-closed flag: place node `[23]` == 1 (null on an open place).
             // It's how Google marks dead POIs that carry no open/closed status text,
             // and — unlike popular times — it survives the keyless degraded response.

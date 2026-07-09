@@ -760,6 +760,13 @@ fun PlaceSheet(
             } else if (place.category != null && !place.permanentlyClosed) {
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
+            // In-store departments (pharmacy / fuel / liquor / delivery windows), each with its
+            // own status + expandable weekly hours — Google shows these and the schedules genuinely
+            // differ (a store open to 1 AM whose pharmacy closes at 9 PM). Suppressed with the main
+            // hours when the place is closed for good.
+            if (place.departments.isNotEmpty() && !place.permanentlyClosed && !place.temporarilyClosed) {
+                DepartmentsSection(place.departments, ink, dim)
+            }
 
             // Phone + website as their own tappable rows showing the actual number / domain — placed
             // BELOW the hours (Google's order), well clear of the Directions button up top. The pills
@@ -2576,6 +2583,99 @@ private fun upcomingHoliday(hours: List<String>, today: java.time.LocalDate): Ho
         }
         HolidayHours(label, whenLabel, hrs, daysAway)
     }.minByOrNull { it.daysAway }
+}
+
+/** In-store departments (pharmacy, fuel, liquor, delivery windows): one collapsible row per
+ *  department — name + its own colored status collapsed, its weekly table expanded. Same
+ *  interaction/shape as [HoursSection] so the block reads as part of the hours area. */
+@Composable
+private fun DepartmentsSection(departments: List<app.vela.core.model.Department>, ink: Color, dim: Color) {
+    Column(Modifier.padding(top = 6.dp)) {
+        Text(
+            stringResource(R.string.place_departments),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            color = dim,
+            modifier = Modifier.padding(start = 26.dp, top = 4.dp),
+        )
+        departments.forEach { dep ->
+            var expanded by remember(dep.name) { mutableStateOf(false) }
+            val days = remember(dep.hours) {
+                dep.hours.map {
+                    val i = it.indexOf(": ")
+                    if (i < 0) listOf(it, "") else listOf(it.substring(0, i), it.substring(i + 2))
+                }
+            }
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .dpadHighlight(RoundedCornerShape(8.dp))
+                    .clickable(enabled = days.isNotEmpty()) { expanded = !expanded }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Spacer(Modifier.width(26.dp))
+                Text(
+                    dep.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = ink,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                Spacer(Modifier.weight(1f))
+                if (!expanded) {
+                    dep.statusText?.let { status ->
+                        // Same treatment as the headline status: the Open/Closed word colored,
+                        // the time detail in the muted ink.
+                        val parts = status.split(Regex("\\s*[·⋅]\\s*"), limit = 2)
+                        Text(
+                            buildAnnotatedString {
+                                withStyle(SpanStyle(color = placeStatusColor(status, dep.openNow), fontWeight = FontWeight.Medium)) {
+                                    append(parts[0])
+                                }
+                                if (parts.size > 1) withStyle(SpanStyle(color = dim)) { append(" · ${parts[1]}") }
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 190.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                    }
+                }
+                if (days.isNotEmpty()) {
+                    Icon(
+                        if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expanded) stringResource(R.string.place_collapse_hours) else stringResource(R.string.place_expand_hours),
+                        tint = dim,
+                    )
+                }
+            }
+            AnimatedVisibility(expanded) {
+                Column(Modifier.padding(start = 40.dp, top = 2.dp, bottom = 2.dp)) {
+                    days.forEachIndexed { i, dt ->
+                        Row(Modifier.fillMaxWidth().padding(vertical = 3.dp)) {
+                            Text(
+                                dt[0],
+                                modifier = Modifier.weight(1f),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (i == 0) ink else dim,
+                                fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Normal,
+                            )
+                            Text(
+                                dt[1],
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (i == 0) ink else dim,
+                                fontWeight = if (i == 0) FontWeight.Bold else FontWeight.Normal,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable

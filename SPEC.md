@@ -119,7 +119,13 @@ open-status `[1][203][1][8][0]` · rich status `[1][203][1][4][0]` · **feature 
 `[1][142][1][0][1][0][0]` · About sections `[1][100][1]` (title `[s][1]`, items
 `[s][2][j][1]`) · **editorial one-liner** `[1][32][1][1]` · **owner "From the owner"
 blurb** `[1][154][0][0]` · weekly hours `[1][203][0]` (fallback `[1][118][0][3][0]`; 7
-entries from today, name `[0]` + text `[3][0][0]`). A **far/specific address** is a
+entries from today, name `[0]` + text `[3][0][0]`) · **in-store departments** `[1][118]`
+(the WHOLE list, path `departments`: each entry a named department "Safeway Pharmacy" /
+"Delivery" - name `[0]`, weekly hours `[3][0]` in the readHours shape, status
+`[3][1][4][0]`; `[203]` is the MAIN store's schedule, so status/hours always pair from
+the same block - taking status from `[118]` and hours from `[203]` was the
+"closes soon at 10 PM over a 5 AM–1 AM table" bug, live-probed 2026-07-08). A
+**far/specific address** is a
 single geocoded result at `[0][1][0][14]` (same schema), not a `[64]` list. **"People
 also search for"** is a sibling of a focused result at `root[2][11][0]` (path `similar`),
 each entry `[featureId, name, [[_,_,lat,lng], …, rating@6]]` - `SearchParser.parseSimilarPlaces`

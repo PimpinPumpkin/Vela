@@ -243,6 +243,7 @@
     <string name="place_popular_times">Години відвідуваності</string>
     <string name="place_busyness_right_now">%1$s зараз</string>
     <string name="place_hours">Години роботи</string>
+    <string name="place_departments">Відділи</string>
     <string name="place_collapse_hours">Згорнути години</string>
     <string name="place_expand_hours">Розгорнути години</string>
     <string name="mapscreen_recenter">Центрувати</string>

@@ -243,6 +243,7 @@
     <string name="place_popular_times">Orari di affluenza</string>
     <string name="place_busyness_right_now">%1$s in questo momento</string>
     <string name="place_hours">Orari</string>
+    <string name="place_departments">Reparti</string>
     <string name="place_collapse_hours">Comprimi orari</string>
     <string name="place_expand_hours">Espandi orari</string>
     <string name="mapscreen_recenter">Ricentra</string>
