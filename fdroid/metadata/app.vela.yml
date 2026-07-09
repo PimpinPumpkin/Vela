@@ -1,0 +1,30 @@
+Categories:
+  - Navigation
+License: GPL-3.0-only
+AuthorName: PimpinPumpkin
+SourceCode: https://github.com/PimpinPumpkin/Vela
+IssueTracker: https://github.com/PimpinPumpkin/Vela/issues
+Changelog: https://github.com/PimpinPumpkin/Vela/releases
+
+Name: Vela Maps
+Summary: Google Maps data without Google's apps or tracking
+Description: |-
+  Vela is a degoogled maps app in the NewPipe spirit: open vector tiles for the
+  basemap, and your device talks to Google's public web endpoints directly for
+  places, hours, reviews, photos, transit and live traffic. No Google account,
+  no Play Services, no API key, no backend server.
+
+  Features:
+
+  * Search, place pages with hours, reviews, photos, popular times and Q&A
+  * Turn-by-turn navigation with spoken directions (neural on-device voices)
+  * Live traffic ETAs and traffic-aware routing
+  * Public transit directions with step-by-step guidance
+  * Full offline mode: map areas, routing regions and statewide place packs
+  * Saved places, lists (with Google Maps list import), parking spot memory
+  * Android Auto, D-pad and keypad-phone support, 11 languages
+
+  Works on GrapheneOS and any ROM without Google services.
+
+AutoUpdateMode: None
+UpdateCheckMode: None
