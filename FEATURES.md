@@ -175,8 +175,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   results. Create/edit via a dialog with a **name, a 10-icon picker and an 8-colour picker** (the
   "custom icons" the requester asked for). Any place's ⋮ menu has **Save to list** (a checkbox chooser,
   create-new inline, live count) and **Edit note** once it's in a list; the note shows on the sheet as
-  an italic quote. Persisted in `vela_lists` (PlaceListStore). Imported Google lists land here too, so
-  they stick. Remaining: reorder, share-out, a dedicated full-screen list view.
+  an italic quote. Persisted in `vela_lists` (PlaceListStore). A pasted Google Maps share link
+  previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
+  (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
+  full-screen list view.
 - ✅ **Parking history (2026-07-08, device-verified).** Every "save parking" is kept in a capped,
   newest-first history so an accidental overwrite is recoverable: **long-press the P button** for a
   restore menu, or **Settings → Parking history** to restore/delete individual spots. Clearing the
