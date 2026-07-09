@@ -129,21 +129,24 @@ genuinely needs no doc edit, say why in the commit.
 - The one seam is `core/data/MapDataSource`. `MockMapDataSource` is the default
   and keeps the entire app usable offline; `google/GoogleMapsDataSource` is the
   real scraper.
-- **Android Auto (`app/car/`, first cut 2026-07-08).** `VelaCarAppService` is a
-  NAVIGATION-category templated `CarAppService` (manifest service + `xml/automotive_app_desc.xml`
-  + the two `androidx.car.app.*` permissions + application-level `minCarApiLevel=1`); a sideload
-  appears in the car launcher only with AA developer "Unknown sources" on, hence
-  `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`. `CarMapScreen` is the whole car UI:
-  NavigationTemplate (Re-center / + / − action strip; RoutingInfo card with
-  `NavSession.state.maneuverText` + distance while navigating) over a map surface. **The
-  MapLibre-on-car trick: SurfaceCallback surface → `DisplayManager.createVirtualDisplay` →
-  `Presentation` → plain `MapView`** (MapLibre can't draw to a raw surface). It reuses
-  `applyDark`/`applyLight` from VelaMapView (made `internal` for this) keyed to
-  `carContext.isDarkMode`, has its OWN AOSP LocationManager listener for the puck (works with the
-  phone UI closed), and draws the route from `NavSession.state.route.polyline`. Pan/zoom arrive as
-  `onScroll`/`onScale` and move the camera by hand (projection math — `MapLibreMap.scrollBy` isn't
-  a thing in 11.x). The PHONE runs nav (MapViewModel feeds NavSession) and speaks; the car is a
-  display. Car-side search/route-start is a follow-up. Untested on a real head unit yet.
+- **Android Auto (`app/car/`).** `VelaCarAppService` is a NAVIGATION-category templated
+  `CarAppService` (manifest service + `xml/automotive_app_desc.xml` `<uses name="template"/>` + the
+  `androidx.car.app.*` permissions + `minCarApiLevel=1`); a sideload appears in the car launcher only
+  with AA developer "Unknown sources" on, hence `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`.
+  **Full car-side nav** via a `screen/` package: `MainCarScreen` (Home/Work/recent/saved,
+  `PlaceListNavigationTemplate`) → `SearchCarScreen` (`SearchTemplate`) → `RoutePreviewCarScreen`
+  (`RoutePreviewNavigationTemplate`, alternates) → `ActiveNavCarScreen` (`NavigationTemplate`).
+  `VelaCarSession` owns its OWN AOSP LocationManager feed into the shared `NavSession` (nav runs with
+  the phone UI closed) and handles `action.NAVIGATE` geo intents (assistant "navigate to X").
+  **Map rendering = `CarMapRenderer`** (MapLibre's public `MapSnapshotter` → Bitmap → the car surface;
+  NOT the old VirtualDisplay+Presentation path). It snaps the puck to the route (map-matching), gates
+  the location feed to GPS-only (drops coarse network/fused fixes that jumped the puck), and eases the
+  puck/heading between the ~1 Hz fixes so the map glides rather than lurches.
+  **Turn card requirements (per the Android for Cars docs):** `ActiveNavCarScreen` calls
+  `NavigationManager.navigationStarted()` AND `updateTrip()` — both are needed for the RoutingInfo turn
+  card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
+  Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO` (AAOS car speed).
+  The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
 - **Settings ORDER is deliberate (reorg 2026-07-08):** Appearance → Map (traffic/transit/3D) →
   **Place pages** (ShowReviews / read-all-reviews / LoadPhotos) → Navigation (keep-screen-on,
   traffic lights, vibrate-on-turns as FilterChips one per mode, demo LAST) → Voice → Offline →
