@@ -179,6 +179,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
+- ✅ **List notes stick to chain stores + show in the list (2026-07-09, device-verified).** Notes on a
+  chain place (a Safeway with several co-located Google listings) silently vanished: list membership
+  was keyed on a volatile internal id that could point at a different listing next visit, so the note
+  wrote to nothing. Membership, notes, add/remove and the "Saved" affordances now match on the STABLE
+  Google feature id first (the volatile id stays as fallback for places without one), and a saved
+  place opened from the map or search carries its list note onto the sheet. An open list also shows
+  each place's note under its row (italic quote) and leads the results sheet with the LIST'S NAME
+  ("Sightseeing · 8"), not a bare results count.
 - ✅ **Nav notification v2 (2026-07-09, device-verified).** The ongoing notification now shows a
   large maneuver ARROW (white on teal, drawn per turn type incl. U-turn/merge/fork/roundabout/
   arrival flag), the turn instruction with distance, and "N min - X mi - Arrive HH:MM". Teal
