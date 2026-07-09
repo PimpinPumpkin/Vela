@@ -75,7 +75,7 @@ public class GraphBuilder {
 
         // sanity: the built CH graph must route quickly (coords default to a a mid-size trip; override
         // with args[2..5] = fromLat fromLon toLat toLon to smoke a route inside THIS region).
-        double fLat = 38.55, fLon = -121.74, tLat = 38.58, tLon = -121.80;
+        double fLat = 38.55, fLon = -121.74, tLat = 38.58, tLon = -121.49;
         if (args.length >= 6) {
             fLat = Double.parseDouble(args[2]); fLon = Double.parseDouble(args[3]);
             tLat = Double.parseDouble(args[4]); tLon = Double.parseDouble(args[5]);
