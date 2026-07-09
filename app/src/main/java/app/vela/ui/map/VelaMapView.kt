@@ -63,6 +63,7 @@ private const val ROUTE_LAYER = "vela-route"
 // Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
 // so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
 private const val ROUTE_DASH_LAYER = "vela-route-dash"
+private const val ROUTE_DOT_IMG = "vela-route-dot"
 // The AHEAD half of the nav route. During nav the driven/ahead cut is a GEOMETRY split, not a
 // gradient stop: MapLibre rasterizes line-gradient into a 256×1 LINEAR-filtered texture, so a
 // "hard" step() cut renders as a grey→blue fade of routeLength/256 metres (~39 m on a 10 km
@@ -1191,26 +1192,23 @@ private fun ensureLayers(style: Style) {
         val firstLabel = (if (lastBridge >= 0) style.layers.drop(lastBridge + 1) else style.layers)
             .firstOrNull { it is SymbolLayer }?.id
         if (firstLabel != null) style.addLayerBelow(routeLine, firstLabel) else style.addLayer(routeLine)
-        // The dashed foot/bike variant (hidden until a walk/bike route is shown). A ZERO-length
-        // dash + round caps renders a true circular dot (diameter = line width), like Google's
-        // walking dots. Two scaling rules learned the hard way (user report: "fine zoomed in,
-        // crammed zoomed out"): (1) dasharray units are LINE-WIDTHS, so the width must shrink at
-        // low zoom or the dots keep their screen size while the geometry shrinks under them;
-        // (2) MapLibre quantises the dash texture to integer zooms and compresses the pattern up
-        // to ~2x between them, so the gap needs headroom (2.6 widths) or dots touch at z.9.
-        val routeDash = LineLayer(ROUTE_DASH_LAYER, ROUTE_SRC).withProperties(
-            PropertyFactory.lineColor("#1F6FEB"),
-            PropertyFactory.lineWidth(
-                Expression.interpolate(
-                    Expression.exponential(1.5f), Expression.zoom(),
-                    Expression.stop(11f, 3f),
-                    Expression.stop(15f, 6f),
-                    Expression.stop(19f, 9f),
-                ),
-            ),
-            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
-            PropertyFactory.lineDasharray(arrayOf(0f, 2.6f)),
+        // The dotted foot/bike variant (hidden until a walk/bike route is shown). Google-style
+        // CONSTANT-ON-SCREEN dots: a symbol layer placed along the line with a fixed
+        // symbol-spacing, which is in SCREEN pixels and therefore zoom-invariant. A line
+        // dasharray can never do this — its units are line-widths and MapLibre quantises the
+        // dash texture to integer zooms (compressing up to ~2x in between), so dash dots always
+        // cram together zoomed out (user report 2026-07-08). The dot is an SDF template so
+        // iconColor can restyle it like lineColor did.
+        if (style.getImage(ROUTE_DOT_IMG) == null) style.addImage(ROUTE_DOT_IMG, routeDotBitmap(), true)
+        val routeDash = SymbolLayer(ROUTE_DASH_LAYER, ROUTE_SRC).withProperties(
+            PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
+            PropertyFactory.symbolSpacing(13f),
+            PropertyFactory.iconImage(ROUTE_DOT_IMG),
+            PropertyFactory.iconColor("#1F6FEB"),
+            // The dots ARE the route line: they must never be collision-culled or thinned.
+            PropertyFactory.iconAllowOverlap(true),
+            PropertyFactory.iconIgnorePlacement(true),
+            PropertyFactory.iconPadding(0f),
             PropertyFactory.visibility(Property.NONE),
         )
         if (firstLabel != null) style.addLayerBelow(routeDash, firstLabel) else style.addLayer(routeDash)
@@ -1978,7 +1976,7 @@ private fun applyData(
         style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
         style.getLayer(ROUTE_DASH_LAYER)?.setProperties(
             PropertyFactory.visibility(Property.VISIBLE),
-            PropertyFactory.lineColor(routeInt),
+            PropertyFactory.iconColor(routeInt),
         )
     } else if (!navMode) {
         // Driving, not navigating (preview / route picker): the solid traffic-coloured line,
@@ -2174,6 +2172,17 @@ private fun navPuckBitmap(): Bitmap {
 }
 
 /** A Google-style red map pin with a white centre dot, anchored at its bottom tip. */
+/** A solid circle template for the walk/bike route dots (SDF, tinted via iconColor). */
+private fun routeDotBitmap(): Bitmap {
+    // Small dot: line-placed symbols must FIT the line (tight curves skip icons that don't),
+    // so a compact dot keeps the chain continuous through bends.
+    val d = 14
+    val bmp = Bitmap.createBitmap(d, d, Bitmap.Config.ARGB_8888)
+    val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    Canvas(bmp).drawCircle(d / 2f, d / 2f, d / 2f - 1.5f, paint)
+    return bmp
+}
+
 private fun pinBitmap(): Bitmap {
     val w = 60
     val h = 80
