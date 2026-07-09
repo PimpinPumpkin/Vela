@@ -37,8 +37,8 @@ class VelaCarAppService : CarAppService() {
     @Inject lateinit var voiceGuide: VoiceGuide
     @Inject lateinit var routeEngine: RouteEngine
 
-    // Allow ANY Android Auto / AAOS host to connect. Vela is sideloaded (never on Play), targets kosher
-    // feature-phones + AAOS, and must "just work" on whatever head unit / DHU the user plugs into — the
+    // Allow ANY Android Auto / AAOS host to connect. Vela is sideloaded (never on Play) and must
+    // "just work" on whatever head unit / DHU a user plugs into — the
     // standard release allowlist (hosts_allowlist_sample) rejects hosts it doesn't recognise, which
     // manifested as the app appearing but refusing to open. The host-spoofing risk this guards against
     // is negligible for a non-Play, self-distributed nav app. (2026-07-07)

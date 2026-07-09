@@ -169,10 +169,9 @@ class CarMapRenderer(
         strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND
     }
 
-    private fun isNight(): Boolean {
-        val h = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
-        return h < 6 || h >= 19
-    }
+    // The HOST's day/night signal, not a wall-clock guess (a fixed 6/19 split is wrong across
+    // seasons and latitudes; the car host already computes this from location + time).
+    private fun isNight(): Boolean = runCatching { carContext.isDarkMode }.getOrDefault(false)
 
     fun start() {
         collectJob?.cancel()
