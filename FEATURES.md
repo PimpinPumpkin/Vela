@@ -179,6 +179,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
+- ✅ **One chronological Recent list + saved-row contrast fix (2026-07-09, device-verified).**
+  The search page's separate "Recent" (places) and "Recent searches" sections merged into ONE
+  list ordered by when you used them, the way Google mixes them - a pin icon marks a place you
+  opened, a clock marks a query you typed. Both recents stores now stamp entries with a
+  timestamp (new pref keys; the old-format data stays in place so a downgraded build finds it
+  instead of wiping it, and old entries migrate once with synthesized order-preserving stamps).
+  Also fixed: starred places on the search page drew their name in BLACK in dark mode - the
+  page is a plain background Box, not a Surface, so a colourless Text falls back to black; the
+  row now uses the same on-surface colour as every neighbouring row in both themes.
 - ✅ **List notes stick to chain stores + show in the list (2026-07-09, device-verified).** Notes on a
   chain place (a Safeway with several co-located Google listings) silently vanished: list membership
   was keyed on a volatile internal id that could point at a different listing next visit, so the note
