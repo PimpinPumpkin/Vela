@@ -317,6 +317,12 @@ Defaults that make the safe path the easy one:
   (id OR stable Google featureId) is the ONE membership predicate - PlaceListStore add/remove/
   setNote/listsContaining, the sheet's containingLists and MapViewModel's withListNote all use it.
   Never compare bare `it.id == place.id` for list/saved semantics on Google-backed places.
+- **Recents stores are timestamped under NEW pref keys (2026-07-09).** `RecentQuery`/`RecentPlace`
+  carry `at` (epoch ms) so the search page can interleave queries and places chronologically.
+  They persist under `queries2`/`places2`; the legacy `queries`/`places` payloads are READ ONCE
+  for migration (synthesized descending stamps) and then LEFT IN PLACE - a downgraded build
+  reads its old keys untouched instead of hitting a format it can't decode and wiping the data.
+  Follow the same new-key pattern for any future store format change.
 - **Basemap layer gotchas (`VelaMapView.ensureLayers`/`applyLight`/`applyDark`, OpenFreeMap Liberty).**
   (1) **`maxzoom` is EXCLUSIVE** - the bundled `building` FILL layer is `minzoom 13 / maxzoom 14`, so
   `setMinZoom(14f)` alone collapses its range to empty and the flat footprints never paint (you'd see only

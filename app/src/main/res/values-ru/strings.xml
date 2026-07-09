@@ -280,8 +280,7 @@
     <string name="mapscreen_permanently_closed">Закрыто навсегда</string>
     <string name="mapscreen_section_saved">Сохранённые</string>
     <string name="mapscreen_section_recent">Недавние</string>
-    <string name="mapscreen_section_recent_searches">Недавние запросы</string>
-    <string name="mapscreen_clear_recent_searches">Очистить недавние запросы</string>
+    <string name="mapscreen_clear_recents">Очистить недавние</string>
     <string name="mapscreen_search_empty_hint">Ищите места, адреса и категории.</string>
     <string name="mapscreen_set_shortcut_address">Задать адрес: %1$s</string>
     <string name="mapscreen_edit_shortcut">Изменить %1$s</string>

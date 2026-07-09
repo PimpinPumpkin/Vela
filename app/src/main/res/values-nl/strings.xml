@@ -280,8 +280,7 @@
     <string name="mapscreen_permanently_closed">Permanent gesloten</string>
     <string name="mapscreen_section_saved">Opgeslagen</string>
     <string name="mapscreen_section_recent">Recent</string>
-    <string name="mapscreen_section_recent_searches">Recente zoekopdrachten</string>
-    <string name="mapscreen_clear_recent_searches">Recente zoekopdrachten wissen</string>
+    <string name="mapscreen_clear_recents">Recente items wissen</string>
     <string name="mapscreen_search_empty_hint">Zoek naar plaatsen, adressen en categorieën.</string>
     <string name="mapscreen_set_shortcut_address">%1$s-adres instellen</string>
     <string name="mapscreen_edit_shortcut">%1$s bewerken</string>

@@ -298,8 +298,7 @@
     <string name="mapscreen_permanently_closed">Permanently closed</string>
     <string name="mapscreen_section_saved">Saved</string>
     <string name="mapscreen_section_recent">Recent</string>
-    <string name="mapscreen_section_recent_searches">Recent searches</string>
-    <string name="mapscreen_clear_recent_searches">Clear recent searches</string>
+    <string name="mapscreen_clear_recents">Clear recents</string>
     <string name="mapscreen_search_empty_hint">Search for places, addresses and categories.</string>
     <string name="mapscreen_set_shortcut_address">Set %1$s address</string> <!-- format -->
     <string name="mapscreen_edit_shortcut">Edit %1$s</string> <!-- format -->
