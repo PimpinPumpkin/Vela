@@ -118,7 +118,7 @@ fun StopsEditorSheet(
                 Icon(
                     Icons.Default.Place,
                     contentDescription = null,
-                    tint = if (originIsMe) androidx.compose.ui.graphics.Color(0xFF4285F4) else dim,
+                    tint = if (originIsMe) MaterialTheme.colorScheme.primary else dim,
                     modifier = Modifier.size(18.dp),
                 )
                 Spacer(Modifier.width(14.dp))
@@ -211,7 +211,7 @@ fun StopsEditorSheet(
             }
             // Destination — pinned last.
             Row(Modifier.fillMaxWidth().height(ROW_HEIGHT), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.SportsScore, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                Icon(Icons.Default.SportsScore, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(14.dp))
                 Text(
                     destinationName,
