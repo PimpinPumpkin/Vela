@@ -764,6 +764,10 @@ class MapViewModel @Inject constructor(
      * NB called from init{}, which runs BEFORE the later-declared `settingsPrefs` field
      * initializer - resolve the prefs locally or this NPEs on launch (it did). */
     private fun maybeCheckForUpdate() {
+        // The debuggable build (app.vela.debug) must never self-update: it ships the default low
+        // versionCode so every release looks "newer", and the release APK is a different package it
+        // can't update in place. The updater is for release builds only.
+        if (app.vela.BuildConfig.DEBUG) return
         val prefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
         if (!prefs.getBoolean("self_update_check", true)) return
         val now = System.currentTimeMillis()
@@ -779,6 +783,7 @@ class MapViewModel @Inject constructor(
     /** Settings "Check for updates" button - unthrottled, reports back via [onResult]
      * (true = an update was found and the card is up; false = already current / check failed). */
     fun checkForUpdateNow(onResult: (Boolean) -> Unit) {
+        if (app.vela.BuildConfig.DEBUG) { onResult(false); return } // debug build never self-updates (see above)
         viewModelScope.launch {
             val info = selfUpdater.check(app.vela.BuildConfig.VERSION_CODE)
             if (info != null) _state.update { it.copy(updateInfo = info) }
