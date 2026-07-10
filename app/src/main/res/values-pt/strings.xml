@@ -489,6 +489,8 @@
     <string name="voice_capture_done">Concluído</string>
     <string name="mapvm_asr_ready">A voz Vela está pronta</string>
     <string name="mapvm_asr_download_failed">Não foi possível transferir o modelo de voz. Verifica a ligação e tenta novamente.</string>
+    <string name="mapvm_closing_soon">%1$s fecha às %2$s e você chega por volta das %3$s</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s fecha às %2$s, antes de você chegar por volta das %3$s</string> <!-- format -->
     <string name="settings_voice_search_model">Voz Vela</string>
     <string name="settings_voice_search_model_hint">A voz Vela transforma a fala numa pesquisa diretamente no telemóvel: sem outra app e sem enviar nada. Transferência única de %1$d MB.</string>  <!-- format -->
     <string name="settings_voice_search_download">Transferir (%1$d MB)</string>  <!-- format -->
