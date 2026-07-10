@@ -87,6 +87,10 @@ private const val ALT_ROUTE_LAYER = "vela-alt-route"
 private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
+// Collapsed search results: the same source drawn as small red dots UNDER the pins. The pin layer
+// collides (best rank wins the slot); a result whose pin is culled still shows as its dot, which
+// "expands" into the pin as you zoom in - Google's dense-results behaviour.
+private const val MARKERS_DOTS_LAYER = "vela-markers-dots"
 private const val PIN_IMG = "vela-pin"
 // The saved parking spot: one teal "P" pin, tappable (opens the parked-car sheet).
 private const val PARKING_SRC = "vela-parking-src"
@@ -138,7 +142,7 @@ private const val TRAFFIC_TILES =
 
 /** A tappable search-result pin on the map. [prominence] (0 = unknown/low) drives the ambient dot's
  *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
-data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0)
+data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null)
 
 // Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
 // setGeoJson (a full symbol re-tessellation) when they're unchanged. Nulled on style reload (the fresh
@@ -1041,13 +1045,13 @@ fun VelaMapView(
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(map, style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, style, context, darkTheme, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, it, context, darkTheme, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
             }
@@ -1320,23 +1324,33 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
         style.addSource(GeoJsonSource(MARKERS_SRC))
-        // Search results draw as REAL POI icons with their names (the same vela-poi-<group>
-        // images the ambient dots use, sized up so results pop), not anonymous red pins -
-        // "restaurants" reads as a map of named restaurants, Google-style. Icons always show
-        // (results must all be visible at the fitted zoom); labels yield when crowded.
+        // Search results, Google's treatment: every result is a RED marker that keeps its
+        // category glyph (rated food places get the wide rating bubble instead - see PoiIcons),
+        // and the pins COLLIDE by rank instead of stacking - in a dense downtown the best
+        // results keep their pins and the rest collapse to the little red dots below, expanding
+        // back into pins as you zoom in. Labels sit under the pin and yield when crowded.
+        PoiIcons.addResultDot(style)
+        style.addLayer(
+            SymbolLayer(MARKERS_DOTS_LAYER, MARKERS_SRC).withProperties(
+                PropertyFactory.iconImage(PoiIcons.RESULT_DOT_IMG),
+                PropertyFactory.iconAllowOverlap(true),
+                PropertyFactory.iconIgnorePlacement(true),
+            ),
+        )
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
-                PropertyFactory.iconSize(1.3f),
-                PropertyFactory.iconAllowOverlap(true),
-                PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.iconSize(1.15f),
+                PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                PropertyFactory.iconAllowOverlap(false),
+                PropertyFactory.iconIgnorePlacement(false),
+                PropertyFactory.iconPadding(2f),
+                PropertyFactory.symbolSortKey(Expression.get("rank")),
                 PropertyFactory.textField(Expression.get("name")),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(13f),
-                PropertyFactory.textVariableAnchor(
-                    arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
-                ),
-                PropertyFactory.textRadialOffset(1.4f),
+                PropertyFactory.textVariableAnchor(arrayOf(Property.TEXT_ANCHOR_TOP)),
+                PropertyFactory.textRadialOffset(0.5f),
                 PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                 PropertyFactory.textMaxWidth(7f),
                 PropertyFactory.textOptional(true),
@@ -1638,9 +1652,10 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
     )
-    // Search-result labels take the same themed treatment (results are category icons now).
+    // Search-result labels stay NEUTRAL ink - Google doesn't category-tint result labels the
+    // way it tints ambient POI labels (the red pin is the result signal, not the text colour).
     (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
-        PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
+        PropertyFactory.textColor(if (dark) "#E8EAED" else "#3C4043"),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
     )
     // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
@@ -2129,6 +2144,8 @@ private fun routeGradient(
 private fun applyData(
     map: org.maplibre.android.maps.MapLibreMap,
     style: Style,
+    context: android.content.Context,
+    dark: Boolean,
     route: List<LatLng>,
     routeColor: String,
     routeDashed: Boolean,
@@ -2261,9 +2278,16 @@ private fun applyData(
     if (markers != lastAppliedMarkers) {
         val markersFc = FeatureCollection.fromFeatures(
             markers.mapIndexed { i, m ->
+                // Results arrive in relevance order, so the index IS the collision rank (lower
+                // sort key places first = wins the slot). Rated food places get the rating
+                // bubble, everything else the red category pin; bitmaps are generated on demand
+                // per style (they're theme-dependent), see PoiIcons.ensureResultIcon.
+                val iconKey = PoiIcons.resultIconKey(m.name, m.category, m.rating)
+                PoiIcons.ensureResultIcon(context, style, iconKey, dark)
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                     addStringProperty("name", m.name)
-                    addStringProperty("icon", "vela-poi-${PoiIcons.groupFor(m.name, m.category)}")
+                    addStringProperty("icon", iconKey)
+                    addNumberProperty("rank", i)
                     addNumberProperty(MARKER_INDEX_PROP, i)
                 }
             },
