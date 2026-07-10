@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,14 +39,28 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
 
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var settingsOpenOffline by rememberSaveable { mutableStateOf(false) }
-    // Location permission launcher for the onboarding rationale. The map no longer fires the raw
-    // system dialog on its own (see MapScreen); this owns the first ask so it comes AFTER a
-    // plain-words explanation. A grant starts location immediately; a denial just moves on.
+    // Location permission launcher for onboarding. The map no longer fires the raw system dialog on
+    // its own (see MapScreen); this owns the first ask. A grant starts location immediately (coarse-
+    // only works too, via the NETWORK provider); a denial just moves on and leaves search/browse
+    // working, with the locate FAB re-asking later.
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
         if (result.values.any { it }) vm.startLocation()
         Onboarding.dismissLocationPrompt(context)
+    }
+    // Ask for location the moment onboarding reaches this step - no separate rationale screen, since
+    // the welcome screen is context enough for a maps app (one less thing to tap through). Fires once
+    // as the block enters composition; the result arms the voice step next.
+    if (Onboarding.showLocationPrompt.value) {
+        LaunchedEffect(Unit) {
+            locationLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION,
+                ),
+            )
+        }
     }
     Box {
         // MapScreen stays composed even while Settings is open, and Settings draws OVER it as an
@@ -60,25 +75,9 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                 openOffline = settingsOpenOffline,
             )
         } else {
-            if (Onboarding.showLocationPrompt.value) {
-                // FIRST first-run step: explain location before Android's system dialog. "Allow"
-                // launches the real request; "Not now" leaves search/browse working (the locate
-                // button re-asks later). Either way we advance to the voice offer.
-                PermissionRationale(
-                    title = stringResource(R.string.root_location_title),
-                    body = stringResource(R.string.root_location_body),
-                    allowText = stringResource(R.string.root_location_allow),
-                    onAllow = {
-                        locationLauncher.launch(
-                            arrayOf(
-                                Manifest.permission.ACCESS_FINE_LOCATION,
-                                Manifest.permission.ACCESS_COARSE_LOCATION,
-                            ),
-                        )
-                    },
-                    onNotNow = { Onboarding.dismissLocationPrompt(context) },
-                )
-            } else if (Onboarding.showVoicePrompt.value) {
+            // Location is asked via the system dialog fired above (no rationale screen). The voice
+            // offer is the next step once that's answered.
+            if (Onboarding.showVoicePrompt.value) {
                 VoicePrompt(
                     // The Vela voice is recommended for EVERYONE, but the choice is honest: the
                     // prominent button downloads it, the quiet one keeps whatever voice the phone
