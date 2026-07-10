@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">An = Bars, Clubs, Casinos, Spirituosengeschäfte und andere Erwachsenen- / Nachtleben-Orte werden aus Suche und Karte ausgeblendet.</string>
     <string name="settings_hide_external_links">Website &amp; externe Links ausblenden</string>
     <string name="settings_hide_external_links_hint">An = Ortsseiten zeigen keine Website-, Street-View- oder Buchen / Bestellen-Schaltflächen (keine beliebigen externen Seiten geöffnet).</string>
-    <string name="settings_offline">Offline</string>
+    <string name="settings_offline">Offline-Karten</string>
     <string name="settings_offline_hint">Lade einen Bereich herunter, um seine Karte und Wegbeschreibungen für die Offline-Nutzung auf dem Gerät zu behalten.</string>
     <string name="settings_offline_map_area">Kartenbereich</string>
     <string name="settings_offline_download_viewport">Angezeigten Bereich herunterladen</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">Die Straßen einer ganzen Region (ein Bundesland oder Land), damit Wegbeschreibungen überall darin offline funktionieren. Hol dir, wohin du fährst.</string>
     <string name="settings_routing_no_regions">Noch keine Regionen verfügbar.</string>
     <string name="settings_clear_filter">Filter löschen</string>
-    <string name="settings_routing_filter_placeholder">%1$d Regionen filtern … (z. B. Japan, Texas)</string>
+    <string name="settings_routing_filter_placeholder">Suchen</string>
     <string name="settings_routing_no_match">Keine Region passt zu „%1$s“.</string>
     <string name="settings_routing_downloading">Wird heruntergeladen … %1$d%%</string>
     <string name="settings_routing_installed">Installiert · Routen hier offline</string>
