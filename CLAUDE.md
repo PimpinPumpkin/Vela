@@ -322,9 +322,12 @@ Defaults that make the safe path the easy one:
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
 - **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
-  the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result is RED and keeps
-  its category glyph (`resultPin`); rated FOOD results get the wide rating "speech bubble"
-  (`ratingBubble`, theme-surfaced, regenerated per style load because bitmaps can't theme).
+  the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result keeps the app's own
+  marker language - grey teardrop, circle, white glyph - with the circle RED (`resultPin`,
+  drawn a step smaller than the ambient icons' backing); rated FOOD results get the wide rating
+  "speech bubble": the same red circle + white glyph beside the rating in plain ink, NO star
+  glyph (`ratingBubble`, label passed as a string so non-rating labels can ride the same bubble;
+  theme-surfaced, regenerated per style load because bitmaps can't theme).
   Bitmaps are generated ON DEMAND in applyData's marker loop (`ensureResultIcon` - bubble keys
   carry the rating tenths, so only the ratings actually on screen get bitmaps). The pin layer
   COLLIDES by rank (`symbolSortKey` = result order, allowOverlap false): in a dense downtown the
