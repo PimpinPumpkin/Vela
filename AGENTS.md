@@ -549,6 +549,11 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   - Measured speeds pass a SYMMETRIC accel-bounded gate against the last ACCEPTED value
     (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided spike filters
     self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+  - The registered `LocationListener` MUST be an explicit `object` overriding all four callbacks,
+    NOT the SAM lambda. The lambda implements only `onLocationChanged`; the provider-state callbacks
+    have default bodies only from Android 11, so on Android 10 and below the framework calls
+    `onProviderDisabled` (a present-but-disabled NETWORK provider, common on degoogled devices) and
+    the lambda dies with `AbstractMethodError` on every launch. (Ported from upstream `84ab10f`.)
 - Nav guidance discipline:
   - prompt/turn-now distances SCALE WITH SPEED in `NavEngine` (max(fixed, v×T); `spoken` stores band
     SLOTS not metres);

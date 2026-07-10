@@ -6,6 +6,7 @@ import android.content.SharedPreferences
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.os.Bundle
 import android.os.Looper
 import androidx.core.content.getSystemService
 import app.vela.core.model.LatLng
@@ -78,9 +79,24 @@ class LocationProvider @Inject constructor(
     fun updates(minIntervalMs: Long = 1_000L, minDistanceM: Float = 0f): Flow<Location> =
         callbackFlow {
             val mgr = lm ?: run { close(); return@callbackFlow }
-            val listener = LocationListener { loc ->
-                cache(loc)
-                trySend(loc)
+            // An explicit object, NOT the SAM lambda: the lambda only implements
+            // onLocationChanged. The provider-state callbacks have default bodies only from
+            // Android 11 - on 10 and below the framework interface has none, and the OS calls
+            // onProviderDisabled as soon as a registered provider is off (degoogled devices
+            // often have the NETWORK provider present but disabled), so the lambda died with
+            // AbstractMethodError on every launch (user report, Android 10).
+            val listener = object : LocationListener {
+                override fun onLocationChanged(loc: Location) {
+                    cache(loc)
+                    trySend(loc)
+                }
+
+                override fun onProviderEnabled(provider: String) {}
+
+                override fun onProviderDisabled(provider: String) {}
+
+                @Deprecated("Deprecated in Java")
+                override fun onStatusChanged(provider: String?, status: Int, extras: Bundle?) {}
             }
             val active = PROVIDERS.filter { mgr.allProviders.contains(it) }
             active.forEach { p ->
