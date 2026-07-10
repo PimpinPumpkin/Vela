@@ -402,6 +402,16 @@ Defaults that make the safe path the easy one:
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo
   is the "underlay tint" (Google does the same). Keep the exception if the blanket pass changes.
+- **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
+  `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
+  system dialog. The first ask lives in `VelaRoot` as an onboarding step gated on
+  `Onboarding.showLocationPrompt`, shown via the reusable `PermissionRationale` composable (a
+  plain-words screen before Android's dialog - Google's recommended pattern, and the voice-search
+  mic reuses it at point-of-use). Order: welcome → location → voice → offline. A denial leaves
+  search/browse working; the locate FAB (`onRecenter`) re-requests on tap. `PermissionRationale`
+  and the `VelaDialog` `dismissLowEmphasis` flag (the quiet "Use existing voice" styling) are the
+  reusable pieces - don't re-request location straight from the map, and don't add a raw permission
+  dialog without a rationale screen.
 - **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
   works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
   `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/

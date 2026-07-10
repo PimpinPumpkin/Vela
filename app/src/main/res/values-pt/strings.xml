@@ -307,6 +307,9 @@
     <string name="root_diag_trips_desc">Regista os traços GPS de navegação para que as viagens possam ser reproduzidas para testes. Mais revelador — os seus percursos exatos.</string>
     <string name="root_diag_save">Guardar escolhas</string>
     <string name="root_not_now">Agora não</string>
+    <string name="root_location_title">Mostrar a sua localização</string>
+    <string name="root_location_body">A Vela usa a sua localização para centrar o mapa em si e traçar rotas a partir de onde está. Fica no seu telemóvel e nunca é enviada. Pode recusar e continuar a pesquisar e explorar; basta definir o ponto de partida à mão quando quiser indicações.</string>
+    <string name="root_location_allow">Permitir localização</string>
     <string name="root_voice_title">Voz de navegação falada</string>
     <string name="root_voice_body_intro">O Vela tem a sua própria voz de alta qualidade que corre inteiramente no seu telemóvel — as indicações faladas mais naturais, sem conta nem aplicação extra. Recomendada. É uma transferência única de ~%1$d MB (recomenda-se Wi-Fi).</string>
     <string name="root_voice_body_system">Prefere não a usar? Pode antes usar uma voz de texto para voz já instalada no seu telemóvel.</string>

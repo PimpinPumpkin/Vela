@@ -1,7 +1,10 @@
 package app.vela.ui
 
+import android.Manifest
 import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.runtime.mutableStateOf
+import androidx.core.content.ContextCompat
 import app.vela.core.voice.VelaPiper
 
 /**
@@ -27,9 +30,16 @@ object Onboarding {
      *  has settled in), clearly, off otherwise. Never shown if it's already on. */
     val showDiagPrompt = mutableStateOf(false)
 
+    /** True for the single session where the one-time location RATIONALE should show — a plain-words
+     *  "here's why, you can say no" screen BEFORE Android's raw system dialog, offered first thing
+     *  after the welcome. Suppressed once location is granted or the user has answered. The map no
+     *  longer fires the system dialog on its own; this owns the first ask (a denial still leaves
+     *  search/browse working, and the locate button re-asks later). */
+    val showLocationPrompt = mutableStateOf(false)
+
     /** True for the single session where the one-time "download the Vela neural voice?" prompt should
-     *  show — offered right after the welcome so the best voice is one tap away. Suppressed once the
-     *  model is present or the user has answered. */
+     *  show — offered right after the location step so the best voice is one tap away. Suppressed once
+     *  the model is present or the user has answered. */
     val showVoicePrompt = mutableStateOf(false)
 
     /** True for the single session where the one-time "set up offline maps?" prompt should show — offered
@@ -64,9 +74,15 @@ object Onboarding {
             .getBoolean("diag_enabled", false)
         showDiagPrompt.value = welcomeDone.value && !diagPromptDone && !diagAlreadyOn && launches >= 2
 
+        // Location rationale: show once, unless already granted or answered. Granted counts as done
+        // (never nag someone who allowed it). On a brand-new install welcomeDone is still false here →
+        // completeWelcome arms it right after the welcome screen instead.
+        val locationPromptDone = p.getBoolean("location_prompt_done", false)
+        showLocationPrompt.value = welcomeDone.value && !locationPromptDone && !hasLocation(context)
+
         // Voice prompt: offer the neural voice once, unless it's already downloaded or answered. On a
         // brand-new install welcomeDone is still false here (welcome not seen yet) → completeWelcome
-        // arms it right after the welcome screen instead.
+        // arms the location step, whose dismissal arms this one.
         val voicePromptDone = p.getBoolean("voice_prompt_done", false)
         showVoicePrompt.value = welcomeDone.value && !voicePromptDone && !VelaPiper.isReady(context)
 
@@ -74,6 +90,21 @@ object Onboarding {
         // (existing install), offer to set up offline maps. Shown a single time.
         val offlinePromptDone = p.getBoolean("offline_prompt_done", false)
         showOfflinePrompt.value = welcomeDone.value && voicePromptDone && !offlinePromptDone
+    }
+
+    private fun hasLocation(context: Context): Boolean =
+        ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) ==
+            PackageManager.PERMISSION_GRANTED
+
+    /** Mark the location rationale handled (whatever the user chose) so it never shows again, and arm
+     *  the voice prompt next. Called from both "Allow" and "Not now". */
+    fun dismissLocationPrompt(context: Context) {
+        showLocationPrompt.value = false
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        p.edit().putBoolean("location_prompt_done", true).apply()
+        showVoicePrompt.value = !p.getBoolean("voice_prompt_done", false) && !VelaPiper.isReady(context)
     }
 
     /** Mark the voice prompt handled so it never shows again, and arm the offline prompt next. */
@@ -102,8 +133,13 @@ object Onboarding {
         welcomeDone.value = true
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         p.edit().putBoolean("welcome_done", true).apply()
-        // Right after the welcome, offer the neural voice (unless already downloaded/answered).
-        showVoicePrompt.value = !p.getBoolean("voice_prompt_done", false) && !VelaPiper.isReady(context)
+        // First-run order: location rationale → voice → offline. Arm location here; its dismissal
+        // arms voice. If location was somehow already granted, skip straight to the voice offer.
+        if (!p.getBoolean("location_prompt_done", false) && !hasLocation(context)) {
+            showLocationPrompt.value = true
+        } else {
+            showVoicePrompt.value = !p.getBoolean("voice_prompt_done", false) && !VelaPiper.isReady(context)
+        }
     }
 
     /** Mark the one-time prompt as handled so it never shows again. */
