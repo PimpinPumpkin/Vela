@@ -160,22 +160,30 @@ jobs:
             --notes "$NOTES" \
             "vela-maps-v${VER}.apk"
 
-      - name: Prune old nightlies
-        # Keep the releases page readable: nightlies pile up fast (one per push), so
-        # every v0.* PRERELEASE past the newest 14 gets deleted, tag included. Stables
-        # are never prereleases so their history is untouched. The tag filter is LOAD
-        # BEARING: the infrastructure releases (tts-runtime, poi-packs, routing-graphs,
-        # address-overlays, building-overlays) are prereleases too, and the first run
-        # of this step deleted ALL of them, taking down every offline download until
-        # they were rebuilt. Only v0.* tags are nightlies; never widen this filter.
+      - name: Prune old app releases (keep 5 nightlies, 2 stables)
+        # Keep the releases page readable. The old version of this step used
+        # `gh release list --limit 200`, which only ever SAW the newest 200 releases -
+        # the hundreds of early nightlies sat past that horizon untouched forever, and
+        # stables were never pruned at all. This version paginates the FULL release
+        # list, keeps the newest 5 v0.* prereleases (the nightly channel) and the
+        # newest 2 v0.* regular releases (current stable + one back), and deletes
+        # everything else v0.*, tags included. The tag filter is LOAD BEARING: the
+        # infrastructure releases (tts-runtime, poi-packs, routing-graphs,
+        # address-overlays, building-overlays, asr-models) are prereleases too and
+        # host live download assets - only v0.* tags are app releases; never widen
+        # this filter.
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release list --limit 200 --json tagName,isPrerelease \
-            -q '[.[] | select(.isPrerelease and (.tagName | startswith("v0.")))] | .[14:] | .[].tagName' |
+          gh api --paginate 'repos/${{ github.repository }}/releases?per_page=100' \
+            --jq '.[] | select(.tag_name | test("^v0\\.")) | "\(.created_at)\t\(.prerelease)\t\(.tag_name)"' \
+            | sort -r > /tmp/app-releases.txt
+          awk -F'\t' '$2=="true"{print $3}'  /tmp/app-releases.txt | tail -n +6 >  /tmp/doomed.txt
+          awk -F'\t' '$2=="false"{print $3}' /tmp/app-releases.txt | tail -n +3 >> /tmp/doomed.txt
+          echo "pruning $(wc -l < /tmp/doomed.txt) old app releases"
           while read -r tag; do
             [ -n "$tag" ] || continue
-            echo "pruning nightly $tag"
+            echo "pruning $tag"
             gh release delete "$tag" --yes --cleanup-tag || true
-          done
+          done < /tmp/doomed.txt
