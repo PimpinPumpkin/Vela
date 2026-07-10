@@ -9,7 +9,7 @@
 #   whisper-tiny/tiny-tokens.txt
 #   whisper-tiny/silero_vad.onnx
 # The full upstream tarball also ships the fp32 models + test wavs (~116 MB); dropping those
-# takes the download to ~47 MB. sherpa-onnx models are Apache-2.0 / MIT.
+# keeps the download small (gzip, not bzip2: a phone unpacks gzip about ten times faster). sherpa-onnx models are Apache-2.0 / MIT.
 #
 # Usage: tools/build-asr-model.sh            # build the archive into ./out
 #        UPLOAD=1 tools/build-asr-model.sh   # also create/refresh the asr-models release
@@ -33,9 +33,9 @@ cp sherpa-onnx-whisper-tiny/tiny-encoder.int8.onnx \
    sherpa-onnx-whisper-tiny/tiny-tokens.txt \
    silero_vad.onnx \
    whisper-tiny/
-tar cjf vela-asr-whisper-tiny.tar.bz2 whisper-tiny
-SIZE_MB=$(( $(stat -f%z vela-asr-whisper-tiny.tar.bz2 2>/dev/null || stat -c%s vela-asr-whisper-tiny.tar.bz2) / 1048576 ))
-echo "==> vela-asr-whisper-tiny.tar.bz2 = ${SIZE_MB} MB"
+tar czf vela-asr-whisper-tiny.tar.gz whisper-tiny
+SIZE_MB=$(( $(stat -f%z vela-asr-whisper-tiny.tar.gz 2>/dev/null || stat -c%s vela-asr-whisper-tiny.tar.gz) / 1048576 ))
+echo "==> vela-asr-whisper-tiny.tar.gz = ${SIZE_MB} MB"
 
 cat > asr-manifest.json <<JSON
 {
@@ -44,7 +44,7 @@ cat > asr-manifest.json <<JSON
     {
       "id": "whisper-tiny",
       "name": "Whisper tiny (multilingual)",
-      "url": "https://github.com/${REPO}/releases/download/asr-models/vela-asr-whisper-tiny.tar.bz2",
+      "url": "https://github.com/${REPO}/releases/download/asr-models/vela-asr-whisper-tiny.tar.gz",
       "sizeMb": ${SIZE_MB},
       "dir": "whisper-tiny",
       "encoder": "tiny-encoder.int8.onnx",
@@ -60,10 +60,10 @@ JSON
 if [ "${UPLOAD:-0}" = "1" ]; then
   echo "==> publishing to the asr-models release"
   gh release view asr-models --repo "$REPO" >/dev/null 2>&1 \
-    && gh release upload asr-models --repo "$REPO" --clobber vela-asr-whisper-tiny.tar.bz2 asr-manifest.json \
+    && gh release upload asr-models --repo "$REPO" --clobber vela-asr-whisper-tiny.tar.gz asr-manifest.json \
     || gh release create asr-models --repo "$REPO" --prerelease \
          --title "ASR models (on-device voice search)" \
          --notes "On-device speech-to-text (Whisper tiny int8 + Silero VAD) Vela downloads for voice search. Infrastructure release." \
-         vela-asr-whisper-tiny.tar.bz2 asr-manifest.json
+         vela-asr-whisper-tiny.tar.gz asr-manifest.json
 fi
 echo "==> done"
