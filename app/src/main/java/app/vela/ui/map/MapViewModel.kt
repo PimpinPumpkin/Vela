@@ -2777,7 +2777,17 @@ class MapViewModel @Inject constructor(
     // ---- On-device voice search (tier-1 Whisper ASR) ----
 
     /** Reflect whether the on-device speech model is present (Settings shows Download vs Remove). */
-    fun refreshAsr() { _state.update { it.copy(asrInstalled = whisperRecognizer.isInstalled()) } }
+    fun refreshAsr() {
+        _state.update { it.copy(asrInstalled = whisperRecognizer.isInstalled()) }
+        // Pre-build the Whisper recognizer when the mic would actually use it, so the first
+        // dictation listens immediately instead of showing a "Getting ready" beat while the
+        // ONNX model loads. refreshAsr runs at VM init and the engine pref rarely changes.
+        if (app.vela.ui.VoiceSearch.enabled.value &&
+            app.vela.ui.VoiceSearch.engine.value != app.vela.ui.VoiceSearch.Engine.SYSTEM
+        ) {
+            whisperRecognizer.warmUp()
+        }
+    }
 
     /** Download the ~47 MB on-device speech-to-text model, reusing the neural-voice installer + its
      *  no-call-timeout client (the shared 12 s cap would abort a download this size). */
@@ -2795,7 +2805,10 @@ class MapViewModel @Inject constructor(
                 onExtracting = { _state.update { it.copy(asrInstalling = true) } },
             ) { p -> _state.update { it.copy(asrDownloadPct = p) } }
             _state.update { it.copy(asrDownloadPct = null, asrInstalling = false, asrInstalled = whisperRecognizer.isInstalled()) }
-            if (ok && whisperRecognizer.isInstalled()) flashStatus(appContext.getString(R.string.mapvm_asr_ready))
+            if (ok && whisperRecognizer.isInstalled()) {
+                whisperRecognizer.warmUp() // a fresh install should listen immediately on first tap
+                flashStatus(appContext.getString(R.string.mapvm_asr_ready))
+            }
             else showStatus(appContext.getString(R.string.mapvm_asr_download_failed))
         }
     }
