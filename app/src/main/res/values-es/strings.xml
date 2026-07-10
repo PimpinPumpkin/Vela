@@ -123,6 +123,8 @@
     <string name="settings_crash_hint">Vela se cerró de forma inesperada hace poco. Enviar el informe de fallo (traza de la pila) ayuda a corregirlo: es un archivo de texto plano, sin datos personales.</string>
     <string name="settings_crash_export">Exportar informe de fallo</string>
     <string name="settings_crash_discard">Descartar</string>
+    <string name="settings_crash_diag_offer">El diagnóstico está desactivado, así que no se registró nada previo a esto. Actívalo para captar más detalles si vuelve a ocurrir.</string>
+    <string name="settings_crash_enable_diag">Activar diagnóstico</string>
     <string name="settings_diag_consent_title">¿Activar el diagnóstico?</string>
     <string name="settings_diag_consent_body">Vela guardará un breve registro local de tus búsquedas, rutas y cualquier error. Nunca sale del teléfono salvo que toques Exportar y elijas a dónde enviarlo. Desactívalo cuando quieras para borrar el registro.</string>
     <string name="settings_about">Acerca de</string>
@@ -305,13 +307,6 @@
     <string name="mapscreen_faster_route_saves">Ahorra ~%1$s con el tráfico actual</string>
     <string name="mapscreen_no">No</string>
     <string name="mapscreen_switch">Cambiar</string>
-    <string name="root_diag_title">¿Ayudar a mejorar Vela?</string>
-    <string name="root_diag_body">Ambos permanecen en tu teléfono: no se envía nada salvo que lo exportes. Cambia cualquiera cuando quieras en Ajustes.</string>
-    <string name="root_diag_share_title">Compartir diagnóstico</string>
-    <string name="root_diag_share_desc">Un breve registro local de búsquedas, rutas y errores.</string>
-    <string name="root_diag_trips_title">Guardar mis trayectos</string>
-    <string name="root_diag_trips_desc">Graba los rastros GPS de tu navegación para poder reproducir trayectos en pruebas. Revela más: tus rutas exactas.</string>
-    <string name="root_diag_save">Guardar elecciones</string>
     <string name="root_not_now">Ahora no</string>
     <string name="root_location_title">Mostrar tu ubicación</string>
     <string name="root_location_body">Vela usa tu ubicación para centrar el mapa en ti y calcular rutas desde donde estás. Se queda en tu teléfono y nunca se sube. Puedes decir que no y seguir buscando y explorando; solo fija el punto de partida a mano cuando quieras indicaciones.</string>
@@ -322,9 +317,6 @@
     <string name="root_voice_body_outro">Cámbiala cuando quieras en Ajustes → Voz.</string>
     <string name="root_voice_download">Descargar voz de Vela</string>
     <string name="root_voice_use_system">Usar voz del sistema</string>
-    <string name="root_offline_title">Mapas sin conexión</string>
-    <string name="root_offline_body">Vela obtiene lugares, búsqueda e indicaciones de Google, así que sin señal solo funcionarán las zonas que hayas descargado. Configura una zona ahora para estar cubierto cuando pierdas la conexión.</string>
-    <string name="root_offline_setup">Configurar sin conexión</string>
     <string name="nav_maneuver_continue">Continúa</string>
     <string name="nav_gps_lost">Buscando señal de GPS…</string>
     <string name="nav_compound_then">después</string>
