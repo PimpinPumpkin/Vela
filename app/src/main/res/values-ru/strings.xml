@@ -18,8 +18,7 @@
     <string name="settings_language_hint">Меняет язык приложения и голосовых подсказок. Скачайте подходящий голос в библиотеке голосов.</string>
     <string name="settings_search">Поиск</string>
     <string name="settings_voice_search_toggle">Микрофон голосового поиска</string>
-    <string name="settings_voice_search_hint">Показывает микрофон в строке поиска. Нажмите, чтобы продиктовать запрос через приложение голосового ввода на телефоне.</string>
-    <string name="settings_voice_search_none">Показывает микрофон в строке поиска для диктовки запроса. Нужно приложение голосового ввода, например FUTO Voice Input; пока не установлено.</string>
+    <string name="settings_voice_search_hint">Показывает микрофон в строке поиска, чтобы диктовать запрос.</string>
     <string name="search_voice_cd">Голосовой поиск</string>
     <string name="search_voice_prompt">Говорите для поиска</string>
     <string name="settings_voice">Голос</string>
@@ -491,7 +490,7 @@
     <string name="mapvm_asr_ready">Голос Vela готов</string>
     <string name="mapvm_asr_download_failed">Не удалось загрузить голосовую модель. Проверьте подключение и повторите попытку.</string>
     <string name="settings_voice_search_model">Голос Vela</string>
-    <string name="settings_voice_search_model_hint">Голос Vela превращает речь в поиск прямо на телефоне: без других приложений и без выгрузки данных. Разовая загрузка ~%1$d МБ.</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Голос Vela превращает речь в поиск прямо на телефоне: без других приложений и без выгрузки данных. Разовая загрузка %1$d МБ.</string>  <!-- format -->
     <string name="settings_voice_search_download">Загрузить (%1$d МБ)</string>  <!-- format -->
     <string name="settings_voice_search_remove">Удалить</string>
     <string name="settings_voice_search_downloading">Загрузка… %1$d%%</string>  <!-- format -->
@@ -499,4 +498,6 @@
     <string name="settings_voice_search_engine_title">При нажатии на микрофон</string>
     <string name="settings_voice_search_engine_auto">Голос Vela</string>
     <string name="settings_voice_search_engine_system">Другое голосовое приложение</string>
+    <string name="map_asr_offer_title">Голосовой поиск</string>
+    <string name="map_asr_offer_body">Загрузите голос Vela, чтобы диктовать запросы. Он работает целиком на телефоне и ничего не выгружает.</string>
 </resources>
