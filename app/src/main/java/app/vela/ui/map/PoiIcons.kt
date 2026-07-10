@@ -80,7 +80,7 @@ object PoiIcons {
     /** Generate + register the bitmap behind [key] (from [resultIconKey]) if this style doesn't
      *  have it yet. Rating bubbles are theme-dependent, so a theme flip (= a style reload) simply
      *  regenerates them for the new [dark]. */
-    fun ensureResultIcon(context: Context, style: Style, key: String, dark: Boolean) {
+    fun ensureResultIcon(context: Context, style: Style, key: String, dark: Boolean, bubbleLabel: String? = null) {
         if (style.getImage(key) != null) return
         val tf = typeface(context) ?: return
         val bubble = key.startsWith("vela-resb-")
@@ -88,8 +88,10 @@ object PoiIcons {
         val group = if (bubble) rest.substringBeforeLast('-') else rest
         val codepoint = (GROUPS.firstOrNull { it.first == group } ?: GROUPS.last()).second
         val bmp = if (bubble) {
-            val tenths = rest.substringAfterLast('-').toIntOrNull() ?: 40
-            ratingBubble(tf, codepoint, tenths / 10.0, dark)
+            val label = bubbleLabel ?: (rest.substringAfterLast('-').toIntOrNull() ?: 40).let {
+                String.format(java.util.Locale.getDefault(), "%.1f", it / 10.0)
+            }
+            ratingBubble(tf, codepoint, label, dark)
         } else resultPin(tf, codepoint)
         style.addImage(key, bmp)
     }
@@ -110,17 +112,19 @@ object PoiIcons {
         return style.addImage(RESULT_DOT_IMG, bmp)
     }
 
-    /** A red teardrop pin with the white category glyph — the pin TIP is at bottom-centre, for a
+    /** A GREY teardrop pin with a RED circle holding the white category glyph — the app's own
+     *  marker language (grey backing, coloured dot) with red standing in for the category colour,
+     *  which is how a result reads as a result (user 2026-07-10). Pin TIP at bottom-centre, for a
      *  bottom-anchored layer (the tip marks the place, Google-style). */
     private fun resultPin(tf: Typeface, codepoint: Int): Bitmap {
-        val w = 100
-        val h = 108
+        val w = 86
+        val h = 94
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val cx = w / 2f
         val bodyCy = h * 0.36f
         val bodyR = w * 0.335f
-        val tipY = h - 5f
+        val tipY = h - 4f
         val d = tipY - bodyCy
         val sin = (bodyR / d).coerceAtMost(0.985f)
         val cos = kotlin.math.sqrt(1f - sin * sin)
@@ -143,13 +147,12 @@ object PoiIcons {
             maskFilter = BlurMaskFilter(w * 0.05f, BlurMaskFilter.Blur.NORMAL)
         })
         canvas.restore()
-        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
-        // A slightly darker inner disc behind the glyph gives the flat red pin its depth cue.
-        canvas.drawCircle(cx, bodyCy, bodyR * 0.80f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#C5221F") })
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0A6") })
+        canvas.drawCircle(cx, bodyCy, bodyR * 0.82f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = tf
             color = Color.WHITE
-            textSize = w * 0.34f
+            textSize = w * 0.33f
             textAlign = Paint.Align.CENTER
         }
         val glyph = String(Character.toChars(codepoint))
@@ -159,28 +162,26 @@ object PoiIcons {
     }
 
     /** Google's restaurant-result marker: a wide speech-bubble with a bottom tail, holding the
-     *  red category glyph, the rating, and a gold star. Theme-surfaced (white in light, grey in
-     *  dark) with the rating in plain ink. Tail tip at bottom-centre for a bottom-anchored layer. */
-    private fun ratingBubble(tf: Typeface, codepoint: Int, rating: Double, dark: Boolean): Bitmap {
+     *  white category glyph in a RED CIRCLE (the same circle language as the pins) beside the
+     *  rating in plain ink - no star glyph, the number in a place bubble reads as a rating on its
+     *  own (user 2026-07-10). Theme-surfaced (white in light, grey in dark); tail tip at
+     *  bottom-centre for a bottom-anchored layer. */
+    private fun ratingBubble(tf: Typeface, codepoint: Int, label: String, dark: Boolean): Bitmap {
         val fill = Color.parseColor(if (dark) "#3C4043" else "#FFFFFF")
         val edge = Color.parseColor(if (dark) "#5F6368" else "#DADCE0")
         val ink = Color.parseColor(if (dark) "#E8EAED" else "#3C4043")
-        val glyphColor = Color.parseColor(if (dark) "#F28B82" else RESULT_RED)
-        val star = Color.parseColor("#FBBC04")
         val bodyH = 62f
         val tailH = 16f
-        val pad = 20f
+        val pad = 13f
         val gap = 9f
-        val glyphSize = 34f
-        val starSize = 30f
-        val label = String.format(java.util.Locale.getDefault(), "%.1f", rating)
+        val circleR = 21f
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = ink
             textSize = 32f
             typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
         }
         val textW = textPaint.measureText(label)
-        val w = (pad + glyphSize + gap + textW + gap * 0.6f + starSize + pad).toInt() + 8
+        val w = (pad + circleR * 2 + gap + textW + pad + 4f).toInt() + 8
         val h = (bodyH + tailH).toInt() + 10
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
@@ -217,25 +218,19 @@ object PoiIcons {
             strokeWidth = 1.6f
         })
         val cyText = (top + bottom) / 2f
-        var x = left + pad - 4f
+        // Red circle + white glyph, matching the pins.
+        val circleCx = left + pad + circleR
+        canvas.drawCircle(circleCx, cyText, circleR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
         val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = tf
-            color = glyphColor
-            textSize = glyphSize
+            color = Color.WHITE
+            textSize = circleR * 1.3f
+            textAlign = Paint.Align.CENTER
         }
         var fm = glyphPaint.fontMetrics
-        canvas.drawText(String(Character.toChars(codepoint)), x, cyText - (fm.ascent + fm.descent) / 2f, glyphPaint)
-        x += glyphSize + gap
+        canvas.drawText(String(Character.toChars(codepoint)), circleCx, cyText - (fm.ascent + fm.descent) / 2f, glyphPaint)
         fm = textPaint.fontMetrics
-        canvas.drawText(label, x, cyText - (fm.ascent + fm.descent) / 2f, textPaint)
-        x += textW + gap * 0.6f
-        val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            typeface = tf
-            color = star
-            textSize = starSize
-        }
-        fm = starPaint.fontMetrics
-        canvas.drawText(String(Character.toChars(0xe838)), x, cyText - (fm.ascent + fm.descent) / 2f, starPaint)
+        canvas.drawText(label, circleCx + circleR + gap, cyText - (fm.ascent + fm.descent) / 2f, textPaint)
         return bmp
     }
 
