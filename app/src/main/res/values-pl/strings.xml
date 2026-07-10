@@ -123,6 +123,8 @@
     <string name="settings_crash_hint">Vela zamknęła się niespodziewanie. Wysłanie raportu o awarii (ślad stosu) pomaga ją naprawić — to zwykły plik tekstowy, bez danych osobowych.</string>
     <string name="settings_crash_export">Eksportuj raport o awarii</string>
     <string name="settings_crash_discard">Odrzuć</string>
+    <string name="settings_crash_diag_offer">Diagnostyka jest wyłączona, więc nic nie zostało zapisane przed tą awarią. Włącz ją, aby następnym razem zebrać więcej szczegółów.</string>
+    <string name="settings_crash_enable_diag">Włącz diagnostykę</string>
     <string name="settings_diag_consent_title">Włączyć diagnostykę?</string>
     <string name="settings_diag_consent_body">Vela będzie prowadzić krótki lokalny dziennik Twoich wyszukiwań, tras i wszelkich błędów. Nigdy nie opuszcza telefonu, chyba że dotkniesz Eksportuj i wybierzesz miejsce docelowe. Wyłącz w dowolnej chwili, aby wyczyścić dziennik.</string>
     <string name="settings_about">Informacje</string>
@@ -305,13 +307,6 @@
     <string name="mapscreen_faster_route_saves">Oszczędza ~%1$s przy bieżącym ruchu</string>
     <string name="mapscreen_no">Nie</string>
     <string name="mapscreen_switch">Przełącz</string>
-    <string name="root_diag_title">Pomóc ulepszyć Vela?</string>
-    <string name="root_diag_body">Oba pozostają na telefonie — nic nie jest wysyłane, dopóki tego nie wyeksportujesz. Możesz je zmienić w dowolnej chwili w Ustawieniach.</string>
-    <string name="root_diag_share_title">Udostępnij diagnostykę</string>
-    <string name="root_diag_share_desc">Krótki lokalny dziennik wyszukiwań, tras i błędów.</string>
-    <string name="root_diag_trips_title">Zapisuj moje podróże</string>
-    <string name="root_diag_trips_desc">Zapisuje ślady GPS nawigacji, aby przejazdy można było odtworzyć do testów. Bardziej ujawniające — Twoje dokładne trasy.</string>
-    <string name="root_diag_save">Zapisz wybory</string>
     <string name="root_not_now">Nie teraz</string>
     <string name="root_location_title">Pokaż swoją lokalizację</string>
     <string name="root_location_body">Vela używa Twojej lokalizacji, aby wyśrodkować mapę na Tobie i wyznaczać trasę z miejsca, w którym jesteś. Pozostaje ona na telefonie i nigdy nie jest wysyłana. Możesz odmówić i nadal wyszukiwać oraz przeglądać; do trasy ustaw punkt startowy ręcznie.</string>
@@ -322,9 +317,6 @@
     <string name="root_voice_body_outro">Zmienisz to kiedykolwiek w Ustawieniach → Głos.</string>
     <string name="root_voice_download">Pobierz głos Vela</string>
     <string name="root_voice_use_system">Użyj głosu systemowego</string>
-    <string name="root_offline_title">Mapy offline</string>
-    <string name="root_offline_body">Vela pobiera miejsca, wyszukiwanie i trasy z Google, więc bez sygnału zadziałają tylko obszary, które pobrałeś. Skonfiguruj obszar teraz, aby mieć pokrycie, gdy stracisz zasięg.</string>
-    <string name="root_offline_setup">Skonfiguruj offline</string>
     <string name="nav_maneuver_continue">Jedź dalej</string>
     <string name="nav_gps_lost">Szukanie sygnału GPS…</string>
     <string name="nav_compound_then">następnie</string>
