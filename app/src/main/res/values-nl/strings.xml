@@ -308,9 +308,6 @@
     <string name="mapscreen_no">Nee</string>
     <string name="mapscreen_switch">Overschakelen</string>
     <string name="root_not_now">Niet nu</string>
-    <string name="root_location_title">Je locatie tonen</string>
-    <string name="root_location_body">Vela gebruikt je locatie om de kaart op jou te centreren en te routeren vanaf waar je bent. Die blijft op je telefoon en wordt nooit geüpload. Je mag nee zeggen en toch zoeken en bladeren; stel dan een startpunt handmatig in als je een route wilt.</string>
-    <string name="root_location_allow">Locatie toestaan</string>
     <string name="root_voice_title">Gesproken navigatiestem</string>
     <string name="root_voice_body_intro">Vela\'s eigen stem draait volledig op je telefoon: natuurlijke aanwijzingen, geen account, geen extra app. Aanbevolen, een eenmalige download van ~%1$d MB.</string>
     <string name="root_voice_body_system">Liever niet? Gebruik een stem die al op je telefoon staat.</string>
