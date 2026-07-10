@@ -335,14 +335,20 @@ Defaults that make the safe path the easy one:
   source, below, allowOverlap+ignorePlacement true), expanding back into pins on zoom - never a
   pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels sit UNDER the pin
   (variableAnchor TOP) in NEUTRAL ink both themes - Google doesn't category-tint result labels,
-  only ambient POI labels take the tint. Dots carry the same MARKER_INDEX_PROP feature prop, so
-  a collapsed result is still tappable. **Gas stations put their LIVE PRICE in the bubble**
-  (2026-07-10): `Place.fuelPrice` ("$5.34/Regular") parses off the place node at `[88][0]`
-  (calibration `paths.fuelPrice`, remote-recalibratable, digit-gated in SearchParser so a shape
-  drift can't show a label as a price; calibration.json is at **v14** for it), the bubble shows
-  the short "$5.34" (`PoiIcons.fuelShort`), and the full string leads the result row + the place
-  sheet's price/category line. EV chargers carry NO detail in the keyless response (probed
-  2026-07-10 - type marker only, no price/kW/availability); see ROADMAP.
+  only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
+  0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
+  keep the two in lockstep. While a result SET is on the map (markers.size > 1) the basemap
+  poi_r1/r7/r20 icons hide too (own identity gate `lastOsmPoiVis`, NOT inside the ambient gate -
+  results can appear/clear while ambient stays empty); a single selected place keeps them. Dots
+  carry the same MARKER_INDEX_PROP feature prop, so a collapsed result is still tappable.
+  **Gas stations put their LIVE PRICE in the bubble** (2026-07-10): `Place.fuelPrice`
+  ("$5.34/Regular") parses off the place node at `[88][0]` (calibration `paths.fuelPrice`,
+  remote-recalibratable, digit-gated in SearchParser so a shape drift can't show a label as a
+  price; calibration.json is at **v14** for it), the bubble shows the short "$5.34"
+  (`PoiIcons.fuelShort`), and the full string renders BOLD - its own pump-glyph line under the
+  address in the result row (glyph + text in title ink, theme-responsive) and bold inline on the
+  place sheet's price/category line (user 2026-07-10). EV chargers carry NO detail in the
+  keyless response (probed 2026-07-10 - type marker only, no price/kW/availability); see ROADMAP.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
