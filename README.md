@@ -55,7 +55,7 @@ Fingerprint and full instructions in [FDROID.md](FDROID.md).
   🔊 **Hear Vela's nav voice** - the actual in-app voice at the default
   pace:
 
-  https://github.com/user-attachments/assets/d7e77195-9499-4b2c-abd3-b25c66156be6
+  https://github.com/user-attachments/assets/17f246e4-51c8-4d01-998b-dcd7f29dc15f
 
 - **Talk to it.** Tap the mic and say what you want. Vela Voice transcribes speech
   on the phone (a one-time 58 MB download), or hands off to a voice-input app you

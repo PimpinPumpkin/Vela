@@ -679,8 +679,9 @@ Defaults that make the safe path the easy one:
 - **README voice demo (`docs/voice-demo.mp4`, 2026-07-10).** A ~5.5 s clip of the ACTUAL nav
   voice linked from README's "What you get": generated OFF-DEVICE with the same engine + model +
   pace the app uses (pip `sherpa-onnx`, upstream `vits-piper-en_US-hfc_female-medium`,
-  `length_scale=1.25` = the app's 0.8x default), then muxed to MP4 over the nav screenshot as a
-  still poster (ffmpeg loop-image + aac). The render uses the app's PiperSynth OVERRIDES
+  `length_scale=1.25` = the app's 0.8x default), then muxed to MP4 as a SHORT BLACK 640x120 STRIP
+  (ffmpeg lavfi color source + aac) - a black frame keeps the README player compact and makes the
+  controls (especially unmute) obvious; the earlier nav-screenshot poster rendered picture-sized. The render uses the app's PiperSynth OVERRIDES
   (noiseScale 0.45, noiseScaleW 0.55, speed 0.8) - the library-default noise scales sounded
   audibly different from the app (user caught it). MP4 not wav ON PURPOSE: GitHub's blob viewer renders a
   real PLAYER for mp4 but only a download link for wav (user hit that), and in-repo media in
