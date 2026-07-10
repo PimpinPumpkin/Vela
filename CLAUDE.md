@@ -368,6 +368,12 @@ Defaults that make the safe path the easy one:
   provider is off (degoogled devices often carry a present-but-disabled NETWORK provider) ->
   AbstractMethodError, crash on every launch (user report, Android 10/Adreno 308). Override all
   four callbacks explicitly in any android.location.LocationListener implementation.
+- **SavedPlace carries an optional address (2026-07-10).** `SavedPlace.address` (defaulted null, so
+  pre-existing payloads decode; every store's Json sets ignoreUnknownKeys so downgrades survive too)
+  is filled by `SavedPlace.of(Place)` - recents rows show it as a sublabel and the Home/Work rows
+  show it as their subtext. Recents also support PER-ROW removal (`RecentSearchStore.remove(query)`
+  / `RecentPlaceStore.remove(placeId)` -> the X in `SuggestionRow(onRemove=...)`, its own D-pad
+  focus stop with a ring).
 - **Recents stores are timestamped under NEW pref keys (2026-07-09).** `RecentQuery`/`RecentPlace`
   carry `at` (epoch ms) so the search page can interleave queries and places chronologically.
   They persist under `queries2`/`places2`; the legacy `queries`/`places` payloads are READ ONCE

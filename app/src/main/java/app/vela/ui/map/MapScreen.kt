@@ -935,6 +935,8 @@ fun MapScreen(
                                 focusManager.clearFocus()
                                 vm.selectSaved(it)
                             },
+                            onRemoveRecent = vm::removeRecentQuery,
+                            onRemoveRecentPlace = vm::removeRecentPlace,
                             onClearRecents = vm::clearRecents,
                             onPickShortcut = {
                                 focusManager.clearFocus()
@@ -2110,6 +2112,8 @@ private fun SearchEntryContent(
     onPickSaved: (SavedPlace) -> Unit,
     onPickRecent: (String) -> Unit,
     onPickRecentPlace: (SavedPlace) -> Unit,
+    onRemoveRecent: (String) -> Unit,
+    onRemoveRecentPlace: (String) -> Unit,
     onClearRecents: () -> Unit,
     onPickShortcut: (ShortcutKind) -> Unit,
     onAssignShortcut: (ShortcutKind) -> Unit,
@@ -2199,13 +2203,17 @@ private fun SearchEntryContent(
                         icon = Icons.Default.Place,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         label = entry.place.name,
+                        // A real place shows its address under the name (Google-style).
+                        sublabel = entry.place.address,
                         onClick = { onPickRecentPlace(entry.place) },
+                        onRemove = { onRemoveRecentPlace(entry.place.id) },
                     )
                     is RecentQuery -> SuggestionRow(
                         icon = Icons.Default.History,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         label = entry.query,
                         onClick = { onPickRecent(entry.query) },
+                        onRemove = { onRemoveRecent(entry.query) },
                     )
                 }
                 Divider()
@@ -2256,7 +2264,8 @@ private fun ShortcutRow(
         Column(Modifier.weight(1f)) {
             Text(kind.label, style = MaterialTheme.typography.bodyLarge, color = SheetPalette.ink(dark))
             Text(
-                place?.name ?: stringResource(R.string.mapscreen_set_shortcut_address, kind.label.lowercase()),
+                place?.let { it.address ?: it.name }
+                    ?: stringResource(R.string.mapscreen_set_shortcut_address, kind.label.lowercase()),
                 style = MaterialTheme.typography.bodySmall,
                 color = SheetPalette.dim(dark),
                 maxLines = 1,
@@ -2267,7 +2276,13 @@ private fun ShortcutRow(
             var menu by remember { mutableStateOf(false) }
             Box {
                 IconButton(onClick = { menu = true }) {
-                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.mapscreen_edit_shortcut, kind.label))
+                    // Same ink as the row's text - the default LocalContentColor went near-black
+                    // on the fixed sheet grey under some themes (user report).
+                    Icon(
+                        Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.mapscreen_edit_shortcut, kind.label),
+                        tint = SheetPalette.ink(dark),
+                    )
                 }
                 VelaMenu(expanded = menu, onDismissRequest = { menu = false }) {
                     item(stringResource(R.string.mapscreen_menu_change)) { menu = false; onAssign(kind) }
@@ -2393,6 +2408,7 @@ private fun SuggestionRow(
     label: String,
     onClick: () -> Unit,
     sublabel: String? = null,
+    onRemove: (() -> Unit)? = null,
 ) {
     Row(
         Modifier.fillMaxWidth().dpadHighlight(RoundedCornerShape(6.dp)).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
@@ -2400,7 +2416,14 @@ private fun SuggestionRow(
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.padding(end = 12.dp), tint = tint)
         if (sublabel == null) {
-            Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                label,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = if (onRemove != null) Modifier.weight(1f) else Modifier,
+            )
         } else {
             Column(Modifier.weight(1f)) {
                 Text(
@@ -2416,6 +2439,17 @@ private fun SuggestionRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        // Per-row remove (the X on recents). Its own focus stop with a visible ring, so a D-pad
+        // walk can reach it after the row itself.
+        if (onRemove != null) {
+            IconButton(onClick = onRemove, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.mapscreen_menu_remove),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }

@@ -725,7 +725,7 @@ class MapViewModel @Inject constructor(
             val near = mapCenter ?: _state.value.myLocation // suggestions near the viewport, like search
             val res = runCatching { dataSource.search(term, near).places }.getOrDefault(emptyList())
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
-                _state.update { it.copy(suggestions = res.take(6)) }
+                _state.update { it.copy(suggestions = res.take(8)) }
             }
         }
     }
@@ -762,6 +762,17 @@ class MapViewModel @Inject constructor(
     fun searchRecent(q: String) {
         onQueryChange(q)
         search()
+    }
+
+    /** The X on a single recent row - remove just that entry. */
+    fun removeRecentQuery(query: String) {
+        recentStore.remove(query)
+        _state.update { it.copy(recents = recentStore.recent()) }
+    }
+
+    fun removeRecentPlace(placeId: String) {
+        recentPlaceStore.remove(placeId)
+        _state.update { it.copy(recentPlaces = recentPlaceStore.recent()) }
     }
 
     fun clearRecents() {
