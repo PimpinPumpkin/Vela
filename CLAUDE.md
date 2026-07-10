@@ -669,6 +669,16 @@ Defaults that make the safe path the easy one:
   translated.** Adding a user-facing string means: add it to `values/strings.xml` AND all `values-<lang>/`,
   and match the `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
 
+- **README voice demo (`docs/voice-demo.wav`, 2026-07-10).** A ~5.5 s clip of the ACTUAL nav
+  voice linked from README's "What you get": generated OFF-DEVICE with the same engine + model +
+  pace the app uses (pip `sherpa-onnx`, upstream `vits-piper-en_US-hfc_female-medium`,
+  `length_scale=1.25` = the app's 0.8x default). The line is deliberately spelled/punctuated for
+  the TTS ("in a quarter mile, turn right onto main street; then, at the roundabout, download
+  vella!" - "vella" so espeak says the name right, the semicolon for the pause contour). Regenerate
+  the same way if the default voice/pace ever changes. README feature copy rule: "What you get" is
+  the HUMAN-GLANCE list (what people care about, plain sentences); FEATURES.md is the complete
+  record; the README Roadmap holds only OPEN items.
+
 ## Working on the scraper
 
 - The `pb` request *grammar* (`PbBuilder`) and `PolylineCodec` are correct and
