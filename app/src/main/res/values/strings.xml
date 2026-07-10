@@ -512,6 +512,8 @@
     <string name="voice_capture_done">Done</string>
     <string name="mapvm_asr_ready">Vela Voice is ready</string>
     <string name="mapvm_asr_download_failed">Couldn\'t download the voice model. Check your connection and try again.</string>
+    <string name="mapvm_closing_soon">%1$s closes at %2$s and you arrive around %3$s</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s closes at %2$s, before you arrive around %3$s</string> <!-- format -->
     <string name="settings_voice_search_model">Vela Voice</string>
     <string name="settings_voice_search_model_hint">Vela Voice turns speech into a search right on your phone: no other app needed and nothing is uploaded. One-time %1$d MB download.</string>  <!-- format -->
     <string name="settings_voice_search_download">Download (%1$d MB)</string>  <!-- format -->
