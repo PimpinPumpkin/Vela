@@ -1665,7 +1665,7 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
     }
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
-    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category) }
+    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category, rating = it.rating) }
 
 @Composable
 private fun SearchResults(

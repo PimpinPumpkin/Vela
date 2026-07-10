@@ -44,14 +44,199 @@ object PoiIcons {
     )
 
     fun addTo(context: Context, style: Style) {
-        val tf = runCatching {
-            Typeface.createFromAsset(context.assets, "fonts/MaterialIcons-Regular.ttf")
-        }.getOrNull() ?: return
+        val tf = typeface(context) ?: return
         GROUPS.forEach { (key, codepoint, color) ->
             if (style.getImage("vela-poi-$key") == null) {
                 style.addImage("vela-poi-$key", marker(tf, codepoint, color))
             }
         }
+    }
+
+    private var cachedTf: Typeface? = null
+    private fun typeface(context: Context): Typeface? {
+        cachedTf?.let { return it }
+        return runCatching {
+            Typeface.createFromAsset(context.assets, "fonts/MaterialIcons-Regular.ttf")
+        }.getOrNull()?.also { cachedTf = it }
+    }
+
+    // ── Search-result markers (Google's result treatment) ─────────────────────────────────────
+    // Every result is RED but KEEPS its category glyph (a red pin with the fork/mug/bed on it);
+    // food results with a rating instead get a wide "speech bubble" with the rating baked into
+    // the bitmap, like Google does for restaurants. Results that lose the collision fight render
+    // as a small red dot (their own layer in VelaMapView) that expands into the pin on zoom-in.
+    private const val RESULT_RED = "#DB4437"
+    const val RESULT_DOT_IMG = "vela-res-dot"
+
+    /** The style-image key for a search result: a rating bubble for rated FOOD places
+     *  ("vela-resb-food-45"), a red category pin for everything else ("vela-res-shop"). */
+    fun resultIconKey(name: String?, category: String?, rating: Double?): String {
+        val group = groupFor(name, category)
+        return if (group == "food" && rating != null) {
+            "vela-resb-$group-${(rating * 10).toInt().coerceIn(10, 50)}"
+        } else "vela-res-$group"
+    }
+
+    /** Generate + register the bitmap behind [key] (from [resultIconKey]) if this style doesn't
+     *  have it yet. Rating bubbles are theme-dependent, so a theme flip (= a style reload) simply
+     *  regenerates them for the new [dark]. */
+    fun ensureResultIcon(context: Context, style: Style, key: String, dark: Boolean) {
+        if (style.getImage(key) != null) return
+        val tf = typeface(context) ?: return
+        val bubble = key.startsWith("vela-resb-")
+        val rest = key.removePrefix(if (bubble) "vela-resb-" else "vela-res-")
+        val group = if (bubble) rest.substringBeforeLast('-') else rest
+        val codepoint = (GROUPS.firstOrNull { it.first == group } ?: GROUPS.last()).second
+        val bmp = if (bubble) {
+            val tenths = rest.substringAfterLast('-').toIntOrNull() ?: 40
+            ratingBubble(tf, codepoint, tenths / 10.0, dark)
+        } else resultPin(tf, codepoint)
+        style.addImage(key, bmp)
+    }
+
+    /** Register the collapsed-result dot (theme-independent, one image). */
+    fun addResultDot(style: Style) {
+        if (style.getImage(RESULT_DOT_IMG) != null) return
+        val s = 34
+        val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val c = s / 2f
+        canvas.drawCircle(c, c + 1f, s * 0.30f, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x38000000
+            maskFilter = BlurMaskFilter(s * 0.09f, BlurMaskFilter.Blur.NORMAL)
+        })
+        canvas.drawCircle(c, c, s * 0.30f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
+        canvas.drawCircle(c, c, s * 0.24f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
+        return style.addImage(RESULT_DOT_IMG, bmp)
+    }
+
+    /** A red teardrop pin with the white category glyph — the pin TIP is at bottom-centre, for a
+     *  bottom-anchored layer (the tip marks the place, Google-style). */
+    private fun resultPin(tf: Typeface, codepoint: Int): Bitmap {
+        val w = 100
+        val h = 108
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val cx = w / 2f
+        val bodyCy = h * 0.36f
+        val bodyR = w * 0.335f
+        val tipY = h - 5f
+        val d = tipY - bodyCy
+        val sin = (bodyR / d).coerceAtMost(0.985f)
+        val cos = kotlin.math.sqrt(1f - sin * sin)
+        val teardrop = Path().apply {
+            addCircle(cx, bodyCy, bodyR, Path.Direction.CW)
+            op(
+                Path().apply {
+                    moveTo(cx - bodyR * sin, bodyCy + bodyR * cos)
+                    lineTo(cx, tipY)
+                    lineTo(cx + bodyR * sin, bodyCy + bodyR * cos)
+                    close()
+                },
+                Path.Op.UNION,
+            )
+        }
+        canvas.save()
+        canvas.translate(0f, w * 0.02f)
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x40000000
+            maskFilter = BlurMaskFilter(w * 0.05f, BlurMaskFilter.Blur.NORMAL)
+        })
+        canvas.restore()
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
+        // A slightly darker inner disc behind the glyph gives the flat red pin its depth cue.
+        canvas.drawCircle(cx, bodyCy, bodyR * 0.80f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#C5221F") })
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = tf
+            color = Color.WHITE
+            textSize = w * 0.34f
+            textAlign = Paint.Align.CENTER
+        }
+        val glyph = String(Character.toChars(codepoint))
+        val fm = text.fontMetrics
+        canvas.drawText(glyph, cx, bodyCy - (fm.ascent + fm.descent) / 2f, text)
+        return bmp
+    }
+
+    /** Google's restaurant-result marker: a wide speech-bubble with a bottom tail, holding the
+     *  red category glyph, the rating, and a gold star. Theme-surfaced (white in light, grey in
+     *  dark) with the rating in plain ink. Tail tip at bottom-centre for a bottom-anchored layer. */
+    private fun ratingBubble(tf: Typeface, codepoint: Int, rating: Double, dark: Boolean): Bitmap {
+        val fill = Color.parseColor(if (dark) "#3C4043" else "#FFFFFF")
+        val edge = Color.parseColor(if (dark) "#5F6368" else "#DADCE0")
+        val ink = Color.parseColor(if (dark) "#E8EAED" else "#3C4043")
+        val glyphColor = Color.parseColor(if (dark) "#F28B82" else RESULT_RED)
+        val star = Color.parseColor("#FBBC04")
+        val bodyH = 62f
+        val tailH = 16f
+        val pad = 20f
+        val gap = 9f
+        val glyphSize = 34f
+        val starSize = 30f
+        val label = String.format(java.util.Locale.getDefault(), "%.1f", rating)
+        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = ink
+            textSize = 32f
+            typeface = Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
+        }
+        val textW = textPaint.measureText(label)
+        val w = (pad + glyphSize + gap + textW + gap * 0.6f + starSize + pad).toInt() + 8
+        val h = (bodyH + tailH).toInt() + 10
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val cx = w / 2f
+        val left = 4f
+        val right = w - 4f
+        val top = 3f
+        val bottom = top + bodyH
+        val r = bodyH / 2f
+        val bubble = Path().apply {
+            addRoundRect(left, top, right, bottom, r, r, Path.Direction.CW)
+            // The comic-bubble tail: a small triangle to the tip at bottom-centre.
+            op(
+                Path().apply {
+                    moveTo(cx - 13f, bottom - 6f)
+                    lineTo(cx, top + bodyH + tailH)
+                    lineTo(cx + 13f, bottom - 6f)
+                    close()
+                },
+                Path.Op.UNION,
+            )
+        }
+        canvas.save()
+        canvas.translate(0f, 3f)
+        canvas.drawPath(bubble, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x40000000
+            maskFilter = BlurMaskFilter(5f, BlurMaskFilter.Blur.NORMAL)
+        })
+        canvas.restore()
+        canvas.drawPath(bubble, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = fill })
+        canvas.drawPath(bubble, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = edge
+            style = Paint.Style.STROKE
+            strokeWidth = 1.6f
+        })
+        val cyText = (top + bottom) / 2f
+        var x = left + pad - 4f
+        val glyphPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = tf
+            color = glyphColor
+            textSize = glyphSize
+        }
+        var fm = glyphPaint.fontMetrics
+        canvas.drawText(String(Character.toChars(codepoint)), x, cyText - (fm.ascent + fm.descent) / 2f, glyphPaint)
+        x += glyphSize + gap
+        fm = textPaint.fontMetrics
+        canvas.drawText(label, x, cyText - (fm.ascent + fm.descent) / 2f, textPaint)
+        x += textW + gap * 0.6f
+        val starPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = tf
+            color = star
+            textSize = starSize
+        }
+        fm = starPaint.fontMetrics
+        canvas.drawText(String(Character.toChars(0xe838)), x, cyText - (fm.ascent + fm.descent) / 2f, starPaint)
+        return bmp
     }
 
     // class -> group, for OpenFreeMap Liberty's rank-tiered poi layers
