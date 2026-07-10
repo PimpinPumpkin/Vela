@@ -394,12 +394,23 @@ fun MapScreen(
     ) { result ->
         if (result.values.any { it }) vm.startLocation()
     }
+    // Only START location if it's already granted. The raw system dialog is NOT fired here anymore:
+    // the onboarding rationale (VelaRoot) owns the first ask so it comes with an explanation, and the
+    // locate FAB (below) re-asks for anyone who declined. Firing it unconditionally here was the
+    // "permission pops the instant the map loads, no context" problem.
+    fun hasLocation() = ContextCompat.checkSelfPermission(
+        context, Manifest.permission.ACCESS_FINE_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+        context, Manifest.permission.ACCESS_COARSE_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED
     LaunchedEffect(Unit) {
-        val granted = ContextCompat.checkSelfPermission(
-            context, Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
-        if (granted) {
-            vm.startLocation()
+        if (hasLocation()) vm.startLocation()
+    }
+    // Tapping the locate button with no permission is an unambiguous "I want my location" - request
+    // it (no rationale screen needed, the tap IS the intent). Granted → normal recenter.
+    val onRecenter: () -> Unit = {
+        if (hasLocation()) {
+            vm.recenter()
         } else {
             permLauncher.launch(
                 arrayOf(
@@ -1204,7 +1215,7 @@ fun MapScreen(
             // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
             // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
-                onClick = vm::recenter,
+                onClick = onRecenter,
                 modifier = Modifier
                     .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
