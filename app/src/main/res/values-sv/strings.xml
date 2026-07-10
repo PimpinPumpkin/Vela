@@ -489,6 +489,8 @@
     <string name="voice_capture_done">Klar</string>
     <string name="mapvm_asr_ready">Vela-rösten är klar</string>
     <string name="mapvm_asr_download_failed">Det gick inte att ladda ner röstmodellen. Kontrollera anslutningen och försök igen.</string>
+    <string name="mapvm_closing_soon">%1$s stänger %2$s och du är framme runt %3$s</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s stänger %2$s, innan du är framme (runt %3$s)</string> <!-- format -->
     <string name="settings_voice_search_model">Vela-röst</string>
     <string name="settings_voice_search_model_hint">Vela-rösten gör tal till en sökning direkt på telefonen: ingen annan app behövs och inget laddas upp. Engångsnedladdning på %1$d MB.</string>  <!-- format -->
     <string name="settings_voice_search_download">Ladda ner (%1$d MB)</string>  <!-- format -->
