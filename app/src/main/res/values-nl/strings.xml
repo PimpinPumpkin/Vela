@@ -489,6 +489,8 @@
     <string name="voice_capture_done">Klaar</string>
     <string name="mapvm_asr_ready">De Vela-stem is klaar</string>
     <string name="mapvm_asr_download_failed">Kan het spraakmodel niet downloaden. Controleer je verbinding en probeer opnieuw.</string>
+    <string name="mapvm_closing_soon">%1$s sluit om %2$s en je komt rond %3$s aan</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s sluit om %2$s, voordat je rond %3$s aankomt</string> <!-- format -->
     <string name="settings_voice_search_model">Vela-stem</string>
     <string name="settings_voice_search_model_hint">De Vela-stem zet spraak direct op je telefoon om in een zoekopdracht: geen andere app nodig en er wordt niets geüpload. Eenmalige download van %1$d MB.</string>  <!-- format -->
     <string name="settings_voice_search_download">Downloaden (%1$d MB)</string>  <!-- format -->

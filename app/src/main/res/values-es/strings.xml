@@ -489,6 +489,8 @@
     <string name="voice_capture_done">Listo</string>
     <string name="mapvm_asr_ready">La voz de Vela está lista</string>
     <string name="mapvm_asr_download_failed">No se pudo descargar el modelo de voz. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="mapvm_closing_soon">%1$s cierra a las %2$s y llegas hacia las %3$s</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s cierra a las %2$s, antes de que llegues hacia las %3$s</string> <!-- format -->
     <string name="settings_voice_search_model">Voz de Vela</string>
     <string name="settings_voice_search_model_hint">La voz de Vela convierte tu voz en una búsqueda directamente en el teléfono: sin otra app y sin subir nada. Descarga única de %1$d MB.</string>  <!-- format -->
     <string name="settings_voice_search_download">Descargar (%1$d MB)</string>  <!-- format -->
