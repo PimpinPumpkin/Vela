@@ -485,4 +485,19 @@
     <string name="settings_developer_hint">Ferramentas para demos, capturas de ecrã e testes. Desative-as para uso real.</string>
     <string name="settings_browse_voices">Explorar vozes</string>
     <string name="settings_browse_voices_hint">Transfira e alterne entre as vozes da Vela no dispositivo.</string>
+    <string name="voice_capture_listening">A ouvir…</string>
+    <string name="voice_capture_starting">A preparar…</string>
+    <string name="voice_capture_done">Concluído</string>
+    <string name="mapvm_asr_ready">A pesquisa por voz no dispositivo está pronta</string>
+    <string name="mapvm_asr_download_failed">Não foi possível transferir o modelo de voz. Verifica a ligação e tenta novamente.</string>
+    <string name="settings_voice_search_model">Pesquisa por voz no dispositivo</string>
+    <string name="settings_voice_search_model_hint">O reconhecimento de voz da Vela corre no telemóvel, por isso a pesquisa por voz funciona sem outra app e nada é enviado. Transferência única de ~%1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Transferir (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Remover</string>
+    <string name="settings_voice_search_downloading">A transferir… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">A instalar…</string>
+    <string name="settings_voice_search_engine_title">Ao tocar no microfone</string>
+    <string name="settings_voice_search_engine_auto">No dispositivo quando disponível</string>
+    <string name="settings_voice_search_engine_local">Apenas no dispositivo</string>
+    <string name="settings_voice_search_engine_system">Outra app de voz</string>
 </resources>

@@ -436,6 +436,43 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 else stringResource(R.string.settings_voice_search_none),
             )
 
+            // On-device voice search (tier-1): download Vela's own Whisper model, or remove it. Works
+            // with no other app and uploads nothing; Auto uses it over a provider when it's installed.
+            LaunchedEffect(Unit) { vm.refreshAsr() }
+            Spacer(Modifier.height(8.dp))
+            Hint(stringResource(R.string.settings_voice_search_model_hint, app.vela.voice.AsrModel.SIZE_MB))
+            when {
+                state.asrDownloadPct != null -> {
+                    val pct = state.asrDownloadPct ?: 0f
+                    Text(
+                        if (state.asrInstalling) stringResource(R.string.settings_voice_search_installing)
+                        else stringResource(R.string.settings_voice_search_downloading, (pct * 100).toInt()),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                }
+                state.asrInstalled -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.settings_voice_search_model), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.deleteAsrModel() }) { Text(stringResource(R.string.settings_voice_search_remove)) }
+                    }
+                }
+                else -> OutlinedButton(onClick = { vm.downloadAsrModel() }) {
+                    Text(stringResource(R.string.settings_voice_search_download, app.vela.voice.AsrModel.SIZE_MB))
+                }
+            }
+            // The engine picker only matters when there's actually a choice (the model AND a voice app);
+            // otherwise Auto already does the one available thing.
+            if (state.asrInstalled && hasVoiceProvider) {
+                Spacer(Modifier.height(12.dp))
+                SubHead(stringResource(R.string.settings_voice_search_engine_title))
+                val eng = app.vela.ui.VoiceSearch.engine.value
+                SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng == app.vela.ui.VoiceSearch.Engine.AUTO, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
+                SelectableRow(stringResource(R.string.settings_voice_search_engine_local), eng == app.vela.ui.VoiceSearch.Engine.LOCAL, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.LOCAL) })
+                SelectableRow(stringResource(R.string.settings_voice_search_engine_system), eng == app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM) })
+            }
+
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_map))
             ToggleRow(stringResource(R.string.settings_live_traffic), app.vela.ui.Traffic.on.value) { app.vela.ui.Traffic.set(context, it) }
