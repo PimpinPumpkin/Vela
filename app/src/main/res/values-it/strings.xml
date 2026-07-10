@@ -216,7 +216,6 @@
     <string name="place_based_current_traffic">in base al traffico attuale</string>
     <string name="place_arrive_approx">Arrivo alle %1$s</string>
     <string name="place_usually_range">Di solito %1$s – %2$s</string>
-    <string name="place_current_traffic">traffico attuale</string>
     <string name="place_fastest">Più veloce</string>
     <string name="place_delta_min">+%1$d min</string>
     <string name="place_via">via %1$s</string>
