@@ -241,7 +241,7 @@ Defaults that make the safe path the easy one:
   Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO` (AAOS car speed).
   The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
 - **Settings ORDER is deliberate (declutter reorg 2026-07-10, supersedes 2026-07-08):** Appearance →
-  Map style → Units → Language → Search → Map (traffic/transit) → **Offline** → **Place pages**
+  Map style → Units → Language → **Offline maps** → Search → Map (traffic/transit) → **Place pages**
   (ShowReviews / read-all-reviews / LoadPhotos / hide-adult / hide-external-links) → Navigation (keep-screen-on, vibrate-on-turns as
   FilterChips one per mode, parking history) → Voice → Saved places → Lists → Data & privacy →
   Diagnostics (share-diagnostics + the crash card) → **Advanced** → **Developer** → About/Support/
@@ -249,7 +249,7 @@ Defaults that make the safe path the easy one:
   out of their old sections: **Advanced** = 3D buildings + traffic-light guidance; **Developer** =
   demo drive, simulate location, trip recording (each "turn off for real use"). The two **content
   filters (hide-adult, hide-external-links) stay in Place pages** with the other place-content
-  toggles (user 2026-07-10), NOT Advanced. **Offline moved UP** to right after Map (people reach it often). **Language is a "Follow
+  toggles (user 2026-07-10), NOT Advanced. **Offline maps** (renamed from "Offline") sits right below Language, ABOVE Search (people reach it often, user 2026-07-10). Its routing-region filter field just says "Search" (the old "Filter N regions…" wrapped to multiple lines). **Language is a "Follow
   system language" ToggleRow** that reveals the 11-language picker only when OFF (seeded with
   `AppLocale.deviceDefaultSupported()`); most people never see the list. **The Voice library is a
   DEDICATED screen** (`VoiceBrowseScreen`, reached by the "Browse voices" `OutlinedButton` in the

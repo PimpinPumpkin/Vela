@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">Увімк. = приховує бари, клуби, казино, магазини алкоголю та інші дорослі / нічні місця з пошуку та карти.</string>
     <string name="settings_hide_external_links">Приховати вебсайт і зовнішні посилання</string>
     <string name="settings_hide_external_links_hint">Увімк. = на сторінках місць немає кнопок «Сайт», Street View та «Забронювати / Замовити» (довільні зовнішні сайти не відкриваються).</string>
-    <string name="settings_offline">Офлайн</string>
+    <string name="settings_offline">Офлайн-карти</string>
     <string name="settings_offline_hint">Завантажте область, щоб зберегти її карту та маршрути на телефоні для офлайн-використання.</string>
     <string name="settings_offline_map_area">Ділянка карти</string>
     <string name="settings_offline_download_viewport">Завантажити ділянку, яку ви переглядаєте</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">Дороги цілого регіону (штату чи країни), щоб маршрути працювали офлайн на всій території. Завантажте туди, куди їдете.</string>
     <string name="settings_routing_no_regions">Поки що немає доступних регіонів.</string>
     <string name="settings_clear_filter">Очистити фільтр</string>
-    <string name="settings_routing_filter_placeholder">Фільтр %1$d регіонів… (напр. Японія, Техас)</string>
+    <string name="settings_routing_filter_placeholder">Пошук</string>
     <string name="settings_routing_no_match">Жоден регіон не збігається з «%1$s».</string>
     <string name="settings_routing_downloading">Завантаження… %1$d%%</string>
     <string name="settings_routing_installed">Встановлено · маршрути тут офлайн</string>

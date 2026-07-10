@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">Aan = verbergt bars, clubs, casino’s, slijterijen en andere volwassen- / uitgaanslocaties uit zoekresultaten en de kaart.</string>
     <string name="settings_hide_external_links">Website en externe links verbergen</string>
     <string name="settings_hide_external_links_hint">Aan = plaatspagina’s tonen geen Website-, Street View- of Reserveren / Bestellen-knoppen (geen willekeurige externe sites geopend).</string>
-    <string name="settings_offline">Offline</string>
+    <string name="settings_offline">Offlinekaarten</string>
     <string name="settings_offline_hint">Download een gebied om de kaart en routes ervan op je telefoon te bewaren voor offline gebruik.</string>
     <string name="settings_offline_map_area">Kaartgebied</string>
     <string name="settings_offline_download_viewport">Download het gebied dat u bekijkt</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">De wegen van een hele regio (een staat of land), zodat routes overal daarin offline werken. Pak waar je heen gaat.</string>
     <string name="settings_routing_no_regions">Nog geen regio\'s beschikbaar.</string>
     <string name="settings_clear_filter">Filter wissen</string>
-    <string name="settings_routing_filter_placeholder">Filter %1$d regio\'s… (bijv. Japan, Texas)</string>
+    <string name="settings_routing_filter_placeholder">Zoeken</string>
     <string name="settings_routing_no_match">Geen regio\'s komen overeen met “%1$s”.</string>
     <string name="settings_routing_downloading">Downloaden… %1$d%%</string>
     <string name="settings_routing_installed">Geïnstalleerd · routes hier offline</string>
