@@ -494,6 +494,10 @@ fun MapScreen(
                 app.vela.ui.VoiceSearch.Mode.NONE -> showAsrOffer = true
                 app.vela.ui.VoiceSearch.Mode.SYSTEM -> {
                     val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        // Pin the exact voice app the user picked in Settings (falls back to the
+                        // first installed one) - the bare implicit intent left the choice to
+                        // Android when several voice apps were installed.
+                        app.vela.ui.VoiceSearch.chosenProvider(context)?.let { component = it.component }
                         putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
                         putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, app.vela.ui.AppLocale.effective().toLanguageTag())
                         putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, voicePrompt)
