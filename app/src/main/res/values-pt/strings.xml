@@ -214,7 +214,7 @@
     <string name="place_arriveby_leave">Chegar até %1$s  ·  partir %2$s</string>
     <string name="place_in_typical_traffic">com trânsito habitual</string>
     <string name="place_based_current_traffic">com base no trânsito atual</string>
-    <string name="place_arrive_approx">Chegada ~%1$s</string>
+    <string name="place_arrive_approx">Chegada às %1$s</string>
     <string name="place_usually_range">Normalmente %1$s – %2$s</string>
     <string name="place_current_traffic">trânsito atual</string>
     <string name="place_fastest">Mais rápido</string>
@@ -232,7 +232,7 @@
     <string name="place_review_count">%1$d avaliações</string>
     <string name="place_all_n_reviews">Todas as %1$d avaliações · ordenar e pesquisar</string>
     <string name="place_all_reviews">Todas as avaliações · ordenar e pesquisar</string>
-    <string name="place_reviews_progress">Avaliações · %1$d de ~%2$d</string>
+    <string name="place_reviews_progress">Avaliações · %1$d de cerca de %2$d</string>
     <string name="place_reviews_so_far">Avaliações · %1$d até agora</string>
     <string name="place_gathering_reviews">A recolher avaliações…</string>
     <string name="place_reviews_load_failed">Não foi possível carregar as avaliações. Toque para tentar novamente.</string>
@@ -304,7 +304,7 @@
     <string name="mapscreen_pick_stop_hint">Escolha um local para adicionar como paragem</string>
     <string name="mapscreen_learn_more">Saber mais</string>
     <string name="mapscreen_faster_route_title">Percurso mais rápido</string>
-    <string name="mapscreen_faster_route_saves">Poupa ~%1$s com o trânsito atual</string>
+    <string name="mapscreen_faster_route_saves">Poupa cerca de %1$s com o trânsito atual</string>
     <string name="mapscreen_no">Não</string>
     <string name="mapscreen_switch">Mudar</string>
     <string name="root_not_now">Agora não</string>
@@ -501,10 +501,18 @@
     <string name="map_asr_offer_title">Pesquisa por voz</string>
     <string name="map_asr_offer_body">Transfere a voz Vela para ditar as tuas pesquisas. Corre inteiramente no telemóvel e não envia nada.</string>
     <string name="nav_precise_title">Localização precisa necessária</string>
-    <string name="nav_precise_body">A navegação segue-te por GPS, o que exige a localização precisa. A aproximada só dá uma zona geral, por isso a navegação nunca te encontraria.</string>
+    <string name="nav_precise_body">A navegação segue você pelo GPS, o que exige a localização precisa. No momento o Vela só conhece a sua área aproximada.</string>
     <string name="nav_precise_allow">Permitir precisa</string>
     <string name="nav_precise_toast">A navegação precisa da localização precisa</string>
     <string name="loc_off_title">A localização está desligada</string>
     <string name="loc_off_body">A Vela não tem acesso à localização. Podes permitir nas definições do sistema.</string>
     <string name="loc_off_settings">Abrir definições</string>
+    <string name="loc_approx_title">Localização aproximada</string>
+    <string name="loc_approx_body">O Vela só conhece a sua área aproximada, não onde você está. O mapa mostra um círculo largo em vez de um ponto, e a navegação não vai funcionar. Você pode mudar para a localização precisa quando quiser.</string>
+    <string name="loc_approx_allow">Permitir precisa</string>
+    <string name="loc_approx_keep">Manter aproximada</string>
+    <string name="notif_ask_title">Pular as notificações?</string>
+    <string name="notif_ask_body">A navegação mantém a próxima curva numa notificação, para as instruções ficarem com você com a tela apagada ou em outro app. Sem ela, as instruções só aparecem dentro do Vela.</string>
+    <string name="notif_ask_allow">Permitir</string>
+    <string name="notif_ask_skip">Pular</string>
 </resources>
