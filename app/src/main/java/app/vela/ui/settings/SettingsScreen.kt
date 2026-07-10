@@ -461,12 +461,33 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             // otherwise the resolver already does the one available thing. TWO options, not three:
             // "Vela voice" maps to AUTO (Vela's model wins, with the provider as a graceful fallback
             // if the model is ever removed) - an explicit local-only third choice read as jargon.
-            if (state.asrInstalled && hasVoiceProvider) {
+            // One row per way to dictate: Vela Voice (when the model is installed) plus every
+            // installed voice app BY NAME - picking an app pins it, so Android never interjects
+            // its own chooser when several are installed. Enumerated off the main thread: it's a
+            // binder query + per-app label load (the same class of call as the TTS engine list).
+            val voiceProviders by produceState(initialValue = emptyList<app.vela.ui.VoiceSearch.Provider>()) {
+                value = withContext(Dispatchers.IO) { app.vela.ui.VoiceSearch.providers(context) }
+            }
+            // Shown whenever there's a real choice: Vela Voice vs any app, or between two apps
+            // even without the model.
+            if ((state.asrInstalled && voiceProviders.isNotEmpty()) || voiceProviders.size > 1) {
                 Spacer(Modifier.height(12.dp))
                 SubHead(stringResource(R.string.settings_voice_search_engine_title))
                 val eng = app.vela.ui.VoiceSearch.engine.value
-                SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng != app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
-                SelectableRow(stringResource(R.string.settings_voice_search_engine_system), eng == app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM) })
+                val chosen = app.vela.ui.VoiceSearch.chosenProvider(context)
+                if (state.asrInstalled) {
+                    SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng != app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
+                }
+                voiceProviders.forEach { p ->
+                    SelectableRow(
+                        p.label,
+                        eng == app.vela.ui.VoiceSearch.Engine.SYSTEM && chosen?.component == p.component,
+                        onClick = {
+                            app.vela.ui.VoiceSearch.setProvider(context, p.component)
+                            app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM)
+                        },
+                    )
+                }
             }
 
             Spacer(Modifier.height(20.dp))

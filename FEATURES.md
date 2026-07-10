@@ -198,6 +198,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Transit lines are opt-in now (2026-07-10).** The purple rail highlight is off by default;
   it reads as mystery lines if you don't know what it is. Settings → Map → "Highlight transit
   lines" brings it back, and an earlier choice is kept either way.
+- ✅ **Pick your voice app (2026-07-10).** With more than one voice-input app installed, Settings →
+  Search lists each by name next to Vela Voice, and the mic launches exactly the one you chose
+  instead of whatever Android felt like resolving.
 - ✅ **The place card follows your finger (2026-07-10).** Dragging the place sheet moves it with
   your finger and, on release, it coasts on the fling to whichever size is closest - no more
   stepping between sizes in fixed hops.
