@@ -69,7 +69,7 @@
     <string name="settings_hide_external_links">Website &amp; externe Links ausblenden</string>
     <string name="settings_hide_external_links_hint">An = Ortsseiten zeigen keine Website-, Street-View- oder Buchen / Bestellen-Schaltflächen (keine beliebigen externen Seiten geöffnet).</string>
     <string name="settings_offline">Offline</string>
-    <string name="settings_offline_hint">Für die Kartennutzung ohne Signal braucht es zwei Dinge – die KARTEN-Kacheln, die Sie sehen, und das STRASSENNETZ, das Sie leitet. Das Speichern eines Kartenbereichs holt beides für diesen Ort; die Regionsliste unten fügt das Straßennetz für Ihr Reiseziel hinzu.</string>
+    <string name="settings_offline_hint">Lade einen Bereich herunter, um seine Karte und Wegbeschreibungen für die Offline-Nutzung auf dem Gerät zu behalten.</string>
     <string name="settings_offline_map_area">Kartenbereich</string>
     <string name="settings_offline_download_viewport">Angezeigten Bereich herunterladen</string>
     <string name="settings_offline_download_viewport_hint">Speichert die Kacheln für den zuletzt angezeigten Kartenbereich – und die Routing-Region drumherum – sodass er später ohne Netz dargestellt und navigiert wird. Die Suche benötigt weiterhin eine Verbindung.</string>
