@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">Activé = masque les bars, clubs, casinos, cavistes et autres lieux pour adultes / de vie nocturne des résultats et de la carte.</string>
     <string name="settings_hide_external_links">Masquer le site web et les liens externes</string>
     <string name="settings_hide_external_links_hint">Activé = les pages de lieu n’affichent pas les boutons Site web, Street View ou Réserver / Commander (aucun site externe arbitraire ouvert).</string>
-    <string name="settings_offline">Hors ligne</string>
+    <string name="settings_offline">Cartes hors ligne</string>
     <string name="settings_offline_hint">Téléchargez une zone pour conserver sa carte et ses itinéraires sur votre téléphone, utilisables hors ligne.</string>
     <string name="settings_offline_map_area">Zone de carte</string>
     <string name="settings_offline_download_viewport">Télécharger la zone affichée</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">Les routes d\'une région entière (un état ou un pays) pour que les itinéraires fonctionnent hors ligne partout à l\'intérieur. Prenez là où vous allez.</string>
     <string name="settings_routing_no_regions">Aucune région disponible pour l\'instant.</string>
     <string name="settings_clear_filter">Effacer le filtre</string>
-    <string name="settings_routing_filter_placeholder">Filtrer %1$d régions… (par ex. Japon, Texas)</string>
+    <string name="settings_routing_filter_placeholder">Rechercher</string>
     <string name="settings_routing_no_match">Aucune région ne correspond à « %1$s ».</string>
     <string name="settings_routing_downloading">Téléchargement… %1$d %%</string>
     <string name="settings_routing_installed">Installée · routage hors ligne ici</string>
