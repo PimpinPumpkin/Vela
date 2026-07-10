@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 
 /**
  * Compute **open/closed right now** from the human hours strings Google gives us ("Monday: 6 AM–1 AM").
- * This is the **FALLBACK** when Google ships no live status string — Google's own string stays PRIMARY,
+ * This is the **FALLBACK** when Google ships no live status string - Google's own string stays PRIMARY,
  * because it alone knows an owner-set ad-hoc "closed today" (the weekly hours carry scheduled + holiday
  * ranges, not one-off closures). Handles AM/PM, minutes, "Open 24 hours", "Closed", multiple ranges per
  * day, an implicit meridian ("5–10 PM"), and intervals that run past midnight (close ≤ open → next day).
@@ -15,7 +15,7 @@ import java.time.LocalDateTime
  */
 object OpeningHours {
 
-    /** [open] now? [detail] is the next transition — "Closes 1 AM" (open) or "Opens 6 AM" (closed). */
+    /** [open] now? [detail] is the next transition - "Closes 1 AM" (open) or "Opens 6 AM" (closed). */
     data class Status(val open: Boolean, val detail: String)
 
     fun statusAt(hours: List<String>, now: LocalDateTime): Status? {
@@ -29,7 +29,7 @@ object OpeningHours {
         val hitToday = todayIv.firstOrNull { nowMin >= it.first && nowMin < it.second }
         val hitYest = yestIv.firstOrNull { it.second > DAY && nowMin < it.second - DAY }
         if (hitToday != null || hitYest != null) {
-            // A full-day interval means "Open 24 hours" — its encoded close (0..1440 → midnight) would
+            // A full-day interval means "Open 24 hours" - its encoded close (0..1440 → midnight) would
             // otherwise read as the misleading "Closes 12 AM" on a place that never closes today.
             if (hitToday != null && hitToday.first == 0 && hitToday.second >= DAY) {
                 return Status(true, "Open 24 hours")
@@ -53,7 +53,7 @@ object OpeningHours {
     private const val DAY = 1440
 
     /** "Monday: 6 AM–1 AM" lines → DayOfWeek → intervals (minutes; a past-midnight close is `close+1440`).
-     *  Returns null if any day's spec is present but unparseable (→ caller falls back to Google's status). */
+     * Returns null if any day's spec is present but unparseable (→ caller falls back to Google's status). */
     private fun parse(hours: List<String>): Map<DayOfWeek, List<Pair<Int, Int>>>? {
         val map = HashMap<DayOfWeek, List<Pair<Int, Int>>>()
         for (line in hours) {
@@ -73,7 +73,7 @@ object OpeningHours {
         if (low.startsWith("closed")) return emptyList()
         if (low.contains("24 hour") || low == "open 24 hours" || low == "open 24 hours a day") return listOf(0 to DAY)
         return spec.split(",").map { it.trim() }.filter { it.isNotEmpty() }.map { range ->
-            val parts = range.split("–", "—", "-", " to ").map { it.trim() }.filter { it.isNotEmpty() }
+            val parts = range.split("–", "-", "-", " to ").map { it.trim() }.filter { it.isNotEmpty() }
             if (parts.size != 2) return null
             // implicit meridian: "5–10 PM" → the 5 inherits PM from the 10.
             val endMer = meridian(parts[1])

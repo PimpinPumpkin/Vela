@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Settings must open ALREADY focused (on the back button, top of screen) — the original bug was it
+# Settings must open ALREADY focused (on the back button, top of screen) - the original bug was it
 # opened with nothing focused, wasting the first keypress (docs/dpad.md).
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; source "$D/lib.sh"; source "$D/nav.sh"

@@ -1,7 +1,7 @@
 package app.vela.core.config
 
 /**
- * A user-facing notice pushed through the signed calibration channel — so we can
+ * A user-facing notice pushed through the signed calibration channel - so we can
  * tell users "search is temporarily down, a fix is on the way" without shipping an
  * APK. Dismissal is tracked per [id] on the device.
  */

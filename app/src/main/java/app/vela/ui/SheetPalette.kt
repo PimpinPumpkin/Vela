@@ -3,8 +3,8 @@ package app.vela.ui
 import androidx.compose.ui.graphics.Color
 
 /**
- * One Google-style palette shared by every bottom surface — the place sheet, the
- * directions panel, the route chooser, the steps list and the nav bar — so they
+ * One Google-style palette shared by every bottom surface - the place sheet, the
+ * directions panel, the route chooser, the steps list and the nav bar - so they
  * read as one consistent sheet instead of several differently-coloured cards.
  *
  * Deliberately FIXED (not Material-You tokens) so a wallpaper tint can't wash the

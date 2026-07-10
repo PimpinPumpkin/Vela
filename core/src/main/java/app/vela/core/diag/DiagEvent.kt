@@ -6,7 +6,7 @@ package app.vela.core.diag
  * Deliberately flat + string-only so it serializes trivially and a human can read
  * the exported bundle. [kind] is a short tag ("search", "directions", "drift",
  * "nav", "error"); [summary] is a one-line human description; [detail] is optional
- * extra context (a request path, a route summary, an exception message) — kept
+ * extra context (a request path, a route summary, an exception message) - kept
  * small and free of anything we wouldn't want in a shared bug report.
  */
 data class DiagEvent(

@@ -15,13 +15,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Open BUILDING-FOOTPRINT overlays (Microsoft US Building Footprints, ODbL) as **PMTiles** — the
+ * Open BUILDING-FOOTPRINT overlays (Microsoft US Building Footprints, ODbL) as **PMTiles** - the
  * gap-fill sibling of [RoutingGraphStore]. Each region is ONE `.pmtiles` archive (no unzip, unlike the
  * routing graph's folder) downloaded into `filesDir/overlays/<id>.pmtiles`, with an `index.json`
  * (`[{id, bbox:[S,W,N,E]}]`) the map view reads to add a `pmtiles://` source + a fill layer BENEATH the
  * OSM building layer, so footprints only fill where OSM is thin (a suburb the Microsoft→OSM import missed).
  *
- * Reuses [RoutingRegion] as the manifest row (same `{id,name,url,sizeMb,bbox}` shape) — the overlay manifest
+ * Reuses [RoutingRegion] as the manifest row (same `{id,name,url,sizeMb,bbox}` shape) - the overlay manifest
  * (`OVERLAY_MANIFEST_URL`) is built by the same CI pattern as the routing one.
  */
 @Singleton
@@ -40,7 +40,7 @@ class OverlayTileStore @Inject constructor(
     private val indexLock = Any()
 
     // A ~200 MB PMTiles download blows past the shared client's 12s callTimeout (that bound exists to
-    // cap a hung *scrape*, not a large file) — the call aborts mid-stream, runCatching swallows it, and
+    // cap a hung *scrape*, not a large file) - the call aborts mid-stream, runCatching swallows it, and
     // the overlay silently never installs. Derive an unbounded-call client for the body download, same
     // fix KokoroInstaller uses for voice models. Manifest fetches stay on the short-timeout shared client.
     private val downloadHttp: OkHttpClient = http.newBuilder()

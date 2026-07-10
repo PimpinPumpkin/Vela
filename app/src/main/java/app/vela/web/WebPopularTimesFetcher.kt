@@ -27,16 +27,16 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fetches a place's **popular-times** histogram through a hidden [WebView] — the
+ * Fetches a place's **popular-times** histogram through a hidden [WebView] - the
  * same trick as [WebPhotoFetcher], and for the same reason: the keyless `/search`
  * over OkHttp is **bot-degraded** (TLS-fingerprint) and strips the `[84]`
  * histogram, so we'd wrongly concluded popular times was login-gated. A WebView is
- * real Chromium, so its same-origin search comes back undegraded — the full
- * ~240 KB response *with* `[84]` — for an anonymous, no-login session (proven
+ * real Chromium, so its same-origin search comes back undegraded - the full
+ * ~240 KB response *with* `[84]` - for an anonymous, no-login session (proven
  * on-device 2026-06-19; photos work the same way).
  *
  * Warms google.com → maps.google.com (an established anonymous session matters here
- * — a freshly-seeded one still gets a stub), then runs a same-origin `fetch` of the
+ * - a freshly-seeded one still gets a stub), then runs a same-origin `fetch` of the
  * exact search URL the app already builds and parses it with [PopularTimesParser].
  * Best-effort + lazy: any failure returns null and the sheet just omits the section.
  */
@@ -57,11 +57,11 @@ class WebPopularTimesFetcher @Inject constructor(
     }
 
     /** Rich details for [place] (popular times + editorial/owner descriptions), or
-     *  null on any failure / nothing extra for it. */
+     * null on any failure / nothing extra for it. */
     suspend fun fetch(place: Place): PlaceDetails? {
         if (place.name.isBlank()) return null
         val cal = calibration.current()
-        // A *specific* query (name + address) is essential — a bare-name search comes
+        // A *specific* query (name + address) is essential - a bare-name search comes
         // back as a 20-result [64] list trimmed of [84], while name+address resolves to
         // the single focused result that keeps the histogram. Thread it through BOTH the
         // pb's !1s query block and the q= param so they agree.
@@ -82,21 +82,21 @@ class WebPopularTimesFetcher @Inject constructor(
         else runCatching { PopularTimesParser.parse(raw, place.featureId, cal.paths) }.getOrNull()
     }
 
-    /** name + address (commas dropped — the geocoder resolves the flat form most
-     *  reliably), or name alone if we have no address. The address pins the query to
-     *  the one place so Google returns a single focused result with `[84]`, not the
-     *  histogram-less 20-result list a bare name yields. */
+    /** name + address (commas dropped - the geocoder resolves the flat form most
+     * reliably), or name alone if we have no address. The address pins the query to
+     * the one place so Google returns a single focused result with `[84]`, not the
+     * histogram-less 20-result list a bare name yields. */
     private fun specificQuery(place: Place): String {
         val addr = place.address?.replace(',', ' ')?.replace(Regex("\\s+"), " ")?.trim()
         return if (addr.isNullOrBlank()) place.name else "${place.name} $addr"
     }
 
     /** Warm google.com → maps once. The two-step establishes a real NID; a freshly
-     *  consent-seeded session still gets a degraded (histogram-less) search. */
+     * consent-seeded session still gets a degraded (histogram-less) search. */
     @SuppressLint("SetJavaScriptEnabled")
     /** Warm the session ahead of the first real fetch (e.g. on search), so popular
-     *  times + the other details land faster once a place is opened. Fire-and-forget;
-     *  idempotent (a warm already in progress is awaited, not restarted). */
+     * times + the other details land faster once a place is opened. Fire-and-forget;
+     * idempotent (a warm already in progress is awaited, not restarted). */
     suspend fun prewarm() {
         runCatching { withTimeoutOrNull(MAX_WARM_MS + 2_000L) { ensureWarm() } }
     }

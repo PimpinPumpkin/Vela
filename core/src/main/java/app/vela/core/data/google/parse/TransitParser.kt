@@ -20,23 +20,23 @@ import kotlin.math.roundToInt
 
 /**
  * Parses the public-transit (`!3e3`) directions payload that Google embeds in
- * the maps SPA's `APP_INITIALIZATION_STATE` (we read it through a real WebView —
+ * the maps SPA's `APP_INITIALIZATION_STATE` (we read it through a real WebView -
  * OkHttp gets a bot-degraded, driving-only reply, exactly like photos).
  *
  * Schema calibrated against a live Davis→Sacramento capture (2026-06-18):
- *   trips         `root[0][1]`        (array of trip options + trailing metadata)
- *   per trip, the SUMMARY node is `trip[0]`; `trip[1][0][1]` holds the per-stop
- *   leg tree (board/alight/intermediate stops, delay, headsign, agency phone,
- *   alerts — see [parseSteps]). Within the summary `s`:
- *     distance    `s[2][1]`           ("15.0 miles")
- *     duration    `s[3][1]`           ("45 min")
- *     departure   `s[5][0]` = [epochSec, tz, "6:10 AM", …]
- *     arrival     `s[5][1]` = [epochSec, tz, "6:55 AM", …]
- *     agency      `s[6][4][0][0]`     ("Amtrak Chartered Vehicle")
- *     lines       line nodes shaped  ["<name>", <int>, "#fill", "#textcolor"]
- *                 scattered through `s[14]` (the mode/line badge subtree); we
- *                 walk for them rather than pin a brittle per-leg index, since
- *                 Google interleaves mode-icon facets with line facets there.
+ * trips         `root[0][1]`        (array of trip options + trailing metadata)
+ * per trip, the SUMMARY node is `trip[0]`; `trip[1][0][1]` holds the per-stop
+ * leg tree (board/alight/intermediate stops, delay, headsign, agency phone,
+ * alerts - see [parseSteps]). Within the summary `s`:
+ * distance    `s[2][1]`           ("15.0 miles")
+ * duration    `s[3][1]`           ("45 min")
+ * departure   `s[5][0]` = [epochSec, tz, "6:10 AM", …]
+ * arrival     `s[5][1]` = [epochSec, tz, "6:55 AM", …]
+ * agency      `s[6][4][0][0]`     ("Amtrak Chartered Vehicle")
+ * lines       line nodes shaped  ["<name>", <int>, "#fill", "#textcolor"]
+ * scattered through `s[14]` (the mode/line badge subtree); we
+ * walk for them rather than pin a brittle per-leg index, since
+ * Google interleaves mode-icon facets with line facets there.
  *
  * Every field is null-safe: a drifted index degrades one itinerary, it doesn't
  * crash the list. `parse` throws [CalibrationNeededException] only when the
@@ -46,9 +46,9 @@ import kotlin.math.roundToInt
 object TransitParser {
 
     /** Parse a raw `)]}'`-guarded directions body (what the WebView reads out of
-     *  `APP_INITIALIZATION_STATE`). Kept here so `:app` — which has no JSON lib —
-     *  can hand over the string and stay out of kotlinx.serialization. [origin]/[dest]
-     *  (the trip endpoints) anchor the first/last walk legs for on-demand walk directions. */
+     * `APP_INITIALIZATION_STATE`). Kept here so `:app` - which has no JSON lib -
+     * can hand over the string and stay out of kotlinx.serialization. [origin]/[dest]
+     * (the trip endpoints) anchor the first/last walk legs for on-demand walk directions. */
     fun parse(body: String, origin: LatLng? = null, dest: LatLng? = null): List<TransitItinerary> =
         parse(GoogleResponse.parse(body), origin, dest)
 
@@ -87,8 +87,8 @@ object TransitParser {
     }
 
     /** Give each WALK leg its start/end coordinates so the UI can fetch turn-by-turn walking
-     *  directions on demand: from the previous ride's alight stop (or the trip origin) to the next
-     *  ride's board stop (or the trip destination). */
+     * directions on demand: from the previous ride's alight stop (or the trip origin) to the next
+     * ride's board stop (or the trip destination). */
     private fun assignWalkEndpoints(steps: List<TransitStep>, origin: LatLng?, dest: LatLng?): List<TransitStep> {
         if (steps.none { it.line == null }) return steps
         return steps.mapIndexed { i, step ->
@@ -101,15 +101,15 @@ object TransitParser {
     }
 
     /** Service alerts on a ride leg: `leg[0][9]` is an array whose entries carry a
-     *  human title at `[2]` ("Route 9 / 9A - Southbound Midtown Detour"). */
+     * human title at `[2]` ("Route 9 / 9A - Southbound Midtown Detour"). */
     private fun parseAlerts(node: JsonElement?): List<String> =
         node.arr()?.mapNotNull { it.at(2).str()?.takeIf { s -> s.length in 4..140 } }.orEmpty()
 
     private val FARE = Regex("""^[$€£¥]\s?\d[\d.,]*(?:\s?[-–]\s?[$€£¥]?\d[\d.,]*)?$""")
 
     /** Best-effort fare: scan the trip summary for a currency-shaped string. Many US
-     *  agencies (Miami-Dade here) send none, so this is usually null — Google itself
-     *  then shows only "Tickets and information" + a phone, which we surface instead. */
+     * agencies (Miami-Dade here) send none, so this is usually null - Google itself
+     * then shows only "Tickets and information" + a phone, which we surface instead. */
     private fun parseFare(t: JsonElement): String? {
         var found: String? = null
         fun walk(n: JsonElement) {
@@ -123,14 +123,14 @@ object TransitParser {
         return found
     }
 
-    /** The ordered legs (walk/ride) for the drill-down — they live at
-     *  `trip[1][0][1]` in the SAME payload (no extra RPC). Each leg's summary is
-     *  `leg[0]` (duration `[3][1]`, distance `[2][1]`, mode/line badge `[14]`,
-     *  headsign `[14][2][1][0]`). A RIDE leg also carries the full stop block at
-     *  `leg[5]`: board `[5][0]`, alight `[5][1]`, stop count `[5][2]`, and the
-     *  ordered intermediate stops `[5][7]` — each stop node holding name `[0]`,
-     *  agency code `[1]`, and real-time/scheduled call-time tuples. Calibrated
-     *  against a live Miami→Aventura capture (2026-07-07). */
+    /** The ordered legs (walk/ride) for the drill-down - they live at
+     * `trip[1][0][1]` in the SAME payload (no extra RPC). Each leg's summary is
+     * `leg[0]` (duration `[3][1]`, distance `[2][1]`, mode/line badge `[14]`,
+     * headsign `[14][2][1][0]`). A RIDE leg also carries the full stop block at
+     * `leg[5]`: board `[5][0]`, alight `[5][1]`, stop count `[5][2]`, and the
+     * ordered intermediate stops `[5][7]` - each stop node holding name `[0]`,
+     * agency code `[1]`, and real-time/scheduled call-time tuples. Calibrated
+     * against a live Miami→Aventura capture (2026-07-07). */
     private fun parseSteps(legs: JsonElement?): List<TransitStep> {
         val arr = legs.arr() ?: return emptyList()
         return arr.mapNotNull { runCatching { parseStep(it) }.getOrNull() }
@@ -161,9 +161,9 @@ object TransitParser {
     }
 
     /** One stop node → name + code + shown/scheduled call time. A node carries up to
-     *  four time tuples ([epochSec, tz, "h:mm AM", …]): real-time arrival/departure at
-     *  `[2]`/`[3]`, timetable arrival/departure at `[7]`/`[8]`. We show the real-time
-     *  value and keep the timetable one only when it differs (a delay). */
+     * four time tuples ([epochSec, tz, "h:mm AM", …]): real-time arrival/departure at
+     * `[2]`/`[3]`, timetable arrival/departure at `[7]`/`[8]`. We show the real-time
+     * value and keep the timetable one only when it differs (a delay). */
     private fun parseStopTime(node: JsonElement?): TransitStopTime? {
         val n = node ?: return null
         val name = n.at(0).str()?.takeIf { it.isNotBlank() } ?: return null
@@ -194,7 +194,7 @@ object TransitParser {
 
     private val TIME = Regex("""^\d{1,2}:\d{2}\s?[AP]M$""")
 
-    /** Every "h:mm AM/PM" in a leg, in document order — board time first, alight last. */
+    /** Every "h:mm AM/PM" in a leg, in document order - board time first, alight last. */
     private fun collectTimes(leg: JsonElement): List<String> {
         val out = ArrayList<String>()
         fun walk(n: JsonElement) {
@@ -207,10 +207,10 @@ object TransitParser {
         return out
     }
 
-    /** Walk the badge subtree for transit-line nodes — `["<name>", <int>,
-     *  "#fill", "#text"]` — collecting them in document order, de-duplicated by
-     *  name. Walk legs carry no such node, so a walk-only segment contributes
-     *  nothing here (matching Google's compact card, which shows only the lines). */
+    /** Walk the badge subtree for transit-line nodes - `["<name>", <int>,
+     * "#fill", "#text"]` - collecting them in document order, de-duplicated by
+     * name. Walk legs carry no such node, so a walk-only segment contributes
+     * nothing here (matching Google's compact card, which shows only the lines). */
     private fun parseLines(badges: JsonElement?): List<TransitLine> {
         val root = badges.arr() ?: return emptyList()
         // The mode-icon facet ("bus2.png") sits in a sibling node of the line
@@ -243,9 +243,9 @@ object TransitParser {
     }
 
     /** Infer the vehicle class from any icon filename ("bus2.png", "tram.png",
-     *  "rail.png", …) or mode label in the badge subtree. Vehicle classes are
-     *  tested before WALK: line nodes only exist for ridden segments, so a trip
-     *  whose badges mention both "walk" and "bus" is a bus trip with a walk leg. */
+     * "rail.png", …) or mode label in the badge subtree. Vehicle classes are
+     * tested before WALK: line nodes only exist for ridden segments, so a trip
+     * whose badges mention both "walk" and "bus" is a bus trip with a walk leg. */
     private fun guessMode(node: JsonElement): TransitMode {
         val hay = StringBuilder()
         fun walk(n: JsonElement) {

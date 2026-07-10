@@ -8,9 +8,9 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
-/** The per-segment live-traffic spans at `route[3][5][0]` — `[level, startMeters,
- *  lengthMeters]` tuples — drive the route line's Google-style congestion colour.
- *  Calibrated 2026-06-19; these guard the index path + tuple order. */
+/** The per-segment live-traffic spans at `route[3][5][0]` - `[level, startMeters,
+ * lengthMeters]` tuples - drive the route line's Google-style congestion colour.
+ * Calibrated 2026-06-19; these guard the index path + tuple order. */
 class DirectionsTrafficTest {
 
     /** JSON array of [size] nulls with index → raw-JSON overrides. */
@@ -20,7 +20,7 @@ class DirectionsTrafficTest {
     }
 
     /** A minimal route: summary distance `[0][2][0]` + typical duration `[0][3][0]`
-     *  (both required by the parser) and the traffic block at `[3][5][0]`. */
+     * (both required by the parser) and the traffic block at `[3][5][0]`. */
     private fun root(trafficBlock: String?): String {
         val summary = arr(11, 2 to "[10000]", 3 to "[600]")
         val route = if (trafficBlock == null) arr(8, 0 to summary)
@@ -57,8 +57,8 @@ class DirectionsTrafficTest {
     }
 
     /** Typical best→worst spread: summary[10][4] = [lowSeconds, highSeconds, label].
-     *  Google's own depart-time planning hint; also confirms the live-traffic duration
-     *  reads from summary[10][0][0]. Calibrated 2026-06-20 (Davis→SF). */
+     * Google's own depart-time planning hint; also confirms the live-traffic duration
+     * reads from summary[10][0][0]. Calibrated 2026-06-20 (Davis→SF). */
     @Test fun parsesTypicalRangeFromSummary10() {
         val traffic = arr(5, 0 to "[4290,\"now\"]", 4 to "[4096,5239,\"1 hr 8 min to 1 hr 27 min\"]")
         val summary = arr(11, 2 to "[10000]", 3 to "[4670]", 10 to traffic)
@@ -81,11 +81,11 @@ class DirectionsTrafficTest {
     }
 
     /** A degenerate (zero-width) range collapses to null so the UI doesn't show
-     *  "usually 1 hr 10 min – 1 hr 10 min". */
+     * "usually 1 hr 10 min – 1 hr 10 min". */
     /** The ARRIVE maneuver MUST sit at the route's end (the destination). Google's step
-     *  distances can total well short of the geometry length, so the cumulative fraction
-     *  undershoots — which once placed "arrive" ~15 km early and fired the arrival trigger
-     *  there (a real test-drive bug). The last maneuver is pinned to the end. */
+     * distances can total well short of the geometry length, so the cumulative fraction
+     * undershoots - which once placed "arrive" ~15 km early and fired the arrival trigger
+     * there (a real test-drive bug). The last maneuver is pinned to the end. */
     @Test fun arriveManeuverPinnedToRouteEnd() {
         val poly = listOf(LatLng(0.0, 0.0), LatLng(0.0, 1.0)) // ~111 km
         val mans = listOf(

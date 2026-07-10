@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dpad_test_suite/teardown.sh — undo the test overrides setup.sh applied, returning the device to
+# tests/dpad/teardown.sh - undo the test overrides setup.sh applied, returning the device to
 # normal: clears the force-D-pad flag and resets any screen size/density change. Run after a suite
 # session (run_all.sh leaves the flag set so consecutive audits share it).
 set -uo pipefail

@@ -6,18 +6,18 @@ import app.vela.core.model.Place
  * Optional content filter: drop places whose Google CATEGORY marks them as adult / nightlife /
  * alcohol / gambling / smoking. Off by default; enabled by the "Hide adult categories" setting.
  * Category is free text from Google (e.g. "Bar", "Night club", "Liquor store"). Matching is on the
- * CATEGORY only — never the name — so a place whose category is "Restaurant" is always kept.
+ * CATEGORY only - never the name - so a place whose category is "Restaurant" is always kept.
  *
  * Matching is PRECISE, not naive substring (a bare `" bar" in category` both misses a standalone
  * "Bar" and false-matches "Sushi bar"/"Public library"/"Discount store"/"Alcoholism treatment"):
- *  - [EXACT]  — the whole category equals one of these (handles standalone "Bar"/"Pub").
- *  - [PHRASE] — the category CONTAINS one of these specific, unambiguous strings.
- * Food "…bar" categories (sushi/juice/coffee/salad/oyster/snack bar) are deliberately KEPT — only
+ * - [EXACT]  - the whole category equals one of these (handles standalone "Bar"/"Pub").
+ * - [PHRASE] - the category CONTAINS one of these specific, unambiguous strings.
+ * Food "…bar" categories (sushi/juice/coffee/salad/oyster/snack bar) are deliberately KEPT - only
  * the alcohol-bar phrases below are blocked. "Bar & grill" is left as-is (food-primary).
  *
  * **Localised categories:** Google returns the category in the app's language (`hl=<lang>`), so the
  * PHRASE list also carries the equivalent terms for Vela's other UI languages (fr de es it pt nl ru
- * pl sv uk). Only high-confidence, unambiguous terms are included per language — deliberately
+ * pl sv uk). Only high-confidence, unambiguous terms are included per language - deliberately
  * conservative to avoid dropping a benign place for a general user (a stricter, name-aware variant
  * is a downstream concern, not this shared filter).
  *
@@ -27,8 +27,8 @@ import app.vela.core.model.Place
 object CategoryFilter {
 
     /** Whether the filter is active. Off by default; the app flips it from the "Hide adult categories"
-     *  setting ([app.vela.ui.HideAdult]) so the data-source seam can gate on a :core-visible flag
-     *  without :core depending on the app's reactive holder. */
+     * setting ([app.vela.ui.HideAdult]) so the data-source seam can gate on a :core-visible flag
+     * without :core depending on the app's reactive holder. */
     @Volatile
     var enabled: Boolean = false
 
@@ -37,7 +37,7 @@ object CategoryFilter {
         // English
         "bar", "pub", "gastropub", "night club", "nightclub", "lounge bar", "wine bar", "cocktail bar",
         "brewery", "brewpub", "distillery", "winery", "casino", "liquor store", "adult entertainment",
-        // Other languages — standalone bar/pub words
+        // Other languages - standalone bar/pub words
         "bár", "барь", "бар", // ru/uk transliterations of "bar"
         "kneipe", "diskothek", "kasino", // de
         "discoteca", // es/it/pt
@@ -46,8 +46,8 @@ object CategoryFilter {
         "казино", "нічний клуб", "ночной клуб", // ru/uk
     )
 
-    /** The category CONTAINS one of these — each specific enough not to collide with a benign
-     *  category (no bare "bar"/"pub"/"disco"/"alcohol"/"lounge" here — those over-match). */
+    /** The category CONTAINS one of these - each specific enough not to collide with a benign
+     * category (no bare "bar"/"pub"/"disco"/"alcohol"/"lounge" here - those over-match). */
     private val PHRASE = listOf(
         // ---- English ----
         "wine bar", "cocktail bar", "sports bar", "beer bar", "dive bar", "gay bar", "hookah bar",

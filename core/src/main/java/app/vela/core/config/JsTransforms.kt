@@ -6,13 +6,13 @@ import javax.inject.Singleton
 
 /**
  * Bridges the remotely-pushed (signature-verified) `transforms.js` to the scraper.
- * The script can hot-fix a Google response whose *shape* changed — not just a moved
- * field — without an app update. Two optional hooks on the search path:
- *  - `parseSearch(rawResponse)` → flat places JSON: a full re-parse, used in place of
- *    the compiled parser when present.
- *  - `transformPlaces(placesJson)` → flat places JSON: post-processes the result.
+ * The script can hot-fix a Google response whose *shape* changed - not just a moved
+ * field - without an app update. Two optional hooks on the search path:
+ * - `parseSearch(rawResponse)` → flat places JSON: a full re-parse, used in place of
+ * the compiled parser when present.
+ * - `transformPlaces(placesJson)` → flat places JSON: post-processes the result.
  *
- * **Compiled Kotlin is always the fallback** — no script, a missing function, or any
+ * **Compiled Kotlin is always the fallback** - no script, a missing function, or any
  * error means the call returns null/unchanged and the caller keeps its own result.
  * Execution is sandboxed (see [JsSandbox]); the fetched code sees only the JSON string
  * it's handed, never Java/the device.

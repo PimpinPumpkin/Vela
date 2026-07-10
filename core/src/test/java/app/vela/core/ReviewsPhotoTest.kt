@@ -7,11 +7,11 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Review photo parsing. Recalibrated 2026-06-20 against real responses (Tartine,
- *  Bottega Louie): the reviews RPC carries the reviewer's **avatar** at `[0][2]`,
- *  `[12][1][3]` and `[60][2]` (`/a-/…ALV-`, `/a/…ACg8oc`), and the old parser swept
- *  those into the photo strip — showing the reviewer's face as a "photo". Photos are
- *  now collected by URL shape: uploaded UGC (`/gps-cs`, `/geougc`, `/p/AF1Qip`) only,
- *  avatars never. */
+ * Bottega Louie): the reviews RPC carries the reviewer's **avatar** at `[0][2]`,
+ * `[12][1][3]` and `[60][2]` (`/a-/…ALV-`, `/a/…ACg8oc`), and the old parser swept
+ * those into the photo strip - showing the reviewer's face as a "photo". Photos are
+ * now collected by URL shape: uploaded UGC (`/gps-cs`, `/geougc`, `/p/AF1Qip`) only,
+ * avatars never. */
 class ReviewsPhotoTest {
 
     private fun arr(size: Int, vararg at: Pair<Int, String>): String {

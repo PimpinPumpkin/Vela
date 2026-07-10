@@ -10,9 +10,9 @@ pipes `osmium export -o -` straight into this script.
 The pack holds a whole region's named POIs, address points and street centreline samples so the
 app can search/geocode the entire region offline (Organic-Maps-style), not just saved map areas.
 
-Pack schema (v1) — read by the app's OfflinePoiStore/OfflineAddressStore PACK query paths
+Pack schema (v1) - read by the app's OfflinePoiStore/OfflineAddressStore PACK query paths
 (NOT identical to their own small on-device tables; the pack is normalized to keep a state-sized
-file small — street names are deduped into `streetname` and referenced by integer `sid`):
+file small - street names are deduped into `streetname` and referenced by integer `sid`):
 
   poi(id, name, lat, lng, category, address, phone, website, hours)   -- same columns the app SELECTs
   streetname(sid INTEGER PK, street, street_norm)                     -- ~tens of thousands of rows
@@ -21,7 +21,7 @@ file small — street names are deduped into `streetname` and referenced by inte
 
 KEEP IN SYNC with the app:
   - category formatting mirrors OverpassPois.toPlace ("fast_food" -> "Fast food")
-  - ABBREV / normalize_street is a port of OfflineAddressStore.normalizeStreet — the stored
+  - ABBREV / normalize_street is a port of OfflineAddressStore.normalizeStreet - the stored
     street_norm must match what the app computes on the query side.
 
 Input is `osmium export -f geojsonseq --add-unique-id=type_id` of a tags-filtered extract
@@ -39,7 +39,7 @@ ROAD_CLASSES = {
     "motorway_link", "trunk_link", "primary_link", "secondary_link", "tertiary_link",
 }
 
-# Port of OfflineAddressStore.ABBREV — keep identical.
+# Port of OfflineAddressStore.ABBREV - keep identical.
 ABBREV = {
     "st": "street", "str": "street", "ave": "avenue", "av": "avenue",
     "blvd": "boulevard", "boul": "boulevard", "dr": "drive", "rd": "road",

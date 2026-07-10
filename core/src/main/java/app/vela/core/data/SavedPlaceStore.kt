@@ -35,8 +35,8 @@ class SavedPlaceStore @Inject constructor(
     fun exportJson(): String = Json.encodeToString(saved())
 
     /** Merge a previously-exported [json] list into the saved set, de-duped by id
-     *  (existing entries kept, new ones appended). Returns how many were newly added;
-     *  0 on a parse failure or nothing new. */
+     * (existing entries kept, new ones appended). Returns how many were newly added;
+     * 0 on a parse failure or nothing new. */
     fun importMerge(json: String): Int {
         val incoming = runCatching { Json.decodeFromString<List<SavedPlace>>(json) }.getOrNull() ?: return 0
         val current = saved()

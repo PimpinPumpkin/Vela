@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Merge many region entries into building-overlay-manifest.json in ONE upload — the race-safe half of the
+# Merge many region entries into building-overlay-manifest.json in ONE upload - the race-safe half of the
 # CI matrix (build-overlay-region.sh MANIFEST_MODE=emit drops one entry file per region; this folds them
 # all in). Replace-by-id, so re-running a region updates it; regions not in this batch are preserved.
 # Sibling of merge-routing-manifest.sh.
@@ -30,4 +30,4 @@ jq --slurpfile batch "$WORK/batch.json" '
 
 jq -r '.regions[] | "   \(.name)  \(.sizeMb) MB  \(.bbox)"' "$WORK/building-overlay-manifest.json"
 gh release upload "$TAG" "$WORK/building-overlay-manifest.json" --clobber --repo "$REPO"
-echo "✓ overlay manifest now lists $(jq '.regions | length' "$WORK/building-overlay-manifest.json") regions"
+echo "[x] overlay manifest now lists $(jq '.regions | length' "$WORK/building-overlay-manifest.json") regions"

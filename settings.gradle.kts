@@ -25,7 +25,7 @@ dependencyResolutionManagement {
 
 rootProject.name = "Vela"
 
-// Two modules, deliberately. `:core` is the "extractor" — all Google interop,
+// Two modules, deliberately. `:core` is the "extractor" - all Google interop,
 // routing, location and voice live here with no UI dependency, the same way
 // NewPipe keeps NewPipeExtractor as a standalone library. `:app` is the
 // Compose UI shell on top. Split further (core:model / core:data / …)
@@ -33,8 +33,8 @@ rootProject.name = "Vela"
 include(":app")
 include(":core")
 // THROWAWAY: on-device GraphHopper v11 probe (instrumented test only). Delete after the
-// offline-routing prototype is decided — see ROADMAP "On-device map-matching (GraphHopper)".
+// offline-routing prototype is decided - see ROADMAP "On-device map-matching (GraphHopper)".
 include(":ghprobe")
-// Standalone JVM tool (not an app dependency) — builds per-region routing graphs off-device.
+// Standalone JVM tool (not an app dependency) - builds per-region routing graphs off-device.
 // Run: ./gradlew :tools:graphbuilder:run --args="<region.osm.pbf> <out-dir>"
 include(":tools:graphbuilder")

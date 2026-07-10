@@ -18,16 +18,16 @@ import org.junit.Test
  * Field-bug regressions from a real drive (2026-07-03):
  *
  * 1. "it keeps saying continue on the road I'm already on … the name of the road does change but
- *    it literally is the same road just going straight" — CONTINUE (same physical road, straight
- *    on, name change or not) must be voice-SILENT while staying on the banner/step list; a
- *    lane-carrying CONTINUE still speaks (the driver must position); a real turn still speaks.
+ * it literally is the same road just going straight" - CONTINUE (same physical road, straight
+ * on, name change or not) must be voice-SILENT while staying on the banner/step list; a
+ * lane-carrying CONTINUE still speaks (the driver must position); a real turn still speaks.
  *
- * 2. "turns showing up 12 miles early" — on an out-and-back route both passes ride the SAME
- *    asphalt, and the old GLOBAL maneuver projection matched a return-leg turn onto its outbound
- *    twin: the moment it became the target (right after the turnaround), its along-route distance
- *    read ≈ 0 and it announced/advanced miles early. Maneuvers now project inside a window around
- *    their prefix-summed step position, and off-window re-acquire prefers the pass nearest the
- *    current progress.
+ * 2. "turns showing up 12 miles early" - on an out-and-back route both passes ride the SAME
+ * asphalt, and the old GLOBAL maneuver projection matched a return-leg turn onto its outbound
+ * twin: the moment it became the target (right after the turnaround), its along-route distance
+ * read ≈ 0 and it announced/advanced miles early. Maneuvers now project inside a window around
+ * their prefix-summed step position, and off-window re-acquire prefers the pass nearest the
+ * current progress.
  */
 class NavContinueSilenceTest {
 
@@ -46,7 +46,7 @@ class NavContinueSilenceTest {
     }
 
     /** DEPART → CONTINUE ("Continue onto Oak Ave", the NAME CHANGES) → TURN_RIGHT → ARRIVE,
-     *  1.1 km due north. The continue sits at ~500 m, the turn at ~1000 m. */
+     * 1.1 km due north. The continue sits at ~500 m, the turn at ~1000 m. */
     private fun continueRoute(lanes: List<Lane> = emptyList()): Route {
         val poly = north(20) // 21 points to 37.0100, ~55 m apart
         return route(
@@ -74,7 +74,7 @@ class NavContinueSilenceTest {
         assertTrue("no haptics approaching a plain continue", approachEvents.none { it is NavEvent.Haptic })
         state = approach
 
-        // Passing it: advances silently (no "turn now" interrupt) — it stays a banner/list step only.
+        // Passing it: advances silently (no "turn now" interrupt) - it stays a banner/list step only.
         val (passed, passEvents) = NavEngine.update(route, state, LatLng(37.0045, -122.0000))
         assertEquals("advances past the continue", 2, passed.stepIndex)
         assertTrue("no speech at the continue itself", passEvents.none { it is NavEvent.Speak })
@@ -89,7 +89,7 @@ class NavContinueSilenceTest {
     }
 
     @Test fun `a lane-carrying continue still speaks, lanes first`() {
-        // 1 of 2 lanes valid, at the LEFT edge → "use the left lane" — the driver must position,
+        // 1 of 2 lanes valid, at the LEFT edge → "use the left lane" - the driver must position,
         // so this continue is worth a sentence even though the maneuver itself is "do nothing".
         val route = continueRoute(lanes = listOf(Lane(listOf("straight"), true), Lane(listOf("straight", "right"), false)))
         val state = NavEngine.update(route, NavState(), route.polyline.first()).first
@@ -106,7 +106,7 @@ class NavContinueSilenceTest {
         // 3 lanes; the LEFT lane is a left-turn bay (invalid, marked only "left"), the two right lanes
         // sail straight through. laneGuidance sees a valid subset → non-null, but the off lane offers no
         // straight/slight onward path, so it's a turn bay at an intersection, not a fork. You do nothing
-        // to continue onto Oak Ave — Google says nothing, and neither should we (the reported "it tells me
+        // to continue onto Oak Ave - Google says nothing, and neither should we (the reported "it tells me
         // to use the lanes to continue when the only thing that changes is the road's name").
         val route = continueRoute(lanes = listOf(
             Lane(listOf("left"), false),
@@ -122,7 +122,7 @@ class NavContinueSilenceTest {
 
     @Test fun `a continue past an UNMARKED off lane stays silent`() {
         // The OSRM "none" trap: an off lane with NO painted arrow is emitted as indication "none", which
-        // means "no dedicated indication" — NOT "continues straight". This is the equally-real form of the
+        // means "no dedicated indication" - NOT "continues straight". This is the equally-real form of the
         // turn-bay above (an unmarked outer lane), and must stay silent too. (Regression for the bug where
         // continueHasGenuineFork treated "none" as straight-ish and re-spoke exactly this case.)
         val route = continueRoute(lanes = listOf(
@@ -138,9 +138,9 @@ class NavContinueSilenceTest {
     }
 
     /** Out-and-back: 1.1 km north, U-turn, 1.1 km back south on the SAME line. The return-leg
-     *  turn (at 2 km along, ~200 m from home) is geometrically identical to the outbound point
-     *  at ~200 m. Just past the turnaround it becomes the target — the old global projection
-     *  matched it onto the outbound pass and read its distance as 0 ("turn now", ~1.6 km early). */
+     * turn (at 2 km along, ~200 m from home) is geometrically identical to the outbound point
+     * at ~200 m. Just past the turnaround it becomes the target - the old global projection
+     * matched it onto the outbound pass and read its distance as 0 ("turn now", ~1.6 km early). */
     @Test fun `a return-leg turn is measured on the return leg, not its outbound twin`() {
         val up = north(20)
         val down = north(20).reversed().drop(1) // back down the same line (shared apex vertex)
@@ -167,8 +167,8 @@ class NavContinueSilenceTest {
     }
 
     /** Re-acquire (fix outside the forward window) on a route that passes near itself must pick
-     *  the pass nearest our progress — nearest-perpendicular alone teleported progress onto the
-     *  return leg whenever GPS drifted a couple of metres toward it. */
+     * the pass nearest our progress - nearest-perpendicular alone teleported progress onto the
+     * return leg whenever GPS drifted a couple of metres toward it. */
     @Test fun `re-acquire prefers the pass nearest current progress`() {
         val up = north(20, lng = -122.0000)
         val down = north(20, lng = -122.00008).reversed() // return leg ~7 m west (divided road)
@@ -180,7 +180,7 @@ class NavContinueSilenceTest {
                 Maneuver(ManeuverType.ARRIVE, "Arrive", poly.last(), 0.0, 0.0),
             ),
         )
-        // Progress mid-outbound (445 m), fix well BEHIND the forward window at ~222 m along —
+        // Progress mid-outbound (445 m), fix well BEHIND the forward window at ~222 m along -
         // and slightly WEST, i.e. perpendicular-closer to the RETURN leg (~2 m) than to the
         // outbound one (~9 m). Nearest-perpendicular would re-acquire at ~2000 m (the return
         // pass); anchored scoring must keep us on the outbound pass.

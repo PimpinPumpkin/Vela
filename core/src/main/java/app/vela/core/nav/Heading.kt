@@ -6,7 +6,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** Initial-heading helpers so spoken guidance can say "Head east on …" like Google,
- *  rather than Google's markup-only "Head toward …". */
+ * rather than Google's markup-only "Head toward …". */
 object Heading {
     private val CARDINALS =
         listOf("north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest")
@@ -30,15 +30,15 @@ object Heading {
     }
 
     /** Inject the cardinal into a "Head [toward] <road>" instruction → "Head east on
-     *  <road>". Leaves instructions that already name a direction (or aren't "Head …")
-     *  untouched. */
+     * <road>". Leaves instructions that already name a direction (or aren't "Head …")
+     * untouched. */
     fun withCardinal(instruction: String, polyline: List<LatLng>): String {
         if (instruction.isBlank() || HAS_CARDINAL.containsMatchIn(instruction)) return instruction
         val card = initialCardinal(polyline) ?: return instruction
         return when {
-            // OSRM-primary routing phrases DEPART as "Head out on <road>" (osrmPhrase) — swap the whole
+            // OSRM-primary routing phrases DEPART as "Head out on <road>" (osrmPhrase) - swap the whole
             // "out on" for the cardinal. Without this branch it fell to the bare-"Head" rewrite below,
-            // which doubled the words into "Head east on OUT ON <road>" — the reported "it says head
+            // which doubled the words into "Head east on OUT ON <road>" - the reported "it says head
             // out on out on twice when starting navigation". Checked longest-form-first on purpose.
             instruction.startsWith("Head out on", ignoreCase = true) ->
                 instruction.replaceFirst(Regex("^Head out on", RegexOption.IGNORE_CASE), "Head $card on")

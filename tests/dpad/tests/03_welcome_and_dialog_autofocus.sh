@@ -13,12 +13,12 @@ $ADB shell pm grant "$PKG" android.permission.ACCESS_FINE_LOCATION   >/dev/null 
 $ADB shell pm grant "$PKG" android.permission.ACCESS_COARSE_LOCATION >/dev/null 2>&1
 launch_fresh 3.5
 
-# (a) Welcome — Get-started (a filled button at the bottom) is focused on open.
+# (a) Welcome - Get-started (a filled button at the bottom) is focused on open.
 assert_on_screen "Get started"
 assert_focus_ytop_between 400 660 "Welcome Get-started button (bottom)"
 key "$K_OK" 2                                    # advance past Welcome
 
-# (b) first onboarding dialog — its dismiss button is focused.
+# (b) first onboarding dialog - its dismiss button is focused.
 assert_on_screen "Not now"
 assert_focus_text "Not now"                       # dialog auto-focused the safe side
 key "$K_OK" 1.2                                   # dismiss -> next dialog (if any)

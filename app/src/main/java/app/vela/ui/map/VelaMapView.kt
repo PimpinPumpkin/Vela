@@ -59,19 +59,19 @@ import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 private const val ROUTE_SRC = "vela-route-src"
 private const val ROUTE_LAYER = "vela-route"
 // A second line on the SAME route source, drawn dashed (Google-style for walking/biking).
-// Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
+// Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient -
 // so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
 private const val ROUTE_DASH_LAYER = "vela-route-dash"
 // The AHEAD half of the nav route. During nav the driven/ahead cut is a GEOMETRY split, not a
 // gradient stop: MapLibre rasterizes line-gradient into a 256×1 LINEAR-filtered texture, so a
 // "hard" step() cut renders as a grey→blue fade of routeLength/256 metres (~39 m on a 10 km
-// route — the "gradient appears if we zoom in" bug) with the centre quantized to the nearest
+// route - the "gradient appears if we zoom in" bug) with the centre quantized to the nearest
 // texel. Geometry is pixel-exact at any zoom/length: ROUTE_LAYER shows the full line in
 // traversed grey underneath; this layer draws the REMAINING suffix from the puck forward
 // (frame-ticker-updated, traffic spans remapped onto the suffix).
 private const val ROUTE_AHEAD_SRC = "vela-route-ahead-src"
 private const val ROUTE_AHEAD_LAYER = "vela-route-ahead"
-// Traversed-route grey, per theme — dimmer than and distinct from the alternates' #9AA0A6 so
+// Traversed-route grey, per theme - dimmer than and distinct from the alternates' #9AA0A6 so
 // the driven tail doesn't read as another tappable route.
 private const val TRAVERSED_LIGHT = "#B9BDC2"
 private const val TRAVERSED_DARK = "#54585C"
@@ -82,7 +82,7 @@ private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
 private const val PIN_IMG = "vela-pin"
 private const val MARKER_INDEX_PROP = "vela-marker-index"
-// Ambient Google POIs — small category dots (reusing PoiIcons' `vela-poi-<group>` images), the
+// Ambient Google POIs - small category dots (reusing PoiIcons' `vela-poi-<group>` images), the
 // "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
 private const val AMBIENT_SRC = "vela-ambient-src"
 private const val AMBIENT_LAYER = "vela-ambient"
@@ -100,7 +100,7 @@ private const val PREVIEW_SRC = "vela-preview-src"
 private const val PREVIEW_LAYER = "vela-preview"
 private const val DEM_SRC = "vela-dem"
 private const val HILLSHADE_LAYER = "vela-hillshade"
-// Keyless open elevation tiles (AWS Open Data, terrarium-encoded) — no key, and
+// Keyless open elevation tiles (AWS Open Data, terrarium-encoded) - no key, and
 // no CORS to worry about on native. Gives Google-style terrain relief.
 private const val TERRARIUM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
@@ -108,10 +108,10 @@ private const val TRAFFIC_SRC = "vela-traffic-src"
 private const val TRAFFIC_LAYER = "vela-traffic"
 // Rail-highlight layer (train + subway/tram), drawn over the basemap's own transportation lines.
 private const val TRANSIT_LAYER = "vela-transit"
-private const val TRANSIT_RAIL = "#7E57C2"   // heavy rail — purple
-private const val TRANSIT_SUBWAY = "#12B5A5" // subway / light rail / tram — teal
+private const val TRANSIT_RAIL = "#7E57C2"   // heavy rail - purple
+private const val TRANSIT_SUBWAY = "#12B5A5" // subway / light rail / tram - teal
 // Google's LIVE traffic, as a raster overlay (congestion-coloured roads +
-// incidents) — the web map's own `/maps/vt` tile, which is a public, keyless PNG
+// incidents) - the web map's own `/maps/vt` tile, which is a public, keyless PNG
 // on www.google.com (the same host we already scrape). The trimmed `pb` (no map
 // version epoch, so it doesn't rot): `!2straffic` = the traffic layer, `!1e2` =
 // overlay. Standard XYZ tile coords (`!1i{z}!2i{x}!3i{y}`).
@@ -120,7 +120,7 @@ private const val TRAFFIC_TILES =
         "!4m2!1sincidents!2s1!4m2!1sincidents_text!2s1!3m8!2sen!3sus!5e1105!12m4!1e68!2m2!1sset!2sRoadmap!4e0!5m1!1e0"
 
 /** A tappable search-result pin on the map. [prominence] (0 = unknown/low) drives the ambient dot's
- *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
+ * size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
 data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0)
 
 // Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
@@ -129,7 +129,7 @@ data class MapMarker(val name: String, val location: LatLng, val category: Strin
 private var lastAppliedMarkers: List<MapMarker>? = null
 private var lastAppliedAmbient: List<MapMarker>? = null
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
-private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
+private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload - applyData runs
                                                        // every recomposition and re-tessellating a
                                                        // thousands-of-vertices linestring per fix burned
                                                        // frame budget exactly while the ticker eased the camera
@@ -137,9 +137,9 @@ private var lastNavRouteMode = false                   // nav→browse transitio
 
 /**
  * MapLibre wrapped for Compose. Three camera behaviours:
- *  - [navMode]: heading-up, tilted, close follow (drives like a nav app);
- *  - a fresh route preview: fit the whole route to the screen once;
- *  - otherwise: gentle north-up follow of the camera target.
+ * - [navMode]: heading-up, tilted, close follow (drives like a nav app);
+ * - a fresh route preview: fit the whole route to the screen once;
+ * - otherwise: gentle north-up follow of the camera target.
  * The location dot also shows a heading arrow when a GPS bearing is available.
  */
 @Composable
@@ -148,11 +148,11 @@ fun VelaMapView(
     myLocation: LatLng?,
     myBearing: Float?,
     mySpeed: Float? = null,
-    mySpeedRaw: Float? = null, // THIS fix's own measurement (null = fix had none) — Kalman feed
+    mySpeedRaw: Float? = null, // THIS fix's own measurement (null = fix had none) - Kalman feed
     // Trip-replay time scale (1 = live). The recorded fixes arrive speedup× faster than real time
     // but carry REAL speeds, so all the puck's wall-clock physics (dead-reckon integration, blind
     // window, easing time-constants, plausibility caps) must run in TRACE time or the puck reckons
-    // 1/speedup of the ground covered per fix and surges to catch up — the "stuttery arrow +
+    // 1/speedup of the ground covered per fix and surges to catch up - the "stuttery arrow +
     // pulsing mph" replay artifact. At speedup=1 every formula is byte-identical to before.
     replaySpeedup: Float = 1f,
     compassHeading: Float? = null, // device facing (sensor); points the browse cone when stopped
@@ -165,7 +165,7 @@ fun VelaMapView(
     routeDashed: Boolean = false, // draw the route dashed (walking / biking), Google-style
 
     // Per-segment live traffic as (startFraction, endFraction, level) along the route
-    // — colours the route line like Google (free-flow elsewhere). Empty = no live data.
+    // - colours the route line like Google (free-flow elsewhere). Empty = no live data.
     routeTrafficSpans: List<Triple<Float, Float, Int>> = emptyList(),
     alternates: List<Pair<Int, List<LatLng>>> = emptyList(),
     altColor: String = "#9AA0A6",
@@ -200,7 +200,7 @@ fun VelaMapView(
     val density = LocalDensity.current
     // Push MapLibre's compass below the status bar (it defaults to the top-right corner, which sits
     // *under* the status bar). During NAV the full-width maneuver banner also sits at the top and painted
-    // OVER the compass — so while navigating, drop it below the banner. The banner's height VARIES (lane
+    // OVER the compass - so while navigating, drop it below the banner. The banner's height VARIES (lane
     // guidance + a "then" row make it much taller), so a fixed guess couldn't clear it; MapScreen measures
     // the banner's actual bottom edge ([navBannerBottomPx]) and we sit the compass 8 dp under that. Fall back
     // to a generous fixed offset until the first measurement lands (or if it's somehow 0).
@@ -238,19 +238,19 @@ fun VelaMapView(
     val speedupHolder = rememberUpdatedState(replaySpeedup)
     val lastGradM = remember { doubleArrayOf(-1e9) } // progressM the route split was last set at
     val lastGradNs = remember { longArrayOf(0L) }    // frame time of the last split upload (wall-clock floor)
-    val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) —
+    val mPerPxHolder = remember { doubleArrayOf(10.0) } // metres/pixel at the camera (scale-bar feed) -
                                                         // sizes the split-update throttle to sub-pixel
     val lastScaleReport = remember { doubleArrayOf(-1.0) } // last mpp PUSHED to compose (gate, see reportScale)
     // A manual pinch sets a zoom override (navUserZoom) that we keep following at; it's cleared
     // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
-    // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
+    // ends. Keyed on navMode, NOT navFollowing - navFollowing flips while panning and would
     // otherwise nuke a just-set pinch zoom, snapping it back to auto a beat later.
     LaunchedEffect(navMode) { if (!navMode) navUserZoom[0] = Double.NaN }
     remember { MapLibre.getInstance(context) }
     // D-pad-only operation (docs/dpad.md): MapLibre's MapView calls requestFocus() on
     // itself and overrides onKeyDown to handle hardware D-pad keys (DPAD_CENTER = zoom in,
     // arrows = scroll). On a keypad phone it therefore SWALLOWS every D-pad key before
-    // Compose focus ever sees it — the "literally nothing happens with the D-pad" bug.
+    // Compose focus ever sees it - the "literally nothing happens with the D-pad" bug.
     // We drive the map through MapDpadController instead, so make the MapView (and its
     // surface child) non-focusable, unconditionally: touch gestures don't need view focus,
     // so nothing is lost, and key events now flow to the Compose focus system.
@@ -278,7 +278,7 @@ fun VelaMapView(
     var lastNavBearing by remember { mutableStateOf<Float?>(null) }
     val navPuck = remember { NavPuck() }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
-    // Accelerometer feed for the puck's speed Kalman — collected only during nav, written into a
+    // Accelerometer feed for the puck's speed Kalman - collected only during nav, written into a
     // PLAIN array (not compose state: sensor-rate updates through MutableState would recompose
     // the world 60×/s; the frame ticker below reads it directly instead).
     val motionProvider = remember { app.vela.core.location.MotionProvider(context) }
@@ -306,10 +306,10 @@ fun VelaMapView(
         }
     }
 
-    // Open building-footprint overlays (Microsoft, ODbL — PMTiles): render each region's footprints in a fill
+    // Open building-footprint overlays (Microsoft, ODbL - PMTiles): render each region's footprints in a fill
     // layer BENEATH the OSM `building` layer, so it only fills GAPS where OSM is thin (a suburb the Microsoft→OSM
-    // import missed) — OSM draws on top where it has data. Each entry is a full `pmtiles://` URI: `file://` for a
-    // downloaded region (offline), or `https://` for the region in view that isn't downloaded — MapLibre 11.7+
+    // import missed) - OSM draws on top where it has data. Each entry is a full `pmtiles://` URI: `file://` for a
+    // downloaded region (offline), or `https://` for the region in view that isn't downloaded - MapLibre 11.7+
     // streams that one via PMTiles HTTP range requests, fetching only the visible tiles, so footprints appear
     // with no download. Keyed on styleRef (re-add after a style reload) + darkTheme (fill matches the themed OSM
     // building colour, indistinguishable from a real OSM footprint).
@@ -335,20 +335,20 @@ fun VelaMapView(
     }
 
     // House-number labels from the open ADDRESS overlay (OpenAddresses PMTiles of points): a SymbolLayer of the
-    // `number` field, STREAMED for the region in view — fills in house numbers where OSM has no `addr:housenumber`
+    // `number` field, STREAMED for the region in view - fills in house numbers where OSM has no `addr:housenumber`
     // (the same gap the building overlay fills for footprints). Matched to the basemap `vela-housenumber` style
     // (Noto Sans 10, grey + white halo). minZoom 17.5 so numbers only appear at street level (Google-style) and
     // collision thins dense blocks. INSERTED BELOW the traffic-controls layer (which sits below the ambient POI
-    // icons) — NOT addLayer/top: MapLibre places symbols TOPMOST-LAYER-FIRST, so numbers stacked above the
+    // icons) - NOT addLayer/top: MapLibre places symbols TOPMOST-LAYER-FIRST, so numbers stacked above the
     // ambient layer grabbed their collision boxes before the business icons placed, EVICTING them at z16+
     // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
     // neighbours survived because the prominence-scaled big icons collide the most). Below the icons, numbers
-    // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
+    // place last and yield - Google's exact behaviour (a house number never displaces a business icon).
     LaunchedEffect(addressOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
         style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { runCatching { style.removeLayer(it) } }
         style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { runCatching { style.removeSource(it) } }
-        // The overlay statewide data covers what OSM has too — hide the basemap number layer while the overlay
+        // The overlay statewide data covers what OSM has too - hide the basemap number layer while the overlay
         // is active, or the SAME address renders twice at a slight offset (device-seen: "5611" / "5607" doubled).
         style.getLayer("vela-housenumber")?.setProperties(
             PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE),
@@ -380,7 +380,7 @@ fun VelaMapView(
                 if (style.getLayer(CONTROLS_LAYER) != null) {
                     style.addLayerBelow(layer, CONTROLS_LAYER) // below controls → below ambient icons (see above)
                 } else {
-                    style.addLayer(layer) // controls layer missing (defensive) — top is better than absent
+                    style.addLayer(layer) // controls layer missing (defensive) - top is better than absent
                 }
             }
         }
@@ -399,7 +399,7 @@ fun VelaMapView(
 
     // Nav puck motion model (Google-style): a per-frame ticker glides the displayed
     // position forward along the route. Two pieces, both copied from how Google's puck
-    // behaves: (1) **dead reckoning** — between the ~1 Hz GPS fixes, the goal keeps
+    // behaves: (1) **dead reckoning** - between the ~1 Hz GPS fixes, the goal keeps
     // advancing at the last known speed (predicted = lastFix + speed·timeSinceFix), so the
     // puck never stalls mid-second; a fresh fix simply re-anchors it. (2) **eased,
     // monotonic** along-route progress + **smoothed heading**, so it rides forward without
@@ -411,14 +411,14 @@ fun VelaMapView(
     // next fix (engaged=false) instead of gliding along stale geometry.
     LaunchedEffect(navMode, routePolyline) {
         if (!navMode) {
-            navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
+            navPuck.kalman.reset() // nav ended - don't carry a stale speed into the next trip
             return@LaunchedEffect
         }
         navPuck.engaged = false
         var lastNanos = 0L
         while (true) {
             val now = withFrameNanos { it }
-            // Two frame deltas: dtRaw (true wall-clock, for the PHYSICS — a janky 150 ms frame
+            // Two frame deltas: dtRaw (true wall-clock, for the PHYSICS - a janky 150 ms frame
             // must integrate 150 ms of travel, else the puck loses distance and lurches at each
             // fix) and dt (clamped, for the EASING filters only, where a huge step just means
             // "snap most of the way" and 0.1 s keeps them stable).
@@ -435,12 +435,12 @@ fun VelaMapView(
             val dtE = (dt * ts.toFloat()).coerceAtMost(0.3f)
             if (navPuck.engaged && routePolyline.size >= 2) {
                 // Kalman-predict the speed each frame: fold the MEASURED forward acceleration
-                // into the modelled speed, so braking kills the prediction NOW — not at the next
+                // into the modelled speed, so braking kills the prediction NOW - not at the next
                 // GPS fix. The old last-fix-speed × elapsed reckoning glided at full speed for up
                 // to a second after you hit the brakes, and monotonic progress could never walk
                 // it back (the "puck sits ahead of me when I stop" weirdness). The projection
                 // bearing is the VEHICLE's course (myBearing), not the drawn puck's route bearing
-                // — when the puck has overshot around a corner those diverge, and projecting onto
+                // - when the puck has overshot around a corner those diverge, and projecting onto
                 // the puck's own bearing attenuates (90°) or even INVERTS (U-turn) the braking
                 // signal exactly when it matters most.
                 val vehBrg = myBearingHolder.value?.toDouble()
@@ -453,7 +453,7 @@ fun VelaMapView(
                 // accel); the GPS fix after the gap re-measures anyway.
                 navPuck.kalman.predict(fwd, dtT.coerceAtMost(0.5))
                 navPuck.speed = navPuck.kalman.speed
-                // Dead-reckon by INTEGRATING the live modelled speed — over THIS frame's part of
+                // Dead-reckon by INTEGRATING the live modelled speed - over THIS frame's part of
                 // the blind window since the fix (TRACE time; the window caps how far a dropped
                 // GPS signal can run the puck away down the route).
                 // Blind window = 3 s (was 2): some chipsets deliver fixes 2.5-3.5 s apart under
@@ -470,7 +470,7 @@ fun VelaMapView(
                 if (sinceFix > 3.0) navPuck.kalman.decay(dtT.coerceAtMost(0.5))
                 val predicted = navPuck.targetM + navPuck.reckonedM
                 val eased = navPuck.progressM + (predicted - navPuck.progressM) * (1f - kotlin.math.exp(-dtE / 0.25f))
-                navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic — never backward
+                navPuck.progressM = maxOf(navPuck.progressM, eased) // monotonic - never backward
                 val (pt, segBrg) = pointAtMeters(routePolyline, routeCum, navPuck.progressM)
                 navPuck.displayBearing = if (navPuck.displayBearing.isNaN()) segBrg
                     else smoothBearing(navPuck.displayBearing, segBrg, dtE, 0.2f)
@@ -478,7 +478,7 @@ fun VelaMapView(
                 setMeSource(style, pt, navPuck.displayBearing)
                 // Drive the follow-camera HERE, per frame (60 fps) with a continuous ease, instead
                 // of the recomposition-driven block below (which re-pointed only ~1-3×/s in
-                // throttled 550 ms eases — the "stiff" feel). Ease the camera toward the smooth
+                // throttled 550 ms eases - the "stiff" feel). Ease the camera toward the smooth
                 // puck each frame (~0.12 s) so it glides; seed from the live camera on (re)attach
                 // for a smooth hand-off from the pre-engage framing / a Re-center. Skipped while
                 // panning (detached) or pinching (the user's fingers win).
@@ -514,16 +514,16 @@ fun VelaMapView(
                 } else {
                     camState[0] = Double.NaN // reset → re-attach eases in from the live camera
                 }
-                // Keep the driven/ahead cut EXACTLY under the arrow — a GEOMETRY split updated
+                // Keep the driven/ahead cut EXACTLY under the arrow - a GEOMETRY split updated
                 // here (throttled to sub-pixel at the CURRENT zoom): the ahead layer gets the
                 // polyline suffix from the puck's progress point forward (traffic spans remapped
                 // onto the suffix) and the full line beneath is painted traversed-grey. The old
                 // line-gradient stop could never be crisp: MapLibre bakes the whole gradient
                 // into a 256-texel texture, smearing the "hard" cut into a routeLength/256-metre
-                // ramp — the zoomed-in gradient the user reported. (Dashed walk/bike lines keep
-                // their plain style — dasharray disables gradients anyway.)
+                // ramp - the zoomed-in gradient the user reported. (Dashed walk/bike lines keep
+                // their plain style - dasharray disables gradients anyway.)
                 // Throttled two ways: sub-pixel distance at the current zoom (floor 1 m) AND a
-                // 150 ms wall-clock floor — each update re-uploads the remaining-suffix
+                // 150 ms wall-clock floor - each update re-uploads the remaining-suffix
                 // LineString, and an unbounded rate burned frame budget at highway speed.
                 if (!dashHolder.value && routeCum.isNotEmpty() && routeCum.last() > 0.0 &&
                     kotlin.math.abs(navPuck.progressM - lastGradM[0]) > (mPerPxHolder[0] * 0.75).coerceIn(1.0, 3.0) &&
@@ -592,7 +592,7 @@ fun VelaMapView(
     }
 
     AndroidView(factory = { mapView }, modifier = modifier) { mv ->
-        // Re-assert non-focusability each pass — MapLibre re-enables it on surface
+        // Re-assert non-focusability each pass - MapLibre re-enables it on surface
         // (re)creation, which would let it eat D-pad keys again (docs/dpad.md).
         if (mv.isFocusable) {
             mv.isFocusable = false
@@ -602,7 +602,7 @@ fun VelaMapView(
         if (mapRef == null) {
             mv.getMapAsync { map ->
                 map.uiSettings.isLogoEnabled = false
-                // Hide the bottom-left attribution "ⓘ" — open-tile attribution lives
+                // Hide the bottom-left attribution "ⓘ" - open-tile attribution lives
                 // in Settings → About instead, so the map stays clean (Google-style).
                 map.uiSettings.isAttributionEnabled = false
                 // Two-finger vertical drag tilts the map (3D ↔ flat), like Google. Enable it
@@ -616,7 +616,7 @@ fun VelaMapView(
                 // docs/dpad.md.)
                 val handleTap = handleTap@{ tapped: MLLatLng ->
                     val p = map.projection.toScreenLocation(tapped)
-                    // Generous hit radius (~16dp) so taps near a POI icon register —
+                    // Generous hit radius (~16dp) so taps near a POI icon register -
                     // a tight box made the bigger markers feel un-tappable.
                     val r = density.density * 24f
                     val feats = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r))
@@ -626,7 +626,7 @@ fun VelaMapView(
                         markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
                         return@handleTap true
                     }
-                    // An ambient Google POI dot — opens the place (priority over basemap POI labels).
+                    // An ambient Google POI dot - opens the place (priority over basemap POI labels).
                     val amb = feats.firstOrNull { it.hasProperty(AMBIENT_INDEX_PROP) }
                     if (amb != null) {
                         ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
@@ -641,7 +641,7 @@ fun VelaMapView(
                         return@handleTap true
                     }
                     // POIs are named Points; some only carry name:latin/name:en, so
-                    // try those too — more icons become directly tappable that way.
+                    // try those too - more icons become directly tappable that way.
                     fun nameOf(f: Feature): String? = sequenceOf("name", "name:latin", "name:en")
                         .firstOrNull { f.hasProperty(it) && !f.getStringProperty(it).isNullOrBlank() }
                         ?.let { f.getStringProperty(it) }
@@ -652,7 +652,7 @@ fun VelaMapView(
                         return@handleTap true
                     }
                     val box = RectF(p.x - r, p.y - r, p.x + r, p.y + r)
-                    // A tapped HOUSE-NUMBER label — the basemap `vela-housenumber` (OSM addr:housenumber)
+                    // A tapped HOUSE-NUMBER label - the basemap `vela-housenumber` (OSM addr:housenumber)
                     // or the streamed address overlay (`vela-addr-*`). Snap the pin to that LABEL'S OWN
                     // point, not the finger, so tapping "5611" resolves to 5611's address instead of a
                     // fuzzy reverse-geocode of wherever the tap landed. The reverse-geocode at that exact
@@ -677,14 +677,14 @@ fun VelaMapView(
                         }
                         return@handleTap true
                     }
-                    // An unnamed POI icon (has a class but no name — an apartment
+                    // An unnamed POI icon (has a class but no name - an apartment
                     // gym, an unnamed park/playground, …):
                     // reverse-geocode the spot to a pin + address, like a long-press.
                     if (feats.any { it.geometry() is Point && it.hasProperty("class") }) {
                         longPress.value(LatLng(tapped.latitude, tapped.longitude))
                         return@handleTap true
                     }
-                    // A tapped BUILDING footprint — OSM basemap fill (`building`/`building-3d`) or the
+                    // A tapped BUILDING footprint - OSM basemap fill (`building`/`building-3d`) or the
                     // streamed footprint overlay (`vela-ovl-*`). Makes a plain house/business building
                     // tappable, not only long-pressable: the finger is inside the polygon so reverse-
                     // geocoding the tapped point returns that building's address. Empty land has no
@@ -708,12 +708,12 @@ fun VelaMapView(
                 }
                 // Tell a PAN from a PINCH during nav (the move-started reason can't): a pan
                 // detaches the follow-camera so you can look around (the Re-center button
-                // reattaches it), but a PINCH keeps following — it just changes the zoom you're
+                // reattaches it), but a PINCH keeps following - it just changes the zoom you're
                 // followed at. While actively pinching, `scaling` suppresses the follow animation
                 // so it can't fight your fingers; on release we adopt your zoom as the override.
                 map.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                     override fun onMoveBegin(detector: MoveGestureDetector) {}
-                    // Detach on a genuine PAN — decided in onMove, NOT onMoveBegin: by the time
+                    // Detach on a genuine PAN - decided in onMove, NOT onMoveBegin: by the time
                     // onMove fires, onScaleBegin has already set `scaling` for a pinch, so a pinch's
                     // incidental translation isn't mistaken for a pan (that misread is what made the
                     // camera detach + stop tracking the instant you zoomed). A pan drops the pinch
@@ -762,7 +762,7 @@ fun VelaMapView(
                         // This fires on EVERY camera-move frame. Only push to compose state when the
                         // value moved enough to change the drawn bar (>1%): an unconditional write
                         // recomposed the scale bar per pan frame for invisible sub-percent latitude
-                        // drift — wasted main-thread work right when a slow phone can least afford it.
+                        // drift - wasted main-thread work right when a slow phone can least afford it.
                         if (lastScaleReport[0] <= 0.0 ||
                             kotlin.math.abs(mpp - lastScaleReport[0]) > lastScaleReport[0] * 0.01
                         ) {
@@ -805,10 +805,10 @@ fun VelaMapView(
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
 
-        // Fraction of the route already driven (for the traversed-grey gradient) —
+        // Fraction of the route already driven (for the traversed-grey gradient) -
         // 0 unless we're navigating and on the line.
         val routeProgress = when {
-            // Split the traversed-grey at the puck's DRAWN position (progressM — exactly where
+            // Split the traversed-grey at the puck's DRAWN position (progressM - exactly where
             // the arrow is rendered), not the target it's easing toward (targetM). Using targetM
             // left the grey/colour boundary a few metres off the arrow, so the transition peeked
             // out instead of sitting under the puck ("gradient not completely under the arrow").
@@ -819,8 +819,8 @@ fun VelaMapView(
         }
         // Nav puck map-matching, OsmAnd-style (modelled on its RoutingHelper): snap the fix
         // onto the route for a steady on-road puck + heading, but once engaged ONLY ever search
-        // a bounded look-ahead FORWARD of our current progress — never behind, never the whole
-        // route — so the camera can't be yanked onto a parallel or earlier leg where the route
+        // a bounded look-ahead FORWARD of our current progress - never behind, never the whole
+        // route - so the camera can't be yanked onto a parallel or earlier leg where the route
         // runs near itself (the "pans to a random spot along the route" bug). Off-route / not
         // navigating → raw.
         val snap = if (navMode && myLocation != null && routePolyline.size >= 2) {
@@ -831,11 +831,11 @@ fun VelaMapView(
                 // tolerance also scales with speed (22 m parked → ~35 m at highway speed): OSRM
                 // geometry can sit half a road-width off the driven lane on wide/divided roads,
                 // and at 70 mph a run of misses froze the puck mid-drive for 6-8 s ("glitching
-                // out"). The heading gate is SKIPPED when stopped — myBearing holds its pre-stop
+                // out"). The heading gate is SKIPPED when stopped - myBearing holds its pre-stop
                 // value through a light, and a stale bearing vetoing valid snaps right after a
                 // turn was another way the puck wedged.
                 // Size the look-ahead from the speed AT the last accepted fix, not the live
-                // (decaying) model — during a 5-8 s outage the decay would otherwise SHRINK the
+                // (decaying) model - during a 5-8 s outage the decay would otherwise SHRINK the
                 // window exactly when the resume fix needs it big, costing a disengage cycle.
                 val aheadSpeed = maxOf(navPuck.speed, navPuck.speedAtAccept)
                 val ahead = (aheadSpeed * 8.0).coerceIn(150.0, 600.0)
@@ -852,20 +852,20 @@ fun VelaMapView(
             }
         } else null
         val displayLoc = snap?.first ?: myLocation
-        // Browse cone points the device-facing compass (sensor) when we have it — a stopped
+        // Browse cone points the device-facing compass (sensor) when we have it - a stopped
         // phone has no GPS course, so this is the only honest "which way am I facing". Nav is
         // unaffected: there `snap.second` (the road heading) wins, and off-route falls to myBearing.
         // Off-route/no-course fallback while NAVIGATING: use the engaged puck's own route-derived
         // heading (the ticker seeds displayBearing from the road segment) so the ARROW still renders.
         // This is the replay fix: recorded traces often carry no per-fix bearing (no doppler at low
-        // speed / older devices), so `myBearing` is null and, with no snap, displayBearing went null —
+        // speed / older devices), so `myBearing` is null and, with no snap, displayBearing went null -
         // which hid the arrow and left only the dot. The puck always has a route bearing when engaged.
         val displayBearing = snap?.second ?: (if (!navMode) compassHeading else null) ?: myBearing
             ?: (if (navMode && navPuck.engaged) navPuck.displayBearing.takeIf { !it.isNaN() } else null)
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
-        // Gated on the fix being NEW (identity — the ViewModel makes a fresh LatLng per fix and
+        // Gated on the fix being NEW (identity - the ViewModel makes a fresh LatLng per fix and
         // recompositions re-pass the same instance): this block runs in a recomposing scope, and
-        // kalman.update / reckonedM=0 / targetAtMs=now / missCount++ are NOT idempotent — an
+        // kalman.update / reckonedM=0 / targetAtMs=now / missCount++ are NOT idempotent - an
         // unrelated recomposition (stale-flag flip, mute toggle) would re-inject a stale GPS
         // speed at high gain (undoing the accelerometer's braking) and re-open the blind
         // reckoning window; the miss branch would count phantom misses toward disengage.
@@ -890,7 +890,7 @@ fun VelaMapView(
                 val fwd = m - navPuck.targetM
                 when {
                     // Parked-jitter gate: at ~zero modelled speed a small forward hop is GPS
-                    // noise, not travel — don't ratchet targetM. The old code accepted EVERY
+                    // noise, not travel - don't ratchet targetM. The old code accepted EVERY
                     // forward wobble at a red light, so the puck crept ahead, and on pull-away
                     // the real position sat BEHIND the crept target → every fix rejected as
                     // backward → the puck froze until the car re-drove the phantom metres
@@ -903,7 +903,7 @@ fun VelaMapView(
                         accepted = true
                     }
                     // An over-cap forward jump that PERSISTS is the new reality (a long fix gap
-                    // at speed) — accept on the 2nd consecutive one instead of deadlocking:
+                    // at speed) - accept on the 2nd consecutive one instead of deadlocking:
                     // maxStep is computed from the (near-zero, post-stop) modelled speed, so a
                     // genuine catch-up could exceed it every time while snaps kept succeeding,
                     // freezing targetM for 10+ s mid-drive.
@@ -914,7 +914,7 @@ fun VelaMapView(
                             accepted = true
                         }
                     }
-                    // Backward / parked-gated: hold — dead reckoning + monotonic draw cover it.
+                    // Backward / parked-gated: hold - dead reckoning + monotonic draw cover it.
                     // ALSO break the over-cap streak: fwdRejects means CONSECUTIVE over-cap
                     // fixes; without this reset, two isolated multipath spikes minutes apart at
                     // a red light (hundreds of gated jitter fixes in between) would count as
@@ -926,7 +926,7 @@ fun VelaMapView(
             navPuck.missCount = 0
             if (accepted) {
                 navPuck.targetAtMs = now // anchor for dead reckoning
-                navPuck.reckonedM = 0.0  // a fresh ACCEPTED fix re-anchors — the integral restarts
+                navPuck.reckonedM = 0.0  // a fresh ACCEPTED fix re-anchors - the integral restarts
                 // (a REJECTED fix must NOT re-open the 2 s blind window: at a standstill that
                 // re-armed the creep every second; the old anchor stays until a fix is accepted)
             }
@@ -941,11 +941,11 @@ fun VelaMapView(
         } else if (navMode && newFix && navPuck.engaged) {
             navPuck.lastFixLoc = myLocation
             // Nothing ahead on the route within tolerance: a GPS spike, or we've drifted off it.
-            // HOLD — stay engaged so the ticker keeps dead-reckoning forward along the route —
+            // HOLD - stay engaged so the ticker keeps dead-reckoning forward along the route -
             // rather than the old global re-snap that teleported the camera onto a random leg.
             // Leave targetM / targetAtMs untouched so the dead-reckoning clock keeps running from
             // the last good fix. A short run of misses disengages to re-acquire (3, not the old 6
-            // — at 1 Hz that's still 3 s of frozen puck, and NavEngine's off-route detection
+            // - at 1 Hz that's still 3 s of frozen puck, and NavEngine's off-route detection
             // (45 m × 4 hits) drives the actual reroute in the meantime).
             navPuck.missCount += 1
             if (navPuck.missCount >= 3) navPuck.engaged = false
@@ -997,7 +997,7 @@ fun VelaMapView(
         // every camera move below respects it. Reset to 0 when no sheet is up.
         if (cameraBottomInsetPx != lastInsetPx) {
             // Only re-frame when the sheet APPEARS or grows (lift the pin above it). When it
-            // shrinks to 0 (sheet closed) we must NOT null lastCameraTarget — doing so let the
+            // shrinks to 0 (sheet closed) we must NOT null lastCameraTarget - doing so let the
             // else-branch below re-center on the now-stale cameraTarget at a zoomed-out level,
             // yanking the map back to the tapped place and zooming out after you'd panned away.
             val grew = cameraBottomInsetPx > lastInsetPx
@@ -1009,7 +1009,7 @@ fun VelaMapView(
         // so pulling the list back up frames the cluster again even after a manual pan away.
         if (!frameMarkers) lastFittedMarkersKey = null
         when {
-            // A recenter TAP always wins — even if we're already on the target (the
+            // A recenter TAP always wins - even if we're already on the target (the
             // `target != lastCameraTarget` guard below would otherwise swallow it after a manual pan) or a
             // route/markers would otherwise hold the camera. Force a move to the user, once per tap.
             recenterTick != lastRecenterTick -> {
@@ -1038,7 +1038,7 @@ fun VelaMapView(
 
             navMode && myLocation != null && navFollowing -> {
                 // The per-frame follow-camera now runs in the motion ticker above (continuous
-                // glide — that's what fixes the "stiff" throttled-ease feel). Here we only handle
+                // glide - that's what fixes the "stiff" throttled-ease feel). Here we only handle
                 // the PRE-ENGAGE / off-route case (puck not snapped to the route yet): a throttled
                 // eased re-point to the raw fix until the ticker takes over. Keeping this case
                 // matched even when engaged stops a mid-nav reroute from falling through to the
@@ -1087,7 +1087,7 @@ fun VelaMapView(
                 // Consume the pending camera target: the results-sheet inset growing nulls
                 // lastCameraTarget (to re-frame a place against the sheet), and with it null the
                 // else-branch below re-fires on the STALE center (the VM center only updates on
-                // user gestures) — one recomposition after this frame it yanked the camera back
+                // user gestures) - one recomposition after this frame it yanked the camera back
                 // to wherever you were before the search (device-seen 2026-07-09).
                 lastCameraTarget = cameraTarget
                 // Frame the result CLUSTER, not every last pin: a single stray hit hundreds of
@@ -1138,7 +1138,7 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
     if (style.getImage(NAV_PUCK_IMG) == null) style.addImage(NAV_PUCK_IMG, navPuckBitmap())
 
-    // Terrain relief — only over the OpenMapTiles basemap (the keyless path).
+    // Terrain relief - only over the OpenMapTiles basemap (the keyless path).
     if (style.getSource("openmaptiles") != null) ensureHillshade(style)
 
     // House numbers at high zoom. OpenFreeMap's tiles carry the OpenMapTiles
@@ -1151,7 +1151,7 @@ private fun ensureLayers(style: Style) {
                 // OpenFreeMap DOES serve the OMT `housenumber` source-layer (verified against the
                 // live TileJSON + z14 tiles), so this renders where OSM has `addr:housenumber`.
                 // 17.5 matches Google: house numbers only at true street level, not neighbourhood zoom
-                // (16 carpeted the map — user 2026-07-06). Keep in lockstep with the vela-addr overlay.
+                // (16 carpeted the map - user 2026-07-06). Keep in lockstep with the vela-addr overlay.
                 setMinZoom(17.5f)
                 setProperties(
                     PropertyFactory.textField(Expression.get("housenumber")),
@@ -1161,7 +1161,7 @@ private fun ensureLayers(style: Style) {
                     PropertyFactory.textHaloColor("#ffffff"),
                     PropertyFactory.textHaloWidth(1f),
                     // Same as the vela-addr overlay: numbers yield to everything but never occupy
-                    // the collision index — cheaper placement at street zoom, and they can't evict
+                    // the collision index - cheaper placement at street zoom, and they can't evict
                     // a business icon whatever the layer order.
                     PropertyFactory.textIgnorePlacement(true),
                 )
@@ -1181,9 +1181,9 @@ private fun ensureLayers(style: Style) {
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
-        // The route must draw ABOVE road + BRIDGE geometry (else a bridge paints over it — the "blue line
+        // The route must draw ABOVE road + BRIDGE geometry (else a bridge paints over it - the "blue line
         // vanishes on a bridge" bug) but BELOW text labels. In Liberty the FIRST symbol layer is
-        // `road_one_way_arrow` (idx ~61), which sits BELOW the `bridge_*` layers (~63-82) — anchoring there
+        // `road_one_way_arrow` (idx ~61), which sits BELOW the `bridge_*` layers (~63-82) - anchoring there
         // hid the route on bridges. Anchor instead to the first symbol AFTER the last bridge (a real label),
         // falling back to the first symbol / top if a style has no bridge layers.
         val lastBridge = style.layers.indexOfLast { it.id.startsWith("bridge_") }
@@ -1213,7 +1213,7 @@ private fun ensureLayers(style: Style) {
             PropertyFactory.visibility(Property.NONE),
         )
         if (firstLabel != null) style.addLayerBelow(routeDash, firstLabel) else style.addLayer(routeDash)
-        // The nav ahead-suffix line (see ROUTE_AHEAD_SRC) — added after ROUTE_LAYER under the same
+        // The nav ahead-suffix line (see ROUTE_AHEAD_SRC) - added after ROUTE_LAYER under the same
         // label anchor, so it draws ON TOP of the full (traversed-grey) line during nav.
         style.addSource(GeoJsonSource(ROUTE_AHEAD_SRC, GeoJsonOptions().withLineMetrics(true)))
         val routeAhead = LineLayer(ROUTE_AHEAD_LAYER, ROUTE_AHEAD_SRC).withProperties(
@@ -1225,7 +1225,7 @@ private fun ensureLayers(style: Style) {
         )
         if (firstLabel != null) style.addLayerBelow(routeAhead, firstLabel) else style.addLayer(routeAhead)
     }
-    // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
+    // Greyed, tappable alternate routes - drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
         style.addSource(GeoJsonSource(ALT_ROUTE_SRC))
         val alt = LineLayer(ALT_ROUTE_LAYER, ALT_ROUTE_SRC).withProperties(
@@ -1258,7 +1258,7 @@ private fun ensureLayers(style: Style) {
             SymbolLayer(AMBIENT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
                 // Data-driven size by prominence: low-signal dots ~0.78, anchor stores (Safeway ~7,
-                // malls ~9) up to ~1.3 — bigger + more legible, Google-style, at zero per-frame CPU.
+                // malls ~9) up to ~1.3 - bigger + more legible, Google-style, at zero per-frame CPU.
                 PropertyFactory.iconSize(
                     Expression.interpolate(
                         Expression.linear(), Expression.get("prominence"),
@@ -1267,7 +1267,7 @@ private fun ensureLayers(style: Style) {
                 ),
                 // DECLUTTER like Google: let the dots collide (hide when they'd overlap) instead of
                 // stacking. allowOverlap+ignorePlacement were TRUE, so every ambient POI drew on top
-                // of its neighbours — a pile at tight zooms. Collision + padding spaces them; more
+                // of its neighbours - a pile at tight zooms. Collision + padding spaces them; more
                 // appear as you zoom in. (Sorted by rank so the prominent ones win the slot.)
                 PropertyFactory.iconAllowOverlap(false),
                 PropertyFactory.iconIgnorePlacement(false),
@@ -1282,7 +1282,7 @@ private fun ensureLayers(style: Style) {
                     ),
                 ),
                 // Google-style label placement. PREFER just to the LEFT of the icon; when that would
-                // collide with a neighbour, FALL BACK to sitting UNDER the icon — text-variable-anchor
+                // collide with a neighbour, FALL BACK to sitting UNDER the icon - text-variable-anchor
                 // picks the first anchor (right = text left of point, top = text below point) that fits,
                 // and hides the label (textOptional) only if neither does. The radial offset is the
                 // centre→text-edge gap in ems; 1.4 sits the label right up against the dot (was 2.7 → 2.0 →
@@ -1315,7 +1315,7 @@ private fun ensureLayers(style: Style) {
                 setMinZoom(16f)
                 setProperties(
                     PropertyFactory.iconImage(Expression.get("icon")),
-                    // Zoom-scaled so they read at nav zoom (~16-17.5) and grow as you zoom in — the flat 0.55
+                    // Zoom-scaled so they read at nav zoom (~16-17.5) and grow as you zoom in - the flat 0.55
                     // was too small to spot, especially tilted in nav (user 2026-07-06 wanted them bigger).
                     PropertyFactory.iconSize(
                         Expression.interpolate(
@@ -1325,10 +1325,10 @@ private fun ensureLayers(style: Style) {
                             Expression.stop(19f, 1.5f),
                         ),
                     ),
-                    // Traffic controls are SPARSE (one per junction) — draw them all instead of letting the
+                    // Traffic controls are SPARSE (one per junction) - draw them all instead of letting the
                     // denser POI layer collide them away, so they're actually visible on the browse map too
                     // (Google shows all of them at street zoom). This reverses the earlier "collision keeps a
-                    // dense grid legible" — the user wants to see them, and at z16+ junctions are well-separated.
+                    // dense grid legible" - the user wants to see them, and at z16+ junctions are well-separated.
                     PropertyFactory.iconAllowOverlap(true),
                     PropertyFactory.iconIgnorePlacement(true),
                     PropertyFactory.iconPadding(2f),
@@ -1350,7 +1350,7 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconIgnorePlacement(true),
             ),
         )
-        // The location dot on top — Google's location blue with a white ring.
+        // The location dot on top - Google's location blue with a white ring.
         style.addLayer(
             CircleLayer(ME_LAYER, ME_SRC).withProperties(
                 PropertyFactory.circleColor("#4285F4"),
@@ -1377,7 +1377,7 @@ private fun ensureLayers(style: Style) {
 
 /**
  * Subtle terrain relief like Google Maps, from the keyless open **terrarium** DEM
- * (AWS Open Data — no key; native fetch, so no CORS concern). Inserted just under
+ * (AWS Open Data - no key; native fetch, so no CORS concern). Inserted just under
  * the road layers so roads + labels stay crisp on top, and capped at z16 so it's
  * terrain context for the overview/regional view and gone at street level. The
  * per-theme colours/strength are set in [applyLight]/[applyDark]. Verified in a
@@ -1405,7 +1405,7 @@ private fun ensureHillshade(style: Style) {
 }
 
 /** Toggle Google's live-traffic raster overlay. Inserted below the route line +
- *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
+ * labels so they stay on top; keyless public tiles, removed cleanly when off. */
 private fun ensureTraffic(style: Style, on: Boolean) {
     val present = style.getLayer(TRAFFIC_LAYER) != null
     if (on && !present) {
@@ -1414,7 +1414,7 @@ private fun ensureTraffic(style: Style, on: Boolean) {
         }
         val layer = RasterLayer(TRAFFIC_LAYER, TRAFFIC_SRC).withProperties(
             // Subdue it: it's a browse-only overlay now (nav uses the per-segment route
-            // line), and Google's baked tiles paint free-flow green everywhere — at
+            // line), and Google's baked tiles paint free-flow green everywhere - at
             // full opacity that buries the basemap and reads as noise. ~0.6 keeps the
             // red/amber congestion legible while the green recedes.
             PropertyFactory.rasterOpacity(0.6f),
@@ -1431,10 +1431,10 @@ private fun ensureTraffic(style: Style, on: Boolean) {
 }
 
 /** Highlight rail lines (heavy rail + subway/light-rail/tram) drawn from the basemap's own
- *  `transportation` source-layer (OpenMapTiles `class` = rail / transit), Google-transit-layer style.
- *  No new data or network — just a coloured LineLayer over the existing tiles, inserted below the first
- *  symbol layer so station/road labels stay on top. No-op if the basemap isn't OpenMapTiles (e.g. a
- *  MapTiler variant whose source id differs, or the demo style); removed cleanly when off. */
+ * `transportation` source-layer (OpenMapTiles `class` = rail / transit), Google-transit-layer style.
+ * No new data or network - just a coloured LineLayer over the existing tiles, inserted below the first
+ * symbol layer so station/road labels stay on top. No-op if the basemap isn't OpenMapTiles (e.g. a
+ * MapTiler variant whose source id differs, or the demo style); removed cleanly when off. */
 private fun ensureTransit(style: Style, on: Boolean) {
     val present = style.getLayer(TRANSIT_LAYER) != null
     if (on && !present) {
@@ -1449,7 +1449,7 @@ private fun ensureTransit(style: Style, on: Boolean) {
                 ),
             )
             setProperties(
-                // Subways/trams a brighter teal, heavy rail a purple — both read on light AND dark maps.
+                // Subways/trams a brighter teal, heavy rail a purple - both read on light AND dark maps.
                 PropertyFactory.lineColor(
                     Expression.match(
                         Expression.get("class"),
@@ -1478,14 +1478,14 @@ private fun ensureTransit(style: Style, on: Boolean) {
 /**
  * Recolour the OpenFreeMap (OpenMapTiles) style for a cleaner look and a proper
  * dark theme that follows the system. We reload the style when the theme flips
- * (see styleKey), so each pass starts from Liberty's defaults — no need to undo.
+ * (see styleKey), so each pass starts from Liberty's defaults - no need to undo.
  * No-ops on non-OpenMapTiles styles (e.g. the MapLibre demo basemap). Keyless.
  */
 private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
     if (dark) applyDark(style) else applyLight(style)
     PoiIcons.applyToLiberty(style, dark)
-    // Ambient Google-POI labels match the ICON's category colour, Google-style — saturated in light,
+    // Ambient Google-POI labels match the ICON's category colour, Google-style - saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
@@ -1518,7 +1518,7 @@ internal fun applyLight(style: Style) {
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(1f))
     style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(0.7f))
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c4e6bf"), PropertyFactory.fillOpacity(0.7f))
-    // Buildings (OSM footprints, already in the Liberty tiles — no key/data needed).
+    // Buildings (OSM footprints, already in the Liberty tiles - no key/data needed).
     // The old #e2e3e6 was a hair off the #e8eaed land, so they were ~invisible; give
     // them a touch more grey + a subtle outline so they read like Google's at z15+.
     style.getLayer("building")?.setProperties(
@@ -1528,7 +1528,7 @@ internal fun applyLight(style: Style) {
     // Show footprints from neighbourhood zoom (Liberty hid them until ~z16-17, so
     // residential houses only appeared when zoomed way in; Google shows them earlier).
     // The bundled `building` FILL layer is minzoom 13 / maxzoom 14, and MapLibre `maxzoom`
-    // is EXCLUSIVE — so `setMinZoom(14f)` alone collapsed its range to empty (14 ≤ z < 14)
+    // is EXCLUSIVE - so `setMinZoom(14f)` alone collapsed its range to empty (14 ≤ z < 14)
     // and the crisp flat footprints NEVER painted (only the faint building-3d extrusion
     // showed → the "sparse residential" look). Re-open the top with setMaxZoom so the flat
     // fill+outline draws from z14 up (overzoomed z14 tiles fill z15+).
@@ -1538,11 +1538,11 @@ internal fun applyLight(style: Style) {
         PropertyFactory.fillExtrusionColor("#dde1e7"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
-    // Extrusions only once zoomed into a block — the flat fill+outline gives the footprint
+    // Extrusions only once zoomed into a block - the flat fill+outline gives the footprint
     // look at browse zoom, and fill-extrusion is the per-pixel-expensive part on a Pixel 5a.
     style.getLayer("building-3d")?.setMinZoom(16f)
     // Neutralise the tan/yellow landuse fills (residential/commercial/school/…) into
-    // the land — Google keeps these flat, not coloured blobs.
+    // the land - Google keeps these flat, not coloured blobs.
     val greens = setOf("park", "landcover_grass", "landcover_wood")
     style.layers.forEach { layer ->
         if (layer is FillLayer && layer.id !in greens &&
@@ -1552,7 +1552,7 @@ internal fun applyLight(style: Style) {
         }
     }
     // Liberty fills wetlands with a fern-hatch pattern and pedestrian plazas with a
-    // dotted one — Google shows both flat. Clear the pattern so the flat fill shows.
+    // dotted one - Google shows both flat. Clear the pattern so the flat fill shows.
     style.getLayer("landcover_wetland")?.setProperties(
         PropertyFactory.fillColor("#d6e8d0"),
         PropertyFactory.fillPattern(Expression.literal("")),
@@ -1561,7 +1561,7 @@ internal fun applyLight(style: Style) {
         PropertyFactory.fillColor("#ededed"),
         PropertyFactory.fillPattern(Expression.literal("")),
     )
-    // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
+    // Roads - white fills, soft-yellow motorways; casings fade to nothing on minor
     // roads. Bridges mirror their road tier so overpasses match.
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f9d27a"))
@@ -1607,7 +1607,7 @@ internal fun applyDark(style: Style) {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6f7a96"))
     }
     // Casings blend into the night land so roads are clean (no hard outline), like
-    // Google dark — the lighter road fills still read against the dark land.
+    // Google dark - the lighter road fills still read against the dark land.
     listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
         "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
         "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
@@ -1621,7 +1621,7 @@ internal fun applyDark(style: Style) {
         PropertyFactory.fillOutlineColor("#3f4e66"),
     )
     style.getLayer("building")?.setMinZoom(14f) // houses from neighbourhood zoom (see light path)
-    style.getLayer("building")?.setMaxZoom(24f) // re-open the maxzoom:14 clamp (see light path — was collapsing the flat fill to empty)
+    style.getLayer("building")?.setMaxZoom(24f) // re-open the maxzoom:14 clamp (see light path - was collapsing the flat fill to empty)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#323f54"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
@@ -1679,7 +1679,7 @@ private fun tuneMapTiler(style: Style, dark: Boolean) {
     }
     // Swap MapTiler's POI icons for our Google-style coloured markers (PoiIcons
     // registered the `vela-poi-*` images). MapTiler groups POIs by layer, so a
-    // per-layer constant is enough — no class match needed.
+    // per-layer constant is enough - no class match needed.
     val poiLayers = mapOf(
         "Food" to "food", "Shopping" to "shop", "Healthcare" to "health",
         "Park" to "park", "Transport" to "transit", "Station" to "transit",
@@ -1695,7 +1695,7 @@ private fun tuneMapTiler(style: Style, dark: Boolean) {
 }
 
 /** Fraction (0..1) of [polyline]'s length already passed: project [me] onto the
- *  nearest segment, then measure cumulative length to that projection. */
+ * nearest segment, then measure cumulative length to that projection. */
 private fun progressAlong(polyline: List<LatLng>, me: LatLng): Float {
     if (polyline.size < 2) return 0f
     val cum = DoubleArray(polyline.size)
@@ -1714,18 +1714,18 @@ private fun progressAlong(polyline: List<LatLng>, me: LatLng): Float {
     return (bestLen / total).toFloat().coerceIn(0f, 1f)
 }
 
-/** Snap [me] onto the nearest point of the nav route for display — the snapped point, that
- *  segment's heading, and the metres-along of the projection — so the puck rides the road
- *  instead of wobbling with raw GPS. Only segments whose along-route range overlaps the window
- *  [[loM]‥[hiM]] are considered, so wherever the route passes near itself (a parallel return
- *  leg, switchback, cloverleaf, a doubled-back street) the global nearest-point can't yank the
- *  puck onto the wrong leg — which reads as the puck "snapping all over / going backwards",
- *  even on a normal road. Pass an infinite window (±∞) for the old global search — the graceful
- *  fallback when nothing in the window is close enough. Returns null (→ show the RAW fix) when
- *  we're not genuinely following the route, so a missed exit / off-road shows reality rather
- *  than gluing the arrow to where it "should" be: either the nearest point is farther than
- *  [maxM] (≈ one road width + GPS error), OR the device heading doesn't match the road's
- *  (you've turned off it). No GPS heading (e.g. stopped) falls back to distance only. */
+/** Snap [me] onto the nearest point of the nav route for display - the snapped point, that
+ * segment's heading, and the metres-along of the projection - so the puck rides the road
+ * instead of wobbling with raw GPS. Only segments whose along-route range overlaps the window
+ * [[loM]‥[hiM]] are considered, so wherever the route passes near itself (a parallel return
+ * leg, switchback, cloverleaf, a doubled-back street) the global nearest-point can't yank the
+ * puck onto the wrong leg - which reads as the puck "snapping all over / going backwards",
+ * even on a normal road. Pass an infinite window (±∞) for the old global search - the graceful
+ * fallback when nothing in the window is close enough. Returns null (→ show the RAW fix) when
+ * we're not genuinely following the route, so a missed exit / off-road shows reality rather
+ * than gluing the arrow to where it "should" be: either the nearest point is farther than
+ * [maxM] (≈ one road width + GPS error), OR the device heading doesn't match the road's
+ * (you've turned off it). No GPS heading (e.g. stopped) falls back to distance only. */
 private fun snapToRouteWindowed(
     me: LatLng,
     gpsBearing: Float?,
@@ -1755,7 +1755,7 @@ private fun snapToRouteWindowed(
     val pt = bestPoint ?: return null
     if (bestD > maxM) return null
     val routeBearing = bearingDeg(bestA, bestB)
-    // Heading gate: if the device is clearly NOT going the road's way, don't snap — let
+    // Heading gate: if the device is clearly NOT going the road's way, don't snap - let
     // the real position show (then the off-route reroute kicks in), Google-style.
     if (gpsBearing != null && angleDelta(gpsBearing, routeBearing) > 55f) return null
     return Triple(pt, routeBearing, bestM)
@@ -1765,39 +1765,39 @@ private fun snapToRouteWindowed(
 private fun angleDelta(a: Float, b: Float): Float = kotlin.math.abs((a - b + 540f) % 360f - 180f)
 
 /** Exponentially ease compass bearing [cur] toward [target] taking the short way around
- *  (so 350°→10° rotates +20°, not −340°). [tau] is the smoothing time-constant (s). */
+ * (so 350°→10° rotates +20°, not −340°). [tau] is the smoothing time-constant (s). */
 private fun smoothBearing(cur: Float, target: Float, dt: Float, tau: Float): Float {
     val delta = ((target - cur + 540f) % 360f) - 180f // shortest signed turn, −180..180
     return ((cur + delta * (1f - kotlin.math.exp(-dt / tau))) % 360f + 360f) % 360f
 }
 
 /** Motion-model state for the nav puck (Google-style): the displayed position is a
- *  smoothed, **monotonic-forward** progress along the route that the frame ticker glides
- *  toward the latest fix, **dead-reckoned** forward at the known speed between fixes, so the
- *  puck rides forward without the per-fix teleport or the forward/backward jitter of raw
- *  "nearest point". Off-route it falls back to [raw] (honesty — see [snapToRouteWindowed]). */
+ * smoothed, **monotonic-forward** progress along the route that the frame ticker glides
+ * toward the latest fix, **dead-reckoned** forward at the known speed between fixes, so the
+ * puck rides forward without the per-fix teleport or the forward/backward jitter of raw
+ * "nearest point". Off-route it falls back to [raw] (honesty - see [snapToRouteWindowed]). */
 private class NavPuck {
     var engaged = false           // currently following the route (snapped)
     var progressM = 0.0           // displayed metres along the route (what's drawn)
     var targetM = 0.0             // latest fix's metres along the route (where we're heading)
-    var targetAtMs = 0L           // elapsedRealtime() the target was set — for dead reckoning
-    var speed = 0.0               // m/s — the KALMAN speed (GPS ⊕ accelerometer), see [kalman]
+    var targetAtMs = 0L           // elapsedRealtime() the target was set - for dead reckoning
+    var speed = 0.0               // m/s - the KALMAN speed (GPS ⊕ accelerometer), see [kalman]
     val kalman = app.vela.core.location.SpeedKalman() // GPS-fix measurement + accel prediction
-    var reckonedM = 0.0           // ∫speed·dt since the last fix — the dead-reckoned advance
-    var lastFixLoc: LatLng? = null // identity of the last INGESTED fix — the fix-processing block
+    var reckonedM = 0.0           // ∫speed·dt since the last fix - the dead-reckoned advance
+    var lastFixLoc: LatLng? = null // identity of the last INGESTED fix - the fix-processing block
                                    // runs in a recomposing scope, and kalman.update/reckonedM=0 are
                                    // NOT idempotent: re-running them on a mere recomposition re-injects
                                    // a stale speed and re-opens the blind reckoning window
     var displayBearing = Float.NaN // smoothed heading actually drawn (NaN = not yet seeded)
-    var drawn: LatLng? = null     // last point actually drawn — the camera follows THIS, not the raw fix
+    var drawn: LatLng? = null     // last point actually drawn - the camera follows THIS, not the raw fix
     var raw: LatLng? = null       // off-route fallback position
     var rawBearing: Float? = null
     var missCount = 0             // consecutive forward-look-ahead misses (GPS spike / off-route);
                                   // HOLD + dead-reckon through a few, then disengage to re-acquire
-    var fwdRejects = 0            // consecutive over-maxStep forward steps — a persistent one is
+    var fwdRejects = 0            // consecutive over-maxStep forward steps - a persistent one is
                                   // the new reality (long fix gap at speed), accept it rather than
                                   // deadlock targetM against a stale plausibility cap
-    var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED — sizes the snap
+    var speedAtAccept = 0.0       // kalman speed when the last fix was ACCEPTED - sizes the snap
                                   // look-ahead through an outage (the live model decays to ~0
                                   // exactly when the resume fix needs the window big)
 }
@@ -1809,7 +1809,7 @@ private fun cumLengths(poly: List<LatLng>): DoubleArray {
     return cum
 }
 
-/** First vertex index at or beyond [m] along the line — the ahead-suffix starts here. */
+/** First vertex index at or beyond [m] along the line - the ahead-suffix starts here. */
 private fun indexAtMeters(cum: DoubleArray, m: Double): Int {
     var i = 1
     while (i < cum.size - 1 && cum[i] < m) i++
@@ -1847,8 +1847,8 @@ private fun bearingDeg(a: LatLng, b: LatLng): Float {
     return ((Math.toDegrees(Math.atan2(y, x)) + 360.0) % 360.0).toFloat()
 }
 
-/** Closest point on segment a→b to p (equirectangular planar approx — fine over a
- *  nav-step's distances), plus the parametric position t∈[0,1] along the segment. */
+/** Closest point on segment a→b to p (equirectangular planar approx - fine over a
+ * nav-step's distances), plus the parametric position t∈[0,1] along the segment. */
 private fun projectOnSegment(p: LatLng, a: LatLng, b: LatLng): Pair<LatLng, Double> {
     val k = Math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
     val ax = a.lng * k; val ay = a.lat
@@ -1873,10 +1873,10 @@ private fun trafficLevelColor(level: Int): Int = when {
 }
 
 /** Route line as **solid** colour bands over lineProgress (0..1 by length): grey for the
- *  driven part (< [p]); ahead, per-segment live traffic from [spans] (startFrac, endFrac,
- *  level) over a free-flow base — or the overall [routeInt] tint when there are no spans
- *  (walk/bike, or no live data). A `step` expression, so the driven/ahead boundary and
- *  the span edges are HARD — no gradient fade between colours (test-drive feedback). */
+ * driven part (< [p]); ahead, per-segment live traffic from [spans] (startFrac, endFrac,
+ * level) over a free-flow base - or the overall [routeInt] tint when there are no spans
+ * (walk/bike, or no live data). A `step` expression, so the driven/ahead boundary and
+ * the span edges are HARD - no gradient fade between colours (test-drive feedback). */
 private fun routeGradient(
     p: Float,
     routeInt: Int,
@@ -1891,9 +1891,9 @@ private fun routeGradient(
         return freeflow
     }
     // EXACT breakpoints, not 256-sample slop: the driven/ahead cut at p precisely (so the
-    // grey/colour boundary sits DEAD under the arrow — the old sampling put it up to
+    // grey/colour boundary sits DEAD under the arrow - the old sampling put it up to
     // route-length/256 m off, which read as a soft "gradient" ahead of the arrow), plus every
-    // traffic-span edge. A hard `step` at each — no fade. "We either drove it or we didn't."
+    // traffic-span edge. A hard `step` at each - no fade. "We either drove it or we didn't."
     val breaks = sortedSetOf<Float>()
     if (p > 0f) breaks.add(p.coerceIn(0.0001f, 0.9999f))
     for ((s, e, _) in spans) {
@@ -1908,7 +1908,7 @@ private fun routeGradient(
         if (c != prev) { stops.add(Expression.stop(b, Expression.color(c))); prev = c }
     }
     // A `step` line-gradient needs ≥1 stop or MapLibre rejects the whole expression
-    // ("line-gradient Expected at least 4 arguments, but found only 2") — which happens on EVERY
+    // ("line-gradient Expected at least 4 arguments, but found only 2") - which happens on EVERY
     // route with no driven-grey and no traffic spans (any directions preview, and early nav before
     // progress > 0): the line then renders unstyled and the error spams each refresh. Seed a single
     // base-colour stop so a band-less route is a valid solid line.
@@ -1935,7 +1935,7 @@ private fun applyData(
     navMode: Boolean,
 ) {
     // Identity-gate the route geometry upload (same pattern as markers/ambient below): applyData
-    // runs on EVERY recomposition — during nav that's each fix/speedo tick — and re-tessellating
+    // runs on EVERY recomposition - during nav that's each fix/speedo tick - and re-tessellating
     // a thousands-of-vertices linestring that hasn't changed burned frame budget exactly while
     // the 60 fps ticker eased the camera.
     if (route !== lastAppliedRouteLine) {
@@ -1948,7 +1948,7 @@ private fun applyData(
         }
         style.getSourceAs<GeoJsonSource>(ROUTE_SRC)?.setGeoJson(routeFc)
         // Mid-nav ROUTE SWAP (reroute / faster route): seed the ahead layer with the WHOLE new
-        // route immediately — the ticker only repaints it after the puck re-engages and moves a
+        // route immediately - the ticker only repaints it after the puck re-engages and moves a
         // throttle unit, and until then the new geometry showed entirely traversed-grey with the
         // OLD route's blue suffix ghosted on top for a second. Progress on a fresh route ≈ 0, so
         // "everything is ahead" is the correct seed; the ticker takes over from the next engage.
@@ -1963,8 +1963,8 @@ private fun applyData(
         lastAppliedRouteLine = route
     }
     // Route line, Google-style: the part already DRIVEN greys out behind the vehicle;
-    // the part AHEAD shows live traffic PER SEGMENT — a free-flow base with amber/red
-    // bands over the congested stretches (from [trafficSpans]) — or, with no live
+    // the part AHEAD shows live traffic PER SEGMENT - a free-flow base with amber/red
+    // bands over the congested stretches (from [trafficSpans]) - or, with no live
     // data, a single congestion tint. A line-progress gradient (routeProgress =
     // fraction travelled, 0 when not navigating → nothing greyed).
     val routeInt = runCatching { android.graphics.Color.parseColor(routeColor) }
@@ -1972,7 +1972,7 @@ private fun applyData(
     // 0 when not navigating (no driven-grey); only floor to a visible sliver once moving.
     val p = if (routeProgress <= 0f) 0f else routeProgress.coerceIn(0.001f, 0.998f)
     if (routeDashed) {
-        // Walking / biking: show the dashed line (solid colour, no traffic gradient — there
+        // Walking / biking: show the dashed line (solid colour, no traffic gradient - there
         // isn't any for foot/bike), hide the solid one.
         style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
         style.getLayer(ROUTE_DASH_LAYER)?.setProperties(
@@ -1993,7 +1993,7 @@ private fun applyData(
             style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
         }
     } else {
-        // NAV: the frame ticker owns the route rendering — the driven/ahead GEOMETRY split
+        // NAV: the frame ticker owns the route rendering - the driven/ahead GEOMETRY split
         // (ahead suffix on ROUTE_AHEAD_LAYER, traversed grey on ROUTE_LAYER). Writing a
         // gradient from recomposition here would fight it once per fix.
         style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
@@ -2013,7 +2013,7 @@ private fun applyData(
 
     // Only rebuild + re-set the marker/ambient GeoJSON when the DATA actually changed. applyData runs
     // on every recomposition (a nav mySpeed tick, a mute/theme toggle, etc.), and setGeoJson forces a
-    // full symbol-layer re-tessellation — redundant when the pins/POIs are identical. Structural
+    // full symbol-layer re-tessellation - redundant when the pins/POIs are identical. Structural
     // equality on the data classes is enough. The style-reload path resets these holders (the fresh
     // source is empty) so the layers always repopulate. (Big drag-smoothness win on the Pixel 5a.)
     if (markers != lastAppliedMarkers) {
@@ -2071,7 +2071,7 @@ private fun applyData(
     }
 
     // The location source: in browse mode applyData owns it (set it from the fix here);
-    // in NAV the per-frame motion-model ticker owns it (smooth glide), so don't fight it —
+    // in NAV the per-frame motion-model ticker owns it (smooth glide), so don't fight it -
     // except to CLEAR it when there's no fix.
     if (!navMode || me == null) {
         val meFc = if (me != null) {
@@ -2086,7 +2086,7 @@ private fun applyData(
         style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(meFc)
     }
 
-    // Two modes, Google-style. NAV: the puck IS the position — a solid blue arrow — so
+    // Two modes, Google-style. NAV: the puck IS the position - a solid blue arrow - so
     // hide the dot and swap the heading layer's icon to the arrow. BROWSE: the blue dot
     // (grey when the fix is stale) + a faint heading cone. The cone/puck both hide while
     // stale (old bearing).
@@ -2109,9 +2109,9 @@ private fun applyData(
 }
 
 /** Google-style heading beam: a translucent blue cone whose apex sits at the
- *  location dot (bitmap centre) and fans out toward north (0°); rotated by the
- *  device bearing + drawn beneath the dot, it reads like Google's "flashlight"
- *  direction indicator rather than a hard arrow. */
+ * location dot (bitmap centre) and fans out toward north (0°); rotated by the
+ * device bearing + drawn beneath the dot, it reads like Google's "flashlight"
+ * direction indicator rather than a hard arrow. */
 private fun arrowBitmap(): Bitmap {
     val size = 132
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -2139,8 +2139,8 @@ private fun arrowBitmap(): Bitmap {
 }
 
 /** Google-style navigation puck: a solid blue chevron/arrowhead with a white outline,
- *  centred on the position and pointing up (north) so `iconRotate(bearing)` aims it down
- *  the heading. Replaces the dot during nav (test-drive feedback: "we need an arrow"). */
+ * centred on the position and pointing up (north) so `iconRotate(bearing)` aims it down
+ * the heading. Replaces the dot during nav (test-drive feedback: "we need an arrow"). */
 private fun navPuckBitmap(): Bitmap {
     val size = 96
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -2197,7 +2197,7 @@ private fun pinBitmap(): Bitmap {
 }
 
 /** A small traffic-light housing (white-rimmed dark rounded rect + red/amber/green dots) for the
- *  map-drawn signal layer. Sized to read as a recognisable stoplight at a ~0.55 icon scale, z16+. */
+ * map-drawn signal layer. Sized to read as a recognisable stoplight at a ~0.55 icon scale, z16+. */
 private fun trafficLightBitmap(): Bitmap {
     val w = 30
     val h = 60

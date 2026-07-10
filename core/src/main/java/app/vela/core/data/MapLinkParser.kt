@@ -10,12 +10,12 @@ data class MapLink(val query: String? = null, val lat: Double? = null, val lng: 
 /**
  * Parses the links other apps hand to a maps app, so Vela can be the system maps
  * handler on a de-Googled phone:
- *  - `geo:38.5,-121.7`               → a point
- *  - `geo:0,0?q=Coffee`              → a search
- *  - `geo:38.5,-121.7?q=Pier 39`     → a named place near a point
- *  - `geo:0,0?q=38.5,-121.7(Label)`  → a labelled point
- *  - `https://www.google.com/maps/place/Foo/@38.5,-121.7,15z` → a place / point
- *  - `https://www.google.com/maps/search/coffee` / `?q=...`    → a search
+ * - `geo:38.5,-121.7`               → a point
+ * - `geo:0,0?q=Coffee`              → a search
+ * - `geo:38.5,-121.7?q=Pier 39`     → a named place near a point
+ * - `geo:0,0?q=38.5,-121.7(Label)`  → a labelled point
+ * - `https://www.google.com/maps/place/Foo/@38.5,-121.7,15z` → a place / point
+ * - `https://www.google.com/maps/search/coffee` / `?q=...`    → a search
  *
  * Pure Kotlin (no `android.net.Uri`) so it's unit-testable in `:core`.
  */

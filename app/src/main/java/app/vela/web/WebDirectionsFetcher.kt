@@ -23,22 +23,22 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fetches public-transit directions through a hidden [WebView] — the same trick
+ * Fetches public-transit directions through a hidden [WebView] - the same trick
  * as [WebPhotoFetcher], for the same reason: Google's transit routing serves a
  * real itinerary set **only to a genuine browser engine**. A plain HTTP client
  * (OkHttp/curl) asking `/maps/preview/directions` with the transit mode flag
  * gets silently downgraded to a *driving* reply (TLS-fingerprint bot-detection,
- * not headers — verified on-device).
+ * not headers - verified on-device).
  *
  * A WebView is Chromium, so it loads the desktop `maps/dir/…/!3e3` page as an
- * anonymous, no-login session — exactly like a logged-out browser, which does
- * get transit — and the first transit result set is server-rendered into
+ * anonymous, no-login session - exactly like a logged-out browser, which does
+ * get transit - and the first transit result set is server-rendered into
  * `window.APP_INITIALIZATION_STATE`. We read that nested state out, hand the raw
  * Google response string back over a JS bridge, and parse it with the keyless
  * [TransitParser]. Best-effort: any failure/timeout returns empty.
  *
  * Per-stop drill-down (intermediate stops + the ridden polyline) is a separate,
- * token-gated `sv1Drc` batchexecute that fires when you expand a trip — a future
+ * token-gated `sv1Drc` batchexecute that fires when you expand a trip - a future
  * layer; this returns the results board (times, duration, line badges, agency).
  */
 @Singleton
@@ -46,7 +46,7 @@ class WebDirectionsFetcher @Inject constructor(
     @ApplicationContext private val context: Context,
 ) {
     private val main = Handler(Looper.getMainLooper())
-    // One WebView, one navigation at a time — each request replaces the page.
+    // One WebView, one navigation at a time - each request replaces the page.
     private val mutex = Mutex()
     // Per-request id (WebPhotoFetcher's pattern): a previous, timed-out page's still-running poller
     // (the EXTRACT setTimeout loop runs up to ~7 s) must NOT complete a NEWER request's deferred with
@@ -54,7 +54,7 @@ class WebDirectionsFetcher @Inject constructor(
     // completed (audit 2026-07-06).
     private val seq = java.util.concurrent.atomic.AtomicLong()
     private val pending = java.util.concurrent.ConcurrentHashMap<String, CompletableDeferred<String>>()
-    @Volatile private var currentId: String = "" // the id of the page being loaded now — baked into its EXTRACT
+    @Volatile private var currentId: String = "" // the id of the page being loaded now - baked into its EXTRACT
     @Volatile private var webView: WebView? = null
 
     private inner class Bridge {
@@ -65,9 +65,9 @@ class WebDirectionsFetcher @Inject constructor(
     }
 
     /** The transit results board for [origin]→[destination], or empty on any
-     *  failure/timeout (the caller then offers drive/walk/bike instead).
-     *  [timeMode] 0 = leave now, 1 = depart at, 2 = arrive by, 3 = last available; [timeEpochSec]
-     *  is the chosen wall-clock (Unix seconds), null for "now". */
+     * failure/timeout (the caller then offers drive/walk/bike instead).
+     * [timeMode] 0 = leave now, 1 = depart at, 2 = arrive by, 3 = last available; [timeEpochSec]
+     * is the chosen wall-clock (Unix seconds), null for "now". */
     suspend fun transit(
         origin: LatLng,
         destination: LatLng,
@@ -130,12 +130,12 @@ class WebDirectionsFetcher @Inject constructor(
         const val TOTAL_TIMEOUT_MS = 20_000L
         const val SETTLE_MS = 1_800L
 
-        /** Pull the directions response string out of APP_INITIALIZATION_STATE —
-         *  the `)]}'`-guarded array Google embeds under slot [3] (minified key).
-         *  Two such strings live there: a ~1.7 KB stub and the real ~165 KB
-         *  itinerary payload, so we take the LONGEST and require it to be
-         *  substantial (the stub appears first). The SPA fills it a beat after
-         *  page-finish, so we poll for up to ~7 s. */
+        /** Pull the directions response string out of APP_INITIALIZATION_STATE -
+         * the `)]}'`-guarded array Google embeds under slot [3] (minified key).
+         * Two such strings live there: a ~1.7 KB stub and the real ~165 KB
+         * itinerary payload, so we take the LONGEST and require it to be
+         * substantial (the stub appears first). The SPA fills it a beat after
+         * page-finish, so we poll for up to ~7 s. */
         fun extract(id: String) = """
             (function(){
               var tries = 0;

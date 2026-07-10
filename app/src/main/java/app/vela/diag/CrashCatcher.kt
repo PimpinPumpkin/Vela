@@ -11,9 +11,9 @@ import java.io.PrintWriter
 import java.io.StringWriter
 
 /**
- * Catches an otherwise-fatal uncaught exception and **persists** a crash report —
+ * Catches an otherwise-fatal uncaught exception and **persists** a crash report -
  * stack trace, app/device versions, and whatever diagnostic breadcrumbs were in
- * memory — to a file under `filesDir/diag/crash/`, then chains to the system's
+ * memory - to a file under `filesDir/diag/crash/`, then chains to the system's
  * default handler so the normal crash flow is unchanged.
  *
  * Why this exists: when nav crashed on a phone that wasn't tethered, there was no
@@ -21,15 +21,15 @@ import java.io.StringWriter
  * crash report on the next launch** (Settings → Diagnostics) and hand it to a dev.
  *
  * The stack trace + device info are benign (no personal data), so a report is
- * written even if the opt-in diagnostics log is off — the breadcrumb section is
+ * written even if the opt-in diagnostics log is off - the breadcrumb section is
  * simply empty in that case (breadcrumbs are only recorded when the user opted in).
  * The report never leaves the phone unless the user exports + shares it.
  */
 object CrashCatcher {
 
     /** True once an uncaught exception is being handled. The [AnrWatchdog] reads this to stand down:
-     *  the system crash handler ([prev]) blocks the main thread for seconds while it reports the
-     *  crash, which would otherwise look like an ANR and spawn a bogus `crash-anr` report. */
+     * the system crash handler ([prev]) blocks the main thread for seconds while it reports the
+     * crash, which would otherwise look like an ANR and spawn a bogus `crash-anr` report. */
     @Volatile
     var crashing = false
         private set
@@ -66,7 +66,7 @@ object CrashCatcher {
             append("when: ").append(System.currentTimeMillis()).append('\n')
             append("version: ").append(BuildConfig.VERSION_NAME).append(" (").append(BuildConfig.VERSION_CODE).append(")\n")
             append("android: API ").append(Build.VERSION.SDK_INT)
-                .append(" — ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append("\n\n")
+                .append(" - ").append(Build.MANUFACTURER).append(' ').append(Build.MODEL).append("\n\n")
             append(body).append("\n\n")
             append("=== breadcrumbs (").append(crumbs.size).append(") ===\n")
             crumbs.forEach { e ->
@@ -80,7 +80,7 @@ object CrashCatcher {
     }
 
     /** Keep only the few most recent reports so this can't grow unbounded. ExitInfo/ANR reports
-     *  share this budget with exception reports, so keep enough that a burst can't evict a crash. */
+     * share this budget with exception reports, so keep enough that a burst can't evict a crash. */
     private fun prune(context: Context, keep: Int = 10) {
         val files = pending(context)
         if (files.size > keep) files.dropLast(keep).forEach { runCatching { it.delete() } }

@@ -7,7 +7,7 @@ import android.os.SystemClock
 /**
  * A tiny LIVE ANR detector for DEBUG builds only (zero release overhead). It posts a tick to the
  * main looper, sleeps [timeoutMs], and if the tick hasn't run the main thread was blocked that long
- * — it dumps the main-thread stack via [onAnr] (which writes a `crash-anr-*` report), then waits
+ * - it dumps the main-thread stack via [onAnr] (which writes a `crash-anr-*` report), then waits
  * for recovery so it reports the stall once, not every cycle.
  *
  * Complements [ExitInfoReader]: this catches ANRs LIVE and works on API 26–29 (where

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Merge many region entries into address-overlay-manifest.json in ONE upload — the race-safe half of the CI
+# Merge many region entries into address-overlay-manifest.json in ONE upload - the race-safe half of the CI
 # matrix (build-address-region.sh MANIFEST_MODE=emit drops one entry file per region; this folds them all in).
 # Replace-by-id, so re-running a region updates it; regions not in this batch are preserved. Sibling of
-# merge-overlay-manifest.sh (buildings) — this is for the house-number ADDRESS overlay.
+# merge-overlay-manifest.sh (buildings) - this is for the house-number ADDRESS overlay.
 #
 #   scripts/merge-address-manifest.sh <dir-of-entry-json-files>
 #
@@ -29,4 +29,4 @@ jq --slurpfile batch "$WORK/batch.json" '
 
 jq -r '.regions[] | "   \(.name)  \(.sizeMb) MB  \(.bbox)"' "$WORK/address-overlay-manifest.json"
 gh release upload "$TAG" "$WORK/address-overlay-manifest.json" --clobber --repo "$REPO"
-echo "✓ address manifest now lists $(jq '.regions | length' "$WORK/address-overlay-manifest.json") regions"
+echo "[x] address manifest now lists $(jq '.regions | length' "$WORK/address-overlay-manifest.json") regions"

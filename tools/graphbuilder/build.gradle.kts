@@ -1,4 +1,4 @@
-// Standalone JVM tool — NOT part of the app build (it pulls GraphHopper's heavy OSM-import deps).
+// Standalone JVM tool - NOT part of the app build (it pulls GraphHopper's heavy OSM-import deps).
 // Run it on a dev box or in CI to build a per-region routing graph for the app to download.
 //   ./gradlew run --args="sacramento.osm.pbf sacramento-graph"
 plugins { application }

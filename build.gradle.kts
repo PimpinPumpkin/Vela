@@ -13,8 +13,8 @@ plugins {
 // the config (config/detekt/detekt.yml) enables ONLY delegate-aware dead-code rules (unused
 // imports / private members / unreachable code) and turns everything else off, so it never
 // flags style/complexity noise. The cross-module + dead-resource + dead-module half lives in
-// deadcode_test_suite/audit_deadcode.sh. Run both locally: ./gradlew detekt && bash
-// deadcode_test_suite/audit_deadcode.sh
+// tests/dead_code/audit_deadcode.sh. Run both locally: ./gradlew detekt && bash
+// tests/dead_code/audit_deadcode.sh
 subprojects {
     if (name == "app" || name == "core") {
         apply(plugin = "io.gitlab.arturbosch.detekt")

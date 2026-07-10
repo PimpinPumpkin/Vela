@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Merge many region entries into poi-pack-manifest.json in ONE upload — the race-safe half of the CI
+# Merge many region entries into poi-pack-manifest.json in ONE upload - the race-safe half of the CI
 # matrix (build-poi-region.sh MANIFEST_MODE=emit drops one entry file per region; this folds them
 # all in). Replace-by-id, so re-running a region updates it; regions not in this batch are preserved.
 #
@@ -30,4 +30,4 @@ jq --slurpfile batch "$WORK/batch.json" '
 
 jq -r '.regions[] | "   \(.name)  \(.sizeMb) MB  \(.bbox)"' "$WORK/poi-pack-manifest.json"
 gh release upload "$TAG" "$WORK/poi-pack-manifest.json" --clobber --repo "$REPO"
-echo "✓ manifest now lists $(jq '.regions | length' "$WORK/poi-pack-manifest.json") regions"
+echo "[x] manifest now lists $(jq '.regions | length' "$WORK/poi-pack-manifest.json") regions"

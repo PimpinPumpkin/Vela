@@ -15,7 +15,7 @@ class CategoryFilterTest {
     }
 
     @Test fun blocksLocalisedAdultCategories() {
-        // Categories come localised (hl=<lang>) — the filter must catch them too.
+        // Categories come localised (hl=<lang>) - the filter must catch them too.
         listOf(
             "Boîte de nuit", "Bar à vin", "Cave à vin",          // fr
             "Discoteca", "Licorería", "Casa de apuestas",         // es

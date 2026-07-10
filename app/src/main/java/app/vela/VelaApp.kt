@@ -26,13 +26,13 @@ class VelaApp : Application() {
     @Inject lateinit var exitInfo: ExitInfoReader
 
     /** StrictMode violation signatures already breadcrumbed this process. The startup SharedPreferences
-     *  reads fire the same few main-thread-I/O violations repeatedly; deduping here keeps them from
-     *  flooding the 300-cap DiagLog ring (StrictMode's penaltyLog still logs every one to Logcat). */
+     * reads fire the same few main-thread-I/O violations repeatedly; deduping here keeps them from
+     * flooding the 300-cap DiagLog ring (StrictMode's penaltyLog still logs every one to Logcat). */
     private val seenStrictMode = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /** Apply the persisted in-app language to the Application context too (no-op when following the
-     *  system), so `getString` from the ViewModel/nav-notification also localizes — resolved at launch
-     *  from the saved pref (an in-session change re-reads it on next launch). */
+     * system), so `getString` from the ViewModel/nav-notification also localizes - resolved at launch
+     * from the saved pref (an in-session change re-reads it on next launch). */
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(AppLocale.wrap(base))
     }
@@ -75,10 +75,10 @@ class VelaApp : Application() {
         }
     }
 
-    /** StrictMode (debug only): surfaces main-thread disk/network I/O — the #1 ANR cause — live at
-     *  dev time. `penaltyLog` (never `penaltyDeath`): the first SharedPreferences load, MapLibre
-     *  native init and framework startup do a few benign main-thread reads; treat the log as a
-     *  triage list, not failures. Violations also breadcrumb into DiagLog on API 28+. */
+    /** StrictMode (debug only): surfaces main-thread disk/network I/O - the #1 ANR cause - live at
+     * dev time. `penaltyLog` (never `penaltyDeath`): the first SharedPreferences load, MapLibre
+     * native init and framework startup do a few benign main-thread reads; treat the log as a
+     * triage list, not failures. Violations also breadcrumb into DiagLog on API 28+. */
     private fun installStrictMode() {
         StrictMode.setThreadPolicy(
             StrictMode.ThreadPolicy.Builder()

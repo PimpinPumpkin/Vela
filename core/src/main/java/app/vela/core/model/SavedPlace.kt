@@ -2,7 +2,7 @@ package app.vela.core.model
 
 import kotlinx.serialization.Serializable
 
-/** A lightweight, persistable favourite — enough to recenter + re-route to it. */
+/** A lightweight, persistable favourite - enough to recenter + re-route to it. */
 @Serializable
 data class SavedPlace(
     val id: String,

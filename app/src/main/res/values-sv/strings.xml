@@ -163,7 +163,7 @@
     <string name="mapvm_poipack_ready">Platser i %1$s går nu att söka offline</string> <!-- format -->
     <string name="mapvm_poipack_unavailable">Inget platspaket för %1$s ännu. Det dyker upp här när det publicerats.</string> <!-- format -->
     <string name="settings_demo_drive">Simulera körning (demo)</string>
-    <string name="settings_demo_drive_hint">För demos, skärmbilder och tester: att trycka på Starta kör rutten som ett simulerat GPS-spår i stället för din verkliga plats — navigering fungerar var som helst. Stäng av för att navigera på riktigt.</string>
+    <string name="settings_demo_drive_hint">För demos, skärmbilder och tester: att trycka på Starta kör rutten som ett simulerat GPS-spår i stället för din verkliga plats - navigering fungerar var som helst. Stäng av för att navigera på riktigt.</string>
     <string name="settings_sim_location">Simulera min plats (demo)</string>
     <string name="settings_sim_location_hint">För demos och skärmbilder: låtsas att du är mitt på kartan just nu, så att platsprick, avstånd och vägbeskrivningar utgår därifrån i stället för din verkliga position. Stäng av för riktig GPS.</string>
     <string name="place_address_copied">Adress kopierad</string>
@@ -355,7 +355,7 @@
     <string name="mapvm_no_transit_routes">Inga kollektivrutter hittades</string>
     <string name="mapvm_trip_default_name">Resa</string>
     <string name="mapvm_no_voice_engine">Ingen röstmotor installerad – lägg till en i Inställningar → Röst för talade vägbeskrivningar</string>
-    <string name="mapvm_voice_lang_missing">Talade vägbeskrivningar kräver en %1$s-röst — lägg till en i Inställningar → Röst</string>
+    <string name="mapvm_voice_lang_missing">Talade vägbeskrivningar kräver en %1$s-röst - lägg till en i Inställningar → Röst</string>
     <string name="mapvm_no_track_to_replay">Den resan har inget spår att spela upp</string>
     <string name="mapvm_replaying">Spelar upp %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Vela sparade platser (%1$d)</string>

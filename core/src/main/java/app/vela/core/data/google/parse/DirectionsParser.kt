@@ -22,19 +22,19 @@ import kotlinx.serialization.json.JsonPrimitive
  * Parses the `/maps/preview/directions` response.
  *
  * Schema calibrated against a live capture (2026-06-15):
- *   routes        `root[0][1]`            (array of alternative routes)
- *   per route `r` summary at `r[0]`:
- *     distance m  `[2][0]`   ("10.6 miles" text at `[2][1]`)
- *     duration s  `[3][0]`   typical/no-traffic ("22 min" at `[3][1]`)
- *     traffic s   `[10][0][0]`  live duration_in_traffic ("18 min") — the goal
- *     start pt    `[7][3][2]` = [.., .., lat, lng]
- *     end pt      `[7][3][3]`
- *   steps         emitted as `<step maneuver='TURN' meters='120'>Turn <turn side='LEFT'>left
- *                 </turn> onto <roadlist><road>Elm St</road></roadlist></step>` markup strings
- *                 scattered through the route subtree. The maneuver attr is GENERIC ('TURN',
- *                 'ON_RAMP', 'ROUNDABOUT_ENTER_AND_EXIT', 'NAME_CHANGE', …) — the left/right +
- *                 slight/sharp live in the child `<turn side= type=>`, the road in `<road>`. NOTE:
- *                 roundabout steps carry NO `<road>` keyless ("take the 2nd exit", no "onto X").
+ * routes        `root[0][1]`            (array of alternative routes)
+ * per route `r` summary at `r[0]`:
+ * distance m  `[2][0]`   ("10.6 miles" text at `[2][1]`)
+ * duration s  `[3][0]`   typical/no-traffic ("22 min" at `[3][1]`)
+ * traffic s   `[10][0][0]`  live duration_in_traffic ("18 min") - the goal
+ * start pt    `[7][3][2]` = [.., .., lat, lng]
+ * end pt      `[7][3][3]`
+ * steps         emitted as `<step maneuver='TURN' meters='120'>Turn <turn side='LEFT'>left
+ * </turn> onto <roadlist><road>Elm St</road></roadlist></step>` markup strings
+ * scattered through the route subtree. The maneuver attr is GENERIC ('TURN',
+ * 'ON_RAMP', 'ROUNDABOUT_ENTER_AND_EXIT', 'NAME_CHANGE', …) - the left/right +
+ * slight/sharp live in the child `<turn side= type=>`, the road in `<road>`. NOTE:
+ * roundabout steps carry NO `<road>` keyless ("take the 2nd exit", no "onto X").
  *
  * The exact encoded overview-polyline field did not decode cleanly during
  * calibration, so geometry is currently APPROXIMATED from the in-bounds
@@ -48,7 +48,7 @@ object DirectionsParser {
         val routes = root.at(0, 1).arr()
             ?: throw CalibrationNeededException("directions routes (root[0][1])")
         // Google ships each route's real geometry as delta-encoded E7 coordinate
-        // arrays at root[0][7][i] (index-aligned with the route summaries) — so the
+        // arrays at root[0][7][i] (index-aligned with the route summaries) - so the
         // drawn line follows the actual roads of *that* route, alternates included.
         val geoms = root.at(0, 7).arr()
         val parsed = routes.mapIndexedNotNull { i, r ->
@@ -91,10 +91,10 @@ object DirectionsParser {
     }
 
     /** Per-segment live traffic: `route[3][5][0]` is a list of `[level, startMeters,
-     *  lengthMeters]` — only the congested stretches (free-flow gaps are omitted).
-     *  Note this hangs off the route node itself, NOT the `[0]` summary. Calibrated
-     *  2026-06-19 against Davis→Sac + Berkeley→SF (levels 1=moderate, 2=heavy seen;
-     *  span starts+lengths chain contiguously through each jam, sum < route length). */
+     * lengthMeters]` - only the congested stretches (free-flow gaps are omitted).
+     * Note this hangs off the route node itself, NOT the `[0]` summary. Calibrated
+     * 2026-06-19 against Davis→Sac + Berkeley→SF (levels 1=moderate, 2=heavy seen;
+     * span starts+lengths chain contiguously through each jam, sum < route length). */
     private fun parseTrafficSpans(route: JsonElement): List<TrafficSpan> {
         val arr = route.at(3, 5, 0).arr() ?: return emptyList()
         return arr.mapNotNull { s ->
@@ -108,7 +108,7 @@ object DirectionsParser {
     }
 
     /** Decode a route-geometry node: `[0]` = latitude deltas (E7, first element
-     *  absolute), `[1]` = longitude deltas — into a real polyline. */
+     * absolute), `[1]` = longitude deltas - into a real polyline. */
     private fun decodeGeometry(node: JsonElement?): List<LatLng>? {
         val lat = node.at(0).arr() ?: return null
         val lng = node.at(1).arr() ?: return null
@@ -152,7 +152,7 @@ object DirectionsParser {
     }
 
     // The keyless feed carries the turn DIRECTION in a child <turn side='LEFT'|'RIGHT' type='SLIGHT'
-    // |'SHARP'> element — NOT in the maneuver attribute, which is the generic 'TURN' / 'ON_RAMP' /
+    // |'SHARP'> element - NOT in the maneuver attribute, which is the generic 'TURN' / 'ON_RAMP' /
     // 'ROUNDABOUT_ENTER_AND_EXIT'. (Verified against a live www.google.com directions capture.)
     private val SIDE_ATTR = Regex("<turn\\b[^>]*\\bside='([^']+)'", RegexOption.IGNORE_CASE)
     private val SEVERITY_ATTR = Regex("<turn\\b[^>]*\\btype='([^']+)'", RegexOption.IGNORE_CASE)
@@ -172,10 +172,10 @@ object DirectionsParser {
     }
 
     /** Map Google's keyless maneuver [token] (+ the child `<turn>` [side]/[severity]) to a
-     *  [ManeuverType]. The feed uses a GENERIC token with left/right + slight/sharp carried
-     *  separately, so reading only the token left every plain turn and ramp as UNKNOWN — a generic
-     *  arrow and the wrong direction-coded haptic. Old explicit *_LEFT/_RIGHT tokens stay handled in
-     *  case the feed varies. */
+     * [ManeuverType]. The feed uses a GENERIC token with left/right + slight/sharp carried
+     * separately, so reading only the token left every plain turn and ramp as UNKNOWN - a generic
+     * arrow and the wrong direction-coded haptic. Old explicit *_LEFT/_RIGHT tokens stay handled in
+     * case the feed varies. */
     internal fun mapType(token: String?, side: String?, severity: String?): ManeuverType {
         val left = side.equals("LEFT", ignoreCase = true)
         val right = side.equals("RIGHT", ignoreCase = true)
@@ -214,16 +214,16 @@ object DirectionsParser {
     }
 
     /** Position each maneuver at its *actual* cumulative step distance along the
-     *  route line. Using the polyline's own length as the denominator (not the
-     *  summed step distances) matters: Google's step `meters` and its geometry
-     *  length differ by a few percent, and dividing by the step-sum stretched every
-     *  mid-route turn off its real spot — so tapping a step landed near, but not on,
-     *  the actual turn. Matching the polyline length pins each turn where it is. */
+     * route line. Using the polyline's own length as the denominator (not the
+     * summed step distances) matters: Google's step `meters` and its geometry
+     * length differ by a few percent, and dividing by the step-sum stretched every
+     * mid-route turn off its real spot - so tapping a step landed near, but not on,
+     * the actual turn. Matching the polyline length pins each turn where it is. */
     internal fun placeManeuvers(maneuvers: List<Maneuver>, polyline: List<LatLng>): List<Maneuver> {
         if (maneuvers.isEmpty() || polyline.size < 2) return maneuvers
         // Place each turn by its fraction of the STEP-DISTANCE total, NOT the polyline length.
         // The two often disagree (Google's per-step metres vs our decoded geometry can differ by
-        // a lot — seen 3.3 km of steps on a 6.4 km polyline), and dividing by polyLength then
+        // a lot - seen 3.3 km of steps on a 6.4 km polyline), and dividing by polyLength then
         // crammed every turn into the first half of the route, landing them on the wrong roads
         // ("turn onto a road miles away"). Fraction-of-step-total maps each turn to the right
         // PROPORTIONAL point along the geometry regardless of the absolute-length mismatch.

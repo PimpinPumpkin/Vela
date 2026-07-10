@@ -7,8 +7,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** The nav puck's speed fusion: GPS fixes measure, the accelerometer predicts between them.
- *  The scenarios mirror the bug it fixes — braking/stopping between ~1 Hz fixes, where
- *  last-fix-speed dead reckoning overshoots and monotonic progress can't walk it back. */
+ * The scenarios mirror the bug it fixes - braking/stopping between ~1 Hz fixes, where
+ * last-fix-speed dead reckoning overshoots and monotonic progress can't walk it back. */
 class SpeedKalmanTest {
 
     private fun SpeedKalman.run(accel: Double, seconds: Double, dt: Double = 1.0 / 60): Double {
@@ -64,7 +64,7 @@ class SpeedKalmanTest {
     @Test fun gpsUpdatesConvergeOntoTheMeasurement() {
         val k = SpeedKalman()
         k.update(15.0)
-        // Realistic ~1 Hz fixes with a second of (accel-less) prediction between them — the
+        // Realistic ~1 Hz fixes with a second of (accel-less) prediction between them - the
         // accel-missing fallback must converge onto a big speed change within a few fixes,
         // since the old code snapped to each fix outright.
         repeat(4) {

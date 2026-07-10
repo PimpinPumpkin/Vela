@@ -15,7 +15,7 @@ import javax.inject.Singleton
 /**
  * Downloads a Vela neural-voice model (a sherpa-onnx `.tar.bz2` from the `tts-models` GitHub release)
  * into a target dir under `filesDir`, extracting it, reporting 0f..1f progress. Generic over the voice
- * (Kokoro / Piper / Matcha). Matcha additionally needs a separate vocoder `.onnx` — pass [extraUrl]/
+ * (Kokoro / Piper / Matcha). Matcha additionally needs a separate vocoder `.onnx` - pass [extraUrl]/
  * [extraName] and it's fetched into the same dir. Best-effort: any failure wipes the partial model.
  */
 @Singleton
@@ -23,7 +23,7 @@ class KokoroInstaller @Inject constructor(
     @ApplicationContext private val context: Context,
     http: OkHttpClient,
 ) {
-    // The shared client caps a whole CALL at 12 s to bound a hung scrape — but that also kills a
+    // The shared client caps a whole CALL at 12 s to bound a hung scrape - but that also kills a
     // multi-tens-of-MB model download (it can't finish the body in 12 s). Derive a download client with
     // NO overall call timeout; a generous per-read socket timeout still catches a truly stalled connection.
     private val downloadHttp: OkHttpClient = http.newBuilder()
@@ -31,7 +31,7 @@ class KokoroInstaller @Inject constructor(
         .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
         .build()
     /** Download [url] into [destDir] (extracting the archive's single top-level folder into it), and,
-     *  if given, an [extraUrl] file saved as [extraName] alongside it. [onProgress] is 0f..1f. */
+     * if given, an [extraUrl] file saved as [extraName] alongside it. [onProgress] is 0f..1f. */
     suspend fun download(
         url: String,
         destDir: File,

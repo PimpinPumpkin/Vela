@@ -34,12 +34,12 @@ import javax.inject.Inject
  * notification and holds the process up so the nav loop keeps running with the
  * screen off.
  *
- * **Location is fed by the ViewModel, not here** — deliberately. Promoting to a
+ * **Location is fed by the ViewModel, not here** - deliberately. Promoting to a
  * `location`-typed foreground service can *throw* on Android 14+ (the runtime
  * location grant has to be in the exact state the type demands; GrapheneOS is
  * especially strict), and an uncaught throw in `onStartCommand` crashes the whole
  * app. So this start is wrapped and, if it fails, the app simply falls back to
- * in-app (foreground) navigation — the [app.vela.ui.map.MapViewModel] drives
+ * in-app (foreground) navigation - the [app.vela.ui.map.MapViewModel] drives
  * `NavSession.onLocation` from its own location collector independently of this
  * service. The service is best-effort polish (background continuation +
  * notification), never a hard dependency of navigation.
@@ -63,7 +63,7 @@ class NavigationService : Service() {
 
         // Foreground promotion can throw on Android 14+ (e.g. ForegroundServiceStart-
         // NotAllowed, or a SecurityException when the location grant isn't in the state
-        // the FGS-location type requires). Never let that crash the app — nav keeps
+        // the FGS-location type requires). Never let that crash the app - nav keeps
         // working in the foreground because the ViewModel feeds NavSession itself.
         try {
             startForegroundCompat(buildNotification())
@@ -84,7 +84,7 @@ class NavigationService : Service() {
                             // !arrived` condition would keep the location-typed FGS, the ongoing
                             // notification and 1 Hz GPS alive INDEFINITELY if the driver
                             // pocketed the phone without tapping Done. DETACH FIRST, then post
-                            // the dismissable arrival notification — posting before the detach
+                            // the dismissable arrival notification - posting before the detach
                             // lets the system re-stamp FLAG_FOREGROUND_SERVICE onto the record
                             // and it stays non-swipeable on older APIs.
                             runCatching { stopForeground(STOP_FOREGROUND_DETACH) }
@@ -172,7 +172,7 @@ class NavigationService : Service() {
 
     private fun teardown() {
         runCatching { stopForeground(STOP_FOREGROUND_REMOVE) }
-        // Also clear a DETACHED arrival notification (the arrived branch posts one dismissable —
+        // Also clear a DETACHED arrival notification (the arrived branch posts one dismissable -
         // tapping Done in-app must not leave it stranded in the shade).
         runCatching { notificationManager().cancel(NOTIF_ID) }
         stopSelf()
@@ -204,8 +204,8 @@ class NavigationService : Service() {
         private const val NOTIF_ID = 42
 
         /** Best-effort: start the background nav service. A failure here (background
-         *  start not allowed, OEM restriction) is swallowed — foreground nav, driven
-         *  by the ViewModel, does not depend on it. */
+         * start not allowed, OEM restriction) is swallowed - foreground nav, driven
+         * by the ViewModel, does not depend on it. */
         fun start(context: Context) {
             runCatching {
                 ContextCompat.startForegroundService(context, Intent(context, NavigationService::class.java))

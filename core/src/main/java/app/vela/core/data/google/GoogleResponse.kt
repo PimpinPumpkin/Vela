@@ -11,7 +11,7 @@ import kotlinx.serialization.json.longOrNull
 
 /**
  * Google's XHR responses begin with an XSSI guard (`)]}'` then a newline) and
- * then a deeply nested *positional* JSON array — no field names anywhere. This
+ * then a deeply nested *positional* JSON array - no field names anywhere. This
  * object strips the guard and parses; the extension functions below give
  * null-safe positional access so a missing/reordered index returns null instead
  * of throwing. That defensiveness is the whole game: Google inserts elements
@@ -47,8 +47,8 @@ fun JsonElement?.int(): Int? = (this as? JsonPrimitive)?.intOrNull
 fun JsonElement?.long(): Long? = (this as? JsonPrimitive)?.longOrNull
 
 /** Depth-first search for the first string matching [predicate]. Handy for
- *  locating a recognisable value (an encoded polyline, a "23 min" string)
- *  without committing to an exact index path. */
+ * locating a recognisable value (an encoded polyline, a "23 min" string)
+ * without committing to an exact index path. */
 fun JsonElement?.findString(predicate: (String) -> Boolean): String? {
     when (this) {
         is JsonArray -> for (e in this) e.findString(predicate)?.let { return it }

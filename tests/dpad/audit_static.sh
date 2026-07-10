@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dpad_test_suite/audit_static.sh — EXHAUSTIVE static D-pad auditor (host-side, no device needed).
+# tests/dpad/audit_static.sh - EXHAUSTIVE static D-pad auditor (host-side, no device needed).
 #
 # Scans EVERY .kt under :app for EVERY known D-pad anti-pattern and fails (exit 1) if any real
 # violation remains. Nothing escapes: every interactive-modifier variant, every gesture modifier,
@@ -11,7 +11,7 @@
 #   ./audit_static.sh -v     # also print every OK site
 # See docs/dpad.md for the rules this encodes.
 set -uo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SRC="$ROOT/app/src/main/java/app/vela"
 VERBOSE="${1:-}"
 
@@ -97,12 +97,12 @@ for path in walk():
         n = i + 1
         # A/B. Material menu/dialog shortcuts that can't auto-focus
         if base != "VelaMenu.kt" and has(RE_DROPDOWN, ln):
-            viol.append(("HIGH", f"{name}:{n}", "bare DropdownMenu — use VelaMenu"))
+            viol.append(("HIGH", f"{name}:{n}", "bare DropdownMenu - use VelaMenu"))
         if base != "VelaDialog.kt" and has(RE_ALERT, ln):
-            viol.append(("HIGH", f"{name}:{n}", "bare AlertDialog — use VelaDialog"))
+            viol.append(("HIGH", f"{name}:{n}", "bare AlertDialog - use VelaDialog"))
         # C. theme
         if base != "AppTheme.kt" and has(RE_ISSYS, ln):
-            viol.append(("MED", f"{name}:{n}", "isSystemInDarkTheme() — use isAppInDarkTheme()"))
+            viol.append(("MED", f"{name}:{n}", "isSystemInDarkTheme() - use isAppInDarkTheme()"))
         # D. any ring-required interactive modifier without a ring
         if has(RING_REQUIRED, ln):
             if chain_has_ring(lines, i):
@@ -114,28 +114,28 @@ for path in walk():
             if near_keypath(lines, i):
                 if verbose: oknote.append(f"gest {name}:{n}")
             else:
-                viol.append(("HIGH", f"{name}:{n}", "gesture (drag/tap) with no key alternative (onKeyEvent/clickable) — D-pad can't reach it"))
-        # F. bare .focusable() — needs a ring OR deliberate self-indication → surface for triage
+                viol.append(("HIGH", f"{name}:{n}", "gesture (drag/tap) with no key alternative (onKeyEvent/clickable) - D-pad can't reach it"))
+        # F. bare .focusable() - needs a ring OR deliberate self-indication → surface for triage
         if has(FOCUSABLE, ln) and not chain_has_ring(lines, i):
-            check.append(("focusable", f"{name}:{n}", "bare .focusable() with no ring — confirm it self-indicates (crosshair/pill) or add dpadHighlight"))
-        # G. Slider — Material handles arrows when focused, but confirm it's reachable
+            check.append(("focusable", f"{name}:{n}", "bare .focusable() with no ring - confirm it self-indicates (crosshair/pill) or add dpadHighlight"))
+        # G. Slider - Material handles arrows when focused, but confirm it's reachable
         if has(RE_SLIDER, ln):
-            check.append(("slider", f"{name}:{n}", "Slider — confirm D-pad arrows adjust it and it's focus-reachable"))
+            check.append(("slider", f"{name}:{n}", "Slider - confirm D-pad arrows adjust it and it's focus-reachable"))
         # H. raw Dialog/Popup outside the sanctioned files
         if base not in RAW_OK and (has(RE_RAWDIALOG, ln) or has(RE_POPUP, ln)):
-            check.append(("window", f"{name}:{n}", "raw Dialog/Popup — must auto-focus a .focusable() element (VelaDialog/VelaMenu pattern)"))
-        # H2. any raw Dialog whose content has NO scroll container and isn't full-screen — a tall
+            check.append(("window", f"{name}:{n}", "raw Dialog/Popup - must auto-focus a .focusable() element (VelaDialog/VelaMenu pattern)"))
+        # H2. any raw Dialog whose content has NO scroll container and isn't full-screen - a tall
         #     body clips its buttons/options off a small (feature-phone) screen. VIOLATION: dialogs
         #     must scroll or fill the screen so every option stays reachable (user 2026-07-08).
         if has(RE_RAWDIALOG, ln):
             body = "".join(code_of(l) for l in lines[i:i + 60])
             if not RE_DLG_SAFE.search(body):
-                viol.append(("MED", f"{name}:{n}", "Dialog content has no verticalScroll/LazyColumn and isn't full-screen — clips options on a small screen; wrap the body in a scroll container"))
+                viol.append(("MED", f"{name}:{n}", "Dialog content has no verticalScroll/LazyColumn and isn't full-screen - clips options on a small screen; wrap the body in a scroll container"))
         # I. text field escape
         if has(RE_FIELD, ln):
             if "dpadFieldEscape" not in "".join(lines[max(0,i-2):i+22]):
-                check.append(("field", f"{name}:{n}", "text field — confirm .dpadFieldEscape() (or bespoke DOWN-escape) so controls below stay reachable"))
-        # J. clickable Material SURFACE (Card/Surface/ListItem whose OWN constructor takes onClick) —
+                check.append(("field", f"{name}:{n}", "text field - confirm .dpadFieldEscape() (or bespoke DOWN-escape) so controls below stay reachable"))
+        # J. clickable Material SURFACE (Card/Surface/ListItem whose OWN constructor takes onClick) -
         #    Material focus indication on a big grey surface is faint; confirm it reads or add a ring.
         #    Only the constructor args count (text before the content-lambda '{'), so a child's
         #    onClick doesn't trip it.
@@ -146,15 +146,15 @@ for path in walk():
                 ctor += c[:b] if b >= 0 else c
                 if b >= 0: break
             if "onClick" in ctor and "dpadHighlight(" not in "".join(code_of(l) for l in lines[max(0,i-1):i+9]):
-                check.append(("surface", f"{name}:{n}", "Card/Surface/ListItem with onClick — confirm its focus is visible (Material indication is faint on grey) or add dpadHighlight"))
-        # K. AndroidView — a native view (WebView/MapView) has NO Compose focus; confirm it has an
+                check.append(("surface", f"{name}:{n}", "Card/Surface/ListItem with onClick - confirm its focus is visible (Material indication is faint on grey) or add dpadHighlight"))
+        # K. AndroidView - a native view (WebView/MapView) has NO Compose focus; confirm it has an
         #    explicit D-pad key bridge (MapDpadController / pageUp-pageDown) or it's unreachable.
         if has(RE_ANDROIDVIEW, ln):
-            check.append(("androidview", f"{name}:{n}", "AndroidView — confirm a D-pad key bridge (MapDpadController / WebView pageUp-Down) or the native view is unreachable"))
-        # L. Material bottom sheet / scaffold sheet — confirm it auto-focuses (Vela uses hand-built
+            check.append(("androidview", f"{name}:{n}", "AndroidView - confirm a D-pad key bridge (MapDpadController / WebView pageUp-Down) or the native view is unreachable"))
+        # L. Material bottom sheet / scaffold sheet - confirm it auto-focuses (Vela uses hand-built
         #    sheets for exactly this reason).
         if has(RE_SHEET, ln):
-            check.append(("sheet", f"{name}:{n}", "ModalBottomSheet/BottomSheetScaffold — confirm it auto-focuses a primary control (Compose sheets open unfocused)"))
+            check.append(("sheet", f"{name}:{n}", "ModalBottomSheet/BottomSheetScaffold - confirm it auto-focuses a primary control (Compose sheets open unfocused)"))
 
 order = {"HIGH": 0, "MED": 1, "LOW": 2}
 viol.sort(key=lambda v: order.get(v[0], 9))
@@ -165,7 +165,7 @@ if viol:
 else:
     print("VIOLATIONS: none.")
 if check:
-    print(f"CHECK — surfaced for triage ({len(check)}); each verified OK or it'd be a violation:")
+    print(f"CHECK - surfaced for triage ({len(check)}); each verified OK or it'd be a violation:")
     for _, loc, msg in check: print(f"  - {loc}  {msg}")
 if verbose:
     print(f"(OK sites: {len(oknote)})")

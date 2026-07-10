@@ -8,9 +8,9 @@ import kotlin.math.sin
 
 /**
  * Turn a planned route's polyline into a synthetic GPS trace so navigation can be **driven anywhere**
- * without a real fix — a demo / screenshot / test mode. The output is the same [ReplayFix] list a
+ * without a real fix - a demo / screenshot / test mode. The output is the same [ReplayFix] list a
  * recorded trip produces, so [LocationProvider.replay] plays it through the *exact* nav loop live
- * driving uses (turn-by-turn, puck physics, camera, voice) — the phone can sit in one state while the
+ * driving uses (turn-by-turn, puck physics, camera, voice) - the phone can sit in one state while the
  * app "drives" a route in another.
  *
  * Walks the polyline at a constant [cruiseKmh] emitting one fix per second (each carrying its

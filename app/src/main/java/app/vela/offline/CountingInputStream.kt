@@ -3,7 +3,7 @@ package app.vela.offline
 import java.io.InputStream
 
 /** Counts bytes pulled from the network so download progress can be reported. Shared by the
- *  offline asset stores (routing graphs, place packs) instead of each keeping its own copy. */
+ * offline asset stores (routing graphs, place packs) instead of each keeping its own copy. */
 internal class CountingInputStream(
     private val wrapped: InputStream,
     private val onRead: (Long) -> Unit,

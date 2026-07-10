@@ -61,7 +61,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         } else {
             if (Onboarding.showVoicePrompt.value) {
                 VoicePrompt(
-                    // The Vela voice is recommended for EVERYONE — the same prompt regardless of
+                    // The Vela voice is recommended for EVERYONE - the same prompt regardless of
                     // whether the phone has a system TTS engine, so every install ends up on the
                     // same consistent voice unless they deliberately change it in Settings.
                     sizeMb = vm.defaultVoiceSizeMb(),
@@ -104,9 +104,9 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     }
 }
 
-/** One-time, opt-in nudge with TWO separate choices — basic diagnostics (default on)
- *  and the more-invasive trip recording (default off, since it captures your exact
- *  routes). Both stay on-device; "Not now" enables neither. */
+/** One-time, opt-in nudge with TWO separate choices - basic diagnostics (default on)
+ * and the more-invasive trip recording (default off, since it captures your exact
+ * routes). Both stay on-device; "Not now" enables neither. */
 @Composable
 private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit, onDismiss: () -> Unit) {
     var diag by remember { mutableStateOf(true) }
@@ -150,12 +150,12 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
     )
 }
 
-/** One-time, first-run offer of Vela's on-device neural voice — RECOMMENDED for everyone, the same
- *  prompt whether or not the phone has a system TTS engine (consistency: every install lands on the
- *  same voice unless the user deliberately changes it). Skipping still leaves nav working via the
- *  system voice if one exists; a different voice — including a system engine — is one tap away in
- *  Settings → Voice. [sizeMb] is the actual download size of the voice that will be fetched, so the
- *  number can never go stale. */
+/** One-time, first-run offer of Vela's on-device neural voice - RECOMMENDED for everyone, the same
+ * prompt whether or not the phone has a system TTS engine (consistency: every install lands on the
+ * same voice unless the user deliberately changes it). Skipping still leaves nav working via the
+ * system voice if one exists; a different voice - including a system engine - is one tap away in
+ * Settings → Voice. [sizeMb] is the actual download size of the voice that will be fetched, so the
+ * number can never go stale. */
 @Composable
 private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit) {
     VelaDialog(
@@ -175,8 +175,8 @@ private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit)
 }
 
 /** One-time, first-run offer to set up offline maps. Vela's live data comes from Google, so without a
- *  connection only downloaded areas work. Surfacing this during onboarding means people find it before
- *  they lose signal on the road, not after. "Set up" opens Settings straight to the Offline section. */
+ * connection only downloaded areas work. Surfacing this during onboarding means people find it before
+ * they lose signal on the road, not after. "Set up" opens Settings straight to the Offline section. */
 @Composable
 private fun OfflinePrompt(onSetup: () -> Unit, onSkip: () -> Unit) {
     VelaDialog(

@@ -8,9 +8,9 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 
 /**
- * Extracts the rich place fields the keyless/list search trims out — popular times
+ * Extracts the rich place fields the keyless/list search trims out - popular times
  * (`[84]`), the editorial one-liner (`[32][1][1]`) and the owner's "From the owner"
- * blurb (`[154][0][0]`) — from a **WebView** `/search?tbm=map` response (see
+ * blurb (`[154][0][0]`) - from a **WebView** `/search?tbm=map` response (see
  * [app.vela.web.WebPopularTimesFetcher] for why a WebView and why a *specific* query).
  *
  * A specific query (name + address) resolves to a single focused result whose place
@@ -38,7 +38,7 @@ object PopularTimesParser {
             ?: places.firstOrNull()
 
         // Trust the FULL backfill (rating / review count / hours / address …) only from a
-        // feature-id MATCH — so a focused query that happened to return a neighbour can't graft
+        // feature-id MATCH - so a focused query that happened to return a neighbour can't graft
         // its rating or hours onto this place. No id / no match → the sensitive fields stay
         // blank (no wrong data); the id-agnostic rich fields still come from `place` as before.
         val matched = if (featureId != null) places.firstOrNull { it.featureId == featureId } else null
@@ -56,7 +56,7 @@ object PopularTimesParser {
             popularTimes = popularTimes,
             editorialSummary = place?.editorialSummary,
             ownerDescription = place?.ownerDescription,
-            // Backfill the fields a summary node drops (review count, full hours, address, …) —
+            // Backfill the fields a summary node drops (review count, full hours, address, …) -
             // the focused result is a FULL place node, so SearchParser already read them.
             // Sourced from the feature-id-matched result only (see `matched` above).
             rating = matched?.rating,

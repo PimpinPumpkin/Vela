@@ -35,7 +35,7 @@ class MapLinkParserTest {
     }
 
     /** The exact shape Vela's "Map pin (geo:)" share emits: a labelled point that
-     *  also pins the coordinates — must round-trip back to name + coords. */
+     * also pins the coordinates - must round-trip back to name + coords. */
     @Test fun geoSelfShareRoundTrips() {
         val l = MapLinkParser.parse("geo:38.5449,-121.7405?q=38.5449,-121.7405(Temple%20Coffee)")!!
         assertEquals("Temple Coffee", l.query)

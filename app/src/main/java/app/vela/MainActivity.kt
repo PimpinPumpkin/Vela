@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
     private val vm: MapViewModel by viewModels()
 
     /** Apply the in-app language override to this Activity's resources (no-op when following the
-     *  system locale) so `stringResource` resolves in the chosen language. */
+     * system locale) so `stringResource` resolves in the chosen language. */
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLocale.wrap(newBase))
     }
@@ -37,7 +37,7 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
         setContent {
             // Read the theme at the call site (a recomposing scope) and pass it in
-            // — reading it inside VelaTheme's default arg didn't reliably invalidate
+            // - reading it inside VelaTheme's default arg didn't reliably invalidate
             // VelaTheme, so MaterialTheme never flipped when the user changed it.
             VelaTheme(darkTheme = isAppInDarkTheme()) {
                 VelaRoot(vm = vm)
@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Vela registers for `geo:` URIs and Google-Maps web links so it can be the
-     *  system maps handler; turn whichever we got into a search or a dropped pin. */
+     * system maps handler; turn whichever we got into a search or a dropped pin. */
     private fun handleIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val data = intent.data?.toString() ?: return

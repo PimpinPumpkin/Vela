@@ -12,19 +12,19 @@ import com.graphhopper.util.GHUtility;
 import com.graphhopper.util.Instruction;
 
 /**
- * Builds an on-device GraphHopper graph for one region — the off-device half of Vela's offline
+ * Builds an on-device GraphHopper graph for one region - the off-device half of Vela's offline
  * routing (see app `GraphHopperRouteEngine` + ROADMAP "On-device map-matching"). CI runs this per
  * region and ships the output folder as a release asset; the app downloads + loads it.
  *
  * It MUST stay byte-for-byte config-compatible with the engine that loads the graph:
- *   - encoded values: car_access, car_average_speed, road_access, max_speed
- *     (max_speed = OSM `maxspeed` posted limit, km/h, stored per edge; a passive column read by the
- *      app's speed-limit badge — NOT used for routing/CH, so it doesn't change the baked weighting)
- *   - profile: "car" (car.json custom model, metadata only)
- *   - weighting: a Janino-free SpeedWeighting + access block (ART can't run GraphHopper's Janino-
- *     compiled custom-model weighting), and **Contraction Hierarchies are prepared on that same
- *     weighting** (mandatory — CH bakes the build-time weighting; mismatched query weighting = wrong
- *     routes). CH is what makes on-device routing ~tens of ms instead of ~7 s of flexible A*.
+ * - encoded values: car_access, car_average_speed, road_access, max_speed
+ * (max_speed = OSM `maxspeed` posted limit, km/h, stored per edge; a passive column read by the
+ * app's speed-limit badge - NOT used for routing/CH, so it doesn't change the baked weighting)
+ * - profile: "car" (car.json custom model, metadata only)
+ * - weighting: a Janino-free SpeedWeighting + access block (ART can't run GraphHopper's Janino-
+ * compiled custom-model weighting), and **Contraction Hierarchies are prepared on that same
+ * weighting** (mandatory - CH bakes the build-time weighting; mismatched query weighting = wrong
+ * routes). CH is what makes on-device routing ~tens of ms instead of ~7 s of flexible A*.
  *
  * Usage: gradlew run --args="<region.osm.pbf> <out-graph-dir>"
  * Build region extracts with: osmium extract -b <W,S,E,N> <state>.osm.pbf -o <region>.osm.pbf
@@ -52,7 +52,7 @@ public class GraphBuilder {
                         }
 
                         // car_average_speed is km/h; SpeedWeighting reports time as if it were m/s
-                        // (3.6x too fast). Report real ms — must stay identical to GraphHopperRouteEngine.
+                        // (3.6x too fast). Report real ms - must stay identical to GraphHopperRouteEngine.
                         @Override
                         public long calcEdgeMillis(EdgeIteratorState e, boolean reverse) {
                             double kmh = reverse ? e.getReverse(speed) : e.get(speed);
@@ -69,7 +69,7 @@ public class GraphBuilder {
         hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("car"));
         hopper.importOrLoad();
         System.out.println("built " + args[1] + " from " + args[0] + " in " + (System.currentTimeMillis() - t0) + " ms");
-        // bbox for the region's manifest entry ([S,W,N,E] — the order RoutingGraphStore/engine expect).
+        // bbox for the region's manifest entry ([S,W,N,E] - the order RoutingGraphStore/engine expect).
         com.graphhopper.util.shapes.BBox bb = hopper.getBaseGraph().getBounds();
         System.out.printf("manifest bbox [S,W,N,E] = [%.5f, %.5f, %.5f, %.5f]%n", bb.minLat, bb.minLon, bb.maxLat, bb.maxLon);
 

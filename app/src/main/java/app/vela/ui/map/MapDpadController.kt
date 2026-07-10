@@ -12,23 +12,23 @@ import org.maplibre.android.maps.MapView
  * zoom buttons call the public methods. Kept as its OWN seam (not a refactor of
  * VelaMapView's gesture listeners) so upstream changes to the touch path merge cleanly.
  *
- * All methods are safe to call before the map is ready — they just no-op.
+ * All methods are safe to call before the map is ready - they just no-op.
  */
 class MapDpadController {
     internal var mapView: MapView? = null
     internal var map: MapLibreMap? = null
 
     /** The SAME tap-resolution logic the touch click listener runs (pins → ambient POIs →
-     *  alternate routes → basemap POIs), so OK-at-crosshair behaves exactly like a tap. */
+     * alternate routes → basemap POIs), so OK-at-crosshair behaves exactly like a tap. */
     internal var onTap: ((MLLatLng) -> Boolean)? = null
     internal var onLongPress: ((MLLatLng) -> Unit)? = null
 
     /** Marks the camera move as user-driven (feeds "Search this area" / nav detach),
-     *  mirroring what a drag gesture does. */
+     * mirroring what a drag gesture does. */
     internal var markPan: (() -> Unit)? = null
 
     /** Reports a key-driven zoom target so nav adopts it as the manual zoom override
-     *  (exactly like a pinch during nav). */
+     * (exactly like a pinch during nav). */
     internal var markZoom: ((Double) -> Unit)? = null
 
     /** Pan by a fraction of the view size (e.g. 0.18f of the width per D-pad press). */
@@ -58,7 +58,7 @@ class MapDpadController {
         return onTap?.invoke(c) ?: false
     }
 
-    /** A long-press at the crosshair — drops a pin + reverse-geocodes, like touch. */
+    /** A long-press at the crosshair - drops a pin + reverse-geocodes, like touch. */
     fun longPressAtCenter() {
         val m = map ?: return
         val v = mapView ?: return

@@ -42,7 +42,7 @@ android {
             "\"${(project.findProperty("routingManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/routing-graphs/routing-manifest.json"}\"",
         )
-        // Open building-footprint overlay (Microsoft, ODbL) PMTiles catalog — same override pattern
+        // Open building-footprint overlay (Microsoft, ODbL) PMTiles catalog - same override pattern
         // (-PoverlayManifestUrl=http://127.0.0.1:8099/... for local testing via `adb reverse`).
         buildConfigField(
             "String",
@@ -50,7 +50,7 @@ android {
             "\"${(project.findProperty("overlayManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/building-overlays/building-overlay-manifest.json"}\"",
         )
-        // Open house-number (address-point) overlay (OpenAddresses) PMTiles catalog — same override pattern
+        // Open house-number (address-point) overlay (OpenAddresses) PMTiles catalog - same override pattern
         // (-PaddressManifestUrl=…). Rendered as a SymbolLayer of house numbers where OSM lacks addr:housenumber.
         buildConfigField(
             "String",
@@ -59,7 +59,7 @@ android {
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/address-overlays/address-overlay-manifest.json"}\"",
         )
         // Offline PLACE packs (whole-region POI/address SQLite, pulled with a routing-region download so a
-        // state is searchable offline) — same override pattern (-PpoiPackManifestUrl=… via `adb reverse`).
+        // state is searchable offline) - same override pattern (-PpoiPackManifestUrl=… via `adb reverse`).
         buildConfigField(
             "String",
             "POI_PACK_MANIFEST_URL",
@@ -85,7 +85,7 @@ android {
 
     buildTypes {
         debug {
-            // R8 is what keeps map scroll/nav smooth — MapLibre draws natively (unaffected by
+            // R8 is what keeps map scroll/nav smooth - MapLibre draws natively (unaffected by
             // `debuggable`), so the jank is the Compose/Kotlin overlay, which R8 optimizes. Keeping
             // `debuggable=true` (AGP default) means breakpoints + Timber/StrictMode still work; only
             // the build gets slower (R8 runs each time). `proguard-rules.pro` is MANDATORY here or
@@ -120,7 +120,7 @@ android {
         }
         // Non-debuggable, release-optimized variant for measuring the TRUE production frame profile
         // (Perfetto / `dumpsys gfxinfo framestats`) without the small `debuggable` ART deopt. Not
-        // attachable to a debugger — use `debug` for stepping, `staging` for "is it actually smooth".
+        // attachable to a debugger - use `debug` for stepping, `staging` for "is it actually smooth".
         create("staging") {
             initWith(getByName("release"))
             isDebuggable = false
@@ -153,7 +153,7 @@ android {
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
         // The neural-TTS runtime (ONNX Runtime + sherpa-onnx, from the vendored AAR) ships its .so
-        // for all 4 ABIs; Vela targets arm64 phones, so drop the other ABIs' copies — they'd add
+        // for all 4 ABIs; Vela targets arm64 phones, so drop the other ABIs' copies - they'd add
         // ~65 MB for no device we support. MapLibre and other libs stay multi-ABI (untouched).
         jniLibs {
             excludes += listOf(
@@ -170,7 +170,7 @@ dependencies {
 
     // sherpa-onnx: in-process neural TTS runtime (runs the downloaded Kokoro model). Vendored AAR
     // (no official Maven artifact; the JitPack coordinate doesn't resolve). Lives in :app because a
-    // library module can't consume a local .aar — KokoroSynth sits in :app and bridges into :core's
+    // library module can't consume a local .aar - KokoroSynth sits in :app and bridges into :core's
     // VoiceGuide via an interface. Native .so are arm64-only in the package (see packaging{}).
     implementation(files("libs/sherpa-onnx-1.13.3.aar"))
     // Extracts the Kokoro model's .tar.bz2 at download time (Android has no built-in bzip2/tar).
@@ -199,7 +199,7 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.timber)
 
-    // MapLibre Native — the renderer. Only the app module touches it; :core
+    // MapLibre Native - the renderer. Only the app module touches it; :core
     // stays UI-agnostic.
     implementation(libs.maplibre.android)
     implementation(libs.androidx.car.app) // Android Auto (projection): templates + car surface

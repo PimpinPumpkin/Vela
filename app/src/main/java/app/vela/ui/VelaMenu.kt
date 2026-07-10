@@ -2,7 +2,7 @@ package app.vela.ui
 
 // D-pad-first menu (docs/dpad.md). A Compose `DropdownMenu` Popup can't be pre-focused (~8
 // approaches proven to fail), so on a D-pad-first device this renders the menu as a raw `Dialog`
-// chooser instead — which DOES auto-focus its first item (the gallery/VelaDialog pattern). Under
+// chooser instead - which DOES auto-focus its first item (the gallery/VelaDialog pattern). Under
 // TOUCH it renders the ordinary anchored `DropdownMenu`, unchanged, so touch stays byte-identical.
 // Same call shape as DropdownMenu: `VelaMenu(expanded, onDismissRequest) { item("A") { .. }; item("B") { .. } }`.
 import androidx.compose.foundation.focusable
@@ -37,7 +37,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 
-/** Scope for [VelaMenu] content — call [item] once per menu entry (same order as it should show). */
+/** Scope for [VelaMenu] content - call [item] once per menu entry (same order as it should show). */
 class VelaMenuScope internal constructor(internal val dpad: Boolean) {
     internal var index = 0
 }
@@ -55,7 +55,7 @@ fun VelaMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composab
         if (expanded) {
             Dialog(onDismissRequest = onDismissRequest) {
                 Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh, tonalElevation = 6.dp) {
-                    // Cap to 85% of the screen and scroll — a long menu (many items) must not run off
+                    // Cap to 85% of the screen and scroll - a long menu (many items) must not run off
                     // a small screen with the bottom items unreachable. Focus follows into view as
                     // DOWN walks past the fold.
                     Column(
@@ -78,8 +78,8 @@ fun VelaMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composab
 }
 
 /** A single menu entry. Renders a `DropdownMenuItem` under touch, or a focusable chooser row
- *  (auto-focused if it's the first) under D-pad. [onClick] should also dismiss the menu, exactly
- *  as it did for the DropdownMenuItem it replaces. */
+ * (auto-focused if it's the first) under D-pad. [onClick] should also dismiss the menu, exactly
+ * as it did for the DropdownMenuItem it replaces. */
 @Composable
 fun VelaMenuScope.item(text: String, onClick: () -> Unit) {
     if (!dpad) {

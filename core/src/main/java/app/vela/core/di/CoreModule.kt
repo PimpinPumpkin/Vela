@@ -36,7 +36,7 @@ object CoreModule {
             .dispatcher(
                 Dispatcher().apply {
                     // The ambient-POI load fires ~13 parallel google.com requests; OkHttp's default
-                    // 5-per-host serialises them into ~3 rounds — the "POIs take ~10 s to load" report
+                    // 5-per-host serialises them into ~3 rounds - the "POIs take ~10 s to load" report
                     // (3 rounds × a slow connection). Let them all go at once → one round.
                     maxRequestsPerHost = 24
                     maxRequests = 64
@@ -58,7 +58,7 @@ object CoreModule {
 
     /**
      * The on-device routing engine (offline fallback / future always-snap). Reads downloaded per-region
-     * CH graphs from **internal** storage (`filesDir/graphs/<id>/` + `index.json`) — fast MMAP; FUSE-mapped
+     * CH graphs from **internal** storage (`filesDir/graphs/<id>/` + `index.json`) - fast MMAP; FUSE-mapped
      * external storage was measured I/O-bound for routing's random access. [RoutingGraphStore] (`:app`)
      * downloads graphs + maintains the index here. When no region covers a trip [GraphHopperRouteEngine]
      * returns empty, so `directions()` keeps using OSRM.
@@ -71,13 +71,13 @@ object CoreModule {
 
 /**
  * Minimal per-host cookie store so session cookies from the bootstrap GET ride
- * along on later requests — enough to behave like one browser. Deliberately
+ * along on later requests - enough to behave like one browser. Deliberately
  * tiny; swap for a persistent jar if cookies need to survive process death.
  *
  * Pre-seeds Google's **consent** cookies (`SOCS` + `CONSENT`) for google.com so a
  * fresh, cookieless session in the EU/EEA isn't bounced to the
  * `consent.google.com` interstitial before search/directions can run. US sessions
- * are unaffected. Best-effort and the lightest-touch bypass — if Google overwrites
+ * are unaffected. Best-effort and the lightest-touch bypass - if Google overwrites
  * `CONSENT` with a `PENDING` value, a consent-redirect could still occur; the full
  * form-POST handshake is the follow-up if reports show the wall persisting.
  */
@@ -86,7 +86,7 @@ private class InMemoryCookieJar : CookieJar {
 
     init {
         val consent = listOf(
-            // "consent recorded" — presence + valid form is what the wall checks.
+            // "consent recorded" - presence + valid form is what the wall checks.
             Cookie.Builder().domain("google.com").name("SOCS").value("CAESHAgBEhIaAB").path("/").build(),
             Cookie.Builder().domain("google.com").name("CONSENT").value("YES+").path("/").build(),
         )

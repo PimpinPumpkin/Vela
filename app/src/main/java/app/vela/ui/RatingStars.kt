@@ -18,12 +18,12 @@ import kotlin.math.roundToInt
 val StarGold = Color(0xFFF5B400)
 
 /** Google-style status colour: green when open, amber when closing/opening soon,
- *  red when closed/temporarily/permanently. [openNow] (from Google's locale-independent
- *  numeric status code) drives the colour so it's right in EVERY language; the English
- *  text checks are a fallback for when the code is absent (keeps en behaviour identical).
- *  Green requires an affirmative signal AND no contradiction: a wrongly-true [openNow]
- *  must never paint text that literally reads closed ("Closed ⋅ Opens 5 AM") green —
- *  and "Opens …" ≠ "Open"/"Open 24 hours" (the prefix hole that greened a closed place). */
+ * red when closed/temporarily/permanently. [openNow] (from Google's locale-independent
+ * numeric status code) drives the colour so it's right in EVERY language; the English
+ * text checks are a fallback for when the code is absent (keeps en behaviour identical).
+ * Green requires an affirmative signal AND no contradiction: a wrongly-true [openNow]
+ * must never paint text that literally reads closed ("Closed ⋅ Opens 5 AM") green -
+ * and "Opens …" ≠ "Open"/"Open 24 hours" (the prefix hole that greened a closed place). */
 fun placeStatusColor(status: String, openNow: Boolean? = null): Color {
     val s = status.trim()
     val textSaysClosed = s.startsWith("Closed") || s.startsWith("Opens") || s.startsWith("Opening") ||
@@ -42,7 +42,7 @@ fun placeStatusColor(status: String, openNow: Boolean? = null): Color {
  * Five stars filled to match [rating] (0..5), rounded to the nearest half. Uses
  * the matching Star / StarHalf / StarBorder glyphs so a partial star renders
  * cleanly (the earlier clip-overlay approach drew a slightly-larger filled star
- * over the outline — the "star inside a star" artifact).
+ * over the outline - the "star inside a star" artifact).
  */
 @Composable
 fun RatingStars(

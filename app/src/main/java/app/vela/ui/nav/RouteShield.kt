@@ -34,10 +34,10 @@ private val InterstateRed = Color(0xFFB01E2E)
 private val ShieldInk = Color(0xFF111111)
 
 /** Google-style route shield for a sign label ("I-80 E", "US 50", "CA-99"). Real interstate and
- *  US-route silhouettes; a neutral white marker for state/provincial routes; the plain bordered
- *  chip as the fallback. Network is inferred from the ref ([parseRouteRef]) — no OSM lookup. The
- *  shields use fixed real-signage colours (same in light/dark); [ink]/[dim] colour the generic
- *  chip + the trailing cardinal so those blend with the banner. */
+ * US-route silhouettes; a neutral white marker for state/provincial routes; the plain bordered
+ * chip as the fallback. Network is inferred from the ref ([parseRouteRef]) - no OSM lookup. The
+ * shields use fixed real-signage colours (same in light/dark); [ink]/[dim] colour the generic
+ * chip + the trailing cardinal so those blend with the banner. */
 @Composable
 internal fun RouteShield(label: String, ink: Color, dim: Color) {
     val ref = parseRouteRef(label)
@@ -105,7 +105,7 @@ private fun ShieldBadge(
 }
 
 /** Neutral state/provincial marker: a white rounded square with a black number (one shape for
- *  all states/provinces in v1; per-state shapes are the follow-up). */
+ * all states/provinces in v1; per-state shapes are the follow-up). */
 @Composable
 private fun StateMarker(number: String, direction: String?, dim: Color) {
     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -130,7 +130,7 @@ private fun StateMarker(number: String, direction: String?, dim: Color) {
     }
 }
 
-/** The original plain bordered chip — kept as the fallback for refs we don't have a shape for. */
+/** The original plain bordered chip - kept as the fallback for refs we don't have a shape for. */
 @Composable
 private fun GenericChip(label: String, ink: Color) {
     Surface(color = Color.Transparent, shape = RoundedCornerShape(4.dp), border = BorderStroke(1.5.dp, ink)) {

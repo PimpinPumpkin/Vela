@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The place sheet opens focused on its drag handle, and its overflow (⋮) menu — a VelaMenu, which
-# renders a raw-Dialog chooser under D-pad — opens focused on its first item ("Set as Home"). This
+# The place sheet opens focused on its drag handle, and its overflow (⋮) menu - a VelaMenu, which
+# renders a raw-Dialog chooser under D-pad - opens focused on its first item ("Set as Home"). This
 # is the deep-navigation test; it needs a live network for the Coffee search, so if results don't
 # load it reports what it could and skips the rest. docs/dpad.md.
 set -uo pipefail
@@ -8,7 +8,7 @@ D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; source "$D/lib.sh"; source
 echo "TEST 04: place sheet handle + overflow-menu auto-focus (deep nav)"
 
 goto_map
-if ! run_coffee; then echo "  SKIP: Coffee results did not load (network?) — nothing to assert"; report; exit $?; fi
+if ! run_coffee; then echo "  SKIP: Coffee results did not load (network?) - nothing to assert"; report; exit $?; fi
 open_first_place
 assert_focus_ytop_between 270 360 "place sheet drag handle"
 

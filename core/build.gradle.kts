@@ -28,8 +28,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.rhino.runtime)
     // On-device routing/map-matching engine (see RouteEngine + ROADMAP). The OSM-IMPORT-only
-    // transitive deps are Android-hostile (AWT/StAX) and unused at runtime — we ship prebuilt
-    // graphs and only LOAD + route + match on-device — so they're excluded (proven via :ghprobe).
+    // transitive deps are Android-hostile (AWT/StAX) and unused at runtime - we ship prebuilt
+    // graphs and only LOAD + route + match on-device - so they're excluded (proven via :ghprobe).
     implementation(libs.graphhopper.mapmatching) {
         exclude(group = "org.openstreetmap.osmosis")
         exclude(group = "com.google.protobuf")
@@ -47,7 +47,7 @@ dependencies {
 
 // Forward the trip-audit harness property into the TEST JVM (see NavReplayTest.auditSharedTripLog):
 // `-DvelaTrip=…` on the command line sets a GRADLE-daemon property, which the forked test JVM does
-// NOT inherit — without this the documented audit command silently skipped the test every time.
+// NOT inherit - without this the documented audit command silently skipped the test every time.
 tasks.withType<Test>().configureEach {
     System.getProperty("velaTrip")?.let { systemProperty("velaTrip", it) }
 }

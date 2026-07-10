@@ -22,19 +22,19 @@ maplibre = "11.8.0"
 junit = "4.13.2"
 espresso = "3.6.1"
 androidxJunit = "1.2.1"
-# Rhino interpreter-only artifact (no compiler/codegen) — runs the remote
+# Rhino interpreter-only artifact (no compiler/codegen) - runs the remote
 # transforms.js in interpreted mode, the mode that works on Android/ART.
 rhino = "1.7.14"
 # Android for Cars app library (Android Auto projection). Templated host UI;
 # the map itself renders onto the car surface via a virtual display.
 carApp = "1.4.0"
-# GraphHopper — on-device routing + map-matching engine (offline routing, and the
+# GraphHopper - on-device routing + map-matching engine (offline routing, and the
 # clean "name Google's path" always-snap). Pure JVM; runs on ART with 3 workarounds
-# (MMAP / SpeedWeighting factory / close()-swallow) — see RouteEngine + ROADMAP.
+# (MMAP / SpeedWeighting factory / close()-swallow) - see RouteEngine + ROADMAP.
 graphhopper = "11.0"
-# Timber — thin logging facade; a custom tree also forwards WARN/ERROR into the diagnostics ring.
+# Timber - thin logging facade; a custom tree also forwards WARN/ERROR into the diagnostics ring.
 timber = "5.0.1"
-# detekt — static analysis; we use it ONLY for its delegate-aware dead-code rules (unused
+# detekt - static analysis; we use it ONLY for its delegate-aware dead-code rules (unused
 # imports / private members / unreachable code), which grep cannot detect accurately.
 detekt = "1.23.8"
 

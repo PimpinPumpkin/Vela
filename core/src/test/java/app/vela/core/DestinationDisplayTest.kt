@@ -7,9 +7,9 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /** The arrive-step destination lines must degrade gracefully: a business has a name AND an
- *  address, an offline geocoder hit has only an address (often just "123 Main St" or a bare
- *  street), and a tapped point may have nothing but coordinates. Something must always show,
- *  and no line may just repeat another. */
+ * address, an offline geocoder hit has only an address (often just "123 Main St" or a bare
+ * street), and a tapped point may have nothing but coordinates. Something must always show,
+ * and no line may just repeat another. */
 class DestinationDisplayTest {
     private val dest = LatLng(38.54491, -121.74052)
 
@@ -20,7 +20,7 @@ class DestinationDisplayTest {
     }
 
     @Test fun addressSearchDoesNotPrintTheAddressTwice() {
-        // An address search's "name" IS the address (same string) — one line, no dup.
+        // An address search's "name" IS the address (same string) - one line, no dup.
         val (p, s) = NavSession.destinationDisplay("1020 Olive Dr, Davis, CA 95616", "1020 olive dr, davis, ca 95616", dest)
         assertEquals("1020 Olive Dr, Davis, CA 95616", p)
         assertNull(s)

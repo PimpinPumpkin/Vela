@@ -14,7 +14,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Offline PLACE packs — per-region SQLite databases of the whole region's OSM POIs, addresses and
+ * Offline PLACE packs - per-region SQLite databases of the whole region's OSM POIs, addresses and
  * street names (built by `scripts/build-poi-region.sh`, hosted like the routing graphs), so a state
  * download makes the entire state searchable offline (Organic-Maps-style), not just saved map areas.
  * Sibling of [RoutingGraphStore]; a pack is pulled automatically alongside its region's routing
@@ -29,7 +29,7 @@ class PoiPackStore @Inject constructor(
 ) {
     private val packsRoot = File(context.filesDir, "poipacks")
 
-    // Packs are hundreds of MB — same no-call-timeout rule as every large download (the shared
+    // Packs are hundreds of MB - same no-call-timeout rule as every large download (the shared
     // client's 12 s scrape cap would abort the body mid-read, silently).
     private val downloadHttp: OkHttpClient = http.newBuilder()
         .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
@@ -46,7 +46,7 @@ class PoiPackStore @Inject constructor(
     fun registerPacks() = OfflinePacks.reload(installedPaths())
 
     /** Fetch the pack catalog. Same base shape as the routing manifest plus the update fields
-     *  (rev / row counts / optional delta), so rows reuse [RoutingRegion]. */
+     * (rev / row counts / optional delta), so rows reuse [RoutingRegion]. */
     suspend fun manifest(manifestUrl: String): List<RoutingRegion> = withContext(Dispatchers.IO) {
         runCatching {
             val json = http.newCall(Request.Builder().url(manifestUrl).build()).execute()
@@ -111,7 +111,7 @@ class PoiPackStore @Inject constructor(
                     check(wrote) { "pack zip held no .db" }
                 }
             }
-            // SQLite magic check — a truncated/error body must not install as a "pack".
+            // SQLite magic check - a truncated/error body must not install as a "pack".
             check(tmp.length() > 16 && tmp.inputStream().use { s ->
                 val magic = ByteArray(15); s.read(magic); String(magic) == "SQLite format 3"
             }) { "downloaded pack is not a SQLite db" }
@@ -127,7 +127,7 @@ class PoiPackStore @Inject constructor(
     /**
      * Update an installed pack in place with a row-level delta (a small SQLite of del_ and ins_
      * tables built by CI's poipack_delta.py) instead of re-downloading the whole pack. Only valid when the
-     * installed revision equals the delta's fromRev — the caller checks that and falls back to a full
+     * installed revision equals the delta's fromRev - the caller checks that and falls back to a full
      * [download] when this returns false. The apply runs in one transaction and the result is verified
      * against the manifest's per-table row counts, so a bad patch can't leave a half-updated pack.
      */

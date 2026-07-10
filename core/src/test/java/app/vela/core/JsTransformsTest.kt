@@ -59,7 +59,7 @@ class JsTransformsTest {
     }
 
     /** The exact transformPlaces contract a hot-fix would use: flat-places JSON in,
-     *  flat-places JSON out — proving the round trip the app relies on. */
+     * flat-places JSON out - proving the round trip the app relies on. */
     @Test fun transformPlacesHookRewritesResults() {
         val src = """
             function transformPlaces(json){

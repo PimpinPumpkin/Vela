@@ -9,12 +9,12 @@ package app.vela.core.data.google
  * float, `i` = int, `u` = uint, `e` = enum, `b` = bool (0/1), `s` = string.
  *
  * The GRAMMAR implemented here is correct and stable. The FIELD TREE for any
- * given endpoint — which field number is "destination latitude", which enum
- * selects driving vs walking, where the traffic flag goes — is NOT stable and
+ * given endpoint - which field number is "destination latitude", which enum
+ * selects driving vs walking, where the traffic flag goes - is NOT stable and
  * must be read off a live capture. Build those trees in [GoogleMapsDataSource]
  * and keep the `CALIBRATE:` markers honest.
  *
- * Example — a lat/lng message `!1m2!1d-122.4!2d37.7`:
+ * Example - a lat/lng message `!1m2!1d-122.4!2d37.7`:
  * ```
  * PbBuilder().message(1, 2) { double(1, -122.4); double(2, 37.7) }.toString()
  * ```
@@ -29,7 +29,7 @@ class PbBuilder {
     /**
      * Open message [number] declaring it has [childCount] immediate children,
      * then emit exactly that many fields inside [block]. The count is the
-     * caller's responsibility — pb has no closing delimiter, the child count is
+     * caller's responsibility - pb has no closing delimiter, the child count is
      * how the decoder knows where the message ends.
      */
     fun message(number: Int, childCount: Int, block: PbBuilder.() -> Unit) =

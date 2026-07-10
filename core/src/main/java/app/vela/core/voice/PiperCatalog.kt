@@ -57,12 +57,12 @@ object PiperCatalog {
     )
 
     /** The recommended default voice for a language code (used to auto-suggest a voice for the app
-     *  locale). Falls back to the English default when a language has no curated voice. */
+     * locale). Falls back to the English default when a language has no curated voice. */
     fun defaultFor(langCode: String): PiperVoice =
         ALL.firstOrNull { it.langCode == langCode && it.recommended } ?: byId(VelaPiper.DEFAULT_VOICE_ID)!!
 
     /** Curated Piper voices worth offering for spoken navigation. `recommended` = the best voice for
-     *  its language (the auto-suggested default; the ★-marked, top-of-group one). */
+     * its language (the auto-suggested default; the ★-marked, top-of-group one). */
     val ALL: List<PiperVoice> = listOf(
         // ── English (US) ──
         PiperVoice("en_US-hfc_female-medium", "HFC Female", VoiceGender.FEMALE, VoiceQuality.MEDIUM, 67, 1, "Bright, clear, the default, very Google-like", recommended = true),

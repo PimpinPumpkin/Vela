@@ -40,28 +40,28 @@ class VoiceInstaller @Inject constructor(
     data class Engine(val pkg: String, val label: String, val note: String)
 
     /** Offered engines, all FOSS on F-Droid. SherpaTTS runs sherpa-onnx neural models (Kokoro is
-     *  near-Siri quality) but needs a one-time model download; eSpeak is tiny + self-contained;
-     *  RHVoice is in between. Best-first. */
+     * near-Siri quality) but needs a one-time model download; eSpeak is tiny + self-contained;
+     * RHVoice is in between. Best-first. */
     val engines = listOf(
         Engine(
-            "org.woheller69.ttsengine", "SherpaTTS — neural (Kokoro)",
-            "Best quality by far — near-Siri neural voices. After it installs, open SherpaTTS once and download a voice (the multi-speaker \"kokoro\" model is excellent; a few hundred MB), then pick SherpaTTS here.",
+            "org.woheller69.ttsengine", "SherpaTTS - neural (Kokoro)",
+            "Best quality by far - near-Siri neural voices. After it installs, open SherpaTTS once and download a voice (the multi-speaker \"kokoro\" model is excellent; a few hundred MB), then pick SherpaTTS here.",
         ),
         Engine(
             "com.github.olga_yakovleva.rhvoice.android", "RHVoice",
             "More natural than eSpeak, lighter than SherpaTTS. After it installs, open RHVoice once to add an English voice.",
         ),
-        Engine("com.reecedunn.espeak", "eSpeak NG", "Tiny — speaks as soon as it installs (robotic but clear)."),
+        Engine("com.reecedunn.espeak", "eSpeak NG", "Tiny - speaks as soon as it installs (robotic but clear)."),
     )
 
     fun isInstalled(pkg: String): Boolean =
         runCatching { context.packageManager.getPackageInfo(pkg, 0); true }.getOrDefault(false)
 
     /** Download [pkg]'s latest F-Droid build and launch the system installer. Returns
-     *  null on success (installer launched), or a short status/error message. Falls
-     *  back to opening the F-Droid **package page** when the direct APK URL can't be
-     *  built/fetched — e.g. eSpeak ships **per-ABI split APKs**, so the single
-     *  `${pkg}_$vc.apk` path 404s and the one-tap download silently failed before. */
+     * null on success (installer launched), or a short status/error message. Falls
+     * back to opening the F-Droid **package page** when the direct APK URL can't be
+     * built/fetched - e.g. eSpeak ships **per-ABI split APKs**, so the single
+     * `${pkg}_$vc.apk` path 404s and the one-tap download silently failed before. */
     suspend fun installFromFDroid(pkg: String): String? = withContext(Dispatchers.IO) {
         val vc = latestVersionCode(pkg)
         val downloaded = vc != null && runCatching {
@@ -79,7 +79,7 @@ class VoiceInstaller @Inject constructor(
         if (downloaded) return@withContext null
         // Fallback: hand off to F-Droid's page so the user can grab the right split.
         openWeb("https://f-droid.org/packages/$pkg/")
-        "Opened F-Droid — tap Download/Install there"
+        "Opened F-Droid - tap Download/Install there"
     }
 
     private fun openWeb(url: String) {
@@ -90,7 +90,7 @@ class VoiceInstaller @Inject constructor(
         }
     }
 
-    // Just one field out of the F-Droid index — a regex avoids pulling a JSON parser
+    // Just one field out of the F-Droid index - a regex avoids pulling a JSON parser
     // into :app (kotlinx.serialization lives in :core).
     private val versionCodeRe = Regex("\"suggestedVersionCode\"\\s*:\\s*(\\d+)")
 

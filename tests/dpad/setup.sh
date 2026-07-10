@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dpad_test_suite/setup.sh — one-time device prep so the tests run headless:
+# tests/dpad/setup.sh - one-time device prep so the tests run headless:
 # grant location permission and install a mock GPS provider (Brooklyn by default, so search /
 # routing have a real fix). Re-runnable. Override the fix with VELA_LAT / VELA_LNG.
 set -uo pipefail
@@ -8,7 +8,7 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 $ADB shell pm grant "$PKG" android.permission.ACCESS_FINE_LOCATION   >/dev/null 2>&1
 $ADB shell pm grant "$PKG" android.permission.ACCESS_COARSE_LOCATION >/dev/null 2>&1
 # Pre-grant notifications so starting nav / opening steps doesn't pop the AOSP POST_NOTIFICATIONS
-# system dialog mid-audit (it's a platform dialog, not the app's to auto-focus — was a false FAIL).
+# system dialog mid-audit (it's a platform dialog, not the app's to auto-focus - was a false FAIL).
 $ADB shell pm grant "$PKG" android.permission.POST_NOTIFICATIONS     >/dev/null 2>&1
 # Force D-pad-FIRST so the suite verifies the D-pad experience even on a touch dev phone. Since the
 # 2026-07-08 detection fix, an ordinary touchscreen phone is (correctly) NOT D-pad-first, so without

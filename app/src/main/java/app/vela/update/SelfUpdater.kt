@@ -21,9 +21,9 @@ import javax.inject.Singleton
  * accept as an update of the installed app. Obtainium users can keep using Obtainium; the
  * launch check is a Settings toggle.
  *
- * Version scheme (see CI): release tag `v0.<minor>.<run>` = versionCode `2000 + run` (the run
- * number is global and monotonic across minor bumps), so the tag alone tells us if the release
- * is newer. The APK asset is the single `.apk` on the release.
+ * Version scheme (see CI): release tag `v0.<minor>.<run>` = versionCode `run` (the GitHub run
+ * number, global and monotonic per repo), so the tag alone tells us if the release is newer. The
+ * APK asset is the single `.apk` on the release.
  */
 @Singleton
 class SelfUpdater @Inject constructor(
@@ -38,7 +38,7 @@ class SelfUpdater @Inject constructor(
         val notes: String,
     )
 
-    // The APK is ~80 MB — same no-call-timeout rule as every large download (the shared
+    // The APK is ~80 MB - same no-call-timeout rule as every large download (the shared
     // client's 12 s scrape cap would abort the body mid-read, silently).
     private val downloadHttp: OkHttpClient = http.newBuilder()
         .callTimeout(0, java.util.concurrent.TimeUnit.SECONDS)
@@ -46,12 +46,12 @@ class SelfUpdater @Inject constructor(
         .build()
 
     /** Newest release if it's newer than this build, else null. Null on any error too
-     *  (the check is best-effort; a launch must never block or complain about it). */
+     * (the check is best-effort; a launch must never block or complain about it). */
     suspend fun check(currentVersionCode: Int): UpdateInfo? = withContext(Dispatchers.IO) {
         runCatching {
             val json = http.newCall(
                 Request.Builder()
-                    .url("https://api.github.com/repos/PimpinPumpkin/Vela/releases/latest")
+                    .url("https://api.github.com/repos/alltechdev/vela-dpad/releases/latest")
                     .header("Accept", "application/vnd.github+json")
                     .build(),
             ).execute().use { r -> if (!r.isSuccessful) error("HTTP ${r.code}"); r.body!!.string() }
@@ -61,7 +61,7 @@ class SelfUpdater @Inject constructor(
             // prefix-pinned parse would have silently stopped updating anyone on the old parse.
             val run = Regex("""^v0\.\d+\.(\d+)$""").find(tag)?.groupValues?.get(1)?.toIntOrNull()
                 ?: return@runCatching null
-            val code = 2000 + run
+            val code = run
             if (code <= currentVersionCode) return@runCatching null
             val assets = o.getJSONArray("assets")
             val apk = (0 until assets.length())
@@ -81,7 +81,7 @@ class SelfUpdater @Inject constructor(
     /** Download [info]'s APK to filesDir/updates/. 0..100 progress. Null on failure. */
     suspend fun download(info: UpdateInfo, onProgress: (Int) -> Unit): File? = withContext(Dispatchers.IO) {
         val dir = File(context.filesDir, "updates").apply { mkdirs() }
-        // One update on disk at a time — an old half-download or a superseded APK is junk.
+        // One update on disk at a time - an old half-download or a superseded APK is junk.
         dir.listFiles()?.forEach { it.delete() }
         val dest = File(dir, "vela-${info.versionCode}.apk")
         runCatching {
@@ -106,7 +106,7 @@ class SelfUpdater @Inject constructor(
                     }
                 }
             }
-            // An APK is a zip — cheap magic check so a truncated/error body never reaches
+            // An APK is a zip - cheap magic check so a truncated/error body never reaches
             // the installer (it would fail there too, but with a scarier dialog).
             check(dest.length() > 4 && dest.inputStream().use { s ->
                 val m = ByteArray(2); s.read(m); m[0] == 'P'.code.toByte() && m[1] == 'K'.code.toByte()

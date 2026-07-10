@@ -20,17 +20,17 @@ import javax.inject.Singleton
  * Holds the active [Calibration] and refreshes it from the public repo.
  *
  * On construction it loads a cached copy (if signature-valid and newer than the
- * bundled [DEFAULT]), else uses [DEFAULT] — so the app always starts with a
+ * bundled [DEFAULT]), else uses [DEFAULT] - so the app always starts with a
  * working config, offline. [refresh] (called once at startup) pulls
  * `calibration.json` + its detached `calibration.json.sig` over HTTPS and adopts
  * the remote only if:
- *   1. the **signature verifies** against [PINNED_PUBLIC_KEY] (so only the holder
- *      of the private key — kept out of the repo — can push config/notices/code),
- *   2. every endpoint host is on the allowlist (a tampered file can't redirect
- *      requests off Google), and
- *   3. the version is newer.
- * The newest config thus reaches every user within a launch or two — no APK
- * update — which is the whole point. Because the bundle is signed, it can safely
+ * 1. the **signature verifies** against [PINNED_PUBLIC_KEY] (so only the holder
+ * of the private key - kept out of the repo - can push config/notices/code),
+ * 2. every endpoint host is on the allowlist (a tampered file can't redirect
+ * requests off Google), and
+ * 3. the version is newer.
+ * The newest config thus reaches every user within a launch or two - no APK
+ * update - which is the whole point. Because the bundle is signed, it can safely
  * carry not just pb/endpoint/path config but user-facing [Notice]s and a sandboxed
  * JavaScript transform bundle ([Calibration.transformsJs]).
  */
@@ -59,7 +59,7 @@ class CalibrationStore @Inject constructor(
             runCatching {
                 val body = fetch(REMOTE_URL) ?: return@runCatching
                 val sig = fetch(SIG_URL) ?: return@runCatching
-                // Reject anything we didn't sign — this is what makes pushing CODE safe.
+                // Reject anything we didn't sign - this is what makes pushing CODE safe.
                 if (!verifySignature(body.toByteArray(Charsets.UTF_8), sig)) return@runCatching
                 val remote = parse(body) ?: return@runCatching
                 if (remote.version > active.version && isAllowed(remote)) {
@@ -83,7 +83,7 @@ class CalibrationStore @Inject constructor(
     private fun loadCached(): Calibration? = runCatching {
         if (!cacheFile.exists() || !sigFile.exists()) return null
         val body = cacheFile.readText()
-        // Re-verify the cache too — a cache written by an older (unsigned) build, or
+        // Re-verify the cache too - a cache written by an older (unsigned) build, or
         // tampered on disk, falls back to the bundled DEFAULT for one launch.
         if (!verifySignature(body.toByteArray(Charsets.UTF_8), sigFile.readText())) return null
         parse(body)?.takeIf { it.version >= Calibration.DEFAULT.version && isAllowed(it) }
@@ -94,7 +94,7 @@ class CalibrationStore @Inject constructor(
         BundleSignature.verify(content, sigBase64, PINNED_PUBLIC_KEY)
 
     /** Lenient JSON → Calibration: any missing field falls back to [DEFAULT], so
-     *  a remote file can override just the one thing that drifted. */
+     * a remote file can override just the one thing that drifted. */
     private fun parse(body: String): Calibration? = runCatching {
         val o = json.parseToJsonElement(body).jsonObject
         fun str(k: String, fallback: String): String =
@@ -142,7 +142,7 @@ class CalibrationStore @Inject constructor(
     }.getOrNull()
 
     /** Security gate: every endpoint must point at an allow-listed host, so a
-     *  compromised config can never exfiltrate requests to an attacker's server. */
+     * compromised config can never exfiltrate requests to an attacker's server. */
     private fun isAllowed(c: Calibration): Boolean {
         val hosts = listOf(c.searchEndpoint, c.directionsEndpoint, c.reviewsEndpoint, c.photosEndpoint, c.sessionWarmUrl)
             .map { runCatching { URI(it).host }.getOrNull() }
@@ -154,7 +154,7 @@ class CalibrationStore @Inject constructor(
         const val SIG_URL = "https://raw.githubusercontent.com/PimpinPumpkin/Vela/main/calibration.json.sig"
         val ALLOWED_HOSTS = setOf("www.google.com", "google.com")
 
-        // EC P-256 public key (SPKI, base64) — the private half lives only in
+        // EC P-256 public key (SPKI, base64) - the private half lives only in
         // ~/.vela-signing/vela-calibration.key, never in the repo. Embedding the
         // PUBLIC key is safe; it just lets the app reject bundles we didn't sign.
         const val PINNED_PUBLIC_KEY =

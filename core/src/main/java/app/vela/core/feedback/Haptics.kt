@@ -12,7 +12,7 @@ import javax.inject.Singleton
 
 /**
  * Direction-coded haptic turn cues. A left turn buzzes differently from a right
- * one, so a biker or walker can navigate by feel — no need to look at the screen
+ * one, so a biker or walker can navigate by feel - no need to look at the screen
  * or hear the TTS (handy with wind, traffic noise, or no earbuds). Fired by
  * [app.vela.core.nav.NavEngine] via `NavEvent.Haptic`. Honours the "Vibrate on
  * turns" setting (default on).
@@ -24,7 +24,7 @@ class Haptics @Inject constructor(
     private val vibrator: Vibrator? = context.getSystemService()
 
     /** Per-travel-mode toggle. Default = [defaultFor] (on everywhere except driving), unless the user
-     *  had explicitly turned the legacy global switch OFF — then it stays off until they set per-mode. */
+     * had explicitly turned the legacy global switch OFF - then it stays off until they set per-mode. */
     private fun enabled(mode: TravelMode): Boolean {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val default = if (!p.getBoolean(KEY, true)) false else defaultFor(mode)
@@ -52,8 +52,8 @@ class Haptics @Inject constructor(
         /** Per-mode SharedPreferences key, e.g. "haptics_drive" / "haptics_bicycle". */
         fun keyFor(mode: TravelMode) = "haptics_${mode.name.lowercase()}"
 
-        /** Default per mode: on for walk/bike/transit (helpful hands-free by feel), OFF for driving —
-         *  in a car you already have the screen + spoken directions, so a buzz on every turn is noise. */
+        /** Default per mode: on for walk/bike/transit (helpful hands-free by feel), OFF for driving -
+         * in a car you already have the screen + spoken directions, so a buzz on every turn is noise. */
         fun defaultFor(mode: TravelMode) = mode != TravelMode.DRIVE
         val LEFTS = setOf(
             ManeuverType.TURN_LEFT, ManeuverType.SLIGHT_LEFT, ManeuverType.SHARP_LEFT,

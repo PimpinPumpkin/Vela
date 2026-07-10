@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # D2/D3: the place-sheet + directions action rows are D-pad reachable (and now carry focus rings).
-# This drives to the Directions ACTION PILL and OKs it — proving the pill (and the pills row it
+# This drives to the Directions ACTION PILL and OKs it - proving the pill (and the pills row it
 # lives in) is focus-reachable and activatable by D-pad, opening the directions panel. Network-bound.
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; source "$D/lib.sh"; source "$D/nav.sh"

@@ -51,13 +51,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.vela.R
 
-/** First-run welcome — what Vela is and why, then a single Get-started button. */
+/** First-run welcome - what Vela is and why, then a single Get-started button. */
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
-    // Scrollable so the Get-started button is always reachable — on a small D-pad screen
+    // Scrollable so the Get-started button is always reachable - on a small D-pad screen
     // (e.g. 480×640 keypad phone) the fixed layout pushed the button off the bottom with no
     // way to scroll to it, so a D-pad user couldn't SEE it (it was focusable-when-clipped,
-    // but invisible — docs/dpad.md). heightIn(min = screen height) keeps the weight spacers
+    // but invisible - docs/dpad.md). heightIn(min = screen height) keeps the weight spacers
     // centring the content on tall screens; on short ones the column grows and scrolls.
     val scroll = rememberScrollState()
     val minH = LocalConfiguration.current.screenHeightDp.dp
@@ -120,9 +120,9 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
 }
 
 /** Filled primary "Get started" button that AUTO-FOCUSES on a D-pad device. A Material `Button`
- *  wouldn't take requestFocus (its nested focusable isn't reachable — same as dialog buttons), so
- *  this is a directly-`.focusable()` box (the only reliable focus target) with OK via `.onKeyEvent`
- *  and touch via `pointerInput`. Styled to look like the filled Button it replaces. */
+ * wouldn't take requestFocus (its nested focusable isn't reachable - same as dialog buttons), so
+ * this is a directly-`.focusable()` box (the only reliable focus target) with OK via `.onKeyEvent`
+ * and touch via `pointerInput`. Styled to look like the filled Button it replaces. */
 @Composable
 private fun GetStartedButton(onGetStarted: () -> Unit) {
     val fr = remember { FocusRequester() }

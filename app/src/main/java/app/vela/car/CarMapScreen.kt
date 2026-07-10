@@ -53,13 +53,13 @@ import org.maplibre.android.geometry.LatLng as MLLatLng
 /**
  * The one car screen: the live Vela map on the car display, plus the current
  * maneuver card while navigating. State is the same [NavSession] singleton the
- * phone drives — start a route on the phone and the car shows it; the phone
+ * phone drives - start a route on the phone and the car shows it; the phone
  * keeps feeding location and speaking (audio routes to the car on its own).
  *
  * Rendering: the Car App Library gives templated apps a raw [SurfaceCallback]
  * surface for the map. MapLibre wants a real View, so the renderer wraps the
  * surface in a [VirtualDisplay] and shows a [Presentation] holding a plain
- * [MapView] on it — the standard trick for surface-drawn car maps. Pan/zoom
+ * [MapView] on it - the standard trick for surface-drawn car maps. Pan/zoom
  * gestures from the car screen arrive as [SurfaceCallback.onScroll]/[onScale]
  * and move the MapLibre camera by hand.
  */
@@ -142,7 +142,7 @@ class CarMapScreen(
 
 /**
  * Owns the car surface: virtual display + Presentation + MapView, the location
- * puck (its own AOSP LocationManager listener — the car screen must work even
+ * puck (its own AOSP LocationManager listener - the car screen must work even
  * when the phone UI is closed), the route line, and camera follow.
  */
 private class CarMapRenderer(private val carContext: CarContext) : SurfaceCallback {

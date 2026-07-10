@@ -28,9 +28,9 @@ class HeadingTest {
         assertEquals("Head south on F St", Heading.withCardinal("Head south on F St", east()))
     }
 
-    /** OSRM-primary DEPART phrasing is "Head out on <road>" (osrmPhrase) — the whole "out on" must be
-     *  swapped for the cardinal. The old bare-"Head" rewrite doubled it into "Head east on OUT ON F St"
-     *  (the reported "it says head out on out on twice when starting navigation"). */
+    /** OSRM-primary DEPART phrasing is "Head out on <road>" (osrmPhrase) - the whole "out on" must be
+     * swapped for the cardinal. The old bare-"Head" rewrite doubled it into "Head east on OUT ON F St"
+     * (the reported "it says head out on out on twice when starting navigation"). */
     @Test fun swapsOutOnForTheCardinal() {
         assertEquals("Head east on Elm St", Heading.withCardinal("Head out on Elm St", east()))
         assertEquals("Head north on Elm St", Heading.withCardinal("Head out on Elm St", north()))

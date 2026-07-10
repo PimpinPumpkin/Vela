@@ -16,7 +16,7 @@ gen/
 captures/
 .kotlin/
 
-# Local config — machine-specific, must NOT be committed
+# Local config - machine-specific, must NOT be committed
 local.properties
 
 # Generated APKs and signing
@@ -36,11 +36,11 @@ Thumbs.db
 *.bak
 *.tmp
 
-# Large regenerable on-device perf-test graph (ghprobe) — not committed
+# Large regenerable on-device perf-test graph (ghprobe) - not committed
 ghprobe/src/androidTest/assets/seam-graph.zip
 
-# Vendored native AAR (sherpa-onnx neural TTS runtime) — large binary, fetched out-of-band
+# Vendored native AAR (sherpa-onnx neural TTS runtime) - large binary, fetched out-of-band
 app/libs/*.aar
 
-# Local Claude Code entrypoint — symlink to AGENTS.md (the committed guide)
+# Local Claude Code entrypoint - symlink to AGENTS.md (the committed guide)
 /CLAUDE.md

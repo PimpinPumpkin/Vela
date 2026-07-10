@@ -4,29 +4,29 @@ import android.content.Context
 import java.io.File
 
 /**
- * Vela's on-device neural voice ENGINE — one Piper VITS engine ([ENGINE_ID]) that can hold ANY of
+ * Vela's on-device neural voice ENGINE - one Piper VITS engine ([ENGINE_ID]) that can hold ANY of
  * several downloadable Piper models. The *engine* is what shows in the Settings engine radios; the
  * *model* (voice) is chosen in the "Voice library" browser and persisted under [PREF_MODEL].
  *
  * Each downloaded voice lives in its own subdir `filesDir/piper/<voiceId>/` containing
  * `<voiceId>.onnx`, `tokens.txt`, `espeak-ng-data/` (the exact layout of a `vits-piper-<id>` sherpa
- * archive). The **installed set is derived from the filesystem, never a mutable pref** — so a
+ * archive). The **installed set is derived from the filesystem, never a mutable pref** - so a
  * crashed/partial download self-heals (an incomplete dir simply isn't "ready").
  *
  * Voices come from the sherpa-onnx `tts-models` release (see [PiperCatalog]); the runtime is the
  * bundled sherpa-onnx (arm64). Kept UI-agnostic in `:core`; `:app`'s `PiperSynth` loads [resolved].
  */
 object VelaPiper {
-    const val ENGINE_ID = "vela.piper" // STABLE — do not change (VoiceGuide routing + the voice_engine pref)
+    const val ENGINE_ID = "vela.piper" // STABLE - do not change (VoiceGuide routing + the voice_engine pref)
     const val LABEL = "Vela voice"
 
-    /** The fleet default voice — what onboarding downloads and a fresh install activates. HFC Female is a
-     *  bright, clear single-speaker US voice (picked by ear as the most Google-Maps-like). Remotely
-     *  overridable via [Calibration.defaultVoiceId]; a user's own pick always wins. */
+    /** The fleet default voice - what onboarding downloads and a fresh install activates. HFC Female is a
+     * bright, clear single-speaker US voice (picked by ear as the most Google-Maps-like). Remotely
+     * overridable via [Calibration.defaultVoiceId]; a user's own pick always wins. */
     const val DEFAULT_VOICE_ID = "en_US-hfc_female-medium"
 
     /** The single voice the old single-model build shipped (flat under `filesDir/piper` before the
-     *  browser) — AND the multi-speaker voice that [Calibration.defaultVoiceSpeaker] tunes (904 variants). */
+     * browser) - AND the multi-speaker voice that [Calibration.defaultVoiceSpeaker] tunes (904 variants). */
     const val LEGACY_ID = "en_US-libritts_r-medium"
 
     const val PREF_MODEL = "voice_model" // String: the selected Piper voice id
@@ -60,7 +60,7 @@ object VelaPiper {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(PREF_MODEL).apply()
 
     /** The voice to actually LOAD: the pref if it's installed, else the first installed, else null.
-     *  NEVER returns an un-downloaded id (so the synth can't point at missing files). */
+     * NEVER returns an un-downloaded id (so the synth can't point at missing files). */
     fun effectiveVoiceId(context: Context): String? {
         val sel = selectedVoicePref(context)
         if (sel != null && isVoiceReady(context, sel)) return sel
@@ -85,10 +85,10 @@ object VelaPiper {
     // ---- one-time migration: flat filesDir/piper/* install → filesDir/piper/<LEGACY_ID>/ ----
     /**
      * Move the pre-browser single-voice install (flat `filesDir/piper/{<LEGACY_ID>.onnx, tokens.txt,
-     * espeak-ng-data/}`) into the per-voice subdir, in place — **no copy of the 82 MB model, no
+     * espeak-ng-data/}`) into the per-voice subdir, in place - **no copy of the 82 MB model, no
      * re-download**. Idempotent and **crash-safe / re-runnable**: it triggers whenever ANY flat legacy
      * member still exists (so a process killed mid-move finishes on the next launch), each move is a
-     * `renameTo` with a `copy`-then-`delete` fallback when rename can't (return value is CHECKED — a
+     * `renameTo` with a `copy`-then-`delete` fallback when rename can't (return value is CHECKED - a
      * silent false used to strand the user's only voice), and the selection is only seeded once the
      * destination verifies complete. Same-filesystem (internal storage) so rename is normally instant.
      */
@@ -117,7 +117,7 @@ object VelaPiper {
     }
 
     /** Move a file: no-op if absent; if the destination already has it, just drop the stray source;
-     *  try `renameTo`, and on failure (cross-dir edge / FS quirk) fall back to copy-then-delete. */
+     * try `renameTo`, and on failure (cross-dir edge / FS quirk) fall back to copy-then-delete. */
     private fun moveInto(src: File, dst: File) {
         if (!src.exists()) return
         if (dst.exists()) { src.delete(); return }

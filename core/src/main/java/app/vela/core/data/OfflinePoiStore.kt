@@ -13,7 +13,7 @@ import javax.inject.Singleton
 
 /**
  * A tiny on-device place index (SQLite) populated from OpenStreetMap/[OverpassPois]
- * when a map region is downloaded — the keyless, no-backend source behind **offline
+ * when a map region is downloaded - the keyless, no-backend source behind **offline
  * search**. Used as a fallback when Google search can't be reached (offline).
  */
 @Singleton
@@ -34,7 +34,7 @@ class OfflinePoiStore @Inject constructor(
     }
 
     /** Upsert a batch of POIs (deduped by id). Keeps the detail tags (address/phone/
-     *  website/hours) the OSM source carries, so an offline place sheet isn't bare. */
+     * website/hours) the OSM source carries, so an offline place sheet isn't bare. */
     fun add(pois: List<Place>) {
         if (pois.isEmpty()) return
         val db = helper.writableDatabase
@@ -62,11 +62,11 @@ class OfflinePoiStore @Inject constructor(
         .use { if (it.moveToFirst()) it.getInt(0) else 0 }
 
     /** Name/category match, nearest first. Robust to a few things a plain LIKE misses:
-     *  - Category words ("gas", "coffee", "food", the map's chips) are expanded to the OSM tag values
-     *    we actually store — a gas station is category "Fuel" (from `amenity=fuel`), not "gas".
-     *  - Multi-word queries ("mexican restaurant", "coffee shop") match the whole phrase OR any single
-     *    word, so "mexican restaurant" finds "Ixtapa Mexican Restaurant" and the restaurant category,
-     *    instead of returning nothing because no name contains the exact phrase.
+     * - Category words ("gas", "coffee", "food", the map's chips) are expanded to the OSM tag values
+     * we actually store - a gas station is category "Fuel" (from `amenity=fuel`), not "gas".
+     * - Multi-word queries ("mexican restaurant", "coffee shop") match the whole phrase OR any single
+     * word, so "mexican restaurant" finds "Ixtapa Mexican Restaurant" and the restaurant category,
+     * instead of returning nothing because no name contains the exact phrase.
      */
     fun search(query: String, near: LatLng?, limit: Int = 30): List<Place> {
         val term = query.trim()
@@ -114,7 +114,7 @@ class OfflinePoiStore @Inject constructor(
                 }
             }
         }
-        // The viewport-download index, then every installed region pack (a state's whole POI set) —
+        // The viewport-download index, then every installed region pack (a state's whole POI set) -
         // same schema, same SQL. Dedupe by id (a POI can be in both once its area was also saved).
         query(helper.readableDatabase)
         OfflinePacks.dbs.forEach(::query)

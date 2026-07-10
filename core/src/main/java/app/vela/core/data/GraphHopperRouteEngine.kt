@@ -23,19 +23,19 @@ import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * On-device routing from prebuilt GraphHopper graphs — **one self-contained graph per downloaded
+ * On-device routing from prebuilt GraphHopper graphs - **one self-contained graph per downloaded
  * region** (a GraphHopper graph is monolithic; a trip must fit inside a single region's graph, so the
  * whole world can't be one file, but you download the regions you travel). [graphsRoot] holds
  * `<regionId>/` graph folders plus an `index.json` (`[{id, bbox:[S,W,N,E]}]`) that [RoutingGraphStore]
  * writes on install; this engine reads it to pick, per trip, the region whose box covers BOTH endpoints.
  *
- * Pure JVM — runs on ART, **validated end-to-end on a Pixel 5a** (see `:ghprobe` + ROADMAP). Per graph:
- *  1. **MMAP** data access — the default `RAMDataAccess` static-inits `VarHandle.withInvokeExactBehavior()`
- *     (JDK-16), absent on ART; `MMapDataAccess` doesn't.
- *  2. **No Janino** — v11 compiles custom-model weightings to JVM bytecode ART can't load. We override
- *     [GraphHopper.createWeightingFactory] to a hand-rolled [SpeedWeighting] + access block, and graphs
- *     bake **Contraction Hierarchies** on that same weighting (CH = ~200 ms on-device vs 7.6 s flexible).
- *  3. **Swallow `close()`** — MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android.
+ * Pure JVM - runs on ART, **validated end-to-end on a Pixel 5a** (see `:ghprobe` + ROADMAP). Per graph:
+ * 1. **MMAP** data access - the default `RAMDataAccess` static-inits `VarHandle.withInvokeExactBehavior()`
+ * (JDK-16), absent on ART; `MMapDataAccess` doesn't.
+ * 2. **No Janino** - v11 compiles custom-model weightings to JVM bytecode ART can't load. We override
+ * [GraphHopper.createWeightingFactory] to a hand-rolled [SpeedWeighting] + access block, and graphs
+ * bake **Contraction Hierarchies** on that same weighting (CH = ~200 ms on-device vs 7.6 s flexible).
+ * 3. **Swallow `close()`** - MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android.
  *
  * Each region's graph is loaded lazily + once (~150 ms), cached, and routing is thread-safe afterwards.
  * DRIVE only for now (a car graph); other modes fall back to the online engine.
@@ -47,7 +47,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
     }
 
     private val hoppers = ConcurrentHashMap<String, GraphHopper>()
-    private val failed = ConcurrentHashMap.newKeySet<String>() // graphs that errored on load — don't retry-thrash
+    private val failed = ConcurrentHashMap.newKeySet<String>() // graphs that errored on load - don't retry-thrash
 
     override fun isReady(mode: TravelMode): Boolean =
         mode == TravelMode.DRIVE && regions().any { it.id !in failed && hasGraph(it.id) }
@@ -55,7 +55,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
     override fun route(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
         if (mode != TravelMode.DRIVE) return emptyList()
         // A single graph can't route across regions, so we need one region covering BOTH ends. Region boxes
-        // overlap at borders (Geofabrik extracts carry a buffer — British Columbia's box dips into Sacramento),
+        // overlap at borders (Geofabrik extracts carry a buffer - British Columbia's box dips into Sacramento),
         // so try the most specific (smallest-box) covering region first and fall through to the next if its
         // graph can't actually make the trip; only give up when none can.
         val candidates = regions()
@@ -75,10 +75,10 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
 
     /**
      * The POSTED speed limit (km/h) of the road nearest ([lat],[lng]), from the OSM `maxspeed` tag baked
-     * into the graph's `max_speed` encoded value — or `null` if unknown (untagged road, no covering graph,
+     * into the graph's `max_speed` encoded value - or `null` if unknown (untagged road, no covering graph,
      * or a graph built before `max_speed` was added). Snaps the fix to the nearest edge and reads the EV off
      * the **base graph** (encoded values live there, not on the CH overlay), so it's CH-safe and independent
-     * of any active route — it tracks the road under the puck even off-route. Call OFF the main thread
+     * of any active route - it tracks the road under the puck even off-route. Call OFF the main thread
      * (LocationIndex snap does I/O on the mmap'd graph). Returns km/h; convert to mph at the UI boundary.
      */
     override fun currentRoadLimit(lat: Double, lng: Double): Double? {
@@ -94,7 +94,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             if (!snap.isValid) continue
             // Forward direction is fine for v1 (few ways tag directional maxspeed). Per GraphHopper's
             // OSMMaxSpeedParser: an untagged edge reads +Infinity (filtered by isFinite), EVERY value is
-            // capped at 150 km/h, AND `maxspeed=none` (derestricted) also stores exactly 150 — so 150 is
+            // capped at 150 km/h, AND `maxspeed=none` (derestricted) also stores exactly 150 - so 150 is
             // ambiguous (a real 150 zone vs. derestricted). We deliberately blank on 150 (strict `< 150`):
             // a wrong "150" on a derestricted autobahn is worse than a blank on the rare true-150 road.
             val kmh = runCatching { snap.closestEdge.get(ev) }.getOrNull() ?: continue
@@ -156,7 +156,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
                         }
 
                         // car_average_speed is km/h; SpeedWeighting reports time as if it were m/s (3.6x
-                        // too fast). Report real ms — routing/CH still use the proportional weight above.
+                        // too fast). Report real ms - routing/CH still use the proportional weight above.
                         override fun calcEdgeMillis(edge: EdgeIteratorState, reverse: Boolean): Long {
                             val kmh = if (reverse) edge.getReverse(speed) else edge.get(speed)
                             return if (kmh <= 0.0) Long.MAX_VALUE else (edge.distance * 3600.0 / kmh).toLong()
@@ -183,7 +183,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             val type = ghType(ins.sign, first = i == 0)
             val road = ins.name?.takeIf { it.isNotBlank() }
             val at = ins.points.let { if (it.size() > 0) LatLng(it.getLat(0), it.getLon(0)) else poly.firstOrNull() ?: LatLng(0.0, 0.0) }
-            // A roundabout instruction carries its exit number — thread it so the phrase reads "take exit N"
+            // A roundabout instruction carries its exit number - thread it so the phrase reads "take exit N"
             // (without it, ROUNDABOUT fell to the "Enter the roundabout" branch and lost the exit).
             val rbExit = (ins as? com.graphhopper.util.RoundaboutInstruction)?.exitNumber?.takeIf { it > 0 }
             Maneuver(
@@ -209,8 +209,8 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
 
     internal companion object {
         /** A region's box [S,W,N,E] covers ([lat],[lng])? The engine routes a trip on the smallest installed
-         *  region covering BOTH endpoints (boxes overlap at borders; a monolithic graph can't route across
-         *  regions), falling through to the next-smallest if that graph can't make the trip. */
+         * region covering BOTH endpoints (boxes overlap at borders; a monolithic graph can't route across
+         * regions), falling through to the next-smallest if that graph can't make the trip. */
         internal fun inBox(s: Double, w: Double, n: Double, e: Double, lat: Double, lng: Double) =
             lat in s..n && lng in w..e
 
@@ -236,7 +236,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             sign == Instruction.LEAVE_ROUNDABOUT -> ManeuverType.EXIT_ROUNDABOUT
             // ManeuverType.CONTINUE is VOICE-SILENT in NavEngine ("keep driving straight, nothing
             // to do"), so only the true straight-on sign may map to it. The old else-branch
-            // funnelled U_TURN_LEFT(-8)/U_TURN_RIGHT(8)/FERRY(9)/PT signs into CONTINUE — a
+            // funnelled U_TURN_LEFT(-8)/U_TURN_RIGHT(8)/FERRY(9)/PT signs into CONTINUE - a
             // u-turn keeps its road name, so the engine's silence would have swallowed it whole.
             sign == Instruction.U_TURN_LEFT || sign == Instruction.U_TURN_RIGHT ||
                 sign <= Instruction.U_TURN_UNKNOWN -> ManeuverType.UTURN
@@ -246,11 +246,11 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
 
         /** Synthesize the human instruction (GraphHopper ships none unless given a Translation). */
         /** Instruction text for an offline GraphHopper maneuver. Delegates to the ACTIVE language's
-         *  [app.vela.core.i18n.NavStrings] table (like OSRM's [RouteGeometry.osrmPhrase]) by mapping each
-         *  [ManeuverType] back to the OSRM (type, mod) token pair — so offline routes localize through the
-         *  same 11 tables, with zero new translations (audit 2026-07-06: this used to hardcode English, so
-         *  offline routes were never localized unlike the OSRM path). English output is byte-identical to
-         *  the old literals for the shipped cases. */
+         * [app.vela.core.i18n.NavStrings] table (like OSRM's [RouteGeometry.osrmPhrase]) by mapping each
+         * [ManeuverType] back to the OSRM (type, mod) token pair - so offline routes localize through the
+         * same 11 tables, with zero new translations (audit 2026-07-06: this used to hardcode English, so
+         * offline routes were never localized unlike the OSRM path). English output is byte-identical to
+         * the old literals for the shipped cases. */
         internal fun ghPhrase(type: ManeuverType, road: String?, rbExit: Int? = null): String {
             val (t, mod) = when (type) {
                 ManeuverType.DEPART -> "depart" to null
