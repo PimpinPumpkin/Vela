@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Метричні (кілометри, метри)</string>
     <string name="settings_language">Мова</string>
     <string name="settings_language_hint">Задає мову голосових покрокових вказівок (англійська, французька, німецька, іспанська, італійська, португальська, нідерландська, російська, польська, шведська, українська) — незалежно від системної мови телефона. Виберіть відповідний голос у розділі «Бібліотека голосів» нижче. Решту тексту в застосунку буде перекладено далі.</string>
+    <string name="settings_search">Пошук</string>
+    <string name="settings_voice_search_toggle">Мікрофон голосового пошуку</string>
+    <string name="settings_voice_search_hint">Показує мікрофон у рядку пошуку. Торкніться, щоб продиктувати запит через застосунок голосового введення.</string>
+    <string name="settings_voice_search_none">Показує мікрофон у рядку пошуку для диктування запиту. Потрібен застосунок голосового введення, як-от FUTO Voice Input; ще не встановлено.</string>
+    <string name="search_voice_cd">Голосовий пошук</string>
+    <string name="search_voice_prompt">Говоріть, щоб шукати</string>
     <string name="settings_voice">Голос</string>
     <string name="settings_voice_fallback_name">голос</string>
     <string name="settings_voice_downloading">Завантаження %1$s… %2$d%%</string>
