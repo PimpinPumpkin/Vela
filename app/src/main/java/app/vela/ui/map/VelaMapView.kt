@@ -1086,9 +1086,15 @@ fun VelaMapView(
                     val acc = myAccuracyM
                     val zoom = when {
                         acc != null && acc > 100f -> {
-                            val screenPx = mapView.width.coerceAtLeast(1)
-                            val mpp = (acc.toDouble() * 2 / 0.7) / screenPx
-                            (Math.log((156543.03392 * Math.cos(Math.toRadians(t.lat))) / mpp) / Math.log(2.0)).coerceIn(3.0, 15.0)
+                            // MapLibre's zoom scale is DENSITY-INDEPENDENT (m per dp, 512-tile
+                            // constant), not physical pixels. The first cut used physical px +
+                            // the 256-tile constant and landed ~2.5 levels too CLOSE on a 2.75x
+                            // phone - the 2 km circle overflowed the screen as the same invisible
+                            // uniform wash the fit exists to avoid.
+                            val density = mapView.resources.displayMetrics.density
+                            val screenDp = (mapView.width / density).coerceAtLeast(1f)
+                            val mpd = (acc.toDouble() * 2 / 0.7) / screenDp
+                            (Math.log((78271.517 * Math.cos(Math.toRadians(t.lat))) / mpd) / Math.log(2.0)).coerceIn(3.0, 15.0)
                         }
                         cameraBottomInsetPx > 0 -> 16.5
                         else -> 15.0
