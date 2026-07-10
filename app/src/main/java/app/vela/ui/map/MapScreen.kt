@@ -1011,17 +1011,8 @@ fun MapScreen(
             }
         }
 
-        if (state.navigating && state.fasterRoute != null) {
-            FasterRouteCard(
-                savingSeconds = state.fasterSavingSeconds,
-                onSwitch = vm::acceptFasterRoute,
-                onDismiss = vm::dismissFasterRoute,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    .padding(top = 96.dp, start = 12.dp, end = 12.dp),
-            )
-        }
+        // (The faster-route offer renders in the stacked notification column below, so it can
+        // never sit under the turn card or on top of another card.)
 
         // After panning away during nav — or swiping the banner ahead to preview a
         // later step — a Re-center button reattaches the follow-camera AND snaps the
@@ -1523,7 +1514,9 @@ fun MapScreen(
         }
 
         // --- transient surfaces --------------------------------------------
-        if (state.showPsdsTip) {
+        if (state.showPsdsTip && state.selected == null && !searchOpen && !state.navigating &&
+            state.resumeNavLabel == null
+        ) {
             InfoCard(
                 title = stringResource(R.string.mapscreen_psds_tip_title),
                 body = stringResource(R.string.mapscreen_psds_tip_body),
@@ -1544,7 +1537,8 @@ fun MapScreen(
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
         val bareMap = state.selected == null && !searchOpen
-        if (state.status != null ||
+        val fasterOffer = state.navigating && state.fasterRoute != null
+        if (state.status != null || fasterOffer ||
             (bareMap && (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null))
         ) {
             val bannerBottom = with(LocalDensity.current) { navBannerBottomPx.toDp() }
@@ -1561,6 +1555,13 @@ fun MapScreen(
                     ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (fasterOffer) {
+                    FasterRouteCard(
+                        savingSeconds = state.fasterSavingSeconds,
+                        onSwitch = vm::acceptFasterRoute,
+                        onDismiss = vm::dismissFasterRoute,
+                    )
+                }
                 state.status?.let { msg ->
                     InfoCard(
                         title = stringResource(R.string.mapscreen_heads_up),

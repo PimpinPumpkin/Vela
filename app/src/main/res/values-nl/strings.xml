@@ -216,7 +216,6 @@
     <string name="place_based_current_traffic">op basis van huidig verkeer</string>
     <string name="place_arrive_approx">Aankomst om %1$s</string>
     <string name="place_usually_range">Meestal %1$s – %2$s</string>
-    <string name="place_current_traffic">huidig verkeer</string>
     <string name="place_fastest">Snelste</string>
     <string name="place_delta_min">+%1$d min</string>
     <string name="place_via">via %1$s</string>

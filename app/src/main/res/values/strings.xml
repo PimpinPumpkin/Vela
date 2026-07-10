@@ -232,7 +232,6 @@
     <string name="place_based_current_traffic">based on current traffic</string>
     <string name="place_arrive_approx">Arrive at %1$s</string> <!-- format -->
     <string name="place_usually_range">Usually %1$s – %2$s</string> <!-- format -->
-    <string name="place_current_traffic">current traffic</string>
     <string name="place_fastest">Fastest</string>
     <string name="place_delta_min">+%1$d min</string> <!-- format -->
     <string name="place_via">via %1$s</string> <!-- format -->

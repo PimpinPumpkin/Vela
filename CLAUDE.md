@@ -256,6 +256,10 @@ Defaults that make the safe path the easy one:
   Voice section) not an inline accordion - `SettingsScreen` early-returns to it when
   `showVoiceLibrary`; its own Back returns to Settings. Put a new setting in the section it serves;
   niche/experimental → Advanced, demo/test tools → Developer, place-content → Place pages not Map.
+- **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
+  SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
+  traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
+  note stays. `place_current_traffic` was deleted from all 11 locales.
 - **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
@@ -478,8 +482,13 @@ Defaults that make the safe path the easy one:
   and painted over the update card. Position: browse = statusBar + 132dp (just under search bar +
   chips); during nav it hangs off the turn card's MEASURED bottom edge (`navBannerBottomPx`, the
   same onGloballyPositioned report the compass uses) + 10dp, so it slides with lane rows / the
-  "then" row instead of a guessed fixed offset. The flash (`MapUiState.status`) shows in ANY map
-  state; the other cards stay gated to the bare map. `statusVoiceAction` on the state marks a
+  "then" row instead of a guessed fixed offset. AUDITED COMPLETE 2026-07-10: the FASTER-ROUTE
+  offer during nav renders IN the column too (it used to sit at a fixed 96dp under the turn card),
+  and the bottom PSDS tip is gated to the bare map + yields to the resume-nav card - every
+  top-of-map card is in the one column; bottom cards (PSDS tip, resume-nav) are bare-map-only.
+  The flash (`MapUiState.status`) shows in ANY map state; the other cards stay gated to the bare
+  map, which INCLUDES during nav - a mid-drive voice/region download or update offer stacks under
+  the faster-route/status cards instead of hiding. `statusVoiceAction` on the state marks a
   voice-problem flash: `InfoCard` then adds a filled **"Get a voice" pill** (UpdateCard layout)
   that deep-links Settings -> voice library (`MapScreen.onOpenVoiceSettings` -> VelaRoot ->
   `SettingsScreen(openVoiceLibrary = true)`). Both the no-engine warning and the
