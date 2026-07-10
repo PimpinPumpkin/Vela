@@ -225,7 +225,9 @@ non-negotiable rules for any ported commit:
   - **Chrome:** `resultsShown` (peek/expanded) hides the scale bar / locate FAB / "Search this
     area"; `resultsMinimized` shows them again but LIFTED by `chromeLift` (76dp). The compass is
     MapLibre's built-in (`setCompassMargins`), which fades facing north (Google's behaviour) and
-    reappears when rotated/tilted or during heading-up nav.
+    reappears when rotated/tilted or during heading-up nav. Its browse-mode top margin is
+    statusBar + 122dp so it sits BELOW the floating search bar and the category chips (8dp under the
+    status bar put it exactly behind the bar, a half-hidden circle - ported from upstream `292f8d6`).
 - **Map tap resolution order (`VelaMapView` click listener).** A single tap (24dp hit box) resolves,
   in priority:
   - (1) our search-result pin → `onMarkerTap`;
