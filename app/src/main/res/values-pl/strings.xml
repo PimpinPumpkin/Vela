@@ -214,7 +214,7 @@
     <string name="place_arriveby_leave">Przyjazd do %1$s  ·  wyjazd %2$s</string>
     <string name="place_in_typical_traffic">przy typowym ruchu</string>
     <string name="place_based_current_traffic">na podstawie bieżącego ruchu</string>
-    <string name="place_arrive_approx">Przyjazd ~%1$s</string>
+    <string name="place_arrive_approx">Przyjazd o %1$s</string>
     <string name="place_usually_range">Zwykle %1$s – %2$s</string>
     <string name="place_current_traffic">bieżący ruch</string>
     <string name="place_fastest">Najszybsza</string>
@@ -232,7 +232,7 @@
     <string name="place_review_count">%1$d opinii</string>
     <string name="place_all_n_reviews">Wszystkie %1$d opinii · sortuj i szukaj</string>
     <string name="place_all_reviews">Wszystkie opinie · sortuj i szukaj</string>
-    <string name="place_reviews_progress">Opinie · %1$d z ~%2$d</string>
+    <string name="place_reviews_progress">Opinie · %1$d z około %2$d</string>
     <string name="place_reviews_so_far">Opinie · %1$d jak dotąd</string>
     <string name="place_gathering_reviews">Zbieranie opinii…</string>
     <string name="place_reviews_load_failed">Nie udało się wczytać opinii. Dotknij, aby ponowić.</string>
@@ -304,7 +304,7 @@
     <string name="mapscreen_pick_stop_hint">Wybierz miejsce do dodania jako przystanek</string>
     <string name="mapscreen_learn_more">Dowiedz się więcej</string>
     <string name="mapscreen_faster_route_title">Szybsza trasa</string>
-    <string name="mapscreen_faster_route_saves">Oszczędza ~%1$s przy bieżącym ruchu</string>
+    <string name="mapscreen_faster_route_saves">Oszczędza około %1$s przy bieżącym ruchu</string>
     <string name="mapscreen_no">Nie</string>
     <string name="mapscreen_switch">Przełącz</string>
     <string name="root_not_now">Nie teraz</string>
@@ -501,10 +501,18 @@
     <string name="map_asr_offer_title">Wyszukiwanie głosowe</string>
     <string name="map_asr_offer_body">Pobierz głos Vela, aby dyktować wyszukiwania. Działa w całości na telefonie i niczego nie wysyła.</string>
     <string name="nav_precise_title">Potrzebna dokładna lokalizacja</string>
-    <string name="nav_precise_body">Nawigacja śledzi cię przez GPS, co wymaga dokładnej lokalizacji. Przybliżona daje tylko ogólny obszar, więc nawigacja nigdy by cię nie znalazła.</string>
+    <string name="nav_precise_body">Nawigacja śledzi cię przez GPS, a to wymaga dokładnej lokalizacji. Na razie Vela zna tylko twoją przybliżoną okolicę.</string>
     <string name="nav_precise_allow">Zezwól na dokładną</string>
     <string name="nav_precise_toast">Nawigacja wymaga dokładnej lokalizacji</string>
     <string name="loc_off_title">Lokalizacja jest wyłączona</string>
     <string name="loc_off_body">Vela nie ma dostępu do lokalizacji. Możesz go włączyć w ustawieniach systemu.</string>
     <string name="loc_off_settings">Otwórz ustawienia</string>
+    <string name="loc_approx_title">Przybliżona lokalizacja</string>
+    <string name="loc_approx_body">Vela zna tylko twoją przybliżoną okolicę, nie to, gdzie jesteś. Mapa pokazuje szerokie koło zamiast punktu, a nawigacja nie zadziała. Na dokładną lokalizację możesz przejść w każdej chwili.</string>
+    <string name="loc_approx_allow">Zezwól na dokładną</string>
+    <string name="loc_approx_keep">Zostaw przybliżoną</string>
+    <string name="notif_ask_title">Pominąć powiadomienia?</string>
+    <string name="notif_ask_body">Nawigacja trzyma następny zakręt w powiadomieniu, więc wskazówki są z tobą przy zgaszonym ekranie albo w innej aplikacji. Bez niego wskazówki widać tylko w Veli.</string>
+    <string name="notif_ask_allow">Zezwól</string>
+    <string name="notif_ask_skip">Pomiń</string>
 </resources>
