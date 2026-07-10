@@ -678,6 +678,7 @@ fun PlaceSheet(
             // doesn't wrap mid-word next to the stars; ellipsised if huge.
             val rest = listOfNotNull(
                 place.distanceMeters?.let { formatDistance(it) },
+                place.fuelPrice, // gas stations: the live price sits with the price/category line
                 place.priceText,
                 place.category,
             )

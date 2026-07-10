@@ -68,6 +68,8 @@ Fingerprint and full instructions in [FDROID.md](FDROID.md).
   driving somewhere, with a warning if it would be closed when you arrive.
 - **Traffic you can read.** Route choices say light, moderate or heavy traffic in
   words next to their green/amber/red times, and the fastest route leads the list.
+- **Live gas prices.** Search for gas and every station's current price is right
+  on its map marker, in the result list, and on the place page.
 - **Public transit.** Itineraries with line pills, station-by-station stops, and
   step-by-step guidance to the platform.
 - **No account, no tracking.** No Google account, no GMS, no telemetry. What

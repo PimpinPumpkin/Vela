@@ -15,6 +15,9 @@ data class Place(
     val reviewCount: Int? = null,
     val priceLevel: Int? = null,   // 0..4, Google-style ($ to $$$$)
     val priceText: String? = null, // Google's own label, e.g. "$1–10" / "$$"
+    // Gas stations only: Google's live fuel price, e.g. "$5.34/Regular" — shown on the result
+    // marker, the list row and the place sheet. Null for every other kind of place.
+    val fuelPrice: String? = null,
     val phone: String? = null,
     val website: String? = null,
     val actionLabel: String? = null,  // Google's action button text ("Book online", "Reserve a table", "Order online")
