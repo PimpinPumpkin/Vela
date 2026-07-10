@@ -61,6 +61,17 @@ class WhisperRecognizer @Inject constructor(
     private fun whisperLang(): String =
         app.vela.ui.AppLocale.effective().language.takeIf { it in app.vela.ui.AppLocale.SUPPORTED } ?: ""
 
+    /** Build the recognizer ahead of the first mic tap, off the main thread. The ONNX load takes a
+     *  second or two on a phone, which used to show as a "Getting ready" beat on the FIRST dictation
+     *  of a session (user 2026-07-10); warmed, the mic listens immediately. Cheap to call when the
+     *  model isn't installed (no-op), and safe to call repeatedly - the synchronized loader keeps a
+     *  built recognizer for the current language. A mid-session app-language switch still rebuilds
+     *  lazily on the next listen (rare enough not to chase). */
+    fun warmUp() {
+        if (!AsrModel.isInstalled(context)) return
+        Thread({ runCatching { ensureRecognizer() } }, "asr-warmup").start()
+    }
+
     /** Load the Whisper recognizer once per language (rebuilt if the app language changes). Returns
      *  null if the model isn't installed or the native load fails - callers then fall back to the
      *  provider intent or hide the mic. */
