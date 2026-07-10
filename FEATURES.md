@@ -210,7 +210,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   stepping between sizes in fixed hops.
 - ✅ **Live gas prices on the map (2026-07-10).** Searching for gas stations shows each
   station's current price in the same bubble marker the restaurant ratings use, and the full
-  price ("$5.34/Regular") leads its row in the result list and sits on the place page. The
+  price ("$5.34/Regular") gets its own bold pump-glyph line under the address in the result
+  list and renders bold on the place page's price line. The
   price rides the keyless search response (place node [88][0], a remotely recalibratable
   path). EV chargers were checked too: the keyless response strips charger details (price,
   kW, availability) the way it strips popular times, so those stay marker-only for now.
