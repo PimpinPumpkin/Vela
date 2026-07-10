@@ -419,11 +419,30 @@ Defaults that make the safe path the easy one:
   system dialog. The first ask lives in `VelaRoot` as an onboarding step gated on
   `Onboarding.showLocationPrompt`, shown via the reusable `PermissionRationale` composable (a
   plain-words screen before Android's dialog - Google's recommended pattern, and the voice-search
-  mic reuses it at point-of-use). Order: welcome → location → voice → offline. A denial leaves
+  mic reuses it at point-of-use). Order: welcome → location → voice. A denial leaves
   search/browse working; the locate FAB (`onRecenter`) re-requests on tap. `PermissionRationale`
   and the `VelaDialog` `dismissLowEmphasis` flag (the quiet "Use existing voice" styling) are the
   reusable pieces - don't re-request location straight from the map, and don't add a raw permission
   dialog without a rationale screen.
+- **Onboarding is deliberately SHORT - three steps, no more (declutter 2026-07-10).** Welcome →
+  location → voice, then the map. The old **offline-maps** onboarding prompt and the **diagnostics/
+  trip-recording** onboarding prompt were CUT (they made a long wall of asks a first-run user has no
+  context for). Both settings still exist, off by default, in Settings → Diagnostics + Offline; the
+  diagnostics ask now surfaces **in context** on the crash-report card (Settings → Diagnostics only
+  renders the card when a crash is pending) - a "Turn on diagnostics" button appears there when a
+  crash is pending AND diagnostics is off, routing through the same `showDiagConsent` VelaDialog the
+  toggle uses. `Onboarding` no longer has `showOfflinePrompt`/`showDiagPrompt` - don't re-add
+  onboarding steps; if a feature needs a first-run nudge, prefer a contextual in-place ask like the
+  crash card. NO Material You toggle in onboarding either (it's a Settings → Appearance opt-in).
+- **VelaDialog: confirm is a filled pill, dismiss is a text button (2026-07-10).** The `DialogButton`
+  `filled` flag (set on the confirm button in `VelaDialog`) draws the higher-emphasis action as a
+  primary `CircleShape` pill (onPrimary text); the dismiss stays a plain text button, quieted further
+  to `onSurfaceVariant` when `dismissLowEmphasis`. One change in `VelaDialog`, so EVERY dialog (voice,
+  location, diagnostics consent, trip consent, …) gets the pill - don't hand-roll per-dialog buttons.
+  The button row is a **`FlowRow`** (not `Row`): when the two labels don't fit on one line (a long
+  "Download Vela voice" pill beside "Use system voice", or a small/feature-phone screen) the confirm
+  pill wraps to its OWN full-width line instead of being squeezed and breaking mid-word. Both buttons
+  keep the D-pad ring/focus (dismiss auto-focuses, confirm by arrow); the pill ring follows CircleShape.
 - **D-pad-only operation is a hard UI rule (2026-07-07, `docs/dpad.md`).** The whole app
   works with a 5-key D-pad and NO touchscreen (touch is a bonus). Helpers in
   `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/
