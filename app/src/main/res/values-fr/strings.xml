@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Métriques (kilomètres, mètres)</string>
     <string name="settings_language">Langue</string>
     <string name="settings_language_hint">Définit la langue des instructions vocales de navigation (anglais, français, allemand, espagnol, italien, portugais, néerlandais, russe, polonais, suédois, ukrainien) — indépendamment de la langue système de votre téléphone. Choisissez une voix correspondante dans la Bibliothèque de voix ci-dessous. Le reste des textes de l\'application est en cours de traduction.</string>
+    <string name="settings_search">Recherche</string>
+    <string name="settings_voice_search_toggle">Micro de recherche vocale</string>
+    <string name="settings_voice_search_hint">Affiche un micro dans la barre de recherche. Touchez-le pour dicter votre recherche via une appli de saisie vocale du téléphone.</string>
+    <string name="settings_voice_search_none">Affiche un micro dans la barre de recherche pour dicter votre recherche. Nécessite une appli vocale comme FUTO Voice Input ; aucune installée pour l\'instant.</string>
+    <string name="search_voice_cd">Recherche vocale</string>
+    <string name="search_voice_prompt">Parlez pour rechercher</string>
     <string name="settings_voice">Voix</string>
     <string name="settings_voice_fallback_name">voix</string>
     <string name="settings_voice_downloading">Téléchargement de %1$s… %2$d %%</string>

@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Metrisch (Kilometer, Meter)</string>
     <string name="settings_language">Sprache</string>
     <string name="settings_language_hint">Legt die Sprache der gesprochenen Navigationsansagen fest (Englisch, Französisch, Deutsch, Spanisch, Italienisch, Portugiesisch, Niederländisch, Russisch, Polnisch, Schwedisch, Ukrainisch) – unabhängig von der Systemsprache Ihres Telefons. Wählen Sie unten in der Stimmenbibliothek eine passende Stimme. Der übrige Bildschirmtext der App wird als Nächstes übersetzt.</string>
+    <string name="settings_search">Suche</string>
+    <string name="settings_voice_search_toggle">Mikrofon für Sprachsuche</string>
+    <string name="settings_voice_search_hint">Zeigt ein Mikrofon in der Suchleiste. Tippe darauf, um deine Suche zu sprechen, über eine Spracheingabe-App auf dem Gerät.</string>
+    <string name="settings_voice_search_none">Zeigt ein Mikrofon in der Suchleiste zum Sprechen deiner Suche. Benötigt eine Spracheingabe-App wie FUTO Voice Input; noch keine installiert.</string>
+    <string name="search_voice_cd">Sprachsuche</string>
+    <string name="search_voice_prompt">Zum Suchen sprechen</string>
     <string name="settings_voice">Stimme</string>
     <string name="settings_voice_fallback_name">Stimme</string>
     <string name="settings_voice_downloading">%1$s wird heruntergeladen … %2$d%%</string>

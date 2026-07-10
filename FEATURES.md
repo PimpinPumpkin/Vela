@@ -179,6 +179,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
+- ✅ **Voice search mic (2026-07-10).** A mic in the search bar: tap it, a voice-input app you have
+  (FUTO Voice Input, Google's recognizer on GMS phones, …) captures speech and the text runs as a
+  search. Vela records nothing itself, the provider does, so no microphone permission. The mic only
+  appears when it can actually work: a Settings toggle (Search section, on by default) AND an app
+  that handles the recognize-speech intent. With no such app the mic is hidden, never shown dead,
+  and Settings says why. Keyboard-only dictation (Sayboard, FUTO Keyboard) doesn't trigger it since
+  apps can't invoke a keyboard's mic; those users keep using the keyboard mic, and a later build
+  adds an on-device model so voice search works with no third-party app at all.
 - ✅ **Location asked with a reason, in onboarding (2026-07-10).** The location permission used to
   pop the instant the map first loaded, a bare system dialog with no context. It now comes as the
   first onboarding step: a plain-words screen ("Vela uses your location to center the map and route
