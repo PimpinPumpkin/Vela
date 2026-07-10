@@ -195,6 +195,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **One tidy notification area (2026-07-10).** Heads-up messages, download progress, update
+  offers and notices now stack below the search bar and chips (or just below the turn card during
+  navigation, whatever its height), each dismissed on its own, instead of painting over each other.
+  A missing-voice warning carries a "Get a voice" pill straight into the voice library.
+- ✅ **Spoken directions toggle (2026-07-10).** Settings → Voice has an on/off switch for spoken
+  navigation; it remembers your choice, and the mute button during navigation is the same switch.
 - ✅ **Update button is a filled pill (2026-07-10).** The update card's Update action is a filled
   pill instead of tinted text, so it stands out by shape and fill rather than colour alone.
 - ✅ **Recents you can prune, with addresses (2026-07-10).** Every recent search and recently-opened
