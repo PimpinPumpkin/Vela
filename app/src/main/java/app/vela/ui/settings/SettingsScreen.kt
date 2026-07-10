@@ -900,7 +900,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 modifier = Modifier.padding(vertical = 4.dp),
             )
             // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
-            // The offer itself is a card on the map; the system installer does the install.
+            // The system installer does the install either way.
             var selfUpdate by remember { mutableStateOf(prefs.getBoolean("self_update_check", true)) }
             ToggleRow(stringResource(R.string.settings_update_auto), selfUpdate) { selfUpdate = it; prefs.edit().putBoolean("self_update_check", it).apply() }
             Hint(stringResource(R.string.settings_update_auto_hint))
@@ -912,11 +912,31 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             Spacer(Modifier.height(10.dp))
             var updateStatus by remember { mutableStateOf<String?>(null) }
             val checkingText = stringResource(R.string.settings_update_checking)
-            val foundText = stringResource(R.string.settings_update_found)
             val noneText = stringResource(R.string.settings_update_none)
-            OutlinedButton(onClick = {
+            // Found update: a full inline offer, right here. The map card said "go back to the
+            // map to install" from Settings, which was a pointless round trip - same state, same
+            // download call as the card, so the two surfaces stay in sync (start it here, the
+            // card shows the same progress, and vice versa).
+            state.updateInfo?.let { u ->
+                Text(
+                    stringResource(R.string.update_available_title, u.versionName),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.padding(vertical = 4.dp),
+                )
+                state.updateDownloadPct?.let { pct ->
+                    Text(stringResource(R.string.update_downloading, pct), style = MaterialTheme.typography.bodyMedium)
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(progress = { pct / 100f }, modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(8.dp))
+                } ?: Row(Modifier.padding(vertical = 4.dp)) {
+                    Button(onClick = { vm.downloadUpdate() }) { Text(stringResource(R.string.update_install)) }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { vm.dismissUpdate(); updateStatus = null }) { Text(stringResource(R.string.update_later)) }
+                }
+            } ?: OutlinedButton(onClick = {
                 updateStatus = checkingText
-                vm.checkForUpdateNow { found -> updateStatus = if (found) foundText else noneText }
+                vm.checkForUpdateNow { found -> updateStatus = if (found) null else noneText }
             }) { Text(stringResource(R.string.settings_update_check_now)) }
             updateStatus?.let { Hint(it) }
             // Breathing room under the last control — the button used to sit right on the

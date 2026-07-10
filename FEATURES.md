@@ -179,6 +179,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
+- ✅ **Update from Settings directly (2026-07-09).** The Version section's "Check for updates"
+  used to answer "update available, go back to the map to install it" - now the full offer
+  renders inline: version line, Update button, live download progress, Not now. Same state and
+  download call as the map card, so starting it in either place shows progress in both.
 - ✅ **One chronological Recent list + saved-row contrast fix (2026-07-09, device-verified).**
   The search page's separate "Recent" (places) and "Recent searches" sections merged into ONE
   list ordered by when you used them, the way Google mixes them - a pin icon marks a place you
