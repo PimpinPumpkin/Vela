@@ -2120,11 +2120,49 @@ class MapViewModel @Inject constructor(
             // route's traffic signals once + fold the clauses into its turns before the session starts.
             val enriched = enrichLightsIfEnabled(named)
             if (enriched !== named) _state.update { it.copy(activeRoute = enriched) }
+            // Google-style courtesy: warn once, card + voice, when this drive lands within an hour
+            // of the destination's closing time (or after it).
+            maybeWarnClosingSoon(enriched)
             // Demo / screenshot / test mode (Settings → Navigation): drive the route as a SYNTHETIC GPS
             // trace instead of using the real fix, so nav can be shown/tested anywhere (a Davis route
             // while the phone is elsewhere). Same replay pipeline as a recorded trip.
             if (settingsPrefs.getBoolean("demo_drive", false)) startDemoDrive(enriched) else launchNav(enriched)
         }
+    }
+
+    /** Warn at nav start when the drive arrives within an hour of the destination closing, or after
+     *  it — a heads-up card plus the nav voice, so nobody drives forty minutes to a place that locks
+     *  its doors on arrival. Closing time comes from the place's own localized status text
+     *  ([app.vela.core.data.ClosingTime]); no parsable status, no warning. */
+    private fun maybeWarnClosingSoon(route: app.vela.core.model.Route) {
+        val sel = _state.value.selected ?: return
+        val end = route.polyline.lastOrNull() ?: return
+        if (sel.location.distanceTo(end) > 200.0) return // the selected place isn't this trip's destination
+        val closing = app.vela.core.data.ClosingTime.closingMinuteOfDay(sel.statusText, sel.openNow) ?: return
+        val cal = java.util.Calendar.getInstance()
+        val nowMin = cal.get(java.util.Calendar.HOUR_OF_DAY) * 60 + cal.get(java.util.Calendar.MINUTE)
+        // A closing that reads EARLIER than now is past midnight ("Closes 1 AM" seen at 11 PM).
+        val closeAbs = if (closing < nowMin) closing + 24 * 60 else closing
+        val etaSec = route.durationInTrafficSeconds ?: route.durationSeconds
+        val arriveMin = nowMin + (etaSec / 60.0).toInt()
+        val gap = closeAbs - arriveMin
+        if (gap >= 60) return
+        val msg = appContext.getString(
+            if (gap < 0) R.string.mapvm_closing_before_arrival else R.string.mapvm_closing_soon,
+            sel.name,
+            formatMinuteOfDay(closeAbs % 1440),
+            formatMinuteOfDay(arriveMin % 1440),
+        )
+        flashStatus(msg, 15_000L)
+        voice.speak(msg)
+    }
+
+    /** A minute-of-day in the user's clock format (locale + the system 12/24-hour setting). */
+    private fun formatMinuteOfDay(min: Int): String {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(java.util.Calendar.HOUR_OF_DAY, min / 60)
+        cal.set(java.util.Calendar.MINUTE, min % 60)
+        return android.text.format.DateFormat.getTimeFormat(appContext).format(cal.time)
     }
 
     /** Drive [route] as a synthetic GPS trace ([DemoTrace] → the recorded-trip [LocationProvider.replay]
