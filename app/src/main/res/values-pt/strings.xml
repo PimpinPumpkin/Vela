@@ -14,6 +14,7 @@
     <string name="settings_units_imperial">Imperial (milhas, pés)</string>
     <string name="settings_units_metric">Métrico (quilómetros, metros)</string>
     <string name="settings_language">Idioma</string>
+    <string name="settings_follow_system_language">Seguir o idioma do sistema</string>
     <string name="settings_language_hint">Define o idioma das indicações de voz curva a curva (inglês, francês, alemão, espanhol, italiano, português, neerlandês, russo, polaco, sueco, ucraniano) — independente do idioma do sistema do seu telemóvel. Escolha uma voz correspondente na Biblioteca de vozes abaixo. O restante texto no ecrã da aplicação será traduzido a seguir.</string>
     <string name="settings_search">Pesquisa</string>
     <string name="settings_voice_search_toggle">Microfone de pesquisa por voz</string>
@@ -478,4 +479,10 @@
     <string name="lists_empty_hint">Ainda sem listas. Toque em Nova ou guarde um local a partir da sua página.</string>
     <string name="lists_place_count">%1$d locais</string>
     <string name="navservice_notif_eta">Chegada %1$s</string>
+    <string name="settings_advanced">Avançado</string>
+    <string name="settings_advanced_hint">Opções específicas e experimentais que quase ninguém precisa de alterar.</string>
+    <string name="settings_developer">Programador</string>
+    <string name="settings_developer_hint">Ferramentas para demos, capturas de ecrã e testes. Desative-as para uso real.</string>
+    <string name="settings_browse_voices">Explorar vozes</string>
+    <string name="settings_browse_voices_hint">Transfira e alterne entre as vozes da Vela no dispositivo.</string>
 </resources>

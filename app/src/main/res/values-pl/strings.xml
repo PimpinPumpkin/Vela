@@ -14,6 +14,7 @@
     <string name="settings_units_imperial">Imperialne (mile, stopy)</string>
     <string name="settings_units_metric">Metryczne (kilometry, metry)</string>
     <string name="settings_language">Język</string>
+    <string name="settings_follow_system_language">Zgodnie z językiem systemu</string>
     <string name="settings_language_hint">Ustawia język mówionej nawigacji zakręt po zakręcie (angielski, francuski, niemiecki, hiszpański, włoski, portugalski, niderlandzki, rosyjski, polski, szwedzki, ukraiński) — niezależnie od języka systemowego telefonu. Wybierz pasujący głos w Bibliotece głosów poniżej. Reszta tekstu w aplikacji zostanie przetłumaczona wkrótce.</string>
     <string name="settings_search">Wyszukiwanie</string>
     <string name="settings_voice_search_toggle">Mikrofon wyszukiwania głosowego</string>
@@ -478,4 +479,10 @@
     <string name="lists_empty_hint">Brak list. Dotknij Nowa lub zapisz miejsce z jego strony.</string>
     <string name="lists_place_count">%1$d miejsc</string>
     <string name="navservice_notif_eta">Przyjazd %1$s</string>
+    <string name="settings_advanced">Zaawansowane</string>
+    <string name="settings_advanced_hint">Niszowe i eksperymentalne opcje, których większość osób nigdy nie zmienia.</string>
+    <string name="settings_developer">Deweloper</string>
+    <string name="settings_developer_hint">Narzędzia do wersji demo, zrzutów ekranu i testów. Wyłącz je do zwykłego użytku.</string>
+    <string name="settings_browse_voices">Przeglądaj głosy</string>
+    <string name="settings_browse_voices_hint">Pobieraj i przełączaj głosy Vela na urządzeniu.</string>
 </resources>
