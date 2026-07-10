@@ -154,6 +154,7 @@ private var lastAccuracyLoc: LatLng? = null
 private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
+private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
                                                        // thousands-of-vertices linestring per fix burned
@@ -1038,6 +1039,7 @@ fun VelaMapView(
                 styleRef = style
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
+                lastOsmPoiVis = null
                 parkingApplied = false
                 lastAppliedAmbient = null
                 lastAppliedControls = null
@@ -2313,14 +2315,22 @@ private fun applyData(
             },
         )
         style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
-        // Google-first: while ambient Google POIs are showing, hide the OSM *business* POIs
-        // (poi_r1/r7/r20) so the layers don't duplicate. OSM transit + the whole OSM basemap stay; when
-        // there are no ambient POIs (zoomed out / offline / nav / search) the OSM POIs come back.
-        val osmPoiVis = if (ambientPois.isNotEmpty()) Property.NONE else Property.VISIBLE
+        lastAppliedAmbient = ambientPois
+    }
+
+    // Google-first: hide the OSM *business* POIs (poi_r1/r7/r20) while EITHER the ambient Google
+    // dots are up (the layers would duplicate) OR a search's result set is on the map — during
+    // search only the results should read as places (Google declutters the same way). A single
+    // selected place (markers.size == 1) keeps the basemap POIs: its neighbours are context, not
+    // clutter. Its OWN identity gate (not the ambient one): results can appear/clear while the
+    // ambient list stays empty, and the old placement inside the ambient gate would strand the
+    // visibility stale. OSM transit + the rest of the basemap always stay.
+    val osmPoiVis = if (ambientPois.isNotEmpty() || markers.size > 1) Property.NONE else Property.VISIBLE
+    if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
         }
-        lastAppliedAmbient = ambientPois
+        lastOsmPoiVis = osmPoiVis
     }
 
     // Traffic controls (lights + stop signs) → icon features. Identity-gated like markers/ambient so a
