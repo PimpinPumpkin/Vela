@@ -52,8 +52,8 @@ Fingerprint and full instructions in [FDROID.md](FDROID.md).
   reroutes, and a heads-up (on a card and out loud) when your destination closes
   within an hour of your arrival.
 
-  🔊 **Hear the nav voice** - the actual in-app voice (HFC Female at the default
-  pace), rendered through the same engine and phrasing pipeline the app runs:
+  🔊 **Hear Vela's nav voice** - the actual in-app voice at the default
+  pace:
 
   https://github.com/user-attachments/assets/d7e77195-9499-4b2c-abd3-b25c66156be6
 
