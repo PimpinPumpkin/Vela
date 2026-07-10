@@ -489,6 +489,8 @@
     <string name="voice_capture_done">Готово</string>
     <string name="mapvm_asr_ready">Голос Vela готов</string>
     <string name="mapvm_asr_download_failed">Не удалось загрузить голосовую модель. Проверьте подключение и повторите попытку.</string>
+    <string name="mapvm_closing_soon">%1$s закрывается в %2$s, вы приедете около %3$s</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s закрывается в %2$s, раньше вашего приезда (около %3$s)</string> <!-- format -->
     <string name="settings_voice_search_model">Голос Vela</string>
     <string name="settings_voice_search_model_hint">Голос Vela превращает речь в поиск прямо на телефоне: без других приложений и без выгрузки данных. Разовая загрузка %1$d МБ.</string>  <!-- format -->
     <string name="settings_voice_search_download">Загрузить (%1$d МБ)</string>  <!-- format -->
