@@ -874,6 +874,17 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                         app.vela.diag.CrashCatcher.clear(context); crashReports = emptyList()
                     }) { Text(stringResource(R.string.settings_crash_discard)) }
                 }
+                if (!state.diagnosticsEnabled) {
+                    // We caught this crash either way, but with diagnostics off there were no
+                    // breadcrumbs leading up to it. Offer to turn them on here, in context, instead
+                    // of asking everyone up front during onboarding. Routes through the same consent
+                    // dialog the toggle uses.
+                    Spacer(Modifier.height(4.dp))
+                    Hint(stringResource(R.string.settings_crash_diag_offer))
+                    TextButton(onClick = { showDiagConsent = true }) {
+                        Text(stringResource(R.string.settings_crash_enable_diag))
+                    }
+                }
             }
             if (showDiagConsent) {
                 app.vela.ui.VelaDialog(

@@ -6,25 +6,14 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import app.vela.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.vela.ui.map.MapScreen
@@ -101,15 +90,6 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                     },
                     onUseExisting = { Onboarding.dismissVoicePrompt(context) },
                 )
-            } else if (Onboarding.showOfflinePrompt.value) {
-                OfflinePrompt(
-                    onSetup = {
-                        Onboarding.dismissOfflinePrompt(context)
-                        settingsOpenOffline = true
-                        showSettings = true
-                    },
-                    onSkip = { Onboarding.dismissOfflinePrompt(context) },
-                )
             } else if (Onboarding.showDonatePrompt.value) {
                 DonatePrompt(
                     onDonate = {
@@ -120,64 +100,9 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                     },
                     onDismiss = { Onboarding.dismissDonatePrompt(context) },
                 )
-            } else if (Onboarding.showDiagPrompt.value) {
-                DiagPrompt(
-                    onChoose = { diag, trips ->
-                        if (diag) vm.setDiagnostics(true)
-                        if (trips) vm.setTripRecording(true)
-                        Onboarding.dismissDiagPrompt(context)
-                    },
-                    onDismiss = { Onboarding.dismissDiagPrompt(context) },
-                )
             }
         }
     }
-}
-
-/** One-time, opt-in nudge with TWO separate choices — basic diagnostics (default on)
- *  and the more-invasive trip recording (default off, since it captures your exact
- *  routes). Both stay on-device; "Not now" enables neither. */
-@Composable
-private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit, onDismiss: () -> Unit) {
-    var diag by remember { mutableStateOf(true) }
-    var trips by remember { mutableStateOf(false) }
-    VelaDialog(
-        onDismissRequest = onDismiss,
-        title = stringResource(R.string.root_diag_title),
-        confirmText = stringResource(R.string.root_diag_save),
-        onConfirm = { onChoose(diag, trips) },
-        dismissText = stringResource(R.string.root_not_now),
-        onDismiss = onDismiss,
-        text = {
-            Column {
-                Text(stringResource(R.string.root_diag_body))
-                Spacer(Modifier.height(12.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = diag, onCheckedChange = { diag = it })
-                    Column(Modifier.padding(start = 4.dp)) {
-                        Text(stringResource(R.string.root_diag_share_title), style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            stringResource(R.string.root_diag_share_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(checked = trips, onCheckedChange = { trips = it })
-                    Column(Modifier.padding(start = 4.dp)) {
-                        Text(stringResource(R.string.root_diag_trips_title), style = MaterialTheme.typography.bodyLarge)
-                        Text(
-                            stringResource(R.string.root_diag_trips_desc),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        },
-    )
 }
 
 /** One-time, first-run offer of Vela's on-device neural voice. RECOMMENDED for everyone, but an
@@ -205,21 +130,5 @@ private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onUseExisting: () -
                     stringResource(R.string.root_voice_body_outro),
             )
         },
-    )
-}
-
-/** One-time, first-run offer to set up offline maps. Vela's live data comes from Google, so without a
- *  connection only downloaded areas work. Surfacing this during onboarding means people find it before
- *  they lose signal on the road, not after. "Set up" opens Settings straight to the Offline section. */
-@Composable
-private fun OfflinePrompt(onSetup: () -> Unit, onSkip: () -> Unit) {
-    VelaDialog(
-        onDismissRequest = onSkip,
-        title = stringResource(R.string.root_offline_title),
-        confirmText = stringResource(R.string.root_offline_setup),
-        onConfirm = onSetup,
-        dismissText = stringResource(R.string.root_not_now),
-        onDismiss = onSkip,
-        text = { Text(stringResource(R.string.root_offline_body)) },
     )
 }
