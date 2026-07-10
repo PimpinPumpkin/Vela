@@ -44,6 +44,10 @@ NEVER the final word on UX. This is not optional and not satisfied by audits alo
   with your eyes: the change actually rendered; the focus ring is present and on the right
   element; nothing is clipped, overlapping, or off-screen; text is readable and correctly
   inset; both light AND dark themes look right where the change can show in either.
+  **`tests/devices/capture.sh <id>` automates this** - it drives the full first-run flow + core
+  surfaces at a target device's real geometry and saves labeled screenshots into
+  `tests/devices/<id>/screenshots/auto/`, so regenerating the visual proof is one command. It does not
+  replace looking - you still open the frames - but it makes the capture reproducible and PR-reviewable.
 - **Drive it like a user.** Send real keypresses (D-pad: `input keyevent 19/20/21/22/23`,
   BACK `4`) through the actual flow and screenshot at each step - fresh launch, first arrow,
   each surface, the specific control you changed. Do not trust `uiautomator` focus dumps
@@ -74,7 +78,15 @@ at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-
   `dpadAutoFocus(requester)`); (2) DOWN from the focused Back button CLEARED focus instead of entering
   the scrolling content (Compose can't cross container boundaries) - fixed with an explicit
   `topRowFocus.requestFocus()` bridge (mirror of the UP-from-top -> Back routing). Both verified by
-  screenshot at 240x320. Restore with `wm size reset; wm density reset`.
+  screenshot at 240x320. Restore with `wm size reset; wm density reset`. **Sweep EVERY target density
+  in one shot** with `tests/small_screen/run_matrix.sh` (runs the small-screen auditor at each geometry
+  in the `tests/devices/` matrix); a change must be green at all of them, not just one.
+- **The auditors are only trustworthy because of hard-won robustness - keep it.** `PKG` auto-detects
+  the installed build (a hardcoded `app.vela` vs the `app.vela.debug` sideload made `launch_fresh`
+  launch a NON-existent package and silently drive whatever app was foreground - the root of most
+  "flakiness"); `ui_dump` retries when uiautomator returns only the root node mid-animation;
+  `launch_fresh` verifies the app reached the foreground; `warm_up` clears cold-start. If an auditor
+  result looks wrong, suspect these before the app - but VERIFY against a screenshot either way.
 - **Auditors must FAIL, never silently SKIP/PASS, when a core surface can't be reached or focused.**
   A SKIP that doesn't count as a failure is a FALSE PASS: `audit_smallscreen.sh` SKIPped Settings (a
   no-network surface that must always open) and still printed PASS, hiding that Settings was

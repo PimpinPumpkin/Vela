@@ -350,6 +350,33 @@ drawn on the Box whose edge is exactly where the first typed letter starts, so w
 inset the 2 dp stroke cut straight through that letter on every keypad-phone search.
 (Ported from upstream 3b7b7bd.)
 
+## Feature-phone screen sizes (adaptive density + device matrix)
+
+D-pad-first means feature-phone-first, and those screens are TINY (target matrix so far: Kyocera
+e4810, TCL Flip 2, Sonim XP3 - all 240x320 portrait - and the Sonim X320 at 480x854/320dpi, ~240dp
+logical). "Works with a D-pad" has to hold at those sizes, not just a dev phone's panel.
+
+- **`app/ui/AdaptiveDensity.kt`** - the app checks its screen at launch and scales its OWN density so
+  it always has >= `MIN_WIDTH_DP` (360) of logical width. Standard Material layouts assume ~360dp; a
+  240px feature phone is far below that, so controls crowd and clip. `AdaptiveDensity.wrap` overrides
+  the effective `densityDpi` in `attachBaseContext` (chained with `AppLocale.wrap` in both
+  `MainActivity` and `VelaApp`), fixing clipping across EVERY screen at once instead of per-screen. It
+  ONLY shrinks small screens (>= 360dp wide = byte-for-byte no-op) and works on logical dp, so it
+  generalizes across pixel resolutions. Cost: physically smaller text on a tiny panel, so `MIN_WIDTH_DP`
+  is tuned VISUALLY. Verified: all three category chips fit at 240x320 (before: one), and the same at
+  480x854@320.
+- **Two small-screen focus bugs found + fixed on Settings** (both verified by screenshot at 240x320):
+  the weak `rememberDpadAutoFocus` left the Back button UNfocused on open (fixed with robust
+  `dpadAutoFocus(requester)`, which re-requests until `onFocusEvent` confirms focus landed); and DOWN
+  from the focused Back button CLEARED focus instead of entering the scrolling content (Compose can't
+  cross the TopAppBar->Column boundary) - fixed with an explicit `topRowFocus.requestFocus()` bridge,
+  the mirror of the existing UP-from-top->Back routing.
+- **`tests/devices/`** - a device matrix (`README.md`) with per-phone `findings.md` + committed
+  screenshots. `tests/devices/capture.sh <id>` auto-drives the full first-run flow + core surfaces at a
+  device's real geometry and saves labeled screenshots; `tests/small_screen/run_matrix.sh` runs the
+  small-screen auditor at every target geometry. The auditors auto-detect the installed build, retry a
+  raced uiautomator dump, verify the app reached the foreground, and warm up cold starts.
+
 ## Everything checked, file by file
 
 | Surface | Verdict |

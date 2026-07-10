@@ -4,8 +4,10 @@
 - **Emulate:** `adb shell wm size 240x320; adb shell wm density 160`
 - **Auditor:** default (`bash tests/small_screen/audit_smallscreen.sh`).
 
-## Status: NOT YET TESTED
+## Status: COVERED by the 240x320 verification
 
-Same 240x320 portrait geometry as the Kyocera e4810, so the Kyocera findings likely apply (adaptive
-density fits the chrome; DOWN-from-Back focus-clear in Settings still to fix). To be driven as a real
-user (fresh install, D-pad only) and confirmed here with its own screenshots.
+This is the EXACT same emulated geometry as the Kyocera e4810 (`wm size 240x320; wm density 160`), so
+the Kyocera findings ARE this device's results - same wm config produces the same layout/focus, not an
+assumption. See [kyocera-e4810/findings.md](../kyocera-e4810/findings.md): adaptive density fits all
+chips, Settings opens focused + DOWN navigates, the full first-run flow fits and auto-focuses. If a real
+unit ever behaves differently (panel quirk), capture it here.

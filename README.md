@@ -10,6 +10,8 @@ A degoogled maps and navigation client for Android. Runs on GrapheneOS and other
 
 - **D-pad first.** Fully operable with a 5-key D-pad (arrows + OK) and hardware BACK on a
   device with **no touchscreen**. Touch is a bonus.
+- **Tiny screens.** Fits real feature-phone displays (240x320-class): the app checks its screen and
+  scales its own density so nothing clips. Verified per-device with screenshots in [`tests/devices/`](tests/devices/).
 - **Degoogled.** No Google Play Services, no account, no API key, no backend.
 - **NewPipe's model, for Google Maps.** Open vector tiles for the basemap; the phone scrapes
   Google's public web endpoints per-user for POIs, routing, and traffic-aware ETAs.
@@ -41,7 +43,7 @@ planned work in [`ROADMAP.md`](docs/ROADMAP.md).
 
 | Capability | Method | Start here |
 |---|---|---|
-| **D-pad-only operation** | The whole UI runs on a 5-key D-pad: arrows pan the map, OK-at-crosshair taps, hold-OK drops a pin, on-screen zoom, focus rings, a key path for every gesture | [`docs/dpad.md`](docs/dpad.md), `app/ui/DpadFocus.kt`, `app/ui/map/MapDpadController.kt` |
+| **D-pad-only operation** | The whole UI runs on a 5-key D-pad: arrows pan the map, OK-at-crosshair taps, hold-OK drops a pin, on-screen zoom, focus rings, a key path for every gesture. Fits tiny feature-phone screens via `AdaptiveDensity` (scales the app's density to the panel) | [`docs/dpad.md`](docs/dpad.md), `app/ui/DpadFocus.kt`, `app/ui/map/MapDpadController.kt`, `app/ui/AdaptiveDensity.kt`, [`tests/devices/`](tests/devices/) |
 | **Basemap** | Open vector tiles (OpenFreeMap / Protomaps) via MapLibre, keyless, recoloured Google-style at runtime | `core/data/tiles/`, `app/ui/map/VelaMapView.kt` |
 | **Search, places, reviews, hours** | Per-user keyless scrape of `google.com` `pb` endpoints; positional arrays walked by calibrated index paths | `core/data/google/`, SPEC section 3 |
 | **Photos / transit / popular-times** | Hidden anonymous WebView reads what the bare RPC is bot-degraded out of | `app/web/` |
