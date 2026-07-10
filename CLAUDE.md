@@ -524,6 +524,9 @@ Defaults that make the safe path the easy one:
   primary `CircleShape` pill (onPrimary text); the dismiss stays a plain text button, quieted further
   to `onSurfaceVariant` when `dismissLowEmphasis`. One change in `VelaDialog`, so EVERY dialog (voice,
   location, diagnostics consent, trip consent, …) gets the pill - don't hand-roll per-dialog buttons.
+  The map's UpdateCard uses the same treatment (2026-07-10): its Update action is a filled primary
+  CircleShape `Button` beside a plain "Not now" text button, so the action reads by shape and fill,
+  not text colour alone (colour-blind safe). Give any future card's primary action the same pill.
   The button row is a **`FlowRow`** (not `Row`): when the two labels don't fit on one line (a long
   "Download Vela voice" pill beside "Use system voice", or a small/feature-phone screen) the confirm
   pill wraps to its OWN full-width line instead of being squeezed and breaking mid-word. Both buttons
