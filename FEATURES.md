@@ -187,12 +187,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   and Settings says why. Keyboard-only dictation (Sayboard, FUTO Keyboard) doesn't trigger it since
   apps can't invoke a keyboard's mic; those users keep using the keyboard mic, and a later build
   adds an on-device model so voice search works with no third-party app at all.
-- ✅ **Location asked with a reason, in onboarding (2026-07-10).** The location permission used to
-  pop the instant the map first loaded, a bare system dialog with no context. It now comes as the
-  first onboarding step: a plain-words screen ("Vela uses your location to center the map and route
-  from you; it stays on your phone; you can say no and still search and browse") before Android's
-  dialog. Declining leaves search and browse working, and the locate button re-asks when you tap it.
-  The rationale screen is a reusable component the voice-search mic will share.
+- ✅ **Location asked at "Get started", not on the map (2026-07-10).** The location permission used
+  to pop the instant the map first loaded, out of nowhere. It now fires as soon as you tap Get
+  started on the welcome screen: the welcome screen already says what Vela is, so a maps app asking
+  for location right there needs no second explanation (an earlier build put a separate rationale
+  screen in between; that was one tap too many). Declining leaves search and browse working, and the
+  locate button re-asks when you tap it; granting only approximate location works too (the map
+  centres on a coarse fix).
 - ✅ **Honest voice-setup choice (2026-07-10).** The first-run voice offer used to be download-or-
   dismiss; now it's a real two-way choice with the recommendation shown by emphasis, not by hiding
   the alternative: a prominent "Download Vela voice" and a quiet, still-functional "Use existing

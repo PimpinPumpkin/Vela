@@ -308,9 +308,6 @@
     <string name="mapscreen_no">Нет</string>
     <string name="mapscreen_switch">Переключить</string>
     <string name="root_not_now">Не сейчас</string>
-    <string name="root_location_title">Показывать ваше местоположение</string>
-    <string name="root_location_body">Vela использует ваше местоположение, чтобы центрировать карту на вас и строить маршрут от вашего положения. Оно остаётся на телефоне и никуда не отправляется. Можно отказаться и всё равно искать и просматривать; для маршрута просто задайте начальную точку вручную.</string>
-    <string name="root_location_allow">Разрешить местоположение</string>
     <string name="root_voice_title">Голос навигации</string>
     <string name="root_voice_body_intro">Собственный голос Vela работает полностью на телефоне: естественные подсказки, без аккаунта и лишних приложений. Рекомендуется, разовая загрузка ~%1$d МБ.</string>
     <string name="root_voice_body_system">Не хотите? Используйте голос, уже установленный на телефоне.</string>
