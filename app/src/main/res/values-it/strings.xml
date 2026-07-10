@@ -311,9 +311,9 @@
     <string name="root_location_body">Vela usa la tua posizione per centrare la mappa su di te e calcolare il percorso da dove sei. Resta sul telefono e non viene mai caricata. Puoi dire di no e continuare a cercare ed esplorare; imposta a mano il punto di partenza quando vuoi le indicazioni.</string>
     <string name="root_location_allow">Consenti posizione</string>
     <string name="root_voice_title">Voce per la navigazione</string>
-    <string name="root_voice_body_intro">Vela ha una voce di alta qualità che funziona interamente sul telefono: le indicazioni vocali più naturali, senza account né app aggiuntive. Consigliata. È un download una tantum di ~%1$d MB (consigliato il Wi-Fi).</string>
-    <string name="root_voice_body_system">Preferisci di no? Puoi invece usare una voce di sintesi vocale già installata sul telefono.</string>
-    <string name="root_voice_body_outro">Puoi modificarlo in qualsiasi momento in Impostazioni → Voce.</string>
+    <string name="root_voice_body_intro">La voce di Vela funziona interamente sul telefono: indicazioni naturali, senza account né app extra. Consigliata, un download una tantum di ~%1$d MB.</string>
+    <string name="root_voice_body_system">Preferisci di no? Usa una voce già sul telefono.</string>
+    <string name="root_voice_body_outro">Cambiala quando vuoi in Impostazioni → Voce.</string>
     <string name="root_voice_download">Scarica voce Vela</string>
     <string name="root_voice_use_system">Usa voce di sistema</string>
     <string name="root_offline_title">Mappe offline</string>
