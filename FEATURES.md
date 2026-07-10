@@ -212,6 +212,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
   only picking a voice in the library (or the Test button) plays one.
+- ✅ **The route chooser swipes out of the way (2026-07-11).** Swipe the chooser down, from its
+  body or its handle, to shrink it to a slim bar with a Start button and see the whole route on
+  the map; it follows your finger and rides the throw, like the place card. Swipe or tap to bring
+  it back.
 - ✅ **Arrival time front and center (2026-07-10).** The directions panel's "Arrive at 5:30 PM"
   is bigger and bolder, and the redundant "current traffic" note under it is gone (the route ETAs
   already show traffic). The faster-route offer during navigation joined the tidy notification
