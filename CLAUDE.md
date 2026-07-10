@@ -667,8 +667,11 @@ Defaults that make the safe path the easy one:
   Degoogled constraints). (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
   the 10 translated languages (fr de es it pt nl ru pl sv uk), referenced via `stringResource`/`getString`.
-  The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale, **no-op when following
-  the system** so the default path is untouched) applied in **both** `MainActivity.attachBaseContext` (Compose
+  The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale; when FOLLOWING
+  the system it also RESTORES `Locale.setDefault` to the captured device locale - the override is
+  process-global and survived the recreate, so switching Russian back to English left
+  `Locale.getDefault()`-driven surfaces (parking/trip dates via SimpleDateFormat, `effective()`,
+  the scrape `hl=`) stuck in Russian until the process died; fixed 2026-07-10) applied in **both** `MainActivity.attachBaseContext` (Compose
   UI) and `VelaApp.attachBaseContext` (ViewModel/notification `getString`); changing the language calls
   `recreate()`. (3) **Google POI content** - the scrape's `hl=en` is rewritten to the app/system language
   at request time (`GoogleMapsDataSource.localized()`, no-op for English) so categories/hours/status/price
@@ -692,6 +695,10 @@ Defaults that make the safe path the easy one:
   they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA - never
   translated.** Adding a user-facing string means: add it to `values/strings.xml` AND all `values-<lang>/`,
   and match the `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
+  **No em dashes in translations** (swept 2026-07-10): the 10 locale files carried 100+ of them as
+  clause glue (plus German/Swedish spaced en dashes used the same way) - they read as machine-
+  translation tells. Use a comma, a colon, or rephrase; the one legitimate dash is the numeric
+  range in `place_usually_range`. Same rule as the rest of the repo.
 
 - **README voice demo (`docs/voice-demo.mp4`, 2026-07-10).** A ~5.5 s clip of the ACTUAL nav
   voice linked from README's "What you get": generated OFF-DEVICE with the same engine + model +
