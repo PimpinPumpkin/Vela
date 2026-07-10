@@ -7,8 +7,29 @@ name: CI
 on:
   push:
     branches: [ main ]
+    # Docs-only pushes don't build or cut a nightly - nothing in the APK changed, and
+    # every push was minting a release (a dozen doc commits on 2026-07-09 became a dozen
+    # identical nightlies). A push that MIXES docs and code still builds: paths-ignore
+    # only skips when every changed file matches. Escape hatch either way: put
+    # "[skip ci]" in the commit subject to suppress a run, or touch any code file to
+    # force one. Keep this list to things that provably never reach the APK - workflow
+    # files are NOT ignored on purpose (they change the build itself).
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'fdroid/metadata/**'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'fdroid/metadata/**'
+      - '.github/ISSUE_TEMPLATE/**'
 
 # `contents: write` is needed to publish releases. The publish step is gated to
 # push-to-main, so PRs (and fork PRs, whose token is read-only) never touch them.
