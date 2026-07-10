@@ -201,6 +201,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   place has an X on its row to remove just that entry (Clear recents still wipes the lot). A real
   place shows its street address in smaller text under the name, and the Home/Work rows show the
   saved address too. The three-dot menus on Home/Work match the row text color now.
+- ✅ **Warns when you'd arrive near closing time (2026-07-10).** Starting navigation to a place
+  that closes within an hour of your arrival (or before you'd get there) shows a heads-up card
+  and speaks it: "closes at 9:00 PM and you arrive around 8:40 PM". Reads the closing time from
+  the place's own status in any app language; says nothing when the place is closed already or
+  has no hours.
 - ✅ **Approximate location explains itself, and the blob actually shows (2026-07-10).** Granting
   approximate (at setup or from the locate button) now gets one plain dialog saying what it means -
   wide circle for a dot, no turn-by-turn - with an Allow-precise shortcut that goes straight into
