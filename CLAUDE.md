@@ -466,6 +466,14 @@ Defaults that make the safe path the easy one:
   kept (it's still the reusable pre-permission screen the **PR3 voice-search mic** uses at
   point-of-use for RECORD_AUDIO) - it's just no longer used for location. Don't re-request location
   straight from the map.
+- **Vague fixes draw an ACCURACY HALO (2026-07-10).** `MapUiState.myAccuracyM` carries the live
+  fix's reported accuracy (null for sim/unknown); `applyData` draws a translucent meter-true disc
+  (`ACCURACY_LAYER`, a 64-point polygon from `accuracyCircle`, fill #4285F4 at 0.12) under the dot
+  when accuracy > `ACCURACY_HALO_MIN_M` (100 m) and NOT navigating - so an approximate-only
+  permission or a weak network fix reads as "somewhere in this blob" instead of a falsely precise
+  dot, and ordinary GPS (3-30 m) stays a plain dot. Identity-gated like the other applyData uploads.
+  Render verified on-device via a temporary forced-1500 m build (a real coarse fix is
+  interval-throttled by Android, too slow to wait out in a test loop).
 - **Onboarding is deliberately SHORT - three steps, no more (declutter 2026-07-10).** Welcome →
   location → voice, then the map. The old **offline-maps** onboarding prompt and the **diagnostics/
   trip-recording** onboarding prompt were CUT (they made a long wall of asks a first-run user has no
