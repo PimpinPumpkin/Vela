@@ -1420,7 +1420,12 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
+        // The locate + parking buttons yield to EVERY bottom surface, the route chooser and the
+        // step list included - a search from an open chooser could null the selection while
+        // directionsOpen stayed true, and both buttons drew on top of the panel.
+        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null &&
+            !resultsShown && !state.directionsOpen && !state.showSteps
+        ) {
             // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
             // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
