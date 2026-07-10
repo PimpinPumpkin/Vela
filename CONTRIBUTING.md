@@ -3,7 +3,7 @@
 Thanks for wanting to help. Vela is a degoogled maps client with a small surface and
 strong opinions; this page tells you what a good contribution looks like so your PR
 lands on the first try. The deeper background lives in [SPEC.md](docs/SPEC.md) (how it's
-built and why) and [CLAUDE.md](CLAUDE.md) (build rules and gotchas, useful to humans
+built and why) and [AGENTS.md](AGENTS.md) (build rules and gotchas, useful to humans
 too).
 
 ## Ground rules, in order of importance
@@ -18,7 +18,7 @@ too).
    NewPipeExtractor pattern); `:app` is the Compose UI. MapLibre and Android UI types
    never leak into `:core`. The one seam between them is `core/data/MapDataSource`.
 4. **Docs move with code, in the same commit.** When behaviour changes, update
-   `README.md`, `FEATURES.md`, `SPEC.md` and `CLAUDE.md` as the change needs. Stale
+   `README.md`, `docs/FEATURES.md`, `docs/SPEC.md` and `AGENTS.md` as the change needs. Stale
    docs are treated as a bug. If a change genuinely needs no doc edit, say why in the
    commit message.
 5. **Every user-facing string ships in all 11 languages.** Add it to
@@ -29,9 +29,10 @@ too).
 
 ## Practical rules you will hit quickly
 
-- **Test on a release build.** Debug builds visibly lag during map scroll and
-  navigation; conclusions drawn from them are wrong. `./gradlew :app:assembleRelease`
-  and sideload. `assembleDebug` is fine as a compile check only.
+- **The `debug` build is smooth enough to test on.** It's now R8-minified *and*
+  debuggable (see AGENTS.md "Build variants"), so it no longer lags the map the way a
+  stock debug build did - the old "always ship release" caveat is gone. Use the
+  non-debuggable `staging` variant only when you need true release-perf numbers.
 - **Pure logic gets unit tests in `:core`.** The nav engine, parsers, polyline codec
   and ranking logic are all plain JVM code with tests (`./gradlew :core:test`). If
   you add logic that can live there, put it there and test it.

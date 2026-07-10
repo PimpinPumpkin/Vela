@@ -4,7 +4,7 @@
 > load-bearing decision** - the target to rebuild against if the codebase is ever
 > lost or reimplemented. Paired with [`FEATURES.md`](FEATURES.md) (the exhaustive
 > feature catalogue), [`README.md`](../README.md) (the public overview + calibration
-> walk-through) and [`CLAUDE.md`](../CLAUDE.md) (build rules + gotchas). When behaviour,
+> walk-through) and [`AGENTS.md`](../AGENTS.md) (build rules + gotchas). When behaviour,
 > calibration, or architecture changes, **update this file in the same commit.**
 
 Last reviewed: 2026-07-08.

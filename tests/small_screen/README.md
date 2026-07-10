@@ -35,7 +35,7 @@ cd tests/small_screen
 
 ## Relationship to the app rules
 
-The structural half lives in the D-pad suite and CLAUDE.md: `VelaDialog`/`VelaMenu` cap their height
+The structural half lives in the D-pad suite and AGENTS.md: `VelaDialog`/`VelaMenu` cap their height
 and scroll, and `../dpad/audit_static.sh` fails any raw `Dialog` whose content has no
 scroll container and isn't full-screen. This suite is the on-device proof that it actually holds on a
 feature-phone display. Run it after any change to a dialog, menu, or a screen's layout.

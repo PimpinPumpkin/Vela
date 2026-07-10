@@ -27,6 +27,31 @@ messages, UI strings, or script output. Plain text only. Also no em-dashes; writ
 plain human voice (commit subjects are the user-facing changelog). Use words like `PASS`/
 `FAIL`, not pictographs.
 
+## Visual verification (HARD RULE, NO EXCEPTIONS)
+
+**Anything a user can see MUST be verified VISUALLY, by looking at an actual on-device
+screenshot - EVERYTHING, every time. No exceptions.** A passing (or failing) test script is
+NEVER the final word on UX. This is not optional and not satisfied by audits alone.
+
+- **Scripts are necessary but NOT sufficient.** The `tests/dpad` / `tests/small_screen`
+  auditors race the app's focus-recovery timing: identical fresh runs produce DIFFERENT
+  failures (search bar focused, then a FAB focused, then a focus-loss that vanishes next run),
+  and they report "could not open X" when the surface opens fine by hand. A red script is a
+  lead to investigate, not a verdict; a green script is not proof the UI is right. Never
+  conclude "it works" or "it's broken" from a script alone.
+- **Look at the pixels.** For every UI change or surface touched: `adb exec-out screencap -p`
+  (or `adb shell su -c screencap` on a locked/secure screen), pull it, and OPEN it. Confirm
+  with your eyes: the change actually rendered; the focus ring is present and on the right
+  element; nothing is clipped, overlapping, or off-screen; text is readable and correctly
+  inset; both light AND dark themes look right where the change can show in either.
+- **Drive it like a user.** Send real keypresses (D-pad: `input keyevent 19/20/21/22/23`,
+  BACK `4`) through the actual flow and screenshot at each step - fresh launch, first arrow,
+  each surface, the specific control you changed. Do not trust `uiautomator` focus dumps
+  alone (a single snapshot routinely misses the focused node while auto-focus retries across
+  frames) - the screenshot is the source of truth.
+- **No UI change lands on the word of a script.** If you have not looked at a screenshot of
+  the affected surface behaving correctly, the change is not verified. Ship the frames.
+
 ## Porting from upstream (hard rules)
 
 This is a fork of PimpinPumpkin/Vela and periodically ports fixes from it. Two
@@ -40,7 +65,9 @@ non-negotiable rules for any ported commit:
   it, so a port can silently regress it. After each ported change: compile, run
   `tests/dpad/audit_static.sh` (host-side) and the `tests/dead_code` gate, and - for anything
   touching UI - the on-device `tests/dpad/run_all.sh` + `tests/dpad/audit_dynamic.sh` and
-  `tests/small_screen/run_all.sh`. A port that regresses D-pad or small-screen operability
+  `tests/small_screen/run_all.sh`. Those scripts are the START, not the proof: then VERIFY
+  VISUALLY with screenshots per the "Visual verification" rule above - drive the ported
+  surface by hand and look at it. A port that regresses D-pad or small-screen operability
   does not land.
 
 ## Build
@@ -479,7 +506,7 @@ non-negotiable rules for any ported commit:
     voice **HFC Female** (`en_US-hfc_female-medium`), speaker 14 (libritts only), speed **0.8×** -
     matched in the compiled `Calibration.DEFAULT` + `VelaPiper.DEFAULT_VOICE_ID`.
   - NB the neural voice lengthens pauses at periods by **splitting the utterance on sentence boundaries
-    and splicing silence in-app** (`PiperSynth.splitSentences`/`joinWithGaps`) - sherpa-onnx's
+    and splicing silence in-app** (`SpeechText.splitSentences` in `:core` + `PiperSynth.concat`) - sherpa-onnx's
     `silenceScale` config is a measured no-op on the Piper/VITS path, don't reach for it.
   - **Every fragment gets terminal punctuation before synthesis (`PiperSynth`):** a bare-ending fragment
     ("turn left") gives the model no final prosody contour, so it trails off and swallows the last
