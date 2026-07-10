@@ -197,8 +197,10 @@ private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onUseExisting: () -
         onDismiss = onUseExisting,
         dismissLowEmphasis = true,
         text = {
+            // Two short paragraphs: the pitch, then the alternative + where to change it. The blank
+            // line keeps the block from reading as one dense wall on a small screen.
             Text(
-                stringResource(R.string.root_voice_body_intro, sizeMb) + " " +
+                stringResource(R.string.root_voice_body_intro, sizeMb) + "\n\n" +
                     stringResource(R.string.root_voice_body_system) + " " +
                     stringResource(R.string.root_voice_body_outro),
             )
