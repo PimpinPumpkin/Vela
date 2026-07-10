@@ -334,9 +334,9 @@
     <string name="root_location_body">Vela uses your location to center the map on you and to route from where you are. It stays on your phone and is never uploaded. You can say no and still search and browse; just set a starting point by hand when you want directions.</string>
     <string name="root_location_allow">Allow location</string>
     <string name="root_voice_title">Spoken navigation voice</string>
-    <string name="root_voice_body_intro">Vela has its own high-quality voice that runs entirely on your phone, the most natural spoken directions, with no account or extra app. Recommended. It\'s a one-time ~%1$d MB download (wifi recommended).</string>
-    <string name="root_voice_body_system">Prefer not to? You can use a text-to-speech voice already installed on your phone instead.</string>
-    <string name="root_voice_body_outro">You can change this any time in Settings → Voice.</string>
+    <string name="root_voice_body_intro">Vela\'s own voice runs entirely on your phone: natural spoken directions, no account, no extra app. Recommended, a one-time ~%1$d MB download.</string>
+    <string name="root_voice_body_system">Prefer not to? Use a voice already on your phone.</string>
+    <string name="root_voice_body_outro">Change it any time in Settings → Voice.</string>
     <string name="root_voice_download">Download Vela voice</string>
     <string name="root_voice_use_system">Use system voice</string>
     <string name="root_offline_title">Offline maps</string>
