@@ -199,7 +199,7 @@ class VoiceGuide @Inject constructor(
 
     /** Speak a sample so the user can confirm the engine actually makes sound (the
      *  only true test on their hardware — we can't hear it for them). */
-    fun test() = speak(app.vela.core.i18n.NavStringsRegistry.current().voiceTest(), interrupt = true)
+    fun test() = speak(app.vela.core.i18n.NavStringsRegistry.current().voiceTest(), interrupt = true, ignoreMute = true)
 
     override fun onInit(status: Int) {
         val t = tts
@@ -270,9 +270,12 @@ class VoiceGuide @Inject constructor(
         return vela + installed
     }
 
-    /** Speak [text]; [interrupt] flushes the queue (use for the imminent turn). */
-    fun speak(text: String, interrupt: Boolean = false) {
-        if (muted) return
+    /** Speak [text]; [interrupt] flushes the queue (use for the imminent turn). [ignoreMute] is for
+     *  EXPLICIT speak-this-now actions (the Test button, the voice playground): a user who taps
+     *  "speak" wants sound even while spoken directions are toggled off - the persisted mute
+     *  silently eating those taps read as "sometimes it plays, sometimes not" (user 2026-07-10). */
+    fun speak(text: String, interrupt: Boolean = false, ignoreMute: Boolean = false) {
+        if (muted && !ignoreMute) return
         if (!ready) {
             pending.addLast(text to interrupt)
             return
