@@ -209,9 +209,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   your finger and, on release, it coasts on the fling to whichever size is closest - no more
   stepping between sizes in fixed hops.
 - ✅ **Search results are Google-style red markers with real glyphs (2026-07-11).** Searching
-  "restaurants" pins the map with named results instead of anonymous pins: every result is red
-  but keeps its category glyph, rated restaurants get a wide speech-bubble marker with the star
-  rating baked in, and in a dense downtown the lesser results collapse into little red dots that
+  "restaurants" pins the map with named results instead of anonymous pins: every result keeps
+  its grey teardrop and category glyph with the circle turned red, rated restaurants get a wide
+  speech-bubble marker with the rating beside the circled glyph, and in a dense downtown the lesser results collapse into little red dots that
   expand back into pins as you zoom, so the view never turns into a pile of overlapping icons.
   Result labels stay plain ink (only ambient POI labels take the category tint, like Google).
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
