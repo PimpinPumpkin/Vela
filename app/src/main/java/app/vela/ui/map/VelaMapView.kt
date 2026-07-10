@@ -197,6 +197,7 @@ fun VelaMapView(
     navMode: Boolean,
     navFollowing: Boolean = true,
     onNavPanned: () -> Unit = {},
+    onUserPan: () -> Unit = {},
     onScaleChanged: (metersPerPixel: Double) -> Unit = {},
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
@@ -247,6 +248,7 @@ fun VelaMapView(
     val longPress = rememberUpdatedState(onMapLongPress)
     val addrLabelTap = rememberUpdatedState(onAddressLabelTap)
     val navPanned = rememberUpdatedState(onNavPanned)
+    val userPan = rememberUpdatedState(onUserPan)
     val scaleChanged = rememberUpdatedState(onScaleChanged)
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
@@ -752,6 +754,9 @@ fun VelaMapView(
                 map.addOnCameraMoveStartedListener { reason ->
                     gestureMove[0] = reason ==
                         MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE
+                    // The user grabbing the map is a signal in its own right — MapScreen uses it
+                    // to drop the results sheet down out of the way (Google's behaviour).
+                    if (gestureMove[0]) userPan.value()
                 }
                 // Tell a PAN from a PINCH during nav (the move-started reason can't): a pan
                 // detaches the follow-camera so you can look around (the Re-center button
