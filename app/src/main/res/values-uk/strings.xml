@@ -69,7 +69,7 @@
     <string name="settings_hide_external_links">Приховати вебсайт і зовнішні посилання</string>
     <string name="settings_hide_external_links_hint">Увімк. = на сторінках місць немає кнопок «Сайт», Street View та «Забронювати / Замовити» (довільні зовнішні сайти не відкриваються).</string>
     <string name="settings_offline">Офлайн</string>
-    <string name="settings_offline_hint">Щоб користуватися картою без зв’язку, потрібні дві речі — ПЛИТКИ карти, які ви бачите, і ДОРОЖНЯ МЕРЕЖА, яка прокладає маршрут. Збереження ділянки карти завантажує обидві для цього місця; список регіонів нижче додає дорожню мережу для будь-де, куди ви прямуєте.</string>
+    <string name="settings_offline_hint">Завантажте область, щоб зберегти її карту та маршрути на телефоні для офлайн-використання.</string>
     <string name="settings_offline_map_area">Ділянка карти</string>
     <string name="settings_offline_download_viewport">Завантажити ділянку, яку ви переглядаєте</string>
     <string name="settings_offline_download_viewport_hint">Зберігає відкриті плитки для ділянки карти, яку ви востаннє бачили на екрані — та регіон маршрутизації навколо неї — щоб згодом усе відображалося й прокладалося без мережі. Пошук усе ще потребує з’єднання.</string>

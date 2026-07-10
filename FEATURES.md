@@ -209,9 +209,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   stays a plain text button, so the recommended action reads at a glance. Long labels wrap the pill
   to its own line instead of breaking mid-word, and it all still works by D-pad on a feature phone.
 - ✅ **Settings decluttered (2026-07-10).** The Settings page was one very long scroll. The rarely-
-  touched toggles now live in two collapsed groups at the bottom: **Advanced** (3D buildings, hide
-  adult categories, hide website/links, traffic-light guidance) and **Developer** (simulate driving,
-  simulate location, save trips — the demo/testing tools, each labelled "turn off for real use").
+  touched toggles now live in two collapsed groups at the bottom: **Advanced** (3D buildings, traffic-
+  light guidance) and **Developer** (simulate driving, simulate location, save trips — the demo/testing
+  tools, each labelled "turn off for real use"). The content filters (hide adult categories, hide
+  website & external links) sit with the other place-content toggles under Place pages.
   Everything else stays one tap away. **Offline moved up** near the top since you reach it often.
   **Language** is now a simple "Follow system language" switch that only shows the full language list
   when you turn it off. And the **voice library is its own screen** now (a "Browse voices" button in

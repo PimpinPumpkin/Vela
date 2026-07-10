@@ -69,7 +69,7 @@
     <string name="settings_hide_external_links">Ocultar site e links externos</string>
     <string name="settings_hide_external_links_hint">Ativado = as páginas de locais não mostram os botões Site, Street View ou Reservar / Pedir (não abre sites externos arbitrários).</string>
     <string name="settings_offline">Offline</string>
-    <string name="settings_offline_hint">Usar o mapa sem sinal requer duas coisas — os MOSAICOS do mapa que vê e a REDE VIÁRIA que traça os percursos. Guardar uma área do mapa obtém ambos para esse local; a lista de regiões abaixo adiciona a rede viária para onde estiver a viajar.</string>
+    <string name="settings_offline_hint">Transfira uma área para manter o mapa e as direções no telemóvel para uso offline.</string>
     <string name="settings_offline_map_area">Área do mapa</string>
     <string name="settings_offline_download_viewport">Transferir a área que está a ver</string>
     <string name="settings_offline_download_viewport_hint">Guarda os mosaicos abertos da área do mapa que teve no ecrã por último — e a região de percursos à sua volta — para que renderize e navegue mais tarde sem rede. A pesquisa continua a precisar de ligação.</string>

@@ -69,7 +69,7 @@
     <string name="settings_hide_external_links">Скрывать веб-сайт и внешние ссылки</string>
     <string name="settings_hide_external_links_hint">Вкл. = на страницах мест нет кнопок «Сайт», Street View и «Забронировать / Заказать» (произвольные внешние сайты не открываются).</string>
     <string name="settings_offline">Офлайн</string>
-    <string name="settings_offline_hint">Для работы карты без сигнала нужны две вещи — ТАЙЛЫ карты, которые вы видите, и ДОРОЖНАЯ СЕТЬ, которая строит маршруты. Сохранение области карты загружает и то, и другое для этого места; список регионов ниже добавляет дорожную сеть для любого места, куда вы едете.</string>
+    <string name="settings_offline_hint">Загрузите область, чтобы сохранить её карту и маршруты на телефоне для работы офлайн.</string>
     <string name="settings_offline_map_area">Область карты</string>
     <string name="settings_offline_download_viewport">Загрузить видимую область</string>
     <string name="settings_offline_download_viewport_hint">Сохраняет открытые тайлы для области карты, которая последней была на экране, — и дорожный регион вокруг неё — чтобы позже она отображалась и вела навигацию без сети. Для поиска всё ещё нужно подключение.</string>

@@ -69,7 +69,7 @@
     <string name="settings_hide_external_links">Ocultar sitio web y enlaces externos</string>
     <string name="settings_hide_external_links_hint">Activado = las páginas de lugar no muestran los botones Sitio web, Street View ni Reservar / Pedir (no se abren sitios externos arbitrarios).</string>
     <string name="settings_offline">Sin conexión</string>
-    <string name="settings_offline_hint">Usar el mapa sin señal requiere dos cosas: los MOSAICOS del mapa que ves y la RED DE CARRETERAS que traza tus rutas. Guardar una zona del mapa obtiene ambas para ese punto; la lista de regiones de abajo añade la red de carreteras de cualquier lugar por el que viajes.</string>
+    <string name="settings_offline_hint">Descarga una zona para guardar su mapa y sus rutas en el teléfono y usarlos sin conexión.</string>
     <string name="settings_offline_map_area">Zona del mapa</string>
     <string name="settings_offline_download_viewport">Descargar la zona que estás viendo</string>
     <string name="settings_offline_download_viewport_hint">Guarda los mosaicos abiertos de la zona del mapa que tenías en pantalla por última vez, y la región de rutas que la rodea, para que se muestre y navegue más tarde sin red. La búsqueda sigue necesitando conexión.</string>
