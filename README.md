@@ -6,15 +6,13 @@
 > routing-graph, map-overlay and place-pack release assets, and the signed calibration
 > config channel. All credit and thanks to the original project.
 
-A degoogled maps and navigation client for Android, **fully operable with a 5-key
-D-pad (arrows + OK) and hardware BACK on a device with no touchscreen** such as a Qin
-F21 feature phone. Touch is a bonus, not a requirement. This is a D-pad-first fork of
-Vela.
+A degoogled maps and navigation client for Android. Runs on GrapheneOS and other no-GMS ROMs.
 
-The model is NewPipe's, applied to Google Maps: open vector tiles for the basemap, and
-the phone itself scraping Google's public web endpoints per-user (no backend, no API
-key) for POIs, routing, and traffic-aware ETAs. Runs on GrapheneOS and other no-GMS
-ROMs.
+- **D-pad first.** Fully operable with a 5-key D-pad (arrows + OK) and hardware BACK on a
+  device with **no touchscreen**, such as a Qin F21 feature phone. Touch is a bonus.
+- **Degoogled.** No Google Play Services, no account, no API key, no backend.
+- **NewPipe's model, for Google Maps.** Open vector tiles for the basemap; the phone scrapes
+  Google's public web endpoints per-user for POIs, routing, and traffic-aware ETAs.
 
 ## Install
 
@@ -57,16 +55,16 @@ What Vela does and the method behind each capability. The full feature list is i
 
 ## Why it scrapes Google
 
-A phone without Play Services cannot run Google Maps, and open datasets fall short on
-search, reviews, hours and live traffic. So Vela is a thin client that asks Google's
-public endpoints the way a logged-out browser does: from the user's own IP, no shared
-key, no server in the middle (NewPipe's legal footing). Google sees your IP, query and
-map area, but not a Google account or app key. The basemap stays open vector tiles, so
-the heaviest load never touches Google, and streets come from OpenStreetMap, so offline
-detail follows OSM coverage.
-
-**No backend, no account, no telemetry.** Saved places, history and settings never
-leave the device. Full per-endpoint breakdown in [`PRIVACY.md`](PRIVACY.md).
+- **The gap.** A phone without Play Services cannot run Google Maps, and open datasets fall
+  short on search, reviews, hours, and live traffic.
+- **The approach.** Vela is a thin client that asks Google's public endpoints the way a
+  logged-out browser does: from your own IP, no shared key, no server in between (NewPipe's
+  legal footing).
+- **What Google sees.** Your IP, query, and map area. Not a Google account, not an app key.
+- **Open where it can.** The basemap is open vector tiles and streets come from OpenStreetMap,
+  so the heaviest load never touches Google and offline detail follows OSM coverage.
+- **No backend, no account, no telemetry.** Saved places, history, and settings never leave
+  the device. Full per-endpoint breakdown in [`PRIVACY.md`](PRIVACY.md).
 
 > **Never embed a static Google API key.** That turns "a user scraped from their own IP"
 > (defensible, NewPipe's footing) into "the app shipped Google's credential" (not). The
@@ -110,14 +108,14 @@ or self-hosted source drops in the same way. Full module tree in [`AGENTS.md`](A
 ./gradlew :core:test
 ```
 
-Both build types run R8. Every push to `main` builds, tests and publishes a signed
-`v0.0.<run>` release (versionCode = the run number) with both APKs attached, which
-Obtainium and the in-app updater track. [`AGENTS.md`](AGENTS.md) has the build variants,
-signing secrets, the dead-code CI gate and the `MAPTILER_KEY` basemap switch.
+- Both build types run R8; the debug build stays debuggable and installs beside release.
+- Every push to `main` publishes a signed `v0.0.<run>` release with both APKs, tracked by
+  Obtainium and the in-app updater.
+- Out of the box the app uses the live Google source over the keyless OpenFreeMap basemap;
+  `MockMapDataSource` is the offline fallback, and reverse-geocode uses OpenStreetMap Nominatim.
 
-Out of the box the app uses the live Google source over the keyless OpenFreeMap basemap;
-`MockMapDataSource` is the offline fallback. Reverse-geocode uses OpenStreetMap
-Nominatim, not Google.
+See [`AGENTS.md`](AGENTS.md) for the build variants, signing secrets, the dead-code CI gate,
+and the `MAPTILER_KEY` basemap switch.
 
 ## Degoogled / GrapheneOS notes
 
