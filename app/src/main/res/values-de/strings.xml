@@ -362,7 +362,9 @@
     <string name="mapvm_routing_failed_reason">Routenberechnung fehlgeschlagen: %1$s</string>
     <string name="mapvm_no_transit_routes">Keine ÖPNV-Verbindungen gefunden</string>
     <string name="mapvm_trip_default_name">Fahrt</string>
-    <string name="mapvm_no_voice_engine">Keine Sprach-Engine installiert – fügen Sie unter Einstellungen → Stimme eine für gesprochene Ansagen hinzu</string>
+    <string name="mapvm_no_voice_engine">Keine Stimme für Sprachansagen installiert</string>
+    <string name="mapscreen_get_voice">Stimme holen</string>
+    <string name="settings_spoken_directions">Sprachansagen</string>
     <string name="mapvm_voice_lang_missing">Sprachansagen brauchen eine Stimme für %1$s — im Menü Einstellungen → Stimme hinzufügen</string>
     <string name="mapvm_no_track_to_replay">Diese Fahrt hat keine Spur zur Wiedergabe</string>
     <string name="mapvm_replaying">%1$s wird wiedergegeben (3×) …</string>

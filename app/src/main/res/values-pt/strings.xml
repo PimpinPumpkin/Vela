@@ -362,7 +362,9 @@
     <string name="mapvm_routing_failed_reason">Falha ao traçar o percurso: %1$s</string>
     <string name="mapvm_no_transit_routes">Nenhum percurso de transportes encontrado</string>
     <string name="mapvm_trip_default_name">Viagem</string>
-    <string name="mapvm_no_voice_engine">Nenhum motor de voz instalado — adicione um em Definições → Voz para indicações faladas</string>
+    <string name="mapvm_no_voice_engine">Nenhuma voz instalada para as instruções por voz</string>
+    <string name="mapscreen_get_voice">Adicionar uma voz</string>
+    <string name="settings_spoken_directions">Instruções por voz</string>
     <string name="mapvm_voice_lang_missing">As indicações por voz precisam de uma voz em %1$s — adicione uma em Definições → Voz</string>
     <string name="mapvm_no_track_to_replay">Essa viagem não tem traço para reproduzir</string>
     <string name="mapvm_replaying">A reproduzir %1$s (3×)…</string>

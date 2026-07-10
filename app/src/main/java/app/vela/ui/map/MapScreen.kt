@@ -193,6 +193,7 @@ private const val USE_MAPTILER = false
 fun MapScreen(
     vm: MapViewModel,
     onOpenSettings: () -> Unit,
+    onOpenVoiceSettings: () -> Unit = {},
 ) {
     val state by vm.state.collectAsStateWithLifecycle()
     val darkTheme = isAppInDarkTheme()
@@ -1534,67 +1535,78 @@ fun MapScreen(
                     .padding(16.dp),
             )
         }
-        state.status?.let { msg ->
-            InfoCard(
-                title = stringResource(R.string.mapscreen_heads_up),
-                body = msg,
-                actionLabel = stringResource(R.string.mapscreen_dismiss),
-                onAction = vm::clearStatus,
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    // During nav, drop below the turn card (which can grow lane + "then" rows).
-                    .padding(top = if (state.navigating) 260.dp else 96.dp, start = 12.dp, end = 12.dp),
-            )
-        }
-        // Pushed notices (signed calibration channel) + the voice-download progress card — on the
-        // bare map only, so they don't cover the nav banner / search / a place sheet. The download
-        // card makes the ONBOARDING one-tap voice install visible (it used to run invisibly after
-        // the prompt dismissed — progress only existed in Settings; user 2026-07-07).
+        // ONE notification area: the heads-up flash, downloads, the update card and pushed notices
+        // all STACK here (each with its own dismiss) instead of painting over each other — the old
+        // separate status card sat on the chips and could cover the update card. Position: just
+        // below the search bar + chips on the browse map; during nav just below the turn card,
+        // whose height VARIES (lanes, "then" row) — so it hangs off the banner's MEASURED bottom
+        // edge, the same navBannerBottomPx the compass uses, and slides with it.
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
-        if (state.selected == null && !searchOpen &&
-            (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null)
+        val bareMap = state.selected == null && !searchOpen
+        if (state.status != null ||
+            (bareMap && (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null))
         ) {
+            val bannerBottom = with(LocalDensity.current) { navBannerBottomPx.toDp() }
             Column(
                 Modifier
                     .align(Alignment.TopCenter)
-                    .statusBarsPadding()
-                    // Below the search bar AND the chips; during nav, below the turn card instead
-                    // (these used to hide entirely in nav, which made a mid-drive voice download
-                    // look stalled).
-                    .padding(top = if (state.navigating) 260.dp else 140.dp, start = 12.dp, end = 12.dp),
+                    .then(
+                        if (state.navigating && navBannerBottomPx > 0) {
+                            // positionInRoot already spans the status bar — no statusBarsPadding here.
+                            Modifier.padding(top = bannerBottom + 10.dp, start = 12.dp, end = 12.dp)
+                        } else {
+                            Modifier.statusBarsPadding().padding(top = 132.dp, start = 12.dp, end = 12.dp)
+                        },
+                    ),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (downloadingVoiceId != null) {
-                    VoiceDownloadCard(installing = state.voiceInstalling, pct = state.voiceDownloadPct ?: 0f)
-                }
-                // The speech model download (started from the mic offer or Settings) gets the same
-                // card - it's also called Vela voice, so the one label fits both.
-                if (state.asrDownloadPct != null) {
-                    VoiceDownloadCard(installing = state.asrInstalling, pct = state.asrDownloadPct ?: 0f)
-                }
-                // A region (state/country) download: the routing graph first, then its place pack —
-                // same progress card treatment as the voice download, so a Settings-started state
-                // download stays visible after backing out to the map.
-                if (downloadingRegion) {
-                    RegionDownloadCard(
-                        name = state.regionDownloadName ?: "",
-                        places = state.poiPackDownloadingId != null,
-                        pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                state.status?.let { msg ->
+                    InfoCard(
+                        title = stringResource(R.string.mapscreen_heads_up),
+                        body = msg,
+                        actionLabel = stringResource(R.string.mapscreen_dismiss),
+                        onAction = vm::clearStatus,
+                        // A voice problem carries its fix: a pill straight to the voice library.
+                        pillLabel = if (state.statusVoiceAction) stringResource(R.string.mapscreen_get_voice) else null,
+                        onPill = if (state.statusVoiceAction) {
+                            { vm.clearStatus(); onOpenVoiceSettings() }
+                        } else {
+                            null
+                        },
                     )
                 }
-                // A newer release on GitHub (self-updater; the check is a Settings toggle).
-                state.updateInfo?.let { u ->
-                    UpdateCard(
-                        versionName = u.versionName,
-                        downloadPct = state.updateDownloadPct,
-                        onUpdate = { vm.downloadUpdate() },
-                        onDismiss = { vm.dismissUpdate() },
-                    )
-                }
-                state.notices.forEach { n ->
-                    NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
+                if (bareMap) {
+                    if (downloadingVoiceId != null) {
+                        VoiceDownloadCard(installing = state.voiceInstalling, pct = state.voiceDownloadPct ?: 0f)
+                    }
+                    // The speech model download (started from the mic offer or Settings) gets the
+                    // same card - it's also called Vela voice, so the one label fits both.
+                    if (state.asrDownloadPct != null) {
+                        VoiceDownloadCard(installing = state.asrInstalling, pct = state.asrDownloadPct ?: 0f)
+                    }
+                    // A region (state/country) download: the routing graph first, then its place
+                    // pack — same progress card treatment as the voice download, so a Settings-
+                    // started state download stays visible after backing out to the map.
+                    if (downloadingRegion) {
+                        RegionDownloadCard(
+                            name = state.regionDownloadName ?: "",
+                            places = state.poiPackDownloadingId != null,
+                            pct = if (state.poiPackDownloadingId != null) state.poiPackDownloadPct else state.routingDownloadPct,
+                        )
+                    }
+                    // A newer release on GitHub (self-updater; the check is a Settings toggle).
+                    state.updateInfo?.let { u ->
+                        UpdateCard(
+                            versionName = u.versionName,
+                            downloadPct = state.updateDownloadPct,
+                            onUpdate = { vm.downloadUpdate() },
+                            onDismiss = { vm.dismissUpdate() },
+                        )
+                    }
+                    state.notices.forEach { n ->
+                        NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
+                    }
                 }
             }
         }
@@ -2495,6 +2507,8 @@ private fun InfoCard(
     actionLabel: String,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
+    pillLabel: String? = null,
+    onPill: (() -> Unit)? = null,
 ) {
     // Fixed sheet palette so this banner reads as the same grey as the place sheet
     // and results list, not a wallpaper-tinted Material card.
@@ -2503,16 +2517,38 @@ private fun InfoCard(
         modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = SheetPalette.bg(dark)),
     ) {
-        Row(
-            Modifier.fillMaxWidth().padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
+        if (pillLabel != null && onPill != null) {
+            // With a primary action the card takes the UpdateCard layout: text block, then a
+            // trailing row of quiet-dismiss + filled pill (reads by shape/fill, colour-blind safe).
+            Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 10.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold, color = SheetPalette.ink(dark))
                 Text(body, style = MaterialTheme.typography.bodySmall, color = SheetPalette.dim(dark))
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 6.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    TextButton(onClick = onAction) { Text(actionLabel) }
+                    Spacer(Modifier.width(4.dp))
+                    Button(
+                        onClick = onPill,
+                        shape = CircleShape,
+                        modifier = Modifier.dpadHighlight(CircleShape),
+                    ) { Text(pillLabel) }
+                }
             }
-            TextButton(onClick = onAction) { Text(actionLabel) }
+        } else {
+            Row(
+                Modifier.fillMaxWidth().padding(16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(title, fontWeight = FontWeight.SemiBold, color = SheetPalette.ink(dark))
+                    Text(body, style = MaterialTheme.typography.bodySmall, color = SheetPalette.dim(dark))
+                }
+                TextButton(onClick = onAction) { Text(actionLabel) }
+            }
         }
     }
 }
