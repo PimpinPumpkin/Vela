@@ -187,6 +187,35 @@ fun Modifier.dpadAutoFocus(): Modifier = composed {
 }
 
 /**
+ * Robust auto-focus for a **caller-owned** [requester] - use when the element's focus must also be
+ * re-requested elsewhere (e.g. Settings routes an UP from its top row back to the Back button via
+ * `requester.requestFocus()`, so the screen needs a handle on the requester, not just a Modifier).
+ * Same confirm-until-landed retry as [dpadAutoFocus] (re-requests every 50 ms up to ~2 s until
+ * `onFocusEvent` confirms focus truly landed, then stops so it never fights the user) - but on a
+ * requester you own. Prefer this over `rememberDpadAutoFocus()` + `.focusRequester(...)`: the weak
+ * helper bails the instant `requestFocus()` doesn't throw, even when focus never actually landed,
+ * so a screen can open UNfocused (device-verified: Settings' Back button did not take focus on open
+ * with the weak helper; this variant lands it - confirmed at a normal display density AND at the real
+ * feature-phone target 240x320). No-op under touch.
+ */
+fun Modifier.dpadAutoFocus(requester: FocusRequester): Modifier = composed {
+    val dpadFirst = rememberDpadFirstDevice()
+    var focused by remember { mutableStateOf(false) }
+    LaunchedEffect(dpadFirst) {
+        if (dpadFirst) {
+            repeat(40) {
+                if (focused) return@LaunchedEffect
+                runCatching { requester.requestFocus() }
+                kotlinx.coroutines.delay(50)
+            }
+        }
+    }
+    this
+        .focusRequester(requester)
+        .onFocusEvent { focused = it.isFocused }
+}
+
+/**
  * Swallows bare LEFT/RIGHT D-pad keys so a horizontal move with NO target can't CLEAR focus.
  * In a `Column(verticalScroll)` Compose's focus search clears focus outright on a no-target
  * directional move (and there's no way back via arrows - dpad audit 2026-07-08; `moveFocus`

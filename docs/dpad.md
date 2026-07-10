@@ -369,7 +369,7 @@ inset the 2 dp stroke cut straight through that letter on every keypad-phone sea
 | Settings | rows/switches/±steppers focusable; text fields got `dpadFieldEscape` so UP/DOWN escape them; no gesture-only widgets (no sliders) |
 | Trip replay pill, notices, info cards | buttons - operable |
 
-## Proven on-device (MTK "M5" keypad phone, Android 13, no touch used)
+## Proven on-device (a keypad phone, Android 13, no touch used)
 
 Every flow below was driven **with `adb input keyevent` D-pad keys only** and verified by
 screenshot. Device facts that shaped the design, captured by on-device logging:

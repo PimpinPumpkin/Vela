@@ -118,10 +118,10 @@ and the `MAPTILER_KEY` basemap switch.
 
 ## Contributing
 
-Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first: it covers the hard rules (no backend, no
+Read [`CONTRIBUTING.md`](docs/CONTRIBUTING.md) first: it covers the hard rules (no backend, no
 static Google keys, degoogled runtime, the `:core`/`:app` boundary, D-pad-first UI,
 docs-in-the-same-commit, translations for all 11 locales) and how to send a change.
-Security issues go through [`SECURITY.md`](SECURITY.md), not a public issue.
+Security issues go through [`SECURITY.md`](docs/SECURITY.md), not a public issue.
 
 ## License
 

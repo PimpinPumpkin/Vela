@@ -9,6 +9,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import app.vela.core.data.MapLinkParser
+import app.vela.ui.AdaptiveDensity
 import app.vela.ui.AppLocale
 import app.vela.ui.VelaRoot
 import app.vela.ui.map.MapViewModel
@@ -22,10 +23,10 @@ class MainActivity : ComponentActivity() {
     // so a deep link handled here shows up in the UI.
     private val vm: MapViewModel by viewModels()
 
-    /** Apply the in-app language override to this Activity's resources (no-op when following the
-     * system locale) so `stringResource` resolves in the chosen language. */
+    /** Apply the adaptive small-screen density (no-op on normal screens) AND the in-app language
+     * override (no-op when following the system locale) to this Activity's resources. */
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLocale.wrap(newBase))
+        super.attachBaseContext(AppLocale.wrap(AdaptiveDensity.wrap(newBase)))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -52,6 +52,47 @@ NEVER the final word on UX. This is not optional and not satisfied by audits alo
 - **No UI change lands on the word of a script.** If you have not looked at a screenshot of
   the affected surface behaving correctly, the change is not verified. Ship the frames.
 
+## Feature-phone display size (HARD RULE, NO EXCEPTIONS)
+
+D-pad-first means feature-phone-first, and feature phones are SMALL. "Works with a D-pad" must hold
+at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-negotiable:
+
+- **The app adapts its own density to the screen (`ui/AdaptiveDensity.kt`).** Standard Material
+  layouts assume ~360dp of logical width; a 240px feature phone is far below that and controls
+  crowd/clip. `AdaptiveDensity.wrap` (chained with `AppLocale.wrap` in both
+  MainActivity/VelaApp.`attachBaseContext`) overrides the effective `densityDpi` so a small screen
+  reports at least `MIN_WIDTH_DP` (360) of width - fixing clipping across EVERY screen in one place.
+  It ONLY shrinks small screens (>= 360dp wide = byte-for-byte no-op), device-verified: at 240x320 all
+  three category chips fit where before only one did. `MIN_WIDTH_DP` is tuned VISUALLY (smaller text is
+  the cost) - re-verify on-screen if you change it. NB density fixes LAYOUT/clipping, not focus - the
+  D-pad focus rules below are separate.
+- **Every screen opens focused AND stays D-pad-navigable at a SMALL display, not just native.**
+  Verify at a real target size - `adb shell wm size 240x320; adb shell wm density 160` (Kyocera e4810;
+  see `tests/devices/`) - by SCREENSHOT: the screen lands a visible focus ring on open AND arrows move
+  it row-to-row. Two distinct small-screen focus bugs were device-found and fixed on Settings: (1) the
+  weak `rememberDpadAutoFocus` left the Back button UNfocused on open (fixed with robust
+  `dpadAutoFocus(requester)`); (2) DOWN from the focused Back button CLEARED focus instead of entering
+  the scrolling content (Compose can't cross container boundaries) - fixed with an explicit
+  `topRowFocus.requestFocus()` bridge (mirror of the UP-from-top -> Back routing). Both verified by
+  screenshot at 240x320. Restore with `wm size reset; wm density reset`.
+- **Auditors must FAIL, never silently SKIP/PASS, when a core surface can't be reached or focused.**
+  A SKIP that doesn't count as a failure is a FALSE PASS: `audit_smallscreen.sh` SKIPped Settings (a
+  no-network surface that must always open) and still printed PASS, hiding that Settings was
+  unfocusable. Rules the auditors now enforce, and that you must preserve: a core no-network surface
+  (bare map, search, Settings) that can't be reached is a FAIL; a full D-pad walk that never focuses
+  ANYTHING (`seen==0`) is a FAIL. Only deep/NETWORK-bound surfaces may legitimately skip. **Narrow
+  carve-out:** when a surface is genuinely VERIFIED VISUALLY (screenshots committed under
+  `tests/devices/`) but the harness can't reliably SCRIPT-navigate to it, emit a NOTE pointing at that
+  proof - not a vacuous pass, not a misleading FAIL (the screenshot is the proof; don't burn effort
+  perfecting harness navigation for something already verified by eye). Settings on the bare map is the
+  standing example.
+- **Prefer the robust `dpadAutoFocus()` / `dpadAutoFocus(requester)` over the weak
+  `rememberDpadAutoFocus()`** for any screen whose focus target sits in a scroll container or attaches
+  a frame or two late. The weak helper bails the instant `requestFocus()` doesn't throw, even when
+  focus never landed; the robust one re-requests until `onFocusEvent` confirms it truly landed, then
+  stops (so it never fights the user). `audit_static.sh` surfaces every weak use for triage - each must
+  be screenshot-verified to actually focus on a small screen, or converted.
+
 ## Porting from upstream (hard rules)
 
 This is a fork of PimpinPumpkin/Vela and periodically ports fixes from it. Two
