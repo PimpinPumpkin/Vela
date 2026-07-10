@@ -362,7 +362,9 @@
     <string name="mapvm_routing_failed_reason">Wyznaczanie trasy nie powiodło się: %1$s</string>
     <string name="mapvm_no_transit_routes">Nie znaleziono połączeń komunikacji miejskiej</string>
     <string name="mapvm_trip_default_name">Podróż</string>
-    <string name="mapvm_no_voice_engine">Nie zainstalowano silnika głosowego — dodaj go w Ustawienia → Głos, aby korzystać ze wskazówek głosowych</string>
+    <string name="mapvm_no_voice_engine">Brak głosu do wskazówek głosowych</string>
+    <string name="mapscreen_get_voice">Dodaj głos</string>
+    <string name="settings_spoken_directions">Wskazówki głosowe</string>
     <string name="mapvm_voice_lang_missing">Wskazówki głosowe wymagają głosu %1$s — dodaj go w Ustawienia → Głos</string>
     <string name="mapvm_no_track_to_replay">Ta podróż nie ma zapisu do odtworzenia</string>
     <string name="mapvm_replaying">Odtwarzanie %1$s (3×)…</string>

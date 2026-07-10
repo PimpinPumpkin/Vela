@@ -395,7 +395,9 @@
     <string name="mapvm_routing_failed_reason">Routing failed: %1$s</string> <!-- format -->
     <string name="mapvm_no_transit_routes">No transit routes found</string>
     <string name="mapvm_trip_default_name">Trip</string>
-    <string name="mapvm_no_voice_engine">No voice engine installed. Add one in Settings → Voice for spoken directions</string>
+    <string name="mapvm_no_voice_engine">No voice installed for spoken directions</string>
+    <string name="mapscreen_get_voice">Get a voice</string>
+    <string name="settings_spoken_directions">Spoken directions</string>
     <string name="mapvm_voice_lang_missing">Spoken directions need a %1$s voice. Get one in Settings → Voice</string>
     <string name="mapvm_resume_waiting_gps">Waiting for GPS to resume navigation…</string>
     <string name="mapvm_resume_failed">Couldn\'t resume navigation</string>
