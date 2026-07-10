@@ -175,6 +175,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
@@ -289,7 +290,10 @@ fun PlaceSheet(
         // would zero the coast velocity mid-glide.
         if (heightAnim.targetValue != target) heightAnim.animateTo(target, settleSpec)
     }
-    val maxSheetHeight = heightAnim.value.dp
+    // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
+    // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
+    // instead of recomposing the whole thing (photos, reviews, hours) 60x a second. Reading it in
+    // composition was the dropped-frames report on the tap-to-expand animation (user 2026-07-10).
     val density = LocalDensity.current
     val settleScope = rememberCoroutineScope()
     // Release: project where the fling would coast to, snap the STATES to the nearest detent (so
@@ -298,7 +302,11 @@ fun PlaceSheet(
     // drop settles back where it came from. A swipe still never CLOSES the sheet (X / back do).
     fun settleFromVelocity(velocityPxPerSec: Float) {
         val vDp = with(density) { velocityPxPerSec.toDp().value }
-        val projected = heightAnim.value - vDp * 0.25f
+        // 0.15, down from 0.25: the first cut made a middling downward flick from peek project
+        // past the midpoint and land MINIMIZED - too eager (user 2026-07-10). At 0.15 a gentle
+        // flick settles back and minimizing takes a deliberate throw; position still wins when
+        // the finger actually dragged most of the way.
+        val projected = heightAnim.value - vDp * 0.15f
         val target = listOf(minH, peekH, expH).minByOrNull { kotlin.math.abs(it - projected) } ?: peekH
         expandedState.value = target == expH
         minimizedState.value = target == minH
@@ -413,7 +421,16 @@ fun PlaceSheet(
         }
     }
     Card(
-        modifier.fillMaxWidth().heightIn(max = maxSheetHeight),
+        modifier
+            .fillMaxWidth()
+            .layout { measurable, constraints ->
+                // Layout-phase read (see the note above): recompose-free height animation.
+                val maxHPx = heightAnim.value.dp.roundToPx().coerceAtLeast(1)
+                val p = measurable.measure(
+                    constraints.copy(maxHeight = minOf(constraints.maxHeight, maxHPx)),
+                )
+                layout(p.width, p.height) { p.place(0, 0) }
+            },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
