@@ -69,16 +69,16 @@
     <string name="settings_hide_external_links">Masquer le site web et les liens externes</string>
     <string name="settings_hide_external_links_hint">Activé = les pages de lieu n’affichent pas les boutons Site web, Street View ou Réserver / Commander (aucun site externe arbitraire ouvert).</string>
     <string name="settings_offline">Cartes hors ligne</string>
-    <string name="settings_offline_hint">Téléchargez une zone pour conserver sa carte et ses itinéraires sur votre téléphone, utilisables hors ligne.</string>
-    <string name="settings_offline_map_area">Zone de carte</string>
+    <string name="settings_offline_hint">Deux façons d\'utiliser Vela hors ligne : enregistrez la zone où vous êtes pour les petits trajets, ou un état ou pays entier ci-dessous pour les longs.</string>
+    <string name="settings_offline_map_area">Zone locale</string>
     <string name="settings_offline_download_viewport">Télécharger la zone affichée</string>
-    <string name="settings_offline_download_viewport_hint">Enregistre la carte et ses routes pour la zone affichée, pour l\'afficher et calculer des itinéraires hors ligne.</string>
+    <string name="settings_offline_download_viewport_hint">Enregistre la carte affichée, avec ses routes et adresses, pour que cette zone continue de fonctionner sans réseau.</string>
     <string name="settings_offline_no_areas">Aucune zone enregistrée pour l\'instant.</string>
     <string name="settings_offline_addresses_missing">Les zones enregistrées avant cette mise à jour ne contiennent pas de données d\'adresses. Mettez-les à jour pour rechercher des adresses et calculer des itinéraires hors ligne.</string>
     <string name="settings_offline_addresses_update">Mettre à jour les zones enregistrées</string>
     <string name="settings_offline_delete_area">Supprimer cette zone hors ligne</string>
-    <string name="settings_routing_regions">Régions de routage</string>
-    <string name="settings_routing_regions_hint">Les routes d\'une région entière (un état ou un pays) pour que les itinéraires fonctionnent hors ligne partout à l\'intérieur. Prenez là où vous allez.</string>
+    <string name="settings_routing_regions">Régions et pays</string>
+    <string name="settings_routing_regions_hint">Tout ce qu\'il faut pour parcourir un état, une province ou un pays entier hors ligne : ses routes et ses lieux, pour que l\'itinéraire et la recherche fonctionnent partout. Prenez là où vous allez.</string>
     <string name="settings_routing_no_regions">Aucune région disponible pour l\'instant.</string>
     <string name="settings_clear_filter">Effacer le filtre</string>
     <string name="settings_routing_filter_placeholder">Rechercher</string>
