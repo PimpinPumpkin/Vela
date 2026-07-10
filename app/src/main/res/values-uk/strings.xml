@@ -14,6 +14,7 @@
     <string name="settings_units_imperial">Імперські (милі, фути)</string>
     <string name="settings_units_metric">Метричні (кілометри, метри)</string>
     <string name="settings_language">Мова</string>
+    <string name="settings_follow_system_language">Мова системи</string>
     <string name="settings_language_hint">Задає мову голосових покрокових вказівок (англійська, французька, німецька, іспанська, італійська, португальська, нідерландська, російська, польська, шведська, українська) — незалежно від системної мови телефона. Виберіть відповідний голос у розділі «Бібліотека голосів» нижче. Решту тексту в застосунку буде перекладено далі.</string>
     <string name="settings_search">Пошук</string>
     <string name="settings_voice_search_toggle">Мікрофон голосового пошуку</string>
@@ -478,4 +479,10 @@
     <string name="lists_empty_hint">Поки немає списків. Натисніть «Новий» або збережіть місце з його сторінки.</string>
     <string name="lists_place_count">%1$d місць</string>
     <string name="navservice_notif_eta">Прибуття %1$s</string>
+    <string name="settings_advanced">Додатково</string>
+    <string name="settings_advanced_hint">Нішеві та експериментальні параметри, які більшості не потрібні.</string>
+    <string name="settings_developer">Розробник</string>
+    <string name="settings_developer_hint">Інструменти для демо, знімків екрана та тестів. Вимикайте їх для реального використання.</string>
+    <string name="settings_browse_voices">Огляд голосів</string>
+    <string name="settings_browse_voices_hint">Завантажуйте та перемикайте голоси Vela на пристрої.</string>
 </resources>

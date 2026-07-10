@@ -14,6 +14,7 @@
     <string name="settings_units_imperial">Imperiaal (mijl, voet)</string>
     <string name="settings_units_metric">Metrisch (kilometers, meters)</string>
     <string name="settings_language">Taal</string>
+    <string name="settings_follow_system_language">Systeemtaal volgen</string>
     <string name="settings_language_hint">Stelt de taal in voor gesproken route-instructies (Engels, Frans, Duits, Spaans, Italiaans, Portugees, Nederlands, Russisch, Pools, Zweeds, Oekraïens) — los van de systeemtaal van uw telefoon. Kies hieronder een passende stem in de Stembibliotheek. De rest van de tekst in de app wordt hierna vertaald.</string>
     <string name="settings_search">Zoeken</string>
     <string name="settings_voice_search_toggle">Microfoon voor spraakzoeken</string>
@@ -478,4 +479,10 @@
     <string name="lists_empty_hint">Nog geen lijsten. Tik op Nieuw of sla een plaats op vanaf zijn pagina.</string>
     <string name="lists_place_count">%1$d plaatsen</string>
     <string name="navservice_notif_eta">Aankomst %1$s</string>
+    <string name="settings_advanced">Geavanceerd</string>
+    <string name="settings_advanced_hint">Niche- en experimentele opties die de meeste mensen nooit hoeven te wijzigen.</string>
+    <string name="settings_developer">Ontwikkelaar</string>
+    <string name="settings_developer_hint">Hulpmiddelen voor demo\'s, schermafbeeldingen en tests. Zet ze uit voor echt gebruik.</string>
+    <string name="settings_browse_voices">Stemmen bekijken</string>
+    <string name="settings_browse_voices_hint">Download en wissel tussen Vela\'s stemmen op het apparaat.</string>
 </resources>
