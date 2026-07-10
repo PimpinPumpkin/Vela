@@ -137,8 +137,8 @@
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string>
     <string name="settings_collapse">Réduire</string>
     <string name="settings_expand">Développer</string>
-    <string name="settings_voice_lib_empty_hint">Téléchargez une voix naturelle sur l\'appareil pour les instructions vocales — choisissez-en une ci-dessous. Les voix ★ ressemblent le plus à une voix de navigation (Lessac et HFC sont les plus proches de Google). Téléchargement unique ; le Wi-Fi est recommandé.</string>
-    <string name="settings_voice_lib_installed_hint">Installé : %1$d Mo · %2$d voix. Touchez Utiliser pour changer (joue un extrait) ; l\'icône corbeille libère l\'espace.</string> <!-- format -->
+    <string name="settings_voice_lib_empty_hint">★ signale les voix recommandées. Chaque voix fonctionne hors ligne sur votre téléphone.</string>
+    <string name="settings_voice_lib_installed_hint">Installé : %1$d Mo · %2$d voix.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">La langue de votre application est %1$s — téléchargez une voix %2$s ci-dessous pour que les instructions vocales correspondent (une voix anglaise prononcerait mal les noms de rues en %3$s).</string>
     <string name="settings_voice_search">Rechercher des voix</string>
     <string name="settings_voice_show_more">Afficher %1$d de plus</string>
