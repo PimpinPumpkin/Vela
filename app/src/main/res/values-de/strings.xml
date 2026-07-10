@@ -308,9 +308,6 @@
     <string name="mapscreen_no">Nein</string>
     <string name="mapscreen_switch">Wechseln</string>
     <string name="root_not_now">Jetzt nicht</string>
-    <string name="root_location_title">Deinen Standort anzeigen</string>
-    <string name="root_location_body">Vela nutzt deinen Standort, um die Karte auf dich zu zentrieren und von deinem Standort aus zu routen. Er bleibt auf deinem Gerät und wird nie hochgeladen. Du kannst ablehnen und trotzdem suchen und stöbern; lege den Startpunkt für eine Route dann von Hand fest.</string>
-    <string name="root_location_allow">Standort erlauben</string>
     <string name="root_voice_title">Sprachausgabe der Navigation</string>
     <string name="root_voice_body_intro">Velas eigene Stimme läuft komplett auf deinem Gerät: natürliche Ansagen, kein Konto, keine Zusatz-App. Empfohlen, ein einmaliger ~%1$d MB Download.</string>
     <string name="root_voice_body_system">Lieber nicht? Nutze eine Stimme, die schon auf deinem Gerät ist.</string>
