@@ -29,25 +29,28 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
 
 ## Build
 
-- **Build variants (reworked).** `debug` is now R8-minified AND debuggable, so it runs smooth
-  on-device (no more map-scroll/nav lag) while breakpoints, Timber, StrictMode and the ANR
-  watchdog all work; it installs side by side with a release build via `applicationIdSuffix
-  ".debug"` (applicationId `app.vela.debug`, `versionNameSuffix "-debug"`). `release` = R8 +
-  resource-shrink. `staging` = release-optimized but non-debuggable, for true frame profiling.
-  R8 running on `debug` too means slower builds but the old "always ship release" caveat is gone.
+- **Build variants (reworked).**
+  - `debug` is now R8-minified AND debuggable, so it runs smooth on-device (no more map-scroll/nav
+    lag) while breakpoints, Timber, StrictMode and the ANR watchdog all work; it installs side by
+    side with a release build via `applicationIdSuffix ".debug"` (applicationId `app.vela.debug`,
+    `versionNameSuffix "-debug"`).
+  - `release` = R8 + resource-shrink.
+  - `staging` = release-optimized but non-debuggable, for true frame profiling.
+  - R8 running on `debug` too means slower builds but the old "always ship release" caveat is gone.
 - `./gradlew :core:test` runs the pure-logic unit tests (polyline, nav engine).
-- **Local diagnostics (crash/ANR/jank, all on-device, no Firebase/Crashlytics).** `Timber` is a
-  thin logging facade: a `DiagTree` forwards WARN/ERROR into an opt-in breadcrumb ring (`DiagLog`,
-  300 entries, gated on the `diag_enabled` pref, default off); a `DebugTree` logs to Logcat in
-  debug builds only. `CrashCatcher` is the uncaught-exception handler that writes `crash-*.txt`
-  (header + stacktrace + breadcrumbs) to `filesDir/diag/crash/`, surfaced in Settings → Diagnostics
-  with export/share. `ExitInfoReader` (API 30+) harvests `ApplicationExitInfo` for ANR/native-crash/
-  SIGNALED/low-memory kills into `crash-exit-*.txt` on the next launch, deduped by a `last_exit_ts`
-  pref. `AnrWatchdog` (debug-only live main-thread stall detector) writes `crash-anr-*.txt` and
-  stands down during crash teardown via `CrashCatcher.crashing` so a crash does not also log a bogus
-  ANR. `StrictMode` (debug-only) catches main-thread disk/network I/O, `penaltyLog` to Logcat plus
-  deduped breadcrumbs into `DiagLog` keyed by violation-type + call-site so startup pref reads can't
-  flood the ring.
+- **Local diagnostics (crash/ANR/jank, all on-device, no Firebase/Crashlytics).**
+  - `Timber` is a thin logging facade: a `DiagTree` forwards WARN/ERROR into an opt-in breadcrumb
+    ring (`DiagLog`, 300 entries, gated on the `diag_enabled` pref, default off); a `DebugTree` logs
+    to Logcat in debug builds only.
+  - `CrashCatcher` is the uncaught-exception handler that writes `crash-*.txt` (header + stacktrace
+    + breadcrumbs) to `filesDir/diag/crash/`, surfaced in Settings → Diagnostics with export/share.
+  - `ExitInfoReader` (API 30+) harvests `ApplicationExitInfo` for ANR/native-crash/SIGNALED/
+    low-memory kills into `crash-exit-*.txt` on the next launch, deduped by a `last_exit_ts` pref.
+  - `AnrWatchdog` (debug-only live main-thread stall detector) writes `crash-anr-*.txt` and stands
+    down during crash teardown via `CrashCatcher.crashing` so a crash does not also log a bogus ANR.
+  - `StrictMode` (debug-only) catches main-thread disk/network I/O, `penaltyLog` to Logcat plus
+    deduped breadcrumbs into `DiagLog` keyed by violation-type + call-site so startup pref reads
+    can't flood the ring.
 - **D-pad regression suite (`tests/dpad/`).** On-device, reproducible. Run after any change
   that touches focus (see `docs/dpad.md`):
   - `run_all.sh` - per-surface focus assertions (bare map → search bar, Settings/Welcome/dialog/menu
@@ -72,68 +75,75 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
     R8-kept `core/.../model` package, the four manifest entry classes). Also surfaces whole DEAD
     MODULES (`:ghprobe`) as an advisory CHECK, not a hard fail. Mirrors `audit_static.sh` in shape.
   - Android Lint `UnusedResources` (scoped via the `lint{}` block) for dead drawables/strings/layouts.
-- **Auditing a real drive.** A saved trip stores the navigated route too (`core/replay/TripLog`
-  format, shared by `:app`'s `TripStore` writer and the `:core` reader). To diff what the nav
-  cards/voice said against the plotted route from a shared trip CSV, call `TripLog.audit(csv)`
-  (→ `NavReplay.Report.summary()`) or run the on-demand harness:
-  `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=<abs.csv> --rerun-tasks`
-  then read the report from the test-results XML `system-out`
-  (`core/build/test-results/testDebugUnitTest/*.xml`). The property passthrough lives in
-  `core/build.gradle.kts` (`tasks.withType<Test>` forwards `velaTrip`) - without it the harness silently
-  skips. It flags silent/missed turns, too-early announcements, and lying card distances. **Trips are
-  SEGMENTED**: every route the drive used (start + each reroute/faster-route swap) is its own `RP/RD/M`
-  block, activated at the fix where it appears; `TripLog.parse().segments` carries them, audit + in-app
-  replay are segment-aware, and replays are HERMETIC (`NavSession.replayMode` - no live reroute/recheck
-  fetches, recorded swaps play back via `replaySetRoute`; the map view scales the puck's clocks by
-  `replaySpeedup`). Never audit/replay a multi-block trip against a single mashed route. NB replays of OLD
-  trips play back the dirty fixes the old pipeline recorded (BeaconDB teleports) - judge the engine on fresh
-  recordings.
+- **Auditing a real drive.**
+  - A saved trip stores the navigated route too (`core/replay/TripLog` format, shared by `:app`'s
+    `TripStore` writer and the `:core` reader).
+  - To diff what the nav cards/voice said against the plotted route from a shared trip CSV, call
+    `TripLog.audit(csv)` (→ `NavReplay.Report.summary()`) or run the on-demand harness:
+    `./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=<abs.csv> --rerun-tasks`
+    then read the report from the test-results XML `system-out`
+    (`core/build/test-results/testDebugUnitTest/*.xml`).
+  - The property passthrough lives in `core/build.gradle.kts` (`tasks.withType<Test>` forwards
+    `velaTrip`) - without it the harness silently skips. It flags silent/missed turns, too-early
+    announcements, and lying card distances.
+  - **Trips are SEGMENTED**: every route the drive used (start + each reroute/faster-route swap) is
+    its own `RP/RD/M` block, activated at the fix where it appears; `TripLog.parse().segments`
+    carries them, audit + in-app replay are segment-aware, and replays are HERMETIC
+    (`NavSession.replayMode` - no live reroute/recheck fetches, recorded swaps play back via
+    `replaySetRoute`; the map view scales the puck's clocks by `replaySpeedup`).
+  - Never audit/replay a multi-block trip against a single mashed route. NB replays of OLD trips play
+    back the dirty fixes the old pipeline recorded (BeaconDB teleports) - judge the engine on fresh
+    recordings.
 - **Demo / simulate-driving mode** (Settings → Navigation, off by default, pref `demo_drive` in
-  `vela_settings`). Drives a planned route as a SYNTHETIC GPS trace so nav can be shown/tested
-  **anywhere** with no real fix. `DemoTrace.fromRoute(polyline)` (pure `:core`) → one clean
-  `ReplayFix`/sec, fed through the SAME hermetic `LocationProvider.replay` path a recorded trip uses
-  (`MapViewModel.startDemoDrive`, `startNav` branches on the pref). It's presented as real nav, not a
-  replay: `MapUiState.demoDriving` hides the "Stop replay" pill and the normal **End** (`stopNav`)
-  cancels the demo job (its `finally` resumes live GPS + resets the dot/route). **Turn it OFF to
-  navigate for real** - while on, every "Start" simulates instead of using GPS.
+  `vela_settings`).
+  - Drives a planned route as a SYNTHETIC GPS trace so nav can be shown/tested **anywhere** with no
+    real fix. `DemoTrace.fromRoute(polyline)` (pure `:core`) → one clean `ReplayFix`/sec, fed through
+    the SAME hermetic `LocationProvider.replay` path a recorded trip uses
+    (`MapViewModel.startDemoDrive`, `startNav` branches on the pref).
+  - It's presented as real nav, not a replay: `MapUiState.demoDriving` hides the "Stop replay" pill
+    and the normal **End** (`stopNav`) cancels the demo job (its `finally` resumes live GPS + resets
+    the dot/route).
+  - **Turn it OFF to navigate for real** - while on, every "Start" simulates instead of using GPS.
 - **Simulate-my-location (demo)** (`ui/SimLocation.kt`, Settings → Navigation, off by default,
-  pref `sim_location` in `vela_settings`). A sibling of demo-drive for demos/screenshots: when on,
-  Vela pretends to be at the map centre (captured when you flip the toggle), so the location dot,
-  the directions ORIGIN ("Your location"), and recenter all read from there instead of your real
-  GPS. Process-wide reactive holder like `TransitLayer` (`init` in `VelaApp`); `MapViewModel`
-  applies it - `startLocation()` pins `myLocation` to the sim point (guard sits AFTER the replaying
-  guard so demo-drive still wins), `simulateLocationHere()` captures `mapCenter`,
-  `stopSimulateLocation()` resumes live GPS. NB search/place-sheet DISTANCES are `near`-relative (off
-  `mapCenter`) regardless of this toggle; sim-location is specifically about the dot + route origin.
-  **Turn it OFF for real navigation.**
-- CI: **simple stable channel.** `.github/workflows/ci.yml`: every push to `main` builds + tests,
-  then publishes a NORMAL (non-prerelease) release `v0.0.<run>` (versionName `0.0.<run>`,
-  versionCode = the GitHub run number, `<run>`). It builds BOTH the debug and release APKs and
-  attaches both to the release. There is no nightly/prerelease channel and no promote-to-stable
-  workflow (both retired); Obtainium and the in-app updater track `releases/latest` directly.
-  **Release notes are a real changelog** built from the commit
-  subjects since the previous `v0.[0-9]*` tag (the glob spans minor bumps; checkout is
-  `fetch-depth: 0` so the tag history is present; the publish step formats them + a compare link into
-  `--notes`). So **commit subjects ARE the user-facing changelog** - write them as plain-language
-  changelog lines (no em-dashes, human voice), not terse hashes. **Keep local dev builds below the
-  current run number** (e.g. `-PappVersionCode=1`), so the release line always wins.
-  Release signing uses repo secrets `VELA_KEYSTORE_BASE64`,
-  `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`,
-  outside the repo - back it up). Without them the APK is debug-signed. Version
-  override: `-PappVersionName`/`-PappVersionCode`. An optional `MAPTILER_KEY`
-  secret → `BuildConfig.MAPTILER_KEY` (`-PmaptilerKey`) switches the basemap to
-  MapTiler Streets (Google-like, with a dark variant by system theme); empty
-  locally → keyless OpenFreeMap. **Never commit the MapTiler key** - CI-secret +
-  BuildConfig only.
+  pref `sim_location` in `vela_settings`).
+  - A sibling of demo-drive for demos/screenshots: when on, Vela pretends to be at the map centre
+    (captured when you flip the toggle), so the location dot, the directions ORIGIN ("Your
+    location"), and recenter all read from there instead of your real GPS.
+  - Process-wide reactive holder like `TransitLayer` (`init` in `VelaApp`); `MapViewModel` applies
+    it - `startLocation()` pins `myLocation` to the sim point (guard sits AFTER the replaying guard
+    so demo-drive still wins), `simulateLocationHere()` captures `mapCenter`, `stopSimulateLocation()`
+    resumes live GPS.
+  - NB search/place-sheet DISTANCES are `near`-relative (off `mapCenter`) regardless of this toggle;
+    sim-location is specifically about the dot + route origin.
+  - **Turn it OFF for real navigation.**
+- CI: **simple stable channel.**
+  - `.github/workflows/ci.yml`: every push to `main` builds + tests, then publishes a NORMAL
+    (non-prerelease) release `v0.0.<run>` (versionName `0.0.<run>`, versionCode = the GitHub run
+    number, `<run>`). It builds BOTH the debug and release APKs and attaches both to the release.
+  - There is no nightly/prerelease channel and no promote-to-stable workflow (both retired);
+    Obtainium and the in-app updater track `releases/latest` directly.
+  - **Release notes are a real changelog** built from the commit subjects since the previous
+    `v0.[0-9]*` tag (the glob spans minor bumps; checkout is `fetch-depth: 0` so the tag history is
+    present; the publish step formats them + a compare link into `--notes`). So **commit subjects ARE
+    the user-facing changelog** - write them as plain-language changelog lines (no em-dashes, human
+    voice), not terse hashes.
+  - **Keep local dev builds below the current run number** (e.g. `-PappVersionCode=1`), so the
+    release line always wins.
+  - Release signing uses repo secrets `VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`,
+    `VELA_KEY_ALIAS` (set; keystore at `~/.vela-signing/`, outside the repo - back it up). Without
+    them the APK is debug-signed. Version override: `-PappVersionName`/`-PappVersionCode`.
+  - An optional `MAPTILER_KEY` secret → `BuildConfig.MAPTILER_KEY` (`-PmaptilerKey`) switches the
+    basemap to MapTiler Streets (Google-like, with a dark variant by system theme); empty locally →
+    keyless OpenFreeMap. **Never commit the MapTiler key** - CI-secret + BuildConfig only.
 - Toolchain: AGP 8.7.3, Kotlin 2.1.0, Gradle
   8.11.1, compileSdk 35, minSdk 26, Java 17, Compose + Hilt + version catalog.
 - Release signing from env: `VELA_KEYSTORE_PATH` / `VELA_KEYSTORE_PASSWORD` /
   `VELA_KEY_ALIAS` (default alias `vela`); falls back to debug keystore locally.
-- **No blocking IPC/IO from a composable body.** A `PackageManager.queryIntentServices`
-  binder IPC + per-engine `loadLabel` directly in composition re-runs on every recompose -
-  jank on a Pixel, a >5 s ANR on a slow keypad phone. Load such data with
-  `produceState { withContext(Dispatchers.IO) { … } }`; `VoiceGuide.availableEngines()` also
-  caches the system-engine enumeration per process.
+- **No blocking IPC/IO from a composable body.**
+  - A `PackageManager.queryIntentServices` binder IPC + per-engine `loadLabel` directly in
+    composition re-runs on every recompose - jank on a Pixel, a >5 s ANR on a slow keypad phone.
+  - Load such data with `produceState { withContext(Dispatchers.IO) { … } }`;
+    `VoiceGuide.availableEngines()` also caches the system-engine enumeration per process.
 
 ## Layout
 
@@ -143,21 +153,23 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
 - The one seam is `core/data/MapDataSource`. `MockMapDataSource` is the default
   and keeps the entire app usable offline; `google/GoogleMapsDataSource` is the
   real scraper.
-- **Android Auto (`app/car/`).** `VelaCarAppService` is a
-  NAVIGATION-category templated `CarAppService` (manifest service + `xml/automotive_app_desc.xml`
-  + the two `androidx.car.app.*` permissions + application-level `minCarApiLevel=1`); a sideload
-  appears in the car launcher only with AA developer "Unknown sources" on, hence
-  `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`. `CarMapScreen` is the whole car UI:
-  NavigationTemplate (Re-center / + / − action strip; RoutingInfo card with
-  `NavSession.state.maneuverText` + distance while navigating) over a map surface. **The
-  MapLibre-on-car trick: SurfaceCallback surface → `DisplayManager.createVirtualDisplay` →
-  `Presentation` → plain `MapView`** (MapLibre can't draw to a raw surface). It reuses
-  `applyDark`/`applyLight` from VelaMapView (made `internal` for this) keyed to
-  `carContext.isDarkMode`, has its OWN AOSP LocationManager listener for the puck (works with the
-  phone UI closed), and draws the route from `NavSession.state.route.polyline`. Pan/zoom arrive as
-  `onScroll`/`onScale` and move the camera by hand (projection math - `MapLibreMap.scrollBy` isn't
-  a thing in 11.x). The PHONE runs nav (MapViewModel feeds NavSession) and speaks; the car is a
-  display. Car-side search/route-start is a follow-up; untested on a real head unit yet.
+- **Android Auto (`app/car/`).**
+  - `VelaCarAppService` is a NAVIGATION-category templated `CarAppService` (manifest service +
+    `xml/automotive_app_desc.xml` + the two `androidx.car.app.*` permissions + application-level
+    `minCarApiLevel=1`); a sideload appears in the car launcher only with AA developer "Unknown
+    sources" on, hence `HostValidator.ALLOW_ALL_HOSTS_VALIDATOR`.
+  - `CarMapScreen` is the whole car UI: NavigationTemplate (Re-center / + / − action strip;
+    RoutingInfo card with `NavSession.state.maneuverText` + distance while navigating) over a map
+    surface.
+  - **The MapLibre-on-car trick: SurfaceCallback surface → `DisplayManager.createVirtualDisplay` →
+    `Presentation` → plain `MapView`** (MapLibre can't draw to a raw surface). It reuses
+    `applyDark`/`applyLight` from VelaMapView (made `internal` for this) keyed to
+    `carContext.isDarkMode`, has its OWN AOSP LocationManager listener for the puck (works with the
+    phone UI closed), and draws the route from `NavSession.state.route.polyline`.
+  - Pan/zoom arrive as `onScroll`/`onScale` and move the camera by hand (projection math -
+    `MapLibreMap.scrollBy` isn't a thing in 11.x).
+  - The PHONE runs nav (MapViewModel feeds NavSession) and speaks; the car is a display. Car-side
+    search/route-start is a follow-up; untested on a real head unit yet.
 - **Settings ORDER is deliberate:** Appearance → Map (traffic/transit/3D) →
   **Place pages** (ShowReviews / read-all-reviews / LoadPhotos) → Navigation (keep-screen-on,
   traffic lights, vibrate-on-turns as FilterChips one per mode, demo LAST) → Voice → Offline →
@@ -174,75 +186,89 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   new chip on CircleShape; monochrome leading icons (tint `onSurface`, not the teal primary) so it
   reads single-ink like Google's.
 - **Search-results sheet - BOTTOM sheet with drag detents (`MapScreen.SearchResults`).**
-  Results rise from the BOTTOM, Google-style. It renders with the other bottom surfaces in MapScreen's
-  bottom `when` (nav / directions / place sheet win the slot first) and shares the place sheet's
-  detent grammar: **MINIMIZED** (a short "N results" bar; = the VM's `resultsCollapsed`, so the back
-  gesture and the sheet agree) ↔ **PEEK** (~0.42 list cap) ↔ **EXPANDED** (~0.82, fills the screen).
-  Handle TAP steps up; drag UP grows a detent, DOWN shrinks one; the nested-scroll connection steps
-  ONE detent per gesture (re-armed in `onPreFling`), a hard fling can cross two (matches Google).
-  **BACK also steps one detent** - `resultsExpanded` is HOISTED to MapScreen so the BackHandler does
-  expanded → peek → minimized → CLEARED (a back on the minimized bar runs `clearSearch()` to the bare
-  map, not exit the app); and the sheet modifier carries `statusBarsPadding()` so the expanded handle
-  pill stops below the clock / camera cutout. **Camera frames the result CLUSTER:** the
-  marker-fit branch in VelaMapView median-centers the pins and drops outliers past 4x the median
-  spread (min 40 km) so one stray far hit can't zoom to a continental view; it fits with the
-  results-sheet bottom inset (0.50 screen) so pins sit above the sheet; `lastFittedMarkersKey` re-arms
-  while the sheet is minimized so expanding re-frames; and the fit CONSUMES `lastCameraTarget` (else the
-  recenter branch re-fires on the STALE VM center and yanks the camera back to before the search). There
-  is **NO "hide results" button**. **Filter
-  chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
-  `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
-  scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
-  `chromeLift` (76dp). The compass is MapLibre's built-in (`setCompassMargins`), which fades facing
-  north (Google's behaviour) and reappears when rotated/tilted or during heading-up nav.
-- **Map tap resolution order (`VelaMapView` click listener).** A single tap (24dp hit box)
-  resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
-  `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
-  (a business) → `onPoiTap`; (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber`
-  or the address overlay `vela-addr-*` `number`, queried by layer id) → `onAddressLabelTap(number,
-  labelPoint)`; (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
-  **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay fill,
-  queried by layer id) → reverse-geocode at the tap; else nothing (only a long-press drops a raw
-  coordinate pin on empty land). **The house-number case must SNAP to the tapped number:**
-  `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
-  geocode only for the street/city, replacing whatever house number the geocode led with (a regex
-  strips `^\s*\d+\S*\s+` then prepends the tapped number) - Google's reverse-geocode snaps to
-  the nearest ADDRESSABLE point, which for a tapped OSM label routinely returns a NEIGHBOUR. A real
-  business sitting on the point still wins (if the geocode has a rating/category it's shown as-is).
+  - Results rise from the BOTTOM, Google-style. It renders with the other bottom surfaces in
+    MapScreen's bottom `when` (nav / directions / place sheet win the slot first) and shares the
+    place sheet's detent grammar: **MINIMIZED** (a short "N results" bar; = the VM's
+    `resultsCollapsed`, so the back gesture and the sheet agree) ↔ **PEEK** (~0.42 list cap) ↔
+    **EXPANDED** (~0.82, fills the screen).
+  - Handle TAP steps up; drag UP grows a detent, DOWN shrinks one; the nested-scroll connection steps
+    ONE detent per gesture (re-armed in `onPreFling`), a hard fling can cross two (matches Google).
+  - **BACK also steps one detent** - `resultsExpanded` is HOISTED to MapScreen so the BackHandler
+    does expanded → peek → minimized → CLEARED (a back on the minimized bar runs `clearSearch()` to
+    the bare map, not exit the app); and the sheet modifier carries `statusBarsPadding()` so the
+    expanded handle pill stops below the clock / camera cutout.
+  - **Camera frames the result CLUSTER:** the marker-fit branch in VelaMapView median-centers the
+    pins and drops outliers past 4x the median spread (min 40 km) so one stray far hit can't zoom to
+    a continental view; it fits with the results-sheet bottom inset (0.50 screen) so pins sit above
+    the sheet; `lastFittedMarkersKey` re-arms while the sheet is minimized so expanding re-frames;
+    and the fit CONSUMES `lastCameraTarget` (else the recenter branch re-fires on the STALE VM center
+    and yanks the camera back to before the search).
+  - There is **NO "hide results" button**.
+  - **Filter chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha
+    tint off, solid `primary` teal + check on, `border = null`).
+  - **Chrome:** `resultsShown` (peek/expanded) hides the scale bar / locate FAB / "Search this
+    area"; `resultsMinimized` shows them again but LIFTED by `chromeLift` (76dp). The compass is
+    MapLibre's built-in (`setCompassMargins`), which fades facing north (Google's behaviour) and
+    reappears when rotated/tilted or during heading-up nav.
+- **Map tap resolution order (`VelaMapView` click listener).** A single tap (24dp hit box) resolves,
+  in priority:
+  - (1) our search-result pin → `onMarkerTap`;
+  - (2) an ambient Google POI dot → `onAmbientTap`;
+  - (3) a greyed alternate route line → `onSelectAlternate`;
+  - (4) a NAMED basemap POI (a business) → `onPoiTap`;
+  - (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber` or the address overlay
+    `vela-addr-*` `number`, queried by layer id) → `onAddressLabelTap(number, labelPoint)`;
+  - (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap;
+  - (7) a **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay
+    fill, queried by layer id) → reverse-geocode at the tap;
+  - else nothing (only a long-press drops a raw coordinate pin on empty land).
+  - **The house-number case must SNAP to the tapped number:** `MapViewModel.onAddressLabelTap` LEADS
+    the pin with the label's own number and uses the reverse-geocode only for the street/city,
+    replacing whatever house number the geocode led with (a regex strips `^\s*\d+\S*\s+` then
+    prepends the tapped number) - Google's reverse-geocode snaps to the nearest ADDRESSABLE point,
+    which for a tapped OSM label routinely returns a NEIGHBOUR. A real business sitting on the point
+    still wins (if the geocode has a rating/category it's shown as-is).
 - **Place-content toggles:** `ShowReviews` / `LoadPhotos` reactive holders
   (`ui/PlaceContent.kt`, same shape as `LiveReviews`, init in VelaApp, rows in Settings → Map).
   They gate BOTH fetch (`fetchReviews`/`fetchPhotos` first line) and render (PlaceSheet `hasReviews`
   + the photo-hero `if`), so off = zero scrape traffic. Keep any new review/photo surface behind them.
-- **"Hide adult categories" toggle:** `HideAdult` holder (`ui/PlaceContent.kt`, default
-  **off**, init in VelaApp, row in Settings → Map). It flips `CategoryFilter.enabled` (a `:core` flag) -
-  `:core`'s `data/CategoryFilter` filters adult/nightlife/alcohol/gambling/smoking places at the
-  `GoogleMapsDataSource.search`/`nearbyPlaces` seam. Match is CATEGORY-only (never name) and PRECISE
-  (`EXACT`/`PHRASE`, food "…bar" kept); the keyword lists are **multilingual** (categories arrive
-  localized via `hl=<lang>`, so the filter must too). Unit-tested (`CategoryFilterTest`). NB the `:core`
-  flag pattern (not reading the app holder from `:core`) is deliberate - mirror it for any future
-  content gate that must act inside `:core`.
+- **"Hide adult categories" toggle:** `HideAdult` holder (`ui/PlaceContent.kt`, default **off**, init
+  in VelaApp, row in Settings → Map).
+  - It flips `CategoryFilter.enabled` (a `:core` flag) - `:core`'s `data/CategoryFilter` filters
+    adult/nightlife/alcohol/gambling/smoking places at the `GoogleMapsDataSource.search`/
+    `nearbyPlaces` seam.
+  - Match is CATEGORY-only (never name) and PRECISE (`EXACT`/`PHRASE`, food "…bar" kept); the keyword
+    lists are **multilingual** (categories arrive localized via `hl=<lang>`, so the filter must too).
+    Unit-tested (`CategoryFilterTest`).
+  - NB the `:core` flag pattern (not reading the app holder from `:core`) is deliberate - mirror it
+    for any future content gate that must act inside `:core`.
 - **"Hide website & external links" toggle:** `HideExternalLinks` holder
   (`ui/PlaceContent.kt`, default **off**, init in VelaApp, row in Settings → Map). Gates the Website
   pill/row, the Street View pano and the Book/Reserve/Order action in `PlaceSheet`. No restricted build
   flavor / LockableToggle machinery; keep holders in the plain `ShowReviews` shape. Gate any new
   external-link surface on a place page behind this holder.
-- **In-app updater (`app/update/SelfUpdater.kt`).** Reads `releases/latest` from
-  `alltechdev/vela-dpad` → tag `v0.0.<run>` → versionCode = `<run>` compared to BuildConfig; newer →
-  `MapUiState.updateInfo` card on the bare map. Download = no-call-timeout client (~80 MB APK) +
-  zip-magic check → `filesDir/updates/` (FileProvider `updates` path) → ACTION_VIEW package-archive;
-  the OS verifies same package + signature. Launch check ~daily behind `self_update_check`
-  (Settings → Version, default on); manual Check-for-updates button there too. "Not now" stores
-  `update_dismissed_code` (only a NEWER release re-offers). The tag parse takes the run number for the
-  versionCode; update `SelfUpdater.check` if the versionCode scheme ever changes.
-- **Zoomed-in pan perf:** (1) `reportScale` (fires per camera-move FRAME) only pushes
-  to compose when mpp moved >1% - an unconditional write recomposed the scale bar every pan frame;
-  keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
-  carry `textIgnorePlacement(true)`: they still YIELD to icons (allow-overlap stays false) but never
-  enter the collision index - cheaper placement at street zoom and numbers can't evict icons
-  whatever the layer order. (3) `ui/Buildings3d` holder + Settings → Map "3D buildings" toggle sets
-  visibility on the basemap `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns
-  visibility; applyLight/applyDark only colour it) - extrusion is the fragment-heavy layer, the
-  documented 5a-class stutter source at z16+.
+- **In-app updater (`app/update/SelfUpdater.kt`).**
+  - Reads `releases/latest` from `alltechdev/vela-dpad` → tag `v0.0.<run>` → versionCode = `<run>`
+    compared to BuildConfig; newer → `MapUiState.updateInfo` card on the bare map.
+  - Download = no-call-timeout client (~80 MB APK) + zip-magic check → `filesDir/updates/`
+    (FileProvider `updates` path) → ACTION_VIEW package-archive; the OS verifies same package +
+    signature.
+  - Launch check ~daily behind `self_update_check` (Settings → Version, default on); manual
+    Check-for-updates button there too. "Not now" stores `update_dismissed_code` (only a NEWER
+    release re-offers).
+  - The tag parse takes the run number for the versionCode; update `SelfUpdater.check` if the
+    versionCode scheme ever changes.
+- **Zoomed-in pan perf:**
+  - (1) `reportScale` (fires per camera-move FRAME) only pushes to compose when mpp moved >1% - an
+    unconditional write recomposed the scale bar every pan frame; keep the gate.
+  - (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay) carry
+    `textIgnorePlacement(true)`: they still YIELD to icons (allow-overlap stays false) but never
+    enter the collision index - cheaper placement at street zoom and numbers can't evict icons
+    whatever the layer order.
+  - (3) `ui/Buildings3d` holder + Settings → Map "3D buildings" toggle sets visibility on the basemap
+    `building-3d` fill-extrusion layer (a LaunchedEffect in VelaMapView owns visibility; applyLight/
+    applyDark only colour it) - extrusion is the fragment-heavy layer, the documented 5a-class
+    stutter source at z16+.
 - **Light/dark is `AppTheme` (`ui/theme/AppTheme.kt`), not the OS.** Read the
   in-app theme with the composable **`isAppInDarkTheme()`** - never call
   `isSystemInDarkTheme()` directly in app UI (it ignores the user's Light/Dark/
@@ -251,19 +277,23 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   `vela_settings`, `init()`-ed in `VelaApp`; flipping it recomposes the theme and
   reloads the map style (`VelaMapView`'s styleKey carries `dark=`).
 - **Basemap layer gotchas (`VelaMapView.ensureLayers`/`applyLight`/`applyDark`, OpenFreeMap Liberty).**
-  (1) **`maxzoom` is EXCLUSIVE** - the bundled `building` FILL layer is `minzoom 13 / maxzoom 14`, so
-  `setMinZoom(14f)` alone collapses its range to empty and the flat footprints never paint (you'd see only
-  the faint `building-3d` extrusion). The fill needs a matching **`setMaxZoom(24f)`** to re-open the top;
-  keep it. `building-3d` (fill-extrusion) is gated to **z16+** on purpose (the flat fill carries the
-  browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
-  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, `minZoom 17.5` - Google shows house numbers only at street level) -
-  OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
-  coverage is OSM `addr:housenumber` (partial), not a render bug. (3) The runtime loads the style from the **LIVE** URL `MapStyle.LIBERTY.uri =
-  https://tiles.openfreemap.org/styles/liberty` (`fromUri`), and offline downloads use the same URL - both
-  **auto-follow OpenFreeMap's current tile snapshot**, so there is NO dated-path/blank-basemap risk. The
-  bundled `liberty-roboto.json` asset (which pins a dated `planet/<snapshot>` path) is **parked + unused**
-  - the `asset://`/`fromJson` path in `VelaMapView` is dead code kept only as reference; don't be misled by
-  its stale path. Verify basemap edits on-device in **both** themes.
+  - (1) **`maxzoom` is EXCLUSIVE** - the bundled `building` FILL layer is `minzoom 13 / maxzoom 14`,
+    so `setMinZoom(14f)` alone collapses its range to empty and the flat footprints never paint
+    (you'd see only the faint `building-3d` extrusion). The fill needs a matching **`setMaxZoom(24f)`**
+    to re-open the top; keep it. `building-3d` (fill-extrusion) is gated to **z16+** on purpose (the
+    flat fill carries the browse-zoom footprint look; extrusion is the per-pixel-expensive part on a
+    Pixel 5a).
+  - (2) **House numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber`
+    source-layer, `minZoom 17.5` - Google shows house numbers only at street level) - OpenFreeMap
+    **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
+    coverage is OSM `addr:housenumber` (partial), not a render bug.
+  - (3) The runtime loads the style from the **LIVE** URL `MapStyle.LIBERTY.uri =
+    https://tiles.openfreemap.org/styles/liberty` (`fromUri`), and offline downloads use the same URL
+    - both **auto-follow OpenFreeMap's current tile snapshot**, so there is NO dated-path/
+    blank-basemap risk. The bundled `liberty-roboto.json` asset (which pins a dated `planet/<snapshot>`
+    path) is **parked + unused** - the `asset://`/`fromJson` path in `VelaMapView` is dead code kept
+    only as reference; don't be misled by its stale path.
+  - Verify basemap edits on-device in **both** themes.
 - **D-PAD-FIRST IS THE FORK'S REASON TO EXIST - NON-NEGOTIABLE (read before touching ANY UI).**
   Vela must be **100% operable with a 5-key D-pad (↑ ↓ ← → + OK) and hardware BACK, on a device with
   NO touchscreen** (a Qin F21 / feature phone). Touch is a *bonus*, never a requirement. A change that
@@ -306,90 +336,98 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
      `run_all.sh` (per-surface). `tests/small_screen/` - the feature-phone twin:
      `audit_smallscreen.sh` (shrinks the display; nothing clipped off-screen) + `audit_dialogs.sh`
      (dialogs/menus scroll and keep buttons on-screen). A UI PR that fails ANY of these does not merge.
-- **D-pad-only operation implementation (`docs/dpad.md`).** Helpers in
-  `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/`Modifier.dpadHighlight`/
-  `Modifier.dpadFieldEscape` - makes a text field's UP/DOWN escape it instead of
-  being swallowed as a cursor move, so controls below the field stay reachable - and
-  `rememberDpadAutoFocus()` - attach its `FocusRequester` to a screen's primary element so
-  focus is PLACED on appearance, no wake-up keypress; retries because the node isn't attached
-  on frame 1);
-  the map is key-driven via `app/ui/map/MapDpadController.kt` (wired in `VelaMapView`, key
-  handling + crosshair + zoom buttons in `MapScreen`).
-  **Detection is CONSERVATIVE - do not loosen it.** `rememberDpadFirstDevice`
-  (`detectDpadFirst`) returns true ONLY for a genuinely touchless device (`!FEATURE_TOUCHSCREEN`)
-  or a PHYSICAL (non-virtual) `InputDevice` with `SOURCE_DPAD`. It must NOT count the framework's
-  Virtual aggregate device (id −1): it reports `KEYBOARD | DPAD` on essentially every phone,
-  so counting it makes `dpadMode` always-true on ordinary phones and BREAKS the search bar (a tap
-  no longer opens the field / raises the keyboard; the `+`/`−` zoom buttons show under touch). A
-  fake-touchscreen keypad phone is NOT D-pad-first then; it gets full D-pad operation reactively on
-  the first key via `rememberDpadMode` (`dpadFirst || inputMode == Keyboard`). The soft keyboard in
-  `SearchBar` is likewise keyed off the LIVE `inputMode`, not the static device type, so a touch tap
-  raises it even on a hybrid phone. Rules when touching UI: (1) every new
-  interactive element must be focusable with a visible ring (`dpadHighlight`) and every new
-  gesture needs a key alternative; (2) D-pad code CALLS THE TOUCH PATHS (the named `handleTap`
-  lambda, `gestureMove`, `navUserZoom`) - never fork them; (3) all D-pad affordances gate on
-  `dpadMode`/`noTouch` so touch UX stays byte-identical; (4) keep the diff merge-friendly -
-  new behaviour in new files, shared-file edits as small anchored insertions (the one
-  commented import block per file). Search-overlay focus is subtle (armed field + explicit
-  `searchExpanded` flag - THREE traps in docs/dpad.md: opens-on-focus,
-  can't-BACK-out, and DOWN-must-escape-into-the-suggestions); don't "simplify" it back to
-  bare field-focus. Choose-on-map keeps the
-  map pannable to place the pin (a `pickOnMap` exception in `mapTargetHidden`) and the directions
-  panel is scroll-capped so **Start** is reachable with 4 alternates. The one
-  raw WebView in the app - the full-screen "Read all reviews" panel (`ReviewsPanel`,
-  `fullScreen`) - maps ↑/↓ to `pageUp`/`pageDown` + `requestFocus()`es so it scrolls by D-pad
-  (a WebView's default is to hop focus between links, not scroll); exit
-  is always hardware BACK via the `Dialog`'s `BackHandler`. **NO screen/view may open with nothing
-  focused** - Compose focus recovery is nondeterministic, so every
-  screen attaches `rememberDpadAutoFocus()` to a primary element (Settings→back, Welcome→Get
-  started, place sheet→handle, directions→Drive tab, steps→first row, reviews→back arrow);
-  the map + photo gallery already self-focus. When adding a screen, give it an auto-focus
-  target. **Menus & dialogs (the hard one): a Compose `DropdownMenu` Popup / `AlertDialog` can
-  NOT be pre-focused (~10 approaches proven to fail - requestFocus/moveFocus/synthetic KeyEvent);
-  only a hand-built RAW `Dialog` with an explicit `.focusable()` element auto-focuses.** So use
-  **`VelaMenu`** (`ui/VelaMenu.kt`, drop-in DropdownMenu: anchored DropdownMenu under touch,
-  auto-focusing raw-Dialog chooser under D-pad) and **`VelaDialog`** (`ui/VelaDialog.kt`, drop-in
-  two-button AlertDialog that auto-focuses its dismiss button) - NEVER a bare `DropdownMenu`/
-  `AlertDialog` for new D-pad UI. Their buttons/items focus via `.focusable()`+`.onKeyEvent`
-  (OK) + `pointerInput` (touch), NOT `.clickable` (whose nested focusable won't take requestFocus
-  in a Dialog window).
+- **D-pad-only operation implementation (`docs/dpad.md`).**
+  - Helpers in `app/ui/DpadFocus.kt` (`rememberDpadMode`/`rememberNoTouchDevice`/
+    `Modifier.dpadHighlight`/`Modifier.dpadFieldEscape` - makes a text field's UP/DOWN escape it
+    instead of being swallowed as a cursor move, so controls below the field stay reachable - and
+    `rememberDpadAutoFocus()` - attach its `FocusRequester` to a screen's primary element so focus is
+    PLACED on appearance, no wake-up keypress; retries because the node isn't attached on frame 1).
+  - The map is key-driven via `app/ui/map/MapDpadController.kt` (wired in `VelaMapView`, key handling
+    + crosshair + zoom buttons in `MapScreen`).
+  - **Detection is CONSERVATIVE - do not loosen it.** `rememberDpadFirstDevice` (`detectDpadFirst`)
+    returns true ONLY for a genuinely touchless device (`!FEATURE_TOUCHSCREEN`) or a PHYSICAL
+    (non-virtual) `InputDevice` with `SOURCE_DPAD`. It must NOT count the framework's Virtual
+    aggregate device (id −1): it reports `KEYBOARD | DPAD` on essentially every phone, so counting it
+    makes `dpadMode` always-true on ordinary phones and BREAKS the search bar (a tap no longer opens
+    the field / raises the keyboard; the `+`/`−` zoom buttons show under touch).
+  - A fake-touchscreen keypad phone is NOT D-pad-first then; it gets full D-pad operation reactively
+    on the first key via `rememberDpadMode` (`dpadFirst || inputMode == Keyboard`). The soft keyboard
+    in `SearchBar` is likewise keyed off the LIVE `inputMode`, not the static device type, so a touch
+    tap raises it even on a hybrid phone.
+  - Rules when touching UI: (1) every new interactive element must be focusable with a visible ring
+    (`dpadHighlight`) and every new gesture needs a key alternative; (2) D-pad code CALLS THE TOUCH
+    PATHS (the named `handleTap` lambda, `gestureMove`, `navUserZoom`) - never fork them; (3) all
+    D-pad affordances gate on `dpadMode`/`noTouch` so touch UX stays byte-identical; (4) keep the
+    diff merge-friendly - new behaviour in new files, shared-file edits as small anchored insertions
+    (the one commented import block per file).
+  - Search-overlay focus is subtle (armed field + explicit `searchExpanded` flag - THREE traps in
+    docs/dpad.md: opens-on-focus, can't-BACK-out, and DOWN-must-escape-into-the-suggestions); don't
+    "simplify" it back to bare field-focus.
+  - Choose-on-map keeps the map pannable to place the pin (a `pickOnMap` exception in
+    `mapTargetHidden`) and the directions panel is scroll-capped so **Start** is reachable with 4
+    alternates.
+  - The one raw WebView in the app - the full-screen "Read all reviews" panel (`ReviewsPanel`,
+    `fullScreen`) - maps ↑/↓ to `pageUp`/`pageDown` + `requestFocus()`es so it scrolls by D-pad (a
+    WebView's default is to hop focus between links, not scroll); exit is always hardware BACK via the
+    `Dialog`'s `BackHandler`.
+  - **NO screen/view may open with nothing focused** - Compose focus recovery is nondeterministic, so
+    every screen attaches `rememberDpadAutoFocus()` to a primary element (Settings→back, Welcome→Get
+    started, place sheet→handle, directions→Drive tab, steps→first row, reviews→back arrow); the map +
+    photo gallery already self-focus. When adding a screen, give it an auto-focus target.
+  - **Menus & dialogs (the hard one): a Compose `DropdownMenu` Popup / `AlertDialog` can NOT be
+    pre-focused (~10 approaches proven to fail - requestFocus/moveFocus/synthetic KeyEvent); only a
+    hand-built RAW `Dialog` with an explicit `.focusable()` element auto-focuses.** So use
+    **`VelaMenu`** (`ui/VelaMenu.kt`, drop-in DropdownMenu: anchored DropdownMenu under touch,
+    auto-focusing raw-Dialog chooser under D-pad) and **`VelaDialog`** (`ui/VelaDialog.kt`, drop-in
+    two-button AlertDialog that auto-focuses its dismiss button) - NEVER a bare `DropdownMenu`/
+    `AlertDialog` for new D-pad UI. Their buttons/items focus via `.focusable()`+`.onKeyEvent` (OK) +
+    `pointerInput` (touch), NOT `.clickable` (whose nested focusable won't take requestFocus in a
+    Dialog window).
 - **Localization (i18n) is three layers, one control (`AppLocale`, `ui/`, same process-wide reactive
-  holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings → Language
-  picks it. (1) **Spoken nav** - the GENERATED turn-by-turn text is a per-language `NavStrings` table in
-  `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. **BOTH routers feed
-  it:** `RouteGeometry.osrmPhrase` (online OSRM) AND `GraphHopperRouteEngine.ghPhrase` (offline) map their
-  maneuvers to the OSRM `(type, mod)` token pair and call `NavStringsRegistry.current().phrase(...)`, so
-  offline routes localize through the same 11 tables.
-  **The chosen neural
-  voice must actually speak that language** - `VoiceGuide` guards on `NeuralSynth.voiceLanguage` and, on a
-  mismatch, falls back to a system TTS in the target language (or stays silent + fires a "get a matching voice"
-  hint) rather than reading Russian nav text through the English Piper model. (2) **UI chrome** -
-  all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
-  the 10 translated languages (fr de es it pt nl ru pl sv uk), referenced via `stringResource`/`getString`.
-  The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale, **no-op when following
-  the system** so the default path is untouched) applied in **both** `MainActivity.attachBaseContext` (Compose
-  UI) and `VelaApp.attachBaseContext` (ViewModel/notification `getString`); changing the language calls
-  `recreate()`. (3) **Google POI content** - the scrape's `hl=en` is rewritten to the app/system language
-  at request time (`GoogleMapsDataSource.localized()`, no-op for English) so categories/hours/status/price
-  come back localized. **The rewrite is GATED to `SearchParser.STATUS_LANGS` (= the 11 keyword-table
-  languages, keyed off `CLOSED_WORDS`)** - for any OTHER locale the scrape stays `hl=en`, because a
-  status string in a language `parseOpenNow` can't read leaves openNow null forever and the UI can't
-  colour open/closed; English text the English table handles is the safer fallback.
-  The **open/closed BOOLEAN is parsed from the localized status TEXT against a
-  per-language keyword table** (`SearchParser.parseOpenNow(status, lang)`, `lang` = the same
-  `Locale.getDefault()` that set `hl=`; CLOSED words are matched FIRST - "Opens 5 AM" / "Ouvre à 07:00" /
-  "Fechado" / "Opent om 9:00" are prefix-cousins of the open words, so open-first matching paints a
-  closed Starbucks green). **Do NOT resurrect the numeric status-code path**
-  (`openFromCode`, paths `statusCodeRich`/`statusCodeSimple`): those ints are span/style markers, not
-  open/closed codes (closed pharmacies carried "open" 6, an Open-24-hours place carried 13/4 and
-  rendered red). `placeStatusColor(status, openNow)` colours from the boolean and refuses to green English text that
-  literally reads closed even if fed `openNow=true`. `gl` (region) still `us` - GPS-region `gl`
-  is a follow-up. **Dual-purpose literals stay inline on purpose** -
-  strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
-  search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
-  they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA - never
-  translated.** Adding a user-facing string means: add it to `values/strings.xml` AND all `values-<lang>/`,
-  and match the `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
+  holder shape as `AppTheme`).** `AppLocale.language` = "" (follow system) or a code; Settings →
+  Language picks it.
+  - (1) **Spoken nav** - the GENERATED turn-by-turn text is a per-language `NavStrings` table in
+    `:core` (`core/i18n`), switched by `NavStringsRegistry`; `AppLocale.apply()` drives it. **BOTH
+    routers feed it:** `RouteGeometry.osrmPhrase` (online OSRM) AND `GraphHopperRouteEngine.ghPhrase`
+    (offline) map their maneuvers to the OSRM `(type, mod)` token pair and call
+    `NavStringsRegistry.current().phrase(...)`, so offline routes localize through the same 11 tables.
+    - **The chosen neural voice must actually speak that language** - `VoiceGuide` guards on
+      `NeuralSynth.voiceLanguage` and, on a mismatch, falls back to a system TTS in the target
+      language (or stays silent + fires a "get a matching voice" hint) rather than reading Russian nav
+      text through the English Piper model.
+  - (2) **UI chrome** - all ~330 user-facing `:app` strings live in `res/values/strings.xml`
+    (English) + `res/values-<lang>/` for the 10 translated languages (fr de es it pt nl ru pl sv uk),
+    referenced via `stringResource`/`getString`. The runtime switch is `AppLocale.wrap(context)`
+    (overrides the Configuration locale, **no-op when following the system** so the default path is
+    untouched) applied in **both** `MainActivity.attachBaseContext` (Compose UI) and
+    `VelaApp.attachBaseContext` (ViewModel/notification `getString`); changing the language calls
+    `recreate()`.
+  - (3) **Google POI content** - the scrape's `hl=en` is rewritten to the app/system language at
+    request time (`GoogleMapsDataSource.localized()`, no-op for English) so categories/hours/status/
+    price come back localized. **The rewrite is GATED to `SearchParser.STATUS_LANGS` (= the 11
+    keyword-table languages, keyed off `CLOSED_WORDS`)** - for any OTHER locale the scrape stays
+    `hl=en`, because a status string in a language `parseOpenNow` can't read leaves openNow null
+    forever and the UI can't colour open/closed; English text the English table handles is the safer
+    fallback.
+  - The **open/closed BOOLEAN is parsed from the localized status TEXT against a per-language keyword
+    table** (`SearchParser.parseOpenNow(status, lang)`, `lang` = the same `Locale.getDefault()` that
+    set `hl=`; CLOSED words are matched FIRST - "Opens 5 AM" / "Ouvre à 07:00" / "Fechado" / "Opent om
+    9:00" are prefix-cousins of the open words, so open-first matching paints a closed Starbucks
+    green).
+  - **Do NOT resurrect the numeric status-code path** (`openFromCode`, paths `statusCodeRich`/
+    `statusCodeSimple`): those ints are span/style markers, not open/closed codes (closed pharmacies
+    carried "open" 6, an Open-24-hours place carried 13/4 and rendered red). `placeStatusColor(status,
+    openNow)` colours from the boolean and refuses to green English text that literally reads closed
+    even if fed `openNow=true`.
+  - `gl` (region) still `us` - GPS-region `gl` is a follow-up.
+  - **Dual-purpose literals stay inline on purpose** - strings that double as a logic key (place
+    "Open"/"Closed" → status-colour parser, the map category chips / search-along-route chips are also
+    the query, review sort/tab labels branch a `when`) are NOT in strings.xml; they localize only once
+    display text is split from the logic key.
+  - **Names/addresses/reviews are DATA - never translated.**
+  - Adding a user-facing string means: add it to `values/strings.xml` AND all `values-<lang>/`, and
+    match the `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String
+    crashes).
 
 ## Working on the scraper
 
@@ -402,76 +440,74 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   when shapes drift; the UI surfaces it as a notice.
 - **Never embed a static Google API key.** Per-user `GoogleSession` bootstrap
   only - that's what keeps the NewPipe legal footing.
-- **Remote calibration (`calibration.json` at the repo root).** The `pb`/proto
-  templates and endpoint URLs (search, directions, reviews, **photos** -
-  `photosEndpoint`/`photosProto` for the `hspqX` gallery RPC) are remotely
-  updatable: `CalibrationStore` (in `:core`,
-  `config/`) fetches `calibration.json` from the repo's raw URL at launch and
-  adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
-  provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).
-  The bundle also carries **`defaultVoiceId`** (String - the Piper voice a fresh install
-  downloads + activates), **`defaultVoiceSpeaker`** (int - only tunes libritts_r's 904
-  variants) and **`defaultVoiceSpeed`** (float - spoken-directions speed), so a favourite
-  voice/speaker/pace can be pushed as everyone's default with a version bump + re-sign, no
-  app release (a user's own `voice_model`/`voice_speaker`/`voice_speed` pick still wins).
-  Shipped defaults (calibration **v13**): voice **HFC Female** (`en_US-hfc_female-medium`),
-  speaker 14 (libritts only), speed **0.8×** - matched in the compiled `Calibration.DEFAULT`
-  + `VelaPiper.DEFAULT_VOICE_ID`. NB the neural voice lengthens pauses at periods by
-  **splitting the utterance on sentence boundaries and splicing silence in-app**
-  (`PiperSynth.splitSentences`/`joinWithGaps`) - sherpa-onnx's `silenceScale` config is
-  a measured no-op on the Piper/VITS path, don't reach for it. **Every fragment gets terminal
-  punctuation before synthesis (`PiperSynth`):** a bare-ending fragment ("turn left") gives
-  the model no final prosody contour, so it trails off and swallows the last consonant ("lef"
-  instead of "left"). A `;` is appended to any fragment ending in a letter/digit; punctuation is
-  language-neutral, so it's safe for every Piper voice. Spoken text also runs through
-  `SpeechText.spokenNumbers` in `EnNavStrings.expandForSpeech` - 3-digit **street ordinals** ("128th" →
-  "one twenty eighth", **space not hyphen** - the hyphenated compound gets a reduced/flapped "-ty" from
-  the neural voice) are pre-expanded so the neural G2P doesn't mangle them into "one, hundred
-  and 28th" (only 100–999; 1–2 digit + 4-digit+ are left for espeak). And `NavEngine` **does not
-  announce the DEPART maneuver** - `NavSession.start` speaks it once ("Starting navigation. Head
-  east on F St"); the engine skips it (distance ≈ 0), else the opener gets clipped by a re-announced
-  "head out".
-  **Multiple downloadable voices (voice browser).** `VelaPiper` is one engine
-  (`ENGINE_ID = "vela.piper"`) that holds ANY of many Piper voices, each in its
-  own `filesDir/piper/<id>/` dir (`<id>.onnx` + `tokens.txt` + `espeak-ng-data/`, the sherpa
-  `vits-piper-<id>` archive layout). The **installed set is derived from the filesystem** (`installedVoiceIds`,
-  keeps only complete dirs → a partial download self-heals), the pick persists in **`voice_model`**, and
-  **speaker choice is per-voice** (`voice_speaker_<id>`; the legacy global `voice_speaker` is migrated onto
-  libritts_r). The browsable catalog is `PiperCatalog` in `:core` (pure data, unit-tested, ~40 curated
-  voices across 11 languages; URL = `…/tts-models/vits-piper-<id>.tar.bz2`). `PiperSynth.ensureLoaded` reloads
-  when the selected voice changes; `PiperSynth.reloadVoice()` is the SINGLE switch trigger - it bumps the
-  generation counter (aborting any in-flight utterance) then tears down + rebuilds on the same serial
-  worker, so `tts` is never freed mid-`generate()`. `MapViewModel.migrateFlatLayoutIfNeeded` (first thing
-  in `init`) relocates the old flat single-voice install in place (rename, copy-fallback, verify-gated,
-  re-runnable) - never re-downloads. **Any large download (voice model, routing graph, building overlay)
-  MUST NOT use the shared OkHttp client** - its `callTimeout(12s)` (scrape-bounding) aborts the body read
-  mid-stream, `runCatching` eats it, and the asset SILENTLY never installs (no crash, no log). `KokoroInstaller`,
-  `RoutingGraphStore`, `OverlayTileStore` **and `VoiceInstaller`** (the TTS-engine APK download; a >12 s
-  APK fetch otherwise silently falls back to the F-Droid web page) each derive a
-  `downloadHttp` with `callTimeout(0)` + `readTimeout(60s)` for the body; only the tiny manifest/version
-  fetch stays on the shared short-timeout client. `OverlayTileStore.download` is also serialized behind a
-  `Mutex` (+ a first-line "already installed" re-check) so two callers for the same region can't interleave
-  writes into the one `.tmp` (whose 7-byte magic check could then pass on a corrupt archive).
-  Settings → Voice → **Voice library** is the browser; the
-  multi-speaker variant picker (Advanced) only shows when the SELECTED catalog voice has >1 speaker.
-  **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in
-  `calibration.json`, **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`),
-  commit `calibration.json` + `calibration.json.sig` to `main` - users pick it up on
-  their next launch (raw.githubusercontent caches ~5 min). Keep the compiled
-  `Calibration.DEFAULT`'s field VALUES (paths, endpoints, voice defaults) in sync with
-  `calibration.json` when you cut a release - but `DEFAULT.version` intentionally STAYS `1` (the
-  remote bundle's higher `version` must always win the adopt-if-newer check; the shipped
-  `calibration.json` is at v13, `DEFAULT.version` at 1 - that gap is by design). **Phase 2: the search
-  parser's positional field-index paths are remote too** - the `paths` object in `calibration.json`
-  (`name`, `address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays,
-  relative to a result entry whose place node is `[1]`; `results`/`single` are
-  root-relative). So a "Google moved field X to a new index" fix is also just an
-  edit + version bump. **All three result-shape gates follow `paths.name`** - `singleResultEntry`,
-  `atThisPlaceEntries` and `findResultsArray` wrap the candidate as `[null, node]` and validate through
-  `pathOf(paths,"name")` instead of a hard-coded `at(11)`, so a `paths.name` recalibration reaches the
-  single-result / address-snap / fallback paths too. And the WebView details/popular-times path
-  (`PopularTimesParser.parse`) threads the LIVE `cal.paths` through `SearchParser.parse`/`parsePopularTimes`
-  rather than pinning `DEFAULT_PATHS`.
+- **Remote calibration (`calibration.json` at the repo root).**
+  - The `pb`/proto templates and endpoint URLs (search, directions, reviews, **photos** -
+    `photosEndpoint`/`photosProto` for the `hspqX` gallery RPC) are remotely updatable: `CalibrationStore`
+    (in `:core`, `config/`) fetches `calibration.json` from the repo's raw URL at launch and adopts it
+    when its `version` is higher than the bundled `Calibration.DEFAULT`, provided every endpoint host is
+    on the allowlist (`www.google.com`/`google.com`).
+  - The bundle also carries **`defaultVoiceId`** (String - the Piper voice a fresh install downloads +
+    activates), **`defaultVoiceSpeaker`** (int - only tunes libritts_r's 904 variants) and
+    **`defaultVoiceSpeed`** (float - spoken-directions speed), so a favourite voice/speaker/pace can be
+    pushed as everyone's default with a version bump + re-sign, no app release (a user's own
+    `voice_model`/`voice_speaker`/`voice_speed` pick still wins). Shipped defaults (calibration **v13**):
+    voice **HFC Female** (`en_US-hfc_female-medium`), speaker 14 (libritts only), speed **0.8×** -
+    matched in the compiled `Calibration.DEFAULT` + `VelaPiper.DEFAULT_VOICE_ID`.
+  - NB the neural voice lengthens pauses at periods by **splitting the utterance on sentence boundaries
+    and splicing silence in-app** (`PiperSynth.splitSentences`/`joinWithGaps`) - sherpa-onnx's
+    `silenceScale` config is a measured no-op on the Piper/VITS path, don't reach for it.
+  - **Every fragment gets terminal punctuation before synthesis (`PiperSynth`):** a bare-ending fragment
+    ("turn left") gives the model no final prosody contour, so it trails off and swallows the last
+    consonant ("lef" instead of "left"). A `;` is appended to any fragment ending in a letter/digit;
+    punctuation is language-neutral, so it's safe for every Piper voice.
+  - Spoken text also runs through `SpeechText.spokenNumbers` in `EnNavStrings.expandForSpeech` - 3-digit
+    **street ordinals** ("128th" → "one twenty eighth", **space not hyphen** - the hyphenated compound
+    gets a reduced/flapped "-ty" from the neural voice) are pre-expanded so the neural G2P doesn't mangle
+    them into "one, hundred and 28th" (only 100–999; 1–2 digit + 4-digit+ are left for espeak).
+  - And `NavEngine` **does not announce the DEPART maneuver** - `NavSession.start` speaks it once
+    ("Starting navigation. Head east on F St"); the engine skips it (distance ≈ 0), else the opener gets
+    clipped by a re-announced "head out".
+  - **Multiple downloadable voices (voice browser).** `VelaPiper` is one engine (`ENGINE_ID =
+    "vela.piper"`) that holds ANY of many Piper voices, each in its own `filesDir/piper/<id>/` dir
+    (`<id>.onnx` + `tokens.txt` + `espeak-ng-data/`, the sherpa `vits-piper-<id>` archive layout). The
+    **installed set is derived from the filesystem** (`installedVoiceIds`, keeps only complete dirs → a
+    partial download self-heals), the pick persists in **`voice_model`**, and **speaker choice is
+    per-voice** (`voice_speaker_<id>`; the legacy global `voice_speaker` is migrated onto libritts_r).
+  - The browsable catalog is `PiperCatalog` in `:core` (pure data, unit-tested, ~40 curated voices across
+    11 languages; URL = `…/tts-models/vits-piper-<id>.tar.bz2`). `PiperSynth.ensureLoaded` reloads when
+    the selected voice changes; `PiperSynth.reloadVoice()` is the SINGLE switch trigger - it bumps the
+    generation counter (aborting any in-flight utterance) then tears down + rebuilds on the same serial
+    worker, so `tts` is never freed mid-`generate()`. `MapViewModel.migrateFlatLayoutIfNeeded` (first
+    thing in `init`) relocates the old flat single-voice install in place (rename, copy-fallback,
+    verify-gated, re-runnable) - never re-downloads.
+  - **Any large download (voice model, routing graph, building overlay) MUST NOT use the shared OkHttp
+    client** - its `callTimeout(12s)` (scrape-bounding) aborts the body read mid-stream, `runCatching`
+    eats it, and the asset SILENTLY never installs (no crash, no log). `KokoroInstaller`,
+    `RoutingGraphStore`, `OverlayTileStore` **and `VoiceInstaller`** (the TTS-engine APK download; a
+    >12 s APK fetch otherwise silently falls back to the F-Droid web page) each derive a `downloadHttp`
+    with `callTimeout(0)` + `readTimeout(60s)` for the body; only the tiny manifest/version fetch stays
+    on the shared short-timeout client. `OverlayTileStore.download` is also serialized behind a `Mutex`
+    (+ a first-line "already installed" re-check) so two callers for the same region can't interleave
+    writes into the one `.tmp` (whose 7-byte magic check could then pass on a corrupt archive).
+  - Settings → Voice → **Voice library** is the browser; the multi-speaker variant picker (Advanced)
+    only shows when the SELECTED catalog voice has >1 speaker.
+  - **To ship a pb/endpoint fix WITHOUT an app release:** edit the drifted field in `calibration.json`,
+    **bump `version`**, **re-sign** (`./scripts/sign-calibration.sh`), commit `calibration.json` +
+    `calibration.json.sig` to `main` - users pick it up on their next launch (raw.githubusercontent
+    caches ~5 min). Keep the compiled `Calibration.DEFAULT`'s field VALUES (paths, endpoints, voice
+    defaults) in sync with `calibration.json` when you cut a release - but `DEFAULT.version`
+    intentionally STAYS `1` (the remote bundle's higher `version` must always win the adopt-if-newer
+    check; the shipped `calibration.json` is at v13, `DEFAULT.version` at 1 - that gap is by design).
+  - **Phase 2: the search parser's positional field-index paths are remote too** - the `paths` object in
+    `calibration.json` (`name`, `address`, `rating`, `photos`, `featureId`, … as `[i,j,…]` arrays,
+    relative to a result entry whose place node is `[1]`; `results`/`single` are root-relative). So a
+    "Google moved field X to a new index" fix is also just an edit + version bump.
+  - **All three result-shape gates follow `paths.name`** - `singleResultEntry`, `atThisPlaceEntries` and
+    `findResultsArray` wrap the candidate as `[null, node]` and validate through `pathOf(paths,"name")`
+    instead of a hard-coded `at(11)`, so a `paths.name` recalibration reaches the single-result /
+    address-snap / fallback paths too. And the WebView details/popular-times path
+    (`PopularTimesParser.parse`) threads the LIVE `cal.paths` through `SearchParser.parse`/
+    `parsePopularTimes` rather than pinning `DEFAULT_PATHS`.
 - **Signed channel (mandatory).** The bundle is **ECDSA-P256/SHA-256 signed**
   (`calibration.json.sig`, detached, base64) and the app verifies it against the
   **public key pinned in `CalibrationStore.PINNED_PUBLIC_KEY`** before adopting -
@@ -485,90 +521,110 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   `body`/`url`) shown as dismissable cards on the bare map (`MapViewModel.refreshNotices`,
   dismissed ids in `vela_notices` prefs) - push "search is down, fix coming" with no
   app update. Rides the same signed channel.
-- **Phase 3: remote parse *logic*** via `transformsJs` - a signed JS bundle
-  run in a **Rhino sandbox** (`JsSandbox`, interpreted/`optimizationLevel=-1` for ART,
-  `initSafeStandardObjects` so it can't reach Java/IO; a private `ContextFactory` arms Rhino's
-  instruction observer as a **2 s wall-clock kill switch** - a runaway `while(true)` in a pushed
-  `transforms.js` throws an `Error` (which JS can't `catch`) → the `runCatching` becomes the
-  compiled-Kotlin fallback, so it can't hang search or, via `synchronized(this)`, wedge every later
-  transform (unit-tested); `org.mozilla:rhino-runtime`,
-  R8-keep in `core/consumer-rules.pro`). `JsTransforms` exposes two search hooks -
-  `parseSearch(rawResponse)` (full re-parse of a reshaped response) and
-  `transformPlaces(placesJson)` (post-process) - over the flat `PlaceJson` contract;
-  **compiled Kotlin is always the fallback** (no script / missing fn / any error →
-  unchanged). So a *response-shape* change can be hot-fixed too, not just a moved
-  field. Wired in `GoogleMapsDataSource.search`.
+- **Phase 3: remote parse *logic*** via `transformsJs`.
+  - A signed JS bundle run in a **Rhino sandbox** (`JsSandbox`, interpreted/`optimizationLevel=-1` for
+    ART, `initSafeStandardObjects` so it can't reach Java/IO; a private `ContextFactory` arms Rhino's
+    instruction observer as a **2 s wall-clock kill switch** - a runaway `while(true)` in a pushed
+    `transforms.js` throws an `Error` (which JS can't `catch`) → the `runCatching` becomes the
+    compiled-Kotlin fallback, so it can't hang search or, via `synchronized(this)`, wedge every later
+    transform (unit-tested); `org.mozilla:rhino-runtime`, R8-keep in `core/consumer-rules.pro`).
+  - `JsTransforms` exposes two search hooks - `parseSearch(rawResponse)` (full re-parse of a reshaped
+    response) and `transformPlaces(placesJson)` (post-process) - over the flat `PlaceJson` contract;
+    **compiled Kotlin is always the fallback** (no script / missing fn / any error → unchanged).
+  - So a *response-shape* change can be hot-fixed too, not just a moved field. Wired in
+    `GoogleMapsDataSource.search`.
 
 ## Degoogled constraints (hard rules)
 
 - Location: AOSP `LocationManager` only - never `FusedLocationProviderClient`. **Fix discipline
-  (don't regress):** NETWORK (BeaconDB) fixes are DROPPED during nav and used in
-  browse only when GPS has been quiet ≥12 s (`NETWORK_FIX_QUIET_MS`, OsmAnd's `useOnlyGPS` pattern) -
-  they're 100-1000 m off and teleported the dot/reroutes; inter-fix `dt` comes from
-  `loc.elapsedRealtimeNanos` (monotonic - `loc.time` mixes GNSS UTC with the network system clock and
-  a negative dt bypassed the outlier gate); fixes with accuracy >50 m never feed `NavSession`; the
-  `minDistanceM=0f` registration MUST stay 0 (a distance filter starves fixes at a standstill - the
-  frozen-speedo/creeping-puck bug). Measured speeds pass a SYMMETRIC accel-bounded gate against the
-  last ACCEPTED value (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided
-  spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
-- Nav guidance discipline: prompt/turn-now distances SCALE WITH SPEED in
-  `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
-  the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
-  no rerouting within 150 m of the destination or while stationary, off-route measured on the
-  windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
-  latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and
-  ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed). The route line's
-  driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a traversed-grey full line) -
-  MapLibre bakes line-gradients into a 256-texel texture (no crisp cut) and has no `line-trim-offset`;
-  don't "simplify" it back to a gradient.
-- Nav drive-report fixes: (1) **Route line z-order** - the route line inserts BELOW the first
-  symbol layer, but Liberty's first symbol is `road_one_way_arrow` (~idx 61) which sits UNDER the `bridge_*`
-  layers (~63-82) → bridges paint over the route on bridges. `VelaMapView.ensureLayers`
-  anchors instead to the first symbol AFTER the last `bridge_*` layer (a real label), so the route draws above
-  all road+bridge geometry, still below text. (2) **Exit consolidation** - OSRM splits one exit into ramp +
-  fork/merge steps, each spoken separately ("Take exit 15"…"Keep right"…"Merge"). `RouteGeometry.consolidateExits`
-  folds a ramp's immediately-following, <500 m-gapped FORK/MERGE run into the ramp maneuver (sums distances so
-  they still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested. **Sibling
-  `RouteGeometry.foldRenames`** folds a pure-rename CONTINUE (OSRM `continue`/`new name` going
-  straight, no genuine fork - "5th St becomes Anderson Rd") into the PRECEDING maneuver so it's not its own
-  banner card / step at all (NavEngine already silences its voice). Applied on BOTH routers (OSRM `parseOsrmRoute`
-  + GraphHopper `toRoute`); a genuine-fork CONTINUE (`continueHasGenuineFork`, spoken) and STRAIGHT (a junction
-  straight-through) are left alone. Unit-tested. (3) **Feet steps**
-  - `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round feet Google-style: 50 ft at/above
-  100 ft, 10 ft below. (4) **Voice K/C** - `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) →
-  "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. (6) **Continue/straight lane silence** - a CONTINUE/STRAIGHT speaks its lane preface ONLY for a GENUINE fork (an "off" lane whose OWN indication is an explicit `straight`/`slight*` arrow, e.g. "use the left 2 lanes to stay on I-80"); a plain turn bay at an intersection (off lane marked only `left`/`right`, OR **`none`** = OSRM's "no painted arrow" sentinel, NOT "goes straight") while you sail straight through is silenced (`Route.continueHasGenuineFork` gates `NavEngine`'s escape hatch; it matches only `straight`/`slight*` on an off lane - `none`/`through` are excluded). (5) **Traffic-light landmarks
-  ("pass the light, then turn") - BUILT (Settings → Navigation → "Traffic-light guidance", OFF by default,
-  English-only):** `RouteGeometry.enrichWithLights` folds a "pass the light, then …" clause into a surface-street
-  TURN when 1–2 signals fall on the approach (`NavStrings.passLights`); signals from `OverpassTrafficSignals.fetchAlong`
-  (keyless Overpass). **Two refinements (unit-tested):** it EXCLUDES a signal AT the turn vertex
-  itself (that's the light you turn at, not one you pass first - `distanceTo(turnPt) >= LIGHT_SNAP_M`), and it
-  CLUSTERS matched signals within `LIGHT_CLUSTER_M` (30 m) before counting, because OSM maps one `traffic_signals`
-  node per approach/carriageway at a junction - raw-node counting said "pass 2 lights" for one intersection. Still
-  needs a real-drive calibration of the thresholds.
-- Nav fixes, round 2: (1) **Replay arrow** - the arrow's visibility keys on the `displayBearing` passed to
-  `applyData` (`VelaMapView` ~730), which prefers snap/compass/`myBearing`; recorded traces often carry no
-  per-fix bearing, so with no route snap it went null and hid the arrow. Now falls back to the engaged puck's
-  OWN route-derived heading (`navPuck.displayBearing`, seeded from the road segment by the motion ticker) while
-  navigating. (2) **Replay GPS snap-back** - `replayTrip` cancels+nulls `locationJob`, but `startLocation()` is
-  guarded only by `locationJob != null`, so a permission callback / MapScreen effect re-started the live collector
-  mid-replay and its real fixes overwrote `myLocation`+`center`. Two guards: `startLocation()` no-ops while
-  `replaying`, and the live collector drops every fix while `replaying`. Replay's `finally` resumes live GPS
-  once `replaying=false`. (2b) **Replay teardown** (stop or natural end) - the `navSession→state` observer keeps
-  `activeRoute` once nav stops (`else it.activeRoute`), so the `finally` must explicitly null
-  `activeRoute`/`routes`/`directionsOpen`/step preview; and it snaps `myLocation`/`center` back to the user's real
-  PRE-replay location (`resumeLoc`, captured in `replayTrip`). Gated on `ownedNav` (a replay riding an
-  already-active nav leaves that route/location alone). (3) **U-turn / back-on-course** - a U-turn strays >45 m →
-  `RerouteNeeded` → async directions fetch (~1-3 s); but the U-turn outlasts the fetch, and by the time it lands
-  the driver has rejoined the ORIGINAL line. `reroute()` captures `fromRoute` and, before adopting, discards the
-  result if the driver is SOLIDLY back on it - `route === fromRoute && nav.onRouteStreak >= BACK_ON_COURSE_HITS(2)`.
-  **NOT bare `!offRoute`**: the offRoute latch clears on a SINGLE grazing fix (and `offDist` can match a
-  parallel/overlapping leg), so one spurious graze would kill a legit missed-turn reroute. So
-  `NavState.onRouteStreak` (consecutive on-corridor+moving fixes, computed in `NavEngine` beside `offRouteHits`,
-  reset the instant off) gates it - a graze can't reach 2, a real rejoin does. Self-healing (a re-deviation
-  re-fires the edge; no cooldown charged). Threshold tunable from a real-drive U-turn capture. (4) **Traffic
-  incidents** - DEFERRED: no keyless real-time source (Google keyless response carries none; incident tiles are
-  proprietary binary; OSM has only stale roadworks; DOT/511 needs a token + is per-state). Congestion colouring
-  already shows where it's slow. See ROADMAP.
+  (don't regress):**
+  - NETWORK (BeaconDB) fixes are DROPPED during nav and used in browse only when GPS has been quiet
+    ≥12 s (`NETWORK_FIX_QUIET_MS`, OsmAnd's `useOnlyGPS` pattern) - they're 100-1000 m off and
+    teleported the dot/reroutes.
+  - Inter-fix `dt` comes from `loc.elapsedRealtimeNanos` (monotonic - `loc.time` mixes GNSS UTC with
+    the network system clock and a negative dt bypassed the outlier gate).
+  - Fixes with accuracy >50 m never feed `NavSession`.
+  - The `minDistanceM=0f` registration MUST stay 0 (a distance filter starves fixes at a standstill -
+    the frozen-speedo/creeping-puck bug).
+  - Measured speeds pass a SYMMETRIC accel-bounded gate against the last ACCEPTED value
+    (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided spike filters
+    self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+- Nav guidance discipline:
+  - prompt/turn-now distances SCALE WITH SPEED in `NavEngine` (max(fixed, v×T); `spoken` stores band
+    SLOTS not metres);
+  - one prompt per update speaking the TRUE distance, silent catch-up past maneuvers >75 m behind;
+  - proximity arrival (crow ≤40 m) + no rerouting within 150 m of the destination or while stationary;
+  - off-route measured on the windowed/anchored projection (never whole-polyline min);
+  - reroutes are single-flight + cooldown + latch-clear-on-failure (a failed fetch must NOT kill
+    rerouting - the event is edge-triggered);
+  - ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed).
+  - The route line's driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a
+    traversed-grey full line) - MapLibre bakes line-gradients into a 256-texel texture (no crisp cut)
+    and has no `line-trim-offset`; don't "simplify" it back to a gradient.
+- Nav drive-report fixes:
+  - (1) **Route line z-order** - the route line inserts BELOW the first symbol layer, but Liberty's
+    first symbol is `road_one_way_arrow` (~idx 61) which sits UNDER the `bridge_*` layers (~63-82) →
+    bridges paint over the route on bridges. `VelaMapView.ensureLayers` anchors instead to the first
+    symbol AFTER the last `bridge_*` layer (a real label), so the route draws above all road+bridge
+    geometry, still below text.
+  - (2) **Exit consolidation** - OSRM splits one exit into ramp + fork/merge steps, each spoken
+    separately ("Take exit 15"…"Keep right"…"Merge"). `RouteGeometry.consolidateExits` folds a ramp's
+    immediately-following, <500 m-gapped FORK/MERGE run into the ramp maneuver (sums distances so they
+    still tile the polyline; stops at any real turn / far gap) → one prompt. Unit-tested.
+    - **Sibling `RouteGeometry.foldRenames`** folds a pure-rename CONTINUE (OSRM `continue`/`new name`
+      going straight, no genuine fork - "5th St becomes Anderson Rd") into the PRECEDING maneuver
+      so it's not its own banner card / step at all (NavEngine already silences its voice). Applied on
+      BOTH routers (OSRM `parseOsrmRoute` + GraphHopper `toRoute`); a genuine-fork CONTINUE
+      (`continueHasGenuineFork`, spoken) and STRAIGHT (a junction straight-through) are left alone.
+      Unit-tested.
+  - (3) **Feet steps** - `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round
+    feet Google-style: 50 ft at/above 100 ft, 10 ft below.
+  - (4) **Voice K/C** - `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) → "State
+    Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset.
+  - (6) **Continue/straight lane silence** - a CONTINUE/STRAIGHT speaks its lane preface ONLY for a
+    GENUINE fork (an "off" lane whose OWN indication is an explicit `straight`/`slight*` arrow, e.g.
+    "use the left 2 lanes to stay on I-80"); a plain turn bay at an intersection (off lane marked only
+    `left`/`right`, OR **`none`** = OSRM's "no painted arrow" sentinel, NOT "goes straight") while you
+    sail straight through is silenced (`Route.continueHasGenuineFork` gates `NavEngine`'s escape hatch;
+    it matches only `straight`/`slight*` on an off lane - `none`/`through` are excluded).
+  - (5) **Traffic-light landmarks ("pass the light, then turn") - BUILT (Settings → Navigation →
+    "Traffic-light guidance", OFF by default, English-only):** `RouteGeometry.enrichWithLights` folds a
+    "pass the light, then …" clause into a surface-street TURN when 1–2 signals fall on the approach
+    (`NavStrings.passLights`); signals from `OverpassTrafficSignals.fetchAlong` (keyless Overpass).
+    - **Two refinements (unit-tested):** it EXCLUDES a signal AT the turn vertex itself (that's the
+      light you turn at, not one you pass first - `distanceTo(turnPt) >= LIGHT_SNAP_M`), and it CLUSTERS
+      matched signals within `LIGHT_CLUSTER_M` (30 m) before counting, because OSM maps one
+      `traffic_signals` node per approach/carriageway at a junction - raw-node counting said "pass 2
+      lights" for one intersection. Still needs a real-drive calibration of the thresholds.
+- Nav fixes, round 2:
+  - (1) **Replay arrow** - the arrow's visibility keys on the `displayBearing` passed to `applyData`
+    (`VelaMapView` ~730), which prefers snap/compass/`myBearing`; recorded traces often carry no
+    per-fix bearing, so with no route snap it went null and hid the arrow. Now falls back to the
+    engaged puck's OWN route-derived heading (`navPuck.displayBearing`, seeded from the road segment by
+    the motion ticker) while navigating.
+  - (2) **Replay GPS snap-back** - `replayTrip` cancels+nulls `locationJob`, but `startLocation()` is
+    guarded only by `locationJob != null`, so a permission callback / MapScreen effect re-started the
+    live collector mid-replay and its real fixes overwrote `myLocation`+`center`. Two guards:
+    `startLocation()` no-ops while `replaying`, and the live collector drops every fix while
+    `replaying`. Replay's `finally` resumes live GPS once `replaying=false`.
+  - (2b) **Replay teardown** (stop or natural end) - the `navSession→state` observer keeps
+    `activeRoute` once nav stops (`else it.activeRoute`), so the `finally` must explicitly null
+    `activeRoute`/`routes`/`directionsOpen`/step preview; and it snaps `myLocation`/`center` back to
+    the user's real PRE-replay location (`resumeLoc`, captured in `replayTrip`). Gated on `ownedNav` (a
+    replay riding an already-active nav leaves that route/location alone).
+  - (3) **U-turn / back-on-course** - a U-turn strays >45 m → `RerouteNeeded` → async directions fetch
+    (~1-3 s); but the U-turn outlasts the fetch, and by the time it lands the driver has rejoined the
+    ORIGINAL line. `reroute()` captures `fromRoute` and, before adopting, discards the result if the
+    driver is SOLIDLY back on it - `route === fromRoute && nav.onRouteStreak >= BACK_ON_COURSE_HITS(2)`.
+    - **NOT bare `!offRoute`**: the offRoute latch clears on a SINGLE grazing fix (and `offDist` can
+      match a parallel/overlapping leg), so one spurious graze would kill a legit missed-turn reroute.
+      So `NavState.onRouteStreak` (consecutive on-corridor+moving fixes, computed in `NavEngine` beside
+      `offRouteHits`, reset the instant off) gates it - a graze can't reach 2, a real rejoin does.
+      Self-healing (a re-deviation re-fires the edge; no cooldown charged). Threshold tunable from a
+      real-drive U-turn capture.
+  - (4) **Traffic incidents** - DEFERRED: no keyless real-time source (Google keyless response carries
+    none; incident tiles are proprietary binary; OSM has only stale roadworks; DOT/511 needs a token +
+    is per-state). Congestion colouring already shows where it's slow. See ROADMAP.
 - Heading (browse-cone facing direction when stopped, where GPS course is noise): raw
   `SensorManager` `TYPE_ROTATION_VECTOR` (`core/location/HeadingProvider`) - a plain
   Android sensor, not GMS. **Navigation never uses it** (the nav heading comes from the
@@ -579,35 +635,38 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   with GPS speed - accel predicts between fixes, each fix measures). Collected ONLY during
   nav, written into a plain array (never compose state - sensor-rate recomposition). Missing
   sensors degrade to `a = 0` = the old constant-speed dead reckoning.
-- Voice: AOSP `TextToSpeech`, engine-selectable - never hard-depend on Google TTS. **Plus an
-  in-process neural option (Piper):** Vela bundles the **sherpa-onnx** runtime (arm64 `.so`, from the
-  `tts-runtime` release AAR - gitignored, fetched in CI, NOT committed) and downloads a **Piper VITS**
-  voice into `filesDir/piper/<id>/`, run in-process by `app/voice/PiperSynth` (sherpa `OfflineTts` +
-  `AudioTrack`) behind the `:core` `voice/NeuralSynth` seam (the AAR can't live in the `:core` library
-  module). The default is **HFC Female** (`en_US-hfc_female-medium`, ~67 MB), the default once present.
-  **Non-obvious, all device-only (compiler-clean):** R8 MUST `-keep class
-  com.k2fsa.sherpa.onnx.**` (JNI resolves classes by original name); and you must generate the WHOLE
-  utterance before `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT).
-  The whole utterance is generated, but it's **written to the track in ~200 ms chunks with a `generation`
-  check between them** (`PiperSynth`) so an interrupt (turn-now/rerouting/stop) takes
-  effect within ~200 ms instead of blocking for the full utterance - safe against the SIGABRT rule because
-  back-to-back chunk writes keep the buffer full (no underrun). **Audio-focus is refcounted via the
-  utterance callbacks; two leaks closed:** a system-TTS `speak()` returning `ERROR`
-  enqueues no utterance so no callback ever fires - `VoiceGuide.speakViaSystem` rolls back the focus
-  acquire on `ERROR`; and a failed system-TTS `onInit` used to queue every prompt into `pending` forever
-  - it now clears `pending`, latches `systemInitFailed`, and fires `langUnavailable` instead.
-  **A Piper voice is a SINGLE-language model** - reading another language's nav text through it is
-  gibberish. `NeuralSynth.voiceLanguage`
-  exposes the loaded voice's lang (id prefix, `en_US-hfc_female` → "en"); `VoiceGuide.speakNow` compares it
-  to the language the nav text is GENERATED in (`NavStringsRegistry.current().locale`) and, on a mismatch,
-  routes to **Android `TextToSpeech` in the target language instead** (`speakViaSystem`, lazily creating a
-  default engine as the fallback - the system `tts` is NOT shut down when the neural voice is active). If the
-  system TTS has no voice for that language either, guidance stays **silent** (never mangles it through the
-  wrong voice) and fires `langUnavailable(lang)` → `MapViewModel` flashes a "get a &lt;language&gt; voice in
-  Settings → Voice" hint.
-  **(History: earlier iterations bundled Kokoro (`KokoroSynth`) and Matcha, both removed after
-  on-device A/B. `MapViewModel` reclaims their old model dirs and sanitizes stale `vela.kokoro`/`vela.matcha`
-  prefs to Piper. `project_vela_kokoro_tts` memory is that historical record, not the current design.)**
+- Voice: AOSP `TextToSpeech`, engine-selectable - never hard-depend on Google TTS.
+  - **Plus an in-process neural option (Piper):** Vela bundles the **sherpa-onnx** runtime (arm64
+    `.so`, from the `tts-runtime` release AAR - gitignored, fetched in CI, NOT committed) and downloads
+    a **Piper VITS** voice into `filesDir/piper/<id>/`, run in-process by `app/voice/PiperSynth` (sherpa
+    `OfflineTts` + `AudioTrack`) behind the `:core` `voice/NeuralSynth` seam (the AAR can't live in the
+    `:core` library module). The default is **HFC Female** (`en_US-hfc_female-medium`, ~67 MB), the
+    default once present.
+  - **Non-obvious, all device-only (compiler-clean):** R8 MUST `-keep class com.k2fsa.sherpa.onnx.**`
+    (JNI resolves classes by original name); and you must generate the WHOLE utterance before
+    `AudioTrack.play()` (streaming underruns → AudioFlinger drops the track → SIGABRT).
+  - The whole utterance is generated, but it's **written to the track in ~200 ms chunks with a
+    `generation` check between them** (`PiperSynth`) so an interrupt (turn-now/rerouting/stop) takes
+    effect within ~200 ms instead of blocking for the full utterance - safe against the SIGABRT rule
+    because back-to-back chunk writes keep the buffer full (no underrun).
+  - **Audio-focus is refcounted via the utterance callbacks; two leaks closed:** a system-TTS `speak()`
+    returning `ERROR` enqueues no utterance so no callback ever fires - `VoiceGuide.speakViaSystem`
+    rolls back the focus acquire on `ERROR`; and a failed system-TTS `onInit` used to queue every prompt
+    into `pending` forever - it now clears `pending`, latches `systemInitFailed`, and fires
+    `langUnavailable` instead.
+  - **A Piper voice is a SINGLE-language model** - reading another language's nav text through it is
+    gibberish. `NeuralSynth.voiceLanguage` exposes the loaded voice's lang (id prefix, `en_US-hfc_female`
+    → "en"); `VoiceGuide.speakNow` compares it to the language the nav text is GENERATED in
+    (`NavStringsRegistry.current().locale`) and, on a mismatch, routes to **Android `TextToSpeech` in the
+    target language instead** (`speakViaSystem`, lazily creating a default engine as the fallback - the
+    system `tts` is NOT shut down when the neural voice is active). If the system TTS has no voice for
+    that language either, guidance stays **silent** (never mangles it through the wrong voice) and fires
+    `langUnavailable(lang)` → `MapViewModel` flashes a "get a &lt;language&gt; voice in Settings → Voice"
+    hint.
+  - **(History: earlier iterations bundled Kokoro (`KokoroSynth`) and Matcha, both removed after
+    on-device A/B. `MapViewModel` reclaims their old model dirs and sanitizes stale `vela.kokoro`/
+    `vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory is that historical record, not the
+    current design.)**
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
   (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.
 - EU consent: `InMemoryCookieJar` (CoreModule) pre-seeds Google's `SOCS`/`CONSENT`
@@ -615,273 +674,311 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. If push is needed later, use
   UnifiedPush; crash reporting via ACRA/self-hosted Sentry.
-- **Photos use a hidden WebView** (`app/web/WebPhotoFetcher`). The full gallery RPC
-  (`hspqX`) serves real photos only to a real browser engine - OkHttp gets a
-  bot-degraded Street-View-only reply (TLS-fingerprint detection, not headers).
-  The WebView loads `maps.google.com` **anonymously (no login)** and same-origin-
-  fetches the RPC. This is the one place we run Google's JS - an accepted tradeoff
-  for richer photos (lazy, best-effort, OkHttp fallback). Gotchas: **desktop UA**
-  (mobile UA → Google deep-links to `intent://`), block non-http(s) redirects, and
-  use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
-- **Routing is OPEN, not Google.** Turn-by-turn comes from **FOSSGIS OSRM**
-  (`RouteGeometry.route`, `steps=true`, per-mode `routed-car`/`-bike`/`-foot`) - complete,
-  street-named maneuvers + real geometry. **Highways identify by `ref` not `name`** - `parseOsrmRoute`
-  captures `ref`/`destinations`/`exits` (not just `name`) and `osrmPhrase` uses them ("Take exit 72B
-  toward …"); `Maneuver.ref` feeds the banner shield even when the text shows a name. **`routeOsrm`
-  retries 3× w/ backoff** - a transient
-  community-server blip otherwise drops nav to Google's abbreviated (nameless) steps. Google's keyless
-  `/maps/preview/directions` returns
-  **abbreviated** steps for longer routes (a 6-mi route came back with 2 of ~10 turns), so it's
-  demoted to (a) the **live-traffic source** - `GoogleMapsDataSource.applyTraffic` scales OSRM's
-  free-flow duration by Google's in-traffic/typical ratio and maps its congestion spans onto the
-  OSRM geometry - and (b) the **fallback router** when OSRM is unreachable. The two are fetched in
-  parallel. **`OSRM_BASE` is the FOSSGIS community server (fair-use) - point at a
-  self-hosted OSRM/Valhalla before any real release.**
-- **Traffic-AWARE routing (option 3).** OSRM's free-flow route ignores live traffic, so
-  when Google *rerouted around a jam* its path differs from OSRM's. `directions()` detects this
-  (`RouteGeometry.divergent` - sample Google's polyline, true if any point strays >700 m from OSRM's
-  line) and, only then, re-runs OSRM **through ~12 points sampled off Google's polyline**
-  (`sampleVias` → `routeVia`) so we follow Google's jam-avoiding path *with* full OSRM street-named
-  steps. Multi-waypoint OSRM returns one leg per via with spurious `arrive`+`depart` at each boundary
-  - `parseOsrmRoute` filters all but the true first-depart/last-arrive. Free-flow routes (the common
-  case) stay pure OSRM, untouched. The traffic-snapped route leads **only when it earns it** - its live
-  ETA must be ≤ OSRM free-flow best × `SNAP_ETA_MARGIN` (1.2), else a divergent-but-not-faster snap steps
-  aside for OSRM's clean route. The `directions` diag logs `snapKept`/`gEta`/`osrmFF` to tune the margin from real
-  side-by-side data. **Per-alternate re-rank:** each Google route in `root[0][1]` carries its
-  OWN `duration_in_traffic` (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is
-  **sorted by live in-traffic ETA - fastest leads, Google-style.** **Sort key = the EXACT value the picker
-  shows:** `compareBy({ durationInTrafficSeconds ?: durationSeconds }, { provisional })`.
-  `RouteOption` displays `durationInTrafficSeconds ?: durationSeconds` and tags the min-SHOWN route "Fastest", so
-  the sort MUST use the same expression - else the top/selected route and the "Fastest"-tagged
-  route diverge and the fastest-shown route isn't at the top. The axis is already fair
-  without the fudge factor: PRIMARY routes go through `applyTraffic` (their `durationInTrafficSeconds` = free-flow
-  × the top Google route's ratio) and Google's alternates carry their own per-route `duration_in_traffic`, so a
-  route only falls back to raw `durationSeconds` when there's genuinely no traffic signal for it. Do NOT bake an
-  estimate onto `durationInTrafficSeconds` to "fix the axis" - `Route.hasLiveTraffic` keys off its nullness.
-  Provisional routes are the stable tie-break.
-  **Alternates = GOOGLE's own alternate routes, NAME-ON-PICK:** `directions()` returns the named primary + each
-  distinct Google route as a **provisional** `Route` (`Route.provisional` - polyline + live ETA now, turn-by-turn
-  deferred), `dedupeRoutes`, prefers them over OSRM's free-flow alts, caps at `MAX_ROUTES`=4. Picking a provisional
-  alternate (`MapViewModel.selectRoute` → `MapDataSource.nameRoute`, also on `startNav` as a safety) NAMES
-  it - by snapping its polyline through OSRM (`routeVia`, guarded to reach dest) + re-applying
-  Google's traffic. So only the route you drive gets snapped, and the picker loads fast. **Next = swap
-  `nameRoute`'s snap for on-device GraphHopper MAP-MATCH where the region's downloaded** (wobble-free); the
-  snap stays the fallback.
-- **Why not "always snap to Google's path"?** Google's keyless **polyline is complete** (decoded from
-  `root[0][7][i]`) even though its *step text* is abbreviated - so we *can* always trace it. But doing it
-  cleanly needs **map-matching**, and the public infra won't reliably give it: FOSSGIS **`/match` caps at 10
-  trace coords** (11+ → `TooBig`; confidence ~0.01 at that sparsity) and public **Valhalla `/trace_route` times
-  out**. The serverless fallback - dense-waypoint `/route` (40–100 vias, no cap) - *does* reproduce Google's
-  path exactly, **but a via landing on a turn gets swallowed into a via arrive/depart → ~1-in-10 named turns
-  lost**, so we do **not** always-snap. Clean always-snap (and offline routing) is gated on an **on-device
-  engine** - see the next bullet. Option 3 is the public-server stopgap and stays as the online/fallback
-  path. **No backend needed for any of this** (the serverless constraint holds).
+- **Photos use a hidden WebView** (`app/web/WebPhotoFetcher`).
+  - The full gallery RPC (`hspqX`) serves real photos only to a real browser engine - OkHttp gets a
+    bot-degraded Street-View-only reply (TLS-fingerprint detection, not headers).
+  - The WebView loads `maps.google.com` **anonymously (no login)** and same-origin-fetches the RPC.
+    This is the one place we run Google's JS - an accepted tradeoff for richer photos (lazy,
+    best-effort, OkHttp fallback).
+  - Gotchas: **desktop UA** (mobile UA → Google deep-links to `intent://`), block non-http(s)
+    redirects, and use a `Handler` not `View.postDelayed` (a headless WebView never attaches).
+- **Routing is OPEN, not Google.**
+  - Turn-by-turn comes from **FOSSGIS OSRM** (`RouteGeometry.route`, `steps=true`, per-mode
+    `routed-car`/`-bike`/`-foot`) - complete, street-named maneuvers + real geometry.
+  - **Highways identify by `ref` not `name`** - `parseOsrmRoute` captures `ref`/`destinations`/`exits`
+    (not just `name`) and `osrmPhrase` uses them ("Take exit 72B toward …"); `Maneuver.ref` feeds the
+    banner shield even when the text shows a name.
+  - **`routeOsrm` retries 3× w/ backoff** - a transient community-server blip otherwise drops nav to
+    Google's abbreviated (nameless) steps.
+  - Google's keyless `/maps/preview/directions` returns **abbreviated** steps for longer routes (a
+    6-mi route came back with 2 of ~10 turns), so it's demoted to (a) the **live-traffic source** -
+    `GoogleMapsDataSource.applyTraffic` scales OSRM's free-flow duration by Google's in-traffic/typical
+    ratio and maps its congestion spans onto the OSRM geometry - and (b) the **fallback router** when
+    OSRM is unreachable. The two are fetched in parallel.
+  - **`OSRM_BASE` is the FOSSGIS community server (fair-use) - point at a self-hosted OSRM/Valhalla
+    before any real release.**
+- **Traffic-AWARE routing (option 3).**
+  - OSRM's free-flow route ignores live traffic, so when Google *rerouted around a jam* its path differs
+    from OSRM's. `directions()` detects this (`RouteGeometry.divergent` - sample Google's polyline, true
+    if any point strays >700 m from OSRM's line) and, only then, re-runs OSRM **through ~12 points
+    sampled off Google's polyline** (`sampleVias` → `routeVia`) so we follow Google's jam-avoiding path
+    *with* full OSRM street-named steps.
+  - Multi-waypoint OSRM returns one leg per via with spurious `arrive`+`depart` at each boundary -
+    `parseOsrmRoute` filters all but the true first-depart/last-arrive. Free-flow routes (the common
+    case) stay pure OSRM, untouched.
+  - The traffic-snapped route leads **only when it earns it** - its live ETA must be ≤ OSRM free-flow
+    best × `SNAP_ETA_MARGIN` (1.2), else a divergent-but-not-faster snap steps aside for OSRM's clean
+    route. The `directions` diag logs `snapKept`/`gEta`/`osrmFF` to tune the margin from real
+    side-by-side data.
+  - **Per-alternate re-rank:** each Google route in `root[0][1]` carries its OWN `duration_in_traffic`
+    (`parseRoute` reads `summary[10][0][0]` per route), so the returned list is **sorted by live
+    in-traffic ETA - fastest leads, Google-style.**
+  - **Sort key = the EXACT value the picker shows:** `compareBy({ durationInTrafficSeconds ?:
+    durationSeconds }, { provisional })`. `RouteOption` displays `durationInTrafficSeconds ?:
+    durationSeconds` and tags the min-SHOWN route "Fastest", so the sort MUST use the same expression -
+    else the top/selected route and the "Fastest"-tagged route diverge and the fastest-shown route
+    isn't at the top. The axis is already fair without the fudge factor: PRIMARY routes go through
+    `applyTraffic` (their `durationInTrafficSeconds` = free-flow × the top Google route's ratio) and
+    Google's alternates carry their own per-route `duration_in_traffic`, so a route only falls back to
+    raw `durationSeconds` when there's genuinely no traffic signal for it. Do NOT bake an estimate onto
+    `durationInTrafficSeconds` to "fix the axis" - `Route.hasLiveTraffic` keys off its nullness.
+    Provisional routes are the stable tie-break.
+  - **Alternates = GOOGLE's own alternate routes, NAME-ON-PICK:** `directions()` returns the named
+    primary + each distinct Google route as a **provisional** `Route` (`Route.provisional` - polyline +
+    live ETA now, turn-by-turn deferred), `dedupeRoutes`, prefers them over OSRM's free-flow alts, caps
+    at `MAX_ROUTES`=4. Picking a provisional alternate (`MapViewModel.selectRoute` →
+    `MapDataSource.nameRoute`, also on `startNav` as a safety) NAMES it - by snapping its polyline
+    through OSRM (`routeVia`, guarded to reach dest) + re-applying Google's traffic. So only the route
+    you drive gets snapped, and the picker loads fast.
+  - **Next = swap `nameRoute`'s snap for on-device GraphHopper MAP-MATCH where the region's downloaded**
+    (wobble-free); the snap stays the fallback.
+- **Why not "always snap to Google's path"?**
+  - Google's keyless **polyline is complete** (decoded from `root[0][7][i]`) even though its *step text*
+    is abbreviated - so we *can* always trace it.
+  - But doing it cleanly needs **map-matching**, and the public infra won't reliably give it: FOSSGIS
+    **`/match` caps at 10 trace coords** (11+ → `TooBig`; confidence ~0.01 at that sparsity) and public
+    **Valhalla `/trace_route` times out**.
+  - The serverless fallback - dense-waypoint `/route` (40–100 vias, no cap) - *does* reproduce Google's
+    path exactly, **but a via landing on a turn gets swallowed into a via arrive/depart → ~1-in-10 named
+    turns lost**, so we do **not** always-snap.
+  - Clean always-snap (and offline routing) is gated on an **on-device engine** - see the next bullet.
+    Option 3 is the public-server stopgap and stays as the online/fallback path. **No backend needed
+    for any of this** (the serverless constraint holds).
 - **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
-  Pure-JVM, runs on ART - validated end-to-end on a Pixel 5a (`:ghprobe`, a throwaway instrumented
-  probe, safe to delete). Chosen over Valhalla (no maintained Android map-matching binding) /
-  BRouter (no street names) / Mapbox (token-gated). It's wired as a `:core` dep
-  (`libs.graphhopper.mapmatching`, **OSM-import deps excluded** - osmosis/protobuf/woodstox/xmlgraphics
-  are Android-hostile + only needed to *build* graphs, which we do off-device). **Three ART workarounds,
-  all in `GraphHopperRouteEngine` - don't remove:** (1) **`graph.dataaccess=MMAP`** (default RAMDataAccess
-  static-inits a JDK-16 `VarHandle` method ART lacks); (2) **override `createWeightingFactory()`** to a
-  hand-rolled `SpeedWeighting`+access-block (v11 compiles custom models via **Janino** → JVM bytecode ART
-  can't load); (3) **swallow `close()`** (MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android - keep
-  one engine for the process lifetime). **R8:** `consumer-rules.pro` keeps `com.graphhopper.**` + hppc/jts/
-  jackson wholesale (GraphHopper resolves a lot reflectively) and `-dontwarn`s the excluded/absent refs -
-  release build is clean (**but +~10 MB APK; tighter keeps / on-demand delivery is a later optimisation**).
-  Graphs are built off-device, one per region, and (Phase 1b) downloaded alongside the offline tiles;
-  `RouteEngine` is selected by connectivity + graph-presence. **Speed needs Contraction Hierarchies:**
-  plain flexible A* with the interpreted `SpeedWeighting` was **7.6 s** for a 24-mi trip on a Pixel 5a;
-  **CH prepared on the SAME `SpeedWeighting`** (the engine declares `setCHProfiles`, `tools/graphbuilder`
-  builds it) → **188 ms**. Graphs MUST be built with CH on that weighting (CH bakes the build-time
-  weighting), to **internal** storage (FUSE external was I/O-bound). **`SpeedWeighting` ETA gotcha:** it
-  reports time as `distance_m/speed` as if `car_average_speed` (km/h) were m/s - 3.6× too fast - so the
-  engine AND `graphbuilder` override `calcEdgeMillis` to `distance_m·3600/kmh`; keep them identical.
-  **Encoded values = `car_access, car_average_speed, road_access, max_speed`** - the string is byte-identical
-  in `GraphBuilder.java` and `GraphHopperRouteEngine.kt` (a mismatch fails graph load); keep it so. `max_speed`
-  is the OSM `maxspeed` posted limit (km/h), a **passive stored column** (`OSMMaxSpeedParser`
-  auto-registers; NOT in the weighting/CH, so it doesn't change routes) read by the speed-limit badge via
-  `GraphHopperRouteEngine.currentRoadLimit(lat,lng)` - a `LocationIndex` snap + `EdgeIteratorState.get` off the
-  **base graph** (CH-safe). **Adding/removing an encoded value is a BREAKING graph-format change**: old graphs
-  lack the EV and `getDecimalEncodedValue` THROWS - `currentRoadLimit` swallows it (badge hidden, no crash),
-  but to actually light the badge up you must **re-bake + re-host every region graph** via `routing-graphs.yml`.
-  Existing installs keep their old graphs until re-downloaded (no version-discriminator yet - a manifest
-  `schema` bump so they auto-update is a follow-up).
-  **Status: DONE, graphs HOSTED + multi-region.** `RoutingGraphStore` (`:app`)
-  downloads region CH graphs from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=`
-  for local testing) into `filesDir/graphs/<id>/`, merging each into `filesDir/graphs/index.json`
-  (`[{id,bbox:[S,W,N,E]}]`); `GraphHopperRouteEngine` lazy-loads a `GraphHopper` per region and routes a trip on
-  the **smallest region whose bbox covers BOTH endpoints**, falling through to the next-smallest if that
-  graph can't make the trip (`inBox`, unit-tested). Smallest-first because Geofabrik extract boxes carry a
-  buffer that spills across borders; the same rule drives the picker's "covers your location" label + the
-  tiles→routing combine, so all three agree. Settings → **Offline** (one
-  section: a **Map area** subhead = viewport tile download, and a **Routing regions** subhead = the picker) is
-  a location-aware picker (regions covering the GPS fix sort first + flag "covers your location"; a name
-  filter appears once the catalog is large); downloading
-  offline map *tiles* for an area ALSO pulls that area's routing region (`MapViewModel.downloadRoutingForArea`).
-  `directions()` uses the engine when OSRM is empty. A trip must fit ONE region's monolithic graph (cross-region
-  → online).
-  **Hosting + world catalog:** graphs + `routing-manifest.json` are assets on the
-  **`routing-graphs` GitHub release** (fixed-tag prerelease, never the "Latest" the APK tracks). The catalog is
-  **`tools/routing-regions.json`** (135 regions, grouped by continent; `big:true` = country-sized). CI
-  **`.github/workflows/routing-graphs.yml`** is a **race-safe matrix**: `prep` (group/ids → matrix) → parallel
-  `build` (each region: `graphbuilder` CH graph → upload its own `<id>.zip` + emit a manifest *entry* artifact,
-  via `scripts/build-routing-region.sh MANIFEST_MODE=emit`) → one `merge` (`scripts/merge-routing-manifest.sh`
-  folds all entries into the manifest in a single replace-by-id upload; a `concurrency: routing-graphs-manifest`
-  guard also serializes whole runs so back-to-back dispatches queue instead of racing two merge jobs). **bbox
-  MUST come from `osmium -g header.boxes`** (declared extract region) - `data.bbox` (node extent) is polluted by
-  outlier nodes and made Oregon falsely cover WA. Build one region locally:
-  `scripts/build-routing-region.sh <id> "<name>" <pbf-url>`
-  (all-in-one), or the graph alone: `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`. Local
-  manifest test: serve a manifest+graph, `adb reverse tcp:8099 tcp:8099`, build with
-  `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json` (localhost cleartext allowed by
-  `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
+  - Pure-JVM, runs on ART - validated end-to-end on a Pixel 5a (`:ghprobe`, a throwaway instrumented
+    probe, safe to delete). Chosen over Valhalla (no maintained Android map-matching binding) / BRouter
+    (no street names) / Mapbox (token-gated). It's wired as a `:core` dep
+    (`libs.graphhopper.mapmatching`, **OSM-import deps excluded** - osmosis/protobuf/woodstox/
+    xmlgraphics are Android-hostile + only needed to *build* graphs, which we do off-device).
+  - **Three ART workarounds, all in `GraphHopperRouteEngine` - don't remove:** (1)
+    **`graph.dataaccess=MMAP`** (default RAMDataAccess static-inits a JDK-16 `VarHandle` method ART
+    lacks); (2) **override `createWeightingFactory()`** to a hand-rolled `SpeedWeighting`+access-block
+    (v11 compiles custom models via **Janino** → JVM bytecode ART can't load); (3) **swallow `close()`**
+    (MMAP unmap uses `Unsafe.invokeCleaner`, absent on Android - keep one engine for the process
+    lifetime).
+  - **R8:** `consumer-rules.pro` keeps `com.graphhopper.**` + hppc/jts/jackson wholesale (GraphHopper
+    resolves a lot reflectively) and `-dontwarn`s the excluded/absent refs - release build is clean
+    (**but +~10 MB APK; tighter keeps / on-demand delivery is a later optimisation**).
+  - Graphs are built off-device, one per region, and (Phase 1b) downloaded alongside the offline tiles;
+    `RouteEngine` is selected by connectivity + graph-presence.
+  - **Speed needs Contraction Hierarchies:** plain flexible A* with the interpreted `SpeedWeighting` was
+    **7.6 s** for a 24-mi trip on a Pixel 5a; **CH prepared on the SAME `SpeedWeighting`** (the engine
+    declares `setCHProfiles`, `tools/graphbuilder` builds it) → **188 ms**. Graphs MUST be built with CH
+    on that weighting (CH bakes the build-time weighting), to **internal** storage (FUSE external was
+    I/O-bound).
+  - **`SpeedWeighting` ETA gotcha:** it reports time as `distance_m/speed` as if `car_average_speed`
+    (km/h) were m/s - 3.6× too fast - so the engine AND `graphbuilder` override `calcEdgeMillis` to
+    `distance_m·3600/kmh`; keep them identical.
+  - **Encoded values = `car_access, car_average_speed, road_access, max_speed`** - the string is
+    byte-identical in `GraphBuilder.java` and `GraphHopperRouteEngine.kt` (a mismatch fails graph load);
+    keep it so. `max_speed` is the OSM `maxspeed` posted limit (km/h), a **passive stored column**
+    (`OSMMaxSpeedParser` auto-registers; NOT in the weighting/CH, so it doesn't change routes) read by
+    the speed-limit badge via `GraphHopperRouteEngine.currentRoadLimit(lat,lng)` - a `LocationIndex`
+    snap + `EdgeIteratorState.get` off the **base graph** (CH-safe).
+  - **Adding/removing an encoded value is a BREAKING graph-format change**: old graphs lack the EV and
+    `getDecimalEncodedValue` THROWS - `currentRoadLimit` swallows it (badge hidden, no crash), but to
+    actually light the badge up you must **re-bake + re-host every region graph** via
+    `routing-graphs.yml`. Existing installs keep their old graphs until re-downloaded (no
+    version-discriminator yet - a manifest `schema` bump so they auto-update is a follow-up).
+  - **Status: DONE, graphs HOSTED + multi-region.** `RoutingGraphStore` (`:app`) downloads region CH
+    graphs from a manifest (`BuildConfig.ROUTING_MANIFEST_URL`, override `-ProutingManifestUrl=` for
+    local testing) into `filesDir/graphs/<id>/`, merging each into `filesDir/graphs/index.json`
+    (`[{id,bbox:[S,W,N,E]}]`); `GraphHopperRouteEngine` lazy-loads a `GraphHopper` per region and routes
+    a trip on the **smallest region whose bbox covers BOTH endpoints**, falling through to the
+    next-smallest if that graph can't make the trip (`inBox`, unit-tested). Smallest-first because
+    Geofabrik extract boxes carry a buffer that spills across borders; the same rule drives the picker's
+    "covers your location" label + the tiles→routing combine, so all three agree.
+  - Settings → **Offline** (one section: a **Map area** subhead = viewport tile download, and a
+    **Routing regions** subhead = the picker) is a location-aware picker (regions covering the GPS fix
+    sort first + flag "covers your location"; a name filter appears once the catalog is large);
+    downloading offline map *tiles* for an area ALSO pulls that area's routing region
+    (`MapViewModel.downloadRoutingForArea`). `directions()` uses the engine when OSRM is empty. A trip
+    must fit ONE region's monolithic graph (cross-region → online).
+  - **Hosting + world catalog:** graphs + `routing-manifest.json` are assets on the **`routing-graphs`
+    GitHub release** (fixed-tag prerelease, never the "Latest" the APK tracks). The catalog is
+    **`tools/routing-regions.json`** (135 regions, grouped by continent; `big:true` = country-sized). CI
+    **`.github/workflows/routing-graphs.yml`** is a **race-safe matrix**: `prep` (group/ids → matrix) →
+    parallel `build` (each region: `graphbuilder` CH graph → upload its own `<id>.zip` + emit a manifest
+    *entry* artifact, via `scripts/build-routing-region.sh MANIFEST_MODE=emit`) → one `merge`
+    (`scripts/merge-routing-manifest.sh` folds all entries into the manifest in a single replace-by-id
+    upload; a `concurrency: routing-graphs-manifest` guard also serializes whole runs so back-to-back
+    dispatches queue instead of racing two merge jobs).
+  - **bbox MUST come from `osmium -g header.boxes`** (declared extract region) - `data.bbox` (node
+    extent) is polluted by outlier nodes and made Oregon falsely cover WA.
+  - Build one region locally: `scripts/build-routing-region.sh <id> "<name>" <pbf-url>` (all-in-one), or
+    the graph alone: `./gradlew :tools:graphbuilder:run --args="region.osm.pbf out-dir"`. Local manifest
+    test: serve a manifest+graph, `adb reverse tcp:8099 tcp:8099`, build with
+    `-ProutingManifestUrl=http://127.0.0.1:8099/manifest.json` (localhost cleartext allowed by
+    `res/xml/network_security_config.xml`; all other traffic stays HTTPS).
 - **Offline PLACE packs - whole-region POI/address search, Organic-Maps-style (`app/offline/PoiPackStore` +
-  `core/data/OfflinePacks`).** Downloading a state (routing region) also pulls its place pack - a
-  per-region SQLite db baked by CI from the SAME Geofabrik PBF (`scripts/build-poi-region.sh`: osmium
-  tags-filter → export geojsonseq → `poipack_build.py` → SQLite → zip; workflow `poi-packs.yml`, a matrix clone
-  of routing-graphs.yml with `merge-poi-manifest.sh`; release tag `poi-packs`, manifest
-  `poi-pack-manifest.json`, `POI_PACK_MANIFEST_URL` / `-PpoiPackManifestUrl=`). **Pack schema is NORMALIZED,
-  not the app stores' own schema** (that naive shape was 761 MB for WA): `poi(id,name,lat,lng,category,address,
-  phone,website,hours)` + `streetname(sid,street,street_norm)` + `addr(hn,sid,city,lat,lng)` +
-  `streetpt(sid,lat,lng)` → WA = 335 MB raw / **143 MB zipped** (163k POIs, 2.8M addrs, 1.2M street pts, 92k
-  street names). The normalization is also the QUERY strategy: match street names first (~90k-row scan), hit
-  the big tables only through sid/hn/lat indexes - never a LIKE scan of millions of rows. `OfflinePacks`
-  (:core singleton) holds the opened read-only dbs; `OfflinePoiStore.search` runs its same SQL on each pack
-  (identical poi columns), `OfflineAddressStore` has dedicated pack paths (`packSids`/`packQuery`/
-  `packStreetGeom` + reverse-geocode JOINs) merged into query()/streetGeom()/reverseGeocode(); counts include
-  packs. `poipack_build.py` PORTS `normalizeStreet`'s ABBREV and OverpassPois' category formatting - keep them
-  in sync. Lifecycle: pack downloads after its region's graph (`downloadPoiPack`), deletes with it
-  (`deleteRoutingGraph`), `registerPacks()` at VM init; graphs installed before packs get a **"Get places"**
-  button on the Settings row (`downloadPoiPackFor`, with a "no pack published yet" status when the manifest
-  lacks the region). **Heads-up progress:** `RegionDownloadCard` in MapScreen mirrors the voice card
-  (`routingDownloadingId`/`routingDownloadPct` then `poiPackDownloadingId`/`poiPackDownloadPct`, named by
-  `regionDownloadName`). Local pack test: build one with the script's osmium+python steps, serve manifest+zip
-  on :8099, `adb reverse`, `-PpoiPackManifestUrl=http://127.0.0.1:8099/poi-pack-manifest.json`. **After
-  pushing, dispatch Actions → "Build offline place packs"** (group=us etc.) to publish packs + manifest.
-  **Pack freshness: rev + monthly cron + row-level deltas.** Manifest rows carry
-  `rev`/`updatedAt`/`counts{poi,addr,streetpt,streetname}` and optionally `delta{fromRev,url,sizeMb}`;
-  `poi-packs.yml` has a monthly `schedule` cron (3rd, 07:15 UTC) whose prep step selects ALL catalog regions.
-  `build-poi-region.sh` reads the LIVE manifest for the old rev, downloads the previous zip BEFORE clobbering
-  it, builds the delta (`scripts/poipack_delta.py`, SQL EXCEPT per table into del_/ins_ tables), and publishes
-  it only when it is under half the full size. App: installed revs in `poipacks/revs.json`
-  (`PoiPackStore.installedRev`); Settings shows "Update available" + an **Update places** button when the
-  manifest rev is newer; `MapViewModel.downloadPoiPack(update=true)` applies the delta via
-  `PoiPackStore.applyDelta` ONLY when installedRev == deltaFromRev, else full download. applyDelta runs one
-  transaction (delete-by-full-row via a rowid JOIN with NULL-safe `IS` matching, then insert), verifies every
-  table count against the manifest before committing, and re-registers packs on both success and failure.
-  **sids are STABLE content hashes** - SHA-1 of `street_norm` truncated to a positive 63-bit int, collision
-  fails the build; NEVER a counter (a counter renumbers millions of rows on one mid-order insertion and the
-  delta balloons to pack size). `TABLE_COLUMNS` in PoiPackStore mirrors `poipack_build.py` +
-  `poipack_delta.py` - keep all three in sync (`PRAGMA user_version=2`). Gotcha: KDoc in PoiPackStore must
-  not contain a literal `del_*/ins_*` (the `*/` ends the comment). `OfflinePoiStore.search` orders
-  whole-query name matches first so they survive the internal 400-row cap. v1-format packs
-  (published before rev existed) have no rev; their first v2 rebuild yields no usable delta so clients just
-  full-download once, then deltas kick in.
+  `core/data/OfflinePacks`).**
+  - Downloading a state (routing region) also pulls its place pack - a per-region SQLite db baked by CI
+    from the SAME Geofabrik PBF (`scripts/build-poi-region.sh`: osmium tags-filter → export geojsonseq →
+    `poipack_build.py` → SQLite → zip; workflow `poi-packs.yml`, a matrix clone of routing-graphs.yml
+    with `merge-poi-manifest.sh`; release tag `poi-packs`, manifest `poi-pack-manifest.json`,
+    `POI_PACK_MANIFEST_URL` / `-PpoiPackManifestUrl=`).
+  - **Pack schema is NORMALIZED, not the app stores' own schema** (that naive shape was 761 MB for WA):
+    `poi(id,name,lat,lng,category,address,phone,website,hours)` + `streetname(sid,street,street_norm)` +
+    `addr(hn,sid,city,lat,lng)` + `streetpt(sid,lat,lng)` → WA = 335 MB raw / **143 MB zipped** (163k
+    POIs, 2.8M addrs, 1.2M street pts, 92k street names).
+  - The normalization is also the QUERY strategy: match street names first (~90k-row scan), hit the big
+    tables only through sid/hn/lat indexes - never a LIKE scan of millions of rows.
+  - `OfflinePacks` (:core singleton) holds the opened read-only dbs; `OfflinePoiStore.search` runs its
+    same SQL on each pack (identical poi columns), `OfflineAddressStore` has dedicated pack paths
+    (`packSids`/`packQuery`/`packStreetGeom` + reverse-geocode JOINs) merged into query()/streetGeom()/
+    reverseGeocode(); counts include packs. `poipack_build.py` PORTS `normalizeStreet`'s ABBREV and
+    OverpassPois' category formatting - keep them in sync.
+  - Lifecycle: pack downloads after its region's graph (`downloadPoiPack`), deletes with it
+    (`deleteRoutingGraph`), `registerPacks()` at VM init; graphs installed before packs get a **"Get
+    places"** button on the Settings row (`downloadPoiPackFor`, with a "no pack published yet" status
+    when the manifest lacks the region).
+  - **Heads-up progress:** `RegionDownloadCard` in MapScreen mirrors the voice card
+    (`routingDownloadingId`/`routingDownloadPct` then `poiPackDownloadingId`/`poiPackDownloadPct`, named
+    by `regionDownloadName`).
+  - Local pack test: build one with the script's osmium+python steps, serve manifest+zip on :8099,
+    `adb reverse`, `-PpoiPackManifestUrl=http://127.0.0.1:8099/poi-pack-manifest.json`. **After pushing,
+    dispatch Actions → "Build offline place packs"** (group=us etc.) to publish packs + manifest.
+  - **Pack freshness: rev + monthly cron + row-level deltas.** Manifest rows carry
+    `rev`/`updatedAt`/`counts{poi,addr,streetpt,streetname}` and optionally `delta{fromRev,url,sizeMb}`;
+    `poi-packs.yml` has a monthly `schedule` cron (3rd, 07:15 UTC) whose prep step selects ALL catalog
+    regions. `build-poi-region.sh` reads the LIVE manifest for the old rev, downloads the previous zip
+    BEFORE clobbering it, builds the delta (`scripts/poipack_delta.py`, SQL EXCEPT per table into del_/
+    ins_ tables), and publishes it only when it is under half the full size.
+  - App: installed revs in `poipacks/revs.json` (`PoiPackStore.installedRev`); Settings shows "Update
+    available" + an **Update places** button when the manifest rev is newer;
+    `MapViewModel.downloadPoiPack(update=true)` applies the delta via `PoiPackStore.applyDelta` ONLY when
+    installedRev == deltaFromRev, else full download. applyDelta runs one transaction (delete-by-full-row
+    via a rowid JOIN with NULL-safe `IS` matching, then insert), verifies every table count against the
+    manifest before committing, and re-registers packs on both success and failure.
+  - **sids are STABLE content hashes** - SHA-1 of `street_norm` truncated to a positive 63-bit int,
+    collision fails the build; NEVER a counter (a counter renumbers millions of rows on one mid-order
+    insertion and the delta balloons to pack size).
+  - `TABLE_COLUMNS` in PoiPackStore mirrors `poipack_build.py` + `poipack_delta.py` - keep all three in
+    sync (`PRAGMA user_version=2`). Gotcha: KDoc in PoiPackStore must not contain a literal `del_*/ins_*`
+    (the `*/` ends the comment).
+  - `OfflinePoiStore.search` orders whole-query name matches first so they survive the internal 400-row
+    cap. v1-format packs (published before rev existed) have no rev; their first v2 rebuild yields no
+    usable delta so clients just full-download once, then deltas kick in.
 - **Offline forward geocoder - typed address → coordinate, no signal (`core/data/OfflineAddressStore` +
-  `OverpassPois.fetchAddresses`/`fetchStreets`).** So an arbitrary
-  typed street address routes offline (not only addresses that are an indexed POI). Populated when a map area is
-  downloaded (`MapViewModel.downloadOfflinePois`) from keyless Overpass over a bbox **padded to a ~15 km min span
-  around the viewport centre** (`GEOCODE_PAD_DEG=0.09`, so a saved area covers the surrounding metro, not just the
-  on-screen tiles). TWO OSM sources into ONE SQLite db (`vela_offline_addr.db`, v2): **`addr:housenumber` points**
-  (`addr` table) for house-precise hits, and **named road centrelines** (`street` table, thinned to ~1 pt/120 m
-  by `toStreetPts`) for a street-level fallback where OSM has the road but no house numbers (the US-suburb
-  reality; the OpenAddresses/Microsoft *render* overlays are PMTiles, not queryable as a geocoder, so the geocoder
-  uses OSM). `geocode()` is layered: (1) exact house number, (2)
-  **interpolate** between the two bracketing mapped numbers, (3) nearest mapped house on the street, (4) nearest
-  point on the street centreline. `normalizeStreet` expands abbreviations both ways ("Pl"↔"place", "SE"↔
-  "southeast") so all spellings hit the same rows. Wired into the offline search branch (`MapViewModel`, gated by
-  `OfflineAddressStore.looksLikeAddress` so "coffee" doesn't hit it) AND the network-error fallback; `haveArea`
-  counts `count()`+`streetCount()` so a street-only suburb isn't misreported "no data". Big Overpass bodies → the
-  no-call-timeout `offlineDownloadHttp` (same rule as the graph/overlay downloads). The result Place routes
-  through the normal GraphHopper offline engine. **Reverse-geocode backfill for offline POIs:** most US chains
-  have no OSM `addr:*` (Applebee's comes back as bare "WA"), so `MapViewModel.backfillOfflineAddress` - on
-  selecting a place while offline, when its address has no house number (`.none { isDigit() }`) - calls
-  `OfflineAddressStore.reverseGeocode(loc)` (nearest mapped house ≤60 m, else nearest street ≤150 m, bounded
-  lat/lng box scan) and fills `selected.address` if still selected. **Quiet offline indicator (no banner):**
-  `MapUiState.offline` (a reactive
-  `ConnectivityManager` default-network callback, `observeConnectivity`, fails safe to online) drives a greyed
-  globe-slash + "Offline" in `SearchBar` (bare map only) and a globe-slash chip **inline under the category
-  chips** in `MapScreen`'s top Column (gated to the same bare-map state the chips show in, so it never trails a
-  results list). **The directions ETA subtitle** (`PlaceSheet.DepartTimeChooser`) only says "current traffic"
-  when `route.hasLiveTraffic`; an
-  offline (traffic-less) route shows the arrival time with no traffic note. **Upgrade nudge:** the address
-  index is built at download time, so areas saved before the geocoder have tiles+POIs but no addresses.
-  Settings → Offline shows a "Update saved areas" card when `regions.isNotEmpty() && offlineAddressCount == 0`
-  (via `MapViewModel.offlineAddressCount`); tapping it runs `refreshOfflineDataForSavedAreas` - iterates every
-  saved `OfflineRegion`, reads its `OfflineMaps.boundsOf` and re-runs `downloadOfflinePois` over each box.
-- **Open building-footprint overlay (`app/offline/OverlayTileStore` + `VelaMapView`).** Fills the map's building gaps where OSM is thin (a suburb the
-  Microsoft→OSM import never reached) with **Microsoft US Building Footprints (ODbL)**. Off-device, CI bakes
-  ONE `.pmtiles` per US state (`scripts/build-overlay-region.sh` → tippecanoe `-l building -Z14 -z16
-  --drop-densest-as-needed`; `-Z14` not `-Z12` - starting at z12 ballooned WA to 271 MB, z14 → 197 MB) →
-  `building-overlays` GitHub release + `building-overlay-manifest.json`, matrix workflow
-  `.github/workflows/building-overlays.yml` (clone of the routing one, `MANIFEST_MODE=emit` +
-  `scripts/merge-overlay-manifest.sh`), catalog `tools/overlay-regions.json`. In-app: `OverlayTileStore` is a
-  single-file sibling of `RoutingGraphStore` (`filesDir/overlays/<id>.pmtiles` + `index.json`; PMTiles-magic
-  guard). **The overlay STREAMS online - no download needed to see houses.** `refreshBuildingOverlays`
-  runs on every camera-idle (`onViewport`) and emits, per view, a list of full `pmtiles://` URIs: a
-  **`pmtiles://file://<abs-path>`** for any DOWNLOADED region (offline), and **`pmtiles://https://…<region>.pmtiles`**
-  for the covering regions in view that AREN'T downloaded - the **UNION of up to the 3 smallest covering
-  boxes, NOT just the single smallest**: a neighbour's rectangular bbox can spill across an
-  irregular border AND be smaller (Kansas's box crosses the Missouri River and beats Missouri's box, but
-  kansas.pmtiles is EMPTY east of the river, so a single-pick rendered NO footprints there). Streaming the
-  union lets whichever archive has the data paint; an empty region's range requests cost ~nothing. MapLibre
-  11.7+ reads that hosted archive by **HTTP range requests** (GitHub release assets 302→release-assets host
-  with `accept-ranges: bytes`, MapLibre follows the redirect), fetching only the visible tiles, so footprints
-  appear as you pan. The manual
-  **`MapViewModel.downloadOverlayForArea`** (still smallest-covering-box, pulled alongside the area's tiles) is now
-  ONLY for going fully offline. Render: `VelaMapView`'s `LaunchedEffect(buildingOverlays, styleRef, darkTheme)`
-  adds each URI as a `VectorSource` (used verbatim - the URI already carries `pmtiles://file://` or
-  `pmtiles://https://`) + a `FillLayer` `setSourceLayer("building")` **`addLayerBelow` the OSM `building` layer**,
-  themed to the exact OSM building fill/outline (`#323f54`/`#3f4e66` dark, `#dde1e7`/`#c4c9d1` light) so overlay
-  footprints are indistinguishable from real OSM ones and OSM still wins wherever it has data. `buildingOverlays`
-  is de-duped so panning within one region doesn't churn the map sources. **The load-bearing DOWNLOAD bug was NOT
-  the render** - it was the `callTimeout(0)` rule above: the 197 MB body aborted at the shared client's 12 s cap,
-  silently (that only ever mattered for the offline download; streaming reads a few KB/tile). NB GitHub release
-  hosting works but isn't a CDN - a real deployment should host the PMTiles behind a CDN for snappier range reads.
-  `OVERLAY_MANIFEST_URL`
-  BuildConfig overridable `-PoverlayManifestUrl=` like routing. BREAKING-ish: an overlay is DATA (ODbL), orthogonal
-  to the app's GPLv3, obligation met by tippecanoe `--attribution` + the release publishing derived tiles under ODbL.
-  **World catalog (`tools/overlay-regions.json`, 361 rows - ~250 base regions plus chunk pieces):** TWO Microsoft sources picked by each row's
-  `source`, both handled by the ONE build script (`SOURCE` env): **`us-legacy`** = a US state's single
-  `.geojson.zip` (Microsoft US Building Footprints, 51 states+DC); **`ms-global`** = a world country's
-  quadkey-partitioned GeoJSONL from Microsoft's **Global ML Building Footprints** (`global-buildings/dataset-links.csv`
-  → `awk` the country's `Location` rows → curl+gunzip each `.csv.gz` into one ndjson → tippecanoe `-P`; ~199
-  countries). Country **bboxes are the union of the dataset's own z9 quadkey tiles**; US-state bboxes are
-  Geofabrik extract bounds. **Big countries are CHUNKED** (>1500 MB compressed source, 18 of them): the catalog
-  splits each into sub-national pieces by **quadkey PREFIX** (`qkprefix`; adaptive recursive split until each
-  chunk ≤ ~1500 MB - India → 24 pieces), the build script's awk filters the country's rows to that prefix, and
-  each chunk gets its own union bbox so the **app's smallest-covering-box rule picks the piece covering the user**
-  (fits CI disk + hosts under GitHub's 2 GB/asset limit). Only the whole-US aggregate + continental aggregates +
-  duplicate Locations (CzechRepublic→Czechia, DemocraticRepublicoftheCongo→CongoDRC) are dropped.
-  The catalog is 361 regions - **over GitHub's 256-job matrix cap** - so each row carries a `group` (`us` / `world`
-  / `chunk`) and dispatch is **one group at a time** (`-f group=world`); run-level concurrency is OFF so groups
-  build concurrently, only the merge job serialises. The app/manifest are source-AGNOSTIC - the emitted manifest
-  row is always `{id,name,url(asset),sizeMb,bbox}`.
-- **Open house-number overlay (`VelaMapView` + `scripts/build-address-region.sh`).** Microsoft footprints have geometry but **no addresses**, so house numbers
-  come from a SECOND overlay: **OpenAddresses** address POINTS → per-state `.pmtiles` (`-l address`, keep the
-  `number` prop) → `address-overlays` GitHub release + `address-overlay-manifest.json` (`ADDRESS_MANIFEST_URL`,
-  `-PaddressManifestUrl=`). Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
-  → its current `job` → `https://v2.openaddresses.io/batch-prod/job/<job>/source.geojson.gz` (GeoJSONL of Points
-  with `number`/`street`; **42 US states have a `statewide` source**). Render:
-  `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
-  `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, grey +
-  white halo, **minZoom 17.5** (in lockstep with the basemap `vela-housenumber` layer - Google shows house numbers only at true street level ~z17.5-18) -
-  inserted below `vela-controls` (see the LAYER ORDER warning below). **Streams online exactly like buildings**
-  (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → the union of up to the 3
-  smallest covering regions' `pmtiles://https://…` URIs - same spilled-bbox shadowing fix as the building
-  overlay, see above; reuses `overlayStore.manifest()` which is manifest-URL-agnostic).
-  **LAYER ORDER:** the addr layers are inserted **BELOW `vela-controls`**
-  (→ below the ambient POI icons), NOT `addLayer`/top - MapLibre places symbols TOPMOST-FIRST, so numbers
-  stacked above the ambient layer grab collision boxes before the business icons place and **EVICT them
-  at z16+** (the "Applebee's icon disappears on zoom-in" bug: big prominence-scaled icons collide the most).
-  Below the icons, numbers place last and yield - Google's behaviour. Also: while the overlay is active the
-  basemap `vela-housenumber` layer is hidden (visibility NONE in the same LaunchedEffect) - both drew the
-  SAME address at a slight offset. **NOT** the
-  building overlay (different data + a Symbol not Fill layer + its own release/manifest). CI:
-  `.github/workflows/address-overlays.yml` (clone of building-overlays), catalog `tools/address-regions.json`.
-  **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves in new
-  suburbs.**
+  `OverpassPois.fetchAddresses`/`fetchStreets`).**
+  - So an arbitrary typed street address routes offline (not only addresses that are an indexed POI).
+    Populated when a map area is downloaded (`MapViewModel.downloadOfflinePois`) from keyless Overpass
+    over a bbox **padded to a ~15 km min span around the viewport centre** (`GEOCODE_PAD_DEG=0.09`, so a
+    saved area covers the surrounding metro, not just the on-screen tiles).
+  - TWO OSM sources into ONE SQLite db (`vela_offline_addr.db`, v2): **`addr:housenumber` points**
+    (`addr` table) for house-precise hits, and **named road centrelines** (`street` table, thinned to
+    ~1 pt/120 m by `toStreetPts`) for a street-level fallback where OSM has the road but no house numbers
+    (the US-suburb reality; the OpenAddresses/Microsoft *render* overlays are PMTiles, not queryable as a
+    geocoder, so the geocoder uses OSM).
+  - `geocode()` is layered: (1) exact house number, (2) **interpolate** between the two bracketing mapped
+    numbers, (3) nearest mapped house on the street, (4) nearest point on the street centreline.
+    `normalizeStreet` expands abbreviations both ways ("Pl"↔"place", "SE"↔"southeast") so all spellings
+    hit the same rows.
+  - Wired into the offline search branch (`MapViewModel`, gated by `OfflineAddressStore.looksLikeAddress`
+    so "coffee" doesn't hit it) AND the network-error fallback; `haveArea` counts `count()`+
+    `streetCount()` so a street-only suburb isn't misreported "no data". Big Overpass bodies → the
+    no-call-timeout `offlineDownloadHttp` (same rule as the graph/overlay downloads). The result Place
+    routes through the normal GraphHopper offline engine.
+  - **Reverse-geocode backfill for offline POIs:** most US chains have no OSM `addr:*` (Applebee's comes
+    back as bare "WA"), so `MapViewModel.backfillOfflineAddress` - on selecting a place while offline,
+    when its address has no house number (`.none { isDigit() }`) - calls
+    `OfflineAddressStore.reverseGeocode(loc)` (nearest mapped house ≤60 m, else nearest street ≤150 m,
+    bounded lat/lng box scan) and fills `selected.address` if still selected.
+  - **Quiet offline indicator (no banner):** `MapUiState.offline` (a reactive `ConnectivityManager`
+    default-network callback, `observeConnectivity`, fails safe to online) drives a greyed globe-slash +
+    "Offline" in `SearchBar` (bare map only) and a globe-slash chip **inline under the category chips**
+    in `MapScreen`'s top Column (gated to the same bare-map state the chips show in, so it never trails a
+    results list).
+  - **The directions ETA subtitle** (`PlaceSheet.DepartTimeChooser`) only says "current traffic" when
+    `route.hasLiveTraffic`; an offline (traffic-less) route shows the arrival time with no traffic note.
+  - **Upgrade nudge:** the address index is built at download time, so areas saved before the geocoder
+    have tiles+POIs but no addresses. Settings → Offline shows a "Update saved areas" card when
+    `regions.isNotEmpty() && offlineAddressCount == 0` (via `MapViewModel.offlineAddressCount`); tapping
+    it runs `refreshOfflineDataForSavedAreas` - iterates every saved `OfflineRegion`, reads its
+    `OfflineMaps.boundsOf` and re-runs `downloadOfflinePois` over each box.
+- **Open building-footprint overlay (`app/offline/OverlayTileStore` + `VelaMapView`).**
+  - Fills the map's building gaps where OSM is thin (a suburb the Microsoft→OSM import never reached)
+    with **Microsoft US Building Footprints (ODbL)**.
+  - Off-device, CI bakes ONE `.pmtiles` per US state (`scripts/build-overlay-region.sh` → tippecanoe
+    `-l building -Z14 -z16 --drop-densest-as-needed`; `-Z14` not `-Z12` - starting at z12 ballooned WA
+    to 271 MB, z14 → 197 MB) → `building-overlays` GitHub release + `building-overlay-manifest.json`,
+    matrix workflow `.github/workflows/building-overlays.yml` (clone of the routing one,
+    `MANIFEST_MODE=emit` + `scripts/merge-overlay-manifest.sh`), catalog `tools/overlay-regions.json`.
+  - In-app: `OverlayTileStore` is a single-file sibling of `RoutingGraphStore` (`filesDir/overlays/
+    <id>.pmtiles` + `index.json`; PMTiles-magic guard).
+  - **The overlay STREAMS online - no download needed to see houses.** `refreshBuildingOverlays` runs on
+    every camera-idle (`onViewport`) and emits, per view, a list of full `pmtiles://` URIs: a
+    **`pmtiles://file://<abs-path>`** for any DOWNLOADED region (offline), and
+    **`pmtiles://https://…<region>.pmtiles`** for the covering regions in view that AREN'T downloaded -
+    the **UNION of up to the 3 smallest covering boxes, NOT just the single smallest**: a neighbour's
+    rectangular bbox can spill across an irregular border AND be smaller (Kansas's box crosses the
+    Missouri River and beats Missouri's box, but kansas.pmtiles is EMPTY east of the river, so a
+    single-pick rendered NO footprints there). Streaming the union lets whichever archive has the data
+    paint; an empty region's range requests cost ~nothing.
+  - MapLibre 11.7+ reads that hosted archive by **HTTP range requests** (GitHub release assets
+    302→release-assets host with `accept-ranges: bytes`, MapLibre follows the redirect), fetching only
+    the visible tiles, so footprints appear as you pan. The manual **`MapViewModel.downloadOverlayForArea`**
+    (still smallest-covering-box, pulled alongside the area's tiles) is now ONLY for going fully offline.
+  - Render: `VelaMapView`'s `LaunchedEffect(buildingOverlays, styleRef, darkTheme)` adds each URI as a
+    `VectorSource` (used verbatim - the URI already carries `pmtiles://file://` or `pmtiles://https://`)
+    + a `FillLayer` `setSourceLayer("building")` **`addLayerBelow` the OSM `building` layer**, themed to
+    the exact OSM building fill/outline (`#323f54`/`#3f4e66` dark, `#dde1e7`/`#c4c9d1` light) so overlay
+    footprints are indistinguishable from real OSM ones and OSM still wins wherever it has data.
+    `buildingOverlays` is de-duped so panning within one region doesn't churn the map sources.
+  - **The load-bearing DOWNLOAD bug was NOT the render** - it was the `callTimeout(0)` rule above: the
+    197 MB body aborted at the shared client's 12 s cap, silently (that only ever mattered for the
+    offline download; streaming reads a few KB/tile). NB GitHub release hosting works but isn't a CDN - a
+    real deployment should host the PMTiles behind a CDN for snappier range reads.
+  - `OVERLAY_MANIFEST_URL` BuildConfig overridable `-PoverlayManifestUrl=` like routing. BREAKING-ish: an
+    overlay is DATA (ODbL), orthogonal to the app's GPLv3, obligation met by tippecanoe `--attribution` +
+    the release publishing derived tiles under ODbL.
+  - **World catalog (`tools/overlay-regions.json`, 361 rows - ~250 base regions plus chunk pieces):** TWO
+    Microsoft sources picked by each row's `source`, both handled by the ONE build script (`SOURCE` env):
+    **`us-legacy`** = a US state's single `.geojson.zip` (Microsoft US Building Footprints, 51 states+DC);
+    **`ms-global`** = a world country's quadkey-partitioned GeoJSONL from Microsoft's **Global ML Building
+    Footprints** (`global-buildings/dataset-links.csv` → `awk` the country's `Location` rows → curl+gunzip
+    each `.csv.gz` into one ndjson → tippecanoe `-P`; ~199 countries). Country **bboxes are the union of
+    the dataset's own z9 quadkey tiles**; US-state bboxes are Geofabrik extract bounds.
+  - **Big countries are CHUNKED** (>1500 MB compressed source, 18 of them): the catalog splits each into
+    sub-national pieces by **quadkey PREFIX** (`qkprefix`; adaptive recursive split until each chunk ≤
+    ~1500 MB - India → 24 pieces), the build script's awk filters the country's rows to that prefix, and
+    each chunk gets its own union bbox so the **app's smallest-covering-box rule picks the piece covering
+    the user** (fits CI disk + hosts under GitHub's 2 GB/asset limit). Only the whole-US aggregate +
+    continental aggregates + duplicate Locations (CzechRepublic→Czechia, DemocraticRepublicoftheCongo→
+    CongoDRC) are dropped.
+  - The catalog is 361 regions - **over GitHub's 256-job matrix cap** - so each row carries a `group`
+    (`us` / `world` / `chunk`) and dispatch is **one group at a time** (`-f group=world`); run-level
+    concurrency is OFF so groups build concurrently, only the merge job serialises. The app/manifest are
+    source-AGNOSTIC - the emitted manifest row is always `{id,name,url(asset),sizeMb,bbox}`.
+- **Open house-number overlay (`VelaMapView` + `scripts/build-address-region.sh`).**
+  - Microsoft footprints have geometry but **no addresses**, so house numbers come from a SECOND overlay:
+    **OpenAddresses** address POINTS → per-state `.pmtiles` (`-l address`, keep the `number` prop) →
+    `address-overlays` GitHub release + `address-overlay-manifest.json` (`ADDRESS_MANIFEST_URL`,
+    `-PaddressManifestUrl=`).
+  - Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses` → its
+    current `job` → `https://v2.openaddresses.io/batch-prod/job/<job>/source.geojson.gz` (GeoJSONL of
+    Points with `number`/`street`; **42 US states have a `statewide` source**).
+  - Render: `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a
+    **`SymbolLayer`** `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans
+    Regular"])`, size 10, grey + white halo, **minZoom 17.5** (in lockstep with the basemap
+    `vela-housenumber` layer - Google shows house numbers only at true street level ~z17.5-18) - inserted
+    below `vela-controls` (see the LAYER ORDER warning below).
+  - **Streams online exactly like buildings** (`MapViewModel.refreshAddressOverlays(center)` on every
+    camera-idle → the union of up to the 3 smallest covering regions' `pmtiles://https://…` URIs - same
+    spilled-bbox shadowing fix as the building overlay, see above; reuses `overlayStore.manifest()` which
+    is manifest-URL-agnostic).
+  - **LAYER ORDER:** the addr layers are inserted **BELOW `vela-controls`** (→ below the ambient POI
+    icons), NOT `addLayer`/top - MapLibre places symbols TOPMOST-FIRST, so numbers stacked above the
+    ambient layer grab collision boxes before the business icons place and **EVICT them at z16+** (the
+    "Applebee's icon disappears on zoom-in" bug: big prominence-scaled icons collide the most). Below the
+    icons, numbers place last and yield - Google's behaviour. Also: while the overlay is active the
+    basemap `vela-housenumber` layer is hidden (visibility NONE in the same LaunchedEffect) - both drew
+    the SAME address at a slight offset.
+  - **NOT** the building overlay (different data + a Symbol not Fill layer + its own release/manifest).
+    CI: `.github/workflows/address-overlays.yml` (clone of building-overlays), catalog
+    `tools/address-regions.json`.
+  - **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves
+    in new suburbs.**
 - **Traffic lights + stop signs drawn on the map (`OverpassTrafficSignals.fetchControlsInBox` + `VelaMapView`).**
   OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
   non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath** the POI dots
