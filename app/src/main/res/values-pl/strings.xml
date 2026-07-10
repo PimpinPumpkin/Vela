@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">Wł. = ukrywa bary, kluby, kasyna, sklepy monopolowe i inne miejsca dla dorosłych / nocnego życia z wyników i mapy.</string>
     <string name="settings_hide_external_links">Ukryj stronę WWW i linki zewnętrzne</string>
     <string name="settings_hide_external_links_hint">Wł. = strony miejsc nie pokazują przycisków Strona WWW, Street View ani Rezerwuj / Zamów (bez otwierania dowolnych zewnętrznych stron).</string>
-    <string name="settings_offline">Offline</string>
+    <string name="settings_offline">Mapy offline</string>
     <string name="settings_offline_hint">Pobierz obszar, aby zachować jego mapę i trasy w telefonie do użytku offline.</string>
     <string name="settings_offline_map_area">Obszar mapy</string>
     <string name="settings_offline_download_viewport">Pobierz oglądany obszar</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">Drogi całego regionu (stanu lub kraju), aby trasy działały offline na całym jego obszarze. Pobierz tam, dokąd jedziesz.</string>
     <string name="settings_routing_no_regions">Brak dostępnych regionów.</string>
     <string name="settings_clear_filter">Wyczyść filtr</string>
-    <string name="settings_routing_filter_placeholder">Filtruj %1$d regionów… (np. Japonia, Teksas)</string>
+    <string name="settings_routing_filter_placeholder">Szukaj</string>
     <string name="settings_routing_no_match">Żaden region nie pasuje do „%1$s”.</string>
     <string name="settings_routing_downloading">Pobieranie… %1$d%%</string>
     <string name="settings_routing_installed">Zainstalowano · trasy offline tutaj</string>
