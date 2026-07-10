@@ -208,6 +208,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The place card follows your finger (2026-07-10).** Dragging the place sheet moves it with
   your finger and, on release, it coasts on the fling to whichever size is closest - no more
   stepping between sizes in fixed hops.
+- ✅ **Live gas prices on the map (2026-07-10).** Searching for gas stations shows each
+  station's current price in the same bubble marker the restaurant ratings use, and the full
+  price ("$5.34/Regular") leads its row in the result list and sits on the place page. The
+  price rides the keyless search response (place node [88][0], a remotely recalibratable
+  path). EV chargers were checked too: the keyless response strips charger details (price,
+  kW, availability) the way it strips popular times, so those stay marker-only for now.
 - ✅ **Search results are Google-style red markers with real glyphs (2026-07-11).** Searching
   "restaurants" pins the map with named results instead of anonymous pins: every result keeps
   its grey teardrop and category glyph with the circle turned red, rated restaurants get a wide
