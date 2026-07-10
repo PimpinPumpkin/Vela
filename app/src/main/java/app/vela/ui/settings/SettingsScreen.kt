@@ -101,12 +101,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = false) {
+fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = false, openVoiceLibrary: Boolean = false) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // The voice library (browse / download / switch / delete voices) is a DEDICATED screen now, not an
     // inline accordion on this long list. When open it fully replaces Settings; its own Back returns here.
-    var showVoiceLibrary by remember { mutableStateOf(false) }
+    var showVoiceLibrary by remember { mutableStateOf(openVoiceLibrary) }
     if (showVoiceLibrary) {
         VoiceBrowseScreen(vm = vm, onClose = { showVoiceLibrary = false })
         return
@@ -606,6 +606,12 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_voice))
+            // The master switch: persisted, and the in-nav speaker button toggles the SAME state.
+            ToggleRow(
+                stringResource(R.string.settings_spoken_directions),
+                checked = !state.voiceMuted,
+                onToggle = { vm.setSpokenDirections(it) },
+            )
             // Vela's own on-device neural voices (the Piper catalog) — download in the Voice
             // library below; once downloaded each shows in the engine list (selectable). No
             // standalone TTS app needed.

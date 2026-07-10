@@ -362,7 +362,9 @@
     <string name="mapvm_routing_failed_reason">Échec du calcul d\'itinéraire : %1$s</string>
     <string name="mapvm_no_transit_routes">Aucun itinéraire en transports trouvé</string>
     <string name="mapvm_trip_default_name">Trajet</string>
-    <string name="mapvm_no_voice_engine">Aucun moteur vocal installé — ajoutez-en un dans Paramètres → Voix pour les instructions vocales</string>
+    <string name="mapvm_no_voice_engine">Aucune voix installée pour les instructions vocales</string>
+    <string name="mapscreen_get_voice">Ajouter une voix</string>
+    <string name="settings_spoken_directions">Instructions vocales</string>
     <string name="mapvm_voice_lang_missing">Les instructions vocales nécessitent une voix %1$s — ajoutez-en une dans Réglages → Voix</string>
     <string name="mapvm_no_track_to_replay">Ce trajet n\'a aucune trace à rejouer</string>
     <string name="mapvm_replaying">Relecture de %1$s (3×)…</string>

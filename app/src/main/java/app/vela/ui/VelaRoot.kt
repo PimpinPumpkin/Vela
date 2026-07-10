@@ -39,6 +39,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
 
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var settingsOpenOffline by rememberSaveable { mutableStateOf(false) }
+    var settingsOpenVoice by rememberSaveable { mutableStateOf(false) }
     // Location permission launcher for onboarding. The map no longer fires the raw system dialog on
     // its own (see MapScreen); this owns the first ask. A grant starts location immediately (coarse-
     // only works too, via the NETWORK provider); a denial just moves on and leaves search/browse
@@ -132,12 +133,18 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         // opaque overlay. Swapping the two out instead disposed the remembered MapLibre MapView, so
         // returning from Settings rebuilt the map from scratch and it snapped back to the stale
         // center at the default zoom, losing the user's pan/zoom (a reported bug).
-        MapScreen(vm = vm, onOpenSettings = { showSettings = true })
+        MapScreen(
+            vm = vm,
+            onOpenSettings = { showSettings = true },
+            // The no-voice heads-up's pill: straight into the voice library.
+            onOpenVoiceSettings = { settingsOpenVoice = true; showSettings = true },
+        )
         if (showSettings) {
             SettingsScreen(
                 vm = vm,
-                onBack = { showSettings = false; settingsOpenOffline = false },
+                onBack = { showSettings = false; settingsOpenOffline = false; settingsOpenVoice = false },
                 openOffline = settingsOpenOffline,
+                openVoiceLibrary = settingsOpenVoice,
             )
         } else {
             // Location is asked via the system dialog fired above (no rationale screen). The voice
