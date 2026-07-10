@@ -311,9 +311,9 @@
     <string name="root_location_body">Vela usa tu ubicación para centrar el mapa en ti y calcular rutas desde donde estás. Se queda en tu teléfono y nunca se sube. Puedes decir que no y seguir buscando y explorando; solo fija el punto de partida a mano cuando quieras indicaciones.</string>
     <string name="root_location_allow">Permitir ubicación</string>
     <string name="root_voice_title">Voz de navegación hablada</string>
-    <string name="root_voice_body_intro">Vela tiene su propia voz de alta calidad que se ejecuta por completo en tu teléfono: las indicaciones habladas más naturales, sin cuenta ni apps adicionales. Recomendada. Es una descarga única de ~%1$d MB (se recomienda wifi).</string>
-    <string name="root_voice_body_system">¿Prefieres no hacerlo? Puedes usar en su lugar una voz de texto a voz que ya tengas instalada en el teléfono.</string>
-    <string name="root_voice_body_outro">Puedes cambiar esto cuando quieras en Ajustes → Voz.</string>
+    <string name="root_voice_body_intro">La voz propia de Vela funciona íntegramente en tu teléfono: indicaciones naturales, sin cuenta ni app extra. Recomendada, una descarga única de ~%1$d MB.</string>
+    <string name="root_voice_body_system">¿Prefieres que no? Usa una voz que ya tengas en el teléfono.</string>
+    <string name="root_voice_body_outro">Cámbiala cuando quieras en Ajustes → Voz.</string>
     <string name="root_voice_download">Descargar voz de Vela</string>
     <string name="root_voice_use_system">Usar voz del sistema</string>
     <string name="root_offline_title">Mapas sin conexión</string>

@@ -33,6 +33,9 @@ fun PermissionRationale(
         onConfirm = onAllow,
         dismissText = notNowText,
         onDismiss = onNotNow,
+        // Quiet the decline: the user tapped into a maps app / tapped the mic, so allowing is the
+        // expected path. It stays a real, working button - only the tint is de-emphasised.
+        dismissLowEmphasis = true,
         text = { Text(body) },
     )
 }
