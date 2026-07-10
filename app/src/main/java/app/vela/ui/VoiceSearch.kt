@@ -35,6 +35,7 @@ object VoiceSearch {
     fun init(context: Context) {
         enabled.value = prefs(context).getBoolean(KEY, true)
         engine.value = readEngine(prefs(context).getString(ENGINE_KEY, null))
+        provider.value = prefs(context).getString(PROVIDER_KEY, null)
     }
 
     fun set(context: Context, value: Boolean) {
@@ -45,6 +46,42 @@ object VoiceSearch {
     fun setEngine(context: Context, value: Engine) {
         engine.value = value
         prefs(context).edit().putString(ENGINE_KEY, value.name).apply()
+    }
+
+    /** An installed tier-2 voice-input app: display label + the exact activity Vela launches. */
+    data class Provider(val label: String, val component: android.content.ComponentName)
+
+    /** The chosen provider's flattened ComponentName - reactive so the Settings picker updates live.
+     *  Null = no explicit pick yet (the first installed provider is used). */
+    val provider = mutableStateOf<String?>(null)
+
+    /** Every installed voice-input app that can service the RECOGNIZE_SPEECH activity intent, in
+     *  resolution order. With more than one installed, the old implicit intent left the pick to
+     *  ANDROID (its default-app choice or a system disambiguation dialog) - the Settings picker +
+     *  [chosenProvider] give the choice to the user instead (user 2026-07-10). */
+    fun providers(context: Context): List<Provider> = runCatching {
+        val pm = context.packageManager
+        pm.queryIntentActivities(Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0).map {
+            Provider(
+                it.loadLabel(pm).toString(),
+                android.content.ComponentName(it.activityInfo.packageName, it.activityInfo.name),
+            )
+        }
+    }.getOrDefault(emptyList())
+
+    /** The provider the SYSTEM path launches: the saved pick while it's still installed, else the
+     *  first available (an uninstalled favourite degrades gracefully instead of a dead mic). */
+    fun chosenProvider(context: Context): Provider? {
+        val all = providers(context)
+        if (all.isEmpty()) return null
+        val saved = provider.value?.let(android.content.ComponentName::unflattenFromString)
+        return all.firstOrNull { it.component == saved } ?: all.first()
+    }
+
+    fun setProvider(context: Context, component: android.content.ComponentName) {
+        val flat = component.flattenToString()
+        provider.value = flat
+        prefs(context).edit().putString(PROVIDER_KEY, flat).apply()
     }
 
     /** Is a third-party voice-input APP installed (tier-2)? Cheap PackageManager query; only apps that
@@ -80,4 +117,5 @@ object VoiceSearch {
     private fun prefs(c: Context) = c.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
     private const val KEY = "voice_search_button"
     private const val ENGINE_KEY = "voice_search_engine"
+    private const val PROVIDER_KEY = "voice_search_provider"
 }
