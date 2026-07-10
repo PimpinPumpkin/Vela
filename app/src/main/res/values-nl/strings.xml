@@ -72,13 +72,13 @@
     <string name="settings_offline_hint">Download een gebied om de kaart en routes ervan op je telefoon te bewaren voor offline gebruik.</string>
     <string name="settings_offline_map_area">Kaartgebied</string>
     <string name="settings_offline_download_viewport">Download het gebied dat u bekijkt</string>
-    <string name="settings_offline_download_viewport_hint">Slaat de open tegels op voor het kaartgebied dat u het laatst in beeld had — en de routeringsregio eromheen — zodat het later zonder netwerk wordt weergegeven en navigeert. Zoeken vereist nog steeds een verbinding.</string>
+    <string name="settings_offline_download_viewport_hint">Bewaart de kaart en wegen van het gebied dat je ziet, zodat het offline toont en routeert.</string>
     <string name="settings_offline_no_areas">Nog geen gebieden opgeslagen.</string>
     <string name="settings_offline_addresses_missing">Gebieden die je vóór deze update hebt opgeslagen, bevatten geen adresgegevens. Werk ze bij om offline naar adressen te zoeken en ernaartoe te navigeren.</string>
     <string name="settings_offline_addresses_update">Opgeslagen gebieden bijwerken</string>
     <string name="settings_offline_delete_area">Dit offline gebied verwijderen</string>
     <string name="settings_routing_regions">Routeringsregio\'s</string>
-    <string name="settings_routing_regions_hint">Het wegennetwerk voor een hele regio (provincie, land…), zodat navigatie overal daarbinnen offline werkt — download waar u naartoe reist. Online wordt nog steeds live verkeer gebruikt; dit is de terugval zonder signaal.</string>
+    <string name="settings_routing_regions_hint">De wegen van een hele regio (een staat of land), zodat routes overal daarin offline werken. Pak waar je heen gaat.</string>
     <string name="settings_routing_no_regions">Nog geen regio\'s beschikbaar.</string>
     <string name="settings_clear_filter">Filter wissen</string>
     <string name="settings_routing_filter_placeholder">Filter %1$d regio\'s… (bijv. Japan, Texas)</string>

@@ -72,13 +72,13 @@
     <string name="settings_offline_hint">Завантажте область, щоб зберегти її карту та маршрути на телефоні для офлайн-використання.</string>
     <string name="settings_offline_map_area">Ділянка карти</string>
     <string name="settings_offline_download_viewport">Завантажити ділянку, яку ви переглядаєте</string>
-    <string name="settings_offline_download_viewport_hint">Зберігає відкриті плитки для ділянки карти, яку ви востаннє бачили на екрані — та регіон маршрутизації навколо неї — щоб згодом усе відображалося й прокладалося без мережі. Пошук усе ще потребує з’єднання.</string>
+    <string name="settings_offline_download_viewport_hint">Зберігає карту та її дороги для показаної області, щоб вона показувалася й прокладала маршрути офлайн.</string>
     <string name="settings_offline_no_areas">Поки що немає збережених ділянок.</string>
     <string name="settings_offline_addresses_missing">Області, збережені до цього оновлення, не містять даних адрес. Оновіть їх, щоб шукати адреси та прокладати до них маршрути офлайн.</string>
     <string name="settings_offline_addresses_update">Оновити збережені області</string>
     <string name="settings_offline_delete_area">Видалити цю офлайн-ділянку</string>
     <string name="settings_routing_regions">Регіони маршрутизації</string>
-    <string name="settings_routing_regions_hint">Дорожня мережа цілого регіону (область, країна…), щоб покрокова навігація працювала офлайн будь-де всередині нього — завантажте, куди прямуєте. Онлайн усе ще використовує трафік у реальному часі; це резерв на випадок відсутності зв’язку.</string>
+    <string name="settings_routing_regions_hint">Дороги цілого регіону (штату чи країни), щоб маршрути працювали офлайн на всій території. Завантажте туди, куди їдете.</string>
     <string name="settings_routing_no_regions">Поки що немає доступних регіонів.</string>
     <string name="settings_clear_filter">Очистити фільтр</string>
     <string name="settings_routing_filter_placeholder">Фільтр %1$d регіонів… (напр. Японія, Техас)</string>
