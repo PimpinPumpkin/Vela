@@ -503,6 +503,7 @@
     <string name="settings_voice_search_installing">Installeren…</string>
     <string name="settings_voice_search_engine_title">Als je op de microfoon tikt</string>
     <string name="settings_voice_search_engine_auto">Vela-stem</string>
+    <string name="settings_voice_search_engine_default">Android-standaard</string>
     <string name="settings_voice_search_engine_system">Andere spraak-app</string>
     <string name="map_asr_offer_title">Spraakzoeken</string>
     <string name="map_asr_offer_body">Download de Vela-stem om je zoekopdrachten in te spreken. Hij draait volledig op je telefoon en uploadt niets.</string>

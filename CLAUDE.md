@@ -460,8 +460,11 @@ Defaults that make the safe path the easy one:
   own default-app choice routes it (a default set outside Vela is respected); only when Android
   has no default either (`resolveActivity` returns the package-"android" resolver) does Vela pin
   the FIRST installed app, so the system chooser can never interrupt a dictation. The Settings
-  picker lists every app BY NAME beside Vela Voice (`VoiceSearch.providers()`); an uninstalled
-  pick degrades down the same ladder, never a dead mic. Keyboard/IME voice (Sayboard, FUTO Keyboard) provides a
+  picker mirrors the ladder EXPLICITLY (2026-07-10): Vela Voice, then an "Android default" row
+  (= the no-pick state, `clearProvider`), then every installed app BY NAME as manual overrides
+  (`VoiceSearch.providers()`); an uninstalled pick degrades down the same ladder, never a dead
+  mic. Legacy `Engine.LOCAL` pins migrate to AUTO at init (a LOCAL pin hid the mic entirely once
+  the model was deleted, and the UI stopped offering LOCAL when the picker shipped). Keyboard/IME voice (Sayboard, FUTO Keyboard) provides a
   RecognitionService or in-IME mic, NOT the activity, so `queryIntentActivities` returns empty and
   the mic correctly hides - Vela can't `startActivityForResult` to them. That's intended: those
   users use the keyboard mic, and tier-1 (on-device Whisper) serves everyone regardless.

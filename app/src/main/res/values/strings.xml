@@ -526,6 +526,7 @@
     <string name="settings_voice_search_installing">Installing…</string>
     <string name="settings_voice_search_engine_title">When you tap the mic</string>
     <string name="settings_voice_search_engine_auto">Vela Voice</string>
+    <string name="settings_voice_search_engine_default">Android default</string>
     <string name="settings_voice_search_engine_system">Other voice app</string>
     <string name="map_asr_offer_title">Voice search</string>
     <string name="map_asr_offer_body">Download Vela Voice to speak your searches. It runs entirely on your phone and uploads nothing.</string>
