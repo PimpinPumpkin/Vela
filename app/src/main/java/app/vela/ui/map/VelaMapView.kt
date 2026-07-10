@@ -103,6 +103,11 @@ private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible coll
 private const val SIGNAL_IMG = "vela-signal"
 private const val STOP_IMG = "vela-stop"
 private const val AMBIENT_INDEX_PROP = "vela-ambient-index"
+private const val ACCURACY_SRC = "vela-me-accuracy-src"
+private const val ACCURACY_LAYER = "vela-me-accuracy"
+// Only a genuinely vague fix earns the halo: coarse-permission and network fixes report hundreds to
+// thousands of meters; normal GPS (3-30 m) stays a plain dot.
+private const val ACCURACY_HALO_MIN_M = 100f
 private const val ME_SRC = "vela-me-src"
 private const val ME_LAYER = "vela-me"
 private const val ME_ARROW_LAYER = "vela-me-arrow"
@@ -141,6 +146,8 @@ data class MapMarker(val name: String, val location: LatLng, val category: Strin
 private var lastAppliedMarkers: List<MapMarker>? = null
 private var lastAppliedAmbient: List<MapMarker>? = null
 private var lastAppliedParking: LatLng? = null
+private var lastAccuracyLoc: LatLng? = null
+private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
@@ -161,6 +168,7 @@ fun VelaMapView(
     styleUri: String,
     myLocation: LatLng?,
     myBearing: Float?,
+    myAccuracyM: Float? = null,
     mySpeed: Float? = null,
     mySpeedRaw: Float? = null, // THIS fix's own measurement (null = fix had none) — Kalman feed
     // Trip-replay time scale (1 = live). The recorded fixes arrive speedup× faster than real time
@@ -1033,13 +1041,13 @@ fun VelaMapView(
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(map, style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
             }
@@ -1418,6 +1426,19 @@ private fun ensureLayers(style: Style) {
                 )
             },
             AMBIENT_LAYER,
+        )
+    }
+    if (style.getSource(ACCURACY_SRC) == null) {
+        style.addSource(GeoJsonSource(ACCURACY_SRC))
+        // The accuracy halo: a translucent disc drawn at the fix's REAL uncertainty radius, so an
+        // approximate-only permission (or a weak network fix) reads as "somewhere in this
+        // blob" instead of a falsely-precise dot. A polygon in meters, so it scales with zoom.
+        style.addLayer(
+            FillLayer(ACCURACY_LAYER, ACCURACY_SRC).withProperties(
+                PropertyFactory.fillColor("#4285F4"),
+                PropertyFactory.fillOpacity(0.12f),
+                PropertyFactory.fillOutlineColor("#664285F4"),
+            ),
         )
     }
     if (style.getSource(ME_SRC) == null) {
@@ -1965,6 +1986,19 @@ private fun setMeSource(style: Style, p: LatLng, bearing: Float) {
     )
 }
 
+/** A 64-point geodesic circle polygon of [radiusM] meters around [center] - the accuracy halo's
+ *  geometry (drawn in real meters, so it grows and shrinks with the zoom like the world does). */
+private fun accuracyCircle(center: LatLng, radiusM: Double): org.maplibre.geojson.Polygon {
+    val latR = Math.toRadians(center.lat)
+    val dLat = radiusM / 111_320.0
+    val dLng = radiusM / (111_320.0 * Math.cos(latR)).coerceAtLeast(1.0)
+    val pts = (0..64).map { i ->
+        val a = 2.0 * Math.PI * i / 64
+        Point.fromLngLat(center.lng + dLng * Math.sin(a), center.lat + dLat * Math.cos(a))
+    }
+    return org.maplibre.geojson.Polygon.fromLngLats(listOf(pts))
+}
+
 /** Compass bearing (deg, 0 = N) from [a] to [b]. */
 private fun bearingDeg(a: LatLng, b: LatLng): Float {
     val dLng = Math.toRadians(b.lng - a.lng)
@@ -2058,12 +2092,23 @@ private fun applyData(
     trafficControls: List<app.vela.core.data.TrafficControl>,
     me: LatLng?,
     bearing: Float?,
+    meAccuracyM: Float?,
     meStale: Boolean,
     preview: LatLng?,
     routeProgress: Float,
     navMode: Boolean,
     parkingSpot: LatLng? = null,
 ) {
+    // Accuracy halo: shown only for a vague fix (see ACCURACY_HALO_MIN_M) and never during nav,
+    // where the puck snaps to the road anyway. Identity-gated like everything else here.
+    val wantAcc = if (!navMode && me != null && meAccuracyM != null && meAccuracyM > ACCURACY_HALO_MIN_M) meAccuracyM else null
+    if (me !== lastAccuracyLoc || wantAcc != lastAccuracyM) {
+        val fc = if (wantAcc == null || me == null) FeatureCollection.fromFeatures(emptyList<Feature>())
+        else FeatureCollection.fromFeature(Feature.fromGeometry(accuracyCircle(me, wantAcc.toDouble())))
+        style.getSourceAs<GeoJsonSource>(ACCURACY_SRC)?.setGeoJson(fc)
+        lastAccuracyLoc = me
+        lastAccuracyM = wantAcc
+    }
     // The parking pin (identity-gated like the markers below).
     if (!parkingApplied || parkingSpot != lastAppliedParking) {
         val fc = if (parkingSpot == null) FeatureCollection.fromFeatures(emptyList<Feature>())
