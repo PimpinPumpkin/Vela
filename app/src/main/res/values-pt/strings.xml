@@ -311,9 +311,9 @@
     <string name="root_location_body">A Vela usa a sua localização para centrar o mapa em si e traçar rotas a partir de onde está. Fica no seu telemóvel e nunca é enviada. Pode recusar e continuar a pesquisar e explorar; basta definir o ponto de partida à mão quando quiser indicações.</string>
     <string name="root_location_allow">Permitir localização</string>
     <string name="root_voice_title">Voz de navegação falada</string>
-    <string name="root_voice_body_intro">O Vela tem a sua própria voz de alta qualidade que corre inteiramente no seu telemóvel — as indicações faladas mais naturais, sem conta nem aplicação extra. Recomendada. É uma transferência única de ~%1$d MB (recomenda-se Wi-Fi).</string>
-    <string name="root_voice_body_system">Prefere não a usar? Pode antes usar uma voz de texto para voz já instalada no seu telemóvel.</string>
-    <string name="root_voice_body_outro">Pode alterar isto a qualquer momento em Definições → Voz.</string>
+    <string name="root_voice_body_intro">A voz própria da Vela funciona inteiramente no telemóvel: indicações naturais, sem conta nem app extra. Recomendada, uma transferência única de ~%1$d MB.</string>
+    <string name="root_voice_body_system">Prefere que não? Use uma voz que já tem no telemóvel.</string>
+    <string name="root_voice_body_outro">Mude quando quiser em Definições → Voz.</string>
     <string name="root_voice_download">Transferir voz Vela</string>
     <string name="root_voice_use_system">Usar voz do sistema</string>
     <string name="root_offline_title">Mapas offline</string>
