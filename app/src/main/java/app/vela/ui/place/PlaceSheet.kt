@@ -8,7 +8,10 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -171,6 +174,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -262,57 +267,82 @@ fun PlaceSheet(
     val expandedState = remember(place.id) { mutableStateOf(false) }
     val minimizedState = remember(place.id) { mutableStateOf(false) }
     val screenH = LocalConfiguration.current.screenHeightDp
-    val maxSheetHeight by animateDpAsState(
-        when {
-            expandedState.value -> (screenH * 0.92f).dp
-            minimizedState.value -> (screenH * 0.26f).dp
-            else -> (screenH * 0.56f).dp
-        },
-        label = "placeSheetHeight",
-    )
+    // The sheet height is a hand-driven Animatable (dp), not animateDpAsState: dragging moves it
+    // 1:1 WITH THE FINGER, and releasing coasts on the fling velocity to whichever detent the
+    // projected landing point is closest to - Google's feel. The old three-state spring hopped a
+    // whole detent the moment a drag crossed a pixel threshold, which read as staccato steps
+    // (user 2026-07-10). State flips from taps / the reviews panel / auto-expand still animate,
+    // via the LaunchedEffect below.
+    val minH = screenH * 0.26f
+    val peekH = screenH * 0.56f
+    val expH = screenH * 0.92f
+    fun detentFor(expanded: Boolean, minimized: Boolean) = when {
+        expanded -> expH
+        minimized -> minH
+        else -> peekH
+    }
+    val heightAnim = remember(place.id) { Animatable(detentFor(expandedState.value, minimizedState.value)) }
+    val settleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    LaunchedEffect(place.id, expandedState.value, minimizedState.value) {
+        val target = detentFor(expandedState.value, minimizedState.value)
+        // Skip when a drag-release settle is already animating to this exact detent - restarting
+        // would zero the coast velocity mid-glide.
+        if (heightAnim.targetValue != target) heightAnim.animateTo(target, settleSpec)
+    }
+    val maxSheetHeight = heightAnim.value.dp
+    val density = LocalDensity.current
+    val settleScope = rememberCoroutineScope()
+    // Release: project where the fling would coast to, snap the STATES to the nearest detent (so
+    // everything keyed on them stays honest), and glide there carrying the finger's velocity. A
+    // hard fling projects past the middle detent and lands on MINIMIZED from anywhere; a gentle
+    // drop settles back where it came from. A swipe still never CLOSES the sheet (X / back do).
+    fun settleFromVelocity(velocityPxPerSec: Float) {
+        val vDp = with(density) { velocityPxPerSec.toDp().value }
+        val projected = heightAnim.value - vDp * 0.25f
+        val target = listOf(minH, peekH, expH).minByOrNull { kotlin.math.abs(it - projected) } ?: peekH
+        expandedState.value = target == expH
+        minimizedState.value = target == minH
+        settleScope.launch { heightAnim.animateTo(target, settleSpec, initialVelocity = -vDp) }
+    }
+    fun dragSheetBy(dyPx: Float) {
+        val dyDp = with(density) { dyPx.toDp().value }
+        settleScope.launch { heightAnim.snapTo((heightAnim.value - dyDp).coerceIn(minH, expH)) }
+    }
     // Swipe down ANYWHERE on the sheet to dismiss (not just the handle): a nested-
     // scroll handler watches the body — when it's at the top, a downward drag first
     // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
     val bodyScroll = rememberScrollState()
     val dismissConn = remember(place.id) {
         object : NestedScrollConnection {
-            private var acc = 0f
-            // One detent step per gesture — lift and swipe again for the next. A single long drag
-            // steps down once (e.g. peek→minimized) and stops, so it can't blow through to dismiss.
-            private var steppedThisGesture = false
+            // True once this gesture actually moved the sheet - its release then settles the sheet
+            // and eats the fling instead of letting the body scroll run away with it.
+            private var draggingSheet = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y > 0f && bodyScroll.value == 0) {
-                    acc += available.y
-                    if (!steppedThisGesture) {
-                        when {
-                            // Collapse an expanded sheet a touch sooner (common gesture); the other
-                            // steps want a more deliberate pull so a gentle swipe doesn't overshoot.
-                            expandedState.value && acc > 90f -> { expandedState.value = false; steppedThisGesture = true; acc = 0f }
-                            !minimizedState.value && acc > 150f -> { minimizedState.value = true; steppedThisGesture = true; acc = 0f }
-                            // Minimized is the floor — a swipe never closes the sheet (X / back do).
-                        }
-                    }
+                // The classic bottom-sheet grammar, 1:1 with the finger: a downward drag with the
+                // body at its top SHRINKS the sheet; an upward drag GROWS it while it still has
+                // room (content only scrolls once the sheet is fully expanded) - Google's feel.
+                if (available.y > 0f && bodyScroll.value == 0 && heightAnim.value > minH) {
+                    draggingSheet = true
+                    dragSheetBy(available.y)
                     return available
                 }
-                // Scrolling INTO the content (dragging up / content moving up) grows the sheet to
-                // full height first, Google-style — so reading down the POI info expands it without
-                // reaching for the handle. Doesn't consume the scroll: the body scrolls too.
-                if (available.y < 0f) {
-                    acc = 0f
-                    if (minimizedState.value) minimizedState.value = false
-                    else if (!expandedState.value) expandedState.value = true
+                if (available.y < 0f && heightAnim.value < expH) {
+                    draggingSheet = true
+                    dragSheetBy(available.y)
+                    return available
                 }
                 return Offset.Zero
             }
-            // The fling phase runs at the end of every drag (even at zero velocity) — use it as the
-            // gesture boundary that re-arms stepping for the next swipe. Google's grammar: the
-            // fling VELOCITY picks the detent, and the hardest downward flick lands on MINIMIZED
-            // from anywhere (skipping peek) — a swipe never closes the sheet outright.
+            // The fling phase runs at the end of every drag (even at zero velocity). If this
+            // gesture moved the sheet, coast it to the nearest detent on the finger's velocity -
+            // a hard downward flick lands on MINIMIZED from anywhere; a swipe never closes the
+            // sheet (X / back do).
             override suspend fun onPreFling(available: Velocity): Velocity {
-                val dramatic = available.y > 2400f && bodyScroll.value == 0
-                acc = 0f
-                steppedThisGesture = false
-                if (dramatic) { expandedState.value = false; minimizedState.value = true }
+                if (draggingSheet) {
+                    draggingSheet = false
+                    settleFromVelocity(available.y)
+                    return available
+                }
                 return Velocity.Zero
             }
         }
@@ -411,28 +441,18 @@ fun PlaceSheet(
                         else expandedState.value = !expandedState.value
                     }
                     .pointerInput(Unit) {
-                        var total = 0f
+                        // The handle drags the sheet 1:1 and the release coasts to the nearest
+                        // detent on the fling velocity - same physics as dragging the body.
+                        val tracker = VelocityTracker()
                         detectVerticalDragGestures(
-                            onDragStart = { total = 0f },
-                            onVerticalDrag = { change, dy -> change.consume(); total += dy },
-                            onDragEnd = {
-                                when {
-                                    // Swipe up grows one detent.
-                                    total < -40f -> {
-                                        if (minimizedState.value) minimizedState.value = false
-                                        else expandedState.value = true
-                                    }
-                                    // A big deliberate swipe down goes straight to MINIMIZED (Google:
-                                    // the strongest fling minimises, a swipe NEVER closes the sheet —
-                                    // only the X / back do, so a flick can't destroy your place).
-                                    total > 220f -> { expandedState.value = false; minimizedState.value = true }
-                                    // A gentle swipe down shrinks one detent (expanded→peek→minimized).
-                                    total > 40f -> when {
-                                        expandedState.value -> expandedState.value = false
-                                        else -> minimizedState.value = true
-                                    }
-                                }
+                            onDragStart = { tracker.resetTracking() },
+                            onVerticalDrag = { change, dy ->
+                                change.consume()
+                                tracker.addPosition(change.uptimeMillis, change.position)
+                                dragSheetBy(dy)
                             },
+                            onDragEnd = { settleFromVelocity(tracker.calculateVelocity().y) },
+                            onDragCancel = { settleFromVelocity(0f) },
                         )
                     }
                     .heightIn(min = 36.dp)
