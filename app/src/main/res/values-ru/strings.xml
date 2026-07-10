@@ -72,13 +72,13 @@
     <string name="settings_offline_hint">Загрузите область, чтобы сохранить её карту и маршруты на телефоне для работы офлайн.</string>
     <string name="settings_offline_map_area">Область карты</string>
     <string name="settings_offline_download_viewport">Загрузить видимую область</string>
-    <string name="settings_offline_download_viewport_hint">Сохраняет открытые тайлы для области карты, которая последней была на экране, — и дорожный регион вокруг неё — чтобы позже она отображалась и вела навигацию без сети. Для поиска всё ещё нужно подключение.</string>
+    <string name="settings_offline_download_viewport_hint">Сохраняет карту и её дороги для показанной области, чтобы она отображалась и строила маршруты офлайн.</string>
     <string name="settings_offline_no_areas">Области ещё не сохранены.</string>
     <string name="settings_offline_addresses_missing">Области, сохранённые до этого обновления, не содержат данные адресов. Обновите их, чтобы искать адреса и строить маршруты офлайн.</string>
     <string name="settings_offline_addresses_update">Обновить сохранённые области</string>
     <string name="settings_offline_delete_area">Удалить эту офлайн-область</string>
     <string name="settings_routing_regions">Регионы маршрутизации</string>
-    <string name="settings_routing_regions_hint">Дорожная сеть для целого региона (области, страны…), чтобы навигация работала офлайн в любой его точке — загрузите тот, куда едете. При наличии сети по-прежнему используются актуальные пробки; это запасной вариант без сигнала.</string>
+    <string name="settings_routing_regions_hint">Дороги целого региона (штата или страны), чтобы маршруты работали офлайн на всей территории. Скачайте туда, куда едете.</string>
     <string name="settings_routing_no_regions">Регионы пока недоступны.</string>
     <string name="settings_clear_filter">Очистить фильтр</string>
     <string name="settings_routing_filter_placeholder">Фильтр по %1$d регионам… (напр. Япония, Техас)</string>
