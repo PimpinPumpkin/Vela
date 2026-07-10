@@ -485,4 +485,19 @@
     <string name="settings_developer_hint">Outils pour les démos, captures d\'écran et tests. Désactivez-les pour un usage réel.</string>
     <string name="settings_browse_voices">Parcourir les voix</string>
     <string name="settings_browse_voices_hint">Téléchargez et changez les voix de Vela sur l\'appareil.</string>
+    <string name="voice_capture_listening">Écoute…</string>
+    <string name="voice_capture_starting">Préparation…</string>
+    <string name="voice_capture_done">Terminé</string>
+    <string name="mapvm_asr_ready">La recherche vocale sur l\'appareil est prête</string>
+    <string name="mapvm_asr_download_failed">Impossible de télécharger le modèle vocal. Vérifiez votre connexion et réessayez.</string>
+    <string name="settings_voice_search_model">Recherche vocale sur l\'appareil</string>
+    <string name="settings_voice_search_model_hint">La reconnaissance vocale de Vela fonctionne sur votre téléphone : la recherche vocale marche sans autre appli et rien n\'est envoyé. Téléchargement unique d\'environ %1$d Mo.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Télécharger (%1$d Mo)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Supprimer</string>
+    <string name="settings_voice_search_downloading">Téléchargement… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installation…</string>
+    <string name="settings_voice_search_engine_title">Quand vous touchez le micro</string>
+    <string name="settings_voice_search_engine_auto">Sur l\'appareil si disponible</string>
+    <string name="settings_voice_search_engine_local">Sur l\'appareil uniquement</string>
+    <string name="settings_voice_search_engine_system">Autre appli vocale</string>
 </resources>
