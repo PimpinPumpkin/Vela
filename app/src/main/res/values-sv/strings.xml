@@ -123,6 +123,8 @@
     <string name="settings_crash_hint">Vela stängdes oväntat nyligen. Att skicka kraschrapporten (stackspår) hjälper till att åtgärda det – det är en vanlig textfil, inga personuppgifter.</string>
     <string name="settings_crash_export">Exportera kraschrapport</string>
     <string name="settings_crash_discard">Släng</string>
+    <string name="settings_crash_diag_offer">Diagnostik är av, så inget spelades in före kraschen. Slå på den för att fånga mer information nästa gång.</string>
+    <string name="settings_crash_enable_diag">Slå på diagnostik</string>
     <string name="settings_diag_consent_title">Slå på diagnostik?</string>
     <string name="settings_diag_consent_body">Vela håller en kort lokal logg över dina sökningar, rutter och eventuella fel. Den lämnar aldrig telefonen om du inte trycker på Exportera och väljer var den ska skickas. Slå av den när som helst för att radera loggen.</string>
     <string name="settings_about">Om</string>
@@ -305,13 +307,6 @@
     <string name="mapscreen_faster_route_saves">Sparar ~%1$s i aktuell trafik</string>
     <string name="mapscreen_no">Nej</string>
     <string name="mapscreen_switch">Byt</string>
-    <string name="root_diag_title">Hjälp till att förbättra Vela?</string>
-    <string name="root_diag_body">Båda stannar på din telefon – inget skickas om du inte exporterar det. Ändra endera när som helst i Inställningar.</string>
-    <string name="root_diag_share_title">Dela diagnostik</string>
-    <string name="root_diag_share_desc">En kort lokal logg över sökningar, rutter &amp;amp; fel.</string>
-    <string name="root_diag_trips_title">Spara mina resor</string>
-    <string name="root_diag_trips_desc">Spelar in dina navigerings-GPS-spår så att körningar kan spelas upp för testning. Avslöjar mer – dina exakta rutter.</string>
-    <string name="root_diag_save">Spara val</string>
     <string name="root_not_now">Inte nu</string>
     <string name="root_location_title">Visa din plats</string>
     <string name="root_location_body">Vela använder din plats för att centrera kartan på dig och rutta från där du är. Den stannar på telefonen och laddas aldrig upp. Du kan säga nej och ändå söka och bläddra; ange startpunkten för hand när du vill ha vägbeskrivning.</string>
@@ -322,9 +317,6 @@
     <string name="root_voice_body_outro">Ändra det när som helst i Inställningar → Röst.</string>
     <string name="root_voice_download">Hämta Vela-röst</string>
     <string name="root_voice_use_system">Använd systemröst</string>
-    <string name="root_offline_title">Offlinekartor</string>
-    <string name="root_offline_body">Vela hämtar platser, sökning och vägbeskrivningar från Google, så utan signal fungerar bara områden du har laddat ner. Ställ in ett område nu så att du är täckt när du tappar täckning.</string>
-    <string name="root_offline_setup">Ställ in offline</string>
     <string name="nav_maneuver_continue">Fortsätt</string>
     <string name="nav_gps_lost">Söker GPS-signal…</string>
     <string name="nav_compound_then">sedan</string>
