@@ -209,7 +209,10 @@ fun VelaMapView(
     val compassTopPx = when {
         navMode && navBannerBottomPx > 0 -> navBannerBottomPx + gap8Px
         navMode -> statusBarTopPx + with(density) { 176.dp.roundToPx() }
-        else -> statusBarTopPx + gap8Px
+        // Browse: below the floating search bar AND the category-chip row - 8dp under the
+        // status bar put the compass exactly behind the bar (a half-hidden circle peeking
+        // out its right end, clearly visible in light mode).
+        else -> statusBarTopPx + with(density) { 122.dp.roundToPx() }
     }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)

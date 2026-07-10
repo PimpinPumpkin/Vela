@@ -446,6 +446,9 @@ class MapViewModel @Inject constructor(
         // Simulated location (Settings → demo): pin the puck to the chosen point and DON'T collect real
         // GPS, so nothing leaks the real position. stopSimulateLocation() restarts the collector.
         app.vela.ui.SimLocation.point.value?.let { sim ->
+            // Kill any stale-timer armed by the last REAL fix: the pinned demo dot gets no fresh
+            // fixes, so a leftover timer greyed it ~30 s in and nothing ever turned it blue again.
+            staleTimerJob?.cancel(); staleTimerJob = null
             _state.update { it.copy(myLocation = sim, center = it.center ?: sim, myLocationStale = false, showPsdsTip = false) }
             return
         }
