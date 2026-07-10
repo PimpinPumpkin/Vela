@@ -195,6 +195,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **Arrival time front and center (2026-07-10).** The directions panel's "Arrive at 5:30 PM"
+  is bigger and bolder, and the redundant "current traffic" note under it is gone (the route ETAs
+  already show traffic). The faster-route offer during navigation joined the tidy notification
+  stack too, so it can't sit under the turn card.
 - ✅ **One tidy notification area (2026-07-10).** Heads-up messages, download progress, update
   offers and notices now stack below the search bar and chips (or just below the turn card during
   navigation, whatever its height), each dismissed on its own, instead of painting over each other.
