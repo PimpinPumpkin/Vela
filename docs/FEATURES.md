@@ -3,7 +3,7 @@
 Status legend: [x] done · [~] partial / in progress · [ ] planned
 
 > **At a glance** (jump to a section for the detail). For *how* each of these works, see the
-> "How it works" table in [`README.md`](README.md#how-it-works--each-capability-and-the-method-behind-it).
+> "How it works" table in [`README.md`](../README.md#how-it-works--each-capability-and-the-method-behind-it).
 >
 > | Area | The short version |
 > |---|---|
@@ -231,7 +231,7 @@ Status legend: [x] done · [~] partial / in progress · [ ] planned
 - [x] **Simulate driving (demo mode)** (Settings → Navigation, off by default) - Start drives any planned route as a synthetic GPS trace through the live-nav loop so nav runs anywhere for demos and screenshots; End stops it; turn off to navigate for real.
 - [x] **Simulate my location (demo mode)** (off by default) - Vela pretends you're at the map centre so the dot, directions origin and recenter read from there; turn off for real GPS.
 - [x] Settings shows the installed app version (name + build code).
-- [x] **Full D-pad / no-touchscreen operation** (touch is a bonus) - every surface reachable and activatable by focus with a visible ring, the map key-drivable (arrows pan, OK taps a crosshair, hold-OK long-presses, +/- zoom), key alternatives for every gesture, fields escaping UP/DOWN, and every screen auto-focusing on open; menus and dialogs rebuilt as VelaMenu/VelaDialog since Compose can't pre-focus a DropdownMenu/AlertDialog; affordances appear only in key-driven mode. See [`docs/dpad.md`](docs/dpad.md).
+- [x] **Full D-pad / no-touchscreen operation** (touch is a bonus) - every surface reachable and activatable by focus with a visible ring, the map key-drivable (arrows pan, OK taps a crosshair, hold-OK long-presses, +/- zoom), key alternatives for every gesture, fields escaping UP/DOWN, and every screen auto-focusing on open; menus and dialogs rebuilt as VelaMenu/VelaDialog since Compose can't pre-focus a DropdownMenu/AlertDialog; affordances appear only in key-driven mode. See [`docs/dpad.md`](dpad.md).
 - [ ] F-Droid submission + reproducible build.
 - [ ] UnifiedPush for delay alerts (no FCM).
 - [ ] ACRA / self-hosted crash reporting.

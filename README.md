@@ -36,7 +36,7 @@ release, or grab an APK from
 ## How it works
 
 What Vela does and the method behind each capability. The full feature list is in
-[`FEATURES.md`](FEATURES.md); the deeper contract is in [`SPEC.md`](SPEC.md).
+[`FEATURES.md`](docs/FEATURES.md); the deeper contract is in [`SPEC.md`](docs/SPEC.md).
 
 | Capability | Method | Start here |
 |---|---|---|
@@ -64,7 +64,7 @@ What Vela does and the method behind each capability. The full feature list is i
 - **Open where it can.** The basemap is open vector tiles and streets come from OpenStreetMap,
   so the heaviest load never touches Google and offline detail follows OSM coverage.
 - **No backend, no account, no telemetry.** Saved places, history, and settings never leave
-  the device. Full per-endpoint breakdown in [`PRIVACY.md`](PRIVACY.md).
+  the device. Full per-endpoint breakdown in [`PRIVACY.md`](docs/PRIVACY.md).
 
 > **Never embed a static Google API key.** That turns "a user scraped from their own IP"
 > (defensible, NewPipe's footing) into "the app shipped Google's credential" (not). The
@@ -74,10 +74,10 @@ What Vela does and the method behind each capability. The full feature list is i
 
 | File | What's in it |
 |---|---|
-| [`FEATURES.md`](FEATURES.md) | The full categorised list of every shipped capability |
-| [`SPEC.md`](SPEC.md) | The rebuild spec: architecture, extractor contract (pb layouts + response indices), resilience layer, constraints |
-| [`ROADMAP.md`](ROADMAP.md) | Planned work and big bets |
-| [`PRIVACY.md`](PRIVACY.md) | Exactly what each Google endpoint receives |
+| [`FEATURES.md`](docs/FEATURES.md) | The full categorised list of every shipped capability |
+| [`SPEC.md`](docs/SPEC.md) | The rebuild spec: architecture, extractor contract (pb layouts + response indices), resilience layer, constraints |
+| [`ROADMAP.md`](docs/ROADMAP.md) | Planned work and big bets |
+| [`PRIVACY.md`](docs/PRIVACY.md) | Exactly what each Google endpoint receives |
 | [`AGENTS.md`](AGENTS.md) | Build rules, module layout, and the D-pad / diagnostics / dead-code-gate rules (symlinked as `CLAUDE.md`) |
 | [`docs/dpad.md`](docs/dpad.md) | D-pad / no-touchscreen operation: design, findings, per-surface audit |
 

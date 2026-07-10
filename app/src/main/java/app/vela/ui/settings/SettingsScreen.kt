@@ -791,7 +791,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     context.startActivity(
                         android.content.Intent(
                             android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://github.com/alltechdev/vela-dpad/blob/main/PRIVACY.md"),
+                            android.net.Uri.parse("https://github.com/alltechdev/vela-dpad/blob/main/docs/PRIVACY.md"),
                         ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                     )
                 }
