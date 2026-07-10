@@ -68,15 +68,15 @@ fun VoiceCaptureDialog(
             ) {
                 // A ring that swells with loudness (0..1), so you can see it's hearing you. Short
                 // tween instead of the default spring: the level updates every ~32 ms and a spring
-                // smoothed the pulse into near-stillness; 1.4x travel so speech visibly moves it.
+                // smoothed the pulse into near-stillness; 2x travel so speech visibly moves it.
                 val ring by animateFloatAsState(
-                    1f + level.coerceIn(0f, 1f) * 1.4f,
-                    animationSpec = tween(90),
+                    1f + level.coerceIn(0f, 1f) * 2.0f,
+                    animationSpec = tween(70),
                     label = "voiceLevel",
                 )
                 val pulse by animateFloatAsState(
-                    1f + level.coerceIn(0f, 1f) * 0.15f,
-                    animationSpec = tween(90),
+                    1f + level.coerceIn(0f, 1f) * 0.28f,
+                    animationSpec = tween(70),
                     label = "voicePulse",
                 )
                 Box(contentAlignment = Alignment.Center) {

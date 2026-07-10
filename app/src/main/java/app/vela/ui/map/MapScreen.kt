@@ -553,7 +553,13 @@ fun MapScreen(
             styleUri = mapStyleUri,
             myLocation = state.myLocation,
             myBearing = state.myBearing,
-            myAccuracyM = state.myAccuracyM,
+            // Coarse-only permission always means a vague position, even before a fresh fix
+            // reports its accuracy (Android hands coarse apps a fix only every few minutes): fall
+            // back to the ~2 km grid Android fuzzes coarse locations to, so the halo shows at once.
+            myAccuracyM = state.myAccuracyM ?: if (hasLocation() && androidx.core.content.ContextCompat.checkSelfPermission(
+                    context, android.Manifest.permission.ACCESS_FINE_LOCATION,
+                ) != PackageManager.PERMISSION_GRANTED
+            ) 2000f else null,
             mySpeed = state.mySpeed,
             mySpeedRaw = state.mySpeedRaw,
             replaySpeedup = if (state.replaying) MapViewModel.REPLAY_SPEEDUP else 1f,
@@ -1460,7 +1466,7 @@ fun MapScreen(
                 Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = 84.dp, start = 12.dp, end = 12.dp),
+                    .padding(top = 140.dp, start = 12.dp, end = 12.dp), // below the search bar AND the chips
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (downloadingVoiceId != null) {

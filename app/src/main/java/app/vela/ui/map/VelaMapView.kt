@@ -1080,7 +1080,19 @@ fun VelaMapView(
                 val t = myLocation ?: cameraTarget
                 if (t != null) {
                     lastCameraTarget = t
-                    val zoom = if (cameraBottomInsetPx > 0) 16.5 else 15.0
+                    // A vague fix (approximate permission / weak network) zooms out to FIT the
+                    // accuracy circle: at street zoom a 2 km halo covers the whole screen as an
+                    // invisible uniform wash - the blob only reads when its edge is on screen.
+                    val acc = myAccuracyM
+                    val zoom = when {
+                        acc != null && acc > 100f -> {
+                            val screenPx = mapView.width.coerceAtLeast(1)
+                            val mpp = (acc.toDouble() * 2 / 0.7) / screenPx
+                            (Math.log((156543.03392 * Math.cos(Math.toRadians(t.lat))) / mpp) / Math.log(2.0)).coerceIn(3.0, 15.0)
+                        }
+                        cameraBottomInsetPx > 0 -> 16.5
+                        else -> 15.0
+                    }
                     map.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(t.lat, t.lng), zoom), 500)
                 }
             }
@@ -1436,8 +1448,15 @@ private fun ensureLayers(style: Style) {
         style.addLayer(
             FillLayer(ACCURACY_LAYER, ACCURACY_SRC).withProperties(
                 PropertyFactory.fillColor("#4285F4"),
-                PropertyFactory.fillOpacity(0.12f),
-                PropertyFactory.fillOutlineColor("#664285F4"),
+                // 0.22 + a real edge line: 0.12-0.15 vanished into the dark basemap's own blue.
+                PropertyFactory.fillOpacity(0.22f),
+            ),
+        )
+        style.addLayer(
+            LineLayer(ACCURACY_LAYER + "-edge", ACCURACY_SRC).withProperties(
+                PropertyFactory.lineColor("#4285F4"),
+                PropertyFactory.lineOpacity(0.8f),
+                PropertyFactory.lineWidth(1.5f),
             ),
         )
     }
