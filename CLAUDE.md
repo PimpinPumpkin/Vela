@@ -146,7 +146,13 @@ Defaults that make the safe path the easy one:
 - CI: **nightly + weekly channels (2026-07-08).** `.github/workflows/ci.yml`: every push to
   `main` builds + tests the APK and publishes a **PRERELEASE** `v0.3.<run>` (versionName
   `0.3.<run>`, versionCode `2000+run`) - the nightly channel; Obtainium users opt in with
-  "include prereleases". `.github/workflows/promote-stable.yml` (cron Mondays 16:00 UTC +
+  "include prereleases". **Docs-only pushes don't run CI or cut a nightly (2026-07-09):**
+  `paths-ignore` skips markdown/docs/LICENSE/fdroid-metadata/issue-template changes (a mixed
+  docs+code push still builds - it skips only when EVERY changed file matches). Workflow-file
+  edits deliberately still build. `[skip ci]` in a commit subject is the manual suppressor;
+  NB an fdroid/metadata-only change also skips the F-Droid index rebuild (it rides CI
+  completion) - dispatch `fdroid-repo.yml` by hand if the description edit should go live
+  before the next code push. `.github/workflows/promote-stable.yml` (cron Mondays 16:00 UTC +
   manual dispatch) **promotes the newest nightly to stable**: same tag, same signed APK, no
   rebuild - it flips `--prerelease=false --latest` and regenerates the notes to span
   everything since the previous stable. Default Obtainium installs and the in-app updater
