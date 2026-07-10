@@ -2856,6 +2856,10 @@ class MapViewModel @Inject constructor(
 
     fun recenter() = _state.update { it.copy(center = it.myLocation, recenterTick = it.recenterTick + 1) }
 
+    /** Demo-drive simulates the route with no GPS, so the precise-location nav gate skips it. */
+    fun demoDriveOn(): Boolean =
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE).getBoolean("demo_drive", false)
+
     /** Screenshot/demo tool (Settings → "Simulate my location"): pretend to be at the current map
      *  centre. While on, the live GPS collector is suspended and every "your location" (the dot,
      *  the search-distance bias, the directions origin, recenter) reads this point, so the app can

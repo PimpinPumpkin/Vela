@@ -391,10 +391,13 @@ fun MapScreen(
         }
     }
 
+    // When the request comes back fully denied (including Android's instant deny after a permanent
+    // "don't ask again"), the locate button used to just do nothing. Explain and point at settings.
+    var showLocationOff by remember { mutableStateOf(false) }
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
-        if (result.values.any { it }) vm.startLocation()
+        if (result.values.any { it }) vm.startLocation() else showLocationOff = true
     }
     // Only START location if it's already granted. The raw system dialog is NOT fired here anymore:
     // the onboarding rationale (VelaRoot) owns the first ask so it comes with an explanation, and the
@@ -536,7 +539,7 @@ fun MapScreen(
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { vm.startNav() }
-    val onStartNav: () -> Unit = {
+    fun proceedStartNav() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             ContextCompat.checkSelfPermission(
                 context, Manifest.permission.POST_NOTIFICATIONS,
@@ -546,6 +549,66 @@ fun MapScreen(
         } else {
             vm.startNav()
         }
+    }
+    fun fineGranted() = ContextCompat.checkSelfPermission(
+        context, Manifest.permission.ACCESS_FINE_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED
+    // Turn-by-turn follows you with GPS, which needs PRECISE location: coarse fixes are ~2 km and
+    // the nav engine (correctly) refuses them, so starting nav without precise just sat forever at
+    // "Searching for GPS" with no explanation. Gate the Start button on it instead - the request
+    // doubles as Android's approximate-to-precise upgrade dialog. Demo drive simulates and skips this.
+    var showPreciseNeeded by remember { mutableStateOf(false) }
+    val finePermLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        if (result[Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            vm.startLocation()
+            proceedStartNav()
+        } else {
+            android.widget.Toast.makeText(context, context.getString(R.string.nav_precise_toast), android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+    val onStartNav: () -> Unit = {
+        if (!fineGranted() && !vm.demoDriveOn()) showPreciseNeeded = true else proceedStartNav()
+    }
+    if (showPreciseNeeded) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { showPreciseNeeded = false },
+            title = stringResource(R.string.nav_precise_title),
+            confirmText = stringResource(R.string.nav_precise_allow),
+            onConfirm = {
+                showPreciseNeeded = false
+                finePermLauncher.launch(
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                )
+            },
+            dismissText = stringResource(R.string.root_not_now),
+            onDismiss = { showPreciseNeeded = false },
+            dismissLowEmphasis = true,
+            text = { Text(stringResource(R.string.nav_precise_body)) },
+        )
+    }
+    if (showLocationOff) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { showLocationOff = false },
+            title = stringResource(R.string.loc_off_title),
+            confirmText = stringResource(R.string.loc_off_settings),
+            onConfirm = {
+                showLocationOff = false
+                runCatching {
+                    context.startActivity(
+                        Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = android.net.Uri.fromParts("package", context.packageName, null)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        },
+                    )
+                }
+            },
+            dismissText = stringResource(R.string.root_not_now),
+            onDismiss = { showLocationOff = false },
+            dismissLowEmphasis = true,
+            text = { Text(stringResource(R.string.loc_off_body)) },
+        )
     }
 
     Box(Modifier.fillMaxSize()) {
