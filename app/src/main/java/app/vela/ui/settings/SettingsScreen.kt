@@ -1299,7 +1299,7 @@ private fun VoiceRow(
                 downloading -> stringResource(R.string.settings_voice_row_downloading, (downloadPct * 100).toInt())
                 active -> stringResource(R.string.settings_voice_row_in_use, v.region, gender, v.sizeMb)
                 installed -> stringResource(R.string.settings_voice_row_downloaded, v.region, gender, v.sizeMb)
-                else -> "${v.region} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB" + (v.note?.let { " · $it" } ?: "")
+                else -> "${v.region} · $gender · ${v.quality.name.lowercase()} · ${v.sizeMb} MB"
             }
             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
