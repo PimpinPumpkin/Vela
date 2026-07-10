@@ -1,6 +1,7 @@
 package app.vela.ui
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -65,17 +66,28 @@ fun VoiceCaptureDialog(
                 Modifier.padding(28.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                // A soft ring that swells with loudness (0..1), so you can see it's hearing you.
-                val ring by animateFloatAsState(1f + level.coerceIn(0f, 1f) * 0.9f, label = "voiceLevel")
+                // A ring that swells with loudness (0..1), so you can see it's hearing you. Short
+                // tween instead of the default spring: the level updates every ~32 ms and a spring
+                // smoothed the pulse into near-stillness; 1.4x travel so speech visibly moves it.
+                val ring by animateFloatAsState(
+                    1f + level.coerceIn(0f, 1f) * 1.4f,
+                    animationSpec = tween(90),
+                    label = "voiceLevel",
+                )
+                val pulse by animateFloatAsState(
+                    1f + level.coerceIn(0f, 1f) * 0.15f,
+                    animationSpec = tween(90),
+                    label = "voicePulse",
+                )
                 Box(contentAlignment = Alignment.Center) {
                     Box(
                         Modifier
                             .size(84.dp)
                             .scale(if (listening) ring else 1f)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f), CircleShape),
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.20f), CircleShape),
                     )
                     Box(
-                        Modifier.size(60.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
+                        Modifier.size(60.dp).scale(if (listening) pulse else 1f).background(MaterialTheme.colorScheme.primary, CircleShape),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(

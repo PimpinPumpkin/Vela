@@ -463,13 +463,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 }
             }
             // The engine picker only matters when there's actually a choice (the model AND a voice app);
-            // otherwise Auto already does the one available thing.
+            // otherwise the resolver already does the one available thing. TWO options, not three:
+            // "Vela voice" maps to AUTO (Vela's model wins, with the provider as a graceful fallback
+            // if the model is ever removed) - an explicit local-only third choice read as jargon.
             if (state.asrInstalled && hasVoiceProvider) {
                 Spacer(Modifier.height(12.dp))
                 SubHead(stringResource(R.string.settings_voice_search_engine_title))
                 val eng = app.vela.ui.VoiceSearch.engine.value
-                SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng == app.vela.ui.VoiceSearch.Engine.AUTO, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
-                SelectableRow(stringResource(R.string.settings_voice_search_engine_local), eng == app.vela.ui.VoiceSearch.Engine.LOCAL, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.LOCAL) })
+                SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng != app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
                 SelectableRow(stringResource(R.string.settings_voice_search_engine_system), eng == app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM) })
             }
 

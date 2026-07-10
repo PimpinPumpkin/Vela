@@ -442,8 +442,17 @@ Defaults that make the safe path the easy one:
   Done - VelaDialog D-pad pattern). Settings -> Search has the download/remove + the engine picker
   (shown only when BOTH model and a provider exist). R8 keeps `com.k2fsa.sherpa.onnx.**` (already for
   Piper). Verified: download+install, mic appears, POU permission, VAD auto-stop, transcript -> query;
-  Auto uses on-device, "Other voice app" launches the provider. Accuracy of tiny-int8 is the known
-  tradeoff for size/speed; a larger model could be a future catalog entry.
+  Auto uses on-device, "Other voice app" launches the provider. **User-facing name is "Vela voice"**
+  (2026-07-10): the model row, hint and picker all say Vela voice, and the picker is TWO options
+  (Vela voice = AUTO, Other voice app = SYSTEM) - the explicit local-only third choice was dropped as
+  jargon (Engine.LOCAL still exists, just not offered). **Whisper is PINNED to the app language**
+  (`whisperLang()` = `AppLocale.effective().language` when in SUPPORTED, else auto; recognizer
+  rebuilds if the language changes) - auto-detect transcribed a noisy far-field capture into
+  CYRILLIC, don't revert to `language = ""`. **Transcripts are cleaned** (`cleanTranscript`): Whisper
+  writes prose ("Coffee shops near me.") so terminal ./!/?/,/;/: and wrapping quotes are stripped;
+  inner periods stay (St. Paul). The listening pulse uses tween(90) + 1.4x ring travel + a 7x RMS
+  gain - the default spring smoothed the ~32 ms level updates into near-stillness. Accuracy of
+  tiny-int8 is the known tradeoff for size/speed; a larger model could be a future catalog entry.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
   system dialog. The first ask lives in `VelaRoot`: when onboarding reaches the location step
