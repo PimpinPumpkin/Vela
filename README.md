@@ -428,6 +428,10 @@ decodes Google's geometry exactly and is covered by a reference-vector test.
   (Settings → Voice) lets you browse, download and switch between ~40 Piper voices (Lessac, HFC, Ryan,
   the HFC Female default, British voices, …) to find the read you like. Plus AOSP
   `TextToSpeech`: we enumerate the phone's installed engines so you can override to any system voice.
+  Spoken directions have an on/off switch that the in-nav mute button shares. **Voice search** is
+  on-device too: the search-bar mic records and transcribes with Vela's own downloadable Whisper
+  model (same bundled runtime, mic permission asked at first use), or hands off to a voice-input
+  app you already have; with neither installed the mic offers the download.
 - **No GMS anywhere:** no Fused location, no FCM, no Firebase, no Play Integrity.
   Everything (MapLibre, OkHttp, Compose, Hilt) is pure AOSP. OrganicMaps is the
   existence proof; Vela's stack is a superset.
@@ -486,6 +490,8 @@ without an app release.
 - [x] Settings toggles to **hide reviews** and **skip photo loading** (place pages stay lean, nothing is fetched)
 - [x] **In-app updater** - checks the newest GitHub release about once a day (Settings toggle), downloads the APK and installs through Android's normal installer; Obtainium still works as before
 - [x] **11 languages** - UI, spoken turn-by-turn, and Google place content localized (English + de es fr it nl pl pt ru sv uk)
+- [x] **On-device voice search** - "Vela Voice" (Whisper tiny through the bundled sherpa-onnx runtime, ~58 MB download) transcribes on the phone; an installed voice-input app works as the alternative path
+- [x] **Honest location UX** - approximate-only permission draws a true accuracy circle and explains itself once; navigation asks for precise location instead of failing silently; nav warns when you'd arrive within an hour of closing
 - [x] **Foreground navigation service** - screen-off guidance, notification, faster-route re-checks
 - [x] **Offline routing on-device (GraphHopper)** - a downloadable **135-region world catalog** (all US states, Canada, Europe, +) hosted on GitHub; saving an offline map area grabs its routing graph too
 - [x] **In-app light/dark**, one consistent Google-grey UI, custom POI markers, hillshade relief

@@ -572,6 +572,18 @@ handed - no filesystem, network, or device access.
   `filesDir/overlays/<id>.pmtiles`, rendered by `VelaMapView` as a `pmtiles://file://…` `VectorSource` +
   `FillLayer` **beneath** the OSM `building` layer (themed identically), filling only the gaps OSM never mapped.
   Pulled alongside the area's tiles+routing on the same smallest-covering-box rule. Data, not code (GPLv3-orthogonal).
+- **Voice search is two-tier and keyless.** Tier 1: in-process ASR - Whisper tiny int8 +
+  Silero VAD through the SAME bundled sherpa-onnx runtime the TTS uses (`WhisperRecognizer`,
+  `AsrModel`), model downloaded on demand from the `asr-models` GitHub release (tar.GZIP - bzip2
+  unpacked ~15 MB/s on-device), RECORD_AUDIO asked at point of use only, Whisper pinned to the app
+  language (auto-detect hallucinated scripts on noisy audio). Tier 2: `ACTION_RECOGNIZE_SPEECH`
+  handoff to an installed voice-input app (that app records - no mic permission for Vela). Never a
+  cloud STT API.
+- **Permissions are asked with context, never silently broken.** Onboarding = welcome → location →
+  notifications → voice offer; coarse-only location gets a one-time explainer (wide-circle dot +
+  an Android precise-upgrade shortcut) and draws a REAL accuracy circle; navigation start gates on
+  FINE (coarse fixes never feed the nav engine) with the upgrade dialog; a permanently-denied
+  locate tap explains and deep-links system settings.
 - No GMS: no FCM/Firebase/Play Integrity/Fused. Push (if ever) = UnifiedPush; crash
   reporting = ACRA/self-hosted.
 - EU consent: pre-seed `SOCS`/`CONSENT` cookies; never let `Set-Cookie` downgrade
