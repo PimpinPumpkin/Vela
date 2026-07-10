@@ -9,7 +9,7 @@
 A degoogled maps and navigation client for Android. Runs on GrapheneOS and other no-GMS ROMs.
 
 - **D-pad first.** Fully operable with a 5-key D-pad (arrows + OK) and hardware BACK on a
-  device with **no touchscreen**, such as a Qin F21 feature phone. Touch is a bonus.
+  device with **no touchscreen**. Touch is a bonus.
 - **Degoogled.** No Google Play Services, no account, no API key, no backend.
 - **NewPipe's model, for Google Maps.** Open vector tiles for the basemap; the phone scrapes
   Google's public web endpoints per-user for POIs, routing, and traffic-aware ETAs.

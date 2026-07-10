@@ -1,7 +1,7 @@
 # Small-screen compatibility test suite
 
 Reproducible, on-device checks that Vela works on a **tiny feature-phone display** - the same class
-of device (Qin F21 and friends) that is also D-pad-driven, so this suite is the small-screen twin of
+of device (a small feature phone) that is also D-pad-driven, so this suite is the small-screen twin of
 [`../dpad/`](../dpad/) and reuses its device helpers.
 
 The rule it enforces: on a small screen, **nothing may be clipped off-screen or overflow** - every

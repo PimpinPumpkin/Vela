@@ -88,7 +88,7 @@ fun SearchBar(
         if (fieldArmed) {
             runCatching { fieldFocus.requestFocus() }
             // Show/hide the soft keyboard by HOW the field was armed, not the static device type.
-            // On a hybrid touch+keypad phone (e.g. Qin F21) dpadMode is always true, so keying off
+            // On a hybrid touch+keypad phone dpadMode is always true, so keying off
             // it hid the keyboard even when the user TAPPED the bar - they couldn't type by touch
             // (alltechdev tester report 2026-07-08). Keying off the live input mode shows the
             // keyboard for a touch tap and hides it for a D-pad OK, which is what each wants.
@@ -158,7 +158,7 @@ fun SearchBar(
                     onValueChange = onQueryChange,
                     // Until armed in dpadMode the field is DISABLED, so it doesn't swallow a TOUCH tap
                     // (a live but unfocusable field ate the tap and did nothing - the "can't tap the
-                    // search bar" bug on hybrid touch+keypad phones, Qin F21). Disabled lets the tap
+                    // search bar" bug on hybrid touch+keypad phones). Disabled lets the tap
                     // reach the Box's arm-clickable, which arms it; the field stays MOUNTED (only the
                     // enabled flag flips), so arming focuses it cleanly with no remount race.
                     enabled = !dpadMode || fieldArmed,

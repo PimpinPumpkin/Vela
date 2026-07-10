@@ -5,7 +5,7 @@
 # and BUTTONS without clipping any off-screen - the buttons must stay on-screen and focus-reachable
 # even when the body is tall (it must scroll, not shove the buttons past the bottom edge). This is
 # the on-device counterpart to audit_static.sh's "every Dialog has a scroll container" check, and it
-# targets the tester's Qin-F21-class tiny screens (user 2026-07-08).
+# targets a feature-phone-class tiny screen.
 #
 #   ./audit_dialogs.sh          # runs; restores the original screen size on exit
 set -uo pipefail

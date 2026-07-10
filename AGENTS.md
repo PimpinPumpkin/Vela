@@ -296,7 +296,7 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   - Verify basemap edits on-device in **both** themes.
 - **D-PAD-FIRST IS THE FORK'S REASON TO EXIST - NON-NEGOTIABLE (read before touching ANY UI).**
   Vela must be **100% operable with a 5-key D-pad (↑ ↓ ← → + OK) and hardware BACK, on a device with
-  NO touchscreen** (a Qin F21 / feature phone). Touch is a *bonus*, never a requirement. A change that
+  NO touchscreen** (a feature phone). Touch is a *bonus*, never a requirement. A change that
   regresses it is a **release blocker**. Every rule below is MANDATORY for any new or edited UI and is
   **enforced by `tests/dpad/` - run the auditors before every UI commit, wire `audit_static.sh`
   into CI**:
