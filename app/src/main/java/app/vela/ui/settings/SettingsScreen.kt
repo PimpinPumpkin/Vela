@@ -104,6 +104,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape as DpadShape
 fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = false) {
     val state by vm.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
+    // The voice library (browse / download / switch / delete voices) is a DEDICATED screen now, not an
+    // inline accordion on this long list. When open it fully replaces Settings; its own Back returns here.
+    var showVoiceLibrary by remember { mutableStateOf(false) }
+    if (showVoiceLibrary) {
+        VoiceBrowseScreen(vm = vm, onClose = { showVoiceLibrary = false })
+        return
+    }
     // System back should return to the map, not fall through and exit the app.
     BackHandler(onBack = onBack)
     // When arriving from the onboarding "set up offline" prompt, open the Offline section expanded and
@@ -219,17 +226,22 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_language))
-            SelectableRow(
-                label = stringResource(R.string.settings_follow_system),
-                selected = app.vela.ui.AppLocale.language.value.isBlank(),
-                onClick = { app.vela.ui.AppLocale.set(context, "") },
-            )
-            app.vela.ui.AppLocale.SUPPORTED.forEach { code ->
-                SelectableRow(
-                    label = app.vela.ui.AppLocale.endonym(code),
-                    selected = app.vela.ui.AppLocale.language.value == code,
-                    onClick = { app.vela.ui.AppLocale.set(context, code) },
-                )
+            // Most people want the system language, so lead with a single toggle and only reveal the
+            // full 11-language picker when they turn it off (keeps the list out of the common case).
+            val followSystemLang = app.vela.ui.AppLocale.language.value.isBlank()
+            ToggleRow(stringResource(R.string.settings_follow_system_language), followSystemLang) { on ->
+                // Off → seed with the language closest to the device locale so the picker opens on a
+                // real current choice, not blank; on → clear the override back to the system locale.
+                app.vela.ui.AppLocale.set(context, if (on) "" else app.vela.ui.AppLocale.deviceDefaultSupported())
+            }
+            if (!followSystemLang) {
+                app.vela.ui.AppLocale.SUPPORTED.forEach { code ->
+                    SelectableRow(
+                        label = app.vela.ui.AppLocale.endonym(code),
+                        selected = app.vela.ui.AppLocale.language.value == code,
+                        onClick = { app.vela.ui.AppLocale.set(context, code) },
+                    )
+                }
             }
             Hint(stringResource(R.string.settings_language_hint))
 
@@ -253,292 +265,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             ToggleRow(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) { app.vela.ui.TransitLayer.set(context, it) }
             Hint(stringResource(R.string.settings_transit_layer_hint))
-
-            ToggleRow(stringResource(R.string.settings_buildings_3d), app.vela.ui.Buildings3d.on.value) { app.vela.ui.Buildings3d.set(context, it) }
-            Hint(stringResource(R.string.settings_buildings_3d_hint))
-
-            Spacer(Modifier.height(20.dp))
-            SectionTitle(stringResource(R.string.settings_place_pages))
-
-            ToggleRow(stringResource(R.string.settings_show_reviews), app.vela.ui.ShowReviews.on.value) { app.vela.ui.ShowReviews.set(context, it) }
-            Hint(stringResource(R.string.settings_show_reviews_hint))
-
-            ToggleRow(stringResource(R.string.settings_read_all_reviews), app.vela.ui.LiveReviews.on.value) { app.vela.ui.LiveReviews.set(context, it) }
-            Hint(stringResource(R.string.settings_read_all_reviews_hint))
-
-            ToggleRow(stringResource(R.string.settings_load_photos), app.vela.ui.LoadPhotos.on.value) { app.vela.ui.LoadPhotos.set(context, it) }
-            Hint(stringResource(R.string.settings_load_photos_hint))
-
-            ToggleRow(stringResource(R.string.settings_hide_adult), app.vela.ui.HideAdult.on.value) { app.vela.ui.HideAdult.set(context, it) }
-            Hint(stringResource(R.string.settings_hide_adult_hint))
-
-            ToggleRow(stringResource(R.string.settings_hide_external_links), app.vela.ui.HideExternalLinks.on.value) { app.vela.ui.HideExternalLinks.set(context, it) }
-            Hint(stringResource(R.string.settings_hide_external_links_hint))
-
-            Spacer(Modifier.height(20.dp))
-            SectionTitle(stringResource(R.string.settings_navigation))
-            val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
-
-            var keepAwake by remember { mutableStateOf(prefs.getBoolean("keep_screen_on_nav", true)) }
-            ToggleRow(stringResource(R.string.settings_keep_screen_on), keepAwake) {
-                keepAwake = it
-                prefs.edit().putBoolean("keep_screen_on_nav", it).apply()
-            }
-            Hint(stringResource(R.string.settings_keep_screen_on_hint))
-
-            var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
-            ToggleRow(stringResource(R.string.settings_traffic_lights), trafficLights) {
-                trafficLights = it
-                prefs.edit().putBoolean("nav_traffic_lights", it).apply()
-            }
-            Hint(stringResource(R.string.settings_traffic_lights_hint))
-            Text(stringResource(R.string.settings_vibrate_on_turns), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
-            // One chip per travel mode (was four stacked switch rows — a lot of vertical space
-            // for a setting most people touch once). Selected = that mode vibrates at turns.
-            Row(
-                // Scrollable so four localized labels can never squeeze each other off-screen.
-                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp, bottom = 2.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                listOf(
-                    TravelMode.DRIVE to stringResource(R.string.settings_mode_driving),
-                    TravelMode.WALK to stringResource(R.string.settings_mode_walking),
-                    TravelMode.BICYCLE to stringResource(R.string.settings_mode_cycling),
-                    TravelMode.TRANSIT to stringResource(R.string.settings_mode_transit),
-                ).let { modes ->
-                    // The ROOT swallows bare LEFT/RIGHT (see above), so this horizontal row drives its
-                    // OWN LEFT/RIGHT via FocusRequesters — requestFocus (not moveFocus) never clears at
-                    // the ends, and consuming the key stops it reaching the root swallow.
-                    val chipFocus = remember { List(modes.size) { FocusRequester() } }
-                    modes.forEachIndexed { i, (mode, label) ->
-                        var on by remember(mode) {
-                            val default = if (!prefs.getBoolean(Haptics.KEY, true)) false else Haptics.defaultFor(mode)
-                            mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), default))
-                        }
-                        FilterChip(
-                            selected = on,
-                            onClick = {
-                                on = !on
-                                prefs.edit().putBoolean(Haptics.keyFor(mode), on).apply()
-                            },
-                            label = { Text(label) },
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            modifier = Modifier
-                                .focusRequester(chipFocus[i])
-                                .onKeyEvent { ev ->
-                                    if (ev.key == Key.DirectionRight || ev.key == Key.DirectionLeft) {
-                                        if (ev.type == KeyEventType.KeyDown) {
-                                            if (ev.key == Key.DirectionRight && i < chipFocus.lastIndex) chipFocus[i + 1].requestFocus()
-                                            if (ev.key == Key.DirectionLeft && i > 0) chipFocus[i - 1].requestFocus()
-                                        }
-                                        true
-                                    } else {
-                                        false
-                                    }
-                                },
-                        )
-                    }
-                }
-            }
-            Hint(stringResource(R.string.settings_vibrate_hint))
-
-            var demoDrive by remember { mutableStateOf(prefs.getBoolean("demo_drive", false)) }
-            ToggleRow(stringResource(R.string.settings_demo_drive), demoDrive) {
-                demoDrive = it
-                prefs.edit().putBoolean("demo_drive", it).apply()
-            }
-            Hint(stringResource(R.string.settings_demo_drive_hint))
-
-            // Simulated location — pretend to be at the current map centre (for demos / screenshots
-            // without leaking where you actually are). Reactive holder so the switch reflects state.
-            ToggleRow(stringResource(R.string.settings_sim_location), app.vela.ui.SimLocation.on) { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() }
-            Hint(stringResource(R.string.settings_sim_location_hint))
-
-            // Parking history — recent "parked here" saves, so an accidental overwrite is
-            // recoverable (also reachable by long-pressing the P button on the map).
-            if (state.parkingHistory.isNotEmpty()) {
-                Spacer(Modifier.height(20.dp))
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    SectionTitle(stringResource(R.string.settings_parking_history))
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
-                }
-                Hint(stringResource(R.string.settings_parking_history_hint))
-                state.parkingHistory.forEach { entry ->
-                    val isCurrent = entry.savedAtMillis == state.parkedAtMillis
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Icon(
-                            Icons.Default.LocalParking,
-                            contentDescription = null,
-                            tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp),
-                        )
-                        Spacer(Modifier.width(10.dp))
-                        Text(
-                            java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
-                                .format(java.util.Date(entry.savedAtMillis)),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.weight(1f),
-                        )
-                        if (isCurrent) {
-                            Text(stringResource(R.string.parking_history_current), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                        } else {
-                            TextButton(onClick = { vm.restoreParkingFromHistory(entry) }) { Text(stringResource(R.string.parking_history_restore)) }
-                            IconButton(onClick = { vm.deleteParkingHistoryEntry(entry) }) {
-                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                        }
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(20.dp))
-            SectionTitle(stringResource(R.string.settings_voice))
-            // Vela's own on-device neural voices (the Piper catalog) — download in the Voice
-            // library below; once downloaded each shows in the engine list (selectable). No
-            // standalone TTS app needed.
-            // A download in flight shows a compact progress line here too, so it's visible even when the
-            // Voice library (below) is collapsed. The per-voice controls live in the library.
-            state.voiceDownloadingId?.let { id ->
-                val nm = vm.voiceCatalog().firstOrNull { it.id == id }?.displayName ?: stringResource(R.string.settings_voice_fallback_name)
-                val pct = state.voiceDownloadPct ?: 0f
-                Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
-                Spacer(Modifier.height(6.dp))
-                LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
-                Spacer(Modifier.height(12.dp))
-            } ?: Spacer(Modifier.height(4.dp))
-            // Enumerate TTS engines OFF the main thread. PackageManager.queryIntentServices + the
-            // per-engine loadLabel is a binder IPC that took >5 s on the flip phone and ANR'd the UI
-            // when run in composition (input-dispatch timeout). Load async (cached in VoiceGuide);
-            // render nothing until ready so there's no flash of the "no engines" hint.
-            val engines by produceState<List<VoiceEngine>?>(null, state.voiceDownloadingId) {
-                value = withContext(Dispatchers.IO) { vm.voiceEngines() }
-            }
-            val engineList = engines
-            if (engineList == null) {
-                // still loading — render nothing
-            } else if (engineList.isEmpty()) {
-                Hint(stringResource(R.string.settings_voice_none_hint))
-            } else {
-                engineList.forEach { e ->
-                    SelectableRow(
-                        label = e.label,
-                        selected = state.selectedEngine?.packageName == e.packageName,
-                        onClick = { vm.setVoiceEngine(e) },
-                    )
-                }
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { vm.testVoice() }) { Text(stringResource(R.string.settings_voice_test)) }
-                    Spacer(Modifier.width(8.dp))
-                    OutlinedButton(onClick = {
-                        runCatching {
-                            context.startActivity(
-                                android.content.Intent("com.android.settings.TTS_SETTINGS")
-                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
-                            )
-                        }
-                    }) { Text(stringResource(R.string.settings_voice_system_settings)) }
-                }
-                Hint(stringResource(R.string.settings_voice_test_hint))
-            }
-
-            // Voice library — browse, download, switch between and remove Vela's neural voices (Piper).
-            // Auto-expanded when nothing is installed so the download path is obvious.
-            // Auto-expand when nothing is installed so the download path is obvious — EXCEPT when we
-            // arrived to set up offline, where a big open voice list between the top and the Offline
-            // section would push it around and fight the scroll-into-view.
-            var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty() && !openOffline) }
-            CollapsibleSectionTitle(stringResource(R.string.settings_voice_library), voiceLibExpanded) { voiceLibExpanded = !voiceLibExpanded }
-            if (voiceLibExpanded) VoiceLibrary(vm, state)
-
-            if (engineList?.isNotEmpty() == true) {
-                // Speed + the niche bits (playground, the multi-speaker variant picker) — most people never
-                // touch these, so tuck them behind a collapsible header (collapsed by default).
-                var voiceAdvExpanded by remember { mutableStateOf(false) }
-                CollapsibleSectionTitle(stringResource(R.string.settings_voice_advanced), voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
-                if (voiceAdvExpanded) {
-                // Playground: hear the selected voice on any text (or a nav-style sample).
-                Spacer(Modifier.height(12.dp))
-                var tryText by remember { mutableStateOf("") }
-                OutlinedTextField(
-                    value = tryText,
-                    onValueChange = { tryText = it },
-                    modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
-                    label = { Text(stringResource(R.string.settings_voice_try_label)) },
-                    maxLines = 3,
-                )
-                Spacer(Modifier.height(6.dp))
-                val navSampleText = stringResource(R.string.settings_voice_nav_sample_text)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    OutlinedButton(onClick = { vm.speakText(tryText) }, enabled = tryText.isNotBlank()) { Text(stringResource(R.string.settings_voice_speak)) }
-                    Spacer(Modifier.width(8.dp))
-                    OutlinedButton(onClick = {
-                        vm.speakText(navSampleText)
-                    }) { Text(stringResource(R.string.settings_voice_nav_sample)) }
-                }
-                // Speed applies to whichever voice is selected (neural + system TTS).
-                Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        stringResource(R.string.settings_voice_speed, "%.2fx".format(state.voiceSpeed)),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.weight(1f),
-                    )
-                    OutlinedButton(onClick = { vm.setVoiceSpeed(-0.1f) }) { Text("−") }
-                    Spacer(Modifier.width(6.dp))
-                    OutlinedButton(onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
-                }
-                Hint(stringResource(R.string.settings_voice_speed_hint))
-                // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) — let the user audition +
-                // pick a variant. Hidden for single-speaker voices (lessac/hfc/…), where it's meaningless.
-                if (state.selectedEngine?.packageName?.startsWith("vela.") == true && vm.voiceSpeakerCount() > 1) {
-                    Spacer(Modifier.height(10.dp))
-                    val cnt = vm.voiceSpeakerCount()
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            if (cnt > 0) stringResource(R.string.settings_voice_variant_of, state.voiceSpeaker, cnt)
-                            else stringResource(R.string.settings_voice_variant, state.voiceSpeaker),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        OutlinedButton(onClick = { vm.stepSpeaker(-1) }) { Text("◀") }
-                        Spacer(Modifier.width(6.dp))
-                        OutlinedButton(onClick = { vm.stepSpeaker(1) }) { Text("▶") }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    // Jump straight to a variant number (904 is a lot to step through).
-                    var jump by remember { mutableStateOf("") }
-                    val goToVariant = {
-                        jump.trim().toIntOrNull()?.let { vm.setSpeaker(it) }
-                        jump = ""
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(
-                            value = jump,
-                            onValueChange = { s -> jump = s.filter { it.isDigit() }.take(4) },
-                            singleLine = true,
-                            label = { Text(stringResource(R.string.settings_voice_variant_field)) },
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Number,
-                                imeAction = ImeAction.Go,
-                            ),
-                            keyboardActions = KeyboardActions(onGo = { goToVariant() }),
-                            modifier = Modifier.width(150.dp).dpadFieldEscape(),
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        OutlinedButton(onClick = goToVariant, enabled = jump.isNotBlank()) { Text(stringResource(R.string.settings_voice_variant_go)) }
-                    }
-                    Hint(stringResource(R.string.settings_voice_variant_hint))
-                }
-                } // end "Advanced voice options"
-            }
-
+            // 3D buildings moved to Advanced (niche + a documented z16+ perf cost).
             Spacer(Modifier.height(20.dp).onGloballyPositioned { offlineSectionY = it.positionInRoot().y })
             // Collapsed by default — the routing-region list can be long, so don't make the user
             // scroll past all of it to reach the sections below. Opens expanded when the onboarding
@@ -719,6 +446,267 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             } // end if (offlineExpanded)
 
             Spacer(Modifier.height(20.dp))
+            SectionTitle(stringResource(R.string.settings_place_pages))
+
+            ToggleRow(stringResource(R.string.settings_show_reviews), app.vela.ui.ShowReviews.on.value) { app.vela.ui.ShowReviews.set(context, it) }
+            Hint(stringResource(R.string.settings_show_reviews_hint))
+
+            ToggleRow(stringResource(R.string.settings_read_all_reviews), app.vela.ui.LiveReviews.on.value) { app.vela.ui.LiveReviews.set(context, it) }
+            Hint(stringResource(R.string.settings_read_all_reviews_hint))
+
+            ToggleRow(stringResource(R.string.settings_load_photos), app.vela.ui.LoadPhotos.on.value) { app.vela.ui.LoadPhotos.set(context, it) }
+            Hint(stringResource(R.string.settings_load_photos_hint))
+            // "Hide adult categories" + "Hide website & external links" moved to Advanced.
+
+            Spacer(Modifier.height(20.dp))
+            SectionTitle(stringResource(R.string.settings_navigation))
+            val prefs = remember { context.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE) }
+
+            var keepAwake by remember { mutableStateOf(prefs.getBoolean("keep_screen_on_nav", true)) }
+            ToggleRow(stringResource(R.string.settings_keep_screen_on), keepAwake) {
+                keepAwake = it
+                prefs.edit().putBoolean("keep_screen_on_nav", it).apply()
+            }
+            Hint(stringResource(R.string.settings_keep_screen_on_hint))
+
+            // Traffic-light guidance moved to Advanced (experimental, English-only).
+            Text(stringResource(R.string.settings_vibrate_on_turns), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
+            // One chip per travel mode (was four stacked switch rows — a lot of vertical space
+            // for a setting most people touch once). Selected = that mode vibrates at turns.
+            Row(
+                // Scrollable so four localized labels can never squeeze each other off-screen.
+                Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 4.dp, bottom = 2.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    TravelMode.DRIVE to stringResource(R.string.settings_mode_driving),
+                    TravelMode.WALK to stringResource(R.string.settings_mode_walking),
+                    TravelMode.BICYCLE to stringResource(R.string.settings_mode_cycling),
+                    TravelMode.TRANSIT to stringResource(R.string.settings_mode_transit),
+                ).let { modes ->
+                    // The ROOT swallows bare LEFT/RIGHT (see above), so this horizontal row drives its
+                    // OWN LEFT/RIGHT via FocusRequesters — requestFocus (not moveFocus) never clears at
+                    // the ends, and consuming the key stops it reaching the root swallow.
+                    val chipFocus = remember { List(modes.size) { FocusRequester() } }
+                    modes.forEachIndexed { i, (mode, label) ->
+                        var on by remember(mode) {
+                            val default = if (!prefs.getBoolean(Haptics.KEY, true)) false else Haptics.defaultFor(mode)
+                            mutableStateOf(prefs.getBoolean(Haptics.keyFor(mode), default))
+                        }
+                        FilterChip(
+                            selected = on,
+                            onClick = {
+                                on = !on
+                                prefs.edit().putBoolean(Haptics.keyFor(mode), on).apply()
+                            },
+                            label = { Text(label) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            modifier = Modifier
+                                .focusRequester(chipFocus[i])
+                                .onKeyEvent { ev ->
+                                    if (ev.key == Key.DirectionRight || ev.key == Key.DirectionLeft) {
+                                        if (ev.type == KeyEventType.KeyDown) {
+                                            if (ev.key == Key.DirectionRight && i < chipFocus.lastIndex) chipFocus[i + 1].requestFocus()
+                                            if (ev.key == Key.DirectionLeft && i > 0) chipFocus[i - 1].requestFocus()
+                                        }
+                                        true
+                                    } else {
+                                        false
+                                    }
+                                },
+                        )
+                    }
+                }
+            }
+            Hint(stringResource(R.string.settings_vibrate_hint))
+
+            // Demo drive + simulated location moved to Developer (screenshot/testing tools).
+
+            // Parking history — recent "parked here" saves, so an accidental overwrite is
+            // recoverable (also reachable by long-pressing the P button on the map).
+            if (state.parkingHistory.isNotEmpty()) {
+                Spacer(Modifier.height(20.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    SectionTitle(stringResource(R.string.settings_parking_history))
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { vm.clearParkingHistory() }) { Text(stringResource(R.string.parking_history_clear_all)) }
+                }
+                Hint(stringResource(R.string.settings_parking_history_hint))
+                state.parkingHistory.forEach { entry ->
+                    val isCurrent = entry.savedAtMillis == state.parkedAtMillis
+                    Row(
+                        Modifier.fillMaxWidth().padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Icon(
+                            Icons.Default.LocalParking,
+                            contentDescription = null,
+                            tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                                .format(java.util.Date(entry.savedAtMillis)),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                            modifier = Modifier.weight(1f),
+                        )
+                        if (isCurrent) {
+                            Text(stringResource(R.string.parking_history_current), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                        } else {
+                            TextButton(onClick = { vm.restoreParkingFromHistory(entry) }) { Text(stringResource(R.string.parking_history_restore)) }
+                            IconButton(onClick = { vm.deleteParkingHistoryEntry(entry) }) {
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+            SectionTitle(stringResource(R.string.settings_voice))
+            // Vela's own on-device neural voices (the Piper catalog) — download in the Voice
+            // library below; once downloaded each shows in the engine list (selectable). No
+            // standalone TTS app needed.
+            // A download in flight shows a compact progress line here too, so it's visible even when the
+            // Voice library (below) is collapsed. The per-voice controls live in the library.
+            state.voiceDownloadingId?.let { id ->
+                val nm = vm.voiceCatalog().firstOrNull { it.id == id }?.displayName ?: stringResource(R.string.settings_voice_fallback_name)
+                val pct = state.voiceDownloadPct ?: 0f
+                Text(stringResource(R.string.settings_voice_downloading, nm, (pct * 100).toInt()), style = MaterialTheme.typography.bodyMedium)
+                Spacer(Modifier.height(6.dp))
+                LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(12.dp))
+            } ?: Spacer(Modifier.height(4.dp))
+            // Enumerate TTS engines OFF the main thread. PackageManager.queryIntentServices + the
+            // per-engine loadLabel is a binder IPC that took >5 s on the flip phone and ANR'd the UI
+            // when run in composition (input-dispatch timeout). Load async (cached in VoiceGuide);
+            // render nothing until ready so there's no flash of the "no engines" hint.
+            val engines by produceState<List<VoiceEngine>?>(null, state.voiceDownloadingId) {
+                value = withContext(Dispatchers.IO) { vm.voiceEngines() }
+            }
+            val engineList = engines
+            if (engineList == null) {
+                // still loading — render nothing
+            } else if (engineList.isEmpty()) {
+                Hint(stringResource(R.string.settings_voice_none_hint))
+            } else {
+                engineList.forEach { e ->
+                    SelectableRow(
+                        label = e.label,
+                        selected = state.selectedEngine?.packageName == e.packageName,
+                        onClick = { vm.setVoiceEngine(e) },
+                    )
+                }
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = { vm.testVoice() }) { Text(stringResource(R.string.settings_voice_test)) }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(onClick = {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent("com.android.settings.TTS_SETTINGS")
+                                    .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    }) { Text(stringResource(R.string.settings_voice_system_settings)) }
+                }
+                Hint(stringResource(R.string.settings_voice_test_hint))
+            }
+
+            // The voice catalog (browse / download / switch / delete) opens on its OWN screen now — it
+            // was a long inline accordion on this already-long list. A download in flight still shows
+            // its progress line above, so it's visible from here even with the browser closed.
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = { showVoiceLibrary = true }) { Text(stringResource(R.string.settings_browse_voices)) }
+            Hint(stringResource(R.string.settings_browse_voices_hint))
+
+            if (engineList?.isNotEmpty() == true) {
+                // Speed + the niche bits (playground, the multi-speaker variant picker) — most people never
+                // touch these, so tuck them behind a collapsible header (collapsed by default).
+                var voiceAdvExpanded by remember { mutableStateOf(false) }
+                CollapsibleSectionTitle(stringResource(R.string.settings_voice_advanced), voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
+                if (voiceAdvExpanded) {
+                // Playground: hear the selected voice on any text (or a nav-style sample).
+                Spacer(Modifier.height(12.dp))
+                var tryText by remember { mutableStateOf("") }
+                OutlinedTextField(
+                    value = tryText,
+                    onValueChange = { tryText = it },
+                    modifier = Modifier.fillMaxWidth().dpadFieldEscape(),
+                    label = { Text(stringResource(R.string.settings_voice_try_label)) },
+                    maxLines = 3,
+                )
+                Spacer(Modifier.height(6.dp))
+                val navSampleText = stringResource(R.string.settings_voice_nav_sample_text)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedButton(onClick = { vm.speakText(tryText) }, enabled = tryText.isNotBlank()) { Text(stringResource(R.string.settings_voice_speak)) }
+                    Spacer(Modifier.width(8.dp))
+                    OutlinedButton(onClick = {
+                        vm.speakText(navSampleText)
+                    }) { Text(stringResource(R.string.settings_voice_nav_sample)) }
+                }
+                // Speed applies to whichever voice is selected (neural + system TTS).
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.settings_voice_speed, "%.2fx".format(state.voiceSpeed)),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    OutlinedButton(onClick = { vm.setVoiceSpeed(-0.1f) }) { Text("−") }
+                    Spacer(Modifier.width(6.dp))
+                    OutlinedButton(onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
+                }
+                Hint(stringResource(R.string.settings_voice_speed_hint))
+                // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) — let the user audition +
+                // pick a variant. Hidden for single-speaker voices (lessac/hfc/…), where it's meaningless.
+                if (state.selectedEngine?.packageName?.startsWith("vela.") == true && vm.voiceSpeakerCount() > 1) {
+                    Spacer(Modifier.height(10.dp))
+                    val cnt = vm.voiceSpeakerCount()
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            if (cnt > 0) stringResource(R.string.settings_voice_variant_of, state.voiceSpeaker, cnt)
+                            else stringResource(R.string.settings_voice_variant, state.voiceSpeaker),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f),
+                        )
+                        OutlinedButton(onClick = { vm.stepSpeaker(-1) }) { Text("◀") }
+                        Spacer(Modifier.width(6.dp))
+                        OutlinedButton(onClick = { vm.stepSpeaker(1) }) { Text("▶") }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    // Jump straight to a variant number (904 is a lot to step through).
+                    var jump by remember { mutableStateOf("") }
+                    val goToVariant = {
+                        jump.trim().toIntOrNull()?.let { vm.setSpeaker(it) }
+                        jump = ""
+                    }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        OutlinedTextField(
+                            value = jump,
+                            onValueChange = { s -> jump = s.filter { it.isDigit() }.take(4) },
+                            singleLine = true,
+                            label = { Text(stringResource(R.string.settings_voice_variant_field)) },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number,
+                                imeAction = ImeAction.Go,
+                            ),
+                            keyboardActions = KeyboardActions(onGo = { goToVariant() }),
+                            modifier = Modifier.width(150.dp).dpadFieldEscape(),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        OutlinedButton(onClick = goToVariant, enabled = jump.isNotBlank()) { Text(stringResource(R.string.settings_voice_variant_go)) }
+                    }
+                    Hint(stringResource(R.string.settings_voice_variant_hint))
+                }
+                } // end "Advanced voice options"
+            }
+
+
+            Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_saved_places))
             Hint(stringResource(R.string.settings_saved_places_hint))
             val importLauncher = rememberLauncherForActivityResult(
@@ -806,61 +794,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 }) { Text(stringResource(R.string.settings_diag_export)) }
             }
 
-            // Trip recording — more invasive than diagnostics (it's your exact routes),
-            // so it's a separate opt-in. Records nav GPS traces for replay testing.
-            LaunchedEffect(Unit) { vm.refreshTripRecording() }
-            var showTripConsent by remember { mutableStateOf(false) }
-            var trips by remember { mutableStateOf(vm.recordedTrips()) }
-            // Re-read on entry so a trip recorded since the app launched shows up without
-            // a restart (the list was otherwise only refreshed after a delete).
-            LaunchedEffect(Unit) { trips = vm.recordedTrips() }
-            Spacer(Modifier.height(8.dp))
-            ToggleRow(stringResource(R.string.settings_save_trips), state.tripRecordingEnabled) { on -> if (on) showTripConsent = true else vm.setTripRecording(false) }
-            Hint(stringResource(R.string.settings_save_trips_hint))
-            if (trips.isNotEmpty()) {
-                Spacer(Modifier.height(4.dp))
-                Hint(stringResource(R.string.settings_recorded_trips_hint))
-                trips.forEach { t ->
-                    Row(
-                        Modifier.fillMaxWidth().padding(vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(Modifier.weight(1f)) {
-                            Text(t.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
-                            val recordedAt = if (t.startedAt > 0L)
-                                java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
-                                    .format(java.util.Date(t.startedAt))
-                            else null
-                            Hint(listOfNotNull(recordedAt, stringResource(R.string.settings_trip_points, t.fixCount)).joinToString(" · "))
-                        }
-                        TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text(stringResource(R.string.settings_trip_replay)) }
-                        // Share the raw trace off-device — works on release builds, so a
-                        // drive can be handed over for replay/debug without a dev build.
-                        TextButton(onClick = {
-                            val intent = vm.exportTripIntent(t)
-                            if (intent != null) runCatching { context.startActivity(intent) }
-                            else android.widget.Toast.makeText(context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT).show()
-                        }) { Text(stringResource(R.string.settings_trip_share)) }
-                        IconButton(onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
-                            Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_trip_delete))
-                        }
-                    }
-                }
-            } else if (state.tripRecordingEnabled) {
-                Spacer(Modifier.height(4.dp))
-                Hint(stringResource(R.string.settings_no_trips_hint))
-            }
-            if (showTripConsent) {
-                app.vela.ui.VelaDialog(
-                    onDismissRequest = { showTripConsent = false },
-                    title = stringResource(R.string.settings_trip_consent_title),
-                    confirmText = stringResource(R.string.settings_turn_on),
-                    onConfirm = { vm.setTripRecording(true); showTripConsent = false },
-                    dismissText = stringResource(R.string.settings_cancel),
-                    onDismiss = { showTripConsent = false },
-                    text = { Text(stringResource(R.string.settings_trip_consent_body)) },
-                )
-            }
+            // Trip recording moved to Developer (it's a testing tool that captures your exact routes).
             var crashReports by remember { mutableStateOf(app.vela.diag.CrashCatcher.pending(context)) }
             if (crashReports.isNotEmpty()) {
                 Spacer(Modifier.height(8.dp))
@@ -896,6 +830,98 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     onDismiss = { showDiagConsent = false },
                     text = { Text(stringResource(R.string.settings_diag_consent_body)) },
                 )
+            }
+
+            // ---- Advanced: niche + experimental toggles, collapsed so they stay out of the way ----
+            Spacer(Modifier.height(20.dp))
+            var advancedExpanded by remember { mutableStateOf(false) }
+            CollapsibleSectionTitle(stringResource(R.string.settings_advanced), advancedExpanded) { advancedExpanded = !advancedExpanded }
+            if (advancedExpanded) {
+                Hint(stringResource(R.string.settings_advanced_hint))
+                ToggleRow(stringResource(R.string.settings_buildings_3d), app.vela.ui.Buildings3d.on.value) { app.vela.ui.Buildings3d.set(context, it) }
+                Hint(stringResource(R.string.settings_buildings_3d_hint))
+                ToggleRow(stringResource(R.string.settings_hide_adult), app.vela.ui.HideAdult.on.value) { app.vela.ui.HideAdult.set(context, it) }
+                Hint(stringResource(R.string.settings_hide_adult_hint))
+                ToggleRow(stringResource(R.string.settings_hide_external_links), app.vela.ui.HideExternalLinks.on.value) { app.vela.ui.HideExternalLinks.set(context, it) }
+                Hint(stringResource(R.string.settings_hide_external_links_hint))
+                var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
+                ToggleRow(stringResource(R.string.settings_traffic_lights), trafficLights) {
+                    trafficLights = it
+                    prefs.edit().putBoolean("nav_traffic_lights", it).apply()
+                }
+                Hint(stringResource(R.string.settings_traffic_lights_hint))
+            }
+
+            // ---- Developer: screenshot/testing tools, collapsed (each says "turn off for real use") ----
+            Spacer(Modifier.height(20.dp))
+            var developerExpanded by remember { mutableStateOf(false) }
+            CollapsibleSectionTitle(stringResource(R.string.settings_developer), developerExpanded) { developerExpanded = !developerExpanded }
+            if (developerExpanded) {
+                Hint(stringResource(R.string.settings_developer_hint))
+                var demoDrive by remember { mutableStateOf(prefs.getBoolean("demo_drive", false)) }
+                ToggleRow(stringResource(R.string.settings_demo_drive), demoDrive) {
+                    demoDrive = it
+                    prefs.edit().putBoolean("demo_drive", it).apply()
+                }
+                Hint(stringResource(R.string.settings_demo_drive_hint))
+                // Simulated location — pretend to be at the current map centre (demos/screenshots
+                // without leaking where you actually are). Reactive holder reflects the state.
+                ToggleRow(stringResource(R.string.settings_sim_location), app.vela.ui.SimLocation.on) { on -> if (on) vm.simulateLocationHere() else vm.stopSimulateLocation() }
+                Hint(stringResource(R.string.settings_sim_location_hint))
+
+                // Trip recording — captures your exact nav routes for replay testing (never uploaded),
+                // so it's its own opt-in with a consent step.
+                LaunchedEffect(Unit) { vm.refreshTripRecording() }
+                var showTripConsent by remember { mutableStateOf(false) }
+                var trips by remember { mutableStateOf(vm.recordedTrips()) }
+                LaunchedEffect(Unit) { trips = vm.recordedTrips() }
+                Spacer(Modifier.height(8.dp))
+                ToggleRow(stringResource(R.string.settings_save_trips), state.tripRecordingEnabled) { on -> if (on) showTripConsent = true else vm.setTripRecording(false) }
+                Hint(stringResource(R.string.settings_save_trips_hint))
+                if (trips.isNotEmpty()) {
+                    Spacer(Modifier.height(4.dp))
+                    Hint(stringResource(R.string.settings_recorded_trips_hint))
+                    trips.forEach { t ->
+                        Row(
+                            Modifier.fillMaxWidth().padding(vertical = 2.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(t.label, style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+                                val recordedAt = if (t.startedAt > 0L)
+                                    java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                                        .format(java.util.Date(t.startedAt))
+                                else null
+                                Hint(listOfNotNull(recordedAt, stringResource(R.string.settings_trip_points, t.fixCount)).joinToString(" · "))
+                            }
+                            TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text(stringResource(R.string.settings_trip_replay)) }
+                            // Share the raw trace off-device — works on release builds, so a
+                            // drive can be handed over for replay/debug without a dev build.
+                            TextButton(onClick = {
+                                val intent = vm.exportTripIntent(t)
+                                if (intent != null) runCatching { context.startActivity(intent) }
+                                else android.widget.Toast.makeText(context, context.getString(R.string.settings_trip_read_error), android.widget.Toast.LENGTH_SHORT).show()
+                            }) { Text(stringResource(R.string.settings_trip_share)) }
+                            IconButton(onClick = { vm.deleteTrip(t.id); trips = vm.recordedTrips() }) {
+                                Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.settings_trip_delete))
+                            }
+                        }
+                    }
+                } else if (state.tripRecordingEnabled) {
+                    Spacer(Modifier.height(4.dp))
+                    Hint(stringResource(R.string.settings_no_trips_hint))
+                }
+                if (showTripConsent) {
+                    app.vela.ui.VelaDialog(
+                        onDismissRequest = { showTripConsent = false },
+                        title = stringResource(R.string.settings_trip_consent_title),
+                        confirmText = stringResource(R.string.settings_turn_on),
+                        onConfirm = { vm.setTripRecording(true); showTripConsent = false },
+                        dismissText = stringResource(R.string.settings_cancel),
+                        onDismiss = { showTripConsent = false },
+                        text = { Text(stringResource(R.string.settings_trip_consent_body)) },
+                    )
+                }
             }
 
             Spacer(Modifier.height(20.dp))
@@ -965,6 +991,42 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             updateStatus?.let { Hint(it) }
             // Breathing room under the last control — the button used to sit right on the
             // gesture bar at the end of the scroll.
+            Spacer(Modifier.height(56.dp))
+        }
+    }
+}
+
+/** The voice library on its OWN screen (browse / download / switch / delete Vela's neural voices),
+ *  reached from Settings → Voice → Browse voices. Its own Back returns to Settings. Keeping the catalog
+ *  off the main Settings scroll is the whole point — it was a long inline accordion before. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VoiceBrowseScreen(vm: MapViewModel, onClose: () -> Unit) {
+    val state by vm.state.collectAsStateWithLifecycle()
+    // System back returns to Settings, not out to the map.
+    BackHandler(onBack = onClose)
+    // D-pad-first: open already focused on the back button (docs/dpad.md).
+    val autoFocus = rememberDpadAutoFocus()
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(stringResource(R.string.settings_voice_library)) },
+                navigationIcon = {
+                    IconButton(onClick = onClose, modifier = Modifier.focusRequester(autoFocus)) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.settings_back))
+                    }
+                },
+            )
+        },
+    ) { padding ->
+        Column(
+            Modifier
+                .padding(padding)
+                .dpadSwallowHorizontal()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+        ) {
+            VoiceLibrary(vm, state)
             Spacer(Modifier.height(56.dp))
         }
     }
