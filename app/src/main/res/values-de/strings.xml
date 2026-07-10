@@ -123,6 +123,8 @@
     <string name="settings_crash_hint">Vela wurde kürzlich unerwartet beendet. Das Senden des Absturzberichts (Stack-Trace) hilft bei der Behebung – es ist eine reine Textdatei ohne personenbezogene Daten.</string>
     <string name="settings_crash_export">Absturzbericht exportieren</string>
     <string name="settings_crash_discard">Verwerfen</string>
+    <string name="settings_crash_diag_offer">Die Diagnose ist aus, daher wurde vor dem Absturz nichts aufgezeichnet. Schalte sie ein, um beim nächsten Mal mehr Details zu erfassen.</string>
+    <string name="settings_crash_enable_diag">Diagnose einschalten</string>
     <string name="settings_diag_consent_title">Diagnose aktivieren?</string>
     <string name="settings_diag_consent_body">Vela führt ein kurzes lokales Protokoll Ihrer Suchanfragen, Routen und etwaiger Fehler. Es verlässt das Telefon nie, es sei denn, Sie tippen auf „Exportieren“ und wählen ein Ziel. Zum Löschen des Protokolls jederzeit deaktivieren.</string>
     <string name="settings_about">Über</string>
@@ -305,13 +307,6 @@
     <string name="mapscreen_faster_route_saves">Spart ~%1$s bei aktuellem Verkehr</string>
     <string name="mapscreen_no">Nein</string>
     <string name="mapscreen_switch">Wechseln</string>
-    <string name="root_diag_title">Vela verbessern helfen?</string>
-    <string name="root_diag_body">Beides bleibt auf Ihrem Telefon – nichts wird gesendet, es sei denn, Sie exportieren es. In den Einstellungen jederzeit änderbar.</string>
-    <string name="root_diag_share_title">Diagnose teilen</string>
-    <string name="root_diag_share_desc">Ein kurzes lokales Protokoll von Suchanfragen, Routen &amp; Fehlern.</string>
-    <string name="root_diag_trips_title">Meine Fahrten speichern</string>
-    <string name="root_diag_trips_desc">Zeichnet Ihre GPS-Spuren auf, sodass Fahrten zum Testen wiedergegeben werden können. Aufschlussreicher – Ihre genauen Routen.</string>
-    <string name="root_diag_save">Auswahl speichern</string>
     <string name="root_not_now">Jetzt nicht</string>
     <string name="root_location_title">Deinen Standort anzeigen</string>
     <string name="root_location_body">Vela nutzt deinen Standort, um die Karte auf dich zu zentrieren und von deinem Standort aus zu routen. Er bleibt auf deinem Gerät und wird nie hochgeladen. Du kannst ablehnen und trotzdem suchen und stöbern; lege den Startpunkt für eine Route dann von Hand fest.</string>
@@ -322,9 +317,6 @@
     <string name="root_voice_body_outro">Jederzeit änderbar unter Einstellungen → Stimme.</string>
     <string name="root_voice_download">Vela-Stimme herunterladen</string>
     <string name="root_voice_use_system">Systemstimme verwenden</string>
-    <string name="root_offline_title">Offline-Karten</string>
-    <string name="root_offline_body">Vela bezieht Orte, Suche und Routen von Google. Ohne Signal funktionieren daher nur Gebiete, die du heruntergeladen hast. Richte jetzt ein Gebiet ein, damit du abgesichert bist, wenn der Empfang wegfällt.</string>
-    <string name="root_offline_setup">Offline einrichten</string>
     <string name="nav_maneuver_continue">Weiter</string>
     <string name="nav_gps_lost">GPS-Signal wird gesucht…</string>
     <string name="nav_compound_then">dann</string>
