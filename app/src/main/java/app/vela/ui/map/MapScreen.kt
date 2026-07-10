@@ -468,9 +468,13 @@ fun MapScreen(
         voiceProviderAvailable -> app.vela.ui.VoiceSearch.Mode.SYSTEM
         else -> app.vela.ui.VoiceSearch.Mode.NONE
     }
-    val onMic: (() -> Unit)? = if (micMode != app.vela.ui.VoiceSearch.Mode.NONE) {
+    // With nothing installed the mic still shows (when the toggle is on) and tapping it OFFERS the
+    // Vela voice download - a hidden mic made the whole feature undiscoverable on a fresh install.
+    var showAsrOffer by remember { mutableStateOf(false) }
+    val onMic: (() -> Unit)? = if (app.vela.ui.VoiceSearch.enabled.value) {
         {
             when (micMode) {
+                app.vela.ui.VoiceSearch.Mode.NONE -> showAsrOffer = true
                 app.vela.ui.VoiceSearch.Mode.SYSTEM -> {
                     val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
                         putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -484,11 +488,22 @@ fun MapScreen(
                 app.vela.ui.VoiceSearch.Mode.LOCAL ->
                     if (vm.voiceMicGranted()) startLocalVoice()
                     else recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
-                else -> {}
             }
         }
     } else {
         null
+    }
+    if (showAsrOffer) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { showAsrOffer = false },
+            title = stringResource(R.string.map_asr_offer_title),
+            confirmText = stringResource(R.string.settings_voice_search_download, app.vela.voice.AsrModel.SIZE_MB),
+            onConfirm = { showAsrOffer = false; vm.downloadAsrModel() },
+            dismissText = stringResource(R.string.root_not_now),
+            onDismiss = { showAsrOffer = false },
+            dismissLowEmphasis = true,
+            text = { Text(stringResource(R.string.map_asr_offer_body)) },
+        )
     }
     // Reflect whether the on-device model is present, so the mic + Settings update without a relaunch.
     LaunchedEffect(Unit) { vm.refreshAsr() }
@@ -1447,6 +1462,11 @@ fun MapScreen(
             ) {
                 if (downloadingVoiceId != null) {
                     VoiceDownloadCard(installing = state.voiceInstalling, pct = state.voiceDownloadPct ?: 0f)
+                }
+                // The speech model download (started from the mic offer or Settings) gets the same
+                // card - it's also called Vela voice, so the one label fits both.
+                if (state.asrDownloadPct != null) {
+                    VoiceDownloadCard(installing = state.asrInstalling, pct = state.asrDownloadPct ?: 0f)
                 }
                 // A region (state/country) download: the routing graph first, then its place pack —
                 // same progress card treatment as the voice download, so a Settings-started state
