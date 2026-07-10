@@ -5,17 +5,17 @@
     <string name="settings_follow_system">Systeem volgen</string>
     <string name="settings_theme_light">Licht</string>
     <string name="settings_theme_dark">Donker</string>
-    <string name="settings_appearance_hint">Licht/donker geldt alleen voor Vela — het thema van uw telefoon wordt niet gewijzigd.</string>
+    <string name="settings_appearance_hint">Geldt alleen voor Vela.</string>
     <string name="settings_dynamic_color">Material You-kleuren</string>
-    <string name="settings_dynamic_color_hint">Kleurt knoppen, chips en accenten naar je achtergrond (Android 12+). Uit = Vela\'s eigen groenblauw. De kaart zelf blijft neutraal zodat wegen en labels hun contrast houden.</string>
+    <string name="settings_dynamic_color_hint">Kleurt knoppen en accenten naar je achtergrond. De kaart blijft neutraal.</string>
     <string name="settings_map_style">Kaartstijl</string>
-    <string name="settings_map_style_hint">OpenFreeMap (de standaard) werkt zonder sleutel en is gedetailleerd. Protomaps vereist een API-sleutel; de demostijl toont alleen de contouren van landen.</string>
+    <string name="settings_map_style_hint">OpenFreeMap werkt zonder API-sleutel.</string>
     <string name="settings_units">Eenheden</string>
     <string name="settings_units_imperial">Imperiaal (mijl, voet)</string>
     <string name="settings_units_metric">Metrisch (kilometers, meters)</string>
     <string name="settings_language">Taal</string>
     <string name="settings_follow_system_language">Systeemtaal volgen</string>
-    <string name="settings_language_hint">Stelt de taal in voor gesproken route-instructies (Engels, Frans, Duits, Spaans, Italiaans, Portugees, Nederlands, Russisch, Pools, Zweeds, Oekraïens) — los van de systeemtaal van uw telefoon. Kies hieronder een passende stem in de Stembibliotheek. De rest van de tekst in de app wordt hierna vertaald.</string>
+    <string name="settings_language_hint">Wijzigt de taal van de app en de gesproken aanwijzingen. Haal een passende stem uit de stemmenbibliotheek.</string>
     <string name="settings_search">Zoeken</string>
     <string name="settings_voice_search_toggle">Microfoon voor spraakzoeken</string>
     <string name="settings_voice_search_hint">Toont een microfoon in de zoekbalk. Tik erop om je zoekopdracht in te spreken via een spraakinvoer-app op je telefoon.</string>
@@ -50,16 +50,16 @@
     <string name="settings_mode_transit">OV</string>
     <string name="settings_vibrate_hint">Richtinggecodeerde trillingen bij elke afslag — verschillend voor links en rechts — zodat u een route op gevoel kunt volgen. Stel het per vervoerswijze in (bijv. aan voor fietsen en lopen, uit tijdens het rijden).</string>
     <string name="settings_keep_screen_on">Scherm aan houden tijdens navigeren</string>
-    <string name="settings_keep_screen_on_hint">Voorkomt dat het scherm dimt of in slaapstand gaat terwijl de navigatie loopt, zodat de volgende afslag altijd zichtbaar is zonder te tikken om het scherm te wekken. Standaard aan; het scherm gaat weer normaal in slaapstand zodra u aankomt of de navigatie verlaat.</string>
+    <string name="settings_keep_screen_on_hint">Houdt het scherm aan tijdens de navigatie.</string>
     <string name="settings_map">Kaart</string>
     <string name="settings_live_traffic">Live verkeerslaag</string>
-    <string name="settings_live_traffic_hint">Kleurt wegen naar drukte terwijl u de kaart bekijkt (Googles sleutelloze verkeerstegels). Standaard uit — de navigatie kleurt uw route al op verkeer, dus dit is alleen om het bredere gebied te overzien. Het is een rasterlaag, dus iets korrelig.</string>
+    <string name="settings_live_traffic_hint">Kleurt wegen naar drukte tijdens het browsen. Navigatie kleurt je route toch al naar verkeer.</string>
     <string name="settings_transit_layer">Ov-lijnen markeren</string>
-    <string name="settings_transit_layer_hint">Tekent trein- en metrolijnen in kleur op de kaart, zodat je het spoor makkelijk volgt. Gebruikt de open kaartgegevens die al in de tegels zitten, zonder netwerk.</string>
+    <string name="settings_transit_layer_hint">Tekent trein- en metrolijnen op de kaart.</string>
     <string name="settings_read_all_reviews">Knop “Alle recensies lezen”</string>
-    <string name="settings_read_all_reviews_hint">Recensies in het plaatsvenster zijn altijd Vela\'s eigen soepele native lijst. Dit voegt een knop “Alle recensies lezen” toe die Googles volledige recensiepagina SCHERMVULLEND opent — elke recensie (niet alleen de eerste ~50), Googles serverzijdige zoekfunctie, en videorecensies spelen af. Trackers/bakens worden geblokkeerd, maar Googles pagina draait wel in de app. Uit = alleen native lijst, geen Google-pagina voor recensies.</string>
+    <string name="settings_read_all_reviews_hint">Voegt een knop toe die Googles volledige reviewpagina in de app opent, met alle reviews. Uit = alleen Vela\'s eigen lijst.</string>
     <string name="settings_buildings_3d">3D-gebouwen</string>
-    <string name="settings_buildings_3d_hint">Verhoogde gebouwvormen bij ver inzoomen. Uitzetten kan het slepen soepeler maken op oudere telefoons; de platte contouren blijven.</string>
+    <string name="settings_buildings_3d_hint">Verhoogde gebouwen bij dichtbij zoomen. Uitzetten kan het pannen soepeler maken op oudere telefoons.</string>
     <string name="settings_show_reviews">Reviews tonen</string>
     <string name="settings_show_reviews_hint">Uit = plaatspagina\'s tonen geen reviews en Vela haalt ze ook nooit op.</string>
     <string name="settings_load_photos">Foto\'s laden</string>
@@ -101,15 +101,15 @@
     <string name="settings_export">Exporteren</string>
     <string name="settings_import">Importeren</string>
     <string name="settings_data_privacy">Gegevensbron en privacy</string>
-    <string name="settings_data_privacy_hint">Vela praat rechtstreeks vanaf dit toestel met Googles openbare web-endpoints — geen Vela-backend, geen Google-account, geen API-sleutel, en geen telemetrie tenzij u hieronder Diagnostiek inschakelt (standaard uit, alleen lokaal). Elk toestel gedraagt zich als een uitgelogde browser; Google ziet uw IP-adres, zoekopdracht en kaartgebied, maar geen account. Opgeslagen plaatsen en geschiedenis verlaten de telefoon nooit.</string>
+    <string name="settings_data_privacy_hint">Vela praat rechtstreeks vanaf dit apparaat met Googles publieke endpoints: geen backend, geen account, geen API-sleutel. Google ziet je IP, zoekopdracht en kaartgebied, niet wie je bent.</string>
     <string name="settings_privacy_button">Welke gegevens Google ontvangt</string>
     <string name="settings_diagnostics">Diagnostiek</string>
-    <string name="settings_diagnostics_hint">Standaard uit. Wanneer ingeschakeld houdt Vela een kort lokaal logboek bij van wat het deed — uw zoekopdrachten, routes en eventuele “vereist herkalibratie”-haperingen — zodat u het bij problemen kunt exporteren en aan een ontwikkelaar geven. Het blijft op deze telefoon en wordt nooit geüpload; u kiest waar de export naartoe gaat. Uitschakelen wist het logboek.</string>
+    <string name="settings_diagnostics_hint">Standaard uit. Indien aan houdt Vela een kort lokaal logboek bij dat je kunt exporteren en aan een ontwikkelaar geven. Er wordt niets geüpload, en uitzetten wist het.</string>
     <string name="settings_share_diagnostics">Diagnostiek delen</string>
     <string name="settings_diag_nothing">Nog niets vastgelegd — gebruik de app en exporteer daarna.</string>
     <string name="settings_diag_export">Debugsessie exporteren</string>
     <string name="settings_save_trips">Mijn ritten opslaan (voor herhaling)</string>
-    <string name="settings_save_trips_hint">Legt het GPS-spoor van elke navigatie op deze telefoon vast, zodat een rit later kan worden herhaald om de navigatie te testen zonder opnieuw te rijden. Onthullender dan diagnostiek — het zijn uw exacte routes — en het verlaat de telefoon nooit.</string>
+    <string name="settings_save_trips_hint">Slaat het gps-spoor van elke rit op deze telefoon op, om later af te spelen. Verlaat de telefoon nooit.</string>
     <string name="settings_recorded_trips_hint">Opgenomen ritten — tik op Herhalen om er een op de kaart af te spelen (3×):</string>
     <string name="settings_trip_points">%1$d punten</string>
     <string name="settings_trip_replay">Herhalen</string>
@@ -167,7 +167,7 @@
     <string name="place_permanently_closed">Permanent gesloten</string>
     <string name="place_temporarily_closed">Tijdelijk gesloten</string>
     <string name="settings_traffic_lights">Stoplicht-aanwijzingen</string>
-    <string name="settings_traffic_lights_hint">"Rijd het stoplicht voorbij en sla dan af" bij kruispunten met verkeerslichten (voorlopig alleen Engelse spraak)</string>
+    <string name="settings_traffic_lights_hint">Voegt aanwijzingen toe zoals “voorbij het stoplicht, dan linksaf”. Voorlopig alleen Engels.</string>
     <string name="map_voice_downloading">Vela-stem wordt gedownload · %1$d %%</string>
     <string name="map_voice_installing">Vela-stem wordt geïnstalleerd…</string>
     <string name="map_region_downloading">Routes voor %1$s downloaden · %2$d%%</string> <!-- format -->
@@ -175,9 +175,9 @@
     <string name="mapvm_poipack_ready">Plaatsen in %1$s zijn nu offline doorzoekbaar</string> <!-- format -->
     <string name="mapvm_poipack_unavailable">Nog geen plaatsenpakket voor %1$s. Het verschijnt hier zodra het is gepubliceerd.</string> <!-- format -->
     <string name="settings_demo_drive">Rijden simuleren (demo)</string>
-    <string name="settings_demo_drive_hint">Voor demo’s, schermafbeeldingen en tests: op Start tikken rijdt de route als een gesimuleerd gps-spoor in plaats van je echte locatie — navigatie werkt overal. Zet uit om echt te navigeren.</string>
+    <string name="settings_demo_drive_hint">Start rijdt de geplande route als simulatie in plaats van met gps. Zet uit om echt te navigeren.</string>
     <string name="settings_sim_location">Mijn locatie simuleren (demo)</string>
-    <string name="settings_sim_location_hint">Voor demo\'s en schermafbeeldingen: doe alsof je nu in het midden van de kaart bent, zodat de locatiestip, afstanden en routes daar beginnen in plaats van je echte positie. Zet uit voor echte gps.</string>
+    <string name="settings_sim_location_hint">Doet alsof je in het midden van de kaart bent, voor demo\'s en screenshots. Zet uit voor echte gps.</string>
     <string name="place_address_copied">Adres gekopieerd</string>
     <string name="place_copy_address">Adres kopiëren</string>
     <string name="place_directions">Route</string>
@@ -310,7 +310,7 @@
     <string name="mapscreen_switch">Overschakelen</string>
     <string name="root_not_now">Niet nu</string>
     <string name="root_voice_title">Gesproken navigatiestem</string>
-    <string name="root_voice_body_intro">Vela\'s eigen stem draait volledig op je telefoon: natuurlijke aanwijzingen, geen account, geen extra app. Aanbevolen, een eenmalige download van ~%1$d MB.</string>
+    <string name="root_voice_body_intro">Vela\'s eigen stem draait volledig op je telefoon: natuurlijke aanwijzingen, geen account, geen extra app. Aanbevolen, een eenmalige download van %1$d MB.</string>
     <string name="root_voice_body_system">Liever niet? Gebruik een stem die al op je telefoon staat.</string>
     <string name="root_voice_body_outro">Wijzig het altijd in Instellingen → Stem.</string>
     <string name="root_voice_download">Vela-stem downloaden</string>
@@ -372,7 +372,7 @@
     <string name="mapvm_export_trip_subject">Vela-rit: %1$s (%2$d punten)</string>
     <string name="mapvm_share_trip_chooser">Rit delen</string>
     <string name="mapvm_voice_sample">Sla over 400 meter rechts af de Dorpsstraat in.</string>
-    <string name="mapvm_not_enough_space">Niet genoeg vrije ruimte voor %1$s (~%2$d MB)</string>
+    <string name="mapvm_not_enough_space">Niet genoeg vrije ruimte voor %1$s (%2$d MB)</string>
     <string name="mapvm_voice_downloaded">%1$s gedownload</string>
     <string name="mapvm_voice_download_failed">%1$s downloaden mislukt</string>
     <string name="mapvm_vela_voice_removed">Vela-stem verwijderd</string>
@@ -412,7 +412,7 @@
     <string name="update_install">Bijwerken</string>
     <string name="update_download_failed">Downloaden van de update is mislukt. Probeer het later opnieuw.</string>
     <string name="settings_update_auto">Bij het starten op updates controleren</string>
-    <string name="settings_update_auto_hint">Kijkt ongeveer één keer per dag naar de nieuwste GitHub-release en biedt die aan als die nieuwer is dan deze build. Installeren gaat via de normale Android-installer. Werk je al bij via Obtainium, dan kun je dit uitzetten.</string>
+    <string name="settings_update_auto_hint">Controleert GitHub ongeveer eens per dag en biedt nieuwere versies aan. Zet uit als je via Obtainium bijwerkt.</string>
     <string name="settings_update_check_now">Op updates controleren</string>
     <string name="settings_update_checking">Controleren…</string>
     <string name="settings_update_none">Je hebt de nieuwste versie.</string>
@@ -480,7 +480,7 @@
     <string name="lists_place_count">%1$d plaatsen</string>
     <string name="navservice_notif_eta">Aankomst %1$s</string>
     <string name="settings_advanced">Geavanceerd</string>
-    <string name="settings_advanced_hint">Niche- en experimentele opties die de meeste mensen nooit hoeven te wijzigen.</string>
+    <string name="settings_advanced_hint">Opties die de meesten nooit nodig hebben.</string>
     <string name="settings_developer">Ontwikkelaar</string>
     <string name="settings_developer_hint">Hulpmiddelen voor demo\'s, schermafbeeldingen en tests. Zet ze uit voor echt gebruik.</string>
     <string name="settings_browse_voices">Stemmen bekijken</string>

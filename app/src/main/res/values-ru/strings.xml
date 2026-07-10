@@ -5,17 +5,17 @@
     <string name="settings_follow_system">Как в системе</string>
     <string name="settings_theme_light">Светлая</string>
     <string name="settings_theme_dark">Тёмная</string>
-    <string name="settings_appearance_hint">Светлая или тёмная тема применяется только к Vela — системная тема телефона не меняется.</string>
+    <string name="settings_appearance_hint">Действует только в Vela.</string>
     <string name="settings_dynamic_color">Цвета Material You</string>
-    <string name="settings_dynamic_color_hint">Окрашивает кнопки, чипы и акценты по обоям (Android 12+). Выключено = фирменный бирюзовый Vela. Сама карта остаётся нейтральной, чтобы дороги и подписи сохраняли контраст.</string>
+    <string name="settings_dynamic_color_hint">Окрашивает кнопки и акценты под обои. Карта остаётся нейтральной.</string>
     <string name="settings_map_style">Стиль карты</string>
-    <string name="settings_map_style_hint">OpenFreeMap (по умолчанию) не требует ключа и содержит много деталей. Для Protomaps нужен ключ API; демо-стиль показывает только контуры стран.</string>
+    <string name="settings_map_style_hint">OpenFreeMap работает без ключа API.</string>
     <string name="settings_units">Единицы измерения</string>
     <string name="settings_units_imperial">Имперские (мили, футы)</string>
     <string name="settings_units_metric">Метрические (километры, метры)</string>
     <string name="settings_language">Язык</string>
     <string name="settings_follow_system_language">Язык системы</string>
-    <string name="settings_language_hint">Задаёт язык голосовых подсказок при навигации (английский, французский, немецкий, испанский, итальянский, португальский, нидерландский, русский, польский, шведский, украинский) — независимо от системного языка телефона. Выберите подходящий голос в разделе «Библиотека голосов» ниже. Остальной текст интерфейса будет переведён в ближайшее время.</string>
+    <string name="settings_language_hint">Меняет язык приложения и голосовых подсказок. Скачайте подходящий голос в библиотеке голосов.</string>
     <string name="settings_search">Поиск</string>
     <string name="settings_voice_search_toggle">Микрофон голосового поиска</string>
     <string name="settings_voice_search_hint">Показывает микрофон в строке поиска. Нажмите, чтобы продиктовать запрос через приложение голосового ввода на телефоне.</string>
@@ -50,16 +50,16 @@
     <string name="settings_mode_transit">Транспорт</string>
     <string name="settings_vibrate_hint">Вибросигналы на каждом повороте закодированы по направлению — разные для левого и правого — чтобы следовать маршруту на ощупь. Настраивается для каждого способа передвижения (например, включено для велосипеда и ходьбы, выключено за рулём).</string>
     <string name="settings_keep_screen_on">Не выключать экран при навигации</string>
-    <string name="settings_keep_screen_on_hint">Не даёт экрану гаснуть или уходить в сон во время навигации, чтобы следующий поворот всегда был виден без касания для пробуждения. Включено по умолчанию; экран снова засыпает как обычно, как только вы прибудете или выйдете из навигации.</string>
+    <string name="settings_keep_screen_on_hint">Не даёт экрану гаснуть во время навигации.</string>
     <string name="settings_map">Карта</string>
     <string name="settings_live_traffic">Слой пробок в реальном времени</string>
-    <string name="settings_live_traffic_hint">Окрашивает дороги по загруженности при просмотре карты (бесключевые тайлы пробок Google). Выключено по умолчанию — навигация и так окрашивает ваш маршрут по пробкам, так что это лишь для обзора окрестностей. Это растровый слой, поэтому он слегка зернистый.</string>
+    <string name="settings_live_traffic_hint">Подкрашивает дороги по загруженности при просмотре. Навигация и так раскрашивает маршрут по пробкам.</string>
     <string name="settings_transit_layer">Выделять линии транспорта</string>
-    <string name="settings_transit_layer_hint">Рисует линии поездов и метро на карте цветом, чтобы рельсы было легко проследить. Использует открытые данные, уже вложенные в тайлы, без сети.</string>
+    <string name="settings_transit_layer_hint">Рисует на карте линии поездов и метро.</string>
     <string name="settings_read_all_reviews">Кнопка «Все отзывы»</string>
-    <string name="settings_read_all_reviews_hint">Отзывы в карточке места всегда показываются в собственном плавном списке Vela. Эта настройка добавляет кнопку «Все отзывы», которая открывает полную страницу отзывов Google НА ВЕСЬ ЭКРАН — все отзывы (не только первые ~50), серверный поиск Google и воспроизведение видеоотзывов. Трекеры и маяки блокируются, но страница Google всё же запускается внутри приложения. Выключено = только собственный список, без страницы отзывов Google.</string>
+    <string name="settings_read_all_reviews_hint">Добавляет кнопку, открывающую полную страницу отзывов Google в приложении, со всеми отзывами. Выкл. = только собственный список Vela.</string>
     <string name="settings_buildings_3d">3D-здания</string>
-    <string name="settings_buildings_3d_hint">Объёмные здания при сильном приближении. Отключение может сделать перемещение плавнее на старых телефонах; плоские контуры остаются.</string>
+    <string name="settings_buildings_3d_hint">Объёмные здания при сильном приближении. Отключение может сделать прокрутку плавнее на старых телефонах.</string>
     <string name="settings_show_reviews">Показывать отзывы</string>
     <string name="settings_show_reviews_hint">Выкл. = страницы мест не показывают отзывы, и Vela их никогда не загружает.</string>
     <string name="settings_load_photos">Загружать фото</string>
@@ -101,15 +101,15 @@
     <string name="settings_export">Экспорт</string>
     <string name="settings_import">Импорт</string>
     <string name="settings_data_privacy">Источник данных и конфиденциальность</string>
-    <string name="settings_data_privacy_hint">Vela обращается к публичным веб-сервисам Google напрямую с этого устройства — без сервера Vela, без учётной записи Google, без ключа API и без телеметрии, пока вы не включите «Диагностику» ниже (выключена по умолчанию, только локально). Каждое устройство ведёт себя как браузер без входа в аккаунт; Google видит ваш IP, запрос и область карты, но не аккаунт. Сохранённые места и история никогда не покидают телефон.</string>
+    <string name="settings_data_privacy_hint">Vela обращается к публичным точкам Google прямо с этого устройства: без сервера, аккаунта и ключа API. Google видит IP, запрос и область карты, но не вас.</string>
     <string name="settings_privacy_button">Какие данные получает Google</string>
     <string name="settings_diagnostics">Диагностика</string>
-    <string name="settings_diagnostics_hint">Выключена по умолчанию. Когда включена, Vela ведёт короткий локальный журнал своих действий — ваших поисков, маршрутов и любых сбоев вроде «нужна перекалибровка» — чтобы при неполадке вы могли экспортировать его и передать разработчику. Журнал остаётся на телефоне и никогда не выгружается; место экспорта выбираете вы. При выключении журнал стирается.</string>
+    <string name="settings_diagnostics_hint">По умолчанию выключено. При включении Vela ведёт короткий локальный журнал, который можно экспортировать и передать разработчику. Ничего не выгружается, а отключение стирает его.</string>
     <string name="settings_share_diagnostics">Поделиться диагностикой</string>
     <string name="settings_diag_nothing">Пока ничего не записано — воспользуйтесь приложением, затем экспортируйте.</string>
     <string name="settings_diag_export">Экспортировать сеанс отладки</string>
     <string name="settings_save_trips">Сохранять мои поездки (для воспроизведения)</string>
-    <string name="settings_save_trips_hint">Записывает GPS-трек каждой навигации на этом телефоне, чтобы позже воспроизвести поездку и проверить навигацию без повторной поездки. Раскрывает больше, чем диагностика, — это ваши точные маршруты — и никогда не покидает телефон.</string>
+    <string name="settings_save_trips_hint">Записывает GPS-след каждой поездки на этом телефоне для повтора позже. Никогда не покидает телефон.</string>
     <string name="settings_recorded_trips_hint">Записанные поездки — нажмите «Воспроизвести», чтобы проиграть одну на карте (3×):</string>
     <string name="settings_trip_points">%1$d точек</string>
     <string name="settings_trip_replay">Воспроизвести</string>
@@ -167,7 +167,7 @@
     <string name="place_permanently_closed">Закрыто навсегда</string>
     <string name="place_temporarily_closed">Временно закрыто</string>
     <string name="settings_traffic_lights">Подсказки по светофорам</string>
-    <string name="settings_traffic_lights_hint">«Проедьте светофор, затем поверните» на перекрёстках со светофорами (голос пока только на английском)</string>
+    <string name="settings_traffic_lights_hint">Добавляет подсказки вида “проедьте светофор, затем налево”. Пока только на английском.</string>
     <string name="map_voice_downloading">Загрузка голоса Vela · %1$d %%</string>
     <string name="map_voice_installing">Установка голоса Vela…</string>
     <string name="map_region_downloading">Загрузка маршрутов: %1$s · %2$d%%</string> <!-- format -->
@@ -175,9 +175,9 @@
     <string name="mapvm_poipack_ready">Места региона %1$s теперь доступны для офлайн-поиска</string> <!-- format -->
     <string name="mapvm_poipack_unavailable">Для региона %1$s пока нет пакета мест. Он появится здесь после публикации.</string> <!-- format -->
     <string name="settings_demo_drive">Симуляция поездки (демо)</string>
-    <string name="settings_demo_drive_hint">Для демонстраций, скриншотов и тестов: нажатие «Начать» ведёт по маршруту как смоделированный GPS-трек вместо вашего реального местоположения — навигация работает где угодно. Выключите для настоящей навигации.</string>
+    <string name="settings_demo_drive_hint">Кнопка Старт проезжает маршрут как симуляцию вместо GPS. Отключите для настоящей навигации.</string>
     <string name="settings_sim_location">Симулировать местоположение (демо)</string>
-    <string name="settings_sim_location_hint">Для демонстраций и скриншотов: притворитесь, что вы сейчас в центре карты, чтобы точка местоположения, расстояния и маршруты начинались оттуда, а не от вашего реального положения. Выключите для настоящего GPS.</string>
+    <string name="settings_sim_location_hint">Делает вид, что вы в центре карты, для демо и скриншотов. Отключите для реального GPS.</string>
     <string name="place_address_copied">Адрес скопирован</string>
     <string name="place_copy_address">Скопировать адрес</string>
     <string name="place_directions">Маршрут</string>
@@ -310,7 +310,7 @@
     <string name="mapscreen_switch">Переключить</string>
     <string name="root_not_now">Не сейчас</string>
     <string name="root_voice_title">Голос навигации</string>
-    <string name="root_voice_body_intro">Собственный голос Vela работает полностью на телефоне: естественные подсказки, без аккаунта и лишних приложений. Рекомендуется, разовая загрузка ~%1$d МБ.</string>
+    <string name="root_voice_body_intro">Собственный голос Vela работает целиком на телефоне: естественные подсказки, без аккаунта и лишних приложений. Рекомендуем, разовая загрузка %1$d МБ.</string>
     <string name="root_voice_body_system">Не хотите? Используйте голос, уже установленный на телефоне.</string>
     <string name="root_voice_body_outro">Измените в любой момент в Настройках → Голос.</string>
     <string name="root_voice_download">Загрузить голос Vela</string>
@@ -372,7 +372,7 @@
     <string name="mapvm_export_trip_subject">Поездка Vela: %1$s (%2$d точек)</string>
     <string name="mapvm_share_trip_chooser">Поделиться поездкой</string>
     <string name="mapvm_voice_sample">Через четыреста метров поверните направо на Тверскую улицу.</string>
-    <string name="mapvm_not_enough_space">Недостаточно свободного места для %1$s (~%2$d МБ)</string>
+    <string name="mapvm_not_enough_space">Недостаточно свободного места для %1$s (%2$d МБ)</string>
     <string name="mapvm_voice_downloaded">%1$s загружен</string>
     <string name="mapvm_voice_download_failed">Не удалось загрузить %1$s</string>
     <string name="mapvm_vela_voice_removed">Голос Vela удалён</string>
@@ -412,7 +412,7 @@
     <string name="update_install">Обновить</string>
     <string name="update_download_failed">Не удалось скачать обновление. Попробуйте позже.</string>
     <string name="settings_update_auto">Проверять обновления при запуске</string>
-    <string name="settings_update_auto_hint">Примерно раз в день проверяет свежий релиз на GitHub и предлагает его, если он новее этой сборки. Установка идёт через обычный установщик Android. Если вы обновляетесь через Obtainium, это можно выключить.</string>
+    <string name="settings_update_auto_hint">Проверяет GitHub примерно раз в день и предлагает новые версии. Отключите, если обновляетесь через Obtainium.</string>
     <string name="settings_update_check_now">Проверить обновления</string>
     <string name="settings_update_checking">Проверка…</string>
     <string name="settings_update_none">У вас самая новая версия.</string>
@@ -480,7 +480,7 @@
     <string name="lists_place_count">%1$d мест</string>
     <string name="navservice_notif_eta">Прибытие %1$s</string>
     <string name="settings_advanced">Дополнительно</string>
-    <string name="settings_advanced_hint">Нишевые и экспериментальные параметры, которые большинству не нужны.</string>
+    <string name="settings_advanced_hint">Параметры, которые большинству не нужны.</string>
     <string name="settings_developer">Разработчик</string>
     <string name="settings_developer_hint">Инструменты для демо, скриншотов и тестов. Отключайте их для реальной работы.</string>
     <string name="settings_browse_voices">Выбрать голос</string>

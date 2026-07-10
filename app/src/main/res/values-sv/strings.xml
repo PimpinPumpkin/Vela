@@ -5,17 +5,17 @@
     <string name="settings_follow_system">Följ systemet</string>
     <string name="settings_theme_light">Ljust</string>
     <string name="settings_theme_dark">Mörkt</string>
-    <string name="settings_appearance_hint">Ljust/Mörkt gäller endast Vela – det påverkar inte telefonens systemtema.</string>
+    <string name="settings_appearance_hint">Gäller endast Vela.</string>
     <string name="settings_dynamic_color">Material You-färger</string>
-    <string name="settings_dynamic_color_hint">Färgar knappar, chips och accenter efter din bakgrund (Android 12+). Av = Velas egen turkos. Själva kartan förblir neutral så att vägar och etiketter behåller kontrasten.</string>
+    <string name="settings_dynamic_color_hint">Färgar knappar och accenter efter bakgrunden. Kartan förblir neutral.</string>
     <string name="settings_map_style">Kartstil</string>
-    <string name="settings_map_style_hint">OpenFreeMap (standard) är nyckellös och detaljerad. Protomaps kräver en API-nyckel; demostilen visar bara landsgränser.</string>
+    <string name="settings_map_style_hint">OpenFreeMap fungerar utan API-nyckel.</string>
     <string name="settings_units">Enheter</string>
     <string name="settings_units_imperial">Brittiskt (miles, fot)</string>
     <string name="settings_units_metric">Metriskt (kilometer, meter)</string>
     <string name="settings_language">Språk</string>
     <string name="settings_follow_system_language">Följ systemspråket</string>
-    <string name="settings_language_hint">Anger språket för talade vägbeskrivningar sväng för sväng (engelska, franska, tyska, spanska, italienska, portugisiska, nederländska, ryska, polska, svenska, ukrainska) – oberoende av telefonens systemspråk. Välj en röst som matchar i Röstbiblioteket nedan. Resten av appens skärmtext översätts härnäst.</string>
+    <string name="settings_language_hint">Ändrar appens språk och de talade anvisningarna. Hämta en matchande röst i röstbiblioteket.</string>
     <string name="settings_search">Sök</string>
     <string name="settings_voice_search_toggle">Mikrofon för röstsökning</string>
     <string name="settings_voice_search_hint">Visar en mikrofon i sökfältet. Tryck för att tala din sökning via en röstinmatnings-app på telefonen.</string>
@@ -50,16 +50,16 @@
     <string name="settings_mode_transit">Kollektivt</string>
     <string name="settings_vibrate_hint">Riktningskodade vibrationer vid varje sväng – olika för vänster och höger – så att du kan följa en rutt på känsla. Ställ in per färdsätt (t.ex. på för cykel och gång, av vid bilkörning).</string>
     <string name="settings_keep_screen_on">Håll skärmen på under navigering</string>
-    <string name="settings_keep_screen_on_hint">Hindrar skärmen från att dimmas eller släckas medan navigering pågår, så att nästa sväng alltid syns utan att du behöver väcka skärmen. På som standard; skärmen släcks som vanligt så snart du är framme eller lämnar navigeringen.</string>
+    <string name="settings_keep_screen_on_hint">Håller skärmen vaken under navigering.</string>
     <string name="settings_map">Karta</string>
     <string name="settings_live_traffic">Trafiklager i realtid</string>
-    <string name="settings_live_traffic_hint">Färglägger vägar efter trafik när du bläddrar i kartan (Googles nyckellösa trafikrutor). Av som standard – navigeringen färglägger redan din rutt efter trafik, så det här är bara för att överblicka ett större område. Det är ett rasterlager, så det är lite grovkornigt.</string>
+    <string name="settings_live_traffic_hint">Skuggar vägar efter trafik när du utforskar. Navigeringen färgar redan din rutt efter trafiken.</string>
     <string name="settings_transit_layer">Markera kollektivtrafiklinjer</string>
-    <string name="settings_transit_layer_hint">Ritar tåg- och tunnelbanelinjer i färg på kartan, så att spåren är lätta att följa. Använder de öppna kartdata som redan finns i rutorna, utan nätverk.</string>
+    <string name="settings_transit_layer_hint">Ritar tåg- och tunnelbanelinjer på kartan.</string>
     <string name="settings_read_all_reviews">Knappen ”Läs alla recensioner”</string>
-    <string name="settings_read_all_reviews_hint">Recensioner i platsvyn är alltid Velas egen smidiga inbyggda lista. Detta lägger till en knapp ”Läs alla recensioner” som öppnar Googles fullständiga recensionssida i HELSKÄRM – alla recensioner (inte bara de första ~50), Googles serversökning och videorecensioner spelas upp. Spårare/beacons blockeras, men Googles sida körs inuti appen. Av = endast inbyggd lista, ingen Google-sida för recensioner.</string>
+    <string name="settings_read_all_reviews_hint">Lägger till en knapp som öppnar Googles fullständiga recensionssida i appen, med alla recensioner. Av = endast Velas egen lista.</string>
     <string name="settings_buildings_3d">3D-byggnader</string>
-    <string name="settings_buildings_3d_hint">Upphöjda byggnadsformer vid hög zoom. Att stänga av kan göra panorering mjukare på äldre telefoner; de platta konturerna finns kvar.</string>
+    <string name="settings_buildings_3d_hint">Upphöjda byggnader vid nära zoom. Att stänga av kan göra panorering mjukare på äldre telefoner.</string>
     <string name="settings_show_reviews">Visa recensioner</string>
     <string name="settings_show_reviews_hint">Av = platssidor visar inga recensioner och Vela hämtar dem aldrig.</string>
     <string name="settings_load_photos">Ladda foton</string>
@@ -101,15 +101,15 @@
     <string name="settings_export">Exportera</string>
     <string name="settings_import">Importera</string>
     <string name="settings_data_privacy">Datakälla &amp;amp; integritet</string>
-    <string name="settings_data_privacy_hint">Vela pratar med Googles offentliga webbtjänster direkt från den här enheten – ingen Vela-server, inget Google-konto, ingen API-nyckel och ingen telemetri om du inte slår på Diagnostik nedan (av som standard, endast lokalt). Varje enhet beter sig som en utloggad webbläsare; Google ser din IP, sökning och kartområde men inget konto. Sparade platser och historik lämnar aldrig telefonen.</string>
+    <string name="settings_data_privacy_hint">Vela pratar med Googles publika endpoints direkt från den här enheten: ingen backend, inget konto, ingen API-nyckel. Google ser din IP, sökning och kartområde, inte vem du är.</string>
     <string name="settings_privacy_button">Vilka data Google får</string>
     <string name="settings_diagnostics">Diagnostik</string>
-    <string name="settings_diagnostics_hint">Av som standard. När den är på håller Vela en kort lokal logg över vad den gjorde – dina sökningar, rutter och eventuella ”behöver omkalibrering”-hicka – så att du kan exportera den och lämna den till en utvecklare om något krånglar. Den stannar på telefonen och laddas aldrig upp; du väljer var exporten hamnar. Att slå av den raderar loggen.</string>
+    <string name="settings_diagnostics_hint">Av som standard. När på för Vela en kort lokal logg som du kan exportera och ge till en utvecklare. Inget laddas upp, och att stänga av rensar den.</string>
     <string name="settings_share_diagnostics">Dela diagnostik</string>
     <string name="settings_diag_nothing">Inget inspelat ännu – använd appen och exportera sedan.</string>
     <string name="settings_diag_export">Exportera felsökningssession</string>
     <string name="settings_save_trips">Spara mina resor (för uppspelning)</string>
-    <string name="settings_save_trips_hint">Spelar in varje navigerings GPS-spår på den här telefonen så att en körning kan spelas upp senare för att testa sväng-för-sväng utan att köra den igen. Avslöjar mer än diagnostik – det är dina exakta rutter – och lämnar aldrig telefonen.</string>
+    <string name="settings_save_trips_hint">Sparar varje resas GPS-spår på den här telefonen, för uppspelning senare. Lämnar aldrig telefonen.</string>
     <string name="settings_recorded_trips_hint">Inspelade resor – tryck på Spela upp för att spela upp en på kartan (3×):</string>
     <string name="settings_trip_points">%1$d punkter</string>
     <string name="settings_trip_replay">Spela upp</string>
@@ -167,7 +167,7 @@
     <string name="place_permanently_closed">Permanent stängt</string>
     <string name="place_temporarily_closed">Tillfälligt stängt</string>
     <string name="settings_traffic_lights">Trafikljusvägledning</string>
-    <string name="settings_traffic_lights_hint">"Passera trafikljuset och sväng sedan" vid ljusreglerade korsningar (röst endast på engelska än så länge)</string>
+    <string name="settings_traffic_lights_hint">Lägger till ledtrådar som “passera trafikljuset, sväng sedan vänster”. Endast engelska än så länge.</string>
     <string name="map_voice_downloading">Laddar ner Vela-rösten · %1$d %%</string>
     <string name="map_voice_installing">Installerar Vela-rösten…</string>
     <string name="map_region_downloading">Laddar ner rutter för %1$s · %2$d%%</string> <!-- format -->
@@ -175,9 +175,9 @@
     <string name="mapvm_poipack_ready">Platser i %1$s går nu att söka offline</string> <!-- format -->
     <string name="mapvm_poipack_unavailable">Inget platspaket för %1$s ännu. Det dyker upp här när det publicerats.</string> <!-- format -->
     <string name="settings_demo_drive">Simulera körning (demo)</string>
-    <string name="settings_demo_drive_hint">För demos, skärmbilder och tester: att trycka på Starta kör rutten som ett simulerat GPS-spår i stället för din verkliga plats — navigering fungerar var som helst. Stäng av för att navigera på riktigt.</string>
+    <string name="settings_demo_drive_hint">Start kör den planerade rutten som simulering i stället för GPS. Stäng av för att navigera på riktigt.</string>
     <string name="settings_sim_location">Simulera min plats (demo)</string>
-    <string name="settings_sim_location_hint">För demos och skärmbilder: låtsas att du är mitt på kartan just nu, så att platsprick, avstånd och vägbeskrivningar utgår därifrån i stället för din verkliga position. Stäng av för riktig GPS.</string>
+    <string name="settings_sim_location_hint">Låtsas att du är i kartans mitt, för demos och skärmbilder. Stäng av för riktig GPS.</string>
     <string name="place_address_copied">Adress kopierad</string>
     <string name="place_copy_address">Kopiera adress</string>
     <string name="place_directions">Vägbeskrivning</string>
@@ -310,7 +310,7 @@
     <string name="mapscreen_switch">Byt</string>
     <string name="root_not_now">Inte nu</string>
     <string name="root_voice_title">Röst för talad navigering</string>
-    <string name="root_voice_body_intro">Velas egen röst körs helt på telefonen: naturliga anvisningar, utan konto eller extra app. Rekommenderas, en engångshämtning på ~%1$d MB.</string>
+    <string name="root_voice_body_intro">Velas egen röst körs helt på din telefon: naturliga anvisningar, inget konto, ingen extra app. Rekommenderas, en engångsnedladdning på %1$d MB.</string>
     <string name="root_voice_body_system">Vill du hellre inte? Använd en röst du redan har i telefonen.</string>
     <string name="root_voice_body_outro">Ändra det när som helst i Inställningar → Röst.</string>
     <string name="root_voice_download">Hämta Vela-röst</string>
@@ -372,7 +372,7 @@
     <string name="mapvm_export_trip_subject">Vela-resa: %1$s (%2$d punkter)</string>
     <string name="mapvm_share_trip_chooser">Dela resa</string>
     <string name="mapvm_voice_sample">Om 400 meter, sväng höger in på Storgatan.</string>
-    <string name="mapvm_not_enough_space">Inte tillräckligt med ledigt utrymme för %1$s (~%2$d MB)</string>
+    <string name="mapvm_not_enough_space">Inte tillräckligt med ledigt utrymme för %1$s (%2$d MB)</string>
     <string name="mapvm_voice_downloaded">%1$s hämtad</string>
     <string name="mapvm_voice_download_failed">Hämtning av %1$s misslyckades</string>
     <string name="mapvm_vela_voice_removed">Vela-röst borttagen</string>
@@ -412,7 +412,7 @@
     <string name="update_install">Uppdatera</string>
     <string name="update_download_failed">Nedladdningen av uppdateringen misslyckades. Försök igen senare.</string>
     <string name="settings_update_auto">Sök efter uppdateringar vid start</string>
-    <string name="settings_update_auto_hint">Tittar på den senaste GitHub-releasen ungefär en gång om dagen och erbjuder den när den är nyare än den här versionen. Installationen sker via Androids vanliga installerare. Uppdaterar du redan via Obtainium kan du stänga av detta.</string>
+    <string name="settings_update_auto_hint">Kollar GitHub ungefär en gång om dagen och erbjuder nyare versioner. Stäng av om du uppdaterar via Obtainium.</string>
     <string name="settings_update_check_now">Sök efter uppdateringar</string>
     <string name="settings_update_checking">Kontrollerar…</string>
     <string name="settings_update_none">Du har den senaste versionen.</string>
@@ -480,7 +480,7 @@
     <string name="lists_place_count">%1$d platser</string>
     <string name="navservice_notif_eta">Ankomst %1$s</string>
     <string name="settings_advanced">Avancerat</string>
-    <string name="settings_advanced_hint">Nisch- och experimentella alternativ som de flesta aldrig behöver ändra.</string>
+    <string name="settings_advanced_hint">Alternativ som de flesta aldrig behöver.</string>
     <string name="settings_developer">Utvecklare</string>
     <string name="settings_developer_hint">Verktyg för demos, skärmbilder och tester. Stäng av dem för verklig användning.</string>
     <string name="settings_browse_voices">Bläddra bland röster</string>
