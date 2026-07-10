@@ -485,4 +485,19 @@
     <string name="settings_developer_hint">Инструменты для демо, скриншотов и тестов. Отключайте их для реальной работы.</string>
     <string name="settings_browse_voices">Выбрать голос</string>
     <string name="settings_browse_voices_hint">Загружайте и переключайте голоса Vela на устройстве.</string>
+    <string name="voice_capture_listening">Слушаю…</string>
+    <string name="voice_capture_starting">Подготовка…</string>
+    <string name="voice_capture_done">Готово</string>
+    <string name="mapvm_asr_ready">Голосовой поиск на устройстве готов</string>
+    <string name="mapvm_asr_download_failed">Не удалось загрузить голосовую модель. Проверьте подключение и повторите попытку.</string>
+    <string name="settings_voice_search_model">Голосовой поиск на устройстве</string>
+    <string name="settings_voice_search_model_hint">Собственное распознавание речи Vela работает на телефоне, поэтому голосовой поиск не требует других приложений и ничего не выгружается. Разовая загрузка ~%1$d МБ.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Загрузить (%1$d МБ)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Удалить</string>
+    <string name="settings_voice_search_downloading">Загрузка… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Установка…</string>
+    <string name="settings_voice_search_engine_title">При нажатии на микрофон</string>
+    <string name="settings_voice_search_engine_auto">На устройстве, если доступно</string>
+    <string name="settings_voice_search_engine_local">Только на устройстве</string>
+    <string name="settings_voice_search_engine_system">Другое голосовое приложение</string>
 </resources>
