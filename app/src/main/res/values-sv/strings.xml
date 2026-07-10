@@ -503,6 +503,7 @@
     <string name="settings_voice_search_installing">Installerar…</string>
     <string name="settings_voice_search_engine_title">När du trycker på mikrofonen</string>
     <string name="settings_voice_search_engine_auto">Vela-röst</string>
+    <string name="settings_voice_search_engine_default">Androids standard</string>
     <string name="settings_voice_search_engine_system">Annan röstapp</string>
     <string name="map_asr_offer_title">Röstsökning</string>
     <string name="map_asr_offer_body">Ladda ner Vela-rösten för att tala in dina sökningar. Den körs helt på telefonen och laddar inte upp något.</string>
