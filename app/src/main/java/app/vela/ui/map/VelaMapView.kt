@@ -1320,12 +1320,30 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
         style.addSource(GeoJsonSource(MARKERS_SRC))
+        // Search results draw as REAL POI icons with their names (the same vela-poi-<group>
+        // images the ambient dots use, sized up so results pop), not anonymous red pins -
+        // "restaurants" reads as a map of named restaurants, Google-style. Icons always show
+        // (results must all be visible at the fitted zoom); labels yield when crowded.
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
-                PropertyFactory.iconImage(PIN_IMG),
-                PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                PropertyFactory.iconImage(Expression.get("icon")),
+                PropertyFactory.iconSize(1.3f),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
+                PropertyFactory.textField(Expression.get("name")),
+                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                PropertyFactory.textSize(13f),
+                PropertyFactory.textVariableAnchor(
+                    arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                ),
+                PropertyFactory.textRadialOffset(1.4f),
+                PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
+                PropertyFactory.textMaxWidth(7f),
+                PropertyFactory.textOptional(true),
+                PropertyFactory.textAllowOverlap(false),
+                PropertyFactory.textColor("#3C4043"),
+                PropertyFactory.textHaloColor("#FFFFFF"),
+                PropertyFactory.textHaloWidth(0.9f),
             ),
         )
     }
@@ -1617,6 +1635,11 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     // Ambient Google-POI labels match the ICON's category colour, Google-style — saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
+        PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+    )
+    // Search-result labels take the same themed treatment (results are category icons now).
+    (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
     )
@@ -2240,6 +2263,7 @@ private fun applyData(
             markers.mapIndexed { i, m ->
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                     addStringProperty("name", m.name)
+                    addStringProperty("icon", "vela-poi-${PoiIcons.groupFor(m.name, m.category)}")
                     addNumberProperty(MARKER_INDEX_PROP, i)
                 }
             },
