@@ -27,10 +27,18 @@ import java.io.StringWriter
  */
 object CrashCatcher {
 
+    /** True once an uncaught exception is being handled. The [AnrWatchdog] reads this to stand down:
+     *  the system crash handler ([prev]) blocks the main thread for seconds while it reports the
+     *  crash, which would otherwise look like an ANR and spawn a bogus `crash-anr` report. */
+    @Volatile
+    var crashing = false
+        private set
+
     fun install(context: Context, breadcrumbs: () -> List<DiagEvent>) {
         val app = context.applicationContext
         val prev = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, ex ->
+            crashing = true // tell the ANR watchdog to stand down BEFORE the system handler blocks main
             runCatching { writeReport(app, ex, breadcrumbs()) }
             prev?.uncaughtException(thread, ex)
         }

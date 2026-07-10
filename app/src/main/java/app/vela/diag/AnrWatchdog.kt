@@ -29,10 +29,12 @@ class AnrWatchdog(
             ticked = false
             main.post { ticked = true }
             SystemClock.sleep(timeoutMs)
-            if (!ticked && !isInterrupted) {
+            // Skip while a crash is in flight: the system crash handler blocks the main thread for
+            // seconds, which is not an ANR (CrashCatcher.crashing is set before that block begins).
+            if (!ticked && !isInterrupted && !CrashCatcher.crashing) {
                 val stack = Looper.getMainLooper().thread.stackTrace.joinToString("\n") { "\tat $it" }
                 onAnr("Main thread blocked > $timeoutMs ms\n\n$stack")
-                while (!ticked && !isInterrupted) SystemClock.sleep(500) // wait for recovery
+                while (!ticked && !isInterrupted && !CrashCatcher.crashing) SystemClock.sleep(500) // wait for recovery
             }
         }
     }

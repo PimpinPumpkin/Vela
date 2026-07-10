@@ -25,6 +25,11 @@ class VelaApp : Application() {
     @Inject lateinit var diag: DiagLog
     @Inject lateinit var exitInfo: ExitInfoReader
 
+    /** StrictMode violation signatures already breadcrumbed this process. The startup SharedPreferences
+     *  reads fire the same few main-thread-I/O violations repeatedly; deduping here keeps them from
+     *  flooding the 300-cap DiagLog ring (StrictMode's penaltyLog still logs every one to Logcat). */
+    private val seenStrictMode = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
     /** Apply the persisted in-app language to the Application context too (no-op when following the
      *  system), so `getString` from the ViewModel/nav-notification also localizes — resolved at launch
      *  from the saved pref (an in-session change re-reads it on next launch). */
@@ -85,7 +90,14 @@ class VelaApp : Application() {
                 .apply {
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         penaltyListener(mainExecutor) { v ->
-                            diag.record("strictmode", v.message ?: "thread violation", v.stackTraceToString())
+                            // Dedupe by (violation type + first app frame): record each DISTINCT
+                            // main-thread-I/O site once so a repeated startup pref read can't flood
+                            // the ring. penaltyLog above still logs every occurrence to Logcat.
+                            val appFrame = v.stackTrace.firstOrNull { it.className.startsWith("app.vela") }
+                                ?.let { "${it.className}.${it.methodName}:${it.lineNumber}" } ?: "?"
+                            if (seenStrictMode.add("${v.javaClass.name}@$appFrame")) {
+                                diag.record("strictmode", v.message ?: "thread violation", v.stackTraceToString())
+                            }
                         }
                     }
                 }
