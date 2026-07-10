@@ -45,6 +45,10 @@ class RecentPlaceStore @Inject constructor(
         prefs.edit().putString(KEY2, json.encodeToString(updated)).apply()
     }
 
+    /** Remove one place (the X on its row). */
+    fun remove(placeId: String) =
+        prefs.edit().putString(KEY2, json.encodeToString(recent().filterNot { it.place.id == placeId })).apply()
+
     fun clear() = prefs.edit().remove(KEY).remove(KEY2).apply()
 
     /** Pre-timestamp data was a bare SavedPlace list under [KEY]. Read it once, synthesize
