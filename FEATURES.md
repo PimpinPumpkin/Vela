@@ -195,6 +195,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **Recents you can prune, with addresses (2026-07-10).** Every recent search and recently-opened
+  place has an X on its row to remove just that entry (Clear recents still wipes the lot). A real
+  place shows its street address in smaller text under the name, and the Home/Work rows show the
+  saved address too. The three-dot menus on Home/Work match the row text color now.
 - ✅ **Navigation asks for precise location instead of failing silently (2026-07-10).** Turn-by-turn
   needs GPS, and with approximate-only permission it used to start and sit at "Searching for GPS"
   forever. Tapping Start now explains it plainly and offers to allow precise location; Android shows
