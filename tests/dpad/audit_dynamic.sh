@@ -39,6 +39,7 @@ integrity() {
 
 if ! $ADB get-state >/dev/null 2>&1; then echo "No device."; exit 2; fi
 bash "$D/setup.sh"
+warm_up   # clear cold-start so the first surface isn't racing a freshly-installed app
 
 echo "== bare map (ambient: unfocused on open, first arrow -> search bar) =="
 goto_map

@@ -69,6 +69,7 @@ Two Gradle modules, strict boundary:
   - `ui/PlaceContent` (`ShowReviews`/`LoadPhotos`/`HideAdult`)
   - `ui/Buildings3d` (extrusion layer)
   - `ui/AppLocale` (language)
+  - `ui/AdaptiveDensity` (feature-phone density scaling, applied in `attachBaseContext`)
   - `ui/Onboarding`.
 
 ### Data flow (search example)
@@ -284,6 +285,7 @@ Two layers.
   - Text fields must not trap focus - `Modifier.dpadFieldEscape` makes UP/DOWN leave the field (the search bar does the same inline).
   - Choose-on-map keeps the map pannable to place the pin (a `pickOnMap` exception in `mapTargetHidden`), and any panel taller than the screen (e.g. the directions panel with 4 alternates) must scroll so its primary action stays reachable.
   - New interactive UI must keep all three properties (reachable, activatable, visibly focused). Full design + per-surface audit + upstream merge policy: `docs/dpad.md`.
+  - **Feature-phone screen sizes (240x320-class)**: `ui/AdaptiveDensity` (a sibling of `AppLocale`, chained in both `MainActivity`/`VelaApp.attachBaseContext`) overrides the effective `densityDpi` at launch so a small screen reports >= ~360dp of logical width - Material layouts then fit without clipping across every screen in ONE place. It only shrinks small screens (>= 360dp = no-op) and works on logical dp, so it generalizes across resolutions. Every screen must open focused AND stay D-pad-navigable at these sizes, not just native; the target device matrix + per-phone visual proof live in `tests/devices/`, driven by `tests/devices/capture.sh` and swept by `tests/small_screen/run_matrix.sh`.
 - **Compose UI**:
   - place sheet (fixed Google-grey palette via `ui/SheetPalette`, NOT Material-You - deliberate)
   - full-screen search page (Home/Work + saved + recent places + recent searches)

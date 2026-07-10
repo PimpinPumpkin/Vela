@@ -30,11 +30,33 @@ takes `VELA_SMALL=WxH VELA_SMALL_DPI=<dpi>` to sweep each device.
 | Model | Screen | Resolution | Orientation | ~dpi (density) | Status | Notes |
 |---|---|---|---|---|---|---|
 | [Kyocera e4810](kyocera-e4810/findings.md) | 2.6" | 240x320 | portrait | ~154 (160) | verified | 6/7 auditor surfaces pass; Settings verified visually; adaptive density fits all chips |
-| [TCL Flip 2](tcl-flip-2/findings.md) | 2.8" | 240x320 | portrait | ~143 (160) | not yet tested | flip phone |
-| [Sonim XP3 (XP3800)](sonim-xp3/findings.md) | 2.6" | 240x320 | portrait | ~154 (160) | not yet tested | rugged flip |
-| [Sonim X320 (XP3 Plus 5G)](sonim-x320/findings.md) | 2.95" | 480x854 | portrait | ~332 (320) | not yet tested | rugged flip; high-res but ~240dp wide |
+| [TCL Flip 2](tcl-flip-2/findings.md) | 2.8" | 240x320 | portrait | ~143 (160) | covered (240x320) | same emulated geometry as Kyocera |
+| [Sonim XP3 (XP3800)](sonim-xp3/findings.md) | 2.6" | 240x320 | portrait | ~154 (160) | covered (240x320) | same emulated geometry as Kyocera |
+| [Sonim X320 (XP3 Plus 5G)](sonim-x320/findings.md) | 2.95" | 480x854 | portrait | ~332 (320) | verified | driven at 480x854@320; AdaptiveDensity generalizes |
 
 Every target so far is **240x320 portrait** (the "320x240" written on some spec sheets is the same
 panel in portrait). So the auditor default (240x320) covers them all; densities differ slightly with
 physical size but all round to ~160. More models will be added as they are named. Goal: perfect D-pad
 + screen-size compatibility across all of them.
+
+## Tooling
+
+- **`bash tests/devices/capture.sh <id>`** - AUTO-captures labeled screenshots of the full first-run
+  flow + core surfaces (Welcome, voice/offline/consent dialogs, bare map, search overlay, Settings) at
+  the device's real geometry, into `<id>/screenshots/auto/`. `--warm` skips the fresh `pm clear`;
+  `capture.sh all` does every device. This is the one-command way to regenerate the visual proof.
+- **`bash tests/small_screen/run_matrix.sh`** - runs `audit_smallscreen.sh` at EVERY target geometry
+  (240x320@160 and 480x854@320) and prints a per-geometry PASS/FAIL summary. Use it to confirm every
+  density level is green in one shot.
+- The auditors auto-detect the installed build (`app.vela` vs `app.vela.debug`), retry the uiautomator
+  dump when it races an animation, verify the app actually reached the foreground, and warm up cold
+  starts - so a passing run means the app, not the harness.
+
+## Adding a target device
+
+1. Add a row to the table above (model, screen, resolution, orientation, ~dpi/density).
+2. Add its geometry to the `DEVICES` table in `capture.sh` and (if a new size) the `GEOMS` list in
+   `tests/small_screen/run_matrix.sh`.
+3. `mkdir tests/devices/<id>` and add a `findings.md` (copy an existing one).
+4. Run `capture.sh <id>` and `run_matrix.sh`, then VERIFY the screenshots by eye and record results in
+   the findings. Same-geometry devices can reference the reference device's findings (see TCL Flip 2).

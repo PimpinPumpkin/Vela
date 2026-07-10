@@ -37,6 +37,7 @@ sleep 1
 SZ="$($ADB shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1)"
 SW="${SZ%x*}"; SH="${SZ#*x}"
 echo "  logical screen: ${SW}x${SH}"
+warm_up   # clear cold-start so the first surface below isn't racing a freshly-installed app
 
 # traverse_bounds <label> <n> - multi-axis D-pad walk; every focused element must lie fully within
 # the screen. Reports each clipped element (off an edge = unreachable on a small display).

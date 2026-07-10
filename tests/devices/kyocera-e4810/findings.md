@@ -47,5 +47,19 @@ Follow system -> Light). The auditor's automated navigation to the gear is best-
 unreliable); per the visual-verification rule the screenshots are the proof, so Settings is not gated
 on the harness reaching it.
 
+### First-run flow as a REAL fresh user (240x320, `pm clear`, no pref surgery) - VERIFIED VISUALLY
+Every first-run surface fits (nothing clipped) and auto-focuses its primary control:
+
+| Step | Result | Screenshot |
+|---|---|---|
+| Welcome | fits; "Get started" focused (OK advances) | 07-firstrun-welcome.png |
+| Voice download dialog | fits; "Not now" focused | 08-firstrun-voice-dialog.png |
+| Offline maps dialog | fits; "Not now" focused | 09-firstrun-offline-dialog.png |
+| Diagnostics consent (2 checkboxes + descriptions + 2 buttons - the TALLEST dialog) | fits, all on-screen; "Not now" focused | 10-firstrun-consent-dialog.png |
+| Landed bare map | all 3 category chips + full chrome (adaptive density) | 11-firstrun-landed-map.png |
+
+The consent card shows on the 2nd launch (by design: `launches >= 2`), so the fresh chain is
+Welcome -> voice -> offline -> map, then consent on relaunch.
+
 ## Screenshots
 See `screenshots/` - all captured at 240x320 via `adb exec-out screencap`.

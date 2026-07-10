@@ -43,6 +43,11 @@ launch_fresh() {
   return 0   # give up gracefully; the surface checks will fail loudly if it truly never launched
 }
 
+# warm_up - a throwaway launch to clear COLD-START (dexopt, first-frame, initial map-tile load) before
+# the first real surface test, so it isn't racing a cold app - device-seen: right after install the
+# first surface flaked until the app warmed. Cheap insurance at the top of an auditor run.
+warm_up() { launch_fresh 6 >/dev/null 2>&1; $ADB shell am force-stop "$PKG" >/dev/null 2>&1; sleep 1; }
+
 # ---- focus inspection -----------------------------------------------------------------------
 # ui_dump  - dump the current UI to /sdcard/ui.xml, RETRYING when it comes back implausibly small.
 # uiautomator intermittently returns ONLY the root node (nodeCount ~1) when it races an IME / scroll
