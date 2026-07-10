@@ -42,7 +42,7 @@
     <string name="settings_voice_none_hint">No voice yet. Open Voice library below to download a natural on-device voice (no account, real-time even on old phones). A system TTS engine you install will also appear here to pick.</string>
     <string name="settings_voice_test">Test voice</string>
     <string name="settings_voice_system_settings">System voice settings</string>
-    <string name="settings_voice_test_hint">Tap Test voice to hear it. The Vela voice is recommended; you can override to any installed text-to-speech engine.</string>
+    <string name="settings_voice_test_hint">Tap Test voice to hear it. The Vela Voice is recommended; you can override to any installed text-to-speech engine.</string>
     <string name="settings_voice_library">Voice library</string>
     <string name="settings_voice_advanced">Advanced voice options</string>
     <string name="settings_voice_try_label">Try the voice on any text</string>
@@ -67,8 +67,8 @@
     <string name="settings_keep_screen_on_hint">Keeps the screen awake during turn-by-turn.</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
     <string name="settings_traffic_lights_hint">Adds cues like “pass the traffic light, then turn left” to spoken directions. English only for now.</string>
-    <string name="map_voice_downloading">Downloading Vela voice · %1$d%%</string>
-    <string name="map_voice_installing">Installing Vela voice…</string>
+    <string name="map_voice_downloading">Downloading Vela Voice · %1$d%%</string>
+    <string name="map_voice_installing">Installing Vela Voice…</string>
     <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
     <string name="map_region_places_downloading">Saving %1$s places for offline search · %2$d%%</string> <!-- format -->
     <string name="mapvm_poipack_ready">Places in %1$s are now searchable offline</string> <!-- format -->
@@ -163,15 +163,15 @@
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string> <!-- format -->
     <string name="settings_collapse">Collapse</string>
     <string name="settings_expand">Expand</string>
-    <string name="settings_voice_lib_empty_hint">Download a natural on-device voice for spoken directions. Pick one below. The ★ voices sound the most like a maps navigator (Lessac and HFC are closest to Google). One-time download; wifi recommended.</string>
-    <string name="settings_voice_lib_installed_hint">Installed: %1$d MB · %2$d voice(s). Tap Use to switch (plays a sample); the trash icon frees the space.</string> <!-- format -->
+    <string name="settings_voice_lib_empty_hint">★ marks the recommended voices. Every voice runs offline on your phone.</string>
+    <string name="settings_voice_lib_installed_hint">Installed: %1$d MB · %2$d voice(s).</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">Your app language is %1$s. Download a %2$s voice below so spoken directions match (an English voice would mispronounce %3$s street names).</string> <!-- format -->
     <string name="settings_voice_search">Search voices</string>
     <string name="settings_voice_show_more">Show %1$d more</string>
     <string name="settings_voice_show_less">Show less</string>
     <string name="settings_voice_this_voice">this voice</string>
     <string name="settings_voice_remove_title">Remove %1$s?</string> <!-- format -->
-    <string name="settings_voice_remove_body">This is your only Vela voice. Spoken directions fall back to a system text-to-speech engine (or go silent if none is installed) until you download another.</string>
+    <string name="settings_voice_remove_body">This is your only Vela Voice. Spoken directions fall back to a system text-to-speech engine (or go silent if none is installed) until you download another.</string>
     <string name="settings_voice_remove">Remove</string>
     <string name="settings_voice_gender_female">Female</string>
     <string name="settings_voice_gender_male">Male</string>
@@ -336,7 +336,7 @@
     <string name="root_voice_body_intro">Vela\'s own voice runs entirely on your phone: natural spoken directions, no account, no extra app. Recommended, a one-time %1$d MB download.</string>
     <string name="root_voice_body_system">Prefer not to? Use a voice already on your phone.</string>
     <string name="root_voice_body_outro">Change it any time in Settings → Voice.</string>
-    <string name="root_voice_download">Download Vela voice</string>
+    <string name="root_voice_download">Download Vela Voice</string>
     <string name="root_voice_use_system">Use system voice</string>
 
     <!-- nav: NavOverlays.kt -->
@@ -410,7 +410,7 @@
     <string name="mapvm_not_enough_space">Not enough free space for %1$s (%2$d MB)</string> <!-- format -->
     <string name="mapvm_voice_downloaded">%1$s downloaded</string> <!-- format -->
     <string name="mapvm_voice_download_failed">%1$s download failed</string> <!-- format -->
-    <string name="mapvm_vela_voice_removed">Vela voice removed</string>
+    <string name="mapvm_vela_voice_removed">Vela Voice removed</string>
     <string name="mapvm_opening_installer">Opening installer for %1$s…</string> <!-- format -->
     <string name="mapvm_pan_to_area_first">Open the map and pan to an area first</string>
     <string name="mapvm_offline_routing_ready">Offline routing ready: %1$s</string> <!-- format -->
