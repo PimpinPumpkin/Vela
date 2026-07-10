@@ -424,7 +424,26 @@ Defaults that make the safe path the easy one:
   does - confirmed in its manifest). Keyboard/IME voice (Sayboard, FUTO Keyboard) provides a
   RecognitionService or in-IME mic, NOT the activity, so `queryIntentActivities` returns empty and
   the mic correctly hides - Vela can't `startActivityForResult` to them. That's intended: those
-  users use the keyboard mic, and tier-1 (PR3, on-device Whisper) will serve everyone regardless.
+  users use the keyboard mic, and tier-1 (on-device Whisper) serves everyone regardless.
+- **Voice search TIER-1 is on-device Whisper, in-process (2026-07-10, device-verified end to end).**
+  The second path: Vela's own model records + transcribes on the phone, no other app. `WhisperRecognizer`
+  (`:app/voice`) loads **Whisper tiny int8 multilingual + Silero VAD** through the bundled sherpa-onnx
+  runtime (same AAR as Piper TTS - `OfflineRecognizer(config=...)` with `assetManager` defaulting null
+  = filesystem load; VAD via `Vad(config=...)`), records with `AudioRecord` (VOICE_RECOGNITION, 16 kHz
+  mono), feeds the VAD in 512-sample windows, and transcribes the detected speech segment. `AsrModel`
+  (`:app/voice`) is the descriptor + install check (`filesDir/asr/whisper-tiny/`, 4 files present =
+  installed). The **~47 MB model is a download-on-demand from the `asr-models` release** (built by
+  `tools/build-asr-model.sh` = slim the upstream sherpa whisper-tiny to int8 + silero, tar.bz2;
+  reuses `KokoroInstaller.download` + its no-call-timeout client). RECORD_AUDIO is asked **at point
+  of use** (first mic tap), never for tier-2. `VoiceSearch.resolvedMode(context)` picks LOCAL / SYSTEM
+  / NONE from the `voice_search_engine` pref (AUTO=on-device-wins / LOCAL / SYSTEM) x availability;
+  MapScreen mirrors it reactively (keyed on `state.asrInstalled` so a fresh download flips the mic
+  without relaunch). The capture UI is `VoiceCaptureDialog` (listening sheet, level ring, auto-focus
+  Done - VelaDialog D-pad pattern). Settings -> Search has the download/remove + the engine picker
+  (shown only when BOTH model and a provider exist). R8 keeps `com.k2fsa.sherpa.onnx.**` (already for
+  Piper). Verified: download+install, mic appears, POU permission, VAD auto-stop, transcript -> query;
+  Auto uses on-device, "Other voice app" launches the provider. Accuracy of tiny-int8 is the known
+  tradeoff for size/speed; a larger model could be a future catalog entry.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
   system dialog. The first ask lives in `VelaRoot`: when onboarding reaches the location step
