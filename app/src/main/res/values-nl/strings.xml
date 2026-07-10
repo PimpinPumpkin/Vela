@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Andere spraak-app</string>
     <string name="map_asr_offer_title">Spraakzoeken</string>
     <string name="map_asr_offer_body">Download de Vela-stem om je zoekopdrachten in te spreken. Hij draait volledig op je telefoon en uploadt niets.</string>
+    <string name="nav_precise_title">Precieze locatie nodig</string>
+    <string name="nav_precise_body">Navigatie volgt je met gps en heeft daarvoor je precieze locatie nodig. Bij benadering geeft alleen een ruw gebied, dus navigatie zou je nooit vinden.</string>
+    <string name="nav_precise_allow">Precies toestaan</string>
+    <string name="nav_precise_toast">Navigatie heeft je precieze locatie nodig</string>
+    <string name="loc_off_title">Locatie staat uit</string>
+    <string name="loc_off_body">Vela heeft geen locatietoegang. Je kunt dit toestaan in de systeeminstellingen.</string>
+    <string name="loc_off_settings">Instellingen openen</string>
 </resources>

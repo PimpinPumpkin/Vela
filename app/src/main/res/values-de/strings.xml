@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Andere Sprach-App</string>
     <string name="map_asr_offer_title">Sprachsuche</string>
     <string name="map_asr_offer_body">Lade die Vela-Stimme herunter, um Suchen zu sprechen. Sie läuft komplett auf deinem Gerät und lädt nichts hoch.</string>
+    <string name="nav_precise_title">Genauer Standort nötig</string>
+    <string name="nav_precise_body">Die Navigation folgt dir per GPS und braucht dafür den genauen Standort. Ungefähr liefert nur ein grobes Gebiet, die Navigation würde dich nie finden.</string>
+    <string name="nav_precise_allow">Genau erlauben</string>
+    <string name="nav_precise_toast">Die Navigation braucht den genauen Standort</string>
+    <string name="loc_off_title">Standort ist aus</string>
+    <string name="loc_off_body">Vela hat keinen Standortzugriff. Du kannst ihn in den Systemeinstellungen erlauben.</string>
+    <string name="loc_off_settings">Einstellungen öffnen</string>
 </resources>
