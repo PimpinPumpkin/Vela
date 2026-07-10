@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Altra app vocale</string>
     <string name="map_asr_offer_title">Ricerca vocale</string>
     <string name="map_asr_offer_body">Scarica la voce Vela per dettare le ricerche. Gira interamente sul telefono e non carica nulla.</string>
+    <string name="nav_precise_title">Serve la posizione precisa</string>
+    <string name="nav_precise_body">La navigazione ti segue col GPS, che richiede la posizione precisa. Quella approssimativa dà solo un\'area generica, la navigazione non ti troverebbe mai.</string>
+    <string name="nav_precise_allow">Consenti precisa</string>
+    <string name="nav_precise_toast">La navigazione richiede la posizione precisa</string>
+    <string name="loc_off_title">La posizione è disattivata</string>
+    <string name="loc_off_body">Vela non ha accesso alla posizione. Puoi consentirlo nelle impostazioni di sistema.</string>
+    <string name="loc_off_settings">Apri impostazioni</string>
 </resources>

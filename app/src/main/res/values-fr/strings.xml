@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Autre appli vocale</string>
     <string name="map_asr_offer_title">Recherche vocale</string>
     <string name="map_asr_offer_body">Téléchargez la voix Vela pour dicter vos recherches. Elle tourne entièrement sur votre téléphone et n\'envoie rien.</string>
+    <string name="nav_precise_title">Position précise requise</string>
+    <string name="nav_precise_body">Le guidage vous suit par GPS, ce qui demande la position précise. L\'approximative ne donne qu\'une zone grossière, la navigation ne vous trouverait jamais.</string>
+    <string name="nav_precise_allow">Autoriser la précision</string>
+    <string name="nav_precise_toast">Le guidage a besoin de la position précise</string>
+    <string name="loc_off_title">La localisation est désactivée</string>
+    <string name="loc_off_body">Vela n\'a pas accès à la localisation. Vous pouvez l\'autoriser dans les réglages du système.</string>
+    <string name="loc_off_settings">Ouvrir les réglages</string>
 </resources>
