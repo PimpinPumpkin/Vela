@@ -230,7 +230,7 @@
     <string name="place_arriveby_leave">Arrive by %1$s  ·  leave %2$s</string> <!-- format -->
     <string name="place_in_typical_traffic">in typical traffic</string>
     <string name="place_based_current_traffic">based on current traffic</string>
-    <string name="place_arrive_approx">Arrive ~%1$s</string> <!-- format -->
+    <string name="place_arrive_approx">Arrive at %1$s</string> <!-- format -->
     <string name="place_usually_range">Usually %1$s – %2$s</string> <!-- format -->
     <string name="place_current_traffic">current traffic</string>
     <string name="place_fastest">Fastest</string>
@@ -248,7 +248,7 @@
     <string name="place_review_count">%1$d reviews</string> <!-- format -->
     <string name="place_all_n_reviews">All %1$d reviews · sort &amp; search</string> <!-- format -->
     <string name="place_all_reviews">All reviews · sort &amp; search</string>
-    <string name="place_reviews_progress">Reviews · %1$d of ~%2$d</string> <!-- format -->
+    <string name="place_reviews_progress">Reviews · %1$d of about %2$d</string> <!-- format -->
     <string name="place_reviews_so_far">Reviews · %1$d so far</string> <!-- format -->
     <string name="place_gathering_reviews">Gathering reviews…</string>
     <string name="place_reviews_load_failed">Couldn\'t load reviews. Tap to retry.</string>
@@ -322,7 +322,7 @@
     <string name="mapscreen_pick_stop_hint">Choose a place to add as a stop</string>
     <string name="mapscreen_learn_more">Learn more</string>
     <string name="mapscreen_faster_route_title">Faster route</string>
-    <string name="mapscreen_faster_route_saves">Saves ~%1$s in current traffic</string> <!-- format -->
+    <string name="mapscreen_faster_route_saves">Saves about %1$s in current traffic</string> <!-- format -->
     <string name="mapscreen_no">No</string>
     <string name="mapscreen_switch">Switch</string>
     <string name="mapscreen_resume_nav">Resume navigation to %1$s?</string> <!-- format -->
@@ -524,10 +524,18 @@
     <string name="map_asr_offer_title">Voice search</string>
     <string name="map_asr_offer_body">Download Vela Voice to speak your searches. It runs entirely on your phone and uploads nothing.</string>
     <string name="nav_precise_title">Precise location needed</string>
-    <string name="nav_precise_body">Turn-by-turn follows you with GPS, which needs precise location. Approximate only gives a rough area, so navigation would never find you.</string>
+    <string name="nav_precise_body">Turn-by-turn follows you with GPS, which needs precise location. Right now Vela only knows your rough area.</string>
     <string name="nav_precise_allow">Allow precise</string>
     <string name="nav_precise_toast">Turn-by-turn needs precise location</string>
     <string name="loc_off_title">Location is off</string>
     <string name="loc_off_body">Vela doesn\'t have location access. You can allow it in system settings.</string>
     <string name="loc_off_settings">Open settings</string>
+    <string name="loc_approx_title">Approximate location</string>
+    <string name="loc_approx_body">Vela only knows your rough area, not where you are. The map shows a wide circle instead of a dot, and turn-by-turn navigation won\'t work. You can switch to precise location whenever you want.</string>
+    <string name="loc_approx_allow">Allow precise</string>
+    <string name="loc_approx_keep">Keep approximate</string>
+    <string name="notif_ask_title">Skip notifications?</string>
+    <string name="notif_ask_body">Navigation keeps your next turn in a notification, so directions stay with you when the screen is off or you switch apps. Without it, directions only show inside Vela.</string>
+    <string name="notif_ask_allow">Allow</string>
+    <string name="notif_ask_skip">Skip</string>
 </resources>

@@ -199,6 +199,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   place has an X on its row to remove just that entry (Clear recents still wipes the lot). A real
   place shows its street address in smaller text under the name, and the Home/Work rows show the
   saved address too. The three-dot menus on Home/Work match the row text color now.
+- ✅ **Approximate location explains itself, and the blob actually shows (2026-07-10).** Granting
+  approximate (at setup or from the locate button) now gets one plain dialog saying what it means -
+  wide circle for a dot, no turn-by-turn - with an Allow-precise shortcut that goes straight into
+  Android's upgrade choice. And the accuracy circle itself is finally visible: the locate zoom-fit
+  had a pixel-density bug that always framed the circle bigger than the screen, so it read as
+  nothing at all.
+- ✅ **Notifications are asked during setup (2026-07-10).** Turn-by-turn keeps your next move in a
+  notification, so onboarding now asks right after location; declining gets one are-you-sure and
+  never blocks anything. Heads-up cards also drop below the turn card during navigation instead of
+  colliding with it, and a mid-drive voice download stays visible instead of silently hiding.
 - ✅ **Navigation asks for precise location instead of failing silently (2026-07-10).** Turn-by-turn
   needs GPS, and with approximate-only permission it used to start and sit at "Searching for GPS"
   forever. Tapping Start now explains it plainly and offers to allow precise location; Android shows

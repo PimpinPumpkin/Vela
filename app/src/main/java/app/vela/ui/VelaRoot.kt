@@ -43,15 +43,27 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
     // its own (see MapScreen); this owns the first ask. A grant starts location immediately (coarse-
     // only works too, via the NETWORK provider); a denial just moves on and leaves search/browse
     // working, with the locate FAB re-asking later.
+    // A coarse-only grant is easy to pick without meaning to, and it looks broken later (a wide
+    // circle for a dot, navigation that can't start). Say what it means ONCE, right when it happens;
+    // "Allow precise" re-runs the request, which Android shows as its approximate-to-precise choice.
+    var approxPrompt by rememberSaveable { mutableStateOf(false) }
+    var approxAsked by rememberSaveable { mutableStateOf(false) }
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
-        if (result.values.any { it }) vm.startLocation()
-        Onboarding.dismissLocationPrompt(context)
+        val fine = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarse = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fine || coarse) vm.startLocation()
+        if (!fine && coarse && !approxAsked) {
+            approxAsked = true
+            approxPrompt = true
+        } else {
+            Onboarding.dismissLocationPrompt(context)
+        }
     }
     // Ask for location the moment onboarding reaches this step - no separate rationale screen, since
     // the welcome screen is context enough for a maps app (one less thing to tap through). Fires once
-    // as the block enters composition; the result arms the voice step next.
+    // as the block enters composition; the result arms the notification step next.
     if (Onboarding.showLocationPrompt.value) {
         LaunchedEffect(Unit) {
             locationLauncher.launch(
@@ -61,6 +73,59 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                 ),
             )
         }
+    }
+    // Notifications come right after location: turn-by-turn keeps your next move in a notification,
+    // so asking during setup means the first navigation just works. Graceful on a no - a denial gets
+    // one plain-words are-you-sure, and skipping never blocks anything (the nav start re-asks).
+    var notifReasked by rememberSaveable { mutableStateOf(false) }
+    var notifSure by rememberSaveable { mutableStateOf(false) }
+    val notifLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted || notifReasked) Onboarding.dismissNotifPrompt(context) else notifSure = true
+    }
+    var notifRequested by rememberSaveable { mutableStateOf(false) }
+    if (Onboarding.showNotifPrompt.value && !notifRequested) {
+        LaunchedEffect(Unit) {
+            notifRequested = true
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+    if (approxPrompt) {
+        VelaDialog(
+            onDismissRequest = { approxPrompt = false; Onboarding.dismissLocationPrompt(context) },
+            title = stringResource(R.string.loc_approx_title),
+            confirmText = stringResource(R.string.loc_approx_allow),
+            onConfirm = {
+                approxPrompt = false
+                locationLauncher.launch(
+                    arrayOf(
+                        Manifest.permission.ACCESS_FINE_LOCATION,
+                        Manifest.permission.ACCESS_COARSE_LOCATION,
+                    ),
+                )
+            },
+            dismissText = stringResource(R.string.loc_approx_keep),
+            onDismiss = { approxPrompt = false; Onboarding.dismissLocationPrompt(context) },
+            dismissLowEmphasis = true,
+            text = { Text(stringResource(R.string.loc_approx_body)) },
+        )
+    }
+    if (notifSure) {
+        VelaDialog(
+            onDismissRequest = { notifSure = false; Onboarding.dismissNotifPrompt(context) },
+            title = stringResource(R.string.notif_ask_title),
+            confirmText = stringResource(R.string.notif_ask_allow),
+            onConfirm = {
+                notifSure = false
+                notifReasked = true
+                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            },
+            dismissText = stringResource(R.string.notif_ask_skip),
+            onDismiss = { notifSure = false; Onboarding.dismissNotifPrompt(context) },
+            dismissLowEmphasis = true,
+            text = { Text(stringResource(R.string.notif_ask_body)) },
+        )
     }
     Box {
         // MapScreen stays composed even while Settings is open, and Settings draws OVER it as an

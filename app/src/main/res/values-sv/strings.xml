@@ -214,7 +214,7 @@
     <string name="place_arriveby_leave">Framme senast %1$s  ·  åk %2$s</string>
     <string name="place_in_typical_traffic">vid normal trafik</string>
     <string name="place_based_current_traffic">baserat på aktuell trafik</string>
-    <string name="place_arrive_approx">Framme ~%1$s</string>
+    <string name="place_arrive_approx">Framme kl. %1$s</string>
     <string name="place_usually_range">Vanligtvis %1$s – %2$s</string>
     <string name="place_current_traffic">aktuell trafik</string>
     <string name="place_fastest">Snabbast</string>
@@ -232,7 +232,7 @@
     <string name="place_review_count">%1$d recensioner</string>
     <string name="place_all_n_reviews">Alla %1$d recensioner · sortera &amp;amp; sök</string>
     <string name="place_all_reviews">Alla recensioner · sortera &amp;amp; sök</string>
-    <string name="place_reviews_progress">Recensioner · %1$d av ~%2$d</string>
+    <string name="place_reviews_progress">Recensioner · %1$d av cirka %2$d</string>
     <string name="place_reviews_so_far">Recensioner · %1$d hittills</string>
     <string name="place_gathering_reviews">Samlar recensioner…</string>
     <string name="place_reviews_load_failed">Kunde inte läsa in recensioner. Tryck för att försöka igen.</string>
@@ -304,7 +304,7 @@
     <string name="mapscreen_pick_stop_hint">Välj en plats att lägga till som stopp</string>
     <string name="mapscreen_learn_more">Läs mer</string>
     <string name="mapscreen_faster_route_title">Snabbare rutt</string>
-    <string name="mapscreen_faster_route_saves">Sparar ~%1$s i aktuell trafik</string>
+    <string name="mapscreen_faster_route_saves">Sparar cirka %1$s i aktuell trafik</string>
     <string name="mapscreen_no">Nej</string>
     <string name="mapscreen_switch">Byt</string>
     <string name="root_not_now">Inte nu</string>
@@ -501,10 +501,18 @@
     <string name="map_asr_offer_title">Röstsökning</string>
     <string name="map_asr_offer_body">Ladda ner Vela-rösten för att tala in dina sökningar. Den körs helt på telefonen och laddar inte upp något.</string>
     <string name="nav_precise_title">Exakt plats krävs</string>
-    <string name="nav_precise_body">Navigeringen följer dig med GPS, vilket kräver exakt plats. Ungefärlig ger bara ett grovt område, så navigeringen skulle aldrig hitta dig.</string>
+    <string name="nav_precise_body">Navigeringen följer dig via GPS, vilket kräver exakt plats. Just nu känner Vela bara till ditt ungefärliga område.</string>
     <string name="nav_precise_allow">Tillåt exakt</string>
     <string name="nav_precise_toast">Navigering kräver exakt plats</string>
     <string name="loc_off_title">Platsen är av</string>
     <string name="loc_off_body">Vela har inte platsåtkomst. Du kan tillåta det i systeminställningarna.</string>
     <string name="loc_off_settings">Öppna inställningar</string>
+    <string name="loc_approx_title">Ungefärlig plats</string>
+    <string name="loc_approx_body">Vela känner bara till ditt ungefärliga område, inte var du är. Kartan visar en stor cirkel i stället för en punkt, och navigeringen fungerar inte. Du kan byta till exakt plats när du vill.</string>
+    <string name="loc_approx_allow">Tillåt exakt</string>
+    <string name="loc_approx_keep">Behåll ungefärlig</string>
+    <string name="notif_ask_title">Hoppa över aviseringar?</string>
+    <string name="notif_ask_body">Navigeringen håller nästa sväng i en avisering, så att anvisningarna följer med när skärmen är släckt eller du byter app. Utan den syns anvisningar bara inne i Vela.</string>
+    <string name="notif_ask_allow">Tillåt</string>
+    <string name="notif_ask_skip">Hoppa över</string>
 </resources>
