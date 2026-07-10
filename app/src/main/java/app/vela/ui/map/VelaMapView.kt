@@ -142,7 +142,7 @@ private const val TRAFFIC_TILES =
 
 /** A tappable search-result pin on the map. [prominence] (0 = unknown/low) drives the ambient dot's
  *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
-data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null)
+data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null, val fuelPrice: String? = null)
 
 // Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
 // setGeoJson (a full symbol re-tessellation) when they're unchanged. Nulled on style reload (the fresh
@@ -2282,8 +2282,8 @@ private fun applyData(
                 // sort key places first = wins the slot). Rated food places get the rating
                 // bubble, everything else the red category pin; bitmaps are generated on demand
                 // per style (they're theme-dependent), see PoiIcons.ensureResultIcon.
-                val iconKey = PoiIcons.resultIconKey(m.name, m.category, m.rating)
-                PoiIcons.ensureResultIcon(context, style, iconKey, dark)
+                val iconKey = PoiIcons.resultIconKey(m.name, m.category, m.rating, m.fuelPrice)
+                PoiIcons.ensureResultIcon(context, style, iconKey, dark, PoiIcons.resultBubbleLabel(m.name, m.category, m.rating, m.fuelPrice))
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                     addStringProperty("name", m.name)
                     addStringProperty("icon", iconKey)
