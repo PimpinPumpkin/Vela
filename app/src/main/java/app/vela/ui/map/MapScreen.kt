@@ -1949,7 +1949,6 @@ private fun SearchResults(
                         }
                     }
                     val sub = listOfNotNull(
-                        place.fuelPrice, // gas stations: the live price leads the row, Google-style
                         place.priceText,
                         place.category,
                         place.distanceMeters?.let { formatDistance(it) },
@@ -1973,6 +1972,28 @@ private fun SearchResults(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 1.dp),
                         )
+                    }
+                    // Gas stations: the live price on its own line under the address, bold with a
+                    // pump glyph in the title ink so it pops out of the row (user 2026-07-10).
+                    place.fuelPrice?.let { fp ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.LocalGasStation,
+                                contentDescription = null,
+                                tint = SheetPalette.ink(dark),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                fp,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = SheetPalette.ink(dark),
+                                modifier = Modifier.padding(start = 5.dp),
+                            )
+                        }
                     }
                     if (place.permanentlyClosed) {
                         Text(
