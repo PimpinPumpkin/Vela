@@ -3,8 +3,8 @@
 > This project began as a fork of [Vela Maps](https://github.com/PimpinPumpkin/Vela) by
 > PimpinPumpkin. It adds full 5-key D-pad and feature-phone operability on top of their
 > work, and still depends on the upstream project for some hosted functionality: the
-> routing-graph, map-overlay and place-pack release assets, the signed calibration config
-> channel, and the TTS runtime. All credit and thanks to the original project.
+> routing-graph, map-overlay and place-pack release assets, and the signed calibration
+> config channel. All credit and thanks to the original project.
 
 A degoogled maps and navigation client for Android, **fully operable with a 5-key
 D-pad (arrows + OK) and hardware BACK on a device with no touchscreen** such as a Qin
