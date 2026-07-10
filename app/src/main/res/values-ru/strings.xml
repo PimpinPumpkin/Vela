@@ -214,7 +214,7 @@
     <string name="place_arriveby_leave">Прибытие к %1$s  ·  выезд %2$s</string>
     <string name="place_in_typical_traffic">при обычных пробках</string>
     <string name="place_based_current_traffic">с учётом текущих пробок</string>
-    <string name="place_arrive_approx">Прибытие ~%1$s</string>
+    <string name="place_arrive_approx">Прибытие в %1$s</string>
     <string name="place_usually_range">Обычно %1$s – %2$s</string>
     <string name="place_current_traffic">текущие пробки</string>
     <string name="place_fastest">Самый быстрый</string>
@@ -232,7 +232,7 @@
     <string name="place_review_count">%1$d отзывов</string>
     <string name="place_all_n_reviews">Все отзывы (%1$d) · сортировка и поиск</string>
     <string name="place_all_reviews">Все отзывы · сортировка и поиск</string>
-    <string name="place_reviews_progress">Отзывы · %1$d из ~%2$d</string>
+    <string name="place_reviews_progress">Отзывы · %1$d из примерно %2$d</string>
     <string name="place_reviews_so_far">Отзывы · пока %1$d</string>
     <string name="place_gathering_reviews">Сбор отзывов…</string>
     <string name="place_reviews_load_failed">Не удалось загрузить отзывы. Нажмите, чтобы повторить.</string>
@@ -304,7 +304,7 @@
     <string name="mapscreen_pick_stop_hint">Выберите место, чтобы добавить как остановку</string>
     <string name="mapscreen_learn_more">Подробнее</string>
     <string name="mapscreen_faster_route_title">Более быстрый маршрут</string>
-    <string name="mapscreen_faster_route_saves">Экономит ~%1$s с учётом текущих пробок</string>
+    <string name="mapscreen_faster_route_saves">Экономит около %1$s с учётом текущих пробок</string>
     <string name="mapscreen_no">Нет</string>
     <string name="mapscreen_switch">Переключить</string>
     <string name="root_not_now">Не сейчас</string>
@@ -501,10 +501,18 @@
     <string name="map_asr_offer_title">Голосовой поиск</string>
     <string name="map_asr_offer_body">Загрузите голос Vela, чтобы диктовать запросы. Он работает целиком на телефоне и ничего не выгружает.</string>
     <string name="nav_precise_title">Нужна точная геолокация</string>
-    <string name="nav_precise_body">Навигация ведёт вас по GPS, для этого нужна точная геолокация. Приблизительная даёт лишь общий район, и навигация вас не найдёт.</string>
+    <string name="nav_precise_body">Навигация следит за вами по GPS, для этого нужно точное местоположение. Сейчас Vela знает только ваш примерный район.</string>
     <string name="nav_precise_allow">Разрешить точную</string>
     <string name="nav_precise_toast">Навигации нужна точная геолокация</string>
     <string name="loc_off_title">Геолокация выключена</string>
     <string name="loc_off_body">У Vela нет доступа к геолокации. Разрешить его можно в настройках системы.</string>
     <string name="loc_off_settings">Открыть настройки</string>
+    <string name="loc_approx_title">Примерное местоположение</string>
+    <string name="loc_approx_body">Vela знает только ваш примерный район, а не где вы находитесь. Карта показывает широкий круг вместо точки, и навигация работать не будет. Перейти на точное местоположение можно в любой момент.</string>
+    <string name="loc_approx_allow">Разрешить точное</string>
+    <string name="loc_approx_keep">Оставить примерное</string>
+    <string name="notif_ask_title">Пропустить уведомления?</string>
+    <string name="notif_ask_body">Навигация держит следующий поворот в уведомлении, чтобы подсказки оставались с вами при выключенном экране или в другом приложении. Без него подсказки видны только внутри Vela.</string>
+    <string name="notif_ask_allow">Разрешить</string>
+    <string name="notif_ask_skip">Пропустить</string>
 </resources>

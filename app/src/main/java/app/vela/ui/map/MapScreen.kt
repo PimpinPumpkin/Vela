@@ -394,10 +394,21 @@ fun MapScreen(
     // When the request comes back fully denied (including Android's instant deny after a permanent
     // "don't ask again"), the locate button used to just do nothing. Explain and point at settings.
     var showLocationOff by remember { mutableStateOf(false) }
+    // A coarse-only grant looks broken later (a wide circle for a dot, navigation that can't start),
+    // so the locate button's re-ask explains it ONCE when it happens; "Allow precise" re-runs the
+    // request, which Android shows as its approximate-to-precise choice.
+    var showApproxNotice by remember { mutableStateOf(false) }
+    var approxNoticed by remember { mutableStateOf(false) }
     val permLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
-        if (result.values.any { it }) vm.startLocation() else showLocationOff = true
+        val fineNow = result[Manifest.permission.ACCESS_FINE_LOCATION] == true
+        val coarseNow = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (fineNow || coarseNow) vm.startLocation() else showLocationOff = true
+        if (!fineNow && coarseNow && !approxNoticed) {
+            approxNoticed = true
+            showApproxNotice = true
+        }
     }
     // Only START location if it's already granted. The raw system dialog is NOT fired here anymore:
     // the onboarding rationale (VelaRoot) owns the first ask so it comes with an explanation, and the
@@ -608,6 +619,23 @@ fun MapScreen(
             onDismiss = { showLocationOff = false },
             dismissLowEmphasis = true,
             text = { Text(stringResource(R.string.loc_off_body)) },
+        )
+    }
+    if (showApproxNotice) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { showApproxNotice = false },
+            title = stringResource(R.string.loc_approx_title),
+            confirmText = stringResource(R.string.loc_approx_allow),
+            onConfirm = {
+                showApproxNotice = false
+                permLauncher.launch(
+                    arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                )
+            },
+            dismissText = stringResource(R.string.loc_approx_keep),
+            onDismiss = { showApproxNotice = false },
+            dismissLowEmphasis = true,
+            text = { Text(stringResource(R.string.loc_approx_body)) },
         )
     }
 
@@ -1515,7 +1543,8 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = 96.dp, start = 12.dp, end = 12.dp),
+                    // During nav, drop below the turn card (which can grow lane + "then" rows).
+                    .padding(top = if (state.navigating) 260.dp else 96.dp, start = 12.dp, end = 12.dp),
             )
         }
         // Pushed notices (signed calibration channel) + the voice-download progress card — on the
@@ -1524,14 +1553,17 @@ fun MapScreen(
         // the prompt dismissed — progress only existed in Settings; user 2026-07-07).
         val downloadingVoiceId = state.voiceDownloadingId
         val downloadingRegion = state.routingDownloadingId != null || state.poiPackDownloadingId != null
-        if (!state.navigating && state.selected == null && !searchOpen &&
+        if (state.selected == null && !searchOpen &&
             (state.notices.isNotEmpty() || downloadingVoiceId != null || downloadingRegion || state.updateInfo != null)
         ) {
             Column(
                 Modifier
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
-                    .padding(top = 140.dp, start = 12.dp, end = 12.dp), // below the search bar AND the chips
+                    // Below the search bar AND the chips; during nav, below the turn card instead
+                    // (these used to hide entirely in nav, which made a mid-drive voice download
+                    // look stalled).
+                    .padding(top = if (state.navigating) 260.dp else 140.dp, start = 12.dp, end = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 if (downloadingVoiceId != null) {
