@@ -32,8 +32,7 @@
     <string name="settings_language_hint">Changes the app\'s language and the spoken directions. Grab a matching voice in the Voice library.</string>
     <string name="settings_search">Search</string>
     <string name="settings_voice_search_toggle">Voice search mic</string>
-    <string name="settings_voice_search_hint">Shows a mic in the search bar. Tap it to speak your search, using a voice-input app on your phone.</string>
-    <string name="settings_voice_search_none">Shows a mic in the search bar to speak your search. Needs a voice-input app such as FUTO Voice Input; none is installed yet.</string>
+    <string name="settings_voice_search_hint">Shows a mic in the search bar to speak your search.</string>
     <string name="search_voice_cd">Voice search</string>
     <string name="search_voice_prompt">Speak to search</string>
     <string name="settings_voice">Voice</string>
@@ -514,7 +513,7 @@
     <string name="mapvm_asr_ready">Vela voice is ready</string>
     <string name="mapvm_asr_download_failed">Couldn\'t download the voice model. Check your connection and try again.</string>
     <string name="settings_voice_search_model">Vela voice</string>
-    <string name="settings_voice_search_model_hint">Vela voice turns speech into a search right on your phone: no other app needed and nothing is uploaded. One-time ~%1$d MB download.</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Vela voice turns speech into a search right on your phone: no other app needed and nothing is uploaded. One-time %1$d MB download.</string>  <!-- format -->
     <string name="settings_voice_search_download">Download (%1$d MB)</string>  <!-- format -->
     <string name="settings_voice_search_remove">Remove</string>
     <string name="settings_voice_search_downloading">Downloading… %1$d%%</string>  <!-- format -->
@@ -522,4 +521,6 @@
     <string name="settings_voice_search_engine_title">When you tap the mic</string>
     <string name="settings_voice_search_engine_auto">Vela voice</string>
     <string name="settings_voice_search_engine_system">Other voice app</string>
+    <string name="map_asr_offer_title">Voice search</string>
+    <string name="map_asr_offer_body">Download Vela voice to speak your searches. It runs entirely on your phone and uploads nothing.</string>
 </resources>

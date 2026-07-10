@@ -8,6 +8,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -50,7 +51,7 @@ class KokoroInstaller @Inject constructor(
 
             onExtracting()
             staging.deleteRecursively(); staging.mkdirs()
-            extractTarBz2(tmp, staging)
+            extractTar(tmp, staging)
             val inner = staging.listFiles()?.firstOrNull { it.isDirectory } ?: staging
             destDir.deleteRecursively()
             if (!inner.renameTo(destDir)) inner.copyRecursively(destDir, overwrite = true)
@@ -87,9 +88,14 @@ class KokoroInstaller @Inject constructor(
             true
         }
 
-    private fun extractTarBz2(src: File, destDir: File) {
+    private fun extractTar(src: File, destDir: File) {
+        // Pick the decompressor by magic bytes: Vela's own archives are gzip (bzip2 unpacked at
+        // ~15 MB/s on a phone core, a visible half-minute hang for a model; gzip is ~10x that for a
+        // slightly larger file), while the upstream Piper voice tarballs are still bzip2.
+        val magic = ByteArray(2).also { m -> src.inputStream().use { it.read(m) } }
+        val gzip = magic[0] == 0x1f.toByte() && magic[1] == 0x8b.toByte()
         src.inputStream().buffered().use { fin ->
-            BZip2CompressorInputStream(fin).use { bz ->
+            (if (gzip) GzipCompressorInputStream(fin) else BZip2CompressorInputStream(fin)).use { bz ->
                 TarArchiveInputStream(bz).use { tar ->
                     var entry = tar.nextEntry
                     while (entry != null) {

@@ -18,8 +18,7 @@
     <string name="settings_language_hint">Muda o idioma da app e das indicações faladas. Escolhe uma voz correspondente na biblioteca de vozes.</string>
     <string name="settings_search">Pesquisa</string>
     <string name="settings_voice_search_toggle">Microfone de pesquisa por voz</string>
-    <string name="settings_voice_search_hint">Mostra um microfone na barra de pesquisa. Toque para ditar a pesquisa com uma app de entrada de voz do telemóvel.</string>
-    <string name="settings_voice_search_none">Mostra um microfone na barra de pesquisa para ditar a pesquisa. Precisa de uma app de voz como o FUTO Voice Input; nenhuma instalada ainda.</string>
+    <string name="settings_voice_search_hint">Mostra um microfone na barra de pesquisa para ditar a pesquisa.</string>
     <string name="search_voice_cd">Pesquisa por voz</string>
     <string name="search_voice_prompt">Fale para pesquisar</string>
     <string name="settings_voice">Voz</string>
@@ -491,7 +490,7 @@
     <string name="mapvm_asr_ready">A voz Vela está pronta</string>
     <string name="mapvm_asr_download_failed">Não foi possível transferir o modelo de voz. Verifica a ligação e tenta novamente.</string>
     <string name="settings_voice_search_model">Voz Vela</string>
-    <string name="settings_voice_search_model_hint">A voz Vela transforma a fala numa pesquisa diretamente no telemóvel: sem outra app e sem enviar nada. Transferência única de ~%1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">A voz Vela transforma a fala numa pesquisa diretamente no telemóvel: sem outra app e sem enviar nada. Transferência única de %1$d MB.</string>  <!-- format -->
     <string name="settings_voice_search_download">Transferir (%1$d MB)</string>  <!-- format -->
     <string name="settings_voice_search_remove">Remover</string>
     <string name="settings_voice_search_downloading">A transferir… %1$d%%</string>  <!-- format -->
@@ -499,4 +498,6 @@
     <string name="settings_voice_search_engine_title">Ao tocar no microfone</string>
     <string name="settings_voice_search_engine_auto">Voz Vela</string>
     <string name="settings_voice_search_engine_system">Outra app de voz</string>
+    <string name="map_asr_offer_title">Pesquisa por voz</string>
+    <string name="map_asr_offer_body">Transfere a voz Vela para ditar as tuas pesquisas. Corre inteiramente no telemóvel e não envia nada.</string>
 </resources>
