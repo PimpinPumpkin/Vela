@@ -94,7 +94,7 @@ Vela contains **no analytics, no advertising, no crash reporting, and no
 Firebase/Play Services**, and **no telemetry that runs without you turning it on**. The
 app makes network requests only to the services in the table above, only when a feature
 needs them. It's GPLv3 - you can read every request the code makes in
-[`core/data/google`](core/src/main/java/app/vela/core/data/google) and [`SPEC.md`](SPEC.md).
+[`core/data/google`](../core/src/main/java/app/vela/core/data/google) and [`SPEC.md`](SPEC.md).
 
 ## Diagnostics (opt-in, off by default)
 

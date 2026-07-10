@@ -2,7 +2,7 @@
 
 Reproducible, on-device checks that Vela stays fully operable with a **5-key D-pad** (↑ ↓ ← → +
 OK, plus BACK) and **no touchscreen** - the scripted version of the manual `adb` checks used while
-building the D-pad support. See [`../docs/dpad.md`](../docs/dpad.md) for the design.
+building the D-pad support. See [`../docs/dpad.md`](../../docs/dpad.md) for the design.
 
 Each test drives the app with **only** `adb shell input keyevent` and asserts on the **focused
 element** (read from `uiautomator dump`), so it catches the two things that matter for D-pad:

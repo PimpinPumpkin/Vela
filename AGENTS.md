@@ -11,10 +11,10 @@ ETAs. Targets GrapheneOS / no-GMS ROMs; F-Droid distribution. GPLv3.
 collaborators (human or Claude). When you change behaviour, calibration,
 features, or structure, update - in the *same* commit:
 - `README.md` - status, architecture, calibrated request/response paths
-- `FEATURES.md` - tick/retire the affected items
-- `SPEC.md` - the authoritative rebuild spec (architecture / extractor contract /
+- `docs/FEATURES.md` - tick/retire the affected items
+- `docs/SPEC.md` - the authoritative rebuild spec (architecture / extractor contract /
   resilience / constraints); update when a load-bearing decision or path changes
-- `ROADMAP.md` - planned work + big bets (opt-in telemetry, Vela's own traffic layer,
+- `docs/ROADMAP.md` - planned work + big bets (opt-in telemetry, Vela's own traffic layer,
   popular times, …); add new ideas here as they come up
 - `AGENTS.md` - this file (build rules, layout, gotchas); `CLAUDE.md` is a gitignored symlink to it
 - the `project-vela` memory note if a load-bearing fact changed
@@ -980,54 +980,58 @@ plain human voice (commit subjects are the user-facing changelog). Use words lik
   - **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves
     in new suburbs.**
 - **Traffic lights + stop signs drawn on the map (`OverpassTrafficSignals.fetchControlsInBox` + `VelaMapView`).**
-  OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
-  non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath** the POI dots
-  + pins, `minZoom 16`. **Icon sizing/visibility:** `iconSize`
-  is a zoom-interpolated expression (~0.75 at z15.5 → 1.05 at z17 → 1.5 at z19) - the flat 0.55 was too small to
-  spot, especially tilted in nav; and `iconAllowOverlap(true)`+`iconIgnorePlacement(true)` so they ALWAYS draw
-  (controls are sparse - one per junction - and the earlier collision-off-below-POIs was culling them away on the
-  browse map, so the user couldn't see them; Google shows all of them at street zoom). Data is keyless Overpass (sibling of the
-  `fetchAlong` nav-landmark fetch + `OverpassPois`), fetched by `MapViewModel.refreshTrafficControls` from
-  `onViewport` **only at z ≥ `CONTROLS_MIN_ZOOM` (16)**. Controls are STATIC, so it fetches a box padded 50%
-  beyond the viewport and **reuses it while the center stays in the inner half** (`controlsBox`) - panning/driving
-  through an area triggers no refetch; only nearing the box edge refetches (single-flight + 350 ms settle). The
-  layer/updater are identity-gated like markers/ambient (`lastAppliedControls`) so a nav speedo tick doesn't
-  re-tessellate them. No app setting (zoom-gated); no PMTiles/CI (live Overpass). NB the `TRAFFIC_*` constants in
-  `VelaMapView` are a DIFFERENT thing - Google's live-traffic raster overlay; the controls use `CONTROLS_*`.
+  - OSM `highway=traffic_signals` (a stoplight icon) and `highway=stop` (a red STOP octagon) as a
+    non-interactive `SymbolLayer` (`vela-controls`, icons `vela-signal`/`vela-stop`) drawn **beneath**
+    the POI dots + pins, `minZoom 16`.
+  - **Icon sizing/visibility:** `iconSize` is a zoom-interpolated expression (~0.75 at z15.5 → 1.05 at
+    z17 → 1.5 at z19) - the flat 0.55 was too small to spot, especially tilted in nav; and
+    `iconAllowOverlap(true)`+`iconIgnorePlacement(true)` so they ALWAYS draw (controls are sparse - one
+    per junction - and the earlier collision-off-below-POIs was culling them away on the browse map, so
+    the user couldn't see them; Google shows all of them at street zoom).
+  - Data is keyless Overpass (sibling of the `fetchAlong` nav-landmark fetch + `OverpassPois`), fetched
+    by `MapViewModel.refreshTrafficControls` from `onViewport` **only at z ≥ `CONTROLS_MIN_ZOOM` (16)**.
+    Controls are STATIC, so it fetches a box padded 50% beyond the viewport and **reuses it while the
+    center stays in the inner half** (`controlsBox`) - panning/driving through an area triggers no
+    refetch; only nearing the box edge refetches (single-flight + 350 ms settle).
+  - The layer/updater are identity-gated like markers/ambient (`lastAppliedControls`) so a nav speedo
+    tick doesn't re-tessellate them. No app setting (zoom-gated); no PMTiles/CI (live Overpass). NB the
+    `TRAFFIC_*` constants in `VelaMapView` are a DIFFERENT thing - Google's live-traffic raster overlay;
+    the controls use `CONTROLS_*`.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
-  A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
-  downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
-  the WebView instead navigates the `/maps/dir/<olat>,<olng>/<dlat>,<dlng>/data=!4m2!4m1!3e3`
-  page and reads the itinerary set out of `APP_INITIALIZATION_STATE`. **Depart/arrive time:** the
-  board is time-dependent, so a scheduled request replaces the plain `!4m2!4m1!3e3` with Google's
-  time block - `!4m6!4m5!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>!3e3` (the `!4m` numbers
-  are DESCENDANT counts, so the inner group grows `4m1`→`4m5` and the outer `4m2`→`4m6`; verified
-  against a real Google transit-with-time URL - an earlier `!4m8!4m7` guess had the wrong counts and
-  Google silently fell back to "now"). **Gotchas:**
-  the directions payload is the **longest** `)]}'`-guarded string under slot `[3]`
-  (a ~1.7 KB stub sits alongside the ~165 KB real one - take the longest, and poll
-  for it: the SPA fills it a beat after page-finish). `TransitParser` (`:core`,
-  takes the raw string so `:app` stays out of kotlinx.serialization, like
-  `PhotosParser`) reads `root[0][1]` = trips, each trip's **summary at `trip[0]`**;
-  `trip[1][0][1]` is the per-stop leg tree. Calibrated + device-verified Davis→Sacramento.
-  **Full stop detail (unit-tested):** a RIDE
-  leg carries its stop block at **`leg[5]`** - board `[5][0]`, alight `[5][1]`, **stop count
-  `[5][2]`**, intermediate list `[5][7]` (each stop node: name `[0]`, agency code `[1]`, and
-  time tuples - real-time arr/dep at `[2]`/`[3]`, timetable at `[7]`/`[8]`, so RT-vs-timetable
-  epochs give "N min late"); **headsign `leg[0][14][2][1][0]`**, agency phone `leg[0][6][4][0][4]`,
-  service alerts `leg[0][9][k][2]`. Fare is scanned defensively from the trip summary (usually
-  absent). NB `parseLines` allows a **1-char** line name (single-digit bus routes like "9" are real).
-  Each stop node's **coordinates are `[4][2]` (lat) / `[4][3]` (lng)** - `parseStopTime` reads them into
-  `TransitStopTime.location`, and `assignWalkEndpoints` wires each WALK leg's `walkFrom`/`walkTo` from the
-  adjacent ride's alight/board stop (falling back to the trip origin/dest, which `parse(raw, origin, dest)`
-  threads through). The UI then fetches that walk leg's turn-by-turn steps **on demand** via the normal walk
-  router (`MapViewModel.walkDirections` → OSRM foot) - no extra transit RPC. **Step-by-step transit
-  guidance** (Moovit-style, `TransitNavState` + `startTransitNav`/`advance`/`back`/`endTransitNav` in
-  `MapViewModel`, `TransitNavSheet` in `PlaceSheet`) walks the itinerary leg by leg, speaking each
-  cue (`transitStepSpoken` → the `transit_nav_*` strings) and auto-advancing when GPS reaches the leg
-  end. The auto-advance is **latched** (`maybeAdvanceTransitNav`, `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`):
-  a leg only advances once it's been ARMED by being >ARM_M from its end, so a transfer hub can't cascade
-  through legs and a short final walk can't fire a premature arrival.
+  - A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently downgraded to a
+    *driving* reply (same TLS-fingerprint bot-detection as photos), so the WebView instead navigates the
+    `/maps/dir/<olat>,<olng>/<dlat>,<dlng>/data=!4m2!4m1!3e3` page and reads the itinerary set out of
+    `APP_INITIALIZATION_STATE`.
+  - **Depart/arrive time:** the board is time-dependent, so a scheduled request replaces the plain
+    `!4m2!4m1!3e3` with Google's time block - `!4m6!4m5!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>!3e3`
+    (the `!4m` numbers are DESCENDANT counts, so the inner group grows `4m1`→`4m5` and the outer
+    `4m2`→`4m6`; verified against a real Google transit-with-time URL - an earlier `!4m8!4m7` guess had
+    the wrong counts and Google silently fell back to "now").
+  - **Gotchas:** the directions payload is the **longest** `)]}'`-guarded string under slot `[3]` (a
+    ~1.7 KB stub sits alongside the ~165 KB real one - take the longest, and poll for it: the SPA fills
+    it a beat after page-finish).
+  - `TransitParser` (`:core`, takes the raw string so `:app` stays out of kotlinx.serialization, like
+    `PhotosParser`) reads `root[0][1]` = trips, each trip's **summary at `trip[0]`**; `trip[1][0][1]` is
+    the per-stop leg tree. Calibrated + device-verified Davis→Sacramento.
+  - **Full stop detail (unit-tested):** a RIDE leg carries its stop block at **`leg[5]`** - board
+    `[5][0]`, alight `[5][1]`, **stop count `[5][2]`**, intermediate list `[5][7]` (each stop node: name
+    `[0]`, agency code `[1]`, and time tuples - real-time arr/dep at `[2]`/`[3]`, timetable at `[7]`/
+    `[8]`, so RT-vs-timetable epochs give "N min late"); **headsign `leg[0][14][2][1][0]`**, agency phone
+    `leg[0][6][4][0][4]`, service alerts `leg[0][9][k][2]`. Fare is scanned defensively from the trip
+    summary (usually absent). NB `parseLines` allows a **1-char** line name (single-digit bus routes like
+    "9" are real).
+  - Each stop node's **coordinates are `[4][2]` (lat) / `[4][3]` (lng)** - `parseStopTime` reads them
+    into `TransitStopTime.location`, and `assignWalkEndpoints` wires each WALK leg's `walkFrom`/`walkTo`
+    from the adjacent ride's alight/board stop (falling back to the trip origin/dest, which `parse(raw,
+    origin, dest)` threads through). The UI then fetches that walk leg's turn-by-turn steps **on demand**
+    via the normal walk router (`MapViewModel.walkDirections` → OSRM foot) - no extra transit RPC.
+  - **Step-by-step transit guidance** (Moovit-style, `TransitNavState` + `startTransitNav`/`advance`/
+    `back`/`endTransitNav` in `MapViewModel`, `TransitNavSheet` in `PlaceSheet`) walks the itinerary leg
+    by leg, speaking each cue (`transitStepSpoken` → the `transit_nav_*` strings) and auto-advancing when
+    GPS reaches the leg end. The auto-advance is **latched** (`maybeAdvanceTransitNav`,
+    `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`): a leg only advances once it's been ARMED by being >ARM_M
+    from its end, so a transfer hub can't cascade through legs and a short final walk can't fire a
+    premature arrival.
 
 ## Name
 

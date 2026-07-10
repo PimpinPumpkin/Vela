@@ -13,7 +13,7 @@ Privacy-first, F-Droid, GPLv3; every new data flow is opt-in and documented in
 ## Near-term
 
 - **D-pad hardware pass.** Base and full-function D-pad support is shipped (see
-  [`docs/dpad.md`](docs/dpad.md)); next is a real-device tuning pass (pan step, OK-hold
+  [`docs/dpad.md`](dpad.md)); next is a real-device tuning pass (pan step, OK-hold
   threshold, focus-ring visibility, traversal order) and pixel-verifying the full-screen
   reviews WebView page-scroll on an unfiltered network.
 - **Explore / Nearby.** A bottom-sheet of nearby restaurants and things to do, reusing the
