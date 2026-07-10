@@ -43,6 +43,10 @@ class RecentSearchStore @Inject constructor(
         prefs.edit().putString(KEY2, json.encodeToString(updated)).apply()
     }
 
+    /** Remove one query (the X on its row). */
+    fun remove(query: String) =
+        prefs.edit().putString(KEY2, json.encodeToString(recent().filterNot { it.query.equals(query, ignoreCase = true) })).apply()
+
     fun clear() = prefs.edit().remove(KEY).remove(KEY2).apply()
 
     /** Pre-timestamp data was a bare string list under [KEY]. Read it once, synthesize
