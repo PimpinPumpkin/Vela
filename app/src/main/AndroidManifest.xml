@@ -15,6 +15,9 @@
 
     <!-- Haptic turn cues during navigation (normal permission, auto-granted). -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Voice search, tier-1 ONLY: recording the mic for the on-device Whisper model. Requested
+         at point of use, and never needed for tier-2 (the RECOGNIZE_SPEECH provider records). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <!-- Android Auto: navigation-category templates + drawing the map onto the
          car screen's surface. Both are car-library permissions, not runtime ones. -->

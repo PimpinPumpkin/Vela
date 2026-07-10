@@ -167,6 +167,9 @@ data class MapUiState(
     val selectedVoiceId: String? = null, // the active Piper voice id (null = none installed)
     val voiceDownloadingId: String? = null, // the ONE voice currently downloading (one-at-a-time), else null
     val voiceInstalling: Boolean = false,   // download done, unpacking the archive (the map card shows "Installing…")
+    val asrDownloadPct: Float? = null,      // 0f..1f while the on-device voice-search model downloads; null = idle
+    val asrInstalling: Boolean = false,     // ASR download done, unpacking
+    val asrInstalled: Boolean = false,      // Whisper voice-search model present on disk (Settings shows Download vs Remove)
     val voiceSpeaker: Int = 0, // chosen speaker # for the multi-speaker Vela voice (playground stepper)
     val voiceSpeed: Float = 1.0f, // spoken-directions speed multiplier (1.0 = normal, >1 = faster)
     val showPsdsTip: Boolean = false,
@@ -239,6 +242,7 @@ class MapViewModel @Inject constructor(
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
     private val selfUpdater: app.vela.update.SelfUpdater,
+    private val whisperRecognizer: app.vela.voice.WhisperRecognizer,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(MapUiState())
@@ -2703,6 +2707,50 @@ class MapViewModel @Inject constructor(
                 showStatus(appContext.getString(R.string.mapvm_voice_download_failed, v.displayName))
             }
         }
+    }
+
+    // ---- On-device voice search (tier-1 Whisper ASR) ----
+
+    /** Reflect whether the on-device speech model is present (Settings shows Download vs Remove). */
+    fun refreshAsr() { _state.update { it.copy(asrInstalled = whisperRecognizer.isInstalled()) } }
+
+    /** Download the ~47 MB on-device speech-to-text model, reusing the neural-voice installer + its
+     *  no-call-timeout client (the shared 12 s cap would abort a download this size). */
+    fun downloadAsrModel() {
+        if (_state.value.asrDownloadPct != null) return // serialize
+        val bytes = app.vela.voice.AsrModel.SIZE_MB.toLong() * 1024 * 1024
+        if (appContext.filesDir.usableSpace < bytes * 13 / 10) {
+            showStatus(appContext.getString(R.string.mapvm_not_enough_space, appContext.getString(R.string.settings_voice_search_model), app.vela.voice.AsrModel.SIZE_MB))
+            return
+        }
+        _state.update { it.copy(asrDownloadPct = 0f, asrInstalling = false) }
+        viewModelScope.launch {
+            val ok = kokoroInstaller.download(
+                app.vela.voice.AsrModel.URL, app.vela.voice.AsrModel.dir(appContext), bytes,
+                onExtracting = { _state.update { it.copy(asrInstalling = true) } },
+            ) { p -> _state.update { it.copy(asrDownloadPct = p) } }
+            _state.update { it.copy(asrDownloadPct = null, asrInstalling = false, asrInstalled = whisperRecognizer.isInstalled()) }
+            if (ok && whisperRecognizer.isInstalled()) flashStatus(appContext.getString(R.string.mapvm_asr_ready))
+            else showStatus(appContext.getString(R.string.mapvm_asr_download_failed))
+        }
+    }
+
+    fun deleteAsrModel() {
+        app.vela.voice.AsrModel.dir(appContext).deleteRecursively()
+        _state.update { it.copy(asrInstalled = false) }
+    }
+
+    fun voiceMicGranted(): Boolean = whisperRecognizer.hasMicPermission()
+
+    /** Record + transcribe on-device (tier-1); returns the heard text or null. Driven by the capture
+     *  dialog, which supplies the loudness sink, a start callback and an early-stop check. */
+    suspend fun voiceListen(onLevel: (Float) -> Unit, onListening: () -> Unit, cancelled: () -> Boolean): String? =
+        whisperRecognizer.listen(onLevel, onListening, cancelled)
+
+    /** Apply a transcript from either voice tier as the query and run the search. */
+    fun applyVoiceQuery(text: String) {
+        onQueryChange(text)
+        search()
     }
 
     /** Make an already-downloaded voice active: persist the pick, reload the synth (the single switch
