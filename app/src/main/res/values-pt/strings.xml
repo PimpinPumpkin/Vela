@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">Ativado = oculta bares, casas noturnas, casinos, lojas de bebidas e outros locais adultos / noturnos da pesquisa e do mapa.</string>
     <string name="settings_hide_external_links">Ocultar site e links externos</string>
     <string name="settings_hide_external_links_hint">Ativado = as páginas de locais não mostram os botões Site, Street View ou Reservar / Pedir (não abre sites externos arbitrários).</string>
-    <string name="settings_offline">Offline</string>
+    <string name="settings_offline">Mapas offline</string>
     <string name="settings_offline_hint">Transfira uma área para manter o mapa e as direções no telemóvel para uso offline.</string>
     <string name="settings_offline_map_area">Área do mapa</string>
     <string name="settings_offline_download_viewport">Transferir a área que está a ver</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">As estradas de uma região inteira (um estado ou país) para as direções funcionarem sem ligação em toda ela. Transfere para onde vais.</string>
     <string name="settings_routing_no_regions">Ainda sem regiões disponíveis.</string>
     <string name="settings_clear_filter">Limpar filtro</string>
-    <string name="settings_routing_filter_placeholder">Filtrar %1$d regiões… (p. ex. Japão, Texas)</string>
+    <string name="settings_routing_filter_placeholder">Pesquisar</string>
     <string name="settings_routing_no_match">Nenhuma região corresponde a “%1$s”.</string>
     <string name="settings_routing_downloading">A transferir… %1$d%%</string>
     <string name="settings_routing_installed">Instalado · percursos offline aqui</string>

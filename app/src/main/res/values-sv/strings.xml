@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">På = döljer barer, klubbar, kasinon, spritbutiker och andra vuxen- / nöjeslivsplatser från sökning och karta.</string>
     <string name="settings_hide_external_links">Dölj webbplats och externa länkar</string>
     <string name="settings_hide_external_links_hint">På = platssidor visar inte knapparna Webbplats, Street View eller Boka / Beställ (inga godtyckliga externa webbplatser öppnas).</string>
-    <string name="settings_offline">Offline</string>
+    <string name="settings_offline">Offlinekartor</string>
     <string name="settings_offline_hint">Ladda ner ett område för att spara dess karta och vägbeskrivningar på telefonen för offline-bruk.</string>
     <string name="settings_offline_map_area">Kartområde</string>
     <string name="settings_offline_download_viewport">Hämta området du tittar på</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">Vägarna för en hel region (en delstat eller ett land), så att vägbeskrivningar fungerar offline i hela den. Hämta dit du ska.</string>
     <string name="settings_routing_no_regions">Inga regioner tillgängliga ännu.</string>
     <string name="settings_clear_filter">Rensa filter</string>
-    <string name="settings_routing_filter_placeholder">Filtrera %1$d regioner… (t.ex. Japan, Texas)</string>
+    <string name="settings_routing_filter_placeholder">Sök</string>
     <string name="settings_routing_no_match">Inga regioner matchar ”%1$s”.</string>
     <string name="settings_routing_downloading">Hämtar… %1$d %%</string>
     <string name="settings_routing_installed">Installerad · ruttar offline här</string>

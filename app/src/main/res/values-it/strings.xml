@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">Attivo = nasconde bar, discoteche, casinò, enoteche e altri luoghi per adulti / della vita notturna da ricerca e mappa.</string>
     <string name="settings_hide_external_links">Nascondi sito web e link esterni</string>
     <string name="settings_hide_external_links_hint">Attivo = le pagine dei luoghi non mostrano i pulsanti Sito web, Street View o Prenota / Ordina (nessun sito esterno arbitrario aperto).</string>
-    <string name="settings_offline">Offline</string>
+    <string name="settings_offline">Mappe offline</string>
     <string name="settings_offline_hint">Scarica un\'area per tenere la sua mappa e le indicazioni sul telefono, per l\'uso offline.</string>
     <string name="settings_offline_map_area">Area mappa</string>
     <string name="settings_offline_download_viewport">Scarica l\'area che stai visualizzando</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">Le strade di un\'intera regione (uno stato o un paese), così le indicazioni funzionano offline ovunque al suo interno. Scarica dove sei diretto.</string>
     <string name="settings_routing_no_regions">Ancora nessuna regione disponibile.</string>
     <string name="settings_clear_filter">Cancella filtro</string>
-    <string name="settings_routing_filter_placeholder">Filtra %1$d regioni… (es. Giappone, Toscana)</string>
+    <string name="settings_routing_filter_placeholder">Cerca</string>
     <string name="settings_routing_no_match">Nessuna regione corrisponde a “%1$s”.</string>
     <string name="settings_routing_downloading">Download… %1$d%%</string>
     <string name="settings_routing_installed">Installata · percorsi offline qui</string>
