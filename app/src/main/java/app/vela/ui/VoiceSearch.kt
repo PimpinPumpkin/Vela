@@ -35,6 +35,10 @@ object VoiceSearch {
     fun init(context: Context) {
         enabled.value = prefs(context).getBoolean(KEY, true)
         engine.value = readEngine(prefs(context).getString(ENGINE_KEY, null))
+        // Legacy migration: an old explicit LOCAL pin (pre-picker) hid the mic entirely when the
+        // model was later deleted, even with voice apps installed. AUTO behaves identically while
+        // the model exists and degrades gracefully without it.
+        if (engine.value == Engine.LOCAL) setEngine(context, Engine.AUTO)
         provider.value = prefs(context).getString(PROVIDER_KEY, null)
     }
 
@@ -110,6 +114,13 @@ object VoiceSearch {
         val flat = component.flattenToString()
         provider.value = flat
         prefs(context).edit().putString(PROVIDER_KEY, flat).apply()
+    }
+
+    /** Back to "Android default": drop the explicit pick so the launch intent stays implicit
+     *  (Android's own default app routes it; first-installed only when there is no default). */
+    fun clearProvider(context: Context) {
+        provider.value = null
+        prefs(context).edit().remove(PROVIDER_KEY).apply()
     }
 
     /** Is a third-party voice-input APP installed (tier-2)? Cheap PackageManager query; only apps that

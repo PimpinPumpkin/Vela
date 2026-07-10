@@ -503,6 +503,7 @@
     <string name="settings_voice_search_installing">Установка…</string>
     <string name="settings_voice_search_engine_title">При нажатии на микрофон</string>
     <string name="settings_voice_search_engine_auto">Голос Vela</string>
+    <string name="settings_voice_search_engine_default">По умолчанию в Android</string>
     <string name="settings_voice_search_engine_system">Другое голосовое приложение</string>
     <string name="map_asr_offer_title">Голосовой поиск</string>
     <string name="map_asr_offer_body">Загрузите голос Vela, чтобы диктовать запросы. Он работает целиком на телефоне и ничего не выгружает.</string>

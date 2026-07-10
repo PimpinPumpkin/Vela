@@ -474,14 +474,28 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Spacer(Modifier.height(12.dp))
                 SubHead(stringResource(R.string.settings_voice_search_engine_title))
                 val eng = app.vela.ui.VoiceSearch.engine.value
-                val chosen = app.vela.ui.VoiceSearch.chosenProvider(context)
+                // A row per way to dictate: Vela Voice, then "Android default" (the no-pick state -
+                // the intent stays implicit and Android's own default app routes it), then each
+                // installed app by name as a manual override.
+                val savedPick = app.vela.ui.VoiceSearch.provider.value
+                val savedValid = voiceProviders.any { it.component.flattenToString() == savedPick }
                 if (state.asrInstalled) {
                     SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng != app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
+                }
+                if (voiceProviders.isNotEmpty()) {
+                    SelectableRow(
+                        stringResource(R.string.settings_voice_search_engine_default),
+                        eng == app.vela.ui.VoiceSearch.Engine.SYSTEM && !savedValid,
+                        onClick = {
+                            app.vela.ui.VoiceSearch.clearProvider(context)
+                            app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM)
+                        },
+                    )
                 }
                 voiceProviders.forEach { p ->
                     SelectableRow(
                         p.label,
-                        eng == app.vela.ui.VoiceSearch.Engine.SYSTEM && chosen?.component == p.component,
+                        eng == app.vela.ui.VoiceSearch.Engine.SYSTEM && savedValid && p.component.flattenToString() == savedPick,
                         onClick = {
                             app.vela.ui.VoiceSearch.setProvider(context, p.component)
                             app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM)

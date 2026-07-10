@@ -503,6 +503,7 @@
     <string name="settings_voice_search_installing">Wird installiert…</string>
     <string name="settings_voice_search_engine_title">Beim Tippen auf das Mikrofon</string>
     <string name="settings_voice_search_engine_auto">Vela-Stimme</string>
+    <string name="settings_voice_search_engine_default">Android-Standard</string>
     <string name="settings_voice_search_engine_system">Andere Sprach-App</string>
     <string name="map_asr_offer_title">Sprachsuche</string>
     <string name="map_asr_offer_body">Lade die Vela-Stimme herunter, um Suchen zu sprechen. Sie läuft komplett auf deinem Gerät und lädt nichts hoch.</string>

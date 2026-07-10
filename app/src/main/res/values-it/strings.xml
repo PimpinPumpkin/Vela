@@ -503,6 +503,7 @@
     <string name="settings_voice_search_installing">Installazione…</string>
     <string name="settings_voice_search_engine_title">Quando tocchi il microfono</string>
     <string name="settings_voice_search_engine_auto">Voce Vela</string>
+    <string name="settings_voice_search_engine_default">Predefinita di Android</string>
     <string name="settings_voice_search_engine_system">Altra app vocale</string>
     <string name="map_asr_offer_title">Ricerca vocale</string>
     <string name="map_asr_offer_body">Scarica la voce Vela per dettare le ricerche. Gira interamente sul telefono e non carica nulla.</string>
