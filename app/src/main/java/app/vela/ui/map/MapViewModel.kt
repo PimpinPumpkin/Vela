@@ -2766,7 +2766,7 @@ class MapViewModel @Inject constructor(
                 )
             }
             if (ok && VelaPiper.isVoiceReady(appContext, id)) {
-                if (firstEver) selectVoice(id) else flashStatus(appContext.getString(R.string.mapvm_voice_downloaded, v.displayName))
+                if (firstEver) selectVoice(id, audition = false) else flashStatus(appContext.getString(R.string.mapvm_voice_downloaded, v.displayName))
             } else {
                 showStatus(appContext.getString(R.string.mapvm_voice_download_failed, v.displayName))
             }
@@ -2818,14 +2818,18 @@ class MapViewModel @Inject constructor(
     }
 
     /** Make an already-downloaded voice active: persist the pick, reload the synth (the single switch
-     *  trigger), point the engine at the neural synth, and audition a nav sample. */
-    fun selectVoice(id: String) {
+     *  trigger), point the engine at the neural synth. [audition] speaks a nav sample - true only for
+     *  an explicit pick in the voice library (hearing the voice you chose is the point there); the
+     *  install-completion and delete-fallback paths pass false, because a phone that starts talking
+     *  on its own right after a download reads as a bug (user 2026-07-10). The Test button remains
+     *  the on-demand way to hear the active voice. */
+    fun selectVoice(id: String, audition: Boolean = true) {
         if (!VelaPiper.isVoiceReady(appContext, id)) return
         VelaPiper.setSelectedVoiceId(appContext, id)
         piperSynth.reloadVoice() // THE build of the new voice (race-free; runs first on the worker)
         setVoiceEngine(VoiceEngine(VelaPiper.ENGINE_ID, VelaPiper.LABEL)) // route VoiceGuide→neural + persist engine
         refreshInstalledVoices() // selectedVoiceId + per-voice speaker for the variant UI
-        voice.speak(appContext.getString(R.string.mapvm_voice_sample), interrupt = true) // audition
+        if (audition) voice.speak(appContext.getString(R.string.mapvm_voice_sample), interrupt = true)
     }
 
     /** Delete a downloaded voice, reclaiming its disk. Deleting the ACTIVE voice falls to another
@@ -2843,7 +2847,7 @@ class MapViewModel @Inject constructor(
         if (wasActive) {
             val next = VelaPiper.installedVoiceIds(appContext).firstOrNull { it != id }
             if (next != null) {
-                selectVoice(next) // reloads the synth onto `next` (off `id`'s files); refreshes state, then:
+                selectVoice(next, audition = false) // reloads the synth onto `next` (off `id`'s files); refreshes state, then:
                 piperSynth.deleteModelDir(dir) // unlink `id` on the worker, after the reload
                 hide() // selectVoice's refresh re-read the (still-present) dir → hide `id` again
             } else {

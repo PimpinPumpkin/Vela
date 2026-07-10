@@ -195,6 +195,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
+  "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
+  without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
+  only picking a voice in the library (or the Test button) plays one.
 - ✅ **Arrival time front and center (2026-07-10).** The directions panel's "Arrive at 5:30 PM"
   is bigger and bolder, and the redundant "current traffic" note under it is gone (the route ETAs
   already show traffic). The faster-route offer during navigation joined the tidy notification
