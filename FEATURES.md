@@ -228,6 +228,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   place has an X on its row to remove just that entry (Clear recents still wipes the lot). A real
   place shows its street address in smaller text under the name, and the Home/Work rows show the
   saved address too. The three-dot menus on Home/Work match the row text color now.
+- ✅ **Route chooser and search stay coherent (2026-07-11).** Opening any new place, from search,
+  a suggestion, a pin, or Home/Work, closes an open route chooser instead of leaving it covering
+  the fresh place with a stale route. The locate and parking buttons also stay hidden under the
+  chooser and step list instead of drawing on top of them.
 - ✅ **Warns when you'd arrive near closing time (2026-07-10).** Starting navigation to a place
   that closes within an hour of your arrival (or before you'd get there) shows a heads-up card
   and speaks it: "closes at 9:00 PM and you arrive around 8:40 PM". Reads the closing time from
