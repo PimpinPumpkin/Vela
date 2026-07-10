@@ -120,6 +120,12 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.calculateTargetValue
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -346,11 +352,10 @@ fun MapScreen(
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
-            // Results sheet: back steps ONE detent (expanded -> peek -> minimized -> cleared),
-            // never straight out of the app (a back on the minimized bar used to exit Vela).
-            resultsExpanded -> resultsExpanded = false
-            !state.resultsCollapsed -> vm.collapseResults()
-            else -> vm.clearSearch()
+            // Results sheet: BACK exits the search outright - the drag gestures, the handle and
+            // the X already cover stepping between sizes, so back-stepping detents just made
+            // leaving take three presses (user 2026-07-11).
+            else -> { resultsExpanded = false; vm.clearSearch() }
         }
     }
     // The map target is the focus surface ONLY when the map is primary — hidden while any
@@ -1691,44 +1696,80 @@ private fun SearchResults(
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
     var priceMax by remember { mutableStateOf(0) }
     val screenH = LocalConfiguration.current.screenHeightDp
-    val listMaxH by animateDpAsState(
-        if (expanded) (screenH * 0.82f).dp else (screenH * 0.42f).dp,
-        label = "resultsListHeight",
-    )
-    // Bottom-sheet nested scroll, mirroring PlaceSheet.dismissConn: ONE detent step per
-    // gesture (re-armed at the fling boundary), a down-drag at the list top shrinks a
-    // detent (expanded → peek → minimized), an up-drag into the content grows to full.
+    // The list height is a hand-driven Animatable, the place sheet's physics: drags move it 1:1
+    // with the finger, releases ride the throw's own decay to the nearest size (0 = the minimized
+    // bar, peek, expanded), and the detent just stops the coast. Minimizing animates the list to
+    // ZERO first and only then flips the collapsed state, so the bar swap happens invisibly.
+    val peekL = screenH * 0.42f
+    val expL = screenH * 0.82f
+    val listH = remember { Animatable(if (collapsed) 0f else if (expanded) expL else peekL) }
+    val resultsSettleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    val resultsDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    LaunchedEffect(collapsed, expanded) {
+        val target = if (collapsed) 0f else if (expanded) expL else peekL
+        if (listH.targetValue != target) listH.animateTo(target, resultsSettleSpec)
+    }
     val listState = rememberLazyListState()
     val minimize = rememberUpdatedState(onMinimize)
+    val expand = rememberUpdatedState(onExpand)
+    val isCollapsed = rememberUpdatedState(collapsed)
     val isExpanded = rememberUpdatedState(expanded)
     val setExpanded = rememberUpdatedState(onExpandedChange)
-    val dismissConn = remember(collapsed) {
+    val density = LocalDensity.current
+    val sheetScope = rememberCoroutineScope()
+    fun dragListBy(dyPx: Float) {
+        val dyDp = with(density) { dyPx.toDp().value }
+        sheetScope.launch { listH.snapTo((listH.value - dyDp).coerceIn(0f, expL)) }
+    }
+    fun settleList(velocityPxPerSec: Float) {
+        val vDp = with(density) { velocityPxPerSec.toDp().value }
+        val naturalEnd = resultsDecay.calculateTargetValue(listH.value, -vDp)
+        val target = listOf(0f, peekL, expL).minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekL
+        sheetScope.launch {
+            // States first for peek/expanded so everything keyed on them stays honest; the
+            // MINIMIZED flip waits until the list has ridden down to zero (see above).
+            if (target != 0f) {
+                if (isCollapsed.value) expand.value()
+                setExpanded.value(target == expL)
+            }
+            val towardTarget = (naturalEnd - listH.value) * (target - listH.value) > 0f
+            if (towardTarget && kotlin.math.abs(naturalEnd - listH.value) >= kotlin.math.abs(target - listH.value)) {
+                try {
+                    listH.updateBounds(lowerBound = minOf(listH.value, target), upperBound = maxOf(listH.value, target))
+                    listH.animateDecay(-vDp, resultsDecay)
+                } finally {
+                    listH.updateBounds(lowerBound = null, upperBound = null)
+                }
+                if (kotlin.math.abs(listH.value - target) > 0.5f) listH.animateTo(target, resultsSettleSpec)
+            } else {
+                listH.animateTo(target, resultsSettleSpec, initialVelocity = -vDp)
+            }
+            if (target == 0f && !isCollapsed.value) minimize.value()
+        }
+    }
+    val dismissConn = remember {
         object : NestedScrollConnection {
-            private var acc = 0f
-            private var steppedThisGesture = false
+            private var draggingSheet = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (available.y > 0f && atTop) {
-                    acc += available.y
-                    if (!steppedThisGesture) {
-                        when {
-                            isExpanded.value && acc > 90f -> { setExpanded.value(false); steppedThisGesture = true; acc = 0f }
-                            !isExpanded.value && !collapsed && acc > 150f -> { steppedThisGesture = true; acc = 0f; minimize.value() }
-                        }
-                    }
+                if (available.y > 0f && atTop && listH.value > 0f) {
+                    draggingSheet = true
+                    dragListBy(available.y)
                     return available
                 }
-                if (available.y < 0f) {
-                    acc = 0f
-                    if (!isExpanded.value) setExpanded.value(true)
+                if (available.y < 0f && listH.value < expL) {
+                    draggingSheet = true
+                    dragListBy(available.y)
+                    return available
                 }
                 return Offset.Zero
             }
-            // Fling phase closes every drag (even at zero velocity) — the gesture boundary
-            // that re-arms stepping for the next swipe, exactly like the place sheet.
             override suspend fun onPreFling(available: Velocity): Velocity {
-                acc = 0f
-                steppedThisGesture = false
+                if (draggingSheet) {
+                    draggingSheet = false
+                    settleList(available.y)
+                    return available
+                }
                 return Velocity.Zero
             }
         }
@@ -1778,19 +1819,20 @@ private fun SearchResults(
                             if (collapsed) onExpand() else onExpandedChange(!expanded)
                         })
                     }
-                    .pointerInput(collapsed, expanded) {
-                        var total = 0f
+                    .pointerInput(Unit) {
+                        // Same physics as the body: the handle drags the list 1:1 and the release
+                        // rides the fling to the nearest size.
+                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
                         detectVerticalDragGestures(
-                            onDragStart = { total = 0f },
-                            onVerticalDrag = { change, dy -> change.consume(); total += dy },
-                            onDragEnd = {
-                                when {
-                                    total < -40f && collapsed -> onExpand()
-                                    total < -40f -> onExpandedChange(true)
-                                    total > 40f && expanded -> onExpandedChange(false)
-                                    total > 40f && !collapsed -> onMinimize()
-                                }
+                            onDragStart = { tracker.resetTracking() },
+                            onVerticalDrag = { change, dy ->
+                                change.consume()
+                                tracker.addPosition(change.uptimeMillis, change.position)
+                                if (isCollapsed.value && dy < 0f) expand.value() // list mounts at 0 and grows with the finger
+                                dragListBy(dy)
                             },
+                            onDragEnd = { settleList(tracker.calculateVelocity().y) },
+                            onDragCancel = { settleList(0f) },
                         )
                     },
             ) {
@@ -1915,7 +1957,17 @@ private fun SearchResults(
             }
             if (!collapsed) {
             Divider()
-            LazyColumn(Modifier.nestedScroll(dismissConn).heightIn(max = listMaxH), state = listState) {
+            LazyColumn(
+                Modifier
+                    .nestedScroll(dismissConn)
+                    .layout { measurable, constraints ->
+                        // Layout-phase read: animation frames re-layout the list, never recompose it.
+                        val maxHPx = listH.value.dp.roundToPx().coerceAtLeast(0)
+                        val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, maxHPx)))
+                        layout(pl.width, pl.height) { pl.place(0, 0) }
+                    },
+                state = listState,
+            ) {
                 items(shown) { place ->
                 Column(
                     Modifier
