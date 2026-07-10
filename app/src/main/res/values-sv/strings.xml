@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Annan röstapp</string>
     <string name="map_asr_offer_title">Röstsökning</string>
     <string name="map_asr_offer_body">Ladda ner Vela-rösten för att tala in dina sökningar. Den körs helt på telefonen och laddar inte upp något.</string>
+    <string name="nav_precise_title">Exakt plats krävs</string>
+    <string name="nav_precise_body">Navigeringen följer dig med GPS, vilket kräver exakt plats. Ungefärlig ger bara ett grovt område, så navigeringen skulle aldrig hitta dig.</string>
+    <string name="nav_precise_allow">Tillåt exakt</string>
+    <string name="nav_precise_toast">Navigering kräver exakt plats</string>
+    <string name="loc_off_title">Platsen är av</string>
+    <string name="loc_off_body">Vela har inte platsåtkomst. Du kan tillåta det i systeminställningarna.</string>
+    <string name="loc_off_settings">Öppna inställningar</string>
 </resources>
