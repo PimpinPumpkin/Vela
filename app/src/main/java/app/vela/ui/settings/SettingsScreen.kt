@@ -456,7 +456,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             ToggleRow(stringResource(R.string.settings_load_photos), app.vela.ui.LoadPhotos.on.value) { app.vela.ui.LoadPhotos.set(context, it) }
             Hint(stringResource(R.string.settings_load_photos_hint))
-            // "Hide adult categories" + "Hide website & external links" moved to Advanced.
+
+            // Content filters belong with the other place-content toggles, not in Advanced.
+            ToggleRow(stringResource(R.string.settings_hide_adult), app.vela.ui.HideAdult.on.value) { app.vela.ui.HideAdult.set(context, it) }
+            Hint(stringResource(R.string.settings_hide_adult_hint))
+
+            ToggleRow(stringResource(R.string.settings_hide_external_links), app.vela.ui.HideExternalLinks.on.value) { app.vela.ui.HideExternalLinks.set(context, it) }
+            Hint(stringResource(R.string.settings_hide_external_links_hint))
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_navigation))
@@ -840,10 +846,6 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Hint(stringResource(R.string.settings_advanced_hint))
                 ToggleRow(stringResource(R.string.settings_buildings_3d), app.vela.ui.Buildings3d.on.value) { app.vela.ui.Buildings3d.set(context, it) }
                 Hint(stringResource(R.string.settings_buildings_3d_hint))
-                ToggleRow(stringResource(R.string.settings_hide_adult), app.vela.ui.HideAdult.on.value) { app.vela.ui.HideAdult.set(context, it) }
-                Hint(stringResource(R.string.settings_hide_adult_hint))
-                ToggleRow(stringResource(R.string.settings_hide_external_links), app.vela.ui.HideExternalLinks.on.value) { app.vela.ui.HideExternalLinks.set(context, it) }
-                Hint(stringResource(R.string.settings_hide_external_links_hint))
                 var trafficLights by remember { mutableStateOf(prefs.getBoolean("nav_traffic_lights", false)) }
                 ToggleRow(stringResource(R.string.settings_traffic_lights), trafficLights) {
                     trafficLights = it

@@ -69,7 +69,7 @@
     <string name="settings_hide_external_links">Masquer le site web et les liens externes</string>
     <string name="settings_hide_external_links_hint">Activé = les pages de lieu n’affichent pas les boutons Site web, Street View ou Réserver / Commander (aucun site externe arbitraire ouvert).</string>
     <string name="settings_offline">Hors ligne</string>
-    <string name="settings_offline_hint">Utiliser la carte sans réseau nécessite deux éléments — les TUILES de carte que vous voyez et le RÉSEAU ROUTIER qui vous guide. Enregistrer une zone de carte récupère les deux pour cet endroit ; la liste des régions ci-dessous ajoute le réseau routier partout où vous voyagez.</string>
+    <string name="settings_offline_hint">Téléchargez une zone pour conserver sa carte et ses itinéraires sur votre téléphone, utilisables hors ligne.</string>
     <string name="settings_offline_map_area">Zone de carte</string>
     <string name="settings_offline_download_viewport">Télécharger la zone affichée</string>
     <string name="settings_offline_download_viewport_hint">Enregistre les tuiles de la zone que vous aviez à l\'écran — ainsi que la région de routage autour — pour l\'afficher et y naviguer plus tard sans réseau. La recherche nécessite toujours une connexion.</string>
