@@ -220,6 +220,9 @@
     <string name="place_delta_min">+%1$d min</string>
     <string name="place_via">via %1$s</string>
     <string name="place_live_traffic">realtidstrafik</string>
+    <string name="place_traffic_light">lite trafik</string>
+    <string name="place_traffic_moderate">måttlig trafik</string>
+    <string name="place_traffic_heavy">tät trafik</string>
     <string name="place_finding_transit">Söker kollektivrutter…</string>
     <string name="place_no_transit">Inga kollektivrutter hittades</string>
     <string name="place_hide_steps">Dölj steg</string>

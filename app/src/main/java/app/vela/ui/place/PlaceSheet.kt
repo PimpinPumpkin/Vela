@@ -1555,10 +1555,19 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                     )
                 }
             }
+            // The traffic word GRADES with the same thresholds that colour the ETA (trafficEtaColor),
+            // so "heavy traffic" in words backs up the red time - colour alone isn't readable for
+            // everyone. A live route whose typical time is unknown keeps the plain "live traffic".
+            val trafficWord = if (!r.hasLiveTraffic) null else when {
+                r.trafficRatio == null -> stringResource(R.string.place_live_traffic)
+                r.trafficRatio!! > 1.4 -> stringResource(R.string.place_traffic_heavy)
+                r.trafficRatio!! > 1.15 -> stringResource(R.string.place_traffic_moderate)
+                else -> stringResource(R.string.place_traffic_light)
+            }
             val sub = listOfNotNull(
                 formatDistance(r.distanceMeters),
                 r.summary?.takeIf { it.isNotBlank() }?.let { stringResource(R.string.place_via, it) },
-                if (r.hasLiveTraffic) stringResource(R.string.place_live_traffic) else null,
+                trafficWord,
             ).joinToString("  ·  ")
             Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
         }
