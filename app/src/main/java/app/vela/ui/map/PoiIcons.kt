@@ -115,15 +115,17 @@ object PoiIcons {
     /** A GREY teardrop pin with a RED circle holding the white category glyph — the app's own
      *  marker language (grey backing, coloured dot) with red standing in for the category colour,
      *  which is how a result reads as a result (user 2026-07-10). Pin TIP at bottom-centre, for a
-     *  bottom-anchored layer (the tip marks the place, Google-style). */
+     *  bottom-anchored layer (the tip marks the place, Google-style). The GEOMETRY is [marker]'s
+     *  exact proportions scaled to 0.86 — an earlier taller-tailed variant read as a different
+     *  species of pin next to the ambient icons (user 2026-07-10); keep the two in lockstep. */
     private fun resultPin(tf: Typeface, codepoint: Int): Bitmap {
         val w = 86
-        val h = 94
+        val h = 79
         val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val cx = w / 2f
-        val bodyCy = h * 0.36f
-        val bodyR = w * 0.335f
+        val bodyCy = h / 2f
+        val bodyR = w * 0.32f
         val tipY = h - 4f
         val d = tipY - bodyCy
         val sin = (bodyR / d).coerceAtMost(0.985f)
@@ -148,11 +150,11 @@ object PoiIcons {
         })
         canvas.restore()
         canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0A6") })
-        canvas.drawCircle(cx, bodyCy, bodyR * 0.82f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
+        canvas.drawCircle(cx, bodyCy, w * 0.27f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = tf
             color = Color.WHITE
-            textSize = w * 0.33f
+            textSize = w * 0.32f
             textAlign = Paint.Align.CENTER
         }
         val glyph = String(Character.toChars(codepoint))
