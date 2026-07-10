@@ -472,6 +472,23 @@ Defaults that make the safe path the easy one:
   kept (it's still the reusable pre-permission screen the **PR3 voice-search mic** uses at
   point-of-use for RECORD_AUDIO) - it's just no longer used for location. Don't re-request location
   straight from the map.
+- **ONE stacked notification area on the map (2026-07-10).** The heads-up flash, download
+  progress cards, the update card and pushed notices all render in the SAME TopCenter Column in
+  MapScreen (each with its own dismiss) - the old separate status card sat on the category chips
+  and painted over the update card. Position: browse = statusBar + 132dp (just under search bar +
+  chips); during nav it hangs off the turn card's MEASURED bottom edge (`navBannerBottomPx`, the
+  same onGloballyPositioned report the compass uses) + 10dp, so it slides with lane rows / the
+  "then" row instead of a guessed fixed offset. The flash (`MapUiState.status`) shows in ANY map
+  state; the other cards stay gated to the bare map. `statusVoiceAction` on the state marks a
+  voice-problem flash: `InfoCard` then adds a filled **"Get a voice" pill** (UpdateCard layout)
+  that deep-links Settings -> voice library (`MapScreen.onOpenVoiceSettings` -> VelaRoot ->
+  `SettingsScreen(openVoiceLibrary = true)`). Both the no-engine warning and the
+  missing-language hint carry it.
+- **Spoken directions are a persistent toggle (2026-07-10).** Settings -> Voice top row
+  ("Spoken directions", pref `spoken_directions` in vela_settings, default on) and the in-nav
+  speaker button share ONE state: `MapViewModel.setSpokenDirections` writes the pref + `voice.muted`;
+  `toggleVoice` routes through it; init applies the pref at startup. When it's OFF the no-voice-
+  engine warning is suppressed (silence is chosen, don't nag).
 - **Closing-time warning at nav start (2026-07-10).** `MapViewModel.maybeWarnClosingSoon` (called
   in `startNav` before launch/demo): when the drive's arrival (now + in-traffic ETA) lands within
   an hour of the destination's closing time, or past it, it warns ONCE - `flashStatus` heads-up

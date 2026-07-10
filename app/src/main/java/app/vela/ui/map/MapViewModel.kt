@@ -162,6 +162,7 @@ data class MapUiState(
     val arrivedDistanceMeters: Double = 0.0,
     val arrivedSeconds: Double = 0.0,
     val status: String? = null,
+    val statusVoiceAction: Boolean = false, // status is a voice problem -> show the Get-a-voice pill
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
     val voiceDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
     val installedVoiceIds: Set<String> = emptySet(), // Piper voices present on disk (the voice browser)
@@ -320,7 +321,7 @@ class MapViewModel @Inject constructor(
                 lastVoiceLangHinted = lang
                 val endonym = app.vela.ui.AppLocale.endonym(lang)
                 viewModelScope.launch(Dispatchers.Main) {
-                    flashStatus(appContext.getString(R.string.mapvm_voice_lang_missing, endonym), 6000L)
+                    flashStatus(appContext.getString(R.string.mapvm_voice_lang_missing, endonym), 6000L, voiceAction = true)
                 }
             }
         }
@@ -334,6 +335,12 @@ class MapViewModel @Inject constructor(
         val voicePrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
         val savedSpeed = voicePrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
         voice.setRate(savedSpeed) // relay the saved rate to the AOSP TTS engine at startup
+        // Spoken directions on/off is PERSISTENT: the Settings toggle and the in-nav mute
+        // button share the one pref, so a muted choice survives restarts.
+        if (!voicePrefs.getBoolean("spoken_directions", true)) {
+            voice.muted = true
+            _state.update { it.copy(voiceMuted = true) }
+        }
         val installedVoices = VelaPiper.installedVoiceIds(appContext)
         val activeVoice = VelaPiper.effectiveVoiceId(appContext)
         _state.update {
@@ -2257,9 +2264,10 @@ class MapViewModel @Inject constructor(
             tripStore.startTrip(_state.value.selected?.name ?: appContext.getString(R.string.mapvm_trip_default_name), dest, System.currentTimeMillis())
             tripStore.saveRoute(route) // save the blue line + maneuvers so a replay drives THIS route
         }
-        // If the phone has no voice engine, say so once instead of going silent.
-        if (voice.availableEngines().isEmpty()) {
-            showStatus(appContext.getString(R.string.mapvm_no_voice_engine))
+        // If the phone has no voice engine, say so once instead of going silent - with a pill
+        // straight to the voice library. Not when spoken directions are OFF: silence is chosen.
+        if (voice.availableEngines().isEmpty() && !voice.muted) {
+            showStatus(appContext.getString(R.string.mapvm_no_voice_engine), voiceAction = true)
         }
     }
 
@@ -2302,11 +2310,14 @@ class MapViewModel @Inject constructor(
      *  step — so recenter undoes both a manual pan and a swipe-ahead step preview. */
     fun recenterNav() = _state.update { it.copy(navCameraDetached = false, previewStepIndex = null) }
 
-    /** Mute / unmute spoken guidance (the in-nav speaker button). */
-    fun toggleVoice() {
-        val muted = !voice.muted
-        voice.muted = muted
-        _state.update { it.copy(voiceMuted = muted) }
+    /** Mute / unmute spoken guidance (the in-nav speaker button). Persisted. */
+    fun toggleVoice() = setSpokenDirections(voice.muted)
+
+    /** Turn spoken directions on/off (Settings toggle; the nav mute button shares this state). */
+    fun setSpokenDirections(on: Boolean) {
+        voice.muted = !on
+        settingsPrefs.edit().putBoolean("spoken_directions", on).apply()
+        _state.update { it.copy(voiceMuted = !on) }
     }
 
     /** Reflect the persisted opt-in diagnostics flag into UI state (Settings reads it). */
@@ -2892,12 +2903,12 @@ class MapViewModel @Inject constructor(
 
     /** A status banner that **auto-clears** after a few seconds (unlike [showStatus],
      *  which stays until dismissed) — for transient feedback like a finished download. */
-    fun flashStatus(msg: String, millis: Long = 4500L) {
+    fun flashStatus(msg: String, millis: Long = 4500L, voiceAction: Boolean = false) {
         statusJob?.cancel()
-        _state.update { it.copy(status = msg) }
+        _state.update { it.copy(status = msg, statusVoiceAction = voiceAction) }
         statusJob = viewModelScope.launch {
             delay(millis)
-            _state.update { if (it.status == msg) it.copy(status = null) else it }
+            _state.update { if (it.status == msg) it.copy(status = null, statusVoiceAction = false) else it }
         }
     }
 
@@ -2931,9 +2942,10 @@ class MapViewModel @Inject constructor(
         startLocation() // resume the live collector (no-ops if already running)
     }
 
-    fun clearStatus() = _state.update { it.copy(status = null) }
+    fun clearStatus() = _state.update { it.copy(status = null, statusVoiceAction = false) }
 
-    fun showStatus(msg: String) = _state.update { it.copy(status = msg) }
+    fun showStatus(msg: String, voiceAction: Boolean = false) =
+        _state.update { it.copy(status = msg, statusVoiceAction = voiceAction) }
 
     // --- offline download (triggered from Settings, not a map FAB) -------------
 
