@@ -82,6 +82,12 @@ RE_POPUP    = re.compile(r'\bPopup\s*\(')
 RE_SURFACE  = re.compile(r'\b(Card|Surface|ListItem|OutlinedCard|ElevatedCard)\s*\(')  # clickable ones
 RE_ANDROIDVIEW = re.compile(r'\bAndroidView\s*\(')
 RE_SHEET    = re.compile(r'\b(ModalBottomSheet|BottomSheetScaffold)\s*\(')
+# Weak auto-focus: rememberDpadAutoFocus() stops the instant requestFocus() doesn't throw, even when
+# focus never actually landed - device-verified to leave a screen UNfocused (Settings' Back button).
+# Surface every use for triage: confirm focus really lands on a SMALL screen, else use the robust
+# dpadAutoFocus()/dpadAutoFocus(requester) (confirms via onFocusEvent). Not auto-failed: a couple of
+# sites (e.g. the reviews panel handing off to a WebView) legitimately want stop-on-first-success.
+RE_WEAK_AF  = re.compile(r'\brememberDpadAutoFocus\s*\(')
 # A dialog's content is safe on a small screen if it SCROLLS or FILLS the screen (a full-screen
 # viewer paginates instead). Otherwise a tall body clips its buttons off a feature-phone display.
 RE_DLG_SAFE = re.compile(r'verticalScroll|LazyColumn|LazyVerticalGrid|HorizontalPager|VerticalPager|fillMaxSize|fillMaxHeight')
@@ -155,6 +161,10 @@ for path in walk():
         #    sheets for exactly this reason).
         if has(RE_SHEET, ln):
             check.append(("sheet", f"{name}:{n}", "ModalBottomSheet/BottomSheetScaffold - confirm it auto-focuses a primary control (Compose sheets open unfocused)"))
+        # M. WEAK auto-focus (rememberDpadAutoFocus) - can silently no-op on a small/dense screen; confirm
+        #    focus actually lands there (screenshot it) or switch to the robust dpadAutoFocus().
+        if has(RE_WEAK_AF, ln) and base != "DpadFocus.kt":   # skip the defining file (this is a usage check)
+            check.append(("weakfocus", f"{name}:{n}", "rememberDpadAutoFocus() - weak auto-focus can leave the screen UNfocused on a small screen; verify focus lands (visually) or use robust dpadAutoFocus()"))
 
 order = {"HIGH": 0, "MED": 1, "LOW": 2}
 viol.sort(key=lambda v: order.get(v[0], 9))

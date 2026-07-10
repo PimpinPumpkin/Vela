@@ -2,8 +2,8 @@
 
 Thanks for wanting to help. Vela is a degoogled maps client with a small surface and
 strong opinions; this page tells you what a good contribution looks like so your PR
-lands on the first try. The deeper background lives in [SPEC.md](docs/SPEC.md) (how it's
-built and why) and [AGENTS.md](AGENTS.md) (build rules and gotchas, useful to humans
+lands on the first try. The deeper background lives in [SPEC.md](SPEC.md) (how it's
+built and why) and [AGENTS.md](../AGENTS.md) (build rules and gotchas, useful to humans
 too).
 
 ## Ground rules, in order of importance
