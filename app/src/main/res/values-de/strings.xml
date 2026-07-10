@@ -220,6 +220,9 @@
     <string name="place_delta_min">+%1$d Min.</string>
     <string name="place_via">über %1$s</string>
     <string name="place_live_traffic">Live-Verkehr</string>
+    <string name="place_traffic_light">wenig Verkehr</string>
+    <string name="place_traffic_moderate">mäßiger Verkehr</string>
+    <string name="place_traffic_heavy">starker Verkehr</string>
     <string name="place_finding_transit">ÖPNV-Verbindungen werden gesucht …</string>
     <string name="place_no_transit">Keine ÖPNV-Verbindungen gefunden</string>
     <string name="place_hide_steps">Wegbeschreibung ausblenden</string>

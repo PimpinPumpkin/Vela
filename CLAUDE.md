@@ -256,6 +256,15 @@ Defaults that make the safe path the easy one:
   Voice section) not an inline accordion - `SettingsScreen` early-returns to it when
   `showVoiceLibrary`; its own Back returns to Settings. Put a new setting in the section it serves;
   niche/experimental → Advanced, demo/test tools → Developer, place-content → Place pages not Map.
+- **Route-row traffic words GRADE with the ETA colour (2026-07-10):** the "live traffic" tag in
+  RouteOption's via line is now "light/moderate/heavy traffic", switched on `trafficRatio` at the
+  SAME thresholds `trafficEtaColor` uses (>1.4 heavy red, >1.15 moderate amber, else light green) -
+  words back up the colour for colour-blind users. Ratio-less live routes keep the plain "live
+  traffic"; keep the thresholds in lockstep if either side changes.
+- **Voice install/fallback never auto-speaks (2026-07-10):** `selectVoice(id, audition)` only
+  auditions the nav sample on an EXPLICIT library pick ("Use" button); the download-completion
+  (firstEver) and delete-fallback paths pass audition=false - a phone that starts talking on its
+  own right after an install reads as a bug (user report). The Test button is the on-demand way.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
