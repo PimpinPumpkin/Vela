@@ -485,4 +485,19 @@
     <string name="settings_developer_hint">Hulpmiddelen voor demo\'s, schermafbeeldingen en tests. Zet ze uit voor echt gebruik.</string>
     <string name="settings_browse_voices">Stemmen bekijken</string>
     <string name="settings_browse_voices_hint">Download en wissel tussen Vela\'s stemmen op het apparaat.</string>
+    <string name="voice_capture_listening">Luisteren…</string>
+    <string name="voice_capture_starting">Voorbereiden…</string>
+    <string name="voice_capture_done">Klaar</string>
+    <string name="mapvm_asr_ready">Spraakzoeken op het apparaat is klaar</string>
+    <string name="mapvm_asr_download_failed">Kan het spraakmodel niet downloaden. Controleer je verbinding en probeer opnieuw.</string>
+    <string name="settings_voice_search_model">Spraakzoeken op het apparaat</string>
+    <string name="settings_voice_search_model_hint">Vela\'s eigen spraakherkenning draait op je telefoon, dus spraakzoeken werkt zonder andere app en er wordt niets geüpload. Eenmalige download van ~%1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Downloaden (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Verwijderen</string>
+    <string name="settings_voice_search_downloading">Downloaden… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installeren…</string>
+    <string name="settings_voice_search_engine_title">Als je op de microfoon tikt</string>
+    <string name="settings_voice_search_engine_auto">Op het apparaat indien beschikbaar</string>
+    <string name="settings_voice_search_engine_local">Alleen op het apparaat</string>
+    <string name="settings_voice_search_engine_system">Andere spraak-app</string>
 </resources>

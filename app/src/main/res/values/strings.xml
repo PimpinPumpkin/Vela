@@ -508,4 +508,19 @@
     <string name="settings_developer_hint">Tools for demos, screenshots and testing. Turn each off for real use.</string>
     <string name="settings_browse_voices">Browse voices</string>
     <string name="settings_browse_voices_hint">Download and switch between Vela\'s on-device voices.</string>
+    <string name="voice_capture_listening">Listening…</string>
+    <string name="voice_capture_starting">Getting ready…</string>
+    <string name="voice_capture_done">Done</string>
+    <string name="mapvm_asr_ready">On-device voice search is ready</string>
+    <string name="mapvm_asr_download_failed">Couldn\'t download the voice model. Check your connection and try again.</string>
+    <string name="settings_voice_search_model">On-device voice search</string>
+    <string name="settings_voice_search_model_hint">Vela\'s own speech-to-text runs on your phone, so voice search works with no other app and nothing is uploaded. One-time ~%1$d MB download.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Download (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Remove</string>
+    <string name="settings_voice_search_downloading">Downloading… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installing…</string>
+    <string name="settings_voice_search_engine_title">When you tap the mic</string>
+    <string name="settings_voice_search_engine_auto">On-device when available</string>
+    <string name="settings_voice_search_engine_local">On-device only</string>
+    <string name="settings_voice_search_engine_system">Other voice app</string>
 </resources>

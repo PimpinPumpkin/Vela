@@ -485,4 +485,19 @@
     <string name="settings_developer_hint">Werkzeuge für Demos, Screenshots und Tests. Schalte sie für den echten Einsatz aus.</string>
     <string name="settings_browse_voices">Stimmen durchsuchen</string>
     <string name="settings_browse_voices_hint">Vela-Stimmen auf dem Gerät herunterladen und wechseln.</string>
+    <string name="voice_capture_listening">Höre zu…</string>
+    <string name="voice_capture_starting">Wird vorbereitet…</string>
+    <string name="voice_capture_done">Fertig</string>
+    <string name="mapvm_asr_ready">On-Device-Sprachsuche ist bereit</string>
+    <string name="mapvm_asr_download_failed">Sprachmodell konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="settings_voice_search_model">On-Device-Sprachsuche</string>
+    <string name="settings_voice_search_model_hint">Vela\'s eigene Spracherkennung läuft auf dem Gerät, sodass die Sprachsuche ohne andere App funktioniert und nichts hochgeladen wird. Einmaliger Download von ~%1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Herunterladen (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Entfernen</string>
+    <string name="settings_voice_search_downloading">Wird geladen… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Wird installiert…</string>
+    <string name="settings_voice_search_engine_title">Beim Tippen auf das Mikrofon</string>
+    <string name="settings_voice_search_engine_auto">Auf dem Gerät, wenn verfügbar</string>
+    <string name="settings_voice_search_engine_local">Nur auf dem Gerät</string>
+    <string name="settings_voice_search_engine_system">Andere Sprach-App</string>
 </resources>
