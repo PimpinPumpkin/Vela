@@ -89,6 +89,24 @@ app makes network requests only to the services in the table above, only when a 
 needs them. It's GPLv3 - you can read every request the code makes in
 [`core/data/google`](core/src/main/java/app/vela/core/data/google) and [`SPEC.md`](SPEC.md).
 
+## Voice search (optional)
+
+The search-bar mic turns speech into a query one of two ways, both privacy-preserving:
+
+- **On your phone (Vela's own model).** If you download the ~47 MB speech model
+  (Settings -> Search), tapping the mic records into Vela and transcribes **entirely on
+  the device** with a bundled Whisper model. The audio is never written to disk and never
+  leaves the phone; there is no account and no network request for the transcription. Vela
+  asks for the microphone permission only the first time you tap the mic.
+- **Another voice app.** If instead you use an installed voice-input app (for example FUTO
+  Voice Input), tapping the mic hands off to that app through Android's standard
+  speech-recognition intent. **That app records the audio, not Vela** - Vela sends it
+  nothing and only gets the recognized text back to drop into the search box, so it needs
+  no microphone permission for this path.
+
+The mic only appears when one of these is available, and the whole feature can be turned
+off in Settings -> Search.
+
 ## Diagnostics (opt-in, off by default)
 
 Settings → **Diagnostics** has one switch, **off by default**. When you turn it on, Vela
