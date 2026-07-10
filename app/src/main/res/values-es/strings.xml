@@ -367,7 +367,7 @@
     <string name="mapvm_no_voice_engine">No hay ninguna voz instalada para las indicaciones por voz</string>
     <string name="mapscreen_get_voice">Añadir una voz</string>
     <string name="settings_spoken_directions">Indicaciones por voz</string>
-    <string name="mapvm_voice_lang_missing">Las indicaciones por voz necesitan una voz en %1$s — añádela en Ajustes → Voz</string>
+    <string name="mapvm_voice_lang_missing">Las indicaciones por voz necesitan una voz en %1$s, añádela en Ajustes → Voz</string>
     <string name="mapvm_no_track_to_replay">Ese trayecto no tiene rastro para reproducir</string>
     <string name="mapvm_replaying">Reproduciendo %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Lugares guardados de Vela (%1$d)</string>
