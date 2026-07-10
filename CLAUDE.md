@@ -249,7 +249,7 @@ Defaults that make the safe path the easy one:
   out of their old sections: **Advanced** = 3D buildings + traffic-light guidance; **Developer** =
   demo drive, simulate location, trip recording (each "turn off for real use"). The two **content
   filters (hide-adult, hide-external-links) stay in Place pages** with the other place-content
-  toggles (user 2026-07-10), NOT Advanced. **Offline maps** (renamed from "Offline") sits right below Language, ABOVE Search (people reach it often, user 2026-07-10). Its routing-region filter field just says "Search" (the old "Filter N regions…" wrapped to multiple lines). **Language is a "Follow
+  toggles (user 2026-07-10), NOT Advanced. **Offline maps** (renamed from "Offline") sits right below Language, ABOVE Search (people reach it often, user 2026-07-10). Its two subheads were reframed 2026-07-10 (user: region vs routing region read confusing): **"Local area"** (the viewport download: map + roads + addresses for where you are) and **"States & countries"** (renamed from "Routing regions": the whole-region graph + place pack, framed as "everything to get around a state/province/country offline"). The region filter field just says "Search" (the old "Filter N regions…" wrapped to multiple lines). **Language is a "Follow
   system language" ToggleRow** that reveals the 11-language picker only when OFF (seeded with
   `AppLocale.deviceDefaultSupported()`); most people never see the list. **The Voice library is a
   DEDICATED screen** (`VoiceBrowseScreen`, reached by the "Browse voices" `OutlinedButton` in the
