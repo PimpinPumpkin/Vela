@@ -195,6 +195,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **Transit lines are opt-in now (2026-07-10).** The purple rail highlight is off by default;
+  it reads as mystery lines if you don't know what it is. Settings → Map → "Highlight transit
+  lines" brings it back, and an earlier choice is kept either way.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
