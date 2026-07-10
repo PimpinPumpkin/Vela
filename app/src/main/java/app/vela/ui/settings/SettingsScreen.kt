@@ -428,13 +428,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             ToggleRow(stringResource(R.string.settings_voice_search_toggle), app.vela.ui.VoiceSearch.enabled.value) {
                 app.vela.ui.VoiceSearch.set(context, it)
             }
-            // The hint tells the truth about whether the mic can actually appear: it needs a
-            // voice-input app installed (a later build adds an on-device model as a second path).
             val hasVoiceProvider = remember { app.vela.ui.VoiceSearch.hasProvider(context) }
-            Hint(
-                if (hasVoiceProvider) stringResource(R.string.settings_voice_search_hint)
-                else stringResource(R.string.settings_voice_search_none),
-            )
+            Hint(stringResource(R.string.settings_voice_search_hint))
 
             // On-device voice search (tier-1): download Vela's own Whisper model, or remove it. Works
             // with no other app and uploads nothing; Auto uses it over a provider when it's installed.
