@@ -21,6 +21,11 @@ Last updated: 2026-07-08.
 - **In-app updater + content toggles (2026-07-08).** A PipePipe-style updater checks the newest GitHub
   release (about daily, Settings toggle), downloads the APK and hands it to Android's installer. Plus
   Settings switches to hide reviews and skip photo loading, and a 3D-buildings toggle for weaker GPUs.
+- **On-device voice search (Vela Voice STT) - DONE 2026-07-10, device-verified.** The search-bar mic
+  transcribes IN-PROCESS with a downloadable Whisper tiny model (same bundled sherpa-onnx runtime as
+  TTS, `asr-models` release hosting, ~58 MB), with an installed voice-input app as the intent-handoff
+  alternative and a download offer when neither exists. Possible follow-up: bigger model tiers in the
+  same catalog (tiny is the speed/size tradeoff).
 - **In-process neural voice (Piper) - DONE, device-verified.** Vela bundles the sherpa-onnx VITS
   runtime and downloads a **Piper** voice itself (progress bar), running it in-process as the default nav
   voice - near-Siri quality, no standalone TTS app. Default = **HFC Female** (`en_US-hfc_female-medium`,
