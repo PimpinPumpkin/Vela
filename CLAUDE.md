@@ -321,6 +321,19 @@ Defaults that make the safe path the easy one:
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
+- **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
+  the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result is RED and keeps
+  its category glyph (`resultPin`); rated FOOD results get the wide rating "speech bubble"
+  (`ratingBubble`, theme-surfaced, regenerated per style load because bitmaps can't theme).
+  Bitmaps are generated ON DEMAND in applyData's marker loop (`ensureResultIcon` - bubble keys
+  carry the rating tenths, so only the ratings actually on screen get bitmaps). The pin layer
+  COLLIDES by rank (`symbolSortKey` = result order, allowOverlap false): in a dense downtown the
+  best results keep pins and the rest draw as the small red dots of `vela-markers-dots` (same
+  source, below, allowOverlap+ignorePlacement true), expanding back into pins on zoom - never a
+  pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels sit UNDER the pin
+  (variableAnchor TOP) in NEUTRAL ink both themes - Google doesn't category-tint result labels,
+  only ambient POI labels take the tint. Dots carry the same MARKER_INDEX_PROP feature prop, so
+  a collapsed result is still tappable.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
