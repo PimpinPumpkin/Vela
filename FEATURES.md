@@ -187,6 +187,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   and Settings says why. Keyboard-only dictation (Sayboard, FUTO Keyboard) doesn't trigger it since
   apps can't invoke a keyboard's mic; those users keep using the keyboard mic, and a later build
   adds an on-device model so voice search works with no third-party app at all.
+- ✅ **On-device voice search (2026-07-10).** Voice search now works with **no other app at all**:
+  download Vela's own ~47 MB speech model (Settings -> Search) and tapping the mic records and
+  transcribes **entirely on your phone** with a bundled Whisper model, then runs the text as a
+  search. Nothing is uploaded, no account, and it covers all 11 of Vela's languages. A listening
+  sheet shows the mic pulsing with your voice; it stops on its own after a beat of silence (or tap
+  Done), and the microphone permission is asked only the first time you tap the mic. When both the
+  on-device model and a voice-input app are present, a Settings picker chooses which to use (on-device
+  by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
+  the listening sheet, and the model transcribing back into the search box.
 - ✅ **Location asked at "Get started", not on the map (2026-07-10).** The location permission used
   to pop the instant the map first loaded, out of nowhere. It now fires as soon as you tap Get
   started on the welcome screen: the welcome screen already says what Vela is, so a maps app asking
