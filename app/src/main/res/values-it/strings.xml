@@ -319,7 +319,7 @@
     <string name="nav_maneuver_continue">Prosegui</string>
     <string name="nav_gps_lost">Ricerca del segnale GPS…</string>
     <string name="nav_compound_then">poi</string>
-    <string name="nav_preview_tap_resume">Anteprima — tocca per riprendere</string>
+    <string name="nav_preview_tap_resume">Anteprima, tocca per riprendere</string>
     <string name="nav_rerouting">ricalcolo…</string>
     <string name="nav_unmute_voice">Riattiva guida vocale</string>
     <string name="nav_mute_voice">Disattiva guida vocale</string>
@@ -367,7 +367,7 @@
     <string name="mapvm_no_voice_engine">Nessuna voce installata per le indicazioni vocali</string>
     <string name="mapscreen_get_voice">Aggiungi una voce</string>
     <string name="settings_spoken_directions">Indicazioni vocali</string>
-    <string name="mapvm_voice_lang_missing">Le indicazioni vocali richiedono una voce %1$s — aggiungila in Impostazioni → Voce</string>
+    <string name="mapvm_voice_lang_missing">Le indicazioni vocali richiedono una voce %1$s, aggiungila in Impostazioni → Voce</string>
     <string name="mapvm_no_track_to_replay">Quel viaggio non ha una traccia da riprodurre</string>
     <string name="mapvm_replaying">Riproduzione di %1$s (3×)…</string>
     <string name="mapvm_export_saved_subject">Luoghi salvati di Vela (%1$d)</string>
@@ -440,7 +440,7 @@
     <string name="car_mute">Muto</string>
     <string name="car_unmute">Riattiva</string>
     <string name="car_faster_route">Più veloce −%1$d min</string>
-    <string name="car_no_route">Nessun percorso — controlla la posizione</string>
+    <string name="car_no_route">Nessun percorso, controlla la posizione</string>
     <string name="map_parking_saved">Parcheggio salvato</string>
     <string name="map_parking_no_fix">In attesa della posizione</string>
     <string name="map_parking_cleared">Parcheggio rimosso</string>
