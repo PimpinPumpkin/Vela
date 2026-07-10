@@ -472,6 +472,18 @@ Defaults that make the safe path the easy one:
   kept (it's still the reusable pre-permission screen the **PR3 voice-search mic** uses at
   point-of-use for RECORD_AUDIO) - it's just no longer used for location. Don't re-request location
   straight from the map.
+- **Closing-time warning at nav start (2026-07-10).** `MapViewModel.maybeWarnClosingSoon` (called
+  in `startNav` before launch/demo): when the drive's arrival (now + in-traffic ETA) lands within
+  an hour of the destination's closing time, or past it, it warns ONCE - `flashStatus` heads-up
+  card + `voice.speak` - "X closes at 9:00 PM and you arrive around 8:40 PM". Closing time is
+  parsed from the place's own localized STATUS TEXT by `:core`'s `data/ClosingTime`
+  (unit-tested): 12h and 24h shapes, last-time-token-wins, and it ONLY parses an OPEN place -
+  a closed status carries opening times ("Closed - Opens 9 AM"), the classic mistake. A "12 AM"/
+  "00:00" closing returns 1440 (tonight's midnight) so plain arithmetic works; a closing that
+  reads earlier than now is treated as past-midnight (+24 h). Guards: the selected place must sit
+  within 200 m of the route end (multi-stop trips whose last stop isn't the selected place skip
+  the warning). NB on a device with NO TTS voice the later "no voice engine" hint overwrites the
+  flash (single status slot) - with any voice installed the warning shows and is spoken.
 - **Location-permission UX gates (2026-07-10).** Turn-by-turn REQUIRES precise location (coarse
   fixes are ~2 km; the nav fix discipline correctly refuses non-GPS and >50 m fixes, so nav on
   coarse sat at "Searching for GPS" forever with no explanation). `onStartNav` in MapScreen now

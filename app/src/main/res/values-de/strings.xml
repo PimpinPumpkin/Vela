@@ -489,6 +489,8 @@
     <string name="voice_capture_done">Fertig</string>
     <string name="mapvm_asr_ready">Die Vela-Stimme ist bereit</string>
     <string name="mapvm_asr_download_failed">Sprachmodell konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="mapvm_closing_soon">%1$s schließt um %2$s und du kommst gegen %3$s an</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s schließt um %2$s, bevor du gegen %3$s ankommst</string> <!-- format -->
     <string name="settings_voice_search_model">Vela-Stimme</string>
     <string name="settings_voice_search_model_hint">Die Vela-Stimme macht aus Sprache direkt auf deinem Gerät eine Suche: keine andere App nötig, nichts wird hochgeladen. Einmaliger Download von %1$d MB.</string>  <!-- format -->
     <string name="settings_voice_search_download">Herunterladen (%1$d MB)</string>  <!-- format -->
