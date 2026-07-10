@@ -195,6 +195,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **Update button is a filled pill (2026-07-10).** The update card's Update action is a filled
+  pill instead of tinted text, so it stands out by shape and fill rather than colour alone.
 - ✅ **Recents you can prune, with addresses (2026-07-10).** Every recent search and recently-opened
   place has an X on its row to remove just that entry (Clear recents still wipes the lot). A real
   place shows its street address in smaller text under the name, and the Home/Work rows show the
