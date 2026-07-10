@@ -27,6 +27,22 @@ messages, UI strings, or script output. Plain text only. Also no em-dashes; writ
 plain human voice (commit subjects are the user-facing changelog). Use words like `PASS`/
 `FAIL`, not pictographs.
 
+## Porting from upstream (hard rules)
+
+This is a fork of PimpinPumpkin/Vela and periodically ports fixes from it. Two
+non-negotiable rules for any ported commit:
+
+- **CREDIT THE ORIGINAL AUTHOR, CLEARLY, IN THE COMMIT.** Name the upstream commit SHA in
+  the commit subject or body (e.g. `Port upstream 84ab10f: ...`). Never present upstream
+  work as original. The upstream project is the source; say so plainly.
+- **Re-verify D-pad AND small-screen compatibility after EVERY port, thoroughly.** D-pad /
+  feature-phone operability is this fork's reason to exist and upstream does not test for
+  it, so a port can silently regress it. After each ported change: compile, run
+  `tests/dpad/audit_static.sh` (host-side) and the `tests/dead_code` gate, and - for anything
+  touching UI - the on-device `tests/dpad/run_all.sh` + `tests/dpad/audit_dynamic.sh` and
+  `tests/small_screen/run_all.sh`. A port that regresses D-pad or small-screen operability
+  does not land.
+
 ## Build
 
 - **Build variants (reworked).**
