@@ -419,7 +419,9 @@ fun MapScreen(
             val heard = result.data
                 ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
                 ?.firstOrNull()
-                ?.trim()
+                // Providers write prose too ("Okay."): strip the trailing sentence punctuation the
+                // same way the on-device path does, so no voice query searches with a period.
+                ?.trim()?.trimEnd('.', '!', '?', ',', ';', ':')?.trim()
             if (!heard.isNullOrEmpty()) {
                 focusManager.clearFocus()
                 vm.onQueryChange(heard)
@@ -551,6 +553,7 @@ fun MapScreen(
             styleUri = mapStyleUri,
             myLocation = state.myLocation,
             myBearing = state.myBearing,
+            myAccuracyM = state.myAccuracyM,
             mySpeed = state.mySpeed,
             mySpeedRaw = state.mySpeedRaw,
             replaySpeedup = if (state.replaying) MapViewModel.REPLAY_SPEEDUP else 1f,

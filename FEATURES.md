@@ -195,6 +195,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **Approximate location shows honestly (2026-07-10).** If you grant only approximate location
+  (or the fix is just weak), the map now draws a soft translucent circle around the dot at the fix's
+  real uncertainty radius, so "somewhere in this area" looks like what it is instead of a
+  falsely precise point. Normal GPS keeps the plain dot, and the circle never shows during
+  navigation.
 - ✅ **Location asked at "Get started", not on the map (2026-07-10).** The location permission used
   to pop the instant the map first loaded, out of nowhere. It now fires as soon as you tap Get
   started on the welcome screen: the welcome screen already says what Vela is, so a maps app asking

@@ -95,6 +95,7 @@ data class MapUiState(
                                      // when coarse fixes keep the ordinary stale timer from firing
     val compassHeading: Float? = null, // device facing (rotation-vector sensor) — browse cone when stopped
     val myLocationStale: Boolean = true, // grey the dot until/unless a live fix is recent
+    val myAccuracyM: Float? = null, // the last live fix's reported accuracy radius (m); null = unknown/simulated
     val parkingSpot: LatLng? = null, // one-tap "parked here" pin — survives restarts (prefs)
     val parkedAtMillis: Long = 0L,   // when it was saved (for the sheet/history labels)
     val parkingHistory: List<app.vela.core.model.ParkedSpot> = emptyList(), // recent saves, newest first — accidental-overwrite insurance
@@ -467,7 +468,7 @@ class MapViewModel @Inject constructor(
             // Kill any stale-timer armed by the last REAL fix: the pinned demo dot gets no fresh
             // fixes, so a leftover timer greyed it ~30 s in and nothing ever turned it blue again.
             staleTimerJob?.cancel(); staleTimerJob = null
-            _state.update { it.copy(myLocation = sim, center = it.center ?: sim, myLocationStale = false, showPsdsTip = false) }
+            _state.update { it.copy(myLocation = sim, center = it.center ?: sim, myLocationStale = false, showPsdsTip = false, myAccuracyM = null) }
             return
         }
         locationJob = viewModelScope.launch {
@@ -580,6 +581,9 @@ class MapViewModel @Inject constructor(
                         // rejected it) — the puck Kalman's measurement stream must never see a
                         // held display value or a rejected glitch.
                         mySpeedRaw = measured,
+                        // Drives the map's accuracy halo: a coarse-permission or network fix reports
+                        // hundreds-to-thousands of meters and gets an honest circle; GPS won't.
+                        myAccuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
                         showPsdsTip = false, center = it.center ?: here, myLocationStale = false,
                     )
                 }
