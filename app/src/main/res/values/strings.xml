@@ -94,7 +94,7 @@
     <string name="settings_hide_adult_hint">On = hide bars, clubs, casinos, liquor stores and other adult / nightlife places from search and the map.</string>
     <string name="settings_hide_external_links">Hide website &amp; external links</string>
     <string name="settings_hide_external_links_hint">On = place pages don’t show the Website, Street View, or Book / Reserve / Order buttons (no launching arbitrary external sites).</string>
-    <string name="settings_offline">Offline</string>
+    <string name="settings_offline">Offline maps</string>
     <string name="settings_offline_hint">Download an area to keep its map and directions on your phone for offline use.</string>
     <string name="settings_offline_map_area">Map area</string>
     <string name="settings_offline_download_viewport">Download the area you\'re viewing</string>
@@ -107,7 +107,7 @@
     <string name="settings_routing_regions_hint">The roads for a whole region (a state or country) so directions work offline everywhere inside it. Grab wherever you\'re headed.</string>
     <string name="settings_routing_no_regions">No regions available yet.</string>
     <string name="settings_clear_filter">Clear filter</string>
-    <string name="settings_routing_filter_placeholder">Filter %1$d regions… (e.g. Japan, Texas)</string> <!-- format -->
+    <string name="settings_routing_filter_placeholder">Search</string>
     <string name="settings_routing_no_match">No regions match “%1$s”.</string> <!-- format -->
     <string name="settings_routing_downloading">Downloading… %1$d%%</string> <!-- format -->
     <string name="settings_routing_installed">Installed · routes offline here</string>

@@ -245,27 +245,6 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             Hint(stringResource(R.string.settings_language_hint))
 
-            Spacer(Modifier.height(20.dp))
-            SectionTitle(stringResource(R.string.settings_search))
-            ToggleRow(stringResource(R.string.settings_voice_search_toggle), app.vela.ui.VoiceSearch.enabled.value) {
-                app.vela.ui.VoiceSearch.set(context, it)
-            }
-            // The hint tells the truth about whether the mic can actually appear: it needs a
-            // voice-input app installed (a later build adds an on-device model as a second path).
-            val hasVoiceProvider = remember { app.vela.ui.VoiceSearch.hasProvider(context) }
-            Hint(
-                if (hasVoiceProvider) stringResource(R.string.settings_voice_search_hint)
-                else stringResource(R.string.settings_voice_search_none),
-            )
-
-            Spacer(Modifier.height(20.dp))
-            SectionTitle(stringResource(R.string.settings_map))
-            ToggleRow(stringResource(R.string.settings_live_traffic), app.vela.ui.Traffic.on.value) { app.vela.ui.Traffic.set(context, it) }
-            Hint(stringResource(R.string.settings_live_traffic_hint))
-
-            ToggleRow(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) { app.vela.ui.TransitLayer.set(context, it) }
-            Hint(stringResource(R.string.settings_transit_layer_hint))
-            // 3D buildings moved to Advanced (niche + a documented z16+ perf cost).
             Spacer(Modifier.height(20.dp).onGloballyPositioned { offlineSectionY = it.positionInRoot().y })
             // Collapsed by default — the routing-region list can be long, so don't make the user
             // scroll past all of it to reach the sections below. Opens expanded when the onboarding
@@ -370,7 +349,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                                 }
                             }
                         },
-                        placeholder = { Text(stringResource(R.string.settings_routing_filter_placeholder, state.routingRegions.size)) },
+                        placeholder = { Text(stringResource(R.string.settings_routing_filter_placeholder)) },
                     )
                 }
                 val shown = if (routeFilter.isBlank()) ordered
@@ -444,6 +423,27 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 }
             }
             } // end if (offlineExpanded)
+            Spacer(Modifier.height(20.dp))
+            SectionTitle(stringResource(R.string.settings_search))
+            ToggleRow(stringResource(R.string.settings_voice_search_toggle), app.vela.ui.VoiceSearch.enabled.value) {
+                app.vela.ui.VoiceSearch.set(context, it)
+            }
+            // The hint tells the truth about whether the mic can actually appear: it needs a
+            // voice-input app installed (a later build adds an on-device model as a second path).
+            val hasVoiceProvider = remember { app.vela.ui.VoiceSearch.hasProvider(context) }
+            Hint(
+                if (hasVoiceProvider) stringResource(R.string.settings_voice_search_hint)
+                else stringResource(R.string.settings_voice_search_none),
+            )
+
+            Spacer(Modifier.height(20.dp))
+            SectionTitle(stringResource(R.string.settings_map))
+            ToggleRow(stringResource(R.string.settings_live_traffic), app.vela.ui.Traffic.on.value) { app.vela.ui.Traffic.set(context, it) }
+            Hint(stringResource(R.string.settings_live_traffic_hint))
+
+            ToggleRow(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) { app.vela.ui.TransitLayer.set(context, it) }
+            Hint(stringResource(R.string.settings_transit_layer_hint))
+            // 3D buildings moved to Advanced (niche + a documented z16+ perf cost).
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_place_pages))

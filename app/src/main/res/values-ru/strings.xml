@@ -68,7 +68,7 @@
     <string name="settings_hide_adult_hint">Вкл. = скрывает бары, клубы, казино, алкогольные магазины и другие места для взрослых / ночной жизни из поиска и карты.</string>
     <string name="settings_hide_external_links">Скрывать веб-сайт и внешние ссылки</string>
     <string name="settings_hide_external_links_hint">Вкл. = на страницах мест нет кнопок «Сайт», Street View и «Забронировать / Заказать» (произвольные внешние сайты не открываются).</string>
-    <string name="settings_offline">Офлайн</string>
+    <string name="settings_offline">Офлайн-карты</string>
     <string name="settings_offline_hint">Загрузите область, чтобы сохранить её карту и маршруты на телефоне для работы офлайн.</string>
     <string name="settings_offline_map_area">Область карты</string>
     <string name="settings_offline_download_viewport">Загрузить видимую область</string>
@@ -81,7 +81,7 @@
     <string name="settings_routing_regions_hint">Дороги целого региона (штата или страны), чтобы маршруты работали офлайн на всей территории. Скачайте туда, куда едете.</string>
     <string name="settings_routing_no_regions">Регионы пока недоступны.</string>
     <string name="settings_clear_filter">Очистить фильтр</string>
-    <string name="settings_routing_filter_placeholder">Фильтр по %1$d регионам… (напр. Япония, Техас)</string>
+    <string name="settings_routing_filter_placeholder">Поиск</string>
     <string name="settings_routing_no_match">Нет регионов по запросу «%1$s».</string>
     <string name="settings_routing_downloading">Загрузка… %1$d%%</string>
     <string name="settings_routing_installed">Установлено · маршруты офлайн здесь</string>
