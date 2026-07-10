@@ -678,7 +678,14 @@ Defaults that make the safe path the easy one:
   audibly different from the app (user caught it). MP4 not wav ON PURPOSE: GitHub's blob viewer renders a
   real PLAYER for mp4 but only a download link for wav (user hit that), and in-repo media in
   README markdown NEVER embeds inline (verified empirically on a test branch - bare raw/blob mp4
-  URLs render as plain <a> links; only web-editor drag-drop user-attachments URLs inline). The
+  URLs render as plain <a> links; only user-attachments URLs inline). The README NOW embeds an
+  INLINE PLAYER via a user-attachments URL minted PROGRAMMATICALLY (2026-07-10): on the
+  github.com new-issue page, same-origin fetch the repo's own raw mp4 into an ArrayBuffer, build
+  a File + DataTransfer, dispatch a synthetic ClipboardEvent('paste') on the "Markdown value"
+  textarea - GitHub's uploader consumes it and inserts the permanent
+  github.com/user-attachments/assets/<uuid> URL (draft abandoned, nothing posted). If the demo is
+  ever regenerated, repeat that mint and swap the URL in README - the old attachment URL keeps
+  serving the OLD audio forever. The
   line is deliberately spelled/punctuated for the TTS ("in a quarter mile, turn right onto main
   street; then, at the roundabout, download vella!" - "vella" so espeak says the name right, the
   semicolon for the pause contour). Regenerate the same way if the default voice/pace changes. README feature copy rule: "What you get" is
