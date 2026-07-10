@@ -214,7 +214,7 @@
     <string name="place_arriveby_leave">Aankomst %1$s  ·  vertrek %2$s</string>
     <string name="place_in_typical_traffic">bij gebruikelijk verkeer</string>
     <string name="place_based_current_traffic">op basis van huidig verkeer</string>
-    <string name="place_arrive_approx">Aankomst ~%1$s</string>
+    <string name="place_arrive_approx">Aankomst om %1$s</string>
     <string name="place_usually_range">Meestal %1$s – %2$s</string>
     <string name="place_current_traffic">huidig verkeer</string>
     <string name="place_fastest">Snelste</string>
@@ -232,7 +232,7 @@
     <string name="place_review_count">%1$d recensies</string>
     <string name="place_all_n_reviews">Alle %1$d recensies · sorteren en zoeken</string>
     <string name="place_all_reviews">Alle recensies · sorteren en zoeken</string>
-    <string name="place_reviews_progress">Recensies · %1$d van ~%2$d</string>
+    <string name="place_reviews_progress">Recensies · %1$d van ongeveer %2$d</string>
     <string name="place_reviews_so_far">Recensies · %1$d tot nu toe</string>
     <string name="place_gathering_reviews">Recensies verzamelen…</string>
     <string name="place_reviews_load_failed">Kon recensies niet laden. Tik om opnieuw te proberen.</string>
@@ -304,7 +304,7 @@
     <string name="mapscreen_pick_stop_hint">Kies een plaats om als tussenstop toe te voegen</string>
     <string name="mapscreen_learn_more">Meer info</string>
     <string name="mapscreen_faster_route_title">Snellere route</string>
-    <string name="mapscreen_faster_route_saves">Bespaart ~%1$s bij huidig verkeer</string>
+    <string name="mapscreen_faster_route_saves">Bespaart ongeveer %1$s bij huidig verkeer</string>
     <string name="mapscreen_no">Nee</string>
     <string name="mapscreen_switch">Overschakelen</string>
     <string name="root_not_now">Niet nu</string>
@@ -501,10 +501,18 @@
     <string name="map_asr_offer_title">Spraakzoeken</string>
     <string name="map_asr_offer_body">Download de Vela-stem om je zoekopdrachten in te spreken. Hij draait volledig op je telefoon en uploadt niets.</string>
     <string name="nav_precise_title">Precieze locatie nodig</string>
-    <string name="nav_precise_body">Navigatie volgt je met gps en heeft daarvoor je precieze locatie nodig. Bij benadering geeft alleen een ruw gebied, dus navigatie zou je nooit vinden.</string>
+    <string name="nav_precise_body">Navigatie volgt je via gps en heeft daarvoor de precieze locatie nodig. Op dit moment kent Vela alleen je globale omgeving.</string>
     <string name="nav_precise_allow">Precies toestaan</string>
     <string name="nav_precise_toast">Navigatie heeft je precieze locatie nodig</string>
     <string name="loc_off_title">Locatie staat uit</string>
     <string name="loc_off_body">Vela heeft geen locatietoegang. Je kunt dit toestaan in de systeeminstellingen.</string>
     <string name="loc_off_settings">Instellingen openen</string>
+    <string name="loc_approx_title">Locatie bij benadering</string>
+    <string name="loc_approx_body">Vela kent alleen je globale omgeving, niet waar je bent. De kaart toont een grote cirkel in plaats van een punt, en navigatie werkt niet. Je kunt altijd overstappen op de precieze locatie.</string>
+    <string name="loc_approx_allow">Precies toestaan</string>
+    <string name="loc_approx_keep">Bij benadering houden</string>
+    <string name="notif_ask_title">Meldingen overslaan?</string>
+    <string name="notif_ask_body">Navigatie houdt je volgende afslag in een melding, zodat de aanwijzingen bij je blijven met het scherm uit of in een andere app. Zonder melding zie je aanwijzingen alleen in Vela.</string>
+    <string name="notif_ask_allow">Toestaan</string>
+    <string name="notif_ask_skip">Overslaan</string>
 </resources>

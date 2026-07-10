@@ -491,13 +491,26 @@ Defaults that make the safe path the easy one:
   MapScreen falls back to 2000 m when the fix hasn't reported accuracy yet (Android hands coarse
   apps a fix only every few minutes), and the recenter tap ZOOM-FITS the circle (at street zoom a
   2 km halo covers the whole screen as an invisible uniform wash; the blob only reads when its edge
-  is on screen) - so an approximate-only
+  is on screen). **The fit works in DENSITY-INDEPENDENT px with the 512-tile constant
+  (78271.517*cos(lat)/2^z m/dp, 2026-07-10)** - the first cut used physical px + the 256-tile
+  constant, landed ~2.5 levels too close on a 2.75x-density phone, and the circle still overflowed
+  the screen as the invisible wash (why "i am not seeing a large blob" persisted through a whole
+  build). Device-verified: locate on coarse-only now frames the disc at ~70% of screen width with
+  its edge line visible - so an approximate-only
   permission or a weak network fix reads as "somewhere in this blob" instead of a falsely precise
   dot, and ordinary GPS (3-30 m) stays a plain dot. Identity-gated like the other applyData uploads.
   Render verified on-device via a temporary forced-1500 m build (a real coarse fix is
   interval-throttled by Android, too slow to wait out in a test loop).
-- **Onboarding is deliberately SHORT - three steps, no more (declutter 2026-07-10).** Welcome →
-  location → voice, then the map. The old **offline-maps** onboarding prompt and the **diagnostics/
+- **Onboarding is deliberately SHORT - four steps, no more (declutter 2026-07-10).** Welcome →
+  location → notifications → voice, then the map. The notification step (2026-07-10, Android 13+
+  only, `Onboarding.showNotifPrompt`) fires the raw POST_NOTIFICATIONS dialog right after the
+  location result so turn-by-turn's next-turn notification works on the first drive; a denial gets
+  ONE plain-words "Skip notifications?" are-you-sure (re-request on Allow, move on on Skip), and
+  the nav-start point-of-use gate stays as the fallback for skippers/existing installs. The
+  location step also grew a COARSE-ONLY branch: granting approximate pops an "Approximate
+  location" dialog (what it means, nav won't work) whose "Allow precise" re-runs the request as
+  Android's upgrade choice - asked ONCE (`approxAsked`), keeping it never nags again. The locate
+  FAB's re-ask does the same via `showApproxNotice` in MapScreen. The old **offline-maps** onboarding prompt and the **diagnostics/
   trip-recording** onboarding prompt were CUT (they made a long wall of asks a first-run user has no
   context for). Both settings still exist, off by default, in Settings → Diagnostics + Offline; the
   diagnostics ask now surfaces **in context** on the crash-report card (Settings → Diagnostics only
