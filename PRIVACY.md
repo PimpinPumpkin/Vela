@@ -37,11 +37,15 @@
 
 ## Google, specifically
 
-Because Vela scrapes Google rather than running its own maps stack, Google is the
-service that sees the most. Concretely, per request Google receives **your IP
-address, the search/route text or coordinates, the map area, a browser-like
-User-Agent, and short-lived consent cookies** (`SOCS`/`CONSENT`, seeded in memory so
-the EU consent wall doesn't block you - they carry no identity).
+Vela scrapes Google rather than running its own maps stack, so Google is the service that
+sees the most. Per request Google receives:
+
+- your IP address
+- the search/route text or coordinates
+- the map area
+- a browser-like User-Agent
+- short-lived consent cookies (`SOCS`/`CONSENT`, seeded in memory so the EU consent wall
+  doesn't block you; they carry no identity)
 
 What Google does **not** get from Vela:
 - **No Google account / sign-in.** Vela never logs in. There is no Gmail, no profile,
@@ -51,24 +55,27 @@ What Google does **not** get from Vela:
 - **No persistent identity from Vela.** The session cookies are in-memory and
   per-session; Vela doesn't attach a device id or a stable user id.
 
-**Versus the official Google Maps app:** there, you're normally signed in, so Google
-ties every search, route, and stop to your account and builds your Maps history and
-location profile. With Vela it's closer to using `google.com/maps` in a **private /
-incognito browser window**: Google still sees the IP and the individual requests, but
-can't link them to a Google account or your real-world identity. The honest limit:
-**your IP is still visible to Google** (and to every service in the table) - that's
-inherent to fetching from them. If you want to hide that too, run Vela over a **VPN or
+**Versus the official Google Maps app:** there you're normally signed in, so Google ties
+every search, route, and stop to your account and builds your Maps history and location
+profile. With Vela it's closer to using `google.com/maps` in a **private / incognito
+window**: Google still sees the IP and the individual requests, but can't link them to a
+Google account or your real-world identity.
+
+**The honest limit:** your IP is still visible to Google (and to every service in the
+table), which is inherent to fetching from them. To hide that too, run Vela over a **VPN or
 Tor**; it works over any network.
 
 ## The hidden WebViews (photos, reviews, transit, popular times)
 
-Four features - the **full photo gallery**, **reviews**, **public-transit directions**
-and **popular times** - are only served to a real browser engine, so Vela loads `maps.google.com` in a **hidden,
-logged-out WebView** and reads the result. This is the one place Google's own
-JavaScript runs on your device. It runs **anonymously** (no login), but, like any
-browser visit to Google, that JS *could* set cookies or fingerprint the browser. It's
-an explicit, scoped tradeoff for data a plain request can't get; if you never open the
-photo gallery or transit directions, that WebView never loads.
+Four features - the **full photo gallery**, **reviews**, **public-transit directions**, and
+**popular times** - are only served to a real browser engine. So Vela loads `maps.google.com`
+in a **hidden, logged-out WebView** and reads the result.
+
+- This is the **one place** Google's own JavaScript runs on your device.
+- It runs **anonymously** (no login), but like any browser visit to Google, that JS *could*
+  set cookies or fingerprint the browser.
+- It's an explicit, scoped tradeoff for data a plain request can't get. If you never open the
+  photo gallery or transit directions, that WebView never loads.
 
 ## What stays on your device
 
