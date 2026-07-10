@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Metriskt (kilometer, meter)</string>
     <string name="settings_language">Språk</string>
     <string name="settings_language_hint">Anger språket för talade vägbeskrivningar sväng för sväng (engelska, franska, tyska, spanska, italienska, portugisiska, nederländska, ryska, polska, svenska, ukrainska) – oberoende av telefonens systemspråk. Välj en röst som matchar i Röstbiblioteket nedan. Resten av appens skärmtext översätts härnäst.</string>
+    <string name="settings_search">Sök</string>
+    <string name="settings_voice_search_toggle">Mikrofon för röstsökning</string>
+    <string name="settings_voice_search_hint">Visar en mikrofon i sökfältet. Tryck för att tala din sökning via en röstinmatnings-app på telefonen.</string>
+    <string name="settings_voice_search_none">Visar en mikrofon i sökfältet för att tala din sökning. Kräver en röst-app som FUTO Voice Input; ingen är installerad ännu.</string>
+    <string name="search_voice_cd">Röstsökning</string>
+    <string name="search_voice_prompt">Tala för att söka</string>
     <string name="settings_voice">Röst</string>
     <string name="settings_voice_fallback_name">röst</string>
     <string name="settings_voice_downloading">Hämtar %1$s… %2$d %%</string>
