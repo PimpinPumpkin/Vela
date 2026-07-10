@@ -269,6 +269,13 @@ Defaults that make the safe path the easy one:
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
   note stays. `place_current_traffic` was deleted from all 11 locales.
+- **Place-sheet drag physics are CONTINUOUS (2026-07-10):** the sheet height is a hand-driven
+  `Animatable` - drags (handle or body-at-top) move it 1:1 with the finger, release projects the
+  fling (`projected = height - vDp*0.25`) and coasts to the NEAREST of the three detents with the
+  finger's velocity (`spring` NoBouncy/350f). The old grammar flipped a whole detent at a pixel
+  threshold and hopped there - the "staccato" feel. State flips from taps / the reviews panel /
+  auto-expand still animate via a LaunchedEffect that SKIPS when a settle is already targeting
+  that detent (restarting would zero the coast velocity). A swipe still never CLOSES the sheet.
 - **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat

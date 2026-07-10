@@ -198,6 +198,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Transit lines are opt-in now (2026-07-10).** The purple rail highlight is off by default;
   it reads as mystery lines if you don't know what it is. Settings → Map → "Highlight transit
   lines" brings it back, and an earlier choice is kept either way.
+- ✅ **The place card follows your finger (2026-07-10).** Dragging the place sheet moves it with
+  your finger and, on release, it coasts on the fling to whichever size is closest - no more
+  stepping between sizes in fixed hops.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
