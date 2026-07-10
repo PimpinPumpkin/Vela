@@ -1430,6 +1430,7 @@ private fun DepartTimeChooser(
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
+    val ink = if (isAppInDarkTheme()) InkDark else InkLight
     // Keyed to the destination so switching places resets the picked time. mode: 0 now, 1 depart at,
     // 2 arrive by, 3 last available (transit only). date + time compose the chosen wall-clock.
     var mode by remember(route?.summary) { mutableStateOf(0) }
@@ -1485,17 +1486,17 @@ private fun DepartTimeChooser(
             val hasLive = route.hasLiveTraffic
             val typicalNote = stringResource(R.string.place_in_typical_traffic)
             val liveNoteDepart = stringResource(R.string.place_based_current_traffic)
-            val liveNoteNow = stringResource(R.string.place_current_traffic)
             val departNote = when { range != null -> typicalNote; hasLive -> liveNoteDepart; else -> null }
+            // Leave-now shows just the arrival time, prominently - the "current traffic" note under
+            // it was clutter (the traffic-coloured ETA already says it) and kept the time small.
             val (summary, note) = when (mode) {
                 1 -> stringResource(R.string.place_depart_arrive, time.format(fmt), window(time, lo, hi, +1)) to departNote
                 2 -> stringResource(R.string.place_arriveby_leave, time.format(fmt), window(time, hi, lo, -1)) to departNote
                 else -> stringResource(R.string.place_arrive_approx, java.time.LocalTime.now().plusSeconds(nowDur.toLong()).format(fmt)) to
-                    (range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
-                        ?: if (hasLive) liveNoteNow else null)
+                    range?.let { stringResource(R.string.place_usually_range, formatDuration(it.first), formatDuration(it.second)) }
             }
             Column {
-                Text(summary, style = MaterialTheme.typography.bodyMedium, color = dim)
+                Text(summary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = ink)
                 note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = dim) }
             }
         }
