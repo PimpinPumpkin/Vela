@@ -18,8 +18,7 @@
     <string name="settings_language_hint">Zmienia język aplikacji i mówionych wskazówek. Pobierz pasujący głos w bibliotece głosów.</string>
     <string name="settings_search">Wyszukiwanie</string>
     <string name="settings_voice_search_toggle">Mikrofon wyszukiwania głosowego</string>
-    <string name="settings_voice_search_hint">Pokazuje mikrofon na pasku wyszukiwania. Dotknij go, aby wypowiedzieć zapytanie za pomocą aplikacji do wprowadzania głosem.</string>
-    <string name="settings_voice_search_none">Pokazuje mikrofon na pasku wyszukiwania do wypowiedzenia zapytania. Wymaga aplikacji głosowej, np. FUTO Voice Input; żadna nie jest zainstalowana.</string>
+    <string name="settings_voice_search_hint">Pokazuje mikrofon w pasku wyszukiwania do dyktowania.</string>
     <string name="search_voice_cd">Wyszukiwanie głosowe</string>
     <string name="search_voice_prompt">Mów, aby wyszukać</string>
     <string name="settings_voice">Głos</string>
@@ -491,7 +490,7 @@
     <string name="mapvm_asr_ready">Głos Vela jest gotowy</string>
     <string name="mapvm_asr_download_failed">Nie udało się pobrać modelu głosu. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="settings_voice_search_model">Głos Vela</string>
-    <string name="settings_voice_search_model_hint">Głos Vela zamienia mowę w wyszukiwanie bezpośrednio na telefonie: bez innej aplikacji i bez wysyłania czegokolwiek. Jednorazowe pobranie ~%1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_model_hint">Głos Vela zamienia mowę w wyszukiwanie bezpośrednio na telefonie: bez innej aplikacji i bez wysyłania czegokolwiek. Jednorazowe pobranie %1$d MB.</string>  <!-- format -->
     <string name="settings_voice_search_download">Pobierz (%1$d MB)</string>  <!-- format -->
     <string name="settings_voice_search_remove">Usuń</string>
     <string name="settings_voice_search_downloading">Pobieranie… %1$d%%</string>  <!-- format -->
@@ -499,4 +498,6 @@
     <string name="settings_voice_search_engine_title">Po dotknięciu mikrofonu</string>
     <string name="settings_voice_search_engine_auto">Głos Vela</string>
     <string name="settings_voice_search_engine_system">Inna aplikacja głosowa</string>
+    <string name="map_asr_offer_title">Wyszukiwanie głosowe</string>
+    <string name="map_asr_offer_body">Pobierz głos Vela, aby dyktować wyszukiwania. Działa w całości na telefonie i niczego nie wysyła.</string>
 </resources>

@@ -14,8 +14,8 @@ import java.io.File
  */
 object AsrModel {
     const val ID = "whisper-tiny"
-    const val URL = "https://github.com/PimpinPumpkin/Vela/releases/download/asr-models/vela-asr-whisper-tiny.tar.bz2"
-    const val SIZE_MB = 47
+    const val URL = "https://github.com/PimpinPumpkin/Vela/releases/download/asr-models/vela-asr-whisper-tiny.tar.gz"
+    const val SIZE_MB = 58
 
     const val ENCODER = "tiny-encoder.int8.onnx"
     const val DECODER = "tiny-decoder.int8.onnx"
