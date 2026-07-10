@@ -69,16 +69,16 @@
     <string name="settings_hide_external_links">Ukryj stronę WWW i linki zewnętrzne</string>
     <string name="settings_hide_external_links_hint">Wł. = strony miejsc nie pokazują przycisków Strona WWW, Street View ani Rezerwuj / Zamów (bez otwierania dowolnych zewnętrznych stron).</string>
     <string name="settings_offline">Mapy offline</string>
-    <string name="settings_offline_hint">Pobierz obszar, aby zachować jego mapę i trasy w telefonie do użytku offline.</string>
-    <string name="settings_offline_map_area">Obszar mapy</string>
+    <string name="settings_offline_hint">Dwa sposoby na Velę offline: zapisz obszar, w którym jesteś, na krótkie trasy, albo poniżej cały stan lub kraj na dłuższe.</string>
+    <string name="settings_offline_map_area">Obszar lokalny</string>
     <string name="settings_offline_download_viewport">Pobierz oglądany obszar</string>
-    <string name="settings_offline_download_viewport_hint">Zapisuje mapę i drogi wyświetlanego obszaru, aby pokazywał się i wyznaczał trasy offline.</string>
+    <string name="settings_offline_download_viewport_hint">Zapisuje mapę, którą oglądasz, wraz z drogami i adresami, aby ten obszar działał bez zasięgu.</string>
     <string name="settings_offline_no_areas">Nie zapisano jeszcze żadnych obszarów.</string>
     <string name="settings_offline_addresses_missing">Obszary zapisane przed tą aktualizacją nie zawierają danych adresowych. Zaktualizuj je, aby wyszukiwać adresy i wyznaczać do nich trasy offline.</string>
     <string name="settings_offline_addresses_update">Zaktualizuj zapisane obszary</string>
     <string name="settings_offline_delete_area">Usuń ten obszar offline</string>
-    <string name="settings_routing_regions">Regiony tras</string>
-    <string name="settings_routing_regions_hint">Drogi całego regionu (stanu lub kraju), aby trasy działały offline na całym jego obszarze. Pobierz tam, dokąd jedziesz.</string>
+    <string name="settings_routing_regions">Regiony i kraje</string>
+    <string name="settings_routing_regions_hint">Wszystko, by poruszać się offline po całym stanie, prowincji lub kraju: drogi i miejsca, dzięki czemu trasy i wyszukiwanie działają na całym obszarze. Pobierz tam, dokąd jedziesz.</string>
     <string name="settings_routing_no_regions">Brak dostępnych regionów.</string>
     <string name="settings_clear_filter">Wyczyść filtr</string>
     <string name="settings_routing_filter_placeholder">Szukaj</string>
