@@ -32,6 +32,27 @@ class SearchSnapTest {
         assertEquals(38.54, result.places[0].location.lat, 1e-9)
     }
 
+    /** Gas stations: the live fuel price rides the place node at [88][0] ("$5.34/Regular",
+     *  pinned from a live capture 2026-07-10). A digit-less string there (a shape drift putting
+     *  a label where the price was) must be rejected, not shown as a price. */
+    @Test fun parsesFuelPriceAndRejectsDigitless() {
+        fun station(name: String, p88: String) = "[null," + arr(
+            89,
+            9 to "[null,null,38.55,-121.74]",
+            11 to "\"$name\"",
+            88 to p88,
+        ) + "]"
+        val root = arr(
+            65,
+            64 to "[" + station("ARCO", "[\"${'$'}5.34/Regular\"]") + "," +
+                station("Chevron", "[\"SearchResult.TYPE_GAS_STATION\"]") + "]",
+        )
+        val places = SearchParser.parse("gas stations", Json.parseToJsonElement(root)).places
+        assertEquals(2, places.size)
+        assertEquals("${'$'}5.34/Regular", places[0].fuelPrice)
+        assertEquals(null, places[1].fuelPrice)
+    }
+
     /** "People also search for": the focused result's sibling list at root[2][11][0], each
      *  entry [featureId, name, [[_,_,lat,lng], …, rating@6]]. (Verified on-device against a
      *  real response: 8 related salons for a focused nail-salon search.) */
