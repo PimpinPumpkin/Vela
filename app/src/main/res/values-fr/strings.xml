@@ -123,6 +123,8 @@
     <string name="settings_crash_hint">Vela s\'est fermé de façon inattendue récemment. Envoyer le rapport de plantage (trace de la pile) aide à le corriger — c\'est un simple fichier texte, sans données personnelles.</string>
     <string name="settings_crash_export">Exporter le rapport de plantage</string>
     <string name="settings_crash_discard">Ignorer</string>
+    <string name="settings_crash_diag_offer">Le diagnostic est désactivé, donc rien n\'a été enregistré avant cet incident. Activez-le pour recueillir plus de détails la prochaine fois.</string>
+    <string name="settings_crash_enable_diag">Activer le diagnostic</string>
     <string name="settings_diag_consent_title">Activer les diagnostics ?</string>
     <string name="settings_diag_consent_body">Vela conservera un court journal local de vos recherches, itinéraires et erreurs éventuelles. Il ne quitte jamais le téléphone tant que vous n\'appuyez pas sur Exporter et ne choisissez pas une destination. Désactivez-le à tout moment pour effacer le journal.</string>
     <string name="settings_about">À propos</string>
@@ -305,13 +307,6 @@
     <string name="mapscreen_faster_route_saves">Économise ~%1$s avec le trafic actuel</string>
     <string name="mapscreen_no">Non</string>
     <string name="mapscreen_switch">Basculer</string>
-    <string name="root_diag_title">Aider à améliorer Vela ?</string>
-    <string name="root_diag_body">Les deux restent sur votre téléphone — rien n\'est envoyé tant que vous ne l\'exportez pas. Modifiable à tout moment dans les Paramètres.</string>
-    <string name="root_diag_share_title">Partager les diagnostics</string>
-    <string name="root_diag_share_desc">Un court journal local des recherches, itinéraires et erreurs.</string>
-    <string name="root_diag_trips_title">Enregistrer mes trajets</string>
-    <string name="root_diag_trips_desc">Enregistre les traces GPS de navigation pour rejouer les trajets lors de tests. Plus révélateur — vos itinéraires exacts.</string>
-    <string name="root_diag_save">Enregistrer les choix</string>
     <string name="root_not_now">Pas maintenant</string>
     <string name="root_location_title">Afficher votre position</string>
     <string name="root_location_body">Vela utilise votre position pour centrer la carte sur vous et calculer l\'itinéraire depuis là où vous êtes. Elle reste sur votre téléphone et n\'est jamais envoyée. Vous pouvez refuser et continuer à chercher et explorer ; définissez alors le point de départ à la main pour un itinéraire.</string>
@@ -322,9 +317,6 @@
     <string name="root_voice_body_outro">Modifiable à tout moment dans Réglages → Voix.</string>
     <string name="root_voice_download">Télécharger la voix Vela</string>
     <string name="root_voice_use_system">Utiliser la voix du système</string>
-    <string name="root_offline_title">Cartes hors ligne</string>
-    <string name="root_offline_body">Vela obtient les lieux, la recherche et les itinéraires depuis Google, donc sans réseau seules les zones que vous avez téléchargées fonctionneront. Configurez une zone maintenant pour rester couvert quand vous perdez le signal.</string>
-    <string name="root_offline_setup">Configurer hors ligne</string>
     <string name="nav_maneuver_continue">Continuer</string>
     <string name="nav_gps_lost">Recherche du signal GPS…</string>
     <string name="nav_compound_then">puis</string>
