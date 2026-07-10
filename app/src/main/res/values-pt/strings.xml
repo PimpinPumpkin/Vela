@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Outra app de voz</string>
     <string name="map_asr_offer_title">Pesquisa por voz</string>
     <string name="map_asr_offer_body">Transfere a voz Vela para ditar as tuas pesquisas. Corre inteiramente no telemóvel e não envia nada.</string>
+    <string name="nav_precise_title">Localização precisa necessária</string>
+    <string name="nav_precise_body">A navegação segue-te por GPS, o que exige a localização precisa. A aproximada só dá uma zona geral, por isso a navegação nunca te encontraria.</string>
+    <string name="nav_precise_allow">Permitir precisa</string>
+    <string name="nav_precise_toast">A navegação precisa da localização precisa</string>
+    <string name="loc_off_title">A localização está desligada</string>
+    <string name="loc_off_body">A Vela não tem acesso à localização. Podes permitir nas definições do sistema.</string>
+    <string name="loc_off_settings">Abrir definições</string>
 </resources>
