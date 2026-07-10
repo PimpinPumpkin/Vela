@@ -2194,7 +2194,9 @@ class MapViewModel @Inject constructor(
                 val engine = _state.value.selectedEngine?.packageName
                 neuralSynthFor(engine)?.let { voice.neural = it }
                 navSession.replayMode = true
-                navSession.start(route, dest, label, engine)
+                // Pass the REAL travel mode: haptics are per-mode (bike buzzes by default, driving
+                // doesn't), so a demo of a bike route must buzz like the real ride would.
+                navSession.start(route, dest, label, engine, mode = _state.value.travelMode)
                 replayOwnsNav = true
                 // Demo mode presents as REAL nav, so the ongoing turn notification is part of
                 // what's being demoed (and how it gets verified without a drive).
