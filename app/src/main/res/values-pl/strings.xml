@@ -307,6 +307,9 @@
     <string name="root_diag_trips_desc">Zapisuje ślady GPS nawigacji, aby przejazdy można było odtworzyć do testów. Bardziej ujawniające — Twoje dokładne trasy.</string>
     <string name="root_diag_save">Zapisz wybory</string>
     <string name="root_not_now">Nie teraz</string>
+    <string name="root_location_title">Pokaż swoją lokalizację</string>
+    <string name="root_location_body">Vela używa Twojej lokalizacji, aby wyśrodkować mapę na Tobie i wyznaczać trasę z miejsca, w którym jesteś. Pozostaje ona na telefonie i nigdy nie jest wysyłana. Możesz odmówić i nadal wyszukiwać oraz przeglądać; do trasy ustaw punkt startowy ręcznie.</string>
+    <string name="root_location_allow">Zezwól na lokalizację</string>
     <string name="root_voice_title">Głos nawigacji mówionej</string>
     <string name="root_voice_body_intro">Vela ma własny głos wysokiej jakości, który działa w całości na Twoim telefonie — najbardziej naturalne wskazówki głosowe, bez konta i dodatkowej aplikacji. Zalecany. To jednorazowe pobranie ~%1$d MB (zalecane wifi).</string>
     <string name="root_voice_body_system">Wolisz nie? Możesz zamiast tego użyć głosu syntezy mowy już zainstalowanego na telefonie.</string>
