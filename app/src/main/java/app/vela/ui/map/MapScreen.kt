@@ -688,6 +688,9 @@ fun MapScreen(
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
+            // Grabbing the map with the results sheet up drops the sheet to its minimized bar so
+            // the map is yours to look at (Google does the same); the bar brings it back.
+            onUserPan = { if (resultsShown) vm.collapseResults() },
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
