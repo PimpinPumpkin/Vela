@@ -208,6 +208,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The place card follows your finger (2026-07-10).** Dragging the place sheet moves it with
   your finger and, on release, it coasts on the fling to whichever size is closest - no more
   stepping between sizes in fixed hops.
+- ✅ **Search results are real POI icons with names (2026-07-11).** Searching "restaurants" pins
+  the map with named restaurant icons, the same category icons the base map uses, instead of a
+  field of anonymous red pins. Labels step aside when crowded; the icons always show.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
