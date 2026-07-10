@@ -4,11 +4,23 @@ name: CI
 # main is published as a normal, versioned GitHub release (v0.0.<run>) so update trackers like
 # Obtainium "just work" - no pre-releases, no "include prereleases" toggle, plain-semver
 # versionName. Both APKs are uploaded as workflow artifacts.
+#
+# paths-ignore: a push/PR that touches ONLY documentation or repo metadata (never the built app)
+# skips the whole workflow, so a README/docs edit does not build APKs or cut a release. A commit
+# that touches ANY other path (app/core code, gradle, calibration, tests, scripts, workflows)
+# still runs it. run_number is not consumed by a skipped run, so release versionCodes stay tidy.
 on:
   push:
     branches: [ main ]
+    paths-ignore: &docs-only
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - '.gitattributes'
   pull_request:
     branches: [ main ]
+    paths-ignore: *docs-only
 
 # `contents: write` is needed to publish releases. The publish step is gated to
 # push-to-main, so PRs (and fork PRs, whose token is read-only) never touch them.
