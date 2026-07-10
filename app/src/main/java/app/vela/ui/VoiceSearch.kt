@@ -69,13 +69,41 @@ object VoiceSearch {
         }
     }.getOrDefault(emptyList())
 
-    /** The provider the SYSTEM path launches: the saved pick while it's still installed, else the
-     *  first available (an uninstalled favourite degrades gracefully instead of a dead mic). */
+    /** The component to PIN on the launch intent, or null to leave the intent implicit. Pinning
+     *  order: the user's Settings pick wins; otherwise DEFER to Android's own default app for
+     *  speech (null - the system routes it, respecting a choice made outside Vela); only when
+     *  Android has no default either (its chooser would interject mid-dictation) pin the first
+     *  installed app. An uninstalled Settings pick degrades down this same ladder. */
+    fun launchComponent(context: Context): android.content.ComponentName? {
+        val all = providers(context)
+        if (all.isEmpty()) return null
+        val saved = provider.value?.let(android.content.ComponentName::unflattenFromString)
+        all.firstOrNull { it.component == saved }?.let { return it.component }
+        if (androidDefault(context) != null) return null
+        return all.first().component
+    }
+
+    /** Android's own default RECOGNIZE_SPEECH handler, or null when none is set (the resolver
+     *  activity, package "android", answers when the choice is ambiguous). */
+    private fun androidDefault(context: Context): android.content.ComponentName? = runCatching {
+        val ri = context.packageManager.resolveActivity(
+            Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH),
+            android.content.pm.PackageManager.MATCH_DEFAULT_ONLY,
+        ) ?: return null
+        val ai = ri.activityInfo ?: return null
+        if (ai.packageName == "android") null
+        else android.content.ComponentName(ai.packageName, ai.name)
+    }.getOrNull()
+
+    /** What the Settings picker should show as selected: the saved pick, else Android's default,
+     *  else the first installed - the same app [launchComponent] would end up launching. */
     fun chosenProvider(context: Context): Provider? {
         val all = providers(context)
         if (all.isEmpty()) return null
         val saved = provider.value?.let(android.content.ComponentName::unflattenFromString)
-        return all.firstOrNull { it.component == saved } ?: all.first()
+        all.firstOrNull { it.component == saved }?.let { return it }
+        androidDefault(context)?.let { d -> all.firstOrNull { it.component == d }?.let { return it } }
+        return all.first()
     }
 
     fun setProvider(context: Context, component: android.content.ComponentName) {
