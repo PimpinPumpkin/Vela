@@ -72,13 +72,13 @@
     <string name="settings_offline_hint">Ladda ner ett område för att spara dess karta och vägbeskrivningar på telefonen för offline-bruk.</string>
     <string name="settings_offline_map_area">Kartområde</string>
     <string name="settings_offline_download_viewport">Hämta området du tittar på</string>
-    <string name="settings_offline_download_viewport_hint">Sparar de öppna rutorna för kartområdet du senast hade på skärmen – och ruttregionen runt det – så att det ritas upp och navigerar senare utan nätverk. Sökning kräver fortfarande anslutning.</string>
+    <string name="settings_offline_download_viewport_hint">Sparar kartan och dess vägar för området du tittar på, så att det visas och beräknar rutter offline.</string>
     <string name="settings_offline_no_areas">Inga områden sparade ännu.</string>
     <string name="settings_offline_addresses_missing">Områden du sparade före den här uppdateringen innehåller inga adressdata. Uppdatera dem för att söka och navigera till adresser offline.</string>
     <string name="settings_offline_addresses_update">Uppdatera sparade områden</string>
     <string name="settings_offline_delete_area">Ta bort det här offlineområdet</string>
     <string name="settings_routing_regions">Ruttregioner</string>
-    <string name="settings_routing_regions_hint">Vägnätet för en hel region (delstat, land …), så att sväng-för-sväng fungerar offline var som helst inuti den – hämta där du reser. Online används fortfarande realtidstrafik; det här är reserven utan täckning.</string>
+    <string name="settings_routing_regions_hint">Vägarna för en hel region (en delstat eller ett land), så att vägbeskrivningar fungerar offline i hela den. Hämta dit du ska.</string>
     <string name="settings_routing_no_regions">Inga regioner tillgängliga ännu.</string>
     <string name="settings_clear_filter">Rensa filter</string>
     <string name="settings_routing_filter_placeholder">Filtrera %1$d regioner… (t.ex. Japan, Texas)</string>

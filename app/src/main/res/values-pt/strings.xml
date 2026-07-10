@@ -72,13 +72,13 @@
     <string name="settings_offline_hint">Transfira uma área para manter o mapa e as direções no telemóvel para uso offline.</string>
     <string name="settings_offline_map_area">Área do mapa</string>
     <string name="settings_offline_download_viewport">Transferir a área que está a ver</string>
-    <string name="settings_offline_download_viewport_hint">Guarda os mosaicos abertos da área do mapa que teve no ecrã por último — e a região de percursos à sua volta — para que renderize e navegue mais tarde sem rede. A pesquisa continua a precisar de ligação.</string>
+    <string name="settings_offline_download_viewport_hint">Guarda o mapa e as estradas da área que estás a ver, para mostrar e traçar rotas sem ligação.</string>
     <string name="settings_offline_no_areas">Ainda sem áreas guardadas.</string>
     <string name="settings_offline_addresses_missing">As áreas guardadas antes desta atualização não incluem dados de moradas. Atualize-as para pesquisar moradas e traçar rotas offline.</string>
     <string name="settings_offline_addresses_update">Atualizar áreas guardadas</string>
     <string name="settings_offline_delete_area">Eliminar esta área offline</string>
     <string name="settings_routing_regions">Regiões de percursos</string>
-    <string name="settings_routing_regions_hint">A rede viária de toda uma região (estado, país…), para que a navegação curva a curva funcione offline em qualquer ponto dentro dela — obtenha por onde estiver a viajar. Online continua a usar o trânsito em direto; isto é a alternativa sem sinal.</string>
+    <string name="settings_routing_regions_hint">As estradas de uma região inteira (um estado ou país) para as direções funcionarem sem ligação em toda ela. Transfere para onde vais.</string>
     <string name="settings_routing_no_regions">Ainda sem regiões disponíveis.</string>
     <string name="settings_clear_filter">Limpar filtro</string>
     <string name="settings_routing_filter_placeholder">Filtrar %1$d regiões… (p. ex. Japão, Texas)</string>
