@@ -466,6 +466,17 @@ Defaults that make the safe path the easy one:
   kept (it's still the reusable pre-permission screen the **PR3 voice-search mic** uses at
   point-of-use for RECORD_AUDIO) - it's just no longer used for location. Don't re-request location
   straight from the map.
+- **Location-permission UX gates (2026-07-10).** Turn-by-turn REQUIRES precise location (coarse
+  fixes are ~2 km; the nav fix discipline correctly refuses non-GPS and >50 m fixes, so nav on
+  coarse sat at "Searching for GPS" forever with no explanation). `onStartNav` in MapScreen now
+  gates on FINE: without it (and demo-drive off - `vm.demoDriveOn()` skips the gate since demo
+  simulates), a VelaDialog explains and "Allow precise" fires the FINE+COARSE request, which Android
+  renders as its approximate-to-precise UPGRADE dialog; on grant it starts location + continues
+  through the notification gate into nav. Declining the upgrade toasts `nav_precise_toast`. The
+  locate FAB's re-request now also handles the DEAD-BUTTON case: a fully-denied result (including
+  Android's instant deny after "don't ask again") opens a dialog with an Open-settings deep link
+  (ACTION_APPLICATION_DETAILS_SETTINGS). Device-verified end to end: Start on coarse -> gate ->
+  upgrade dialog -> precise -> notification permission -> nav running.
 - **Vague fixes draw an ACCURACY HALO (2026-07-10).** `MapUiState.myAccuracyM` carries the live
   fix's reported accuracy (null for sim/unknown); `applyData` draws a translucent meter-true disc
   (`ACCURACY_LAYER`, a 64-point polygon from `accuracyCircle`, fill #4285F4 at 0.22 + a 1.5 px edge

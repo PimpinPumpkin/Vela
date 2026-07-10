@@ -195,6 +195,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
   the listening sheet, and the model transcribing back into the search box.
+- ✅ **Navigation asks for precise location instead of failing silently (2026-07-10).** Turn-by-turn
+  needs GPS, and with approximate-only permission it used to start and sit at "Searching for GPS"
+  forever. Tapping Start now explains it plainly and offers to allow precise location; Android shows
+  its own upgrade choice and navigation begins as soon as it's granted. And if location is fully
+  denied, the locate button explains itself and links to system settings instead of doing nothing.
 - ✅ **Approximate location shows honestly (2026-07-10).** If you grant only approximate location
   (or the fix is just weak), the map now draws a soft translucent circle around the dot at the fix's
   real uncertainty radius, so "somewhere in this area" looks like what it is instead of a
