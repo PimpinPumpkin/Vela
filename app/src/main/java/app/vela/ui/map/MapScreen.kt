@@ -2605,9 +2605,20 @@ private fun UpdateCard(
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp, bottom = 8.dp),
                 )
             } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                Row(
+                    Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     TextButton(onClick = onDismiss) { Text(stringResource(R.string.update_later)) }
-                    TextButton(onClick = onUpdate) { Text(stringResource(R.string.update_install)) }
+                    Spacer(Modifier.width(4.dp))
+                    // A filled primary pill, same treatment as the dialogs' confirm button: the
+                    // action reads by SHAPE and fill, not by text colour alone (colour-blind safe).
+                    Button(
+                        onClick = onUpdate,
+                        shape = CircleShape,
+                        modifier = Modifier.dpadHighlight(CircleShape),
+                    ) { Text(stringResource(R.string.update_install)) }
                 }
             }
         }
