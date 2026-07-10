@@ -271,8 +271,13 @@ Defaults that make the safe path the easy one:
   note stays. `place_current_traffic` was deleted from all 11 locales.
 - **Place-sheet drag physics are CONTINUOUS (2026-07-10):** the sheet height is a hand-driven
   `Animatable` - drags (handle or body-at-top) move it 1:1 with the finger, release projects the
-  fling (`projected = height - vDp*0.15`; 0.25 minimized too eagerly) and coasts to the NEAREST of the
-  three detents with the finger's velocity (`spring` NoBouncy/350f). The animated height is read
+  fling and RIDES THE THROW'S OWN INERTIA to the nearest detent: the landing point comes from
+  `exponentialDecay(friction 1.6).calculateTargetValue` (friction 1.6 = the same eagerness as the
+  earlier linear 0.15 factor, coast = v/(4.2*friction) - it's the one tuning knob), and when the
+  natural coast reaches the detent the settle IS `animateDecay` clamped by Animatable bounds at
+  the detent - no spring snap, the detent just stops the coast (Google's feel, user 2026-07-10).
+  Only throws that don't carry (gentle drops, releases against the velocity) glide on the spring
+  (NoBouncy/350f). The animated height is read
   in the LAYOUT modifier on the Card, NEVER in composition - a composition read recomposed the
   entire sheet every animation frame (the tap-to-expand dropped-frames report). The old grammar flipped a whole detent at a pixel
   threshold and hopped there - the "staccato" feel. State flips from taps / the reviews panel /
