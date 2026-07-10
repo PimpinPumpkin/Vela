@@ -28,6 +28,7 @@
     <string name="settings_units_imperial">Imperial (miles, feet)</string>
     <string name="settings_units_metric">Metric (kilometers, meters)</string>
     <string name="settings_language">Language</string>
+    <string name="settings_follow_system_language">Follow system language</string>
     <string name="settings_language_hint">Sets the language for spoken turn-by-turn directions (English, French, German, Spanish, Italian, Portuguese, Dutch, Russian, Polish, Swedish, Ukrainian), independent of your phone\'s system language. Pick a matching voice in Voice library below. The rest of the app\'s on-screen text is being translated next.</string>
     <string name="settings_search">Search</string>
     <string name="settings_voice_search_toggle">Voice search mic</string>
@@ -501,4 +502,10 @@
     <string name="lists_empty_hint">No lists yet. Tap New to create one, or save a place from its page.</string>
     <string name="lists_place_count">%1$d places</string>
     <string name="navservice_notif_eta">Arrive %1$s</string>
+    <string name="settings_advanced">Advanced</string>
+    <string name="settings_advanced_hint">Niche and experimental options most people never need to change.</string>
+    <string name="settings_developer">Developer</string>
+    <string name="settings_developer_hint">Tools for demos, screenshots and testing. Turn each off for real use.</string>
+    <string name="settings_browse_voices">Browse voices</string>
+    <string name="settings_browse_voices_hint">Download and switch between Vela\'s on-device voices.</string>
 </resources>
