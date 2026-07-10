@@ -11,6 +11,8 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.calculateTargetValue
+import androidx.compose.animation.core.exponentialDecay
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -300,17 +302,41 @@ fun PlaceSheet(
     // everything keyed on them stays honest), and glide there carrying the finger's velocity. A
     // hard fling projects past the middle detent and lands on MINIMIZED from anywhere; a gentle
     // drop settles back where it came from. A swipe still never CLOSES the sheet (X / back do).
+    //
+    // Friction 1.6 keeps the tuned eagerness: an exponential decay's total coast is
+    // v / (4.2 * friction), so 1.6 reproduces the same landing points as the earlier
+    // linear projection factor of 0.15 - it's the one knob for "how hard must I throw it".
+    val flingDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
     fun settleFromVelocity(velocityPxPerSec: Float) {
         val vDp = with(density) { velocityPxPerSec.toDp().value }
-        // 0.15, down from 0.25: the first cut made a middling downward flick from peek project
-        // past the midpoint and land MINIMIZED - too eager (user 2026-07-10). At 0.15 a gentle
-        // flick settles back and minimizing takes a deliberate throw; position still wins when
-        // the finger actually dragged most of the way.
-        val projected = heightAnim.value - vDp * 0.15f
-        val target = listOf(minH, peekH, expH).minByOrNull { kotlin.math.abs(it - projected) } ?: peekH
+        // Where the throw would naturally coast to, then the nearest detent to THAT point.
+        val naturalEnd = flingDecay.calculateTargetValue(heightAnim.value, -vDp)
+        val target = listOf(minH, peekH, expH).minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekH
         expandedState.value = target == expH
         minimizedState.value = target == minH
-        settleScope.launch { heightAnim.animateTo(target, settleSpec, initialVelocity = -vDp) }
+        settleScope.launch {
+            val towardTarget = (naturalEnd - heightAnim.value) * (target - heightAnim.value) > 0f
+            if (towardTarget && kotlin.math.abs(naturalEnd - heightAnim.value) >= kotlin.math.abs(target - heightAnim.value)) {
+                // Google's feel: no spring snap - the sheet RIDES THE THROW'S OWN INERTIA and the
+                // detent simply stops it (Animatable bounds clamp the decay exactly there). Only
+                // a throw whose natural coast reaches the detent qualifies, so the stop never
+                // looks magnetic.
+                try {
+                    heightAnim.updateBounds(
+                        lowerBound = minOf(heightAnim.value, target),
+                        upperBound = maxOf(heightAnim.value, target),
+                    )
+                    heightAnim.animateDecay(-vDp, flingDecay)
+                } finally {
+                    heightAnim.updateBounds(lowerBound = null, upperBound = null)
+                }
+                if (kotlin.math.abs(heightAnim.value - target) > 0.5f) heightAnim.animateTo(target, settleSpec)
+            } else {
+                // The throw doesn't carry to the detent (gentle drop, or released between
+                // detents against the velocity): glide there with a soft spring instead.
+                heightAnim.animateTo(target, settleSpec, initialVelocity = -vDp)
+            }
+        }
     }
     fun dragSheetBy(dyPx: Float) {
         val dyDp = with(density) { dyPx.toDp().value }
