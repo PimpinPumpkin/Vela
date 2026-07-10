@@ -485,4 +485,19 @@
     <string name="settings_developer_hint">Verktyg för demos, skärmbilder och tester. Stäng av dem för verklig användning.</string>
     <string name="settings_browse_voices">Bläddra bland röster</string>
     <string name="settings_browse_voices_hint">Ladda ner och växla mellan Velas röster på enheten.</string>
+    <string name="voice_capture_listening">Lyssnar…</string>
+    <string name="voice_capture_starting">Förbereder…</string>
+    <string name="voice_capture_done">Klar</string>
+    <string name="mapvm_asr_ready">Röstsökning på enheten är klar</string>
+    <string name="mapvm_asr_download_failed">Det gick inte att ladda ner röstmodellen. Kontrollera anslutningen och försök igen.</string>
+    <string name="settings_voice_search_model">Röstsökning på enheten</string>
+    <string name="settings_voice_search_model_hint">Velas egen taligenkänning körs på telefonen, så röstsökning fungerar utan någon annan app och inget laddas upp. Engångsnedladdning på ~%1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Ladda ner (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Ta bort</string>
+    <string name="settings_voice_search_downloading">Laddar ner… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installerar…</string>
+    <string name="settings_voice_search_engine_title">När du trycker på mikrofonen</string>
+    <string name="settings_voice_search_engine_auto">På enheten när tillgängligt</string>
+    <string name="settings_voice_search_engine_local">Endast på enheten</string>
+    <string name="settings_voice_search_engine_system">Annan röstapp</string>
 </resources>
