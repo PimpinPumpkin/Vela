@@ -310,6 +310,13 @@ non-negotiable rules for any ported commit:
     path) is **parked + unused** - the `asset://`/`fromJson` path in `VelaMapView` is dead code kept
     only as reference; don't be misled by its stale path.
   - Verify basemap edits on-device in **both** themes.
+  - **A style dies the instant `map.setStyle` is called; guard every deferred access.** During a
+    light/dark flip the OLD `Style` object becomes invalid immediately, and ANY access to it (even
+    reading `.layers`) throws "Calling getLayers when a newer style is loading" - not just mutation.
+    The overlay `LaunchedEffect`s are keyed on `darkTheme`, so they re-run in the load window against
+    the stale reference and crashed the app. So: null `styleRef` FIRST (before `setStyle`, re-set in
+    the callback) and wrap each effect's style enumeration/getLayer/setProperties in `runCatching`.
+    (Ported from upstream `328a5ab`.)
 - **D-PAD-FIRST IS THE FORK'S REASON TO EXIST - NON-NEGOTIABLE (read before touching ANY UI).**
   Vela must be **100% operable with a 5-key D-pad (↑ ↓ ← → + OK) and hardware BACK, on a device with
   NO touchscreen** (a feature phone). Touch is a *bonus*, never a requirement. A change that
