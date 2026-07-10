@@ -1665,7 +1665,7 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
     }
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
-    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category, rating = it.rating) }
+    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice) }
 
 @Composable
 private fun SearchResults(
@@ -1949,6 +1949,7 @@ private fun SearchResults(
                         }
                     }
                     val sub = listOfNotNull(
+                        place.fuelPrice, // gas stations: the live price leads the row, Google-style
                         place.priceText,
                         place.category,
                         place.distanceMeters?.let { formatDistance(it) },

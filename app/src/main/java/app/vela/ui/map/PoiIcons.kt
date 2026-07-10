@@ -69,13 +69,36 @@ object PoiIcons {
     const val RESULT_DOT_IMG = "vela-res-dot"
 
     /** The style-image key for a search result: a rating bubble for rated FOOD places
-     *  ("vela-resb-food-45"), a red category pin for everything else ("vela-res-shop"). */
-    fun resultIconKey(name: String?, category: String?, rating: Double?): String {
+     *  ("vela-resb-food-45"), a fuel-PRICE bubble for gas stations that carry one
+     *  ("vela-resb-fuel-534"), a red category pin for everything else ("vela-res-shop").
+     *  Bubble keys only need uniqueness - the drawn label is passed to [ensureResultIcon]. */
+    fun resultIconKey(name: String?, category: String?, rating: Double?, fuelPrice: String? = null): String {
         val group = groupFor(name, category)
-        return if (group == "food" && rating != null) {
-            "vela-resb-$group-${(rating * 10).toInt().coerceIn(10, 50)}"
-        } else "vela-res-$group"
+        val price = fuelShort(fuelPrice)
+        return when {
+            group == "fuel" && price != null ->
+                "vela-resb-$group-" + price.filter(Char::isLetterOrDigit).lowercase()
+            group == "food" && rating != null ->
+                "vela-resb-$group-${(rating * 10).toInt().coerceIn(10, 50)}"
+            else -> "vela-res-$group"
+        }
     }
+
+    /** The label a result's bubble should carry, or null for a plain pin: the rating ("4.5") or
+     *  the short fuel price ("$5.34" from "$5.34/Regular"). */
+    fun resultBubbleLabel(name: String?, category: String?, rating: Double?, fuelPrice: String?): String? {
+        val group = groupFor(name, category)
+        return when {
+            group == "fuel" -> fuelShort(fuelPrice)
+            group == "food" && rating != null -> String.format(java.util.Locale.getDefault(), "%.1f", rating)
+            else -> null
+        }
+    }
+
+    /** "$5.34/Regular" → "$5.34" (the map bubble only has room for the number; the grade shows
+     *  on the list row + place sheet). */
+    fun fuelShort(fuelPrice: String?): String? =
+        fuelPrice?.substringBefore('/')?.trim()?.ifBlank { null }
 
     /** Generate + register the bitmap behind [key] (from [resultIconKey]) if this style doesn't
      *  have it yet. Rating bubbles are theme-dependent, so a theme flip (= a style reload) simply

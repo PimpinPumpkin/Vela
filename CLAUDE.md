@@ -336,7 +336,13 @@ Defaults that make the safe path the easy one:
   pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels sit UNDER the pin
   (variableAnchor TOP) in NEUTRAL ink both themes - Google doesn't category-tint result labels,
   only ambient POI labels take the tint. Dots carry the same MARKER_INDEX_PROP feature prop, so
-  a collapsed result is still tappable.
+  a collapsed result is still tappable. **Gas stations put their LIVE PRICE in the bubble**
+  (2026-07-10): `Place.fuelPrice` ("$5.34/Regular") parses off the place node at `[88][0]`
+  (calibration `paths.fuelPrice`, remote-recalibratable, digit-gated in SearchParser so a shape
+  drift can't show a label as a price; calibration.json is at **v14** for it), the bubble shows
+  the short "$5.34" (`PoiIcons.fuelShort`), and the full string leads the result row + the place
+  sheet's price/category line. EV chargers carry NO detail in the keyless response (probed
+  2026-07-10 - type marker only, no price/kW/availability); see ROADMAP.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
