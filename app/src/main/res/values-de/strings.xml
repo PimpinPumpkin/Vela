@@ -69,16 +69,16 @@
     <string name="settings_hide_external_links">Website &amp; externe Links ausblenden</string>
     <string name="settings_hide_external_links_hint">An = Ortsseiten zeigen keine Website-, Street-View- oder Buchen / Bestellen-Schaltflächen (keine beliebigen externen Seiten geöffnet).</string>
     <string name="settings_offline">Offline-Karten</string>
-    <string name="settings_offline_hint">Lade einen Bereich herunter, um seine Karte und Wegbeschreibungen für die Offline-Nutzung auf dem Gerät zu behalten.</string>
-    <string name="settings_offline_map_area">Kartenbereich</string>
+    <string name="settings_offline_hint">Zwei Wege, Vela offline zu nutzen: Speichere den Bereich, in dem du bist, für kurze Wege, oder unten ein ganzes Bundesland oder Land für längere.</string>
+    <string name="settings_offline_map_area">Lokales Gebiet</string>
     <string name="settings_offline_download_viewport">Angezeigten Bereich herunterladen</string>
-    <string name="settings_offline_download_viewport_hint">Speichert die Karte und ihre Straßen für den angezeigten Bereich, damit er offline angezeigt wird und Routen berechnet.</string>
+    <string name="settings_offline_download_viewport_hint">Speichert die Karte, die du gerade siehst, mit ihren Straßen und Adressen, damit dieser Bereich auch ohne Empfang funktioniert.</string>
     <string name="settings_offline_no_areas">Noch keine Bereiche gespeichert.</string>
     <string name="settings_offline_addresses_missing">Vor diesem Update gespeicherte Gebiete enthalten keine Adressdaten. Aktualisiere sie, um offline nach Adressen zu suchen und dorthin zu navigieren.</string>
     <string name="settings_offline_addresses_update">Gespeicherte Gebiete aktualisieren</string>
     <string name="settings_offline_delete_area">Diesen Offline-Bereich löschen</string>
-    <string name="settings_routing_regions">Routing-Regionen</string>
-    <string name="settings_routing_regions_hint">Die Straßen einer ganzen Region (ein Bundesland oder Land), damit Wegbeschreibungen überall darin offline funktionieren. Hol dir, wohin du fährst.</string>
+    <string name="settings_routing_regions">Regionen &amp; Länder</string>
+    <string name="settings_routing_regions_hint">Alles, um offline durch ein ganzes Bundesland, eine Provinz oder ein Land zu kommen: Straßen und Orte, damit Navigation und Suche überall darin funktionieren. Hol dir, wohin du fährst.</string>
     <string name="settings_routing_no_regions">Noch keine Regionen verfügbar.</string>
     <string name="settings_clear_filter">Filter löschen</string>
     <string name="settings_routing_filter_placeholder">Suchen</string>
