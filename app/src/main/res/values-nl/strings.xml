@@ -220,6 +220,9 @@
     <string name="place_delta_min">+%1$d min</string>
     <string name="place_via">via %1$s</string>
     <string name="place_live_traffic">live verkeer</string>
+    <string name="place_traffic_light">weinig verkeer</string>
+    <string name="place_traffic_moderate">matig verkeer</string>
+    <string name="place_traffic_heavy">druk verkeer</string>
     <string name="place_finding_transit">OV-routes zoeken…</string>
     <string name="place_no_transit">Geen OV-routes gevonden</string>
     <string name="place_hide_steps">Stappen verbergen</string>

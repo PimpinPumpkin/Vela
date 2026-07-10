@@ -220,6 +220,9 @@
     <string name="place_delta_min">+%1$d min</string>
     <string name="place_via">par %1$s</string>
     <string name="place_live_traffic">trafic en temps réel</string>
+    <string name="place_traffic_light">trafic fluide</string>
+    <string name="place_traffic_moderate">trafic modéré</string>
+    <string name="place_traffic_heavy">trafic dense</string>
     <string name="place_finding_transit">Recherche d\'itinéraires en transports…</string>
     <string name="place_no_transit">Aucun itinéraire en transports trouvé</string>
     <string name="place_hide_steps">Masquer les étapes</string>

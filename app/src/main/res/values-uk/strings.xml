@@ -220,6 +220,9 @@
     <string name="place_delta_min">+%1$d хв</string>
     <string name="place_via">через %1$s</string>
     <string name="place_live_traffic">трафік у реальному часі</string>
+    <string name="place_traffic_light">вільна дорога</string>
+    <string name="place_traffic_moderate">помірний рух</string>
+    <string name="place_traffic_heavy">щільний рух</string>
     <string name="place_finding_transit">Пошук маршрутів транспорту…</string>
     <string name="place_no_transit">Маршрутів транспорту не знайдено</string>
     <string name="place_hide_steps">Сховати кроки</string>
