@@ -402,6 +402,18 @@ Defaults that make the safe path the easy one:
   symbol layers `textHaloWidth 1.9` vs the 1.1 every other label gets - route lines and the
   dotted walking line run right under street names and made them unreadable; the fatter halo
   is the "underlay tint" (Google does the same). Keep the exception if the blanket pass changes.
+- **Voice search mic is tier-2 intent handoff, not in-process recording (2026-07-10).**
+  `VoiceSearch` (reactive holder, pref `voice_search_button`) + a mic in `SearchBar` (param `onMic`,
+  shown only when query is empty and `onMic != null`). MapScreen computes `onMic` = toggle on AND
+  `VoiceSearch.hasProvider()` (a `queryIntentActivities(ACTION_RECOGNIZE_SPEECH)` check; needs the
+  `<queries>` entry in the manifest for Android 11+ visibility). The tap fires
+  `startActivityForResult(ACTION_RECOGNIZE_SPEECH)` and reads `EXTRA_RESULTS` into the query -
+  **the provider records, so Vela needs NO RECORD_AUDIO for this tier.** KEY DISTINCTION verified
+  2026-07-10: only apps that register the RECOGNIZE_SPEECH **activity** count (FUTO Voice Input
+  does - confirmed in its manifest). Keyboard/IME voice (Sayboard, FUTO Keyboard) provides a
+  RecognitionService or in-IME mic, NOT the activity, so `queryIntentActivities` returns empty and
+  the mic correctly hides - Vela can't `startActivityForResult` to them. That's intended: those
+  users use the keyboard mic, and tier-1 (PR3, on-device Whisper) will serve everyone regardless.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
   system dialog. The first ask lives in `VelaRoot` as an onboarding step gated on

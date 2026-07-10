@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Metryczne (kilometry, metry)</string>
     <string name="settings_language">Język</string>
     <string name="settings_language_hint">Ustawia język mówionej nawigacji zakręt po zakręcie (angielski, francuski, niemiecki, hiszpański, włoski, portugalski, niderlandzki, rosyjski, polski, szwedzki, ukraiński) — niezależnie od języka systemowego telefonu. Wybierz pasujący głos w Bibliotece głosów poniżej. Reszta tekstu w aplikacji zostanie przetłumaczona wkrótce.</string>
+    <string name="settings_search">Wyszukiwanie</string>
+    <string name="settings_voice_search_toggle">Mikrofon wyszukiwania głosowego</string>
+    <string name="settings_voice_search_hint">Pokazuje mikrofon na pasku wyszukiwania. Dotknij go, aby wypowiedzieć zapytanie za pomocą aplikacji do wprowadzania głosem.</string>
+    <string name="settings_voice_search_none">Pokazuje mikrofon na pasku wyszukiwania do wypowiedzenia zapytania. Wymaga aplikacji głosowej, np. FUTO Voice Input; żadna nie jest zainstalowana.</string>
+    <string name="search_voice_cd">Wyszukiwanie głosowe</string>
+    <string name="search_voice_prompt">Mów, aby wyszukać</string>
     <string name="settings_voice">Głos</string>
     <string name="settings_voice_fallback_name">głos</string>
     <string name="settings_voice_downloading">Pobieranie %1$s… %2$d%%</string>

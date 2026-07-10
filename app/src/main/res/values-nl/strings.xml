@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Metrisch (kilometers, meters)</string>
     <string name="settings_language">Taal</string>
     <string name="settings_language_hint">Stelt de taal in voor gesproken route-instructies (Engels, Frans, Duits, Spaans, Italiaans, Portugees, Nederlands, Russisch, Pools, Zweeds, Oekraïens) — los van de systeemtaal van uw telefoon. Kies hieronder een passende stem in de Stembibliotheek. De rest van de tekst in de app wordt hierna vertaald.</string>
+    <string name="settings_search">Zoeken</string>
+    <string name="settings_voice_search_toggle">Microfoon voor spraakzoeken</string>
+    <string name="settings_voice_search_hint">Toont een microfoon in de zoekbalk. Tik erop om je zoekopdracht in te spreken via een spraakinvoer-app op je telefoon.</string>
+    <string name="settings_voice_search_none">Toont een microfoon in de zoekbalk om je zoekopdracht in te spreken. Vereist een spraak-app zoals FUTO Voice Input; nog geen geïnstalleerd.</string>
+    <string name="search_voice_cd">Zoeken met stem</string>
+    <string name="search_voice_prompt">Spreek om te zoeken</string>
     <string name="settings_voice">Stem</string>
     <string name="settings_voice_fallback_name">stem</string>
     <string name="settings_voice_downloading">%1$s downloaden… %2$d%%</string>

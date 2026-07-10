@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Métrico (quilómetros, metros)</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_language_hint">Define o idioma das indicações de voz curva a curva (inglês, francês, alemão, espanhol, italiano, português, neerlandês, russo, polaco, sueco, ucraniano) — independente do idioma do sistema do seu telemóvel. Escolha uma voz correspondente na Biblioteca de vozes abaixo. O restante texto no ecrã da aplicação será traduzido a seguir.</string>
+    <string name="settings_search">Pesquisa</string>
+    <string name="settings_voice_search_toggle">Microfone de pesquisa por voz</string>
+    <string name="settings_voice_search_hint">Mostra um microfone na barra de pesquisa. Toque para ditar a pesquisa com uma app de entrada de voz do telemóvel.</string>
+    <string name="settings_voice_search_none">Mostra um microfone na barra de pesquisa para ditar a pesquisa. Precisa de uma app de voz como o FUTO Voice Input; nenhuma instalada ainda.</string>
+    <string name="search_voice_cd">Pesquisa por voz</string>
+    <string name="search_voice_prompt">Fale para pesquisar</string>
     <string name="settings_voice">Voz</string>
     <string name="settings_voice_fallback_name">voz</string>
     <string name="settings_voice_downloading">A transferir %1$s… %2$d%%</string>

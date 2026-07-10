@@ -29,6 +29,12 @@
     <string name="settings_units_metric">Metric (kilometers, meters)</string>
     <string name="settings_language">Language</string>
     <string name="settings_language_hint">Sets the language for spoken turn-by-turn directions (English, French, German, Spanish, Italian, Portuguese, Dutch, Russian, Polish, Swedish, Ukrainian), independent of your phone\'s system language. Pick a matching voice in Voice library below. The rest of the app\'s on-screen text is being translated next.</string>
+    <string name="settings_search">Search</string>
+    <string name="settings_voice_search_toggle">Voice search mic</string>
+    <string name="settings_voice_search_hint">Shows a mic in the search bar. Tap it to speak your search, using a voice-input app on your phone.</string>
+    <string name="settings_voice_search_none">Shows a mic in the search bar to speak your search. Needs a voice-input app such as FUTO Voice Input; none is installed yet.</string>
+    <string name="search_voice_cd">Voice search</string>
+    <string name="search_voice_prompt">Speak to search</string>
     <string name="settings_voice">Voice</string>
     <string name="settings_voice_fallback_name">voice</string>
     <string name="settings_voice_downloading">Downloading %1$s… %2$d%%</string> <!-- format -->

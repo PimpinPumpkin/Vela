@@ -40,6 +40,7 @@ class VelaApp : Application() {
         app.vela.ui.HideAdult.init(this)
         app.vela.ui.HideExternalLinks.init(this)
         app.vela.ui.Buildings3d.init(this)
+        app.vela.ui.VoiceSearch.init(this)
         Onboarding.init(this)
         // Persist any fatal crash (stack trace + breadcrumbs) so it survives the
         // restart and can be exported from Settings → Diagnostics next launch.

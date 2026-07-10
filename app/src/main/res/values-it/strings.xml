@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Metriche (chilometri, metri)</string>
     <string name="settings_language">Lingua</string>
     <string name="settings_language_hint">Imposta la lingua delle indicazioni vocali passo-passo (inglese, francese, tedesco, spagnolo, italiano, portoghese, olandese, russo, polacco, svedese, ucraino), indipendente dalla lingua di sistema del telefono. Scegli una voce corrispondente nella Libreria voci qui sotto. Il resto del testo dell\'app sarà tradotto a breve.</string>
+    <string name="settings_search">Ricerca</string>
+    <string name="settings_voice_search_toggle">Microfono ricerca vocale</string>
+    <string name="settings_voice_search_hint">Mostra un microfono nella barra di ricerca. Toccalo per dettare la ricerca con un\'app di input vocale sul telefono.</string>
+    <string name="settings_voice_search_none">Mostra un microfono nella barra di ricerca per dettare la ricerca. Serve un\'app vocale come FUTO Voice Input; nessuna ancora installata.</string>
+    <string name="search_voice_cd">Ricerca vocale</string>
+    <string name="search_voice_prompt">Parla per cercare</string>
     <string name="settings_voice">Voce</string>
     <string name="settings_voice_fallback_name">voce</string>
     <string name="settings_voice_downloading">Download di %1$s… %2$d%%</string>
