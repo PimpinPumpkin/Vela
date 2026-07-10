@@ -9,12 +9,12 @@
 # sherpa-onnx neural-TTS runtime (vendored AAR). Its JNI resolves the Kotlin config classes AND
 # their fields by their ORIGINAL fully-qualified names (FindClass / GetFieldID) at OfflineTts init.
 # R8 renaming/stripping them makes the native side throw ClassNotFoundError and SIGABRT the process
-# — the AAR ships no consumer rules, so we keep the whole package (classes + members) un-renamed.
+# - the AAR ships no consumer rules, so we keep the whole package (classes + members) un-renamed.
 -keep class com.k2fsa.sherpa.onnx.** { *; }
 -dontwarn com.k2fsa.sherpa.onnx.**
 
 # Timber: physically strip verbose/debug calls (call site + argument building) from the RELEASE dex.
-# WARN/ERROR are deliberately NOT stripped — they feed the opt-in on-device diagnostics ring
+# WARN/ERROR are deliberately NOT stripped - they feed the opt-in on-device diagnostics ring
 # (DiagTree → DiagLog → crash/ANR reports). This file is release-only; the debug variant keeps them.
 -assumenosideeffects class timber.log.Timber {
     public static void v(...);

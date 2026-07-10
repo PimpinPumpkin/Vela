@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import app.vela.core.model.LatLng
 
 /**
- * Simulated ("larp") location — a demo/screenshot tool, sibling of demo-drive. When set, Vela
+ * Simulated ("larp") location - a demo/screenshot tool, sibling of demo-drive. When set, Vela
  * pretends to be at this point: the live GPS collector is suspended and every "your location"
  * (the dot, the search distance bias, the directions origin, recenter) reads this instead, so the
  * app can be shown from anywhere without leaking where you actually are. `null` = off (real GPS).

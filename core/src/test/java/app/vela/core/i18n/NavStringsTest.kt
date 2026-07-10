@@ -11,7 +11,7 @@ import java.util.Locale
 
 class NavStringsTest {
 
-    // The registry is process-global — never leave it non-English for the other (English-asserting) nav tests.
+    // The registry is process-global - never leave it non-English for the other (English-asserting) nav tests.
     @After fun resetToEnglish() = NavStringsRegistry.setLocale(Locale.ENGLISH)
 
     @Test fun `english phrases match the original osrmPhrase templates`() {
@@ -32,7 +32,7 @@ class NavStringsTest {
         assertEquals("Au rond-point, prenez la 2e sortie sur Elm St", fr.phrase("roundabout", null, "Elm St", null, null, 2))
         assertEquals("Faites demi-tour sur Main St", fr.phrase("uturn", null, "Main St", null, null, null))
         assertEquals("Vous êtes arrivé à destination", fr.phrase("arrive", null, null, null, null, null))
-        // The road NAME ("Rue de Rivoli") is data — never translated.
+        // The road NAME ("Rue de Rivoli") is data - never translated.
         assertEquals("Continuez sur Rue de Rivoli", fr.phrase("continue", "straight", "Rue de Rivoli", null, null, null))
     }
 
@@ -56,7 +56,7 @@ class NavStringsTest {
     @Test fun `the frame and arrival are localized`() {
         assertEquals("In 500 feet, Turn right", EnNavStrings.inThen("500 feet", "Turn right"))
         assertEquals("Dans 150 mètres, Tournez à droite", FrNavStrings.inThen("150 mètres", "Tournez à droite"))
-        // EN carries a trailing semicolon ON PURPOSE — spoken-only string; the punctuation shapes the
+        // EN carries a trailing semicolon ON PURPOSE - spoken-only string; the punctuation shapes the
         // Piper voice's final prosody contour (user A/B'd: semicolon > period > bare). See EnNavStrings.
         assertEquals("You have arrived;", EnNavStrings.arrived())
         assertEquals("Vous êtes arrivé", FrNavStrings.arrived())
@@ -106,7 +106,7 @@ class NavStringsTest {
     @Test fun `expandForSpeech is English-only opt-in`() {
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
         assertEquals("one twenty eighth Street", EnNavStrings.expandForSpeech("128th St"))
-        // French leaves the text — including a road abbreviation — untouched (interface default identity).
+        // French leaves the text - including a road abbreviation - untouched (interface default identity).
         assertEquals("Tournez sur Rue St", FrNavStrings.expandForSpeech("Tournez sur Rue St"))
         // Other languages also leave text untouched (they use the interface default).
         assertEquals("Biegen Sie ab auf Hauptstr", DeNavStrings.expandForSpeech("Biegen Sie ab auf Hauptstr"))
@@ -135,14 +135,14 @@ class NavStringsTest {
             assertTrue("$code voiceTest", ns.voiceTest().isNotBlank())
             assertTrue("$code lanes plural", ns.useLanes(LaneSide.RIGHT, 2).isNotBlank())
             assertTrue("$code lane single", ns.useLanes(LaneSide.LEFT, 1).isNotBlank())
-            // The road NAME is data — it must survive untranslated in the output.
+            // The road NAME is data - it must survive untranslated in the output.
             assertTrue("$code keeps road name", ns.phrase("turn", "left", "Rue de Rivoli", null, null, null).contains("Rue de Rivoli"))
         }
     }
 
-    /** OSRM forks are almost always "slight left"/"slight right" — EVERY language's fork phrase must
-     *  come out on the correct SIDE for those (the Dutch exact-match on "links"/"rechts" fell to a
-     *  hardcoded keep-LEFT at a keep-RIGHT freeway split — a safety bug, audit 2026-07-06). */
+    /** OSRM forks are almost always "slight left"/"slight right" - EVERY language's fork phrase must
+     * come out on the correct SIDE for those (the Dutch exact-match on "links"/"rechts" fell to a
+     * hardcoded keep-LEFT at a keep-RIGHT freeway split - a safety bug, audit 2026-07-06). */
     @Test fun `fork guidance keeps the correct side for slight modifiers in every language`() {
         val sideWords = mapOf(
             "en" to ("left" to "right"), "fr" to ("gauche" to "droite"), "de" to ("links" to "rechts"),
@@ -162,7 +162,7 @@ class NavStringsTest {
     }
 
     /** Ukrainian fractional distances take the GENITIVE SINGULAR ("1,2 кілометра"), not the
-     *  nominative plural the old 3-form ukPlural returned ("кілометри") — RU/PL had this right. */
+     * nominative plural the old 3-form ukPlural returned ("кілометри") - RU/PL had this right. */
     @Test fun `ukrainian fractional km uses genitive singular`() {
         val uk = NavStringsRegistry.forLanguage("uk")
         assertTrue(uk.spokenDistance(1200.0, imperial = false).contains("кілометра"))

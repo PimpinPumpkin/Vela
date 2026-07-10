@@ -5,8 +5,8 @@ import app.vela.core.model.LatLng
 /**
  * Builds the `pb` parameter for `/search?tbm=map`.
  *
- * Calibration (2026-06-15) showed that — unlike a plain `q=` request, which
- * returns an empty envelope — search needs this full pb to return populated
+ * Calibration (2026-06-15) showed that - unlike a plain `q=` request, which
+ * returns an empty envelope - search needs this full pb to return populated
  * results, and that results are viewport-driven (the `!2d<lng>!3d<lat>` block).
  * The optional `!22m5!1s<token>!7e81` / `!14m1!3s<token>` session blocks were
  * removed after verifying results still come back (20 of them) without a token.

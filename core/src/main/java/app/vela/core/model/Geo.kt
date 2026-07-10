@@ -10,7 +10,7 @@ import kotlin.math.sqrt
 
 /**
  * A WGS84 coordinate. Vela's own type, deliberately free of any MapLibre
- * dependency so `:core` stays UI-agnostic — convert to/from
+ * dependency so `:core` stays UI-agnostic - convert to/from
  * `org.maplibre.android.geometry.LatLng` only at the view boundary.
  */
 data class LatLng(val lat: Double, val lng: Double)
@@ -26,7 +26,7 @@ data class LatLngBounds(
 
     companion object {
         /** Rough square bounds of [radiusMeters] around [c]; good enough for a
-         *  "search near here" viewport bias. */
+         * "search near here" viewport bias. */
         fun around(c: LatLng, radiusMeters: Double): LatLngBounds {
             val dLat = radiusMeters / 111_320.0
             val dLng = radiusMeters /
@@ -37,7 +37,7 @@ data class LatLngBounds(
 }
 
 /** Great-circle distance in metres (haversine). Used for "near me" ranking and
- *  the nav engine's off-route / approaching-maneuver checks. */
+ * the nav engine's off-route / approaching-maneuver checks. */
 fun LatLng.distanceTo(o: LatLng): Double {
     val r = 6_371_000.0
     val dLat = Math.toRadians(o.lat - lat)

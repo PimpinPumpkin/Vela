@@ -9,8 +9,8 @@ import kotlinx.serialization.json.Json
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** Recently-opened places (most-recent first, deduped by id, capped) — so the
- *  search page can offer one-tap return to a place you just looked at. */
+/** Recently-opened places (most-recent first, deduped by id, capped) - so the
+ * search page can offer one-tap return to a place you just looked at. */
 @Singleton
 class RecentPlaceStore @Inject constructor(
     @ApplicationContext context: Context,

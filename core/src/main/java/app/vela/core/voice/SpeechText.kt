@@ -7,12 +7,12 @@ package app.vela.core.voice
 object SpeechText {
 
     /**
-     * Split [text] into sentences at a terminal ". "/"! "/"? ", but ONLY at a *real* sentence break —
-     * never inside a name — so a neural synth can splice a pause between them at genuine periods.
+     * Split [text] into sentences at a terminal ". "/"! "/"? ", but ONLY at a *real* sentence break -
+     * never inside a name - so a neural synth can splice a pause between them at genuine periods.
      *
      * A period counts as a break only when the word before it is not an abbreviation / road-type /
-     * directional word (`Jr.`, `Mt.`, `St.`, `Blvd.`, `N.`, and — because [VoiceGuide.forSpeech]
-     * expands `St.`→`Street.`, `N.`→`North.` — the spelled-out forms too) AND the next clause starts
+     * directional word (`Jr.`, `Mt.`, `St.`, `Blvd.`, `N.`, and - because [VoiceGuide.forSpeech]
+     * expands `St.`→`Street.`, `N.`→`North.` - the spelled-out forms too) AND the next clause starts
      * with a capital or digit. So `"Martin Luther King Jr. Boulevard"` stays whole while
      * `"…onto Main Street. Then merge…"` splits. Decimals (`"0.5 mi"`) and a trailing period never
      * split. Returns a single-element list when nothing qualifies, so single-sentence prompts are
@@ -41,7 +41,7 @@ object SpeechText {
     }
 
     /**
-     * Split [text] at CLAUSE boundaries — a comma or semicolon followed by whitespace — so a neural
+     * Split [text] at CLAUSE boundaries - a comma or semicolon followed by whitespace - so a neural
      * synth can splice a short beat there (Piper reads straight through commas otherwise, running
      * "In a quarter mile, turn right" together). Requires the space, so a grouped number like "1,000"
      * (comma-digit, no space) is never split. A `;` is always a break; a `,` is too (nav commas are
@@ -84,7 +84,7 @@ object SpeechText {
     }
 
     /**
-     * Read 3-digit street ordinals the way people (and Google's voice) say them — "128th" → "one
+     * Read 3-digit street ordinals the way people (and Google's voice) say them - "128th" → "one
      * twenty-eighth", not "one hundred and twenty-eighth", which the neural G2P mangles into a stuttery
      * "one, hundred and 28th". Only touches 3-digit ordinals (100-999); espeak reads 1-2 digit ordinals
      * ("5th", "42nd") fine on its own, and 4-digit+ are left alone (rare in street names, and the
@@ -106,7 +106,7 @@ object SpeechText {
         r % 10 == 0 -> TENS_ORD[r / 10]
         // SPACE, not hyphen: as two words each gets its own full stress, so the tens word keeps its
         // final consonant. The hyphenated compound ("thirty-second") was read with a reduced/flapped
-        // "-ty" by the neural voice — "5th" came out sounding like "one third second" on a real
+        // "-ty" by the neural voice - "5th" came out sounding like "one third second" on a real
         // drive (user 2026-07-06).
         else -> "${TENS_CARD[r / 10]} ${ORD1[r % 10]}"
     }
@@ -129,11 +129,11 @@ object SpeechText {
     // Terminal punctuation followed by whitespace (so "0.5 mi" and a trailing "." don't match).
     private val SENTENCE_BREAK = Regex("[.!?]+\\s+")
 
-    // Comma/semicolon followed by whitespace — a clause beat. The required space means a grouped
+    // Comma/semicolon followed by whitespace - a clause beat. The required space means a grouped
     // number ("1,000") is never split (comma-digit has no space).
     private val CLAUSE_BREAK = Regex("[,;]\\s+")
 
-    // A period after one of these is an abbreviation/name dot, not a sentence end — don't split on it.
+    // A period after one of these is an abbreviation/name dot, not a sentence end - don't split on it.
     // Road-type + directional + title abbreviations AND the words forSpeech expands them into.
     private val NO_SPLIT_BEFORE = setOf(
         "st", "ave", "av", "blvd", "rd", "dr", "ln", "ct", "pl", "ter", "cir", "sq", "trl",

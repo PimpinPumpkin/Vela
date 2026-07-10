@@ -21,7 +21,7 @@ import kotlin.math.max
 object OfflineMaps {
 
     /** Generous tile cap so a screen-sized area downloads; very large areas still
-     *  hit it and report back so the user can zoom in. */
+     * hit it and report back so the user can zoom in. */
     private const val TILE_LIMIT = 50_000L
 
     fun download(
@@ -62,7 +62,7 @@ object OfflineMaps {
                             onStatus("Offline download failed: ${error.reason}")
                         }
                         override fun mapboxTileCountLimitExceeded(limit: Long) {
-                            onStatus("Area too large — zoom in and try a smaller area")
+                            onStatus("Area too large - zoom in and try a smaller area")
                             region.setDownloadState(OfflineRegion.STATE_INACTIVE)
                         }
                     })
@@ -97,7 +97,7 @@ object OfflineMaps {
             .getOrNull()?.takeIf { it.isNotBlank() } ?: "Saved area"
 
     /** The saved area's tile bounds, so callers can re-fetch its offline data (POIs/addresses) for the
-     *  same box. Null if the region isn't a tile-pyramid definition. */
+     * same box. Null if the region isn't a tile-pyramid definition. */
     fun boundsOf(region: OfflineRegion): LatLngBounds? =
         (region.definition as? org.maplibre.android.offline.OfflineTilePyramidRegionDefinition)?.bounds
 

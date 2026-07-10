@@ -14,7 +14,7 @@ import kotlin.math.hypot
 object RouteCorridor {
 
     /** Keep [places] within [maxMeters] of the [route] line, ordered by how far
-     *  along the route each one sits (so the list reads in travel order). */
+     * along the route each one sits (so the list reads in travel order). */
     fun alongRoute(places: List<Place>, route: List<LatLng>, maxMeters: Double = 3000.0): List<Place> {
         if (route.size < 2) return places
         val cum = DoubleArray(route.size)
@@ -42,7 +42,7 @@ object RouteCorridor {
     }
 
     /** Distance (m) from [p] to segment [a]–[b] plus the fraction t∈[0,1] along it,
-     *  via a local equirectangular projection (accurate at route scale). */
+     * via a local equirectangular projection (accurate at route scale). */
     private fun segmentDistance(p: LatLng, a: LatLng, b: LatLng): Pair<Double, Double> {
         val mPerDegLat = 111_320.0
         val mPerDegLng = 111_320.0 * cos(Math.toRadians((a.lat + b.lat) / 2.0))

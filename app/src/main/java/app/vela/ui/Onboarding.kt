@@ -23,18 +23,18 @@ object Onboarding {
     val showDonatePrompt = mutableStateOf(false)
 
     /** True for the single session where the one-time "turn on diagnostics?" prompt
-     *  should show — Vela wants opted-in diagnostics, so it asks once (after the user
-     *  has settled in), clearly, off otherwise. Never shown if it's already on. */
+     * should show - Vela wants opted-in diagnostics, so it asks once (after the user
+     * has settled in), clearly, off otherwise. Never shown if it's already on. */
     val showDiagPrompt = mutableStateOf(false)
 
     /** True for the single session where the one-time "download the Vela neural voice?" prompt should
-     *  show — offered right after the welcome so the best voice is one tap away. Suppressed once the
-     *  model is present or the user has answered. */
+     * show - offered right after the welcome so the best voice is one tap away. Suppressed once the
+     * model is present or the user has answered. */
     val showVoicePrompt = mutableStateOf(false)
 
-    /** True for the single session where the one-time "set up offline maps?" prompt should show — offered
-     *  right after the voice prompt so people discover offline maps during onboarding instead of hitting a
-     *  dead search on the road. Shown once, then never again. */
+    /** True for the single session where the one-time "set up offline maps?" prompt should show - offered
+     * right after the voice prompt so people discover offline maps during onboarding instead of hitting a
+     * dead search on the road. Shown once, then never again. */
     val showOfflinePrompt = mutableStateOf(false)
 
     // Replace with your own funding page (Liberapay / Ko-fi / GitHub Sponsors).

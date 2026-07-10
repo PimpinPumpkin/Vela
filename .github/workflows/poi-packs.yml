@@ -1,6 +1,6 @@
 # Build offline PLACE packs (whole-region POI/address SQLite, Organic-Maps-style offline search) for
 # many regions in parallel and publish them to the `poi-packs` release. Packs share the routing
-# catalog's region ids (tools/routing-regions.json) — the app pulls a region's pack automatically
+# catalog's region ids (tools/routing-regions.json) - the app pulls a region's pack automatically
 # when its routing graph is downloaded.
 #
 # Run from the Actions tab → "Build offline place packs" → pick a `group` or pass explicit `ids`.
@@ -67,7 +67,7 @@ jobs:
           n=$(printf '%s' "$sel" | jq 'length')
           echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
           if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GROUP' ids='$IDS'"; exit 1; fi
-          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap — pick a smaller group or ids"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap - pick a smaller group or ids"; exit 1; fi
           echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
           echo "count=$n" >> "$GITHUB_OUTPUT"
       - name: Ensure the catalog release exists
@@ -123,6 +123,6 @@ jobs:
         run: |
           shopt -s nullglob
           files=(entries/*.json)
-          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built - nothing to merge"; exit 0; fi
           echo "merging ${#files[@]} entr(y/ies)"
           bash scripts/merge-poi-manifest.sh entries

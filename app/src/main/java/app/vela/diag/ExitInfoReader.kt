@@ -14,15 +14,15 @@ import javax.inject.Singleton
 /**
  * Reads the OS's retained process-exit history ([ApplicationExitInfo], API 30+) on launch and folds
  * ANRs, native crashes, low-memory and SIGKILL exits into the SAME crash-report dir [CrashCatcher]
- * uses — so they auto-surface in Settings → Diagnostics with zero new UI. This closes the gap the
+ * uses - so they auto-surface in Settings → Diagnostics with zero new UI. This closes the gap the
  * uncaught-exception handler can't reach: ANRs (the process is stuck, not throwing) and native
  * SIGSEGV/SIGABRT (MapLibre / sherpa-onnx). For a `REASON_ANR`, the OS trace ([getTraceInputStream])
- * is the real main-thread stack at the stall — the single highest-value artifact on a degoogled
+ * is the real main-thread stack at the stall - the single highest-value artifact on a degoogled
  * device with no Play/Crashlytics.
  *
  * Post-hoc + next-launch by nature (you see it after the process died) and API 30+ only (minSdk is
  * 26). Deduped against a persisted last-seen timestamp so re-harvest is idempotent. [harvest] reads
- * the trace from disk — call it OFF the main thread.
+ * the trace from disk - call it OFF the main thread.
  */
 @Singleton
 class ExitInfoReader @Inject constructor(

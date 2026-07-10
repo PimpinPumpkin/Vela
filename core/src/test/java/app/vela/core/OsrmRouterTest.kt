@@ -11,7 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The open router (OSRM) is now the PRIMARY turn-by-turn source — Google's keyless endpoint returns
+ * The open router (OSRM) is now the PRIMARY turn-by-turn source - Google's keyless endpoint returns
  * abbreviated steps for longer routes, OSRM gives them all with street names. These cover the bits
  * with logic: mapping OSRM's `maneuver.type`+`modifier` to Vela's [ManeuverType] (arrow + haptic),
  * and synthesizing the human instruction (OSRM ships none).
@@ -22,20 +22,20 @@ class OsrmRouterTest {
         assertEquals(ManeuverType.ARRIVE, RouteGeometry.osrmType("arrive", null))
         assertEquals(ManeuverType.TURN_RIGHT, RouteGeometry.osrmType("turn", "right"))
         assertEquals(ManeuverType.SLIGHT_LEFT, RouteGeometry.osrmType("turn", "slight left"))
-        // Same-physical-road straight-ons (name change or not) are CONTINUE — voice-silent in
+        // Same-physical-road straight-ons (name change or not) are CONTINUE - voice-silent in
         // NavEngine ("it keeps saying continue on the road I'm already on"). Pins for the whole
         // safety boundary of that silence:
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", "straight"))
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("continue", "straight"))
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("continue", null))
-        assertEquals(ManeuverType.TURN_LEFT, RouteGeometry.osrmType("continue", "left"))     // 90° bend keeping the name — SPOKEN
-        // A "new name" step is a plain rename — OSRM stamps a few-degree slight bearing artifact on a
+        assertEquals(ManeuverType.TURN_LEFT, RouteGeometry.osrmType("continue", "left"))     // 90° bend keeping the name - SPOKEN
+        // A "new name" step is a plain rename - OSRM stamps a few-degree slight bearing artifact on a
         // straight rename node (5th St → Anderson Rd), so slight left/right on a NEW NAME is still
-        // CONTINUE (silent). "continue"+slight stays a real bend (spoken) — the branch is split on purpose.
+        // CONTINUE (silent). "continue"+slight stays a real bend (spoken) - the branch is split on purpose.
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", "slight right"))
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", "slight left"))
         assertEquals(ManeuverType.CONTINUE, RouteGeometry.osrmType("new name", null))
-        assertEquals(ManeuverType.STRAIGHT, RouteGeometry.osrmType("turn", "straight"))      // junction where straight is a CHOICE — SPOKEN
+        assertEquals(ManeuverType.STRAIGHT, RouteGeometry.osrmType("turn", "straight"))      // junction where straight is a CHOICE - SPOKEN
         assertEquals(ManeuverType.FORK_RIGHT, RouteGeometry.osrmType("fork", "straight"))    // a fork is never silenced
         assertEquals(ManeuverType.ROUNDABOUT, RouteGeometry.osrmType("roundabout", "right"))
         assertEquals(ManeuverType.EXIT_ROUNDABOUT, RouteGeometry.osrmType("exit roundabout", "straight")) // OSRM's exit step carries the exit number
@@ -52,7 +52,7 @@ class OsrmRouterTest {
         assertEquals("Head out on Elm St", RouteGeometry.osrmPhrase("depart", "left", "Elm St", null, null, null))
     }
 
-    // Highways identify by ref, not name — the ref must reach the text (so it reads right AND the banner
+    // Highways identify by ref, not name - the ref must reach the text (so it reads right AND the banner
     // can pull a shield out of it). Regression for the "take the exit / no street / no shield" field bug.
     @Test fun highwayRefsAndExits() {
         // ref carried in as `road` (parseOsrmRoute does name ?: ref) → named continue + a shield-able "I 80"
@@ -123,7 +123,7 @@ class OsrmRouterTest {
 
     @Test fun lightAtTheTurnVertexItselfIsNotCounted() {
         // A signal exactly at the turn intersection is the one you turn AT, not one to "pass" first
-        // (the approach walk starts at poly[toIdx], the turn vertex) — exclude it (audit 2026-07-06).
+        // (the approach walk starts at poly[toIdx], the turn vertex) - exclude it (audit 2026-07-06).
         val atTurn = LatLng(47.0, -122.0 + 0.002) // poly[4], the TURN_LEFT vertex
         val turn = RouteGeometry.enrichWithLights(straightRoute(), listOf(atTurn)).legs[0].maneuvers.last()
         assertEquals("Turn left onto Main Street", turn.instruction)
@@ -141,17 +141,17 @@ class OsrmRouterTest {
 
     @Test fun pureRenameContinueIsFoldedIntoThePreviousStep() {
         // A "5th St becomes Anderson Rd" rename (CONTINUE, no genuine fork) must NOT be its own
-        // banner card — Google shows nothing there, just the next real turn (user 2026-07-06). It folds
+        // banner card - Google shows nothing there, just the next real turn (user 2026-07-06). It folds
         // into the preceding step, summing distance so the polyline still tiles.
         val out = RouteGeometry.foldRenames(listOf(
             man(ManeuverType.DEPART, 200.0),
-            man(ManeuverType.CONTINUE, 500.0), // pure rename — folds away
+            man(ManeuverType.CONTINUE, 500.0), // pure rename - folds away
             man(ManeuverType.TURN_LEFT, 80.0),
             man(ManeuverType.ARRIVE, 0.0),
         ))
         assertEquals(3, out.size) // CONTINUE gone
         assertEquals(ManeuverType.DEPART, out[0].type)
-        assertEquals(700.0, out[0].distanceMeters, 1e-9) // 200 + 500 — still tiles to the turn
+        assertEquals(700.0, out[0].distanceMeters, 1e-9) // 200 + 500 - still tiles to the turn
         assertEquals(ManeuverType.TURN_LEFT, out[1].type)
         assertEquals(ManeuverType.ARRIVE, out[2].type)
     }
@@ -165,7 +165,7 @@ class OsrmRouterTest {
         ))
         assertEquals(2, out.size) // [folded exit, turn]
         assertEquals(ManeuverType.RAMP_RIGHT, out[0].type)
-        assertEquals(350.0, out[0].distanceMeters, 1e-9) // 120+30+200 — still tiles the polyline
+        assertEquals(350.0, out[0].distanceMeters, 1e-9) // 120+30+200 - still tiles the polyline
         assertEquals(ManeuverType.TURN_LEFT, out[1].type)
     }
 

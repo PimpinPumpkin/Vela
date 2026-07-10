@@ -33,6 +33,6 @@ openssl ec -in "$KEY" -pubout -out "$PUB" 2>/dev/null
 if openssl dgst -sha256 -verify "$PUB" -signature <(base64 -d < "$SIG") "$JSON" >/dev/null 2>&1; then
   echo "verify OK"
 else
-  echo "error: self-verify FAILED — do not commit" >&2
+  echo "error: self-verify FAILED - do not commit" >&2
   exit 1
 fi

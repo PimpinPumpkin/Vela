@@ -8,7 +8,7 @@ import kotlinx.serialization.json.jsonArray
 
 /**
  * Parses the `batchexecute` `hspqX` (/MapsPhotoService.ListEntityPhotos) response
- * into a flat list of photo URLs — the full place gallery (~40+) vs the ~10 the
+ * into a flat list of photo URLs - the full place gallery (~40+) vs the ~10 the
  * search response carries.
  *
  * The response is the chunked `batchexecute` envelope: `)]}'` then length-prefixed
@@ -16,16 +16,16 @@ import kotlinx.serialization.json.jsonArray
  * (a JSON string) holds the photo list at `[0]`, each entry's FIFE URL at `[6][0]`
  * (the same `[6][0]` leaf the search preview uses) and its **posted date** at
  * `[21][6][8]` = `[year, month, day, hour]` → "May 2026". Calibrated live 2026-06-17,
- * date added 2026-06-20. (The contributor's *name* is NOT in this response — only a
- * date + an upload-source tag — so there's no author here, see [Photo].)
+ * date added 2026-06-20. (The contributor's *name* is NOT in this response - only a
+ * date + an upload-source tag - so there's no author here, see [Photo].)
  *
- * IMPORTANT — the full *user-contributed* gallery is **gated behind a Google
- * sign-in**: an anonymous (keyless) session — which is all Vela ever has — gets
+ * IMPORTANT - the full *user-contributed* gallery is **gated behind a Google
+ * sign-in**: an anonymous (keyless) session - which is all Vela ever has - gets
  * back only **Street View thumbnails** (`streetviewpixels-pa.googleapis.com`) at
  * the same `[6][0]` leaf, not the `lh*.googleusercontent.com` user photos. So we
  * keep **only `googleusercontent` URLs**; on the anonymous session that's empty,
  * and the caller (best-effort) falls back to the search-response photo preview.
- * (Don't "fix" this by dropping the filter — you'll show non-loading Street View
+ * (Don't "fix" this by dropping the filter - you'll show non-loading Street View
  * tiles as photos, which was the "placeholders everywhere" regression.)
  */
 object PhotosParser {
@@ -53,7 +53,7 @@ object PhotosParser {
     }
 
     /** "May 2026" from the entry's `[21][6][8]` = `[year, month, day, hour]`, or null
-     *  when absent / out of range. */
+     * when absent / out of range. */
     private fun postedDate(entry: JsonArray): String? {
         val ymd = (((entry.getOrNull(21) as? JsonArray)?.getOrNull(6) as? JsonArray)
             ?.getOrNull(8)) as? JsonArray ?: return null
@@ -68,8 +68,8 @@ object PhotosParser {
     )
 
     /** Slice the balanced JSON array starting at [start] (the batchexecute rows
-     *  are length-prefixed, not a single top-level JSON document, so we can't just
-     *  `parse` the whole body). */
+     * are length-prefixed, not a single top-level JSON document, so we can't just
+     * `parse` the whole body). */
     private fun extractArray(s: String, start: Int): String? {
         var depth = 0
         var inStr = false

@@ -26,15 +26,15 @@ import okhttp3.Request
  * The drawn route line.
  *
  * Calibration (2026-06-15) established that Google's `/maps/preview/directions`
- * response carries NO decodable overview polyline — the web client renders the
+ * response carries NO decodable overview polyline - the web client renders the
  * line from vector tiles. So Vela sources the *geometry* from an open router
  * (OSRM, whose geometry is a standard E5 polyline [PolylineCodec] decodes
  * directly) while Google still provides the ETA, live traffic and maneuvers.
  * Same split the offline build will use, just with Valhalla as the engine.
  *
  * NOTE: [OSRM_BASE] is the FOSSGIS community server (fair-use, no key). It hosts
- * a separate backend per travel mode — `routed-car` / `routed-bike` /
- * `routed-foot` — which is why walk/bike get *their own* path-following line and
+ * a separate backend per travel mode - `routed-car` / `routed-bike` /
+ * `routed-foot` - which is why walk/bike get *their own* path-following line and
  * not a car route. (The old router.project-osrm.org demo only had the car
  * profile.) Point it at a self-hosted OSRM/Valhalla before any real release.
  */
@@ -45,11 +45,11 @@ object RouteGeometry {
     // (consolidateExits). Generous enough for a long ramp, short enough that a genuine km-away fork isn't folded.
     private const val EXIT_COMPLEX_GAP_M = 500.0
     // Traffic-light landmark guidance (enrichWithLights): a light must be within this far BEFORE the turn (a
-    // block or two — "pass the light, then turn"), and within this far of the driven line to count as on-route.
+    // block or two - "pass the light, then turn"), and within this far of the driven line to count as on-route.
     private const val LIGHT_APPROACH_M = 400.0
     private const val LIGHT_SNAP_M = 25.0
     // One physical junction is often several OSM nodes (one traffic_signals node per approach/carriageway,
-    // ~15-30 m apart) — cluster matched signals within this radius so we count INTERSECTIONS, not nodes.
+    // ~15-30 m apart) - cluster matched signals within this radius so we count INTERSECTIONS, not nodes.
     private const val LIGHT_CLUSTER_M = 30.0
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -65,11 +65,11 @@ object RouteGeometry {
     fun fetch(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<LatLng>? =
         fetchAll(http, origin, dest, mode, alternatives = false).firstOrNull()
 
-    /** Up to a few real road-following geometries (best-first) — OSRM's fastest
-     *  plus, when [alternatives] is on, its alternates. Used to give EVERY Google
-     *  route a real line (paired by order) instead of letting the non-fastest ones
-     *  fall back to a scattered-point guess that doubled back on itself. Empty on
-     *  any failure. */
+    /** Up to a few real road-following geometries (best-first) - OSRM's fastest
+     * plus, when [alternatives] is on, its alternates. Used to give EVERY Google
+     * route a real line (paired by order) instead of letting the non-fastest ones
+     * fall back to a scattered-point guess that doubled back on itself. Empty on
+     * any failure. */
     fun fetchAll(
         http: OkHttpClient,
         origin: LatLng,
@@ -101,16 +101,16 @@ object RouteGeometry {
     }
 
     /** Copy of [route] drawn along [polyline], maneuvers repositioned along it
-     *  by cumulative step distance. Google's distances/durations are kept. */
+     * by cumulative step distance. Google's distances/durations are kept. */
     fun reposition(route: Route, polyline: List<LatLng>): Route {
         if (polyline.size < 2) return route
         // Use the polyline's own length (not the summed step distances) as the
-        // denominator so each turn lands at its true cumulative distance — see the
+        // denominator so each turn lands at its true cumulative distance - see the
         // note in DirectionsParser.placeManeuvers.
         val total = (0 until polyline.size - 1)
             .sumOf { polyline[it].distanceTo(polyline[it + 1]) }
             .coerceAtLeast(1.0)
-        // Place each maneuver at the START of its step (cum BEFORE adding the step's distance) —
+        // Place each maneuver at the START of its step (cum BEFORE adding the step's distance) -
         // a maneuver's distanceMeters is the travel AFTER it, the convention placeManeuvers/OSRM
         // use everywhere else. Adding first put every turn one full step LATE along the line
         // (10+ km on a highway step). The final ARRIVE pins to the end of the line.
@@ -143,17 +143,17 @@ object RouteGeometry {
     // --- full open-source routing (PRIMARY turn-by-turn) ----------------------
 
     /** Complete route(s) for [origin]→[dest] in [mode] from the open router (OSRM `steps=true`):
-     *  real road geometry AND every turn, with street names. This is the PRIMARY directions source
-     *  — Google's keyless endpoint hands back ABBREVIATED steps for longer routes (a 6-mi route
-     *  came back with 2 of ~10 turns), whereas OSRM gives them all. Free-flow duration only (no
-     *  traffic — Google is queried separately for the live ETA and overlaid). Empty on any failure
-     *  → caller falls back to the Google scrape. */
+     * real road geometry AND every turn, with street names. This is the PRIMARY directions source
+     * - Google's keyless endpoint hands back ABBREVIATED steps for longer routes (a 6-mi route
+     * came back with 2 of ~10 turns), whereas OSRM gives them all. Free-flow duration only (no
+     * traffic - Google is queried separately for the live ETA and overlaid). Empty on any failure
+     * → caller falls back to the Google scrape. */
     fun route(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<Route> =
         routeOsrm(http, listOf(origin, dest), mode, alternatives = true)
 
-    /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
-     *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
-     *  No alternatives (OSRM doesn't return them for multi-waypoint routes). */
+    /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) - used to follow Google's
+     * traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
+     * No alternatives (OSRM doesn't return them for multi-waypoint routes). */
     fun routeVia(http: OkHttpClient, waypoints: List<LatLng>, mode: TravelMode): List<Route> =
         if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false)
 
@@ -164,7 +164,7 @@ object RouteGeometry {
             "?overview=full&geometries=polyline&steps=true" + if (alternatives) "&alternatives=3" else ""
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.USER_AGENT).build()
         // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops
-        // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
+        // nav to Google's ABBREVIATED (nameless) steps - the "why aren't these street names?" bug. So retry
         // a couple times with a short backoff. A SUCCESSFUL response (even an empty route list = genuine
         // "no route") returns immediately; only transport/5xx failures retry.
         repeat(OSRM_TRIES) { attempt ->
@@ -175,10 +175,10 @@ object RouteGeometry {
                             .jsonObject["routes"]?.jsonArray
                         if (routes != null) return routes.mapNotNull { parseOsrmRoute(it.jsonObject) }
                     }
-                    // unsuccessful (5xx / 429 rate-limit) — fall through to retry
+                    // unsuccessful (5xx / 429 rate-limit) - fall through to retry
                 }
             } catch (e: Exception) {
-                // network blip / timeout — fall through to retry
+                // network blip / timeout - fall through to retry
             }
             if (attempt < OSRM_TRIES - 1) runCatching { Thread.sleep(200L * (attempt + 1)) }
         }
@@ -194,11 +194,11 @@ object RouteGeometry {
             leg.jsonObject["steps"]?.jsonArray?.mapNotNull { osrmStep(it.jsonObject) } ?: emptyList()
         }
         // A multi-waypoint (via) route splits into legs, inserting a spurious "arrive"+"depart" at
-        // each via. Drop those so it reads as one continuous trip — keep only the first DEPART and
-        // the final ARRIVE — but FOLD each dropped step's distance into the last kept maneuver:
+        // each via. Drop those so it reads as one continuous trip - keep only the first DEPART and
+        // the final ARRIVE - but FOLD each dropped step's distance into the last kept maneuver:
         // step distances must keep TILING the polyline. NavEngine locates each maneuver by a
         // prefix-sum of step lengths (its wrong-pass protection), and a via-boundary DEPART
-        // carries the real via→next-turn travel — on a traffic-snapped route (~12 vias) silently
+        // carries the real via→next-turn travel - on a traffic-snapped route (~12 vias) silently
         // dropping those shifted every later estimate kilometres short.
         val last = raw.lastIndex
         val maneuvers = mutableListOf<Maneuver>()
@@ -226,14 +226,14 @@ object RouteGeometry {
     }
 
     /** Fold an EXIT / interchange complex into ONE maneuver. OSRM splits a single user action (leave the
-     *  highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires
-     *  its OWN spoken prompt seconds apart ("Take exit 15" … "Keep right" … "Merge onto I-90") — the reported
-     *  "it told me related instructions over and over." Google says it once. Fold a ramp's IMMEDIATELY-
-     *  following, SHORT-gapped FORK/MERGE run into the ramp: keep the ramp instruction ("Take exit 15
-     *  toward …"), SUM the distances so the step lengths still tile the polyline (NavEngine locates each
-     *  maneuver by a prefix-sum of step distances), and drop the redundant follow-ups. It stops at the first
-     *  real turn / next ramp / continue / arrive, and at a > [EXIT_COMPLEX_GAP_M] gap, so a genuine later
-     *  decision (a fork to a different highway a km on) is never swallowed. */
+     * highway here) into a ramp step plus trailing fork/merge "lane-selection" steps, each of which fires
+     * its OWN spoken prompt seconds apart ("Take exit 15" … "Keep right" … "Merge onto I-90") - the reported
+     * "it told me related instructions over and over." Google says it once. Fold a ramp's IMMEDIATELY-
+     * following, SHORT-gapped FORK/MERGE run into the ramp: keep the ramp instruction ("Take exit 15
+     * toward …"), SUM the distances so the step lengths still tile the polyline (NavEngine locates each
+     * maneuver by a prefix-sum of step distances), and drop the redundant follow-ups. It stops at the first
+     * real turn / next ramp / continue / arrive, and at a > [EXIT_COMPLEX_GAP_M] gap, so a genuine later
+     * decision (a fork to a different highway a km on) is never swallowed. */
     internal fun consolidateExits(list: List<Maneuver>): List<Maneuver> {
         val out = mutableListOf<Maneuver>()
         var i = 0
@@ -259,14 +259,14 @@ object RouteGeometry {
     }
 
     /** Fold a pure-rename CONTINUE into the PRECEDING maneuver so it never becomes its own banner card / step.
-     *  OSRM emits a `continue`/`new name` step wherever the road merely renames under you ("5th St
-     *  becomes Anderson Rd") — NavEngine already SILENCES its voice, but it still surfaced as a "Continue
-     *  onto X" card, which reads as noise when there's no decision to make (Google shows nothing there, just
-     *  the next real turn — user 2026-07-06). Drop it and add its distance/time to the previous step so the
-     *  step lengths still tile the polyline (NavEngine locates each maneuver by a prefix-sum of step
-     *  distances). A CONTINUE that is a GENUINE fork (lanes show an off-lane that also goes straight, "use the
-     *  left 2 lanes to stay on I-80") is KEPT — it's a real decision and IS spoken. Never folds the first
-     *  maneuver, and STRAIGHT (a junction straight-through, a real intersection) is intentionally left alone. */
+     * OSRM emits a `continue`/`new name` step wherever the road merely renames under you ("5th St
+     * becomes Anderson Rd") - NavEngine already SILENCES its voice, but it still surfaced as a "Continue
+     * onto X" card, which reads as noise when there's no decision to make (Google shows nothing there, just
+     * the next real turn - user 2026-07-06). Drop it and add its distance/time to the previous step so the
+     * step lengths still tile the polyline (NavEngine locates each maneuver by a prefix-sum of step
+     * distances). A CONTINUE that is a GENUINE fork (lanes show an off-lane that also goes straight, "use the
+     * left 2 lanes to stay on I-80") is KEPT - it's a real decision and IS spoken. Never folds the first
+     * maneuver, and STRAIGHT (a junction straight-through, a real intersection) is intentionally left alone. */
     internal fun foldRenames(list: List<Maneuver>): List<Maneuver> {
         val out = mutableListOf<Maneuver>()
         for (m in list) {
@@ -287,7 +287,7 @@ object RouteGeometry {
 
     /**
      * Prepend a Google-style landmark clause ("Pass the traffic light, then turn left onto 5th Ave") to a
-     * turn when 1–2 traffic signals sit on the road just before it. Deliberately CONSERVATIVE — Google only
+     * turn when 1–2 traffic signals sit on the road just before it. Deliberately CONSERVATIVE - Google only
      * says it when it helps: ONLY plain surface-street turns (not ramps/merges/roundabouts/continues), ONLY
      * when 1–2 signals fall within ~[LIGHT_APPROACH_M] before the turn AND within ~[LIGHT_SNAP_M] of the driven
      * line (a light on a parallel street doesn't count), and NEVER for 0 or 3+ (nobody narrates "pass 4
@@ -314,7 +314,7 @@ object RouteGeometry {
                 var acc = 0.0; var k = toIdx
                 while (k > fromIdx && acc < LIGHT_APPROACH_M) { approach.add(poly[k]); acc += poly[k].distanceTo(poly[k - 1]); k-- }
                 // A signal belonging to the turn's OWN junction is the one you're turning at, not one you
-                // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex — the SAME
+                // "pass" first. Exclude any signal within LIGHT_CLUSTER_M of the turn vertex - the SAME
                 // radius the clustering below treats as one physical junction (one signal per approach can
                 // sit 25-30 m before the junction-center vertex, so LIGHT_SNAP_M=25 was too tight and let
                 // the turn's own light through; audit 2026-07-07). LIGHT_SNAP_M stays the on-the-driven-line
@@ -345,7 +345,7 @@ object RouteGeometry {
         val lat = loc.getOrNull(1)?.jsonPrimitive?.doubleOrNull ?: return null
         val lng = loc.getOrNull(0)?.jsonPrimitive?.doubleOrNull ?: return null
         val name = s["name"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
-        // Highways identify by REF ("I 80"), not name — OSRM puts the name empty and the ref in `ref`.
+        // Highways identify by REF ("I 80"), not name - OSRM puts the name empty and the ref in `ref`.
         // Dropping it leaves highway steps nameless → generic "take the exit" AND no shield
         // (the banner parses shields out of the instruction text). `destinations` is where a ramp goes
         // ("I-80 East: Sacramento"). road = name ?: ref so surface streets read by name, highways by shield.
@@ -354,7 +354,7 @@ object RouteGeometry {
         val exits = s["exits"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
         val road = name ?: ref
         // Per-lane turn guidance for the Google-style diagram: the maneuver's own intersection
-        // (intersections[0]) carries the approach lanes — each lane's allowed arrows + whether it
+        // (intersections[0]) carries the approach lanes - each lane's allowed arrows + whether it
         // serves this turn (`valid`). Absent on most steps (only turns/exits with mapped lanes).
         val lanes = s["intersections"]?.jsonArray?.firstOrNull()?.jsonObject
             ?.get("lanes")?.jsonArray?.mapNotNull { el ->
@@ -391,14 +391,14 @@ object RouteGeometry {
             "depart" -> ManeuverType.DEPART
             "arrive" -> ManeuverType.ARRIVE
             "merge" -> ManeuverType.MERGE
-            // "continue"/"new name" going STRAIGHT = the same physical road (possibly renamed —
+            // "continue"/"new name" going STRAIGHT = the same physical road (possibly renamed -
             // surface-street name changes and highway ref changes alike), no driver action →
             // CONTINUE, which NavEngine keeps on the banner but does NOT speak (Google is silent
             // there too). Any real bend keeps byMod(): OSRM's "continue left" is a 90° bend that
-            // keeps the name — that's a TURN_LEFT and must still be spoken. NB "turn"+"straight"
+            // keeps the name - that's a TURN_LEFT and must still be spoken. NB "turn"+"straight"
             // below stays STRAIGHT (spoken): OSRM emits type "turn" only where an instruction is
             // warranted (going straight is an active choice at that junction).
-            // A "new name" step is JUST a road rename on the same physical road — OSRM often stamps a
+            // A "new name" step is JUST a road rename on the same physical road - OSRM often stamps a
             // few-degrees "slight left"/"slight right" bearing artifact on a dead-straight rename node, so
             // treat those as straight too → CONTINUE (silent, like Google). "5th St becomes Anderson
             // Way" going straight must NOT be announced. Keep "continue" NARROW: a "continue"+slight is more
@@ -410,7 +410,7 @@ object RouteGeometry {
             "fork" -> if (mod?.contains("left") == true) ManeuverType.FORK_LEFT else ManeuverType.FORK_RIGHT
             "roundabout", "rotary", "roundabout turn" -> ManeuverType.ROUNDABOUT
             // OSRM's TWO-STEP roundabout: an enter step ("roundabout") + an EXIT step ("exit roundabout"/
-            // "exit rotary") — and it's the exit step that carries maneuver.exit (the exit NUMBER) and the
+            // "exit rotary") - and it's the exit step that carries maneuver.exit (the exit NUMBER) and the
             // exit road name. Without this the exit step fell through to byMod() → a bland "Continue onto X"
             // and the "take the Nth exit" was silently dropped (the reported "didn't say which exit").
             "exit roundabout", "exit rotary" -> ManeuverType.EXIT_ROUNDABOUT
@@ -420,20 +420,20 @@ object RouteGeometry {
     }
 
     /** A human instruction (OSRM ships no text; `osrm-text-instructions` is a JS lib we inline the
-     *  gist of) — "Turn right onto Russell Blvd", "Continue onto I 80", "Take exit 15 toward Sacramento".
-     *  [road] is the name-or-ref of the road being entered; [dest] is a ramp's sign destination
-     *  ("I-80 East: Sacramento"); [exitNo] is a ramp's exit number; [rbExit] is a roundabout exit count. */
+     * gist of) - "Turn right onto Russell Blvd", "Continue onto I 80", "Take exit 15 toward Sacramento".
+     * [road] is the name-or-ref of the road being entered; [dest] is a ramp's sign destination
+     * ("I-80 East: Sacramento"); [exitNo] is a ramp's exit number; [rbExit] is a roundabout exit count. */
     // The instruction TEXT is localized: it delegates to the active NavStrings (English by default,
     // byte-identical to the original template set). This is the seam that lets nav be spoken/shown in
-    // the app's language — the road/dest name passed in stays in its native local form. See core/i18n.
+    // the app's language - the road/dest name passed in stays in its native local form. See core/i18n.
     internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String =
         app.vela.core.i18n.NavStringsRegistry.current().phrase(type, mod, road, dest, exitNo, rbExit)
 
     // --- traffic-aware routing (option 3) -------------------------------------
 
     /** True if Google's traffic-aware route [google] takes a meaningfully DIFFERENT path than
-     *  OSRM's free-flow [osrm] — i.e. Google rerouted around a jam. Samples points along Google's
-     *  line and checks whether any strays > [thresholdM] from OSRM's line. */
+     * OSRM's free-flow [osrm] - i.e. Google rerouted around a jam. Samples points along Google's
+     * line and checks whether any strays > [thresholdM] from OSRM's line. */
     internal fun divergent(osrm: Route, google: Route, thresholdM: Double = 700.0): Boolean {
         val a = osrm.polyline
         val b = google.polyline
@@ -445,11 +445,11 @@ object RouteGeometry {
     }
 
     /** Interior points spaced along [poly] to feed OSRM as via-waypoints so it follows that path.
-     *  ~[count] of them: dense enough that OSRM's shortest path between consecutive vias IS the road
-     *  Google took (a short jam-detour between two sparse vias would otherwise be skipped), yet not so
-     *  dense that a via landing on a turn gets swallowed into a via arrive/depart and the turn is lost
-     *  (measured ~1-in-10 named-turn loss at 60 vias; negligible at ~12). Only ever used on the
-     *  divergent minority of routes, so the tradeoff rides on few requests. */
+     * ~[count] of them: dense enough that OSRM's shortest path between consecutive vias IS the road
+     * Google took (a short jam-detour between two sparse vias would otherwise be skipped), yet not so
+     * dense that a via landing on a turn gets swallowed into a via arrive/depart and the turn is lost
+     * (measured ~1-in-10 named-turn loss at 60 vias; negligible at ~12). Only ever used on the
+     * divergent minority of routes, so the tradeoff rides on few requests. */
     internal fun sampleVias(poly: List<LatLng>, count: Int = 12): List<LatLng> {
         if (poly.size < 3) return emptyList() // need at least one interior point
         val interior = poly.size - 2

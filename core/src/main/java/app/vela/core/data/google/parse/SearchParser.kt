@@ -23,7 +23,7 @@ import kotlinx.serialization.json.JsonNull
 /**
  * Parses the `/search?tbm=map` response.
  *
- * The positional field-index paths are no longer hard-coded — they come from
+ * The positional field-index paths are no longer hard-coded - they come from
  * [Calibration.paths] (remotely updatable, phase 2), defaulting to
  * [Calibration.DEFAULT_PATHS]. Paths are relative to a result *entry* (whose
  * place node is `[1]`), except `results`/`single` which are relative to the root.
@@ -50,7 +50,7 @@ object SearchParser {
                 ?: return SearchResult(query, emptyList())
 
         val places = entries.mapNotNull { entry -> toPlace(entry, near, paths) }
-        // "People also search for" is a sibling of a FOCUSED result (root [2][11][0]) — absent
+        // "People also search for" is a sibling of a FOCUSED result (root [2][11][0]) - absent
         // from multi-result lists. When present, attach it to the primary (first) place so its
         // sheet can show the related-places row.
         val similar = runCatching { parseSimilarPlaces(root, paths) }.getOrDefault(emptyList())
@@ -59,9 +59,9 @@ object SearchParser {
         // Order nearest-first, BUT within the same ~120 m (a shopping centre / one address) rank by
         // prominence (review count) so the MAIN store beats its florist/pharmacy departments sitting at the
         // same spot. Distance still wins across genuinely different locations. (Was pure distance, which let
-        // a nearby low-review department outrank the big store it's a part of — the "Safeway Floral" bug.)
+        // a nearby low-review department outrank the big store it's a part of - the "Safeway Floral" bug.)
         // ONLY when a bias point exists: with near==null every place lands in the same null-distance
-        // bucket and the whole list would re-sort by review count — but callers without a bias point
+        // bucket and the whole list would re-sort by review count - but callers without a bias point
         // (PopularTimesParser's focused name+address lookup) rely on Google's RESPONSE ORDER, where the
         // FIRST entry is the focused result; re-ranking grafted a busier neighbour's data onto it.
         val ranked = if (near == null) withSimilar else withSimilar.sortedWith(
@@ -75,13 +75,13 @@ object SearchParser {
     }
 
     /** A specific/far address resolves to a *single* geocoded result rather than
-     *  the `[64]` POI list — its place node sits at `single` (`[0][1][0][14]`, same
-     *  internal schema as a list entry's `[1]`). Wrap it as `[null, node]` so
-     *  [toPlace], which reads `entry[1]`, parses it unchanged. */
+     * the `[64]` POI list - its place node sits at `single` (`[0][1][0][14]`, same
+     * internal schema as a list entry's `[1]`). Wrap it as `[null, node]` so
+     * [toPlace], which reads `entry[1]`, parses it unchanged. */
     private fun singleResultEntry(root: JsonElement, paths: Map<String, List<Int>>): List<JsonElement>? {
         val node = root.atPath(pathOf(paths, "single")) ?: return null
         // Validate through the CALIBRATED name path, not a hard-coded [11], so a remote
-        // paths.name recalibration reaches this gate too (wrap as [null, node] first — the
+        // paths.name recalibration reaches this gate too (wrap as [null, node] first - the
         // entry-relative name path resolves node.at(11) by default).
         val entry = JsonArray(listOf(JsonNull, node))
         if (entry.atPath(pathOf(paths, "name")).str() == null) return null
@@ -89,10 +89,10 @@ object SearchParser {
     }
 
     /** Searching a bare ADDRESS that is a business ("1020 Olive Dr" → In-N-Out): Google
-     *  lists the business(es) at that address under the geocoded node, at `atThisPlace`
-     *  (`[0][1][0][14][68]`). We snap to them instead of showing the bare address — each
-     *  entry's place node is at `[i][0]`, wrapped as `[null, node]` so [toPlace] (which
-     *  reads `[1]`) parses it unchanged. Empty/absent → fall through to the address. */
+     * lists the business(es) at that address under the geocoded node, at `atThisPlace`
+     * (`[0][1][0][14][68]`). We snap to them instead of showing the bare address - each
+     * entry's place node is at `[i][0]`, wrapped as `[null, node]` so [toPlace] (which
+     * reads `[1]`) parses it unchanged. Empty/absent → fall through to the address. */
     private fun atThisPlaceEntries(root: JsonElement, paths: Map<String, List<Int>>): List<JsonElement>? {
         val list = root.atPath(pathOf(paths, "atThisPlace")).arr() ?: return null
         val entries = list.mapNotNull { e ->
@@ -121,10 +121,10 @@ object SearchParser {
             name = name,
             location = loc,
             category = field("category").str(),
-            // Full address incl. city/state/zip — clean one-liner, else join the
+            // Full address incl. city/state/zip - clean one-liner, else join the
             // component array (dropping any component that's just the business name), else the street line.
             // Some places' formatted address is prefixed with the business NAME ("Safeway, 1451 W Covell Blvd");
-            // the sheet already shows the name on its own line, so strip that prefix — else it reads twice.
+            // the sheet already shows the name on its own line, so strip that prefix - else it reads twice.
             address = (field("address").str()
                 ?: field("addressComponents").arr()?.mapNotNull { it.str() }
                     ?.filterNot { it.equals(name, ignoreCase = true) }?.joinToString(", ")?.ifBlank { null }
@@ -135,21 +135,21 @@ object SearchParser {
             priceText = field("priceText").str(),
             // Google's search response carries price as a dollar *range* ("$10–20" at
             // [1][4][2]), not the classic 1–4 level, so derive a comparable 1–4 from the
-            // label (its lower bound, or the count of '$' for the "$$" symbol style) — the
+            // label (its lower bound, or the count of '$' for the "$$" symbol style) - the
             // price filter has nothing to compare against otherwise.
             priceLevel = priceLevelOf(field("priceText").str()),
             website = field("website").str(),
-            // Action link (Book/Reserve/Order) — only when there's a real http(s) URL, so a
+            // Action link (Book/Reserve/Order) - only when there's a real http(s) URL, so a
             // shape change can never render a button that opens garbage.
             actionUrl = field("actionUrl").str()?.takeIf { it.startsWith("http", ignoreCase = true) },
             actionLabel = field("actionLabel").str()?.trim()?.ifBlank { null }?.takeIf { it.length <= 30 },
             phone = field("phone").str(),
             // Open/closed comes from the STATUS TEXT, matched against the request language's
-            // keyword table (parseOpenNow) — the same string the user sees, so the colour can
+            // keyword table (parseOpenNow) - the same string the user sees, so the colour can
             // never contradict the words. The numeric "status codes" pinned 2026-07-03
             // ([1,203,1,4,1,0,1]/[1,203,1,8,1,0,1], 6=open/5=closed/13=soon) were DISPROVEN by a
             // live EN capture 2026-07-04: closed pharmacies carried 6 ("open") and an
-            // Open-24-hours business carried 13/4 ("closed") — they're span/style markers, not
+            // Open-24-hours business carried 13/4 ("closed") - they're span/style markers, not
             // open/closed, and the French pin agreeing was a coincidence. Text is authoritative.
             openNow = parseOpenNow(statusStr),
             statusText = statusStr,
@@ -161,7 +161,7 @@ object SearchParser {
             ),
             // Owner-set TEMPORARY closure (the "Tee Sud" resilience ask): when an owner marks the
             // business temporarily closed, Google replaces the status text with "Temporarily closed"
-            // (localized) — surface it first-class so the UI can banner it and suppress the now-
+            // (localized) - surface it first-class so the UI can banner it and suppress the now-
             // misleading weekly hours, instead of quietly relying on the red status colour alone.
             temporarilyClosed = isTemporarilyClosed(
                 field("status118").str(), field("statusRich").str(), field("openStatus").str(),
@@ -181,9 +181,9 @@ object SearchParser {
     }
 
     /** A 1–4 price level from Google's price label: its lower dollar bound, bucketed
-     *  ("$1–10"→1, "$10–20"→2, "$20–30"→3, "$35+"→4), or the count of '$' for the
-     *  symbol style ("$$"→2). Null when there's no price. Powers the price filter,
-     *  since the response only ships a dollar *range*, never the classic 1–4 level. */
+     * ("$1–10"→1, "$10–20"→2, "$20–30"→3, "$35+"→4), or the count of '$' for the
+     * symbol style ("$$"→2). Null when there's no price. Powers the price filter,
+     * since the response only ships a dollar *range*, never the classic 1–4 level. */
     internal fun priceLevelOf(text: String?): Int? {
         if (text.isNullOrBlank()) return null
         Regex("\\d+").find(text)?.value?.toIntOrNull()?.let { low ->
@@ -198,16 +198,16 @@ object SearchParser {
     }
 
     /** Popular-times histogram: `popularTimes` (`[1][84]`) → `[0]` is 7 days, each
-     *  `[d][0]`=day-of-week (1=Mon…7=Sun), `[d][1]`=hourly `[hour, occupancy%, …]`.
+     * `[d][0]`=day-of-week (1=Mon…7=Sun), `[d][1]`=hourly `[hour, occupancy%, …]`.
      *
-     *  The keyless OkHttp search **strips `[84]`** (bot-degraded, TLS-fingerprint),
-     *  and a bare-name search returns a 20-result list trimmed of it too — so this
-     *  stays null on a plain keyless response and the UI section just doesn't show.
-     *  It's populated by fetching through a real Chromium WebView with a *specific*
-     *  query (name + address), which comes back as the single focused result that
-     *  keeps `[84]` (corrected 2026-06-19 — the earlier "login-gated" read was wrong;
-     *  it's the same bot-degradation as photos/transit). See
-     *  [app.vela.web.WebPopularTimesFetcher] and [PopularTimesParser]. */
+     * The keyless OkHttp search **strips `[84]`** (bot-degraded, TLS-fingerprint),
+     * and a bare-name search returns a 20-result list trimmed of it too - so this
+     * stays null on a plain keyless response and the UI section just doesn't show.
+     * It's populated by fetching through a real Chromium WebView with a *specific*
+     * query (name + address), which comes back as the single focused result that
+     * keeps `[84]` (corrected 2026-06-19 - the earlier "login-gated" read was wrong;
+     * it's the same bot-degradation as photos/transit). See
+     * [app.vela.web.WebPopularTimesFetcher] and [PopularTimesParser]. */
     internal fun parsePopularTimes(entry: JsonElement, paths: Map<String, List<Int>>): PopularTimes? {
         val days = entry.atPath(pathOf(paths, "popularTimes")).at(0).arr() ?: return null
         val parsed = days.mapNotNull { d ->
@@ -223,7 +223,7 @@ object SearchParser {
     }
 
     /** "About" sections: `about` → a list, each with title `[s][1]` + items
-     *  `[s][2][j][1]` (the leaf indices are stable, so kept in code). */
+     * `[s][2][j][1]` (the leaf indices are stable, so kept in code). */
     private fun parseAbout(entry: JsonElement, paths: Map<String, List<Int>>): List<AboutSection> {
         val sections = entry.atPath(pathOf(paths, "about")).arr() ?: return emptyList()
         return sections.mapNotNull { s ->
@@ -234,12 +234,12 @@ object SearchParser {
     }
 
     /** Business photos. Google **gutted the keyless preview** (2026-06: the old ~10-photo
-     *  `[105]` block is gone). An ordinary business now exposes a SINGLE hero photo at the
-     *  calibrated `photos` block (`[1][72][0]`, URL leaf `[6][0]`) — and serves it
-     *  **duplicated**, so we de-dup. Big/landmark places additionally carry a small
-     *  "gallery preview" at `[1][204][0]` (URL leaf `[1][2][0][0]`); we fold those in where
-     *  present. The full gallery (~30+) is **login-gated** now (see [PhotosParser]) — this is
-     *  the most photos available keyless. De-dup by the re-sized URL so the hero never repeats. */
+     * `[105]` block is gone). An ordinary business now exposes a SINGLE hero photo at the
+     * calibrated `photos` block (`[1][72][0]`, URL leaf `[6][0]`) - and serves it
+     * **duplicated**, so we de-dup. Big/landmark places additionally carry a small
+     * "gallery preview" at `[1][204][0]` (URL leaf `[1][2][0][0]`); we fold those in where
+     * present. The full gallery (~30+) is **login-gated** now (see [PhotosParser]) - this is
+     * the most photos available keyless. De-dup by the re-sized URL so the hero never repeats. */
     private fun parsePhotos(entry: JsonElement, paths: Map<String, List<Int>>): List<String> {
         val urls = LinkedHashSet<String>()
         fun add(u: String?) {
@@ -252,32 +252,32 @@ object SearchParser {
     }
 
     /** Drop a leading business-name from a formatted address ("Safeway, 1451 W Covell Blvd" → "1451 …").
-     *  The sheet shows the name on its own line, so a name-prefixed address reads it twice. Strips ONLY
-     *  when what follows the name is an explicit separator (","/"·"/dash) or goes straight to the street
-     *  NUMBER — a bare space alone is NOT a boundary ("Safeway Plaza, …", "Boeing Access Rd" must survive),
-     *  and an unexpected continuation char (apostrophe, exotic dot) leaves the address untouched rather
-     *  than half-stripped. If stripping would empty the line, keep the original. */
+     * The sheet shows the name on its own line, so a name-prefixed address reads it twice. Strips ONLY
+     * when what follows the name is an explicit separator (","/"·"/dash) or goes straight to the street
+     * NUMBER - a bare space alone is NOT a boundary ("Safeway Plaza, …", "Boeing Access Rd" must survive),
+     * and an unexpected continuation char (apostrophe, exotic dot) leaves the address untouched rather
+     * than half-stripped. If stripping would empty the line, keep the original. */
     internal fun stripNamePrefix(addr: String, name: String): String {
         if (name.isBlank() || !addr.startsWith(name, ignoreCase = true)) return addr
         val rest = addr.substring(name.length)
-        if (rest.isNotEmpty() && rest[0].isLetterOrDigit()) return addr // "Safeways Plaza" — not a boundary
+        if (rest.isNotEmpty() && rest[0].isLetterOrDigit()) return addr // "Safeways Plaza" - not a boundary
         val afterSpaces = rest.trimStart(' ', ' ')
         // Require a real separator or the street number right after the name; anything else ("'s Fuel…",
-        // "• …") means this isn't a plain name-prefix — don't touch it.
+        // "• …") means this isn't a plain name-prefix - don't touch it.
         if (afterSpaces.isNotEmpty() && !afterSpaces[0].isDigit() && afterSpaces[0] !in ",·–-") return addr
         return afterSpaces.trimStart(',', '·', '-', '–', ' ', ' ').ifBlank { addr }
     }
 
     /** "Permanently closed" (and the rarer "Permanently closed" rich-status variant)
-     *  → a dead POI. Kept in search results but hidden from the map and labelled. */
+     * → a dead POI. Kept in search results but hidden from the map and labelled. */
     private fun isPermanentlyClosed(vararg status: String?): Boolean =
         status.any { it != null && it.contains("Permanently", ignoreCase = true) }
 
     /** Owner-set TEMPORARY closure, matched across the request languages' status wording
-     *  ("Temporarily closed" / "Fermé temporairement" / "Vorübergehend geschlossen" …). CONTAINS,
-     *  not startsWith — several languages put the closed word first ("Fermé temporairement").
-     *  The words are distinctive enough that no `hl` gating is needed. Unlike permanent closure,
-     *  a temp-closed place STAYS on the map — the UI banners it instead. */
+     * ("Temporarily closed" / "Fermé temporairement" / "Vorübergehend geschlossen" …). CONTAINS,
+     * not startsWith - several languages put the closed word first ("Fermé temporairement").
+     * The words are distinctive enough that no `hl` gating is needed. Unlike permanent closure,
+     * a temp-closed place STAYS on the map - the UI banners it instead. */
     private val TEMP_CLOSED_WORDS = listOf(
         "Temporarily", "temporairement", "Vorübergehend", "temporalmente", "temporaneamente",
         "temporariamente", "Tijdelijk", "Временно", "Tymczasowo", "Tillfälligt", "Тимчасово",
@@ -287,11 +287,11 @@ object SearchParser {
         status.any { s -> s != null && TEMP_CLOSED_WORDS.any { s.contains(it, ignoreCase = true) } }
 
     /** Google's status strings begin with a small, stable set of words per UI language (`hl=`).
-     *  CLOSED indicators per language — matched FIRST, because in several languages the closed
-     *  form is a prefix-cousin of the open one and matching the open word first is exactly the
-     *  bug that painted a closed Starbucks green:
-     *    en "Opens 5 AM" vs "Open" · pt "Fechado" (closed) vs "Fecha às 19:00" (closes → open)
-     *    nl "Opent om 09:00" (opens → closed) vs "Open" · fr "Ouvre à 07:00" (closed) vs "Ouvert". */
+     * CLOSED indicators per language - matched FIRST, because in several languages the closed
+     * form is a prefix-cousin of the open one and matching the open word first is exactly the
+     * bug that painted a closed Starbucks green:
+     * en "Opens 5 AM" vs "Open" · pt "Fechado" (closed) vs "Fecha às 19:00" (closes → open)
+     * nl "Opent om 09:00" (opens → closed) vs "Open" · fr "Ouvre à 07:00" (closed) vs "Ouvert". */
     private val CLOSED_WORDS = mapOf(
         "en" to listOf("Closed", "Opens", "Opening", "Temporarily", "Permanently"),
         "fr" to listOf("Fermé", "Ouvre", "Définitivement"),
@@ -307,13 +307,13 @@ object SearchParser {
     )
 
     /** Languages [parseOpenNow] actually has a keyword table for. `GoogleMapsDataSource.localized()`
-     *  gates its `hl=` rewrite on this — for a locale NOT covered here the scrape must stay `hl=en`,
-     *  else the status text comes back in an unparseable language and openNow is always null (the UI
-     *  then can't colour it). Keyed off [CLOSED_WORDS] so the set can never drift from the tables. */
+     * gates its `hl=` rewrite on this - for a locale NOT covered here the scrape must stay `hl=en`,
+     * else the status text comes back in an unparseable language and openNow is always null (the UI
+     * then can't colour it). Keyed off [CLOSED_WORDS] so the set can never drift from the tables. */
     internal val STATUS_LANGS: Set<String> get() = CLOSED_WORDS.keys
 
     /** OPEN indicators per language: the "open" word itself plus the closes-later forms
-     *  ("Closes 9 PM" / "Ferme à 19:00" / "Closing soon" — closing LATER means open NOW). */
+     * ("Closes 9 PM" / "Ferme à 19:00" / "Closing soon" - closing LATER means open NOW). */
     private val OPEN_WORDS = mapOf(
         "en" to listOf("Open", "Closes", "Closing"),
         "fr" to listOf("Ouvert", "Ferme"),
@@ -329,13 +329,13 @@ object SearchParser {
     )
 
     /** Live status text → open/closed, in the language the scrape requested (`hl=` follows
-     *  [java.util.Locale.getDefault], same derivation as `GoogleMapsDataSource.localized()`).
-     *  This is the AUTHORITATIVE open/closed signal: it reads the same words the user sees, so
-     *  the status colour can never contradict the display. (The numeric status-code path was
-     *  removed 2026-07-04 — a live capture proved those ints aren't open/closed codes; see the
-     *  call site.) CLOSED words are matched before OPEN words — order is load-bearing, see
-     *  [CLOSED_WORDS]. Unknown language → the English table; no match → null (callers stay
-     *  conservative — placeStatusColor only ever greens an affirmative signal). */
+     * [java.util.Locale.getDefault], same derivation as `GoogleMapsDataSource.localized()`).
+     * This is the AUTHORITATIVE open/closed signal: it reads the same words the user sees, so
+     * the status colour can never contradict the display. (The numeric status-code path was
+     * removed 2026-07-04 - a live capture proved those ints aren't open/closed codes; see the
+     * call site.) CLOSED words are matched before OPEN words - order is load-bearing, see
+     * [CLOSED_WORDS]. Unknown language → the English table; no match → null (callers stay
+     * conservative - placeStatusColor only ever greens an affirmative signal). */
     internal fun parseOpenNow(
         status: String?,
         lang: String = java.util.Locale.getDefault().language.lowercase(),
@@ -350,16 +350,16 @@ object SearchParser {
         }
     }
 
-    /** Weekly hours — `hours203` first, falling back to `hours118`. Both are a
-     *  7-entry array starting today; each day = name `[0]` + text `[3][0][0]`
-     *  (leaf indices stable). */
+    /** Weekly hours - `hours203` first, falling back to `hours118`. Both are a
+     * 7-entry array starting today; each day = name `[0]` + text `[3][0][0]`
+     * (leaf indices stable). */
     private fun parseHours(entry: JsonElement, paths: Map<String, List<Int>>): List<String> =
         readHours(entry.atPath(pathOf(paths, "hours203")))
             .ifEmpty { readHours(entry.atPath(pathOf(paths, "hours118"))) }
 
     /** "People also search for": the root-level similar-places list (`similar` = `[2][11][0]`,
-     *  present when a search focuses on one result). Each entry is
-     *  `[featureId, name, [[_,_,lat,lng], …, rating@6]]`. Best-effort; skips malformed rows. */
+     * present when a search focuses on one result). Each entry is
+     * `[featureId, name, [[_,_,lat,lng], …, rating@6]]`. Best-effort; skips malformed rows. */
     internal fun parseSimilarPlaces(root: JsonElement, paths: Map<String, List<Int>>): List<SimilarPlace> {
         val list = root.atPath(pathOf(paths, "similar")).arr() ?: return emptyList()
         return list.mapNotNull { e ->
@@ -374,10 +374,10 @@ object SearchParser {
         val arr = days.arr() ?: return emptyList()
         return arr.mapNotNull { day ->
             val name = day.at(0).str() ?: return@mapNotNull null
-            // day[3] = ALL of the date's ranges, each `[text, [[openH],[closeH]]]`; join them — reading
+            // day[3] = ALL of the date's ranges, each `[text, [[openH],[closeH]]]`; join them - reading
             // only the first drops the afternoon of a split-shift day ("9 AM–12 PM, 1–5 PM"). Google bakes
             // HOLIDAY hours straight into day[3] (Jul 4 → "Closed"), and day[6][1] carries the label
-            // ("4th of July") — surface it after a " · " (OpeningHours strips it before parsing the times).
+            // ("4th of July") - surface it after a " · " (OpeningHours strips it before parsing the times).
             val hrs = day.at(3).arr()?.mapNotNull { it.at(0).str()?.ifBlank { null } }
                 ?.joinToString(", ")?.ifBlank { null } ?: return@mapNotNull null
             val note = day.at(6, 1).str()?.ifBlank { null }

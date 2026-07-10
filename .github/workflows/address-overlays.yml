@@ -1,5 +1,5 @@
 # Build open HOUSE-NUMBER overlays (OpenAddresses address points) as PMTiles for US states in parallel and
-# publish them to the `address-overlays` release — the app STREAMS them and renders the `number` field as a
+# publish them to the `address-overlays` release - the app STREAMS them and renders the `number` field as a
 # house-number SymbolLayer where OSM lacks addr:housenumber. Sibling of building-overlays.yml (footprints).
 #
 # Run from Actions → "Build address overlays" → pass `ids` (e.g. "washington oregon") or tick `all`.
@@ -109,6 +109,6 @@ jobs:
         run: |
           shopt -s nullglob
           files=(entries/*.json)
-          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built - nothing to merge"; exit 0; fi
           echo "merging ${#files[@]} entr(y/ies)"
           bash scripts/merge-address-manifest.sh entries

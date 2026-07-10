@@ -1,7 +1,7 @@
 # D-pad test suite
 
 Reproducible, on-device checks that Vela stays fully operable with a **5-key D-pad** (↑ ↓ ← → +
-OK, plus BACK) and **no touchscreen** — the scripted version of the manual `adb` checks used while
+OK, plus BACK) and **no touchscreen** - the scripted version of the manual `adb` checks used while
 building the D-pad support. See [`../docs/dpad.md`](../docs/dpad.md) for the design.
 
 Each test drives the app with **only** `adb shell input keyevent` and asserts on the **focused
@@ -17,14 +17,14 @@ element** (read from `uiautomator dump`), so it catches the two things that matt
 ## Run
 
 ```sh
-cd dpad_test_suite
+cd tests/dpad
 ./run_all.sh                      # setup + all tests, prints a pass/fail summary
 ./run_all.sh 01 02                # only tests whose name starts 01 / 02
 ADB="adb -s emulator-5554" ./run_all.sh   # pick a device
 ```
 
 `run_all.sh` first calls `setup.sh` (grants location + notifications, installs a mock GPS provider
-at Brooklyn so search/routing have a fix — override with `VELA_LAT`/`VELA_LNG`, and **forces
+at Brooklyn so search/routing have a fix - override with `VELA_LAT`/`VELA_LNG`, and **forces
 D-pad-first** via `settings put global vela_force_dpad 1`). The force flag matters since the
 2026-07-08 detection fix: an ordinary touchscreen dev phone is correctly NOT D-pad-first, so without
 it the auto-focus/ring/arm behaviour is off and the suite can't exercise the D-pad path. Real D-pad
@@ -36,7 +36,7 @@ and a per-suite verdict. Exit code is non-zero if any suite failed (usable in CI
 
 | Test | Asserts |
 |---|---|
-| `01_map_opens_on_search` | the bare map opens ambient (nothing focused, not engaged); the first ↓ lands on the search bar — no BACK-to-move |
+| `01_map_opens_on_search` | the bare map opens ambient (nothing focused, not engaged); the first ↓ lands on the search bar - no BACK-to-move |
 | `02_settings_autofocus` | Settings opens already focused on the back button (the original "opened un-focused" bug) |
 | `03_welcome_and_dialog_autofocus` | first-run Welcome opens focused on Get-started; each onboarding `VelaDialog` opens focused on "Not now" |
 | `04_place_sheet_and_menu_autofocus` | the place sheet opens focused on its handle; the ⋮ overflow (`VelaMenu`) opens focused on its first item; ↓ walks it; BACK closes the menu not the sheet |
@@ -70,4 +70,4 @@ Key helpers (in `lib.sh`): `focused` / `focused_text` / `focused_desc` / `focus_
 - These assert **focus & navigation**, not pixels. For a visual check, `shot out.png` grabs a
   screenshot at any point.
 - Menus/dialogs are `VelaMenu`/`VelaDialog` (raw-Dialog based) specifically so they *can* be
-  auto-focused — a stock Compose `DropdownMenu`/`AlertDialog` cannot (see docs/dpad.md).
+  auto-focused - a stock Compose `DropdownMenu`/`AlertDialog` cannot (see docs/dpad.md).

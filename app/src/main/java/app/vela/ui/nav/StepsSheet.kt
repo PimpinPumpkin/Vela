@@ -64,7 +64,7 @@ import app.vela.ui.rememberDpadAutoFocus
 import androidx.compose.ui.focus.focusRequester
 
 /**
- * The full turn-by-turn step list — shown both while previewing a route and
+ * The full turn-by-turn step list - shown both while previewing a route and
  * during navigation. Tapping a step asks the map to pan to that maneuver so you
  * can see where you'd turn ([onStep]); [currentStep] is highlighted while
  * navigating, [previewIndex] while previewing.
@@ -80,7 +80,7 @@ fun StepsSheet(
     currentStep: Int?,
     onStep: (Int) -> Unit,
     onClose: () -> Unit,
-    // Destination lines for the ARRIVE row (name + address; either may be blank — offline
+    // Destination lines for the ARRIVE row (name + address; either may be blank - offline
     // routing can have only a street, an address, or nothing but the tapped coordinates).
     destName: String? = null,
     destAddress: String? = null,

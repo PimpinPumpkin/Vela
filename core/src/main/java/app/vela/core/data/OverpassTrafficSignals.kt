@@ -15,7 +15,7 @@ import java.net.URLEncoder
  * (OpenStreetMap's keyless query API), for Google-style landmark guidance ("pass the light, then turn left").
  * Best-effort: any failure → empty list (guidance simply omits the landmark clause). Sibling of [OverpassPois].
  *
- * Coverage is OSM's — dense in US/EU urban+suburban areas, thin in rural/developing regions; where a signal
+ * Coverage is OSM's - dense in US/EU urban+suburban areas, thin in rural/developing regions; where a signal
  * isn't mapped, no clause is added (it's never wrong, just absent). Queried ONCE per driven route, not per fix.
  */
 /** A drawn traffic control at [loc]: a traffic light (`stop == false`) or a stop sign (`stop == true`). */
@@ -28,9 +28,9 @@ object OverpassTrafficSignals {
     /**
      * Traffic-signal AND stop-sign nodes inside a bounding box, for DRAWING on the map (a sibling of the
      * nav-landmark [fetchAlong]). `highway=traffic_signals` → a light, `highway=stop` → a stop sign; the
-     * node's `highway` tag disambiguates (so `out` must carry tags — the default body verbosity does).
+     * node's `highway` tag disambiguates (so `out` must carry tags - the default body verbosity does).
      * Returns **null on FAILURE** (network/timeout/non-2xx) and an (possibly empty) list on a SUCCESSFUL
-     * parse — the distinction matters: the caller area-caches the result, and caching a failure as an
+     * parse - the distinction matters: the caller area-caches the result, and caching a failure as an
      * authoritative "no controls here" would blank the layer until the user pans out of the cached box.
      * Queried per padded viewport by the caller (which area-caches it, since controls are static), NOT per fix.
      */
@@ -46,10 +46,10 @@ object OverpassTrafficSignals {
             val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
             val req = Request.Builder()
                 .url(url)
-                .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
+                .header("User-Agent", "VelaMaps/0.1 (+https://github.com/alltechdev/vela-dpad)")
                 .build()
             http.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@use null // a failure, NOT a genuine empty area — don't cache it
+                if (!resp.isSuccessful) return@use null // a failure, NOT a genuine empty area - don't cache it
                 val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
                 root["elements"]?.jsonArray?.mapNotNull { el ->
                     val o = el.jsonObject
@@ -77,7 +77,7 @@ object OverpassTrafficSignals {
         val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
         val req = Request.Builder()
             .url(url)
-            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
+            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/alltechdev/vela-dpad)")
             .build()
         http.newCall(req).execute().use { resp ->
             if (!resp.isSuccessful) return@use emptyList()

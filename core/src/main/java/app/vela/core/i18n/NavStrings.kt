@@ -8,54 +8,54 @@ import kotlin.math.roundToInt
 /**
  * All Vela-GENERATED spoken/banner nav text for ONE language. Vela builds turn instructions itself
  * (from OSRM step geometry) rather than scraping them, so localizing navigation = translating this
- * small, bounded set of templates — NOT machine-translating prose. The road/dest NAME passed in is
+ * small, bounded set of templates - NOT machine-translating prose. The road/dest NAME passed in is
  * DATA (already in the local language) and is never translated; each method decides the word ORDER
- * around it (which differs by language — "Turn left onto X" vs "Tournez à gauche sur X"), which is why
+ * around it (which differs by language - "Turn left onto X" vs "Tournez à gauche sur X"), which is why
  * this is per-language templates, not per-word substitution.
  *
  * Resolved by [NavStringsRegistry] (set explicitly from the app locale, never `Locale.getDefault()`,
- * because these run off the main thread — the nav loop + the TTS worker). Part of the app localization
+ * because these run off the main thread - the nav loop + the TTS worker). Part of the app localization
  * effort (see the `project_vela_i18n` memory note).
  */
 interface NavStrings {
     val locale: Locale
 
     /**
-     * The full instruction for an OSRM maneuver — mirrors `RouteGeometry.osrmPhrase`. [type] is the
+     * The full instruction for an OSRM maneuver - mirrors `RouteGeometry.osrmPhrase`. [type] is the
      * OSRM maneuver type ("turn", "off ramp", "roundabout", …, language-independent); [mod] is the OSRM
-     * modifier token ("left", "slight right", "straight", …, language-independent — each language maps
+     * modifier token ("left", "slight right", "straight", …, language-independent - each language maps
      * it); [road] is the road being entered; [dest] a ramp's sign destination; [exitNo] a ramp exit
      * number; [rbExit] a roundabout exit count.
      */
     fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String
 
     /** Landmark lead-in "Pass the traffic light" / "Pass N traffic lights" for Google-style guidance, prepended
-     *  to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
-     *  (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
+     * to a turn ("Pass the light, then turn left onto 5th Ave"). Default "" = feature omitted for that language
+     * (English-first); only added when it makes sense (1–2 signals right before a surface-street turn). */
     fun passLights(count: Int): String = ""
 
-    /** A distance phrased for SPEECH, honouring the imperial/metric preference — "500 feet" / "150 mètres". */
+    /** A distance phrased for SPEECH, honouring the imperial/metric preference - "500 feet" / "150 mètres". */
     fun spokenDistance(meters: Double, imperial: Boolean): String
 
-    /** The pre-turn frame combining a distance phrase and the instruction — EN "In X, Y" / FR "Dans X, Y". */
+    /** The pre-turn frame combining a distance phrase and the instruction - EN "In X, Y" / FR "Dans X, Y". */
     fun inThen(distancePhrase: String, instruction: String): String
 
-    /** The at-arrival spoken callout — EN "You have arrived". */
+    /** The at-arrival spoken callout - EN "You have arrived". */
     fun arrived(): String
 
-    /** Spoken when navigation begins — EN "Starting navigation. <first instruction>". */
+    /** Spoken when navigation begins - EN "Starting navigation. <first instruction>". */
     fun startNav(firstInstruction: String): String
 
-    /** Spoken as each intermediate stop is passed — EN "You've reached <label>" (blank → "your stop"). */
+    /** Spoken as each intermediate stop is passed - EN "You've reached <label>" (blank → "your stop"). */
     fun reachedStop(label: String): String
 
-    /** Spoken when auto-switching to a faster route — EN "Taking the faster route. <first instruction>". */
+    /** Spoken when auto-switching to a faster route - EN "Taking the faster route. <first instruction>". */
     fun fasterRoute(firstInstruction: String): String
 
-    /** The "Test voice" sample — a short nav-style phrase to hear the selected voice. */
+    /** The "Test voice" sample - a short nav-style phrase to hear the selected voice. */
     fun voiceTest(): String
 
-    /** "Rerouting" — spoken when the driver leaves the route and a new one is being fetched. */
+    /** "Rerouting" - spoken when the driver leaves the route and a new one is being fetched. */
     fun rerouting(): String = "Rerouting"
 
     /** The faster-route OFFER ("Faster route available, saving about N minutes"). */
@@ -67,27 +67,27 @@ interface NavStrings {
     /** Approach cue for the FINAL destination, framed by [inThen] ("In 400 meters, <this>"). */
     fun destinationAhead(): String = "Your destination will be ahead"
 
-    /** A spoken lane recommendation — EN "Use the right 2 lanes" / "Use the left lane". */
+    /** A spoken lane recommendation - EN "Use the right 2 lanes" / "Use the left lane". */
     fun useLanes(side: LaneSide, count: Int): String
 
     /** Lane guidance spoken as a PREFACE to the maneuver (Google-style: "Use the right 2 lanes to take
-     *  exit 172 toward Sacramento"), rather than appended after it. Default is a safe two-sentence,
-     *  lanes-first form that works in every language; [EnNavStrings] overrides it with the smooth
-     *  "…to <maneuver>" connective. */
+     * exit 172 toward Sacramento"), rather than appended after it. Default is a safe two-sentence,
+     * lanes-first form that works in every language; [EnNavStrings] overrides it with the smooth
+     * "…to <maneuver>" connective. */
     fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
         useLanes(side, count) + ". " + instruction
 
     /**
      * Expand road abbreviations + numbers so the TTS engine SAYS them ("St"→"Street", "128th"→"one
      * twenty-eighth"). English-specific, so it's **opt-in**: the default is identity, and ONLY
-     * [EnNavStrings] overrides it. Other languages must leave the text — including road-name DATA —
+     * [EnNavStrings] overrides it. Other languages must leave the text - including road-name DATA -
      * untouched, so an English rule can never mangle a foreign name (a French "Rue"/"Bd" is read
      * natively by the French voice).
      */
     fun expandForSpeech(text: String): String = text
 }
 
-/** English (source of truth) — byte-identical to the original `osrmPhrase`, so existing nav tests pass. */
+/** English (source of truth) - byte-identical to the original `osrmPhrase`, so existing nav tests pass. */
 object EnNavStrings : NavStrings {
     override val locale: Locale = Locale.US
 
@@ -136,7 +136,7 @@ object EnNavStrings : NavStrings {
 
     override fun passLights(count: Int): String = if (count <= 1) "Pass the traffic light" else "Pass $count traffic lights"
 
-    // Trailing SEMICOLON on purpose (spoken-only string — NavEngine Speak, never displayed): bare text
+    // Trailing SEMICOLON on purpose (spoken-only string - NavEngine Speak, never displayed): bare text
     // gives the Piper voice no final prosody contour and the callout ended oddly; the user A/B'd
     // punctuation and the semicolon's contour sounds best (period OK, semicolon better). 2026-07-06.
     override fun arrived(): String = "You have arrived;"
@@ -158,30 +158,30 @@ object EnNavStrings : NavStrings {
     override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String {
         val sideWord = when (side) { LaneSide.LEFT -> "left"; LaneSide.RIGHT -> "right"; LaneSide.CENTER -> "center" }
         val lanes = if (count > 1) "the $sideWord $count lanes" else "the $sideWord lane"
-        // "Use the right 2 lanes to take exit 172 toward Sacramento" — lowercase the maneuver's first
+        // "Use the right 2 lanes to take exit 172 toward Sacramento" - lowercase the maneuver's first
         // word so it reads as one sentence after the "In <distance>, " frame.
         return "Use $lanes to " + instruction.replaceFirstChar { it.lowercaseChar() }
     }
 
     /** Whole-word road abbreviation → spoken form, "I-80"→"Interstate 80", and 3-digit street ordinals
-     *  ("128th"→"one twenty eighth"). Moved here from VoiceGuide.forSpeech so it's English-scoped. */
+     * ("128th"→"one twenty eighth"). Moved here from VoiceGuide.forSpeech so it's English-scoped. */
     override fun expandForSpeech(text: String): String {
         var s = text
         s = Regex("\\bI-(\\d+)").replace(s) { "Interstate ${it.groupValues[1]}" }
         s = Regex("\\bUS-(\\d+)").replace(s) { "US ${it.groupValues[1]}" }
         // State/province highway refs (CA-99, SR-99, WA-520, …) → "State Route N". Reading the bare 2-letter
-        // code (e.g. "CA") makes espeak's G2P mangle the K/C onset — a cause of the "the K/T sounds off
+        // code (e.g. "CA") makes espeak's G2P mangle the K/C onset - a cause of the "the K/T sounds off
         // sometimes" bug. Runs AFTER I-/US- so those keep their spoken forms (US- is already de-hyphenated).
         s = Regex("\\b[A-Z]{2}-(\\d+)").replace(s) { "State Route ${it.groupValues[1]}" }
         EN_SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
-        s = SpeechText.spokenNumbers(s) // "128th" → "one twenty eighth" (space, not hyphen — the compound got a mushy -ty), not a mangled "one hundred and 28th"
+        s = SpeechText.spokenNumbers(s) // "128th" → "one twenty eighth" (space, not hyphen - the compound got a mushy -ty), not a mangled "one hundred and 28th"
         return s
     }
 }
 
 /** Whole-word road-abbreviation → spoken form, applied only by [EnNavStrings.expandForSpeech]. Road-type
- *  suffixes are case-insensitive; the directionals are uppercase (as they appear in road names) and come
- *  LAST so they can't chew into a word an earlier rule expanded. */
+ * suffixes are case-insensitive; the directionals are uppercase (as they appear in road names) and come
+ * LAST so they can't chew into a word an earlier rule expanded. */
 private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
     Regex("\\bSt\\b", RegexOption.IGNORE_CASE) to "Street",
     Regex("\\bAve\\b", RegexOption.IGNORE_CASE) to "Avenue",
@@ -210,7 +210,7 @@ private val EN_SPEECH_WORDS: List<Pair<Regex, String>> = listOf(
 )
 
 /**
- * French — the first non-English NavStrings, proving the per-language-template design (note the word
+ * French - the first non-English NavStrings, proving the per-language-template design (note the word
  * order: "à gauche **sur** X", the modifier folded into the verb phrase, roundabout ordinals "2e
  * sortie"). Road/dest names are passed through untranslated.
  */
@@ -291,7 +291,7 @@ object FrNavStrings : NavStrings {
         return if (count > 1) "Empruntez les $count voies $sideWord" else "Empruntez la voie $sideWord"
     }
 
-    // expandForSpeech is left as the interface default (identity) — French road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - French road names are read natively.
 
     private fun frNum(x: Double): String = x.toString().replace('.', ',')
 }
@@ -379,11 +379,11 @@ object DeNavStrings : NavStrings {
         }
     }
 
-    // expandForSpeech is left as the interface default (identity) — German road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - German road names are read natively.
 
     private fun deNum(x: Double): String = x.toString().replace('.', ',')
 
-    // Roundabout exit ordinal — feminine, agreeing with "die … Ausfahrt"; spelled out for the common
+    // Roundabout exit ordinal - feminine, agreeing with "die … Ausfahrt"; spelled out for the common
     // low counts a native driver hears, "N." otherwise.
     private fun deOrd(n: Int): String = when (n) {
         1 -> "erste"
@@ -482,7 +482,7 @@ object EsNavStrings : NavStrings {
         return if (count > 1) "Use los $count carriles $sideWord" else "Use el carril $sideWord"
     }
 
-    // expandForSpeech is left as the interface default (identity) — Spanish road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - Spanish road names are read natively.
 
     private fun esNum(x: Double): String = x.toString().replace('.', ',')
 }
@@ -573,13 +573,13 @@ object ItNavStrings : NavStrings {
         return if (count > 1) "Usa le $count corsie $sideWord" else "Usa la corsia $sideWord"
     }
 
-    // expandForSpeech is left as the interface default (identity) — Italian road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - Italian road names are read natively.
 
     private fun itNum(x: Double): String = x.toString().replace('.', ',')
 }
 
 /**
- * Portuguese (Brazil) — mirrors [FrNavStrings] structurally (note the word order: "à esquerda **na**
+ * Portuguese (Brazil) - mirrors [FrNavStrings] structurally (note the word order: "à esquerda **na**
  * X", the modifier folded into the verb phrase, roundabout ordinals "2ª saída"). Road/dest names are
  * passed through untranslated. Brazil is metric and uses a decimal COMMA ("1,2 km").
  */
@@ -660,7 +660,7 @@ object PtNavStrings : NavStrings {
         return if (count > 1) "Use as $count faixas $sideWord" else "Use a faixa $sideWord"
     }
 
-    // expandForSpeech is left as the interface default (identity) — Portuguese road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - Portuguese road names are read natively.
 
     private fun ptNum(x: Double): String = x.toString().replace('.', ',')
 }
@@ -668,7 +668,7 @@ object PtNavStrings : NavStrings {
 object NlNavStrings : NavStrings {
     override val locale: Locale = Locale("nl", "NL")
 
-    // Plain directional phrase — the verb is folded into each template (Dutch "afslaan" is separable),
+    // Plain directional phrase - the verb is folded into each template (Dutch "afslaan" is separable),
     // so modWord must NOT carry a verb. Mirrors the French approach.
     private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
         "left" -> "links"
@@ -710,9 +710,9 @@ object NlNavStrings : NavStrings {
             "merge" -> "Voeg in$richting"
             "on ramp", "ramp" -> "Neem de oprit$richting"
             "off ramp" -> if (exitNo != null) "Neem afrit $exitNo$richting" else "Neem de afrit$richting"
-            // Derive the SIDE from the full modWord — OSRM forks are almost always "slight left"/
+            // Derive the SIDE from the full modWord - OSRM forks are almost always "slight left"/
             // "slight right" (→ "schuin naar links/rechts"), which the old exact match on
-            // "links"/"rechts" missed, falling to a hardcoded "Houd links aan" — KEEP-LEFT guidance
+            // "links"/"rechts" missed, falling to a hardcoded "Houd links aan" - KEEP-LEFT guidance
             // at a keep-RIGHT freeway split (audit 2026-07-06, safety bug). endsWith covers the
             // plain/schuin/scherp forms; a straight fork says "Ga rechtdoor" instead of a made-up left.
             "fork" -> when {
@@ -775,7 +775,7 @@ object NlNavStrings : NavStrings {
         return if (count > 1) "Gebruik de $count ${sideWord}rijstroken" else "Gebruik de ${sideWord}rijstrook"
     }
 
-    // expandForSpeech blijft de interface-standaard (identiteit) — Nederlandse straatnamen worden natief voorgelezen.
+    // expandForSpeech blijft de interface-standaard (identiteit) - Nederlandse straatnamen worden natief voorgelezen.
 
     private fun nlNum(x: Double): String = x.toString().replace('.', ',')
 }
@@ -812,7 +812,7 @@ object RuNavStrings : NavStrings {
             "on ramp", "ramp" -> "Выезжайте на автомагистраль$vStoronu"
             "off ramp" -> if (exitNo != null) "Съезжайте на съезде $exitNo$vStoronu" else "Уходите на съезд$vStoronu"
             "fork" -> ("Держитесь $m").trim() + vStoronu
-            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "На кольце — ${rbOrdinal(rbExit)} съезд$na" else "Выезжайте на круговое движение$na"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "На кольце - ${rbOrdinal(rbExit)} съезд$na" else "Выезжайте на круговое движение$na"
             "roundabout turn" -> ("На кольце поверните $m").trim() + na
             "uturn" -> "Выполните разворот$na"
             else -> if (m.isNotBlank()) ("Поверните $m").trim() + na else "Продолжайте движение$na"
@@ -862,7 +862,7 @@ object RuNavStrings : NavStrings {
         }
     }
 
-    // expandForSpeech is left as the interface default (identity) — Russian road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - Russian road names are read natively.
 
     // Russian ordinal for the roundabout exit, agreeing with masculine "съезд" ("первый/второй/…").
     // Falls back to the numeric "N-й" form beyond the common range.
@@ -937,7 +937,7 @@ object RuNavStrings : NavStrings {
 }
 
 /**
- * Polish — mirrors [FrNavStrings] structurally. The modifier folds into the imperative verb
+ * Polish - mirrors [FrNavStrings] structurally. The modifier folds into the imperative verb
  * ("Skręć w lewo w X"); roundabout ordinals are "1. zjazdem / 2. zjazdem" (instrumental of "zjazd").
  * Road/dest names are passed through untranslated. Register is the Google-Maps-PL informal
  * 2nd-person imperative ("Skręć", "Jedź"). Number-noun agreement follows Polish rules (see [plUnit]).
@@ -1020,7 +1020,7 @@ object PlNavStrings : NavStrings {
         return if (count > 1) "Jedź $count $lanesInst pasami" else "Jedź $laneInst pasem"
     }
 
-    // expandForSpeech is left as the interface default (identity) — Polish road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - Polish road names are read natively.
 
     private fun plNum(x: Double): String = x.toString().replace('.', ',')
 
@@ -1057,7 +1057,7 @@ object SvNavStrings : NavStrings {
         else -> ""
     }
 
-    // Swedish ordinals: 1:a, 2:a, 3:e, 4:e … — Google Maps Sweden speaks them out
+    // Swedish ordinals: 1:a, 2:a, 3:e, 4:e … - Google Maps Sweden speaks them out
     // ("ta första/andra/tredje avfarten"), so give the small counts their word forms
     // and fall back to the "N:a/N:e" digit-ordinal for larger exit numbers.
     private fun svOrd(n: Int): String = when (n) {
@@ -1081,7 +1081,7 @@ object SvNavStrings : NavStrings {
             road != null -> " in på $road"
             else -> ""
         }
-        // A merge/ramp connects TO a road or heads TOWARD a sign — "till"/"mot", never "in på".
+        // A merge/ramp connects TO a road or heads TOWARD a sign - "till"/"mot", never "in på".
         val till = when {
             dest != null -> " mot $dest"
             road != null -> " till $road"
@@ -1144,7 +1144,7 @@ object SvNavStrings : NavStrings {
         return if (count > 1) "Använd de $count $sideWord filerna" else "Använd den $sideWord filen"
     }
 
-    // expandForSpeech is left as the interface default (identity) — Swedish road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - Swedish road names are read natively.
 
     private fun svNum(x: Double): String = x.toString().replace('.', ',')
 }
@@ -1235,7 +1235,7 @@ object UkNavStrings : NavStrings {
         return if (count > 1) "Рухайтеся $count $sideWordPl смугами" else "Рухайтеся $sideWord смугою"
     }
 
-    // expandForSpeech is left as the interface default (identity) — Ukrainian road names are read natively.
+    // expandForSpeech is left as the interface default (identity) - Ukrainian road names are read natively.
 
     private fun ukNum(x: Double): String {
         val s = if (x == x.toLong().toDouble()) x.toLong().toString() else x.toString()
@@ -1243,9 +1243,9 @@ object UkNavStrings : NavStrings {
     }
 
     // Ukrainian 3-form plural: one / few (2-4) / many (0, 5-20, …). Non-integers (decimals) take
-    // the genitive-singular "few" form — spoken "1,2 кілометра", "5,5 милі".
+    // the genitive-singular "few" form - spoken "1,2 кілометра", "5,5 милі".
     // 4th param = the GENITIVE-SINGULAR form for fractional values ("1,2 кілометрА"), the same
-    // 4-form shape as plUnit — the old 3-form version returned the nominative-plural `few`
+    // 4-form shape as plUnit - the old 3-form version returned the nominative-plural `few`
     // ("кілометри") for decimals, which is wrong Ukrainian (audit 2026-07-06; RU/PL had it right).
     private fun ukPlural(x: Double, one: String, few: String, many: String, gsg: String): String {
         if (x != x.toLong().toDouble()) return gsg
@@ -1263,7 +1263,7 @@ object UkNavStrings : NavStrings {
 
 /**
  * Holds the active [NavStrings] for the process. Set explicitly from the resolved app locale on startup
- * and on every language change — do NOT read `Locale.getDefault()` at the leaf, because nav/TTS text is
+ * and on every language change - do NOT read `Locale.getDefault()` at the leaf, because nav/TTS text is
  * assembled off the main thread. Defaults to [EnNavStrings] so nothing (and no test) depends on the
  * device locale until a language is chosen.
  */

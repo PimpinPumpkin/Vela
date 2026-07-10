@@ -17,10 +17,10 @@ import javax.inject.Singleton
 
 /**
  * Device compass heading (degrees, 0 = N, clockwise) from the fused `TYPE_ROTATION_VECTOR`
- * sensor — the "which way am I facing" used to point the **browse-mode heading cone** when
+ * sensor - the "which way am I facing" used to point the **browse-mode heading cone** when
  * you're standing still, where the GPS bearing is noise (a stopped phone has no course).
  * OsmAnd does exactly this (sensors for heading, low-pass/Kalman smoothed); navigation never
- * uses it — there the heading comes from the matched road. Degoogled: raw [SensorManager],
+ * uses it - there the heading comes from the matched road. Degoogled: raw [SensorManager],
  * no Play Services, no fused provider.
  */
 @Singleton

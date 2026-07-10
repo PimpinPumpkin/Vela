@@ -19,7 +19,7 @@ import org.maplibre.android.style.layers.SymbolLayer
  * Icons glyph in the middle, generated at runtime and registered on the style as
  * `vela-poi-<group>` images. The bundled OpenFreeMap style (liberty-roboto.json)
  * references them from its POI layers via an `icon-image` match on `class`.
- * Keyless — the Material Icons font is bundled in assets.
+ * Keyless - the Material Icons font is bundled in assets.
  *
  * The group keys + colours here MUST stay in sync with the match expression baked
  * into the style asset (see the python transform that generates it).
@@ -72,9 +72,9 @@ object PoiIcons {
     )
 
     /** Best dot group for a Google place's category phrase ("Pizza restaurant", "Gas station",
-     *  "Coffee shop") so an ambient Google POI gets the SAME coloured dot as the equivalent OSM
-     *  POI. Keyword match over the same vocabulary as [CLASS_GROUPS]; order matters (more specific
-     *  first). The image to use is `vela-poi-<returned group>`. */
+     * "Coffee shop") so an ambient Google POI gets the SAME coloured dot as the equivalent OSM
+     * POI. Keyword match over the same vocabulary as [CLASS_GROUPS]; order matters (more specific
+     * first). The image to use is `vela-poi-<returned group>`. */
     fun groupForCategory(category: String?): String {
         val c = category?.lowercase() ?: return "default"
         fun any(vararg k: String) = k.any { it in c }
@@ -87,7 +87,7 @@ object PoiIcons {
             any("hotel", "motel", "inn", "lodging", "resort", "hostel", "bed & breakfast") -> "lodging"
             any("hospital", "clinic", "pharmacy", "drugstore", "dentist", "doctor", "medical", "health",
                 "veterinar", "urgent care", "physician", "chiropract", "optometr") -> "health"
-            any("parking", "parking garage", "parking lot") -> "parking" // before "park" — "parking".contains("park")
+            any("parking", "parking garage", "parking lot") -> "parking" // before "park" - "parking".contains("park")
             any("park", "garden", "trail", "playground", "campground", "nature") -> "park"
             any("school", "university", "college", "academy", "education", "library", "kindergarten", "preschool") -> "edu"
             any("museum", "theater", "theatre", "gallery", "cinema", "movie", "art ", "cultural", "historical", "aquarium", "zoo") -> "culture"
@@ -104,25 +104,25 @@ object PoiIcons {
         }
     }
 
-    /** Best dot group for a Google place — its category FIRST, then a NAME fallback. Google's keyless
-     *  data sometimes returns a generic administrative category ("Non-profit organization",
-     *  "Establishment", "Corporate office") that themes to [default] even though the place is really a
-     *  gym, church, or school — and the OSM basemap DOES classify it (so the grey ambient dot turns into
-     *  a themed OSM icon the moment the ambient layer clears on select, the "grey on the map / orange
-     *  weight when I tap it" YMCA inconsistency). When the category is inconclusive, the NAME usually
-     *  carries the real signal ("…YMCA", "…Community Church", "…Elementary"), so the ambient dot gets the
-     *  SAME icon Google and our OSM POIs give it. Category stays authoritative; the name only breaks a
-     *  [default] tie. */
+    /** Best dot group for a Google place - its category FIRST, then a NAME fallback. Google's keyless
+     * data sometimes returns a generic administrative category ("Non-profit organization",
+     * "Establishment", "Corporate office") that themes to [default] even though the place is really a
+     * gym, church, or school - and the OSM basemap DOES classify it (so the grey ambient dot turns into
+     * a themed OSM icon the moment the ambient layer clears on select, the "grey on the map / orange
+     * weight when I tap it" YMCA inconsistency). When the category is inconclusive, the NAME usually
+     * carries the real signal ("…YMCA", "…Community Church", "…Elementary"), so the ambient dot gets the
+     * SAME icon Google and our OSM POIs give it. Category stays authoritative; the name only breaks a
+     * [default] tie. */
     fun groupFor(name: String?, category: String?): String {
         val byCat = groupForCategory(category)
         if (byCat != "default") return byCat
         return groupForName(name)
     }
 
-    /** Category group inferred from a place NAME alone — only strong, unambiguous signals, used as the
-     *  fallback in [groupFor] when the category didn't resolve. Conservative on purpose (a café named
-     *  "The Gym" is a rarity; a place literally named "…YMCA" is a gym) so it can't mis-theme a place
-     *  whose category was simply missing. */
+    /** Category group inferred from a place NAME alone - only strong, unambiguous signals, used as the
+     * fallback in [groupFor] when the category didn't resolve. Conservative on purpose (a café named
+     * "The Gym" is a rarity; a place literally named "…YMCA" is a gym) so it can't mis-theme a place
+     * whose category was simply missing. */
     private fun groupForName(name: String?): String {
         val n = name?.lowercase() ?: return "default"
         fun any(vararg k: String) = k.any { it in n }
@@ -140,9 +140,9 @@ object PoiIcons {
     }
 
     /** Remap OpenFreeMap Liberty's poi_r1/r7/r20 layers to our coloured markers,
-     *  and colour the POI label text by category like Google — saturated in light, PASTEL TINTS in
-     *  dark (Google's dark labels are lightened category colours, not the full-saturation ones,
-     *  which vanish against a dark map — ground-truthed vs the Maps app; see [labelColor]). */
+     * and colour the POI label text by category like Google - saturated in light, PASTEL TINTS in
+     * dark (Google's dark labels are lightened category colours, not the full-saturation ones,
+     * which vanish against a dark map - ground-truthed vs the Maps app; see [labelColor]). */
     fun applyToLiberty(style: Style, dark: Boolean) {
         runCatching {
             val icon = Expression.raw(match("\"vela-poi-default\"") { "\"vela-poi-$it\"" })
@@ -160,7 +160,7 @@ object PoiIcons {
                     // Label placement MATCHES the ambient Google-POI layer exactly (variable anchor:
                     // prefer left-of-icon at a tight 1.4-em gap, fall back to under-icon on collision).
                     // These OSM layers show whenever ambient ISN'T (fresh area pre-fetch, offline, nav,
-                    // search) — a fixed -2.6 offset here leaves labels too far from the icon until they
+                    // search) - a fixed -2.6 offset here leaves labels too far from the icon until they
                     // re-render (the re-render = ambient taking over).
                     PropertyFactory.textVariableAnchor(
                         arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
@@ -169,14 +169,14 @@ object PoiIcons {
                     PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                     // UPRIGHT font, matching the ambient Google-POI layer. Liberty's default POI face is
                     // Noto Sans ITALIC, so when ambient clears (search / a place selected / nav) these OSM
-                    // labels slanted — an inconsistent "everything goes italic mid-search" flicker. Google's
+                    // labels slanted - an inconsistent "everything goes italic mid-search" flicker. Google's
                     // labels are upright everywhere; pin the same regular face the ambient layer uses.
                     PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 )
                 // Category-coloured labels (Google-style) in light mode; the dark
                 // theme keeps light-grey labels for contrast.
                 layer.setProperties(PropertyFactory.textColor(textColor)) // per-category in BOTH modes (dark = pastel tints)
-                // Only show POIs that have a NAME — the nameless ones can't be opened
+                // Only show POIs that have a NAME - the nameless ones can't be opened
                 // (they'd just drop an address pin) and read as junk/duplicate icons.
                 // AND with the layer's existing rank filter so the rank gating stays.
                 hideNameless(layer)
@@ -209,7 +209,7 @@ object PoiIcons {
     }
 
     /** Restrict a POI symbol layer to features that have a `name`, preserving the
-     *  layer's existing (rank) filter by AND-ing the two. */
+     * layer's existing (rank) filter by AND-ing the two. */
     private fun hideNameless(layer: SymbolLayer) {
         val named = Expression.has("name")
         val existing = layer.filter
@@ -226,9 +226,9 @@ object PoiIcons {
         return sb.append(',').append(default).append(']').toString()
     }
 
-    /** Blend [hex] toward white by [f] — Google's DARK-mode POI labels are pastel TINTS of the
-     *  category colour (ground-truthed against the Maps app in Davis: restaurants read light
-     *  peach, shopping light blue, lodging light pink), not the saturated light-mode colour. */
+    /** Blend [hex] toward white by [f] - Google's DARK-mode POI labels are pastel TINTS of the
+     * category colour (ground-truthed against the Maps app in Davis: restaurants read light
+     * peach, shopping light blue, lodging light pink), not the saturated light-mode colour. */
     private fun lighten(hex: String, f: Float): String {
         val c = hex.removePrefix("#").toLong(16)
         fun ch(shift: Int): Int {
@@ -239,15 +239,15 @@ object PoiIcons {
     }
 
     /** The label colour for a category [group] per theme: the icon colour in light, its pastel
-     *  tint in dark (Google's own dark-mode treatment — full saturation vanishes on a dark map). */
+     * tint in dark (Google's own dark-mode treatment - full saturation vanishes on a dark map). */
     private fun labelColor(group: String, dark: Boolean): String {
         val base = GROUPS.first { it.first == group }.third
         return if (dark) lighten(base, 0.55f) else base
     }
 
     /** Data-driven text colour for the AMBIENT Google-POI layer: match the feature's `icon`
-     *  property ("vela-poi-<group>") to the category label colour, Google-style — the label
-     *  reads as part of the icon. Default = the plain per-theme label grey. */
+     * property ("vela-poi-<group>") to the category label colour, Google-style - the label
+     * reads as part of the icon. Default = the plain per-theme label grey. */
     fun ambientLabelColor(dark: Boolean): Expression {
         val sb = StringBuilder("""["match",["get","icon"]""")
         GROUPS.forEach { (group, _, _) ->
@@ -260,7 +260,7 @@ object PoiIcons {
     private fun marker(tf: Typeface, codepoint: Int, colorHex: String): Bitmap {
         // Google-style POI: a category-coloured dot with a white glyph sitting in front of a
         // muted-grey TEARDROP/pin backing whose point extends below the dot (NO white ring), with a
-        // soft drop shadow. The dot is the BITMAP CENTRE — so with the layer's default centre anchor
+        // soft drop shadow. The dot is the BITMAP CENTRE - so with the layer's default centre anchor
         // the dot marks the place and the grey teardrop reads as a pin behind it (no placement shift).
         val w = 100
         val h = 92

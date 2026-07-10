@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dpad_test_suite/run_all.sh — run the whole D-pad suite against a connected device and report.
+# tests/dpad/run_all.sh - run the whole D-pad suite against a connected device and report.
 # Each test exits 0 (all its checks passed) or 1 (something failed); this tallies suite results.
 #
 #   ./run_all.sh                 # run everything

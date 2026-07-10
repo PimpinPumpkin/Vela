@@ -7,7 +7,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Locks the ambient map-POI ranking so the "tiny sushi place beats the Safeway that contains it" bug
- *  can't silently come back (e.g. from reordering the category-term fan-out). */
+ * can't silently come back (e.g. from reordering the category-term fan-out). */
 class AmbientRankingTest {
 
     private fun place(name: String, reviews: Int?, rating: Double?, dist: Double?) =
@@ -23,7 +23,7 @@ class AmbientRankingTest {
     }
 
     @Test fun `a landmark leads even a nearer low-signal place`() {
-        // A map wants the recognizable place first, not whatever's nearest the centre — this is the
+        // A map wants the recognizable place first, not whatever's nearest the centre - this is the
         // real device case: Safeway(1273) must lead a near 0-review mobile mechanic / care home.
         val nearJunk = place("Always Mobile Mechanics", 0, null, 80.0)
         val mall = place("Mega Mall", 9000, 4.3, 4000.0)

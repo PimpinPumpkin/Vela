@@ -55,7 +55,7 @@ import kotlinx.coroutines.launch
 import app.vela.ui.formatDistance
 import app.vela.ui.formatDuration
 import app.vela.ui.theme.isAppInDarkTheme
-// D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
+// D-pad-only operation (docs/dpad.md) - one import block so upstream merges stay clean.
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -84,11 +84,11 @@ fun ManeuverBanner(
     nextType: ManeuverType? = null,
     nextRef: String? = null,
     nextDistanceMeters: Double? = null,
-    // Destination lines for the ARRIVE step (name + address, either may be blank — offline
+    // Destination lines for the ARRIVE step (name + address, either may be blank - offline
     // routing can have only a street, an address, or nothing but the tapped coordinates).
     destName: String? = null,
     destAddress: String? = null,
-    // Approach gate for lane arrows AND the compound "then" row — speed-scaled by the caller
+    // Approach gate for lane arrows AND the compound "then" row - speed-scaled by the caller
     // (max(800 m, v×30 s)): a 75 mph exit needs the lanes ~1 km out, a city turn at 800 m.
     laneShowM: Double = LANE_SHOW_M,
     previewing: Boolean = false,
@@ -106,12 +106,12 @@ fun ManeuverBanner(
     else MaterialTheme.colorScheme.onPrimaryContainer
     // The card tracks your finger as you drag (translationX = offsetX); on release
     // past a threshold it slides the rest of the way out, swaps to the next/prev
-    // step, then the new card slides in from the opposite edge — like flicking a
+    // step, then the new card slides in from the opposite edge - like flicking a
     // pager. Below threshold it springs back.
     val offsetX = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
     // `pointerInput(Unit)` builds the gesture detector ONCE, capturing these lambdas
-    // as they were at first composition — which closed over the *first* step index.
+    // as they were at first composition - which closed over the *first* step index.
     // Without this, every swipe re-ran previewStep(liveStep+1) → the same card forever.
     // rememberUpdatedState keeps the captured refs pointing at the latest lambdas.
     val latestNext by rememberUpdatedState(onPreviewNext)
@@ -211,7 +211,7 @@ fun ManeuverBanner(
             }
             // Real per-lane diagram from OSRM (a cell per lane, arrows for what it allows, the ones for
             // THIS turn highlighted) when we have it; else the old count-based hint from Google markup.
-            // Only show lane guidance when you're actually APPROACHING the maneuver (Google-style) —
+            // Only show lane guidance when you're actually APPROACHING the maneuver (Google-style) -
             // otherwise the arrows sit there for miles telling you to "be in the right lane" for an exit
             // way ahead, which is just noise. The distance gate covers BOTH paths (the count-based hint
             // was just as noisy). In step-preview (swiping ahead) always show, since you're inspecting a step.
@@ -224,10 +224,10 @@ fun ManeuverBanner(
                     LaneGuide(it, type)
                 }
             }
-            // Compound "then <next>" preview — only when the next maneuver CLOSELY follows this one
+            // Compound "then <next>" preview - only when the next maneuver CLOSELY follows this one
             // (Google shows it only for back-to-back turns like "exit, then keep right") AND we're
             // actually APPROACHING this one: gated on the gap alone, an exit 12 km ahead with a merge
-            // 300 m after it kept "then ⤵ Merge onto I-80 E" on the banner for the whole 12 km — the
+            // 300 m after it kept "then ⤵ Merge onto I-80 E" on the banner for the whole 12 km - the
             // same noise the lane gate was added to kill. Preview always shows (inspecting a step).
             if (nextText != null && nextType != null && isCompoundNext(nextDistanceMeters) &&
                 (previewing || distanceMeters <= laneShowM)
@@ -259,12 +259,12 @@ fun ManeuverBanner(
     }
 }
 
-// Show the lane diagram only within this distance of the maneuver (~0.5 mi) — beyond it the arrows are
+// Show the lane diagram only within this distance of the maneuver (~0.5 mi) - beyond it the arrows are
 // just noise telling you to pick a lane for an exit miles ahead.
 private const val LANE_SHOW_M = 800.0
 
 // A "then <next>" compound preview only makes sense when the next maneuver closely follows this one
-// (~0.3 mi) — an exit-then-merge, not a turn 5 miles later. Matches Google's compound-maneuver treatment.
+// (~0.3 mi) - an exit-then-merge, not a turn 5 miles later. Matches Google's compound-maneuver treatment.
 private const val COMPOUND_M = 500.0
 
 /** True when the next maneuver follows closely enough to show the compound "then …" preview. */
@@ -273,7 +273,7 @@ internal fun isCompoundNext(nextDistanceMeters: Double?): Boolean =
 
 private val EXIT_RE = Regex("""\bexit\s+(\w[\w-]*)""", RegexOption.IGNORE_CASE)
 // I / US / SR / Hwy (space or dash), plus any 2-letter-DASH-number for state/provincial routes
-// (TX-35, ON-401, CA-99) — the dash keeps it route-like so it doesn't grab random "to 5" text;
+// (TX-35, ON-401, CA-99) - the dash keeps it route-like so it doesn't grab random "to 5" text;
 // parseRouteRef's state set then filters an unknown 2-letter prefix back to a plain chip.
 private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|[A-Za-z]{2}-\d+)(?:\s?[NSEW]\b)?""", RegexOption.IGNORE_CASE)
 
@@ -281,9 +281,9 @@ private val ROUTE_RE = Regex("""\b(?:(?:I|US|CA|SR|US-?Hwy|Hwy)[-\s]?\d+|[A-Za-z
 internal data class Sign(val isExit: Boolean, val label: String)
 
 /** Pull route shields ("I-80 E") and the exit tab ("Exit 71") out of an instruction so they can be
- *  rendered as Google-style badges. [explicitRef] is the maneuver's own ref field (OSRM's `ref`): a
- *  highway can have a NAME in the text and a ref that never appears there ("Continue onto Yolo Causeway",
- *  ref "I 80"), so pass it to still get the shield. */
+ * rendered as Google-style badges. [explicitRef] is the maneuver's own ref field (OSRM's `ref`): a
+ * highway can have a NAME in the text and a ref that never appears there ("Continue onto Yolo Causeway",
+ * ref "I 80"), so pass it to still get the shield. */
 internal fun roadSigns(text: String, explicitRef: String? = null): List<Sign> {
     val seen = HashSet<String>()
     val out = ArrayList<Sign>()
@@ -325,9 +325,9 @@ internal fun SignChip(sign: Sign) {
 }
 
 /** Lane-guidance strip from a hint like "Use the left 2 lanes": a row of
- *  turn-direction arrows for the lanes you want, plus the hint text. We don't
- *  get a per-lane diagram from Google's response, so this shows the count and
- *  direction rather than faking the full lane layout. */
+ * turn-direction arrows for the lanes you want, plus the hint text. We don't
+ * get a per-lane diagram from Google's response, so this shows the count and
+ * direction rather than faking the full lane layout. */
 @Composable
 private fun LaneGuide(hint: String, type: ManeuverType) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -354,8 +354,8 @@ private fun laneArrowCount(hint: String): Int {
 }
 
 /** Google-style lane diagram: one cell per approach lane, drawn in road order, each showing the
- *  arrow(s) that lane permits. Lanes that serve THIS maneuver ([Lane.valid]) are bright; the rest are
- *  dimmed — so you can see which lane to be in. Data is OSRM's per-lane `indications`/`valid`. */
+ * arrow(s) that lane permits. Lanes that serve THIS maneuver ([Lane.valid]) are bright; the rest are
+ * dimmed - so you can see which lane to be in. Data is OSRM's per-lane `indications`/`valid`. */
 @Composable
 internal fun LaneDiagram(
     lanes: List<Lane>,
@@ -364,11 +364,11 @@ internal fun LaneDiagram(
     modifier: Modifier = Modifier,
 ) {
     val bright = on
-    // Flat mid-grey for the arrows you're NOT taking — a solid colour (not a translucent tint of
+    // Flat mid-grey for the arrows you're NOT taking - a solid colour (not a translucent tint of
     // `on`) so overlapping strokes don't build up into a muddy skeuomorphic blob.
     val dim = Color(0xFF80868B)
     // A signed direction level for the maneuver, or null when the type doesn't pin a side (MERGE /
-    // ROUNDABOUT / arrive / unknown) — in that case we can't say WHICH allowed direction we're
+    // ROUNDABOUT / arrive / unknown) - in that case we can't say WHICH allowed direction we're
     // taking, so a valid lane lights ALL its arrows rather than guessing (and lighting the wrong one).
     val target = maneuverBucket(maneuver)
     Surface(color = on.copy(alpha = 0.10f), shape = RoundedCornerShape(8.dp), modifier = modifier) {
@@ -379,14 +379,14 @@ internal fun LaneDiagram(
         ) {
             lanes.take(8).forEach { lane ->
                 val inds = lane.indications.ifEmpty { listOf("straight") }.distinct()
-                // In a valid lane, ONLY the arrow for the turn we're taking lights up — the other
+                // In a valid lane, ONLY the arrow for the turn we're taking lights up - the other
                 // directions the lane also allows stay dim (so a "go straight" turn doesn't light
                 // the right-turn head on a straight-or-right lane). The active one = the lane's
                 // indication closest to the maneuver's direction. When the maneuver side is unknown
                 // (target null), light all of a valid lane's arrows. Invalid lanes: all dim.
                 val active = if (lane.valid && target != null) inds.minByOrNull { kotlin.math.abs(laneBucket(it) - target) } else null
                 fun lit(ind: String) = lane.valid && (target == null || ind == active)
-                // One SHARED vertical shaft + a head per indication (not a whole arrow each — that
+                // One SHARED vertical shaft + a head per indication (not a whole arrow each - that
                 // double-drew the shaft). Wider cell + smaller heads so two forked heads don't
                 // overlap; dim heads drawn first so the bright active head sits on top of any touch.
                 Canvas(Modifier.size(width = 30.dp, height = 26.dp)) {
@@ -403,8 +403,8 @@ internal fun LaneDiagram(
 }
 
 /** Coarse signed direction level for a lane indication (straight 0, right +, left −); used to
- *  match a lane's allowed directions against the maneuver we're actually taking. A u-turn is a
- *  hard LEFT (−4), so it matches a "uturn" indication AND, absent one, the left-most arrow. */
+ * match a lane's allowed directions against the maneuver we're actually taking. A u-turn is a
+ * hard LEFT (−4), so it matches a "uturn" indication AND, absent one, the left-most arrow. */
 private fun laneBucket(indication: String): Int = when (indication.trim().lowercase().replace('_', ' ')) {
     "uturn" -> -4
     "sharp left" -> -3
@@ -417,7 +417,7 @@ private fun laneBucket(indication: String): Int = when (indication.trim().lowerc
 }
 
 /** The maneuver's signed direction, or null when the type doesn't pin a side (a valid lane then
- *  lights all its arrows rather than guessing wrong). */
+ * lights all its arrows rather than guessing wrong). */
 private fun maneuverBucket(type: ManeuverType): Int? = when (type) {
     ManeuverType.UTURN -> -4
     ManeuverType.SHARP_LEFT -> -3
@@ -427,13 +427,13 @@ private fun maneuverBucket(type: ManeuverType): Int? = when (type) {
     ManeuverType.TURN_RIGHT -> 2
     ManeuverType.SHARP_RIGHT -> 3
     ManeuverType.STRAIGHT, ManeuverType.CONTINUE, ManeuverType.DEPART -> 0
-    // MERGE / ROUNDABOUT / EXIT_ROUNDABOUT / ARRIVE / UNKNOWN — side not encoded in the type.
+    // MERGE / ROUNDABOUT / EXIT_ROUNDABOUT / ARRIVE / UNKNOWN - side not encoded in the type.
     else -> null
 }
 
 /** Draw one lane HEAD: the angled stem rising from the shared bend point [bendY] to a tip, plus the
- *  two barbs. The vertical shaft (base→bend) is drawn once per lane by the caller, so several
- *  indications on one lane share it instead of each redrawing (and muddying) it. */
+ * two barbs. The vertical shaft (base→bend) is drawn once per lane by the caller, so several
+ * indications on one lane share it instead of each redrawing (and muddying) it. */
 private fun DrawScope.laneHead(indication: String, color: Color, baseX: Float, bendY: Float, w: Float, h: Float, stroke: Float) {
     val deg = when (indication.trim().lowercase().replace('_', ' ')) {
         "straight", "none", "" -> 0f
@@ -548,8 +548,8 @@ fun NavControls(
 }
 
 /** Arrival/trip summary shown when nav reaches the destination: a "you've
- *  arrived" card with the trip's total time and distance, and a Done button to
- *  return to the map. */
+ * arrived" card with the trip's total time and distance, and a Done button to
+ * return to the map. */
 @Composable
 fun ArrivalSummary(
     destinationLabel: String,

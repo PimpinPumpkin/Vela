@@ -4,7 +4,7 @@ import app.vela.core.model.LatLng
 
 /**
  * Google's Encoded Polyline Algorithm Format (1e5 precision). A stable, fully
- * specified format — the geometry inside a directions response is encoded
+ * specified format - the geometry inside a directions response is encoded
  * exactly this way, so [decode] is one of the few pieces here that needs no
  * calibration.
  */

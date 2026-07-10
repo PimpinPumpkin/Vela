@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# smallscreen_test_suite/run_all.sh — run the whole small-screen compatibility suite.
+# tests/small_screen/run_all.sh - run the whole small-screen compatibility suite.
 # Shrinks the display to a feature-phone size and checks that every surface and every dialog shows
 # all its content/controls without clipping anything off-screen, driven by D-pad only. Restores the
-# real screen on exit. Reuses the device helpers in ../dpad_test_suite (one source of truth).
+# real screen on exit. Reuses the device helpers in ../tests/dpad (one source of truth).
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 A=0; B=0

@@ -16,15 +16,15 @@ import org.junit.Test
 /**
  * Regressions for the 2026-07-04 navigation audit remediation. Everything here mirrors a concrete
  * field failure:
- *  - fixed 400/150/25 m prompt distances gave a 75 mph driver 12 s of warning (speed-scaling);
- *  - a short fresh step fired BOTH prompt bands back-to-back announcing the literal threshold
- *    ("In 400 meters" for a turn 50 m away);
- *  - a GPS gap replayed every missed turn as an at-the-turn command, one per fix;
- *  - parking 30-50 m short of the road-snapped destination never arrived, then "Rerouting"
- *    fired in the parking lot;
- *  - red-light multipath drift >45 m for 4 fixes rerouted a provably stationary car;
- *  - ETA divided remaining distance by the WHOLE-ROUTE average speed (downtown tail read 4 min
- *    when it was 15).
+ * - fixed 400/150/25 m prompt distances gave a 75 mph driver 12 s of warning (speed-scaling);
+ * - a short fresh step fired BOTH prompt bands back-to-back announcing the literal threshold
+ * ("In 400 meters" for a turn 50 m away);
+ * - a GPS gap replayed every missed turn as an at-the-turn command, one per fix;
+ * - parking 30-50 m short of the road-snapped destination never arrived, then "Rerouting"
+ * fired in the parking lot;
+ * - red-light multipath drift >45 m for 4 fixes rerouted a provably stationary car;
+ * - ETA divided remaining distance by the WHOLE-ROUTE average speed (downtown tail read 4 min
+ * when it was 15).
  */
 class NavAuditRegressionTest {
 
@@ -49,7 +49,7 @@ class NavAuditRegressionTest {
 
     @Test fun `prompt distances scale with speed`() {
         // Exit 900 m ahead at highway speed: fixed 400 m gave 12 s of warning; at 34 m/s the far
-        // band is ~850 m, so the prompt must fire HERE — and must NOT fire at city speed.
+        // band is ~850 m, so the prompt must fire HERE - and must NOT fire at city speed.
         val r = route(
             3000.0,
             listOf(
@@ -71,7 +71,7 @@ class NavAuditRegressionTest {
 
     @Test fun `a short fresh step speaks ONE prompt with the true distance`() {
         // Right-then-immediate-left, 60 m apart: the old loop fired BOTH bands in one update,
-        // each announcing its literal threshold — "In 400 meters… In 150 meters…" for a turn
+        // each announcing its literal threshold - "In 400 meters… In 150 meters…" for a turn
         // 50 m away, queued back-to-back.
         val r = route(
             1000.0,
@@ -88,7 +88,7 @@ class NavAuditRegressionTest {
         assertEquals("exactly one prompt for a short step", 1, speaks.size)
         assertFalse("never announces a distance larger than the truth", speaks[0].text.contains("400"))
         assertTrue("speaks the real ~50 m", speaks[0].text.contains("50 meters"))
-        assertEquals("both bands consumed — no second prompt next fix", setOf(0, 1), next.spoken)
+        assertEquals("both bands consumed - no second prompt next fix", setOf(0, 1), next.spoken)
     }
 
     @Test fun `maneuvers passed during a GPS gap advance silently`() {
@@ -120,7 +120,7 @@ class NavAuditRegressionTest {
             ),
         )
         // Parked 35 m crow-flies from the snapped endpoint (dtn along-route ~35 > 25): the old
-        // engine never arrived here — and then off-route counting "Rerouted" in the parking lot.
+        // engine never arrived here - and then off-route counting "Rerouted" in the parking lot.
         val state = NavState(stepIndex = 1, traveledM = 960.0)
         val (next, events) = NavEngine.update(r, state, at(965.0), speedMps = 0.4)
         assertTrue("arrives on proximity", next.arrived)
@@ -137,7 +137,7 @@ class NavAuditRegressionTest {
         )
         val off = LatLng(latAt(500.0), lng + 0.0009) // ~80 m east of the line
         // Red light: multipath biases fixes 80 m toward a parallel street while the doppler
-        // proves the car is parked — no reroute, ever.
+        // proves the car is parked - no reroute, ever.
         var state = NavState(stepIndex = 0, traveledM = 500.0)
         repeat(8) {
             val (next, events) = NavEngine.update(r, state, off, speedMps = 0.3)
@@ -183,7 +183,7 @@ class NavAuditRegressionTest {
                 Maneuver(ManeuverType.ARRIVE, "Arrive", at(1000.0), 0.0, 0.0),
             ),
         )
-        // 120 m out (inside the near band): "your destination will be ahead" — the old engine
+        // 120 m out (inside the near band): "your destination will be ahead" - the old engine
         // excluded ARRIVE from prompts entirely (silence from the last turn to the arrival line).
         val state = NavState(stepIndex = 1, traveledM = 850.0)
         val (next, events) = NavEngine.update(r, state, at(880.0))

@@ -13,10 +13,10 @@ import javax.inject.Singleton
  * Cookie warming for the per-user session.
  *
  * Calibration (2026-06-15) showed that both the search and directions endpoints
- * need NO per-user token — only ordinary cookies. So this is deliberately tiny:
+ * need NO per-user token - only ordinary cookies. So this is deliberately tiny:
  * a single GET of the maps home page so the shared OkHttp cookie jar picks up
  * Google's consent/NID cookies, after which the data requests behave like one
- * logged-out browser. No API key, no extracted token — that's what keeps Vela
+ * logged-out browser. No API key, no extracted token - that's what keeps Vela
  * on the NewPipe footing.
  *
  * CALIBRATE: in consent-gated regions (much of the EU) this GET may redirect to

@@ -4,7 +4,7 @@ package app.vela.ui
 // no button Compose-focused, and NOTHING pre-places that focus (~10 approaches proven to fail).
 // A hand-built RAW `Dialog` with a directly-`.focusable()`/`.clickable` element DOES auto-focus
 // (Vela's photo gallery proves it). So this is a drop-in AlertDialog replacement that lands
-// already focused on the safe/dismiss button — OK activates it, arrows move to confirm, BACK
+// already focused on the safe/dismiss button - OK activates it, arrows move to confirm, BACK
 // dismisses. Styled to match Material's AlertDialog so touch looks the same.
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -44,7 +44,7 @@ import androidx.compose.ui.window.DialogProperties
 
 /**
  * Drop-in replacement for a two-button `AlertDialog` that is **D-pad-first**: it auto-focuses the
- * dismiss (safe) button on open, so the first OK activates it and arrows reach the confirm button —
+ * dismiss (safe) button on open, so the first OK activates it and arrows reach the confirm button -
  * no wasted "enter the dialog" press. Pass a composable [text] body (may hold checkboxes etc.).
  * Under touch it looks and behaves like the Material dialog it replaces.
  */
@@ -66,7 +66,7 @@ fun VelaDialog(
             tonalElevation = 6.dp,
         ) {
             // Cap to 90% of the screen and SCROLL the body so a tall dialog (e.g. the diagnostics
-            // checkboxes) never pushes the buttons off a small screen — the title stays pinned at
+            // checkboxes) never pushes the buttons off a small screen - the title stays pinned at
             // the top and the buttons at the bottom, only the middle scrolls. Without this, on a
             // feature-phone-sized display the Confirm/Dismiss buttons fell off-screen, unreachable.
             Column(
@@ -102,9 +102,9 @@ fun VelaDialog(
     }
 }
 
-/** A directly-`.clickable` text button (so requestFocus lands on it inside a raw Dialog window —
- *  a Material `TextButton`'s nested focusable does not, verified on-device). Touch tap and D-pad
- *  OK both fire [onClick]; when [autoFocus] it grabs focus on open. */
+/** A directly-`.clickable` text button (so requestFocus lands on it inside a raw Dialog window -
+ * a Material `TextButton`'s nested focusable does not, verified on-device). Touch tap and D-pad
+ * OK both fire [onClick]; when [autoFocus] it grabs focus on open. */
 @Composable
 private fun DialogButton(text: String, onClick: () -> Unit, autoFocus: Boolean) {
     val fr = remember { FocusRequester() }
@@ -128,7 +128,7 @@ private fun DialogButton(text: String, onClick: () -> Unit, autoFocus: Boolean) 
             .focusRequester(fr)
             .dpadHighlight(RoundedCornerShape(20.dp))
             // OK/Enter fires the action. The single focus target is the explicit .focusable()
-            // below — the ONLY thing requestFocus lands on in a raw Dialog (gallery-proven); a
+            // below - the ONLY thing requestFocus lands on in a raw Dialog (gallery-proven); a
             // Material button's nested focusable / a bare .clickable did not take focus.
             .onKeyEvent { ev ->
                 if ((ev.key == Key.DirectionCenter || ev.key == Key.Enter) && ev.type == KeyEventType.KeyUp) {

@@ -2,7 +2,7 @@
 # release. This is how the offline-routing catalog grows toward world coverage.
 #
 # Run from the Actions tab → "Build offline routing graphs" → pick a `group` (us, canada, europe, …) or
-# pass explicit `ids`. Regions come from tools/routing-regions.json — to build something not listed, add
+# pass explicit `ids`. Regions come from tools/routing-regions.json - to build something not listed, add
 # a line there first. Public-repo Actions minutes are free, so a whole continent in one dispatch is fine.
 #
 # Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.zip + a manifest
@@ -53,7 +53,7 @@ jobs:
           IDS: ${{ inputs.ids }}
           SKIP_BIG: ${{ inputs.skip_big }}
         run: |
-          # split IDS on commas/spaces, drop empties — pure jq so it's platform-independent
+          # split IDS on commas/spaces, drop empties - pure jq so it's platform-independent
           # (GNU xargs runs once on empty input → would yield [""], breaking the group path).
           ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
           sel=$(jq -c --arg group "$GROUP" --argjson ids "$ids_json" --argjson skipBig "${SKIP_BIG:-false}" '
@@ -65,7 +65,7 @@ jobs:
           n=$(printf '%s' "$sel" | jq 'length')
           echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
           if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GROUP' ids='$IDS'"; exit 1; fi
-          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap — pick a smaller group or ids"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions > 256 matrix cap - pick a smaller group or ids"; exit 1; fi
           echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
           echo "count=$n" >> "$GITHUB_OUTPUT"
       - name: Ensure the catalog release exists
@@ -125,6 +125,6 @@ jobs:
         run: |
           shopt -s nullglob
           files=(entries/*.json)
-          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built - nothing to merge"; exit 0; fi
           echo "merging ${#files[@]} entr(y/ies)"
           bash scripts/merge-routing-manifest.sh entries

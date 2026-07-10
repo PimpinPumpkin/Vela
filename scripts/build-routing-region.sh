@@ -25,7 +25,7 @@ echo "→ building CH graph"
 ( cd "$WORK/graph" && zip -qr "$WORK/$ID.zip" . )
 SIZE=$(( ( $(stat -f%z "$WORK/$ID.zip" 2>/dev/null || stat -c%s "$WORK/$ID.zip") + 1048575 ) / 1048576 ))
 
-# bbox [S,W,N,E] from the extract's HEADER box (the declared region) — NOT data.bbox, whose node
+# bbox [S,W,N,E] from the extract's HEADER box (the declared region) - NOT data.bbox, whose node
 # extent gets blown up by outlier nodes (a stray ferry/error node sends it to Alaska). osmium prints
 # (minlon,minlat,maxlon,maxlat).
 read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
@@ -44,12 +44,12 @@ gh release upload "$TAG" "$WORK/$ID.zip" --clobber --repo "$REPO"
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
 
-# MANIFEST_MODE=emit (CI matrix): just drop the entry to $ENTRY_OUT and stop — the manifest merge is
+# MANIFEST_MODE=emit (CI matrix): just drop the entry to $ENTRY_OUT and stop - the manifest merge is
 # centralised in one job (scripts/merge-routing-manifest.sh) so parallel region builds can't clobber it.
 # Default (local single-region): read-modify-write the manifest ourselves.
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
   printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?set ENTRY_OUT in emit mode}"
-  echo "✓ built $ID, zip uploaded, entry → $ENTRY_OUT (manifest merged separately)"
+  echo "[x] built $ID, zip uploaded, entry → $ENTRY_OUT (manifest merged separately)"
 else
   # merge this region into routing-manifest.json (replace any existing entry with the same id)
   gh release download "$TAG" --repo "$REPO" -p routing-manifest.json -O "$WORK/manifest.json" 2>/dev/null \
@@ -58,5 +58,5 @@ else
     '.regions = ([.regions[] | select(.id != ($entry.id))] + [$entry])' \
     "$WORK/manifest.json" > "$WORK/routing-manifest.json"
   gh release upload "$TAG" "$WORK/routing-manifest.json" --clobber --repo "$REPO"
-  echo "✓ published $ID — the app's Settings → Offline routing will list it"
+  echo "[x] published $ID - the app's Settings → Offline routing will list it"
 fi

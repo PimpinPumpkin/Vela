@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# dpad_test_suite/nav.sh — Vela-specific D-pad navigation helpers, sourced by tests.
+# tests/dpad/nav.sh - Vela-specific D-pad navigation helpers, sourced by tests.
 # All movement is D-pad-only (the point of the suite). Kept separate from lib.sh (generic).
 
-# dismiss_onboarding — OK through the one-time onboarding dialogs. Each VelaDialog auto-focuses its
+# dismiss_onboarding - OK through the one-time onboarding dialogs. Each VelaDialog auto-focuses its
 # "Not now" button, so a single OK dismisses it; repeat for the chain (voice / offline / …).
 dismiss_onboarding() {
   for _ in 1 2 3 4 5; do
@@ -10,7 +10,7 @@ dismiss_onboarding() {
   done
 }
 
-# goto_map — cold launch to the bare map (onboarding dismissed). Leaves nothing focused (by design).
+# goto_map - cold launch to the bare map (onboarding dismissed). Leaves nothing focused (by design).
 # Robust to first-run: if the Welcome screen shows (e.g. a prior test cleared data), its auto-focused
 # Get-started advances past it, then the onboarding dialogs are dismissed.
 goto_map() {
@@ -19,10 +19,10 @@ goto_map() {
   dismiss_onboarding
 }
 
-# focus_search_bar — from the bare map (nothing focused), the first DOWN lands on the search bar.
+# focus_search_bar - from the bare map (nothing focused), the first DOWN lands on the search bar.
 focus_search_bar() { key "$K_DOWN"; }
 
-# run_coffee — from the bare map, run the "Coffee" category chip search; waits for results.
+# run_coffee - from the bare map, run the "Coffee" category chip search; waits for results.
 # Leaves focus in the results list. Returns 0 if "N results" appeared.
 run_coffee() {
   focus_search_bar          # search bar
@@ -38,13 +38,13 @@ run_coffee() {
   return 1
 }
 
-# open_first_place — from the results list, open the first result's place sheet (handle focused).
+# open_first_place - from the results list, open the first result's place sheet (handle focused).
 open_first_place() {
   keys "$K_DOWN" "$K_DOWN" "$K_DOWN"   # search field -> filter chips -> first result row
   key "$K_OK" 2.5                       # open place sheet
 }
 
-# reach_directions — from a bare map, open the first Coffee result and its Directions panel (Drive
+# reach_directions - from a bare map, open the first Coffee result and its Directions panel (Drive
 # tab focused). Returns non-zero if results never loaded. Leaves the directions panel open.
 reach_directions() {
   run_coffee || return 1
@@ -56,7 +56,7 @@ reach_directions() {
   on_screen "Add stop"                   # a directions-panel-only row
 }
 
-# open_choose_on_map — drill all the way to the Choose-on-map pick overlay (edit the origin ->
+# open_choose_on_map - drill all the way to the Choose-on-map pick overlay (edit the origin ->
 # "Choose on map"). Returns 0 iff the "Move the map" pick overlay is showing. Deep + network-bound.
 open_choose_on_map() {
   reach_directions || return 1

@@ -28,7 +28,7 @@ import java.io.ByteArrayInputStream
 import java.math.BigInteger
 
 /**
- * **Google's live reviews panel, embedded** — a VISIBLE WebView showing the place's own
+ * **Google's live reviews panel, embedded** - a VISIBLE WebView showing the place's own
  * `?cid=` page CSS-carved down to just the reviews pane. What this buys over the background
  * scrape: Google renders at full interactive speed, **auto-pages as you scroll** (no polling
  * loop, no idle heuristics, no cap), and its **own "Search reviews" box searches ALL reviews
@@ -36,13 +36,13 @@ import java.math.BigInteger
  *
  * The three asks this implements:
  * - **Content blocking**: [shouldInterceptRequest] feeds telemetry/beacon/ad requests an empty
- *   response — `/gen_204` beacons, `play.google.com/log`, analytics/doubleclick/adservice hosts.
- *   (An iframe was verified impossible — `X-Frame-Options: SAMEORIGIN` — but a WebView isn't an
- *   iframe; we own the network layer.)
+ * response - `/gen_204` beacons, `play.google.com/log`, analytics/doubleclick/adservice hosts.
+ * (An iframe was verified impossible - `X-Frame-Options: SAMEORIGIN` - but a WebView isn't an
+ * iframe; we own the network layer.)
  * - **Theming**: injected CSS isolates the panel (hide every sibling on the walk from the
- *   reviews pane to <body>) and, in dark mode, applies an invert+hue-rotate filter with images
- *   re-inverted, over Vela's dark background.
- * - **Search box**: Google's panel ships its own — the carve keeps it.
+ * reviews pane to <body>) and, in dark mode, applies an invert+hue-rotate filter with images
+ * re-inverted, over Vela's dark background.
+ * - **Search box**: Google's panel ships its own - the carve keeps it.
  *
  * Navigation is locked down: after the initial `?cid=` load, ALL page navigations are blocked
  * (`shouldOverrideUrlLoading` → true), so a tap on an author profile / report link can't leave
@@ -51,8 +51,8 @@ import java.math.BigInteger
 /** A topic chip scraped off the panel ("potato dumplings" ×50; "All" has no count). */
 data class PanelChip(val label: String, val count: Int? = null)
 
-/** Drives the panel's hidden Google controls from Vela's native UI. Safe to call any time —
- *  no-ops until the panel's WebView exists. */
+/** Drives the panel's hidden Google controls from Vela's native UI. Safe to call any time -
+ * no-ops until the panel's WebView exists. */
 class ReviewsPanelController {
     internal var webView: WebView? = null
     private fun js(code: String) {
@@ -80,27 +80,27 @@ fun GoogleReviewsPanel(
     // AND when an inertial inner fling lands on the top edge with leftover momentum.
     onOverscroll: (Float) -> Unit = {},
     onOverscrollEnd: (Float) -> Unit = {},
-    // One-shot when the user starts really scrolling the reviews (re-armed at their top) — the
+    // One-shot when the user starts really scrolling the reviews (re-armed at their top) - the
     // caller slides the sheet to full screen around the panel, Google-style.
     onEngaged: () -> Unit = {},
     // The page's rating distribution ([5★..1★] counts), for a native histogram in Vela's header.
     onHistogram: (List<Int>) -> Unit = {},
-    // Fires once the panel has painted (the internal spinner clears) — lets the caller drop any
+    // Fires once the panel has painted (the internal spinner clears) - lets the caller drop any
     // loading teaser it shows alongside.
     onLoaded: () -> Unit = {},
-    // Topic chips scraped off the page ("All", "potato dumplings" ×50 …) — Vela renders them
+    // Topic chips scraped off the page ("All", "potato dumplings" ×50 …) - Vela renders them
     // natively and drives the hidden originals via [controller].
     onChips: (List<PanelChip>) -> Unit = {},
     controller: ReviewsPanelController? = null,
     // FULL-SCREEN mode (the "Read all reviews" view): the WebView owns the whole screen, so there's
-    // NO nested scroll — the scroll-sync touch listener is skipped, and the carve is lighter (keeps
+    // NO nested scroll - the scroll-sync touch listener is skipped, and the carve is lighter (keeps
     // Google's own search/sort/histogram + lets Google's native photo/VIDEO viewer handle taps, so
     // videos play). Inline (false) is unused now that the inline reviews are the native list; the
     // panel exists only as this full-screen view.
     fullScreen: Boolean = false,
 ) {
     val cid = cidOf(featureId) ?: return
-    // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose — read
+    // rememberUpdatedState: the WebView is built once (factory), but onPhotos may recompose - read
     // the latest through this so a tapped photo always reaches the current handler.
     val photos = androidx.compose.runtime.rememberUpdatedState(onPhotos)
     val overscroll = androidx.compose.runtime.rememberUpdatedState(onOverscroll)
@@ -110,7 +110,7 @@ fun GoogleReviewsPanel(
     val loadedCb = androidx.compose.runtime.rememberUpdatedState(onLoaded)
     val chips = androidx.compose.runtime.rememberUpdatedState(onChips)
     // key(): a place switch / theme flip must tear the WHOLE AndroidView node down and rebuild
-    // it — AndroidView's factory runs only when its node enters composition, so destroying the
+    // it - AndroidView's factory runs only when its node enters composition, so destroying the
     // WebView from a keyed effect while the node survived left a dead view and an eternal
     // spinner (no reload, no fallback). onRelease destroys the WebView AFTER Compose detaches
     // it (destroying while attached is illegal and can crash a later draw).
@@ -136,7 +136,7 @@ fun GoogleReviewsPanel(
                 onRelease = { controller?.webView = null; it.destroy() },
             )
             if (!ready) {
-                // Near the TOP of the panel, not centered — the panel is most of a screen tall,
+                // Near the TOP of the panel, not centered - the panel is most of a screen tall,
                 // so a centered spinner sits below the fold while you scroll toward it.
                 CircularProgressIndicator(
                     Modifier.padding(top = 48.dp).size(22.dp).align(Alignment.TopCenter),
@@ -153,9 +153,9 @@ private fun cidOf(featureId: String): String? {
     return runCatching { BigInteger(low, 16).toString() }.getOrNull()
 }
 
-// Hosts/paths that are telemetry, ads, or logging — not needed to render reviews. Fed an empty
+// Hosts/paths that are telemetry, ads, or logging - not needed to render reviews. Fed an empty
 // response so the panel loads less AND phones home less. The maps SPA itself needs google.com,
-// gstatic.com (static assets) and googleusercontent.com (photos) — those pass.
+// gstatic.com (static assets) and googleusercontent.com (photos) - those pass.
 private val BLOCKED_HOSTS = listOf(
     "doubleclick.net", "googleadservices.com", "googlesyndication.com",
     "google-analytics.com", "googletagmanager.com", "adservice.google",
@@ -169,7 +169,7 @@ private fun blocked(req: WebResourceRequest): Boolean {
     val path = url.path.orEmpty() + "?" + url.query.orEmpty()
     if (BLOCKED_HOSTS.any { host == it || host.endsWith(".$it") || host.contains(it) }) return true
     if (BLOCKED_PATHS.any { path.contains(it) }) return true
-    // play.google.com/log — Chrome/Maps client telemetry uploads.
+    // play.google.com/log - Chrome/Maps client telemetry uploads.
     if (host == "play.google.com" && path.startsWith("/log")) return true
     return false
 }
@@ -192,31 +192,31 @@ private fun buildPanelWebView(
     val wv = WebView(ctx)
     wv.settings.javaScriptEnabled = true
     wv.settings.domStorageEnabled = true
-    // Desktop UA: the desktop place panel is ~408 px wide — phone-width, and it's the layout the
-    // scrapers are calibrated against. (A mobile UA deep-links to intent:// — non-starter.)
+    // Desktop UA: the desktop place panel is ~408 px wide - phone-width, and it's the layout the
+    // scrapers are calibrated against. (A mobile UA deep-links to intent:// - non-starter.)
     wv.settings.userAgentString = VelaConfig.USER_AGENT
     // Match Vela's SheetPalette exactly (Dark #1F1F1F / Light #FFFFFF) so the WebView surface
     // behind the page is the sheet colour before the page even paints.
     wv.setBackgroundColor(if (dark) 0xFF1F1F1F.toInt() else 0xFFFFFFFF.toInt())
     // Scroll-sync: the panel lives inside the sheet's scrollable column and OWNS every vertical
-    // gesture (disallow-intercept re-asserted on EVERY event — the Compose sheet resets a
-    // once-per-gesture disallow and steals the stream otherwise). At a scroll BOUNDARY — reviews
-    // at their top edge + finger dragging down, or bottom edge + up — the WebView can't consume
+    // gesture (disallow-intercept re-asserted on EVERY event - the Compose sheet resets a
+    // once-per-gesture disallow and steals the stream otherwise). At a scroll BOUNDARY - reviews
+    // at their top edge + finger dragging down, or bottom edge + up - the WebView can't consume
     // the drag, so the deltas are FORWARDED to the caller (onOverscroll), which moves the Vela
     // sheet 1:1 with the finger; finger-up sends the tracked velocity (onOverscrollEnd) so a
     // boundary fling glides the sheet. Edge state comes from the page (`onPanelEdge` bridge).
     //
-    // v1 tried gesture HANDOFF instead — flipping requestDisallowInterceptTouchEvent(false) at
+    // v1 tried gesture HANDOFF instead - flipping requestDisallowInterceptTouchEvent(false) at
     // the boundary so the sheet would take the stream. DON'T go back to that: Compose's drag
     // detector has already abandoned a stream whose early events the WebView consumed, so a
     // mid-gesture flip does nothing (a slow synthetic swipe happened to work; real fingers and
-    // flings didn't — the panel became a scroll trap). Manual delta-forwarding has no ownership
+    // flings didn't - the panel became a scroll trap). Manual delta-forwarding has no ownership
     // transfer at all, so it also survives mid-gesture direction reversals.
     val panelAtTop = java.util.concurrent.atomic.AtomicBoolean(true)
     val panelAtBottom = java.util.concurrent.atomic.AtomicBoolean(false)
     // All positions are WINDOW-space (view-local y + the view's window offset): the forwarded
     // scroll moves the WebView itself, so a view-local delta shrinks by exactly the amount the
-    // sheet just moved — the sheet would track at HALF the finger speed, stepping every other
+    // sheet just moved - the sheet would track at HALF the finger speed, stepping every other
     // frame, and the fling velocity would halve too. Window space measures the finger.
     val winLoc = IntArray(2)
     var activeId = -1 // tracked pointer ID (ids survive index compaction; raw ev.y is index 0)
@@ -235,7 +235,7 @@ private fun buildPanelWebView(
     wv.overScrollMode = android.view.View.OVER_SCROLL_NEVER // no glow while the sheet takes the drag
     // D-pad scroll (docs/dpad.md): the full-screen "Read all reviews" view is the one surface that
     // is a raw WebView, and a WebView's default D-pad handling hops focus between the page's links
-    // instead of scrolling — useless for reading on a keypad phone. Map UP/DOWN to page-scroll so
+    // instead of scrolling - useless for reading on a keypad phone. Map UP/DOWN to page-scroll so
     // it scrolls DETERMINISTICALLY regardless of the page's internal focusables. `pageUp`/`pageDown`
     // are stable, documented WebView APIs. This fires ONLY on hardware D-pad key events, so it is
     // completely inert under touch (a finger never sends KEYCODE_DPAD_*), and only in fullScreen
@@ -256,7 +256,7 @@ private fun buildPanelWebView(
             }
         }
     }
-    // FULL-SCREEN: the WebView owns the whole screen, no scrolling parent — skip all the scroll-sync
+    // FULL-SCREEN: the WebView owns the whole screen, no scrolling parent - skip all the scroll-sync
     // machinery and let it scroll natively (this is what makes full-screen jitter-free by design).
     if (!fullScreen) wv.setOnTouchListener { v, ev ->
         if (ev.actionMasked != MotionEvent.ACTION_UP && ev.actionMasked != MotionEvent.ACTION_CANCEL) {
@@ -273,7 +273,7 @@ private fun buildPanelWebView(
             }
             MotionEvent.ACTION_POINTER_UP -> {
                 // The tracked finger lifted while another stays down: adopt a survivor and
-                // RE-BASE (no delta) — otherwise the next MOVE reads the other finger and the
+                // RE-BASE (no delta) - otherwise the next MOVE reads the other finger and the
                 // inter-finger distance appears as one huge dy that teleports/dismisses the sheet.
                 if (ev.getPointerId(ev.actionIndex) == activeId) {
                     val idx = if (ev.actionIndex == 0) 1 else 0
@@ -301,7 +301,7 @@ private fun buildPanelWebView(
                         onOverscroll(dy)
                     } else if (forwarded && kotlin.math.abs(dy) > 0.5f) {
                         // Left the boundary mid-gesture (direction flip / inner list took over):
-                        // END the forwarding now — resets the caller's pull accumulators and
+                        // END the forwarding now - resets the caller's pull accumulators and
                         // disarms the end-fling, so a drag that merely TOUCHED the boundary can't
                         // fling the sheet when it ends as ordinary review scrolling.
                         forwarded = false; forwardDist = 0f
@@ -312,7 +312,7 @@ private fun buildPanelWebView(
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 if (forwarded) {
                     var vel = 0f
-                    // Fling only a real boundary drag (> a slop's worth of forwarded travel) —
+                    // Fling only a real boundary drag (> a slop's worth of forwarded travel) -
                     // a tap with a 2px jiggle at the boundary must not launch the sheet.
                     if (ev.actionMasked == MotionEvent.ACTION_UP && forwardDist > 24f) {
                         feedTracker(ev)
@@ -341,7 +341,7 @@ private fun buildPanelWebView(
 
         // An inertial inner fling landed on the top edge with leftover momentum (CSS px/s):
         // carry it into the sheet so the fling doesn't dead-stop at the boundary. Only when no
-        // finger is down — a finger-driven boundary drag already forwards its own deltas.
+        // finger is down - a finger-driven boundary drag already forwards its own deltas.
         @JavascriptInterface
         fun onEdgeFling(cssVelocity: Double) {
             wv.post {
@@ -352,14 +352,14 @@ private fun buildPanelWebView(
             }
         }
 
-        // The user started really scrolling the reviews — Vela slides the sheet to full screen
+        // The user started really scrolling the reviews - Vela slides the sheet to full screen
         // around them (Google-style). One-shot per engagement; the page re-arms it at the top.
         @JavascriptInterface
         fun onPanelEngaged() {
             wv.post { onEngaged() }
         }
 
-        // Topic chips ([{l,n?}…]) — rendered natively by Vela; Google's chips + search rows are
+        // Topic chips ([{l,n?}…]) - rendered natively by Vela; Google's chips + search rows are
         // carved once this is sent (the native controls are the replacement).
         @JavascriptInterface
         fun onChips(json: String) {
@@ -373,7 +373,7 @@ private fun buildPanelWebView(
             wv.post { onChipsParsed(list) }
         }
 
-        // The page's rating distribution ([5★,4★,3★,2★,1★] counts) — rendered natively by Vela;
+        // The page's rating distribution ([5★,4★,3★,2★,1★] counts) - rendered natively by Vela;
         // Google's in-panel summary block is hidden once this is sent.
         @JavascriptInterface
         fun onHistogram(json: String) {
@@ -386,7 +386,7 @@ private fun buildPanelWebView(
         @JavascriptInterface
         fun fail() { wv.post { onFail() } }
 
-        // A tapped review photo — a JSON blob {urls, index, author, date} for the tapped review.
+        // A tapped review photo - a JSON blob {urls, index, author, date} for the tapped review.
         // Google's own photo route renders nothing inside the carve, so JS blocks it and hands the
         // data here to open Vela's native full-screen gallery, captioned "Author · date" (every
         // photo in one review shares that caption). JavaBridge thread → post to main.
@@ -427,7 +427,7 @@ private fun buildPanelWebView(
         override fun onPageFinished(view: WebView?, url: String?) {
             loaded = true
             // D-pad: give the full-screen reviews WebView focus so the UP/DOWN page-scroll key
-            // listener above receives events (harmless under touch — it's the only interactive
+            // listener above receives events (harmless under touch - it's the only interactive
             // thing in the full-screen dialog besides the back arrow, which BACK still reaches).
             if (fullScreen) view?.requestFocus()
             view?.evaluateJavascript(carveScript(dark, fullScreen), null)
@@ -438,42 +438,42 @@ private fun buildPanelWebView(
 }
 
 /**
- * The CSS surgery — every line of this recipe was proven live over Chrome DevTools protocol
+ * The CSS surgery - every line of this recipe was proven live over Chrome DevTools protocol
  * against the real page (2026-07-01), so don't "simplify" it without re-testing:
  * - Click the Reviews tab retry-until-`aria-selected` (a click on a not-yet-hydrated tab
- *   silently no-ops — same as the scraper).
- * - Size the panel and EVERY ancestor in **pixels** — `vh` units resolve to **0** in this
- *   embedded WebView (100vh !important computed to 0px while window.innerHeight said 560).
+ * silently no-ops - same as the scraper).
+ * - Size the panel and EVERY ancestor in **pixels** - `vh` units resolve to **0** in this
+ * embedded WebView (100vh !important computed to 0px while window.innerHeight said 560).
  * - Un-clip the ancestor chain: `overflow:visible` + `transform:none` + px heights all the way
- *   up. Without it the panel had geometry but painted NOTHING — a 0-height overflow-clipping
- *   (and transformed, hence containing-block-forming) wrapper clipped every descendant.
- * - Hide siblings on the walk up (kills map canvas/omnibox/footer), EXCEPT dialogs — a tapped
- *   review photo opens a lightbox that is a sibling of the panel.
+ * up. Without it the panel had geometry but painted NOTHING - a 0-height overflow-clipping
+ * (and transformed, hence containing-block-forming) wrapper clipped every descendant.
+ * - Hide siblings on the walk up (kills map canvas/omnibox/footer), EXCEPT dialogs - a tapped
+ * review photo opens a lightbox that is a sibling of the panel.
  * - Strip Google's chrome we don't want: the Overview/Menu/Reviews/About tab bar, the
- *   "Order online" promo block, and the "Write a review" button (blocked — leads to sign-in).
+ * "Order online" promo block, and the "Write a review" button (blocked - leads to sign-in).
  * - Theme to match Vela's sheet EXACTLY (no seam): <body> carries the Vela colour; main AND every
- *   ancestor are made transparent so that colour is the backdrop; dark inverts only main's content
- *   (a filter on <html> would become the fixed panel's containing block and re-break the sizing).
- *   The ancestors matter — they hold Google's white bg OUTSIDE the (main-scoped) filter, so left
- *   opaque they bleed white through the transparent main.
+ * ancestor are made transparent so that colour is the backdrop; dark inverts only main's content
+ * (a filter on <html> would become the fixed panel's containing block and re-break the sizing).
+ * The ancestors matter - they hold Google's white bg OUTSIDE the (main-scoped) filter, so left
+ * opaque they bleed white through the transparent main.
  * Maintenance passes keep re-applying for a while (the SPA re-attaches chrome on interaction).
  */
 private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
-    // Vela's own sheet colour (SheetPalette Dark/Light) — the panel matches it EXACTLY so there's
+    // Vela's own sheet colour (SheetPalette Dark/Light) - the panel matches it EXACTLY so there's
     // no seam with the surrounding place sheet.
     val bg = if (dark) "#1f1f1f" else "#ffffff"
     // Dark = a scoped invert on the PANEL CONTENT ONLY (main), NOT its background. The Vela colour
-    // lives on <body> (which the filter doesn't touch — it's on main), and main + every ancestor
+    // lives on <body> (which the filter doesn't touch - it's on main), and main + every ancestor
     // are made transparent so that colour is the panel's backdrop; only Google's content inverts.
     val darkCss = if (dark) """
         [role="main"]{filter:invert(0.92) hue-rotate(180deg) !important}
         [role="main"] img,[role="main"] video,[role="main"] canvas{filter:invert(1) hue-rotate(180deg) !important}
         [role="main"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
-        /* Star glyphs invert to a muddy dark — re-invert them (a double-invert restores the amber).
+        /* Star glyphs invert to a muddy dark - re-invert them (a double-invert restores the amber).
            Scoped to the [role=img] star WIDGET so no text comes back dark with it. */
         [role="main"] [role="img"][aria-label*="star" i]{filter:invert(1) hue-rotate(180deg) saturate(1.7) brightness(1.12) !important}
         /* Overlays (Sort menu, per-review menus, photo viewer) live OUTSIDE main so the filter never
-           reaches them — they'd flash Google's white. Invert them to match; un-invert their images
+           reaches them - they'd flash Google's white. Invert them to match; un-invert their images
            (a review photo in the viewer must stay true-colour). */
         [role="menu"],[role="listbox"],[role="dialog"]{filter:invert(0.94) hue-rotate(180deg) !important}
         [role="menu"] img,[role="dialog"] img,[role="dialog"] video,[role="dialog"] [style*="background-image"]{filter:invert(1) hue-rotate(180deg) !important}
@@ -515,13 +515,13 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           // Rating histogram → native. The panel page renders the distribution as tr[aria-label]
           // rows ("5 stars, 1,189 reviews"); parse the counts once, hand them to Vela to draw
           // natively next to its own rating header, then HIDE Google's whole summary block (big
-          // 4.7 + stars + histogram — found by walking the table up to the scroller child, with
+          // 4.7 + stars + histogram - found by walking the table up to the scroller child, with
           // the same never-hide-cards guards as strip). Re-hides each tick (SPA re-attaches).
           function velaHistogram(){
-            if(FULL) return; // full-screen keeps Google's own summary/histogram — nothing to carve
+            if(FULL) return; // full-screen keeps Google's own summary/histogram - nothing to carve
             // Do NOTHING until review cards exist. Google's reviews-tab init is fragile while it
-            // boots: acting during it — even the histogram SEND, whose native render nudges the
-            // WebView's layout mid-init — correlated with the page logging "error.2" and NEVER
+            // boots: acting during it - even the histogram SEND, whose native render nudges the
+            // WebView's layout mid-init - correlated with the page logging "error.2" and NEVER
             // issuing the review-feed request (panel stuck at zero reviews; reproduced on two
             // places, cleared by the pre-polish build). Cards rendered == init done == safe.
             if(!document.querySelector('.jJc9Ad,[data-review-id]')) return;
@@ -561,10 +561,10 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               if(d.parentElement && d.parentElement.offsetHeight<80) return false; // want the outermost small wrapper
               blocks.push({el:d,isSum:0}); return true;
             });
-            // Two-phase carve. Phase 1 (immediately, even before cards): opacity — NO layout
+            // Two-phase carve. Phase 1 (immediately, even before cards): opacity - NO layout
             // change, so Google's mounting virtualized list is untouched, and the user never
             // sees a flash of Google's own histogram. Phase 2 (only well AFTER the feed proved
-            // healthy — __velaFedOk + a few stable ticks): display:none to reclaim the blank
+            // healthy - __velaFedOk + a few stable ticks): display:none to reclaim the blank
             // space. NEVER collapse earlier: a layout removal while the list mounts corrupts
             // its offset math and the SPA permanently unmounts every card (reproduced live
             // twice; un-hiding does not recover).
@@ -580,8 +580,8 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               if(collapse) b.style.setProperty('display','none','important');
             });
           }
-          // Vela's app UI is the system Roboto; Google's page headings use "Google Sans" —
-          // rewrite JUST those to Roboto for consistency (never touch icon fonts — "Google
+          // Vela's app UI is the system Roboto; Google's page headings use "Google Sans" -
+          // rewrite JUST those to Roboto for consistency (never touch icon fonts - "Google
           // Symbols"/"Material Icons" don't match the test). Each node checked ONCE (data-vf),
           // capped per pass; new cards get picked up by later passes.
           function velaFont(){
@@ -667,8 +667,8 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           };
           // Class-agnostic "reviews are rendered" check. Google A/B-serves front-end builds with
           // ROTATED class names: on those, cards render fine but '.jJc9Ad,[data-review-id]' counts
-          // zero — the watchdog then kills a HEALTHY panel the user is about to scroll (reported
-          // live). Relative-date texts ("2 months ago") are content, not markup — they can't
+          // zero - the watchdog then kills a HEALTHY panel the user is about to scroll (reported
+          // live). Relative-date texts ("2 months ago") are content, not markup - they can't
           // rotate. Known classes stay as the fast path.
           function velaHasReviews(){
             if(document.querySelector('.jJc9Ad,[data-review-id]')) return true;
@@ -692,13 +692,13 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             if(!main) return false;
             var h=window.innerHeight, w=window.innerWidth;
             if(!h || !w) return false;
-            // Pixels, not vh — vh is 0 in this embedded WebView (verified via devtools).
+            // Pixels, not vh - vh is 0 in this embedded WebView (verified via devtools).
             // FULL-screen: DON'T pin main. position:fixed makes main the containing block for
             // Google's OWN position:fixed photo/video lightbox (→ it renders off-screen = "can't
             // tap photos"), and overflow-y:auto hijacks scroll from Google's inner reviews list so
             // its virtualizer never pages in until a re-layout is forced (the "select a chip then
             // switch back to All to load" bug). In full-screen the WebView IS the viewport, so
-            // Google's own layout + inner scroller + lightbox all work natively — just remove the
+            // Google's own layout + inner scroller + lightbox all work natively - just remove the
             // surrounding chrome (below) and theme it.
             if(!FULL){
               main.style.setProperty('position','fixed','important');
@@ -713,7 +713,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               main.style.setProperty('z-index','999999','important');
             }
             // Transparent so <body>'s Vela colour is the panel backdrop (Google's white bg would
-            // otherwise show — inverted to near-black in dark, mismatching the sheet).
+            // otherwise show - inverted to near-black in dark, mismatching the sheet).
             main.style.setProperty('background','transparent','important');
             var el=main;
             while(el && el!==document.documentElement){
@@ -738,7 +738,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               p.style.setProperty('max-height','none','important');
               p.style.setProperty('overflow','visible','important');
               p.style.setProperty('transform','none','important');
-              // AND transparent — main's ancestors carry Google's white background OUTSIDE the
+              // AND transparent - main's ancestors carry Google's white background OUTSIDE the
               // invert filter (which is on main), so they'd bleed white through the transparent
               // main. Clearing them lets <body>'s Vela colour show as the seamless backdrop.
               p.style.setProperty('background','transparent','important');
@@ -750,7 +750,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               var st=document.createElement('style'); st.id='vela-carve';
               st.textContent='html,body{overflow-x:hidden !important;background:$bg !important;}'
                 // Reviewer name / "N reviews" render as links: navigation is blocked, so kill the
-                // link affordances (tap underline + highlight flash) — they read as broken.
+                // link affordances (tap underline + highlight flash) - they read as broken.
                 + '[role="main"] a,[role="main"] a *,[role="main"] button,[role="main"] button *,[role="main"] a:hover,[role="main"] a:active,[role="main"] a:focus,[role="main"] button:active,[role="main"] button:focus{text-decoration:none !important;outline:none !important;}'
                 + '*{-webkit-tap-highlight-color:transparent !important;}'
                 + `$darkCss`;
@@ -760,11 +760,11 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           }
           // Remove Google's own chrome we don't want: the Overview/Menu/Reviews/About tab bar
           // (we force Reviews), the "Get pickup or delivery / Order online" promo block, and the
-          // "Write a review" button (blocked — it leads to Google sign-in). Runs every tick since
+          // "Write a review" button (blocked - it leads to Google sign-in). Runs every tick since
           // the SPA re-attaches these. Text/role-based, not class-based (Google's classes rotate).
           function stripBlockOf(el){
             // Walk the CTA element up to the [role="main"] direct child that wraps it, and hide
-            // that block — BUT never the reviews scroller (guarded below).
+            // that block - BUT never the reviews scroller (guarded below).
             var m=document.querySelector('[role="main"]'); if(!m) return;
             var c=el; while(c && c.parentElement && c.parentElement!==m) c=c.parentElement;
             if(c && c.parentElement===m &&
@@ -775,7 +775,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           function strip(){
             var tl=document.querySelector('[role="tablist"]');
             if(tl) tl.style.setProperty('display','none','important');
-            // Match the CTA ELEMENTS by their OWN (short) text — NOT a container's textContent.
+            // Match the CTA ELEMENTS by their OWN (short) text - NOT a container's textContent.
             // The old container-text match hid any main child containing "order online", and the
             // reviews scroller IS a main child, so a single review saying "order online" nuked the
             // whole list on scroll (the disappearing-panel bug). An <a>/<button> is never a review.
@@ -791,7 +791,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           // Google's popups (Sort menu, per-review menus, the photo viewer) render into portals my
           // carve hid, and OUTSIDE main so the dark filter never reaches them (they'd flash white).
           // For every LIVE overlay: un-hide the [data-vh] ancestors I hid, lift it above the panel,
-          // clamp a menu that overflows the viewport, and (dark) invert it — un-inverting its images
+          // clamp a menu that overflows the viewport, and (dark) invert it - un-inverting its images
           // so review photos in the viewer stay true-colour.
           function revealOverlays(){
             var live=[].slice.call(document.querySelectorAll('[role="menu"],[role="listbox"]'));
@@ -809,7 +809,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
           function setupOnce(){
             if(window.__velaOnce) return; window.__velaOnce=1;
             // Submitting the reviews search should drop the soft keyboard. The IME "Search"/"Go"
-            // key fires either a keydown Enter OR a 'search' event (on type=search inputs) — catch
+            // key fires either a keydown Enter OR a 'search' event (on type=search inputs) - catch
             // both and blur the input, which dismisses the keyboard.
             function dropKb(e){
               var t=e.target;
@@ -825,8 +825,8 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               var t = e.target;
               // Intercept photo taps → Vela's native gallery (the reliable path). Google's own
               // photo VIEWER is a page navigation, which the nav-lockdown blocks AND the carve
-              // can't host — so even in full-screen we open the native gallery. (Verified: a raw
-              // photo click with the carve fully removed still renders no viewer — it's a nav.)
+              // can't host - so even in full-screen we open the native gallery. (Verified: a raw
+              // photo click with the carve fully removed still renders no viewer - it's a nav.)
               var btn = (t && t.closest) ? t.closest('[jsaction*="review.openPhoto"],.Tya61d') : null;
               if(btn){
                 e.preventDefault(); e.stopImmediatePropagation();
@@ -851,7 +851,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               requestAnimationFrame(revealOverlays); setTimeout(revealOverlays,150);
             }, true);
           }
-          // Stretch the reviews scroll region (Google leaves it ~372px) to fill the panel —
+          // Stretch the reviews scroll region (Google leaves it ~372px) to fill the panel -
           // otherwise swipes below its bottom edge land in dead space. ONLY runs once the
           // Reviews tab is selected: an early pass once pinned the OVERVIEW's container to
           // full height, and after the tab switch it sat as an empty full-panel block starving
@@ -880,12 +880,12 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
                 // Attach the edge reporter once per scroller (the SPA can swap the node). The
                 // scroll listener also (a) tracks a low-passed scroll VELOCITY so an inertial
                 // fling that lands on the top edge hands its leftover momentum to the sheet
-                // (else the fling dead-stops at the boundary — the "snap"), and (b) fires a
+                // (else the fling dead-stops at the boundary - the "snap"), and (b) fires a
                 // one-shot ENGAGED signal when the user starts really scrolling the reviews, so
                 // Vela can slide the sheet to full screen around them (re-armed at top). ALSO
                 // watch for content growth: paging in more reviews grows scrollHeight WITHOUT a
                 // scroll event, which silently un-bottoms the scroller (stale atBottom would
-                // double-scroll an up-drag until the next 1s tick) — and newly-paged cards need
+                // double-scroll an up-drag until the next 1s tick) - and newly-paged cards need
                 // their Like/Share stripped NOW, not at the next 1s tick (the "buttons return"
                 // flash).
                 if(!sc.__velaEdgeHooked){ sc.__velaEdgeHooked=1;
@@ -932,13 +932,13 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             if(readySent){
               // Maintenance: keep the carve + scroller sizing fresh for the panel's LIFETIME
               // (the WebView is destroyed with the place sheet, which kills this loop). It used
-              // to stop after 60 ticks — but the reviews list pages in new cards indefinitely
+              // to stop after 60 ticks - but the reviews list pages in new cards indefinitely
               // (each needing its Like/Share stripped via isolate()->strip()), and scroll-sync's
               // edge reporting rides stretch()'s scroller adoption, so a dead loop froze both
-              // after a minute. NO tab re-click here — the user may browse Menu/About.
+              // after a minute. NO tab re-click here - the user may browse Menu/About.
               stretch(); revealOverlays(); velaHistogram(); velaChips(); velaFont();
               // Feed watchdog: Google sometimes serves the page SHELL but silently withholds the
-              // review feed (soft bot-throttle — tabs + histogram render, the feed request is
+              // review feed (soft bot-throttle - tabs + histogram render, the feed request is
               // never issued; observed live under heavy testing). Ready-but-cardless for ~15 s
               // means the user is staring at an empty panel: fail over to the native scraper
               // instead. Once ANY card has rendered, the watchdog disarms for good and
@@ -952,7 +952,7 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
               } else {
                 window.__velaStable=(window.__velaStable||0)+1;
                 if(!window.__velaChipsSent && (window.__velaStable||0)>2){
-                  window.__velaChipsSent=1; // no topic chips on this business — unblock the native search/sort
+                  window.__velaChipsSent=1; // no topic chips on this business - unblock the native search/sort
                   try{ VelaPanel.onChips('[]'); }catch(e){}
                 }
               }
@@ -962,17 +962,17 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             var rev=reviewsOpen();
             if(rev && revAt<0) revAt=tries;
             // Fade Google's summary the MOMENT its rows render (opacity = zero layout risk even
-            // pre-cards) — waiting for the ready tick left it visible for up to a second (the
+            // pre-cards) - waiting for the ready tick left it visible for up to a second (the
             // "saw the google histogram for a second" flash).
             if(rev){ velaHistogram(); velaChips(); }
-            // Prefer readying once review CARDS have painted — then the panel never flashes the
+            // Prefer readying once review CARDS have painted - then the panel never flashes the
             // overview (Order-online button) during the tab transition. BUT don't HANG on it: a
             // place with a rating and zero written reviews never renders a card, and the card class
-            // can rotate — so after a short grace once the Reviews tab has settled, ready anyway
+            // can rotate - so after a short grace once the Reviews tab has settled, ready anyway
             // (shows Google's own "no reviews" state) rather than spinning to the fail() timeout.
             var haveCards = velaHasReviews();
             // Hold the reveal while the native histogram exists but Google's copy hasn't faded
-            // yet — revealing in that window shows BOTH histograms (reported). Bounded: give up
+            // yet - revealing in that window shows BOTH histograms (reported). Bounded: give up
             // holding after ~2.5s so a guard-blocked fade can't hang the reveal.
             var grace10 = (revAt>=0 && tries-revAt>=10);
             var sumOk = (!window.__velaHistSent || window.__velaSumFaded || grace10) &&
@@ -981,8 +981,8 @@ private fun carveScript(dark: Boolean, fullScreen: Boolean): String {
             if(!readySent && tries>60){ try{ VelaPanel.fail(); }catch(e){} return; }
             setTimeout(tick, readySent?1000:250);
           }
-          // Zero-flash guarantee: MutationObserver callbacks run at MICROTASK timing — before
-          // the browser paints the mutated frame — so fading the summary here means it can
+          // Zero-flash guarantee: MutationObserver callbacks run at MICROTASK timing - before
+          // the browser paints the mutated frame - so fading the summary here means it can
           // never reach the screen (the 250ms tick + post-adoption observers all left a
           // visible-frame window; user kept catching the flash). Disconnects once the fade has
           // landed; the scroller-level observer handles later recycles.

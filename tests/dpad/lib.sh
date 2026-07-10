@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# dpad_test_suite/lib.sh — shared helpers for reproducible on-device D-pad tests.
+# tests/dpad/lib.sh - shared helpers for reproducible on-device D-pad tests.
 #
 # Every test drives the app with ONLY a 5-key D-pad (via `adb shell input keyevent`) and asserts
 # on the focused element (read from `uiautomator dump`). This is the scripted, repeatable version
@@ -15,12 +15,12 @@ ADB="${ADB:-adb}"
 # ---- D-pad keycodes -------------------------------------------------------------------------
 K_UP=19; K_DOWN=20; K_LEFT=21; K_RIGHT=22; K_OK=23; K_BACK=4; K_HOME=3
 
-# key <code> [settle_seconds]  — press one key and wait for the UI to settle.
+# key <code> [settle_seconds]  - press one key and wait for the UI to settle.
 key() { $ADB shell input keyevent "$1" >/dev/null 2>&1; sleep "${2:-0.4}"; }
-# keys <code>...  — press several keys in sequence (default settle each).
+# keys <code>...  - press several keys in sequence (default settle each).
 keys() { for c in "$@"; do key "$c"; done; }
 
-# launch_fresh [settle_seconds]  — force-stop + cold launch.
+# launch_fresh [settle_seconds]  - force-stop + cold launch.
 launch_fresh() {
   $ADB shell am force-stop "$PKG" >/dev/null 2>&1
   sleep 1
@@ -29,7 +29,7 @@ launch_fresh() {
 }
 
 # ---- focus inspection -----------------------------------------------------------------------
-# focused  — prints "bounds|text|desc" of the currently-focused node, or empty if none.
+# focused  - prints "bounds|text|desc" of the currently-focused node, or empty if none.
 focused() {
   $ADB shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
   $ADB shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
@@ -44,7 +44,7 @@ for m in re.finditer(r"<node [^>]*focused=\"true\"[^>]*>", d):
     break
 '
 }
-# focused_stable  — 0 (true) if something is focused, RE-CHECKING once after a short settle. A
+# focused_stable  - 0 (true) if something is focused, RE-CHECKING once after a short settle. A
 # transient null sampled mid-scroll-animation (the focused row briefly off-screen) is not a real
 # focus loss; a genuine focus clear persists. Use this in traversal integrity, not raw `focused`.
 focused_stable() {
@@ -58,14 +58,14 @@ focused_stable() {
 focused_bounds() { focused | cut -d"|" -f1; }
 focused_text()   { focused | cut -d"|" -f2; }
 focused_desc()   { focused | cut -d"|" -f3; }
-# focus_ytop  — the top Y of the focused node ([x1,y1][x2,y2] -> y1), or -1 if nothing focused.
+# focus_ytop  - the top Y of the focused node ([x1,y1][x2,y2] -> y1), or -1 if nothing focused.
 focus_ytop() {
   local b; b="$(focused_bounds)"
   [ -z "$b" ] && { echo -1; return; }
   echo "$b" | sed -E 's/^\[[0-9]+,([0-9]+)\].*/\1/'
 }
 
-# find_text <exact>  — bounds of the first node whose text== <exact> (empty if not found).
+# find_text <exact>  - bounds of the first node whose text== <exact> (empty if not found).
 find_text() {
   $ADB shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
   $ADB shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
@@ -77,9 +77,9 @@ for m in re.finditer(r"<node [^>]*>", d):
         print(b.group(1) if b else ""); break
 ' "$1"
 }
-# on_screen <exact>  — 0 (true) if a node with that exact text exists.
+# on_screen <exact>  - 0 (true) if a node with that exact text exists.
 on_screen() { [ -n "$(find_text "$1")" ]; }
-# find_text_contains <substr>  — bounds of the first node whose text CONTAINS <substr>.
+# find_text_contains <substr>  - bounds of the first node whose text CONTAINS <substr>.
 find_text_contains() {
   $ADB shell uiautomator dump /sdcard/ui.xml >/dev/null 2>&1
   $ADB shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
@@ -91,11 +91,11 @@ for m in re.finditer(r"<node [^>]*>", d):
         print(b.group(1) if b else ""); break
 ' "$1"
 }
-# on_screen_contains <substr>  — 0 (true) if any node's text contains <substr> (partial match).
+# on_screen_contains <substr>  - 0 (true) if any node's text contains <substr> (partial match).
 on_screen_contains() { [ -n "$(find_text_contains "$1")" ]; }
-# ycenter <bounds>  — the vertical centre of an [x1,y1][x2,y2] bounds string.
+# ycenter <bounds>  - the vertical centre of an [x1,y1][x2,y2] bounds string.
 ycenter() { echo "$1" | sed -E 's/^\[[0-9]+,([0-9]+)\]\[[0-9]+,([0-9]+)\].*/\1 \2/' | awk '{print int(($1+$2)/2)}'; }
-# focus_and_ok <exact>  — press DOWN until the focused row vertically contains the node with that
+# focus_and_ok <exact>  - press DOWN until the focused row vertically contains the node with that
 # text, then OK it. RE-FINDS the target each iteration, so it works even when the target starts
 # BELOW the fold (a long Settings list scrolls it into view as we walk). Matches by position because
 # the focused clickable Row often has no text of its own. Returns non-zero if unreached in 30 presses.
@@ -128,7 +128,7 @@ assert_focus_desc() {
   local got; got="$(focused_desc)"
   if [ "$got" = "$1" ]; then pass "focused element desc is '$1'"; else fail "expected focus desc '$1', got '${got:-<none>}'"; fi
 }
-# assert_focus_ytop_between <lo> <hi>  — focused node's top Y is within [lo,hi] (for icon/handle
+# assert_focus_ytop_between <lo> <hi>  - focused node's top Y is within [lo,hi] (for icon/handle
 # targets that have no text, e.g. the search bar or the sheet handle).
 assert_focus_ytop_between() {
   local y; y="$(focus_ytop)"

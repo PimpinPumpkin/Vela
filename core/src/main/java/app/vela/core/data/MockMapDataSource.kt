@@ -16,8 +16,8 @@ import javax.inject.Singleton
 import kotlin.math.cos
 
 /**
- * Deterministic fake data so the entire app — search, place sheet, route
- * preview, turn-by-turn, voice — is exercisable with no network and before any
+ * Deterministic fake data so the entire app - search, place sheet, route
+ * preview, turn-by-turn, voice - is exercisable with no network and before any
  * Google calibration exists. Everything is positioned relative to the caller's
  * location (or San Francisco as a fallback) so it looks right wherever you are.
  */

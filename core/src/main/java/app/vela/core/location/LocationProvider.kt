@@ -24,7 +24,7 @@ data class ReplayFix(val lat: Double, val lng: Double, val t: Long, val bearing:
 /**
  * Location, the degoogled way.
  *
- * Uses AOSP [LocationManager] — NOT FusedLocationProviderClient, which lives in
+ * Uses AOSP [LocationManager] - NOT FusedLocationProviderClient, which lives in
  * Play Services and is absent on GrapheneOS/Calyx/etc. We request the GPS and
  * NETWORK providers simultaneously and surface whichever fixes first; on
  * GrapheneOS the NETWORK provider is backed by its own BeaconDB service, giving
@@ -67,12 +67,12 @@ class LocationProvider @Inject constructor(
      * ACCESS_FINE_LOCATION (checked at the UI layer before collecting).
      */
     // minDistanceM MUST stay 0: a distance filter makes LocationManager deliver
-    // NOTHING while the device is stationary — so the last fix delivered while braking (with its
+    // NOTHING while the device is stationary - so the last fix delivered while braking (with its
     // nonzero doppler speed) was the freshest data for an entire red light. The speedometer froze
     // at the braking speed, the puck's Kalman never measured 0, and the dead-reckoned puck crept
     // ahead on the stuck speed ("mph keeps going when stopped"). At 0 m the stack gets ~1 Hz
     // fixes with doppler ≈ 0 while parked and everything settles by itself; the battery delta
-    // during active use is negligible (the GPS engine runs either way — the filter only gated
+    // during active use is negligible (the GPS engine runs either way - the filter only gated
     // CALLBACKS, not the hardware).
     @SuppressLint("MissingPermission")
     fun updates(minIntervalMs: Long = 1_000L, minDistanceM: Float = 0f): Flow<Location> =
@@ -91,9 +91,9 @@ class LocationProvider @Inject constructor(
             awaitClose { mgr.removeUpdates(listener) }
         }
 
-    /** Replay a recorded trip as a synthetic fix stream — same shape as [updates], so
-     *  the nav loop, camera and dot run exactly as if driving. Gaps between fixes are
-     *  honoured (divided by [speedup], capped at 2 s so a long stop doesn't stall). */
+    /** Replay a recorded trip as a synthetic fix stream - same shape as [updates], so
+     * the nav loop, camera and dot run exactly as if driving. Gaps between fixes are
+     * honoured (divided by [speedup], capped at 2 s so a long stop doesn't stall). */
     fun replay(fixes: List<ReplayFix>, speedup: Float = 1f): Flow<Location> = flow {
         var prevT: Long? = null
         for (fix in fixes) {

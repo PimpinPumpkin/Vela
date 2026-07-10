@@ -36,8 +36,8 @@ class OfflineAddressStore @Inject constructor(
         val lng: Double,
     )
 
-    /** One sampled point on a named road centreline (from [OverpassPois.fetchStreets]) — the data behind
-     *  the street-level geocoding fallback where OSM has the road but no house numbers on it. */
+    /** One sampled point on a named road centreline (from [OverpassPois.fetchStreets]) - the data behind
+     * the street-level geocoding fallback where OSM has the road but no house numbers on it. */
     data class StreetPt(val street: String, val lat: Double, val lng: Double)
 
     private val helper = object : SQLiteOpenHelper(context, "vela_offline_addr.db", null, 2) {
@@ -101,7 +101,7 @@ class OfflineAddressStore @Inject constructor(
         }
     }
 
-    /** Addresses known offline — this store's own index plus every installed region pack. */
+    /** Addresses known offline - this store's own index plus every installed region pack. */
     fun count(): Int = helper.readableDatabase
         .rawQuery("SELECT COUNT(*) FROM addr", null)
         .use { if (it.moveToFirst()) it.getInt(0) else 0 } + OfflinePacks.count("addr")
@@ -181,10 +181,10 @@ class OfflineAddressStore @Inject constructor(
     /**
      * Forward-geocode a typed address → matching Places (nearest first). Empty if nothing matches.
      * Layered so an arbitrary address in a downloaded area resolves even where OSM is thin:
-     *  1. exact `housenumber` on the street,
-     *  2. interpolate the house's position between the two nearest mapped numbers on the street,
-     *  3. any mapped house on the street (routes you to the right block),
-     *  4. nearest point on the street's centreline geometry (works with zero mapped houses).
+     * 1. exact `housenumber` on the street,
+     * 2. interpolate the house's position between the two nearest mapped numbers on the street,
+     * 3. any mapped house on the street (routes you to the right block),
+     * 4. nearest point on the street's centreline geometry (works with zero mapped houses).
      */
     fun geocode(query: String, near: LatLng?, limit: Int = 20): List<Place> {
         val m = HOUSE_STREET.find(query.trim())
@@ -226,7 +226,7 @@ class OfflineAddressStore @Inject constructor(
 
     private data class AddrRow(val hn: String?, val street: String?, val city: String?, val lat: Double, val lng: Double)
 
-    /** All addr rows matching the street words (no house-number filter) — own index + region packs. */
+    /** All addr rows matching the street words (no house-number filter) - own index + region packs. */
     private fun query(houseNo: String?, words: List<String>): List<AddrRow> {
         val clauses = ArrayList<String>()
         val args = ArrayList<String>()
@@ -248,7 +248,7 @@ class OfflineAddressStore @Inject constructor(
     // ---- Region-pack queries. Packs are state-scale, so their schema is NORMALIZED (see
     // scripts/poipack_build.py): street names live once in `streetname(sid,street,street_norm)` and
     // the millions of `addr(hn,sid,city,lat,lng)` / `streetpt(sid,lat,lng)` rows reference them by
-    // int. Matching street names first (a ~60k-row scan) keeps a whole-state query fast — the big
+    // int. Matching street names first (a ~60k-row scan) keeps a whole-state query fast - the big
     // tables are then hit through their sid/hn indexes, never LIKE-scanned.
 
     /** sids (+ display name) of pack street names matching all [words]. */
@@ -309,7 +309,7 @@ class OfflineAddressStore @Inject constructor(
             .sortedBy { it.distanceMeters ?: Double.MAX_VALUE }
             .take(limit)
 
-    /** Street centreline points matching the street words — own index + region packs. */
+    /** Street centreline points matching the street words - own index + region packs. */
     private fun streetGeom(words: List<String>): List<StreetPt> {
         val clauses = words.map { "street_norm LIKE ?" }
         val args = words.map { "%$it%" }
@@ -391,8 +391,8 @@ class OfflineAddressStore @Inject constructor(
         )
 
         /** Lowercase, strip punctuation, expand each abbreviation to its full form → space-joined words.
-         *  Applied identically to the stored street and the query so they line up regardless of how the
-         *  user abbreviated it. */
+         * Applied identically to the stored street and the query so they line up regardless of how the
+         * user abbreviated it. */
         fun normalizeStreet(s: String): String =
             s.lowercase()
                 .replace(Regex("[.,#]"), " ")

@@ -11,7 +11,7 @@ import org.junit.Test
 /**
  * The on-device engine ([GraphHopperRouteEngine]) maps GraphHopper's `Instruction.sign` to Vela's
  * [ManeuverType] (arrow + haptic) and synthesizes the instruction text (GraphHopper ships none unless
- * handed a Translation). Mirrors `OsrmRouterTest` for the online router — same model, two backends.
+ * handed a Translation). Mirrors `OsrmRouterTest` for the online router - same model, two backends.
  */
 class GraphHopperRouterTest {
     @Test fun signsMapToVela() {
@@ -25,7 +25,7 @@ class GraphHopperRouterTest {
         assertEquals(ManeuverType.ROUNDABOUT, GraphHopperRouteEngine.ghType(Instruction.USE_ROUNDABOUT, false))
         assertEquals(ManeuverType.ARRIVE, GraphHopperRouteEngine.ghType(Instruction.FINISH, false))
         assertEquals(ManeuverType.UTURN, GraphHopperRouteEngine.ghType(Instruction.U_TURN_UNKNOWN, false))
-        // CONTINUE is voice-silent in NavEngine — nothing carrying a real driver action may map
+        // CONTINUE is voice-silent in NavEngine - nothing carrying a real driver action may map
         // to it. The old else-branch funnelled u-turns (±8) into CONTINUE, and a u-turn keeps its
         // road name, so the engine's silence would have swallowed it entirely.
         assertEquals(ManeuverType.UTURN, GraphHopperRouteEngine.ghType(Instruction.U_TURN_LEFT, false))
@@ -50,7 +50,7 @@ class GraphHopperRouterTest {
         val s = 47.55; val w = -122.45; val n = 48.05; val e = -122.10
         assertTrue(GraphHopperRouteEngine.inBox(s, w, n, e, 47.86, -122.20)) // South Davis (Sacramento)
         assertTrue(GraphHopperRouteEngine.inBox(s, w, n, e, 47.66, -122.30)) // Sacramento
-        assertFalse(GraphHopperRouteEngine.inBox(s, w, n, e, 45.52, -122.68)) // Portland — out
-        assertFalse(GraphHopperRouteEngine.inBox(s, w, n, e, 47.86, -121.50)) // east of box — out
+        assertFalse(GraphHopperRouteEngine.inBox(s, w, n, e, 45.52, -122.68)) // Portland - out
+        assertFalse(GraphHopperRouteEngine.inBox(s, w, n, e, 47.86, -121.50)) // east of box - out
     }
 }

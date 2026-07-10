@@ -14,8 +14,8 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /** One downloadable region asset, from a manifest. [s]/[w]/[n]/[e] = covered bbox. Shared by the
- *  routing-graph and place-pack catalogs (same row shape); the trailing fields are pack-only
- *  (update revision + row counts + optional row-level delta) and stay at their defaults for graphs. */
+ * routing-graph and place-pack catalogs (same row shape); the trailing fields are pack-only
+ * (update revision + row counts + optional row-level delta) and stay at their defaults for graphs. */
 data class RoutingRegion(
     val id: String,
     val name: String,
@@ -35,7 +35,7 @@ data class RoutingRegion(
 /**
  * Offline ROUTING graphs (the heavier sibling of [OfflineMaps]' offline *tiles*). Each region is a
  * prebuilt **Contraction-Hierarchies** graph (`tools/graphbuilder`), hosted as a static asset (GitHub
- * release asset, like the APK). **Multiple regions** can be installed — download the areas you travel —
+ * release asset, like the APK). **Multiple regions** can be installed - download the areas you travel -
  * each into `filesDir/graphs/<id>/`, with an `index.json` (`[{id, bbox:[S,W,N,E]}]`) that
  * `GraphHopperRouteEngine` reads to pick, per trip, the region covering both endpoints. A GraphHopper
  * graph is monolithic (a trip must fit inside one region), so regions are state/country-sized.
@@ -49,7 +49,7 @@ class RoutingGraphStore @Inject constructor(
     private val indexFile = File(graphsRoot, "index.json")
 
     // Region graphs (tens–hundreds of MB) can outrun the shared client's 12s callTimeout (a scrape bound,
-    // not a download bound) on a slow link or a big region — the call aborts, runCatching eats it, the
+    // not a download bound) on a slow link or a big region - the call aborts, runCatching eats it, the
     // graph silently never installs. Derive an unbounded-call client for the body download (same fix as
     // KokoroInstaller / OverlayTileStore). The manifest fetch stays on the short-timeout shared client.
     private val downloadHttp: OkHttpClient = http.newBuilder()

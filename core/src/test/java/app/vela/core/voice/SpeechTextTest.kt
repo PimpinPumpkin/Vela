@@ -40,7 +40,7 @@ class SpeechTextTest {
     // --- A road-type word before the period is NOT split, on purpose ---
     // "Street."/"Avenue." etc. are ambiguous: they're a genuine sentence end in "…Main Street. Then…",
     // but forSpeech ALSO produces them from an abbreviation ("St. Mary" → "Street. Mary"). Since we
-    // can't tell them apart, we conservatively don't split there — no spurious mid-name pause. Real
+    // can't tell them apart, we conservatively don't split there - no spurious mid-name pause. Real
     // Vela multi-sentence prompts break after ordinary words ("navigation."/"route."/"on."), so this
     // costs nothing in practice.
     @Test fun `road-type word before period is left whole to avoid false name splits`() {

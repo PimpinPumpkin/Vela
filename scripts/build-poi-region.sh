@@ -20,9 +20,9 @@ WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 echo "→ downloading $URL"
 curl -fsSL "$URL" -o "$WORK/region.osm.pbf"
 
-# bbox first (from the header), so the source PBF can be deleted as soon as it's filtered — a big
+# bbox first (from the header), so the source PBF can be deleted as soon as it's filtered - a big
 # country needs the disk back. [S,W,N,E] from the declared extract region, NOT data.bbox (same rule
-# as routing graphs — node extent is polluted by outlier nodes). osmium prints (minlon,minlat,...).
+# as routing graphs - node extent is polluted by outlier nodes). osmium prints (minlon,minlat,...).
 read -r MINLON MINLAT MAXLON MAXLAT < <(osmium fileinfo -g header.boxes "$WORK/region.osm.pbf" | tr -d '()' | tr ',' ' ')
 BBOX="[$MINLAT,$MINLON,$MAXLAT,$MAXLON]"
 
@@ -34,7 +34,7 @@ osmium tags-filter "$WORK/region.osm.pbf" \
   -o "$WORK/filtered.osm.pbf" --overwrite
 rm -f "$WORK/region.osm.pbf" # reclaim disk before the build (country PBFs are GB-scale)
 
-# The export STREAMS into the pack builder — never written to disk. The geojsonseq is ~12x the
+# The export STREAMS into the pack builder - never written to disk. The geojsonseq is ~12x the
 # filtered PBF (Washington: 161 MB -> 1.9 GB), so a country-sized export on disk would blow a
 # 14 GB CI runner; piped, the peak disk is just filtered.pbf + the SQLite db.
 echo "→ exporting features → building SQLite pack (streamed)"
@@ -80,7 +80,7 @@ if [ "$OLD_REV" -gt 0 ] && gh release download "$TAG" --repo "$REPO" -p "$ID.zip
           --argjson from "$OLD_REV" --argjson size "$DSIZE_MB" '{fromRev:$from,url:$url,sizeMb:$size}')"
         echo "→ delta published: ${DSIZE_MB} MB (full is ${SIZE} MB)"
       else
-        echo "→ delta too big ($(( DSIZE_B / 1048576 )) MB vs full ${SIZE} MB) — clients will full-download"
+        echo "→ delta too big ($(( DSIZE_B / 1048576 )) MB vs full ${SIZE} MB) - clients will full-download"
       fi
     fi
   fi
@@ -99,7 +99,7 @@ ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjs
 # read-modify-write the manifest). Default (local single-region): merge it ourselves.
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
   printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?set ENTRY_OUT in emit mode}"
-  echo "✓ built $ID, zip uploaded, entry → $ENTRY_OUT (manifest merged separately)"
+  echo "[x] built $ID, zip uploaded, entry → $ENTRY_OUT (manifest merged separately)"
 else
   gh release download "$TAG" --repo "$REPO" -p poi-pack-manifest.json -O "$WORK/manifest.json" 2>/dev/null \
     || echo '{"regions":[]}' > "$WORK/manifest.json"
@@ -107,5 +107,5 @@ else
     '.regions = ([.regions[] | select(.id != ($entry.id))] + [$entry])' \
     "$WORK/manifest.json" > "$WORK/poi-pack-manifest.json"
   gh release upload "$TAG" "$WORK/poi-pack-manifest.json" --clobber --repo "$REPO"
-  echo "✓ published $ID — state downloads will now pull its place pack"
+  echo "[x] published $ID - state downloads will now pull its place pack"
 fi

@@ -7,7 +7,7 @@
 
   This is deliberately NOT in the release config (app/src/main): trusting user CAs app-wide would let a
   rogue user-installed cert MITM every HTTPS connection, which is the wrong default for a privacy /
-  degoogled app. Release keeps the platform default (system CAs only). Cf. PR #4 (thanks @JMTDI) — same
+  degoogled app. Release keeps the platform default (system CAs only). Cf. PR #4 (thanks @JMTDI) - same
   capability, scoped to debug so end users aren't weakened.
 -->
 <network-security-config>

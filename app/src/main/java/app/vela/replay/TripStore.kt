@@ -13,7 +13,7 @@ import javax.inject.Singleton
 /** One recorded GPS fix along a trip. */
 data class TripFix(val lat: Double, val lng: Double, val t: Long, val bearing: Float, val speed: Float)
 
-/** Header for a saved trip — enough to list + replay it. */
+/** Header for a saved trip - enough to list + replay it. */
 data class TripMeta(
     val id: String,
     val label: String,
@@ -25,13 +25,13 @@ data class TripMeta(
 /**
  * Records navigation trips (the GPS trace + destination) to on-device files, so a
  * drive can be **replayed** later for testing turn-by-turn without driving it again.
- * Opt-in (the "save my trips" telemetry toggle) — strictly local, never uploaded.
+ * Opt-in (the "save my trips" telemetry toggle) - strictly local, never uploaded.
  *
  * Plain CSV (no JSON dep in `:app`): line 1 = `META,<label>,<startedAt>,<destLat>,<destLng>`,
  * then one `lat,lng,t,bearing,speed` per fix.
  *
  * Optionally the navigated **route** is saved too (right after META), so a replay drives the
- * *same* blue line the user actually saw — not a fresh re-route — and an offline analysis can
+ * *same* blue line the user actually saw - not a fresh re-route - and an offline analysis can
  * regenerate exactly what the cards/voice said at each fix and diff it against the route's real
  * maneuver positions. Those lines are `RP,<encoded-polyline>`, `RD,<distM>,<durS>,<trafficS?>`,
  * and one `M,<type>,<lat>,<lng>,<distM>,<instruction>` per maneuver; [load] skips them (their
@@ -113,7 +113,7 @@ class TripStore @Inject constructor(
 
     /**
      * Re-read the route saved alongside a trip (the same blue line the user drove), or null if it
-     * wasn't recorded — e.g. an older trip from before route-saving, in which case the caller
+     * wasn't recorded - e.g. an older trip from before route-saving, in which case the caller
      * re-routes. Reconstructs a [Route] with a single leg holding all the maneuvers; enough for
      * [app.vela.core.nav.NavEngine] to replay turn-by-turn identically.
      */

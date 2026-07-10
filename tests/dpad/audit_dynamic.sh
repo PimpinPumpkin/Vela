@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# dpad_test_suite/audit_dynamic.sh — EXHAUSTIVE on-device D-pad auditor.
+# tests/dpad/audit_dynamic.sh - EXHAUSTIVE on-device D-pad auditor.
 #
 # Drives to EVERY reachable surface and stress-tests the invariants that MUST hold everywhere:
-#   (1) opens focused     — a primary element is focused on open (no wasted keypress); the bare map
+#   (1) opens focused     - a primary element is focused on open (no wasted keypress); the bare map
 #                           is the one ambient exception (first arrow -> search bar).
-#   (2) focus never lost  — a full multi-axis (DOWN/RIGHT + UP/LEFT) traversal always leaves
+#   (2) focus never lost  - a full multi-axis (DOWN/RIGHT + UP/LEFT) traversal always leaves
 #                           SOMETHING focused (a settle-confirmed null = a dead-end / trap), and
 #                           reaches multiple DISTINCT elements (a stuck traversal is a reachability gap).
-#   (3) no trap           — BACK returns to the previous surface.
+#   (3) no trap           - BACK returns to the previous surface.
 # Nothing escapes: a surface that opens unfocused, drops focus in ANY direction, or won't BACK out
 # fails. Deep/network-bound surfaces self-skip. Complements audit_static.sh (structural) and
-# audit_dialogs.sh (small-screen). "You must get everything" — cover every surface you can reach.
+# audit_dialogs.sh (small-screen). "You must get everything" - cover every surface you can reach.
 set -uo pipefail
 D="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"; source "$D/lib.sh"; source "$D/nav.sh"
 
@@ -18,7 +18,7 @@ FAILS=0
 ok()  { echo "  OK   $1"; }
 bad() { echo "  FAIL $1"; FAILS=$((FAILS + 1)); }
 
-# integrity <label> <n>  — traverse in all 4 directions (DOWN/RIGHT then UP/LEFT), n moves each way.
+# integrity <label> <n>  - traverse in all 4 directions (DOWN/RIGHT then UP/LEFT), n moves each way.
 # Fails if focus is ever a settle-confirmed null. Reports how many DISTINCT elements were reached.
 integrity() {
   local label="$1" n="$2" lost=0 samples=0 k b tmp i
@@ -33,8 +33,8 @@ integrity() {
   for i in $(seq 1 "$n"); do _sample; k="${rev[$((i % 2))]}"; key "$k"; done
   _sample
   local distinct; distinct="$(sort -u "$tmp" | wc -l | tr -d ' ')"; rm -f "$tmp"
-  if [ "$lost" -eq 0 ]; then ok "$label — focus held across $samples moves; $distinct distinct elements reached"
-  else bad "$label — focus LOST in $lost/$samples samples ($distinct distinct reached)"; fi
+  if [ "$lost" -eq 0 ]; then ok "$label - focus held across $samples moves; $distinct distinct elements reached"
+  else bad "$label - focus LOST in $lost/$samples samples ($distinct distinct reached)"; fi
 }
 
 if ! $ADB get-state >/dev/null 2>&1; then echo "No device."; exit 2; fi
@@ -79,7 +79,7 @@ for sub in "Voice library" "Saved places" "Offline"; do
     # re-enter Settings for the next sub (BACK may have left it)
     on_screen "Appearance" || { goto_map; focus_search_bar; key "$K_RIGHT"; key "$K_OK" 1.5; }
   else
-    echo "  SKIP '$sub' — not reachable by scroll from the top"
+    echo "  SKIP '$sub' - not reachable by scroll from the top"
     on_screen "Appearance" || { goto_map; focus_search_bar; key "$K_RIGHT"; key "$K_OK" 1.5; }
   fi
 done
@@ -100,7 +100,7 @@ if run_coffee; then
     key "$K_BACK" 1; on_screen "Set as Home" && bad "BACK did not close the menu" || ok "BACK closes the menu"
   else echo "  note: could not open the overflow menu this run"; fi
   key "$K_BACK" 1
-else echo "  SKIP place sheet / menu — no results (network)"; fi
+else echo "  SKIP place sheet / menu - no results (network)"; fi
 
 echo "== photo gallery (place sheet -> a photo -> OK) =="
 goto_map
@@ -117,7 +117,7 @@ if run_coffee; then
     else echo "  note: photo did not open a gallery this run (no photos?)"; fi
   fi
   key "$K_BACK" 1
-else echo "  SKIP gallery — no results (network)"; fi
+else echo "  SKIP gallery - no results (network)"; fi
 
 echo "== directions panel + route STEPS =="
 goto_map
@@ -128,7 +128,7 @@ if reach_directions; then
     sleep 1.5
     if on_screen "End"; then
       # "Steps" started turn-by-turn navigation, which is MAP-PRIMARY / ambient by design (like the
-      # bare map — the maneuver banner is a reachable overlay, not an auto-focused target). Not a bug.
+      # bare map - the maneuver banner is a reachable overlay, not an auto-focused target). Not a bug.
       ok "'Steps' entered navigation (map-primary/ambient, correct)"
       key "$K_BACK" 1
     else
@@ -138,17 +138,17 @@ if reach_directions; then
     fi
   else echo "  note: no Steps button reachable (routing may be offline)"; fi
   key "$K_BACK" 1
-else echo "  SKIP directions/steps — no results (network)"; fi
+else echo "  SKIP directions/steps - no results (network)"; fi
 
 echo "== choose-on-map (opens engaged; arrows pan, not traverse; BACK cancels) =="
 goto_map
 if open_choose_on_map; then
   ok "pick overlay open"
   b1="$(focused_bounds)"; key "$K_DOWN"; key "$K_RIGHT"; b2="$(focused_bounds)"
-  if [ "$b1" = "$b2" ] && [ -n "$b1" ]; then ok "engaged — arrows pan (focus stayed on the map target)"; else bad "pick map not engaged — arrows moved focus ($b1 -> $b2)"; fi
+  if [ "$b1" = "$b2" ] && [ -n "$b1" ]; then ok "engaged - arrows pan (focus stayed on the map target)"; else bad "pick map not engaged - arrows moved focus ($b1 -> $b2)"; fi
   key "$K_BACK" 1
   on_screen_contains "Move the map" && bad "BACK did not cancel pick" || ok "BACK cancels pick"
-else echo "  SKIP choose-on-map — couldn't reach (network/deep-nav)"; fi
+else echo "  SKIP choose-on-map - couldn't reach (network/deep-nav)"; fi
 
 echo "== first-run Welcome + onboarding dialogs =="
 $ADB shell pm clear "$PKG" >/dev/null 2>&1

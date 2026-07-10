@@ -1,8 +1,8 @@
 name: CI
 
 # Builds + tests both the debug and release APKs on every push to main and on PRs. Each push to
-# main is published as a normal, versioned GitHub release (v0.1.<run>) so update trackers like
-# Obtainium "just work" — no pre-releases, no "include prereleases" toggle, plain-semver
+# main is published as a normal, versioned GitHub release (v0.0.<run>) so update trackers like
+# Obtainium "just work" - no pre-releases, no "include prereleases" toggle, plain-semver
 # versionName. Both APKs are uploaded as workflow artifacts.
 on:
   push:
@@ -31,13 +31,13 @@ jobs:
         # DropdownMenu/AlertDialog, every gesture has a key path, no isSystemInDarkTheme. Fails the
         # build on any structural D-pad regression. The on-device suites need a real device and run
         # locally (adding an emulator here is the flaky download dropped below).
-        run: bash dpad_test_suite/audit_static.sh
+        run: bash tests/dpad/audit_static.sh
 
       - name: Dead-code audit (structural)
         # Host-side, no JDK/device: fails the build on any public/internal top-level declaration
         # the whole tree never references (entry points excluded). The per-module parser-level half
         # (unused imports / private members / unreachable code) runs as the detekt step below.
-        run: bash deadcode_test_suite/audit_deadcode.sh
+        run: bash tests/dead_code/audit_deadcode.sh
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -49,7 +49,7 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           # Default installs the legacy `tools` package, which drags in the
-          # Android Emulator — a large, flaky download that failed CI at the setup
+          # Android Emulator - a large, flaky download that failed CI at the setup
           # step ("ZipFile unknown archive"). We only build + unit-test, so
           # platform-tools is enough; the Android Gradle Plugin fetches the
           # platform + build-tools it needs on its own.
@@ -59,7 +59,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Decode release keystore (optional)
-        # If the secret isn't set the release APK is debug-signed — still
+        # If the secret isn't set the release APK is debug-signed - still
         # installable for testing. app/build.gradle.kts handles the fallback.
         env:
           KEYSTORE_B64: ${{ secrets.VELA_KEYSTORE_BASE64 }}
@@ -68,7 +68,7 @@ jobs:
             echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/vela-release.jks"
             echo "Decoded release keystore."
           else
-            echo "No keystore secret — release APK will be debug-signed."
+            echo "No keystore secret - release APK will be debug-signed."
           fi
 
       - name: Unit tests
@@ -78,7 +78,7 @@ jobs:
         id: ver
         # Fresh fork version line, started over at 0.0.x (this repo is independent of upstream's
         # 0.3.x). versionName is plain semver (0.0.<run>) so Obtainium can compare it; versionCode is
-        # the GitHub run number — monotonic per repo. NOTE: run_number does not reset, so the first
+        # the GitHub run number - monotonic per repo. NOTE: run_number does not reset, so the first
         # build here is 0.0.<current run>, not literally 0.0.1; and any earlier 0.3.x releases on this
         # repo must be deleted or their higher versionCode blocks these as a "downgrade".
         run: |
@@ -87,17 +87,14 @@ jobs:
 
       - name: Fetch TTS runtime AAR
         # sherpa-onnx neural-TTS runtime (Kokoro voice). It's a 57 MB prebuilt AAR (no Maven
-        # artifact) hosted on the fixed-tag `tts-runtime` release, gitignored out of the repo —
+        # artifact) hosted on the fixed-tag `tts-runtime` release, gitignored out of the repo -
         # fetch it into app/libs/ so :app can package the arm64 .so. Verify the size so a truncated
         # download fails loud instead of producing a runtime-crashing APK.
         run: |
           mkdir -p app/libs
-          # The `tts-runtime` release only lives on the upstream repo, so a FORK's CI (github.repository
-          # = the fork) 404s. Try this repo first, then fall back to the upstream release.
+          # Hosted on this repo's fixed-tag `tts-runtime` release (a one-time manual upload).
           curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
-            "https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar" \
-          || curl -fSL -o app/libs/sherpa-onnx-1.13.3.aar \
-            "https://github.com/PimpinPumpkin/Vela/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar"
+            "https://github.com/${{ github.repository }}/releases/download/tts-runtime/sherpa-onnx-1.13.3.aar"
           test "$(stat -c%s app/libs/sherpa-onnx-1.13.3.aar)" -gt 50000000
 
       - name: Dead-code analysis (detekt)
@@ -115,7 +112,7 @@ jobs:
 
       - name: Build debug APK
         # The debug variant is now R8-minified + debuggable (smooth on-device dev build with Timber
-        # /StrictMode/ANR-watchdog), so it exercises its own proguard rules — build it in CI too so a
+        # /StrictMode/ANR-watchdog), so it exercises its own proguard rules - build it in CI too so a
         # debug-only R8/keep regression can't slip through. No signing/version props needed.
         run: >
           ./gradlew :app:assembleDebug --no-daemon
@@ -146,11 +143,10 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Publish nightly (prerelease)
-        # Every push to main → a PRERELEASE (the nightly channel). Obtainium users who
-        # want nightlies turn on "include prereleases"; everyone else keeps tracking the
-        # latest stable release, which the weekly promote-stable workflow produces by
-        # flipping the newest healthy nightly to a full release (same APK, no rebuild).
+      - name: Publish release
+        # Every push to main publishes a normal (non-prerelease) v0.0.<run> release. Obtainium and
+        # the in-app updater read releases/latest (= latest non-prerelease), so they just work with
+        # no "include prereleases" toggle and no separate promote-to-stable step.
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -176,7 +172,7 @@ jobs:
           gh release create "v${VER}" \
             --title "Vela $VER" \
             --target "$GITHUB_SHA" \
-            --prerelease \
+            --latest \
             --notes "$NOTES" \
             "vela-maps-v${VER}.apk" \
             "vela-maps-v${VER}-debug.apk"

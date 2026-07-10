@@ -7,7 +7,7 @@ import androidx.compose.runtime.mutableStateOf
  * Whether the place sheet's Reviews tab shows **Google's own live reviews panel** in a visible
  * WebView (fast, auto-pages as you scroll, Google's server-side review search) instead of the
  * background-scraped native list. A process-wide reactive holder (like [Traffic] / [Units]),
- * persisted across launches. ON by default — experimental, one toggle away from the native
+ * persisted across launches. ON by default - experimental, one toggle away from the native
  * scrape in Settings if Google's markup shifts under the CSS surgery.
  */
 object LiveReviews {

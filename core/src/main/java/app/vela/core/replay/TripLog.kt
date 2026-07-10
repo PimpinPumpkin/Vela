@@ -15,11 +15,11 @@ import app.vela.core.nav.NavReplay
  * back through [NavReplay] with no Android dependency.
  *
  * Plain CSV, one record per line:
- * - `META,<label>,<startedAt>,<destLat>,<destLng>` — header (written first)
- * - `RP,<encoded-polyline>` — the navigated route's blue line (optional)
- * - `RD,<distanceM>,<durationS>,<durationInTrafficS?>` — route totals (optional)
- * - `M,<type>,<lat>,<lng>,<distanceM>,<instruction>` — one per maneuver (instruction last; may hold commas)
- * - `<lat>,<lng>,<t>,<bearing>,<speed>` — one per recorded GPS fix
+ * - `META,<label>,<startedAt>,<destLat>,<destLng>` - header (written first)
+ * - `RP,<encoded-polyline>` - the navigated route's blue line (optional)
+ * - `RD,<distanceM>,<durationS>,<durationInTrafficS?>` - route totals (optional)
+ * - `M,<type>,<lat>,<lng>,<distanceM>,<instruction>` - one per maneuver (instruction last; may hold commas)
+ * - `<lat>,<lng>,<t>,<bearing>,<speed>` - one per recorded GPS fix
  *
  * The line kind is told by the first field, so [parsePoints] naturally ignores the non-fix lines
  * (their first field never parses as a latitude).
@@ -32,8 +32,8 @@ object TripLog {
     }
 
     /** A route block and the fix index it became ACTIVE at. A mid-trip block records the drive
-     *  SWITCHING routes there (a reroute, an accepted faster route, or a restarted navigation) —
-     *  replay/audit must swap to it at that fix, never mash all blocks into one route. */
+     * SWITCHING routes there (a reroute, an accepted faster route, or a restarted navigation) -
+     * replay/audit must swap to it at that fix, never mash all blocks into one route. */
     data class RouteSegment(val route: Route, val fromPoint: Int)
 
     data class Parsed(
@@ -55,11 +55,11 @@ object TripLog {
         }
     }
 
-    /** Rebuild the FIRST saved [Route] from a trip's lines (null if it has no `RP` line — an older
-     *  trip). NB this is the first SEGMENT only — the old implementation grabbed the first polyline
-     *  but EVERY `M` line in the file, so a trip whose drive switched routes (a second RP/RD/M
-     *  block) came back as a Franken-route with two DEPART→ARRIVE runs stitched together: replays
-     *  "arrived" mid-drive, card distances read km wrong, and the arrow matched the wrong half. */
+    /** Rebuild the FIRST saved [Route] from a trip's lines (null if it has no `RP` line - an older
+     * trip). NB this is the first SEGMENT only - the old implementation grabbed the first polyline
+     * but EVERY `M` line in the file, so a trip whose drive switched routes (a second RP/RD/M
+     * block) came back as a Franken-route with two DEPART→ARRIVE runs stitched together: replays
+     * "arrived" mid-drive, card distances read km wrong, and the arrow matched the wrong half. */
     fun parseRoute(lines: List<String>): Route? = parseParsed(lines).segments.firstOrNull()?.route
 
     /** The GPS fixes (every `lat,lng,t,bearing,speed` line; route/META lines are skipped). */
@@ -85,7 +85,7 @@ object TripLog {
     fun parse(csv: String): Parsed = parseParsed(csv.split('\n').filter { it.isNotBlank() })
 
     /** SEQUENTIAL, segment-aware parse: each `RP` starts a new route block; the fixes seen so far
-     *  give the block its activation index. Order in the file is the order it happened. */
+     * give the block its activation index. Order in the file is the order it happened. */
     private fun parseParsed(lines: List<String>): Parsed {
         val meta = lines.firstOrNull { it.startsWith("META,") }?.removePrefix("META,")?.split(',').orEmpty()
         val label = meta.getOrNull(0)?.ifBlank { "Trip" } ?: "Trip"
@@ -131,10 +131,10 @@ object TripLog {
     }
 
     /**
-     * One-call audit of a shared trip CSV: replay the fixes through [NavReplay], SEGMENT-AWARE —
+     * One-call audit of a shared trip CSV: replay the fixes through [NavReplay], SEGMENT-AWARE -
      * each recorded route block is audited against exactly the fixes driven on it, and the pieces
      * are merged into one report (maneuver/fix indices offset to stay file-global). Null if the
-     * trip has no saved route. This is the entry point for "user shipped a travel log — show me
+     * trip has no saved route. This is the entry point for "user shipped a travel log - show me
      * where the guidance diverged".
      */
     fun audit(csv: String, imperial: Boolean = true): NavReplay.Report? {

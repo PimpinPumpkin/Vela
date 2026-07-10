@@ -14,7 +14,7 @@ import javax.inject.Singleton
 /**
  * Turns the opt-in [DiagLog] ring into a shareable bug-report bundle: a small
  * JSON file the user hands to a dev via the system share sheet (email, Signal,
- * Files…). **User-initiated and user-routed** — Vela never uploads it; the user
+ * Files…). **User-initiated and user-routed** - Vela never uploads it; the user
  * sees it's a file and chooses where it goes. This is the no-backend debugging
  * path from the telemetry plan; crowd-sourced upload is a later, separate phase.
  */
@@ -24,7 +24,7 @@ class DiagExporter @Inject constructor(
     private val diag: DiagLog,
 ) {
     /** A share [Intent] for the current session's breadcrumbs, or null if there's
-     *  nothing recorded yet (caller can tell the user). */
+     * nothing recorded yet (caller can tell the user). */
     fun buildShareIntent(): Intent? {
         val events = diag.snapshot()
         if (events.isEmpty()) return null
@@ -32,7 +32,7 @@ class DiagExporter @Inject constructor(
         val json = buildString {
             append("{\"app\":\"Vela\",\"schema\":1,\"exportedAt\":").append(System.currentTimeMillis())
             append(",\"version\":").append(quote("${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"))
-            append(",\"android\":").append(quote("API ${Build.VERSION.SDK_INT} — ${Build.MANUFACTURER} ${Build.MODEL}"))
+            append(",\"android\":").append(quote("API ${Build.VERSION.SDK_INT} - ${Build.MANUFACTURER} ${Build.MODEL}"))
             append(",\"count\":").append(events.size).append(",\"events\":[")
             events.forEachIndexed { i, e ->
                 if (i > 0) append(',')

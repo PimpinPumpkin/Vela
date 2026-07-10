@@ -30,7 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
-// D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
+// D-pad-only operation (docs/dpad.md) - one import block so upstream merges stay clean.
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape as DpadRoundedCornerShape
 import androidx.compose.runtime.LaunchedEffect
@@ -72,11 +72,11 @@ fun SearchBar(
     modifier: Modifier = Modifier,
 ) {
     // D-pad (docs/dpad.md): mere focus traversal must NOT fall into the text field (its
-    // focus opens the full-screen search overlay — a trap when you're just walking the
+    // focus opens the full-screen search overlay - a trap when you're just walking the
     // chrome). In dpadMode the whole bar is ONE focus stop; pressing OK "arms" the field
     // and focuses it. We deliberately do NOT raise the soft IME: on a keypad device the
     // user types on hardware keys (which reach the focused field directly), and a shown
-    // soft IME holds an active InputConnection that SWALLOWS the BACK key — reproduced
+    // soft IME holds an active InputConnection that SWALLOWS the BACK key - reproduced
     // on-device as the "can't get out of search" trap. Hiding it lets BACK reach the app
     // and close the overlay in one press.
     var fieldArmed by remember { mutableStateOf(false) }
@@ -89,7 +89,7 @@ fun SearchBar(
             runCatching { fieldFocus.requestFocus() }
             // Show/hide the soft keyboard by HOW the field was armed, not the static device type.
             // On a hybrid touch+keypad phone (e.g. Qin F21) dpadMode is always true, so keying off
-            // it hid the keyboard even when the user TAPPED the bar — they couldn't type by touch
+            // it hid the keyboard even when the user TAPPED the bar - they couldn't type by touch
             // (alltechdev tester report 2026-07-08). Keying off the live input mode shows the
             // keyboard for a touch tap and hides it for a D-pad OK, which is what each wants.
             if (inputMode.inputMode == InputMode.Keyboard) keyboard?.hide() else keyboard?.show()
@@ -99,7 +99,7 @@ fun SearchBar(
     // surfaceContainerLow; the default Card uses the lightest surface) so the
     // search box and the chips read as one set.
     // D-pad: the "arm the field" clickable goes on the TEXT REGION only (below), NOT the
-    // whole Card — a card-level clickable made the entire bar ONE focus stop and swallowed
+    // whole Card - a card-level clickable made the entire bar ONE focus stop and swallowed
     // the Settings gear inside it (the gear became unreachable by D-pad; measured on-device).
     Card(
         modifier.fillMaxWidth(),
@@ -157,7 +157,7 @@ fun SearchBar(
                     value = query,
                     onValueChange = onQueryChange,
                     // Until armed in dpadMode the field is DISABLED, so it doesn't swallow a TOUCH tap
-                    // (a live but unfocusable field ate the tap and did nothing — the "can't tap the
+                    // (a live but unfocusable field ate the tap and did nothing - the "can't tap the
                     // search bar" bug on hybrid touch+keypad phones, Qin F21). Disabled lets the tap
                     // reach the Box's arm-clickable, which arms it; the field stays MOUNTED (only the
                     // enabled flag flips), so arming focuses it cleanly with no remount race.
@@ -174,11 +174,11 @@ fun SearchBar(
                         .focusProperties { canFocus = !dpadMode || fieldArmed }
                         // Deterministic escape (docs/dpad.md): catch BACK on the focused
                         // field via onPreviewKeyEvent (root→leaf) + KeyDown, so it fires
-                        // BEFORE BasicTextField's built-in "BACK clears focus" — which
+                        // BEFORE BasicTextField's built-in "BACK clears focus" - which
                         // otherwise blurred the field on the down event and left the KeyUp
                         // with nothing focused, taking a 3rd press to escape (measured).
                         // With the IME up, its window still eats the first BACK to hide
-                        // itself; the next BACK reaches here and closes — platform-standard
+                        // itself; the next BACK reaches here and closes - platform-standard
                         // two-press behaviour, now deterministic.
                         .onPreviewKeyEvent { ev ->
                             when {

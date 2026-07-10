@@ -24,7 +24,7 @@ import javax.inject.Singleton
  * The single owner of an in-progress navigation. Held as a singleton so the
  * foreground [service][app.vela.core] (which feeds it location with the screen
  * off) and the UI ViewModel (which observes [state]) share exactly one nav loop
- * — no double voice prompts, no divergent state.
+ * - no double voice prompts, no divergent state.
  *
  * Beyond turn-by-turn it runs a **live re-check**: every [RECHECK_INTERVAL_MS]
  * while underway it re-queries directions from the current position and, if the
@@ -52,7 +52,7 @@ class NavSession @Inject constructor(
         // Trip summary, populated on arrival (and carried for the arrival card).
         val destinationLabel: String = "",
         // The destination's address line, when it adds anything beyond [destinationLabel]
-        // (see [destinationDisplay]) — shown on the ARRIVE step in the banner + step list.
+        // (see [destinationDisplay]) - shown on the ARRIVE step in the banner + step list.
         val destinationAddress: String = "",
         val tripDistanceMeters: Double = 0.0,
         val tripElapsedSeconds: Double = 0.0,
@@ -73,11 +73,11 @@ class NavSession @Inject constructor(
     // start() can't resurrect the previous destination's route into the fresh session.
     private var rerouteJob: Job? = null
     // @Volatile: written on the Default dispatcher (reroute coroutine) / caller thread and read
-    // on the location thread — a stale read would defeat the cooldown or the generation guard.
+    // on the location thread - a stale read would defeat the cooldown or the generation guard.
     @Volatile private var lastRerouteAdoptMs = 0L
     @Volatile private var lastRerouteSpokeMs = 0L
     @Volatile private var sessionGen = 0
-    // A FAILED reroute must clear the engine's offRoute latch so it retries — but writing nav
+    // A FAILED reroute must clear the engine's offRoute latch so it retries - but writing nav
     // state from the reroute coroutine races the in-flight onLocation frame (whose route-identity
     // guard can't catch it: a failed reroute doesn't swap the route). Instead the location
     // thread itself consumes this flag at the top of its next frame.
@@ -86,7 +86,7 @@ class NavSession @Inject constructor(
     // dismissed every recheck; a similar route must beat the dismissed saving by a real margin.
     private var dismissedFasterKey: Long = 0L
     private var dismissedFasterSaving = 0.0
-    // Replay hermeticity: a trip REPLAY must be deterministic — no live reroute fetches, no
+    // Replay hermeticity: a trip REPLAY must be deterministic - no live reroute fetches, no
     // faster-route rechecks (a live fetch mid-replay swapped the route and the recorded fixes
     // were then matched against a route the driver never drove: arrow on another street, the
     // faster-route sheet popping up over a replay). Route swaps that happened in the REAL drive
@@ -96,7 +96,7 @@ class NavSession @Inject constructor(
     // announce "you've reached <stop>" as progress passes it, and reroute through the REMAINING ones.
     // The whole plan (stops + marks + counter + the route the marks were measured on) is guarded by
     // [stopLock] and swapped ATOMICALLY with a new route: reroute() runs on Dispatchers.Default while
-    // onLocation arrives on the location thread — without the lock (and the planRoute identity check in
+    // onLocation arrives on the location thread - without the lock (and the planRoute identity check in
     // announceStopsPassed) a fix still measured against the OLD route could be compared to the NEW marks,
     // firing every remaining cue at once and permanently dropping unvisited stops.
     private val stopLock = Any()
@@ -141,12 +141,12 @@ class NavSession @Inject constructor(
             navigating = true,
             route = route,
             // Seed the first turn's approach distance so the banner doesn't read "0 ft" (with
-            // every distance gate momentarily open) until the first fix — the DEPART maneuver's
+            // every distance gate momentarily open) until the first fix - the DEPART maneuver's
             // after-distance IS the distance to the first real turn.
             nav = NavState(
                 distanceToNextManeuver = route.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
                 // Seed the trip totals so the ETA card reads the full route time/distance BEFORE the
-                // first fix — the engine overwrites these per-fix, but until then a 0 here rendered
+                // first fix - the engine overwrites these per-fix, but until then a 0 here rendered
                 // "<1 min / 10 ft" (worst while "Searching for GPS" holds off the first fix).
                 remainingDistance = route.distanceMeters,
                 remainingDuration = route.durationInTrafficSeconds ?: route.durationSeconds,
@@ -168,7 +168,7 @@ class NavSession @Inject constructor(
     }
 
     fun stop() {
-        sessionGen += 1 // orphan in-flight reroute/recheck — a late completion must not resurrect this session
+        sessionGen += 1 // orphan in-flight reroute/recheck - a late completion must not resurrect this session
         recheckJob?.cancel()
         rerouteJob?.cancel()
         pendingLatchClear.set(false)
@@ -184,7 +184,7 @@ class NavSession @Inject constructor(
         if (!s.navigating || s.arrived) return
 
         // Consume a failed-reroute latch clear HERE, on the location thread, so the engine
-        // computes FROM the cleared state (4 more deviated fixes → natural retry) — clearing it
+        // computes FROM the cleared state (4 more deviated fixes → natural retry) - clearing it
         // from the reroute coroutine raced this frame's state write and could be silently undone.
         val nav = if (pendingLatchClear.compareAndSet(true, false)) {
             s.nav.copy(offRoute = false, offRouteHits = 0)
@@ -200,7 +200,7 @@ class NavSession @Inject constructor(
         val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // Guard the write on route IDENTITY: a reroute/faster-route can swap route+NavState while
-        // this update was computing on the OLD route — writing `next` (old-route traveledM /
+        // this update was computing on the OLD route - writing `next` (old-route traveledM /
         // stepIndex) onto the fresh route corrupted progress and could false-arrive right after
         // a reroute. Same pattern announceStopsPassed already uses; drop the stale frame whole.
         var applied = false
@@ -241,10 +241,10 @@ class NavSession @Inject constructor(
     }
 
     /** Per-stop arrival cue: as along-route progress passes each waypoint's mark, announce it once, in
-     *  order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is skipped
-     *  silently rather than blocking the rest. [route] must be the route [traveledM] was measured on —
-     *  if a reroute swapped the plan mid-fix, the identity check drops the stale frame instead of
-     *  comparing old progress to new marks (which would fire every cue at once). */
+     * order ("You've reached <stop>"). A stop with no mark (not locatable on the route) is skipped
+     * silently rather than blocking the rest. [route] must be the route [traveledM] was measured on -
+     * if a reroute swapped the plan mid-fix, the identity check drops the stale frame instead of
+     * comparing old progress to new marks (which would fire every cue at once). */
     private fun announceStopsPassed(route: Route, traveledM: Double) {
         val toSpeak = mutableListOf<String>()
         synchronized(stopLock) {
@@ -297,7 +297,7 @@ class NavSession @Inject constructor(
 
     fun dismissFasterRoute() {
         // Remember what was dismissed so the next recheck doesn't re-offer (and re-speak) the
-        // same candidate two minutes later — it must beat this saving by a real margin first.
+        // same candidate two minutes later - it must beat this saving by a real margin first.
         _state.value.fasterRoute?.let {
             dismissedFasterKey = routeKey(it)
             dismissedFasterSaving = _state.value.fasterSavingSeconds
@@ -313,11 +313,11 @@ class NavSession @Inject constructor(
         if (now - lastRecheckMs < RECHECK_INTERVAL_MS) return
         if (nav.offRoute || nav.remainingDistance < MIN_RECHECK_DISTANCE_M) return
         if (recheckJob?.isActive == true) return
-        // An offer is already on screen — don't fetch/re-speak over it every interval.
+        // An offer is already on screen - don't fetch/re-speak over it every interval.
         if (_state.value.fasterRoute != null) return
         val dest = destination ?: return
         lastRecheckMs = now
-        // Named remainingStops (not `remaining`) — the launch body below declares `remaining` for the
+        // Named remainingStops (not `remaining`) - the launch body below declares `remaining` for the
         // remaining DURATION, which would shadow this and hand a future edit seconds instead of stops.
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         val gen = sessionGen
@@ -326,7 +326,7 @@ class NavSession @Inject constructor(
                 ?.takeIf { it.reaches(dest) } ?: return@launch
             if (gen != sessionGen) return@launch // session ended/restarted while fetching
             // The waypointed directions call falls back to a DIRECT origin→dest route when the via
-            // routing fails — that route passes reaches(dest) but skips the stops, and it reads minutes
+            // routing fails - that route passes reaches(dest) but skips the stops, and it reads minutes
             // "faster" precisely because it drops the detours. Never OFFER a route that doesn't cover
             // every remaining stop (an offer is optional; guiding past a stop is not).
             if (remainingStops.isNotEmpty() &&
@@ -336,9 +336,9 @@ class NavSession @Inject constructor(
             val remaining = _state.value.remainingDuration
             val saving = remaining - candidateEta
             // A candidate similar to one the user DISMISSED is only re-offered when it beats the
-            // dismissed saving by a real margin — not re-spoken verbatim every 2 minutes.
+            // dismissed saving by a real margin - not re-spoken verbatim every 2 minutes.
             if (routeKey(candidate) == dismissedFasterKey && saving < dismissedFasterSaving + 60.0) return@launch
-            // Offer it only if it saves real time AND isn't implausibly short — a candidate claiming to cut
+            // Offer it only if it saves real time AND isn't implausibly short - a candidate claiming to cut
             // the same trip to a fraction of the time left is a bad route, not a real faster path.
             if (saving > FASTER_THRESHOLD_S && candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)) {
                 _state.update { it.copy(fasterRoute = candidate, fasterSavingSeconds = saving) }
@@ -351,9 +351,9 @@ class NavSession @Inject constructor(
     }
 
     /** Identity for "the same candidate route" across rechecks (dismissal memory). Keyed on the
-     *  route's TAIL geometry — every recheck fetches from the CURRENT position, so total length /
-     *  point count shrink as you drive and would never match; the destination-approach geometry
-     *  survives forward progress. */
+     * route's TAIL geometry - every recheck fetches from the CURRENT position, so total length /
+     * point count shrink as you drive and would never match; the destination-approach geometry
+     * survives forward progress. */
     private fun routeKey(r: Route): Long {
         var h = 1125899906842597L
         r.polyline.takeLast(20).forEach { p ->
@@ -363,8 +363,8 @@ class NavSession @Inject constructor(
         return h
     }
 
-    /** Adopt a route swap RECORDED in a trip being replayed (silent, no fetch) — the replay
-     *  equivalent of the reroute/faster-route adoption that happened during the real drive. */
+    /** Adopt a route swap RECORDED in a trip being replayed (silent, no fetch) - the replay
+     * equivalent of the reroute/faster-route adoption that happened during the real drive. */
     fun replaySetRoute(r: Route) {
         if (r.polyline.size < 2) return
         synchronized(stopLock) { stops = emptyList(); stopMarks = emptyList(); passedStops = 0; planRoute = r }
@@ -394,7 +394,7 @@ class NavSession @Inject constructor(
         val now = SystemClock.elapsedRealtime()
         // Single-flight + cooldown: one fetch at a time, and no re-adoption storm while GPS is
         // biased toward a parallel road (the new route lands, the biased fixes are >45 m from IT
-        // too, 4 s later another "Rerouting…" — forever). The engine keeps emitting RerouteNeeded
+        // too, 4 s later another "Rerouting…" - forever). The engine keeps emitting RerouteNeeded
         // while deviated (the latch clears on failure below), so a skipped request here is simply
         // retried by the next qualifying fix after the cooldown.
         if (rerouteJob?.isActive == true || now - lastRerouteAdoptMs < REROUTE_COOLDOWN_MS) return
@@ -403,7 +403,7 @@ class NavSession @Inject constructor(
             lastRerouteSpokeMs = now
             voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
         }
-        // Reroute THROUGH the stops you haven't reached yet — not straight to the final destination
+        // Reroute THROUGH the stops you haven't reached yet - not straight to the final destination
         // (going straight to it would silently drop your remaining stops on any off-route wobble).
         val remainingStops = synchronized(stopLock) { stops.drop(passedStops) }
         val gen = sessionGen
@@ -411,25 +411,25 @@ class NavSession @Inject constructor(
         // we're fetching (see the back-on-course check below), we abandon the reroute rather than swap.
         val fromRoute = _state.value.route
         rerouteJob = scope.launch {
-            // A reroute that doesn't actually reach the destination is a bad result — keep guiding on the
+            // A reroute that doesn't actually reach the destination is a bad result - keep guiding on the
             // current route rather than swapping to a truncated/wrong one. (Guard unchanged: the route still
             // ends at the same final dest even with waypoints in between.)
             val r = runCatching { dataSource.directions(loc, dest, mode, remainingStops.map { it.location }) }
                 .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
-            if (gen != sessionGen) return@launch // session ended / restarted while fetching — drop it
+            if (gen != sessionGen) return@launch // session ended / restarted while fetching - drop it
             // BACK ON COURSE: while we were fetching (~1-3 s), did the driver return to the ORIGINAL route?
             // A U-turn (or any wobble) fires RerouteNeeded, but by the time the fetch lands the driver has
             // often completed it and rejoined the planned line. Swapping in a fresh route then yanks a driver
-            // who already self-corrected onto a different path — so if the route hasn't otherwise changed and
+            // who already self-corrected onto a different path - so if the route hasn't otherwise changed and
             // we're solidly back on the line, discard this reroute and carry on (Google's "you're back on
             // course"). SUSTAINED, not one fix: offRoute clears on a SINGLE grazing fix within OFF_ROUTE_M,
-            // which a spurious graze on a parallel/overlapping leg trips — so gate on onRouteStreak (N
+            // which a spurious graze on a parallel/overlapping leg trips - so gate on onRouteStreak (N
             // consecutive on-corridor+moving fixes), NOT bare !offRoute, or a real missed-turn reroute could
             // be wrongly abandoned. Still off / only grazed → adopt r as before. Self-healing: a re-deviation
-            // re-fires RerouteNeeded on the next rising edge (no cooldown charged — we return before adopt).
+            // re-fires RerouteNeeded on the next rising edge (no cooldown charged - we return before adopt).
             val backNav = _state.value.nav
             if (_state.value.route === fromRoute && !backNav.offRoute && backNav.onRouteStreak >= BACK_ON_COURSE_HITS) {
-                diag.record("nav", "reroute discarded — driver solidly back on the original route (streak ${backNav.onRouteStreak})")
+                diag.record("nav", "reroute discarded - driver solidly back on the original route (streak ${backNav.onRouteStreak})")
                 return@launch
             }
             if (r == null) {
@@ -437,15 +437,15 @@ class NavSession @Inject constructor(
                 // and rerouting was DEAD for the rest of the excursion: RerouteNeeded is
                 // edge-triggered on the offRoute latch, which never re-fires while still off the
                 // old route. Flag the latch clear for the LOCATION THREAD to consume (writing nav
-                // state from here raced the in-flight onLocation frame) — 4 more deviated fixes
+                // state from here raced the in-flight onLocation frame) - 4 more deviated fixes
                 // then request again (~4 s natural backoff, OsmAnd-style retry-while-deviated).
-                diag.record("nav", "reroute FAILED — will retry while off-route")
+                diag.record("nav", "reroute FAILED - will retry while off-route")
                 pendingLatchClear.set(true)
                 return@launch
             }
             // New route starts here → recompute the marks, reset the counter. Unlike the faster-route
             // OFFER we accept a route that couldn't include the stops (being guided beats staying
-            // off-route), but we say so and KEEP the stops in the plan — their marks are null on this
+            // off-route), but we say so and KEEP the stops in the plan - their marks are null on this
             // route, and the next recheck routes through them again once the via routing recovers.
             val marks = NavEngine.stopMarks(r, remainingStops.map { it.location })
             synchronized(stopLock) {
@@ -478,7 +478,7 @@ class NavSession @Inject constructor(
     }
 
     /** Does this route actually END near [dest]? A route whose last point is far from the destination is
-     *  truncated or wrong; swapping to it mid-nav is the "10 min away / wrong final step" bug. */
+     * truncated or wrong; swapping to it mid-nav is the "10 min away / wrong final step" bug. */
     private fun Route.reaches(dest: LatLng) =
         polyline.lastOrNull()?.let { it.distanceTo(dest) <= REACH_TOLERANCE_M } ?: false
 
@@ -491,10 +491,10 @@ class NavSession @Inject constructor(
         const val REROUTE_COOLDOWN_MS = 10_000L    // min gap between ADOPTED reroutes (no reroute storms)
         const val REROUTE_SPEAK_MIN_MS = 30_000L   // "Rerouting" spoken at most this often (retries are silent)
         const val BACK_ON_COURSE_HITS = 2          // consecutive on-corridor fixes before an in-flight reroute
-                                                   // is abandoned as "back on course" — >1 so a single grazing
+                                                   // is abandoned as "back on course" - >1 so a single grazing
                                                    // fix can't kill a legitimate missed-turn reroute (tune from
                                                    // a real u-turn capture; 2 filters grazes, catches rejoins)
-        // A reroute/faster candidate must actually END near the destination — a truncated or wrong route
+        // A reroute/faster candidate must actually END near the destination - a truncated or wrong route
         // (its last point miles from dest) is the "10 min away, wrong final step" bug; never swap to it.
         const val REACH_TOLERANCE_M = 500.0
         // …and it can't be implausibly short: the same trip can't suddenly take <40% of the time left
@@ -504,11 +504,11 @@ class NavSession @Inject constructor(
         const val STOP_ARRIVE_TOL_M = 25.0
 
         /** Primary + secondary display lines for a destination, robust to partial data. Offline
-         *  routing often has no business name — just "123 Main St" from the offline geocoder, a
-         *  bare street from the street-fallback tier, or nothing but the tapped point. Primary =
-         *  the name, else the address, else the raw coordinates (something always shows).
-         *  Secondary = the address only when it adds something the primary line doesn't already
-         *  say (an address search's "name" IS its address — don't print it twice). */
+         * routing often has no business name - just "123 Main St" from the offline geocoder, a
+         * bare street from the street-fallback tier, or nothing but the tapped point. Primary =
+         * the name, else the address, else the raw coordinates (something always shows).
+         * Secondary = the address only when it adds something the primary line doesn't already
+         * say (an address search's "name" IS its address - don't print it twice). */
         fun destinationDisplay(name: String?, address: String?, dest: LatLng?): Pair<String, String?> {
             val n = name?.trim().orEmpty()
             val a = address?.trim().orEmpty()

@@ -7,7 +7,7 @@
 #   scripts/build-address-region.sh <id> "<Display name>" <openaddresses-source> "<S,W,N,E>"
 #   e.g. scripts/build-address-region.sh washington "Washington (state)" us/wa/statewide "45.54,-124.85,49.00,-116.92"
 #
-# Data: OpenAddresses (openaddresses.io) — address points aggregated from open/government sources, per-source
+# Data: OpenAddresses (openaddresses.io) - address points aggregated from open/government sources, per-source
 # licences (open). The batch API resolves the source's CURRENT job (job ids rotate per data refresh), whose
 # GeoJSONL output is one Point per line with a `number` (+ `street`, `unit`, `city`, `postcode`) property.
 # Needs: gh (authenticated), tippecanoe, jq, curl, gzip. LICENCE note in the release body.
@@ -19,7 +19,7 @@ TAG="address-overlays"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
 # Resolve the source's CURRENT job id(s) (job ids rotate each data refresh, so we can't hardcode a URL). A
-# source ending in `/*` (e.g. "us/ca/*") AGGREGATES every OpenAddresses address source under that prefix —
+# source ending in `/*` (e.g. "us/ca/*") AGGREGATES every OpenAddresses address source under that prefix -
 # for states with no single `statewide` source, we fold all their county/city sources into one PMTiles.
 GEOJSON="$WORK/$ID.geojsonl"
 if [[ "$SRC" == */\* ]]; then
@@ -54,9 +54,9 @@ LINES=$(wc -l < "$GEOJSON" | tr -d ' ')
 [ "$LINES" -gt 0 ] || { echo "!! empty address data for $SRC" >&2; exit 1; }
 echo "→ $LINES address points"
 
-# House numbers render only at z>=17.5 (VelaMapView minZoom — Google street-level parity), so bake
+# House numbers render only at z>=17.5 (VelaMapView minZoom - Google street-level parity), so bake
 # -Z16 -z17: the app never requests tiles below 16 (dead pyramid weight), and maxzoom 17 quarters the
-# per-tile point count vs the old -z16 — at maxzoom tippecanoe keeps EVERY point, and overzooming a
+# per-tile point count vs the old -z16 - at maxzoom tippecanoe keeps EVERY point, and overzooming a
 # dense urban z16 tile at a z17.5+ view handed MapLibre thousands of symbols to collide per frame
 # (the "lag when the house numbers load" report; the tile FETCH is lazy, the PLACEMENT was the cost).
 # Keep ONLY the `number` attribute (`-y number`) so the tiles stay small; --drop-densest-as-needed
@@ -80,10 +80,10 @@ gh release upload "$TAG" "$WORK/$ID.pmtiles" --clobber --repo "$REPO"
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
 
-# emit (CI matrix) vs merge (local single-region) — identical to build-overlay-region.sh.
+# emit (CI matrix) vs merge (local single-region) - identical to build-overlay-region.sh.
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
   printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?set ENTRY_OUT in emit mode}"
-  echo "✓ built $ID, pmtiles uploaded, entry → $ENTRY_OUT (manifest merged separately)"
+  echo "[x] built $ID, pmtiles uploaded, entry → $ENTRY_OUT (manifest merged separately)"
 else
   gh release download "$TAG" --repo "$REPO" -p address-overlay-manifest.json -O "$WORK/m.json" 2>/dev/null \
     || echo '{"regions":[]}' > "$WORK/m.json"
@@ -91,5 +91,5 @@ else
     '.regions = ([.regions[] | select(.id != ($entry.id))] + [$entry])' \
     "$WORK/m.json" > "$WORK/address-overlay-manifest.json"
   gh release upload "$TAG" "$WORK/address-overlay-manifest.json" --clobber --repo "$REPO"
-  echo "✓ published $ID"
+  echo "[x] published $ID"
 fi

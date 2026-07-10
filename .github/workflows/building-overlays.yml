@@ -1,10 +1,10 @@
 # Build open building-footprint OVERLAYS (Microsoft, ODbL) as PMTiles for many regions in parallel and
-# publish them to the `building-overlays` release — the app renders them BENEATH the OSM building layer to
+# publish them to the `building-overlays` release - the app renders them BENEATH the OSM building layer to
 # fill gaps where OSM lacks footprints. Sibling of routing-graphs.yml. Two data sources, per catalog row's
 # `source`: us-legacy (a US state's .geojson.zip) or ms-global (a world country's quadkey GeoJSONL).
 #
 # Run from Actions → "Build building overlays" → pass `ids` (e.g. "washington andorra") or tick `all`.
-# Regions come from tools/overlay-regions.json — add a line there to build something not listed.
+# Regions come from tools/overlay-regions.json - add a line there to build something not listed.
 #
 # Race-safety: each region builds in its own matrix job and uploads ONLY its own <id>.pmtiles + a manifest
 # *entry* artifact. One final `merge` job folds every entry into building-overlay-manifest.json in a single
@@ -23,13 +23,13 @@ on:
         type: string
         default: "washington"
       all:
-        description: "Build every region in tools/overlay-regions.json (ignores 'ids'). NB fails if the catalog exceeds 256 regions — prefer `group`."
+        description: "Build every region in tools/overlay-regions.json (ignores 'ids'). NB fails if the catalog exceeds 256 regions - prefer `group`."
         type: boolean
         default: false
 
 permissions:
   contents: write # create/upload assets on the building-overlays release
-# NB: run-level concurrency is intentionally NOT set — the `us`/`world`/`chunk` group dispatches must be able
+# NB: run-level concurrency is intentionally NOT set - the `us`/`world`/`chunk` group dispatches must be able
 # to build concurrently. Only the MERGE job serialises (its own concurrency group below), so parallel runs
 # accumulate into the one manifest instead of clobbering it.
 
@@ -59,7 +59,7 @@ jobs:
           n=$(printf '%s' "$sel" | jq 'length')
           echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
           if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GRP' ids='$IDS' all='$ALL'"; exit 1; fi
-          if [ "$n" -gt 256 ]; then echo "::error::$n regions exceeds GitHub's 256-job matrix cap — dispatch by group (us/world/chunk)"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions exceeds GitHub's 256-job matrix cap - dispatch by group (us/world/chunk)"; exit 1; fi
           echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
       - name: Ensure the catalog release exists
         env:
@@ -106,7 +106,7 @@ jobs:
     needs: build
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    # Serialise ONLY the manifest merge across concurrent group runs (us/world/chunk) — each folds its own
+    # Serialise ONLY the manifest merge across concurrent group runs (us/world/chunk) - each folds its own
     # entries into the shared manifest by replace-by-id, so they accumulate instead of clobbering.
     concurrency:
       group: building-overlays-manifest-merge
@@ -127,6 +127,6 @@ jobs:
         run: |
           shopt -s nullglob
           files=(entries/*.json)
-          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built — nothing to merge"; exit 0; fi
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built - nothing to merge"; exit 0; fi
           echo "merging ${#files[@]} entr(y/ies)"
           bash scripts/merge-overlay-manifest.sh entries

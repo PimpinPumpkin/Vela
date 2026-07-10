@@ -7,10 +7,10 @@ import app.vela.core.i18n.NavStringsRegistry
 import java.util.Locale
 
 /**
- * App language preference — **follow the system locale by default, or override to a specific language**
+ * App language preference - **follow the system locale by default, or override to a specific language**
  * (like Google Maps' in-app language setting). A process-wide reactive holder + persisted pref, mirroring
  * [app.vela.ui.theme.AppTheme] / [Units]. Setting it drives everything Vela renders in the user's
- * language: the GENERATED nav text (via [NavStringsRegistry]) today, and — as they're localized — the
+ * language: the GENERATED nav text (via [NavStringsRegistry]) today, and - as they're localized - the
  * `strings.xml` UI chrome and the scrape locale (hl/gl). Resolved to an actual [Locale] by [effective].
  *
  * Set EXPLICITLY here (main thread, startup + on change) and read from the registry at the leaf, rather
@@ -21,8 +21,8 @@ object AppLocale {
     val language = mutableStateOf("")
 
     /** The languages Vela's generated nav voice is translated into (and, rolling out, the UI chrome).
-     *  This is the source of truth for the in-app language picker — keep it in sync with the NavStrings
-     *  table in :core. */
+     * This is the source of truth for the in-app language picker - keep it in sync with the NavStrings
+     * table in :core. */
     val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk")
 
     private val ENDONYMS = mapOf(
@@ -31,7 +31,7 @@ object AppLocale {
         "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська",
     )
 
-    /** The language's own name (endonym) — what a speaker of it expects to see in a language list. */
+    /** The language's own name (endonym) - what a speaker of it expects to see in a language list. */
     fun endonym(code: String): String = ENDONYMS[code] ?: code.replaceFirstChar { it.uppercase() }
 
     fun init(context: Context) {
@@ -40,7 +40,7 @@ object AppLocale {
     }
 
     /** Set by the hosting Activity so a language change can re-create it (to re-read localized
-     *  resources). Null until an Activity registers it. */
+     * resources). Null until an Activity registers it. */
     var onLocaleChanged: (() -> Unit)? = null
 
     fun set(context: Context, langCode: String) {
@@ -53,12 +53,12 @@ object AppLocale {
         if (changed) onLocaleChanged?.invoke()
     }
 
-    /** The resolved locale — the system default when following the system, else the override. */
+    /** The resolved locale - the system default when following the system, else the override. */
     fun effective(): Locale = language.value.takeIf { it.isNotBlank() }?.let { Locale(it) } ?: Locale.getDefault()
 
     /** Wrap a base [Context] with the chosen language so `stringResource`/`getString` resolve to it.
-     *  Reads the pref directly (it runs from `attachBaseContext`, before [init]) and is a **no-op when
-     *  following the system locale** — so the default path is byte-for-byte untouched. */
+     * Reads the pref directly (it runs from `attachBaseContext`, before [init]) and is a **no-op when
+     * following the system locale** - so the default path is byte-for-byte untouched. */
     fun wrap(base: Context): Context {
         val lang = prefs(base).getString(KEY, "").orEmpty()
         if (lang.isBlank()) return base

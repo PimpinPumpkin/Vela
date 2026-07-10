@@ -137,8 +137,8 @@ class NavEngineTest {
     }
 
     /** The back-on-course discriminator for the reroute-abandon: offRoute clears on a SINGLE grazing
-     *  fix, which is too weak to abandon an in-flight reroute on (a spurious graze on a parallel leg would
-     *  kill a real missed-turn reroute). onRouteStreak requires a SUSTAINED rejoin. */
+     * fix, which is too weak to abandon an in-flight reroute on (a spurious graze on a parallel leg would
+     * kill a real missed-turn reroute). onRouteStreak requires a SUSTAINED rejoin. */
     @Test
     fun onRouteStreakNeedsSustainedRejoinNotOneGraze() {
         val route = straightRoute()
@@ -149,7 +149,7 @@ class NavEngineTest {
         assertTrue("off-route after repeated off fixes", state.offRoute)
         assertEquals("off the line → streak is 0", 0, state.onRouteStreak)
 
-        // ONE fix back on the line clears the offRoute latch, but it's a single graze — streak = 1, below
+        // ONE fix back on the line clears the offRoute latch, but it's a single graze - streak = 1, below
         // the back-on-course threshold (2), so NavSession must NOT abandon a reroute on it yet.
         state = NavEngine.update(route, state, onLine).first
         assertTrue("one on-line fix clears the latch", !state.offRoute)
@@ -159,13 +159,13 @@ class NavEngineTest {
         state = NavEngine.update(route, state, onLine).first
         assertEquals(2, state.onRouteStreak)
 
-        // A single off fix immediately resets the streak — a graze can never accumulate to the threshold.
+        // A single off fix immediately resets the streak - a graze can never accumulate to the threshold.
         state = NavEngine.update(route, state, offPoint).first
         assertEquals(0, state.onRouteStreak)
     }
 
-    /** Reaching a non-final maneuver advances the step but must NOT mark arrival —
-     *  only the final ARRIVE maneuver does. */
+    /** Reaching a non-final maneuver advances the step but must NOT mark arrival -
+     * only the final ARRIVE maneuver does. */
     @Test
     fun arrivalRequiresTheFinalManeuver() {
         val a = LatLng(37.0000, -122.0000)
@@ -200,15 +200,15 @@ class NavEngineTest {
     }
 
     /** A route that passes near itself: up the west line, a tiny hop east, back down a
-     *  parallel east line ~5 m away (an out-and-back / switchback). A naïve global-nearest
-     *  "remaining" matches the return leg and collapses to almost-arrived while you're still
-     *  on the way out. Forward progress must keep it honest. Regression for the test-drive's
-     *  "51 mi to turn · 0.3 mi remaining". */
+     * parallel east line ~5 m away (an out-and-back / switchback). A naïve global-nearest
+     * "remaining" matches the return leg and collapses to almost-arrived while you're still
+     * on the way out. Forward progress must keep it honest. Regression for the test-drive's
+     * "51 mi to turn · 0.3 mi remaining". */
     private fun hairpinRoute(): Route {
         val a = LatLng(37.0000, -122.00000)
         val t = LatLng(37.0100, -122.00000)   // top of the outbound (west) leg
         val t2 = LatLng(37.0100, -121.99994)  // hop ~5 m east
-        val m2 = LatLng(37.0050, -121.99994)  // mid inbound (east) leg — ~5 m from the outbound midpoint
+        val m2 = LatLng(37.0050, -121.99994)  // mid inbound (east) leg - ~5 m from the outbound midpoint
         val b = LatLng(37.0000, -121.99994)   // end, beside the start
         return Route(
             polyline = listOf(a, t, t2, m2, b),
@@ -245,7 +245,7 @@ class NavEngineTest {
             "remaining must not collapse onto the nearby return leg (was ${state.remainingDistance})",
             state.remainingDistance > 1400.0,
         )
-        // The contradiction the user saw — next turn farther than the whole trip — must not happen.
+        // The contradiction the user saw - next turn farther than the whole trip - must not happen.
         assertTrue(
             "next-turn (${state.distanceToNextManeuver}) can't exceed remaining (${state.remainingDistance})",
             state.distanceToNextManeuver <= state.remainingDistance + 1.0,
@@ -258,8 +258,8 @@ class NavEngineTest {
     // --- regression tests for the 2026-06-27 highway-drive bugs (turns 6 mi out of sync) ----
 
     /** A turn must sit at the START of its step, not the end. The off-by-one (adding the step
-     *  length BEFORE placing) put every turn a whole step too far — a 9 km highway step landed
-     *  the exit 9 km past where it actually is. */
+     * length BEFORE placing) put every turn a whole step too far - a 9 km highway step landed
+     * the exit 9 km past where it actually is. */
     @Test
     fun maneuverSitsAtStartOfItsStepNotEnd() {
         val a = LatLng(37.0000, -122.0000)
@@ -276,8 +276,8 @@ class NavEngineTest {
     }
 
     /** A maneuver that's geographically NEAR an early point but FAR along the route (a highway
-     *  curving back near an exit) must not be announced/advanced early — prompts + advancement
-     *  measure ALONG the route, not crow-flies. */
+     * curving back near an exit) must not be announced/advanced early - prompts + advancement
+     * measure ALONG the route, not crow-flies. */
     @Test
     fun doesNotSkipAManeuverNearByCrowFliesButFarAlongTheRoute() {
         val a = LatLng(37.0000, -122.0000)
@@ -304,11 +304,11 @@ class NavEngineTest {
         assertEquals("must NOT skip the loop-back turn that's only ~9 m away crow-flies", 1, s2.stepIndex)
     }
 
-    // Units are checked on a real turn's approach prompt — the DEPART maneuver is spoken by
+    // Units are checked on a real turn's approach prompt - the DEPART maneuver is spoken by
     // NavSession.start and skipped by the engine (advance past it first).
     private fun turnRoute(): Route {
         val a = LatLng(37.0000, -122.0000)
-        val turn = LatLng(37.0030, -122.0000) // ~334 m north — inside the 400 m prompt
+        val turn = LatLng(37.0030, -122.0000) // ~334 m north - inside the 400 m prompt
         val end = LatLng(37.0030, -121.9960)
         return Route(
             polyline = listOf(a, turn, end),
@@ -346,13 +346,13 @@ class NavEngineTest {
         assertTrue("a prompt should use metres, got $spoken", spoken.any { it.contains("meter") })
     }
 
-    /** Vela SPEAKS the road name — "turn right onto Larch Way" — not the bare "turn right" modern
-     *  Google Maps shortened its voice cue to. We reuse the written instruction (which keeps the
-     *  name) for TTS, so the name must survive into the spoken event. */
+    /** Vela SPEAKS the road name - "turn right onto Larch Way" - not the bare "turn right" modern
+     * Google Maps shortened its voice cue to. We reuse the written instruction (which keeps the
+     * name) for TTS, so the name must survive into the spoken event. */
     @Test
     fun spokenPromptNamesTheRoad() {
         val a = LatLng(37.0000, -122.0000)
-        val turn = LatLng(37.0030, -122.0000)   // ~334 m north — inside the 400 m prompt, outside 150 m
+        val turn = LatLng(37.0030, -122.0000)   // ~334 m north - inside the 400 m prompt, outside 150 m
         val end = LatLng(37.0030, -121.9960)
         val route = Route(
             polyline = listOf(a, turn, end),
@@ -375,12 +375,12 @@ class NavEngineTest {
     }
 }
 
-/** The offline nav auditor ([NavReplay]) — replays a GPS track through the real engine and diffs
- *  the cards/voice against the plotted route's actual maneuver positions. These are the automation
- *  that lets a saved trip be checked without remembering where it went wrong. */
+/** The offline nav auditor ([NavReplay]) - replays a GPS track through the real engine and diffs
+ * the cards/voice against the plotted route's actual maneuver positions. These are the automation
+ * that lets a saved trip be checked without remembering where it went wrong. */
 class NavReplayTest {
 
-    /** Walk [poly] into evenly-spaced fixes (~[stepM] apart) that follow it exactly — a clean drive. */
+    /** Walk [poly] into evenly-spaced fixes (~[stepM] apart) that follow it exactly - a clean drive. */
     private fun densify(poly: List<LatLng>, stepM: Double = 15.0): List<LatLng> {
         val out = ArrayList<LatLng>()
         for (i in 0 until poly.size - 1) {
@@ -395,12 +395,12 @@ class NavReplayTest {
         return out
     }
 
-    /** North, then east, then north again — two real turns plus depart/arrive. */
+    /** North, then east, then north again - two real turns plus depart/arrive. */
     private fun lRoute(): Route {
         val a = LatLng(37.0000, -122.0000)
-        val c1 = LatLng(37.0100, -122.0000)  // ~1.11 km north — turn right
-        val c2 = LatLng(37.0100, -121.9900)  // ~0.89 km east — turn left
-        val end = LatLng(37.0200, -121.9900) // ~1.11 km north — arrive
+        val c1 = LatLng(37.0100, -122.0000)  // ~1.11 km north - turn right
+        val c2 = LatLng(37.0100, -121.9900)  // ~0.89 km east - turn left
+        val end = LatLng(37.0200, -121.9900) // ~1.11 km north - arrive
         return Route(
             polyline = listOf(a, c1, c2, end),
             legs = listOf(
@@ -424,7 +424,7 @@ class NavReplayTest {
         val report = NavReplay.analyze(route, densify(route.polyline), imperial = true)
 
         assertTrue("should produce per-fix cards", report.cards.isNotEmpty())
-        // Every real turn (not the DEPART — NavSession.start speaks that — nor the arrival) gets a
+        // Every real turn (not the DEPART - NavSession.start speaks that - nor the arrival) gets a
         // spoken pre-turn prompt and a turn-now cue. The engine advances past the DEPART silently.
         val realTurns = report.maneuvers.filter { it.type != ManeuverType.ARRIVE && it.type != ManeuverType.DEPART }
         assertTrue("every turn announced: ${report.summary()}", realTurns.all { it.announced })
@@ -436,19 +436,19 @@ class NavReplayTest {
         // The card distance tracks reality closely on a clean drive, and nothing is flagged.
         assertTrue("card error should stay small, was ${report.worstCardErrorM}", report.worstCardErrorM < 150.0)
         assertTrue("a clean drive must flag nothing:\n${report.summary()}", report.suspects.isEmpty())
-        // The analyzer's MEASUREMENTS must be right — that's what makes it trustworthy on real
+        // The analyzer's MEASUREMENTS must be right - that's what makes it trustworthy on real
         // logs: turns announced ~400 m out (the prompt distance), and the track passing through
         // each turn (nearest ≈ 0). These are the numbers I'll read off a shipped travel log.
         realTurns.filter { it.type != ManeuverType.DEPART }.forEach {
             val ahead = it.firstAnnounceAheadM ?: -1.0
-            assertTrue("turn ${it.index} announced $ahead out — expected ~400 m lead", ahead in 250.0..450.0)
+            assertTrue("turn ${it.index} announced $ahead out - expected ~400 m lead", ahead in 250.0..450.0)
             assertTrue("track should pass through turn ${it.index} (nearest ${it.nearestApproachM})", it.nearestApproachM < 20.0)
         }
     }
 
-    /** The diff/flagging logic itself — the heuristics that turn raw measurements into "this turn's
-     *  guidance disagreed with the blue line". Tested directly (the robust engine won't emit these
-     *  on a synthetic clean route, but a real Google-data glitch can). */
+    /** The diff/flagging logic itself - the heuristics that turn raw measurements into "this turn's
+     * guidance disagreed with the blue line". Tested directly (the robust engine won't emit these
+     * on a synthetic clean route, but a real Google-data glitch can). */
     @Test
     fun flagsTheGuidanceBugsButNotACleanTurn() {
         fun diff(
@@ -482,8 +482,8 @@ class NavReplayTest {
     }
 
     /** The whole shipped-log pipeline: encode a route + fixes in the exact on-device CSV format,
-     *  parse it back, and audit it — so a real travel log can be dropped in and analysed in one
-     *  call. Guards the TripStore ↔ TripLog format contract too. */
+     * parse it back, and audit it - so a real travel log can be dropped in and analysed in one
+     * call. Guards the TripStore ↔ TripLog format contract too. */
     @Test
     fun roundTripsAndAuditsASavedTripCsv() {
         val route = lRoute()
@@ -502,16 +502,16 @@ class NavReplayTest {
         assertEquals("every GPS fix parsed (route lines skipped)", fixes.size, parsed.points.size)
 
         val report = TripLog.audit(csv)
-            ?: throw AssertionError("audit returned null — the saved route didn't parse")
+            ?: throw AssertionError("audit returned null - the saved route didn't parse")
         assertTrue("end-to-end audit of a clean saved trip flags nothing:\n${report.summary()}", report.suspects.isEmpty())
     }
 
     /**
      * On-demand harness for a REAL shared travel log. Point it at a trip CSV exported from the
      * phone and it prints the per-maneuver audit plus the spoken-line timeline (where along the
-     * route each voice cue fired) — the concrete "how the cards/voice differ from the blue line".
+     * route each voice cue fired) - the concrete "how the cards/voice differ from the blue line".
      *
-     *   ./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=/abs/path/trip.csv --info
+     * ./gradlew :core:testDebugUnitTest --tests '*auditSharedTripLog' -DvelaTrip=/abs/path/trip.csv --info
      *
      * Skipped (not failed) when `-DvelaTrip` is unset, so normal/CI runs ignore it.
      */
@@ -522,7 +522,7 @@ class NavReplayTest {
         val csv = java.io.File(path!!).readText()
         val report = TripLog.audit(csv)
         if (report == null) {
-            println("[NavReplay] $path has no saved route — replay re-routes; nothing to diff against")
+            println("[NavReplay] $path has no saved route - replay re-routes; nothing to diff against")
             return
         }
         println("[NavReplay] auditing $path\n${report.summary()}")
@@ -534,9 +534,9 @@ class NavReplayTest {
 }
 
 /** Maneuver parsing pinned to the REAL keyless step markup (captured live from
- *  www.google.com/maps/preview/directions): a generic `maneuver='TURN'` token with the direction
- *  in a child `<turn side= type=>`. The old mapType only knew `TURN_LEFT`-style tokens, so every
- *  plain turn/ramp fell through to UNKNOWN — generic arrow + wrong haptic. */
+ * www.google.com/maps/preview/directions): a generic `maneuver='TURN'` token with the direction
+ * in a child `<turn side= type=>`. The old mapType only knew `TURN_LEFT`-style tokens, so every
+ * plain turn/ramp fell through to UNKNOWN - generic arrow + wrong haptic. */
 class DirectionsManeuverTest {
 
     @Test
@@ -577,12 +577,12 @@ class DirectionsManeuverTest {
 class PhotosParserTest {
 
     /** The hspqX response is the chunked batchexecute envelope: `)]}'`, a length
-     *  line, then the `["wrb.fr","hspqX",<payload-json-string>,…]` row. Photos live
-     *  at payload[0][i][6][0]; the FIFE size suffix is normalised. */
+     * line, then the `["wrb.fr","hspqX",<payload-json-string>,…]` row. Photos live
+     * at payload[0][i][6][0]; the FIFE size suffix is normalised. */
     @Test
     fun extractsUserPhotosAndDropsStreetView() {
         // Real anonymous responses interleave Street View thumbnails (no Google
-        // login) at the same [6][0] leaf — those must be filtered out, or they
+        // login) at the same [6][0] leaf - those must be filtered out, or they
         // render as non-loading placeholders.
         val payload = """[[["pid1",10,12,null,null,null,["https://lh3.googleusercontent.com/abc=w2117-h1000-k-no","",[4608,2176]]],""" +
             """["sv",0,1,null,null,null,["https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=xyz"]],""" +
@@ -627,8 +627,8 @@ class SearchParserHoursTest {
 
     private fun json(s: String) = Json.parseToJsonElement(s)
 
-    /** Day-entry shape from the live response — the `[203][0]` and `[118][0][3][0]`
-     *  formats share it: day name at `[0]`, hours text at `[3][0][0]`. */
+    /** Day-entry shape from the live response - the `[203][0]` and `[118][0][3][0]`
+     * formats share it: day name at `[0]`, hours text at `[3][0][0]`. */
     @Test
     fun parsesWeeklyHours() {
         val days = json(
@@ -668,7 +668,7 @@ class SearchParserHoursTest {
     }
 
     /** Some places' formatted address is prefixed with the business name; the sheet already shows the
-     *  name on its own line, so the parser strips a clean name prefix (only at a real word boundary). */
+     * name on its own line, so the parser strips a clean name prefix (only at a real word boundary). */
     @Test
     fun stripsBusinessNamePrefixFromAddress() {
         assertEquals("1451 W Covell Blvd, Sacramento, WA 95616",
@@ -679,7 +679,7 @@ class SearchParserHoursTest {
         assertEquals("100 Main St", SearchParser.stripNamePrefix("100 Main St", "Safeway"))
         // Prefix but no word boundary ("Safeway" vs "Safeways Plaza") → leave it, don't mangle.
         assertEquals("Safeways Plaza Dr", SearchParser.stripNamePrefix("Safeways Plaza Dr", "Safeway"))
-        // A bare space alone is NOT a boundary — the next token must be the street NUMBER, else a
+        // A bare space alone is NOT a boundary - the next token must be the street NUMBER, else a
         // street merely named after the place would be beheaded ("Plaza, …" / "Access Rd, Sacramento").
         assertEquals(
             "Safeway Plaza, 1451 W Covell Blvd",
@@ -693,7 +693,7 @@ class SearchParserHoursTest {
     }
 
     /** Price level derived from Google's dollar-range / symbol label (the response
-     *  never ships the classic 1–4), powering the price filter. */
+     * never ships the classic 1–4), powering the price filter. */
     @Test
     fun derivesPriceLevelFromLabel() {
         assertEquals(1, SearchParser.priceLevelOf("$1–10"))
@@ -707,9 +707,9 @@ class SearchParserHoursTest {
     }
 
     /** Phase-2: the parser reads every field from the *provided* path map, so a
-     *  remote calibration can relocate an index without an app update. Fixture
-     *  uses low indices (results at root[0]; name/coords/address shallow) — proving
-     *  parse() honours the supplied paths rather than the hard-coded ones. */
+     * remote calibration can relocate an index without an app update. Fixture
+     * uses low indices (results at root[0]; name/coords/address shallow) - proving
+     * parse() honours the supplied paths rather than the hard-coded ones. */
     @Test
     fun readsFieldsFromProvidedPaths() {
         val root = json(
@@ -750,7 +750,7 @@ class TransitParserTest {
 
     @Test
     fun parsesTransitItineraries() {
-        // each trip wraps its summary at [0] — root[0][1] = [[summary0],[summary1]]
+        // each trip wraps its summary at [0] - root[0][1] = [[summary0],[summary1]]
         val list = TransitParser.parse(Json.parseToJsonElement("[[null,[[$itin0],[$itin1]]]]"))
         assertEquals(2, list.size)
         val a = list[0]
@@ -792,13 +792,13 @@ class TransitParserTest {
         assertEquals(1, list.size)
         val steps = list[0].steps
         assertEquals(2, steps.size)
-        // leg 0 — a walk: no line, no board/alight time, but a duration + distance
+        // leg 0 - a walk: no line, no board/alight time, but a duration + distance
         assertEquals(TransitMode.WALK, steps[0].mode)
         assertEquals("7 min", steps[0].durationText)
         assertEquals("0.3 mi", steps[0].distanceText)
         assertEquals(null, steps[0].line)
         assertEquals(null, steps[0].departText)
-        // leg 1 — the ride: line, colour, board + alight times
+        // leg 1 - the ride: line, colour, board + alight times
         assertEquals(TransitMode.BUS, steps[1].mode)
         assertEquals("53 min", steps[1].durationText)
         assertEquals("42B", steps[1].line?.name)
@@ -849,7 +849,7 @@ class TransitParserTest {
         assertEquals("NE 10 Av & NE 180 Ter", ride.intermediateStops[0].name)
         assertEquals("4:37 PM", ride.intermediateStops[0].timeText)
         // itinerary-level agency phone + alerts (phone/alerts come from the ride leg's agency node;
-        // the agency NAME keeps the trip-summary value — here itin0's — by design).
+        // the agency NAME keeps the trip-summary value - here itin0's - by design).
         assertEquals("Amtrak Chartered Vehicle", trip.agency)
         assertEquals("1 (305) 891-3131", trip.agencyPhone)
         assertEquals(listOf("Route 9 / 9A - Southbound Midtown Detour"), trip.alerts)

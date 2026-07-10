@@ -50,7 +50,7 @@ class NavStopMarksTest {
     @Test fun outAndBackRouteKeepsMarksInStopOrder() {
         // Route goes west→east, then doubles back west: origin → B's location (outbound) → A → B (return).
         // Stops in travel order are [A (far end), B (hit on the RETURN pass)]. A global nearest-projection
-        // would give B its FIRST (outbound) pass — before A — firing its cue early and out of order; the
+        // would give B its FIRST (outbound) pass - before A - firing its cue early and out of order; the
         // windowed projection must place mark(B) after mark(A).
         val outAndBack = listOf(
             LatLng(47.60, -122.40), LatLng(47.60, -122.20), LatLng(47.60, -122.30),

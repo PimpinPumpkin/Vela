@@ -25,15 +25,15 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Fetches a place's reviews through a hidden [WebView] — the keyless reviews source after Google
+ * Fetches a place's reviews through a hidden [WebView] - the keyless reviews source after Google
  * **deleted** the old `listentitiesreviews` endpoint (now HTTP 404) and moved reviews behind a
  * `batchexecute` RPC (`rpcids=T4jwAf`) whose request proto resisted capture.
  *
  * Rather than replay that RPC, we let Google's own JS render the reviews (loading the place's
- * canonical `?cid=` page, anonymous/no-login, desktop UA — same tactic as [WebPhotoFetcher] and
+ * canonical `?cid=` page, anonymous/no-login, desktop UA - same tactic as [WebPhotoFetcher] and
  * `WebDirectionsFetcher`) and read them back out of the DOM: per review the star rating, author,
  * relative date, text **and the reviewer's uploaded photos** (the old endpoint only ever served
- * avatars — this is also how per-review photos finally arrive). The page builds a JSON array over a
+ * avatars - this is also how per-review photos finally arrive). The page builds a JSON array over a
  * JS bridge; [ReviewsWebParser] (in `:core`) turns it into [Review]s.
  *
  * Strictly best-effort + lazy: any failure/timeout returns empty and the place sheet just shows no
@@ -59,14 +59,14 @@ class WebReviewsFetcher @Inject constructor(
         }
 
         // Live "N reviews found so far" ticks from the scraper (the scrape runs ~10-40 s on busy
-        // pages — the UI shows this so the wait reads as progress, not a hang). Arrives on the
-        // WebView's JavaBridge thread — the callback must be thread-safe.
+        // pages - the UI shows this so the wait reads as progress, not a hang). Arrives on the
+        // WebView's JavaBridge thread - the callback must be thread-safe.
         @JavascriptInterface
         fun onProgress(id: String, n: Int) {
             progress[id]?.invoke(n)
         }
 
-        // The accumulated reviews SO FAR, sent whenever the count grows — the sheet streams them
+        // The accumulated reviews SO FAR, sent whenever the count grows - the sheet streams them
         // into the list under the progress bar instead of making the user stare at a bar for 30 s.
         // Same JavaBridge thread; parse failures are dropped (the final onResult is authoritative).
         @JavascriptInterface
@@ -76,10 +76,10 @@ class WebReviewsFetcher @Inject constructor(
         }
     }
 
-    /** Reviews for [featureId] (`0x..:0x..`) — newest/most-relevant first as Google renders them,
-     *  each with its uploaded photos — or empty on any failure. [onProgress] streams the running
-     *  count while the scrape is in flight; [onPartial] streams the accumulated reviews themselves
-     *  (a growing prefix of the final result). Both are called off the main thread. */
+    /** Reviews for [featureId] (`0x..:0x..`) - newest/most-relevant first as Google renders them,
+     * each with its uploaded photos - or empty on any failure. [onProgress] streams the running
+     * count while the scrape is in flight; [onPartial] streams the accumulated reviews themselves
+     * (a growing prefix of the final result). Both are called off the main thread. */
     suspend fun fetch(
         featureId: String,
         onProgress: (Int) -> Unit = {},
@@ -99,7 +99,7 @@ class WebReviewsFetcher @Inject constructor(
                         val ready = CompletableDeferred<Unit>()
                         wv.webViewClient = object : WebViewClient() {
                             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                                // Only google.com pages — a stray click on an external link (e.g. the
+                                // Only google.com pages - a stray click on an external link (e.g. the
                                 // place's website/menu action) must not navigate the hidden WebView away.
                                 val u = request?.url ?: return false
                                 val scheme = u.scheme
@@ -111,7 +111,7 @@ class WebReviewsFetcher @Inject constructor(
                                 main.postDelayed({ if (!ready.isCompleted) ready.complete(Unit) }, SETTLE_MS)
                             }
                         }
-                        // Blank the PREVIOUS place's DOM before navigating — a slow load could otherwise
+                        // Blank the PREVIOUS place's DOM before navigating - a slow load could otherwise
                         // let the MAX_LOAD fallback inject the scraper into the old page and return the
                         // previous place's reviews for THIS featureId (empty > wrong).
                         wv.evaluateJavascript("try{document.documentElement.innerHTML=''}catch(e){}", null)
@@ -132,8 +132,8 @@ class WebReviewsFetcher @Inject constructor(
         }
     }
 
-    /** The Google "cid" = the LOW half of the `0xHIGH:0xLOW` feature id as an unsigned decimal — the
-     *  canonical `maps.google.com?cid=` deep-link to a place. */
+    /** The Google "cid" = the LOW half of the `0xHIGH:0xLOW` feature id as an unsigned decimal - the
+     * canonical `maps.google.com?cid=` deep-link to a place. */
     private fun cidOf(featureId: String): String? {
         val low = featureId.substringAfter(":", "").removePrefix("0x").ifBlank { return null }
         return runCatching { BigInteger(low, 16).toString() }.getOrNull()
@@ -152,7 +152,7 @@ class WebReviewsFetcher @Inject constructor(
         // virtualized + lazy-loaded off the scroll viewport; a 0×0 headless WebView renders the chrome
         // (rating histogram, topic filters) but NEVER the review cards. A tall explicit layout makes the
         // scroll pane real so the list renders + pages. (The photo gallery's category grids need the
-        // same treatment — see WebPhotoFetcher.)
+        // same treatment - see WebPhotoFetcher.)
         wv.measure(
             android.view.View.MeasureSpec.makeMeasureSpec(WV_WIDTH, android.view.View.MeasureSpec.EXACTLY),
             android.view.View.MeasureSpec.makeMeasureSpec(WV_HEIGHT, android.view.View.MeasureSpec.EXACTLY),
@@ -169,10 +169,10 @@ class WebReviewsFetcher @Inject constructor(
     }
 
     /** Self-polling DOM scraper: open the full reviews list, then scroll it a window at a time,
-     *  ACCUMULATING each review card into a keyed set (Google virtualizes the panel — it recycles
-     *  DOM nodes as you scroll, so any single snapshot holds only ~10 cards; the union across scroll
-     *  positions is the full list). Bridges the accumulated JSON array back once the list is exhausted
-     *  or the cap is hit. */
+     * ACCUMULATING each review card into a keyed set (Google virtualizes the panel - it recycles
+     * DOM nodes as you scroll, so any single snapshot holds only ~10 cards; the union across scroll
+     * positions is the full list). Bridges the accumulated JSON array back once the list is exhausted
+     * or the cap is hit. */
     private fun extractScript(id: String): String {
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
@@ -183,14 +183,14 @@ class WebReviewsFetcher @Inject constructor(
               function num(s){ var m=(s||'').match(/([0-9.]+)\s*star/i); return m?Math.round(parseFloat(m[1])):0; }
               function t1(c,sel){ var e=c.querySelector(sel); return e?(e.textContent||'').trim():''; }
               function extract(){
-                // Review cards are `.jJc9Ad`, each with a unique `data-review-id` — far more robust than the
+                // Review cards are `.jJc9Ad`, each with a unique `data-review-id` - far more robust than the
                 // old "div with one star + text" heuristic, which also matched the place header ("4.6 stars
                 // (57,969)") and affiliate ticket cards, and missed most real reviews.
                 var revs=[].slice.call(document.querySelectorAll('.jJc9Ad'));
                 return revs.map(function(c){
                   var idEl=c.querySelector('[data-review-id]'); var rid=idEl?(idEl.getAttribute('data-review-id')||''):'';
                   var star=c.querySelector('[role="img"][aria-label*="star" i], span[aria-label*=" star" i]');
-                  // author: Google's review name class, else pull the NAME out of a button aria — the
+                  // author: Google's review name class, else pull the NAME out of a button aria - the
                   // name is always right before "'s review" (after a "Share "/"Photo N on " prefix) or
                   // after "Photo of ". (Class names rotate; the aria phrasing is stable + semantic.)
                   var author=t1(c,'.d4r55')||t1(c,'.Vpc5Fe')||t1(c,'.TSUbDb');
@@ -203,11 +203,11 @@ class WebReviewsFetcher @Inject constructor(
                   var text=t1(c,'.wiI7pd');
                   if(!text){ var best=0; [].slice.call(c.querySelectorAll('span')).forEach(function(s){ if(s.childElementCount===0){ var tt=(s.textContent||'').trim(); if(tt.length>best && tt.length>12 && !/^(see more|more|like|share|response from|local guide)/i.test(tt) && !/\bstar/i.test(tt)){ best=tt.length; text=tt; } } }); }
                   // relative date. `.rsqaWe` is the date element when present; else scan leaf spans.
-                  // The old fallback grabbed the FIRST span merely CONTAINING "ago" (tt<22, /\bago\b/) —
+                  // The old fallback grabbed the FIRST span merely CONTAINING "ago" (tt<22, /\bago\b/) -
                   // which also matches a short sentence in the review body ("been pthere ago"… any body
                   // span with "ago") and only knew English "ago"/bare-year. Anchor to the full relative-
                   // date shape ("10 months ago", "a year ago", "Edited 2 weeks ago") or a lone year,
-                  // skip owner "Response" lines, and skip spans whose text is part of the review body —
+                  // skip owner "Response" lines, and skip spans whose text is part of the review body -
                   // so we pick the real date, not a phrase out of the prose.
                   var date=t1(c,'.rsqaWe');
                   if(!date){ var body=(text||'').toLowerCase();
@@ -219,7 +219,7 @@ class WebReviewsFetcher @Inject constructor(
                   var photos=[];
                   function addPhoto(u){ if(u && u!==avatar && /googleusercontent/.test(u) && !/\/a[\/-]|ACg8oc|ALV-/.test(u) && photos.indexOf(u)<0) photos.push(u); }
                   // Uploaded review photos are a <button>/<a> with a background-image on most layouts, but
-                  // some cards expose them as plain <img> tiles — collect BOTH (avatar-filtered) so a card
+                  // some cards expose them as plain <img> tiles - collect BOTH (avatar-filtered) so a card
                   // whose photos aren't button-backed still gets a tappable, author·date-captioned strip.
                   // (Was button-background-only, which silently dropped the whole strip on those cards.)
                   [].slice.call(c.querySelectorAll('button,a')).forEach(function(b){
@@ -236,7 +236,7 @@ class WebReviewsFetcher @Inject constructor(
               function expand(){ [].slice.call(document.querySelectorAll('button')).forEach(function(b){ var l=((b.getAttribute('aria-label')||b.textContent)||'').trim(); if(/^(see more|more)${'$'}/i.test(l)){ try{ b.click(); }catch(e){} } }); }
               // De-dupe across scroll windows by the review's stable id (falls back to author+date+text).
               function key(x){ return x.rid || ((x.a||'')+'|'+(x.d||'')+'|'+((x.t||'').slice(0,48))); }
-              // The accumulated reviews so far, capped — used for both the partial streams and the
+              // The accumulated reviews so far, capped - used for both the partial streams and the
               // final result, so a partial is always a prefix-consistent snapshot of the final list.
               function snap(){ var o=[]; for(var k in acc) o.push(acc[k]); return o.slice(0,CAP); }
               // Scroll each tall left-column panel down by ~80% of a viewport (windows overlap so no
@@ -253,10 +253,10 @@ class WebReviewsFetcher @Inject constructor(
               }
               // Open the FULL reviews list. The canonical entry is the "Reviews" role=tab; fall back to a
               // "More reviews" button for layouts that only expose that. On busy pages (food/retail) the
-              // tab's list can take ~8 s to render after the click — the idle-bail is gated on `sawCards`
+              // tab's list can take ~8 s to render after the click - the idle-bail is gated on `sawCards`
               // below so we never quit during that blank window (that was the "only 3 reviews" bug).
               function openFull(){
-                // Prefer the "Reviews" role=tab. Click it every tick UNTIL it actually reports selected —
+                // Prefer the "Reviews" role=tab. Click it every tick UNTIL it actually reports selected -
                 // a click on a not-yet-hydrated tab silently no-ops, so one-and-done can leave the list
                 // unopened. Once selected we latch `opened` and STOP clicking: re-clicking a selected-but-
                 // still-loading list restarts its ~8 s render (that regression turned busy pages back to 3).
@@ -270,7 +270,7 @@ class WebReviewsFetcher @Inject constructor(
                     return;
                   }
                 }
-                // No reviews tab in this layout — fall back to the "More reviews" button. Unlike the
+                // No reviews tab in this layout - fall back to the "More reviews" button. Unlike the
                 // tab there's no aria-selected to confirm the click took, so it's clicked once and
                 // the tick loop re-arms it ONE time if nothing ever renders (a not-yet-hydrated
                 // button silently no-ops, same as the tab).
@@ -280,11 +280,11 @@ class WebReviewsFetcher @Inject constructor(
               }
               function tick(){
                 tries++;
-                // Let the SPA hydrate a beat before clicking the Reviews tab — clicking a not-yet-live
+                // Let the SPA hydrate a beat before clicking the Reviews tab - clicking a not-yet-live
                 // tab on tick 1 can silently no-op, and then the list only renders much later.
                 if(tries>=2) openFull();
                 expand();
-                // ACCUMULATE this window's cards (don't replace) — the panel virtualizes, so each
+                // ACCUMULATE this window's cards (don't replace) - the panel virtualizes, so each
                 // scroll position exposes a fresh ~10 that would otherwise be lost when recycled.
                 var revs=extract();
                 for(var i=0;i<revs.length;i++){ var k=key(revs[i]); if(k.length>2 && !acc[k]){ acc[k]=revs[i]; accN++; } }
@@ -308,18 +308,18 @@ class WebReviewsFetcher @Inject constructor(
                 noGrow = (accN===lastN) ? noGrow+1 : 0;
                 lastN=accN;
                 // Button-path no-op retry: the click was fired blind (no aria-selected to confirm)
-                // and nothing has rendered since — re-arm openFull once. Tab clicks self-retry.
+                // and nothing has rendered since - re-arm openFull once. Tab clicks self-retry.
                 if(opened && openedBy==='btn' && !everCards && tries>=openedAt+18 && btnReclicks<1){ opened=false; openedAt=-1; btnReclicks++; }
                 // Idle-bail ONLY while cards are actually on screen. When an entry (tab/button)
                 // exists but hasn't opened yet, hold longer so a late-hydrating tab still gets its
                 // click; a layout with NO entry at all (a tiny place whose full list IS the
-                // overview) settles quickly — there's nothing more to open.
+                // overview) settles quickly - there's nothing more to open.
                 var settled = cardsNow && (opened ? tries>=openedAt+13 : (sawEntry ? tries>=30 : tries>=17));
-                // Zero-review places: no card will EVER render, so "settled" never fires — bail on
+                // Zero-review places: no card will EVER render, so "settled" never fires - bail on
                 // a generous empty deadline instead of grinding to the 60-tick hard stop (~33 s of
                 // blank spinner on every review-less place).
                 var emptyDone = !everCards && accN===0 && (opened ? tries>=openedAt+52 : tries>=65);
-                // Idle patience: the OPENED full list pages over the network — Google's lazy-loader
+                // Idle patience: the OPENED full list pages over the network - Google's lazy-loader
                 // routinely takes >2 s to fetch the next ~10 on a busy place, and 4 quiet ticks
                 // (2.2 s) misread that as "done" (Taco Bell returned ~15 of 612). The unopened
                 // overview has nothing to page, so it keeps the short fuse.
@@ -338,12 +338,12 @@ class WebReviewsFetcher @Inject constructor(
     }
 
     private companion object {
-        // Must outlast the script's own hard stop (60 ticks × 550 ms ≈ 33 s + page load) — if Kotlin
+        // Must outlast the script's own hard stop (60 ticks × 550 ms ≈ 33 s + page load) - if Kotlin
         // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
         const val TOTAL_TIMEOUT_MS = 45_000L
         const val SETTLE_MS = 150L
         const val MAX_LOAD_MS = 7_000L
-        // Offscreen viewport for the headless WebView — tall so the virtualized review list renders a
+        // Offscreen viewport for the headless WebView - tall so the virtualized review list renders a
         // healthy batch per scroll position.
         const val WV_WIDTH = 1200
         const val WV_HEIGHT = 6000

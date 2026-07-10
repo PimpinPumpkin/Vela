@@ -17,7 +17,7 @@ import javax.inject.Singleton
 data class VoiceEngine(val packageName: String, val label: String)
 
 /**
- * Spoken guidance via AOSP [TextToSpeech] — no Play Services dependency, works
+ * Spoken guidance via AOSP [TextToSpeech] - no Play Services dependency, works
  * on every ROM. Stock AOSP ships Pico (robotic); GrapheneOS users typically add
  * RHVoice/eSpeak NG from F-Droid, so we enumerate installed engines and let the
  * user pick one ([availableEngines] + [enginePackage]) rather than hard-coding
@@ -31,7 +31,7 @@ class VoiceGuide @Inject constructor(
     private var tts: TextToSpeech? = null
 
     /** Speech-rate multiplier (1.0 = normal, >1 = faster), settable live from Settings. Applied to the
-     *  Android TextToSpeech engine; the neural voice reads its own `voice_speed` pref per utterance. */
+     * Android TextToSpeech engine; the neural voice reads its own `voice_speed` pref per utterance. */
     @Volatile private var speechRate = 0.97f
     fun setRate(rate: Float) {
         speechRate = rate.coerceIn(0.5f, 2.0f)
@@ -47,31 +47,31 @@ class VoiceGuide @Inject constructor(
     // that language instead of mangling it through the wrong voice. `tts` holds EITHER the user's
     // chosen system engine (useNeural=false) OR this lazily-created default fallback (useNeural=true).
     private var systemReady = false
-    // Set when the system-TTS engine's onInit FAILED — so speakViaSystem stops queueing into `pending`
+    // Set when the system-TTS engine's onInit FAILED - so speakViaSystem stops queueing into `pending`
     // forever (unbounded growth + a stale backlog that a later successful init would replay). Reset on a
     // successful init.
     private var systemInitFailed = false
     private var lastSystemLang: String? = null // avoid re-running setLanguage/selectBestVoice each utterance
 
     /** Invoked with a language code when guidance CAN'T speak that language (no matching neural voice
-     *  AND the system TTS has no voice for it) — the UI surfaces a "download a &lt;language&gt; voice"
-     *  hint so nav isn't silently mute. Set by `:app`. */
+     * AND the system TTS has no voice for it) - the UI surfaces a "download a &lt;language&gt; voice"
+     * hint so nav isn't silently mute. Set by `:app`. */
     var langUnavailable: ((String) -> Unit)? = null
 
     /** Vela's in-process neural voice (Piper/sherpa-onnx), wired from `:app` where the native
-     *  runtime lives. When the user selects [VelaPiper.ENGINE_ID], guidance goes here instead of
-     *  Android TextToSpeech. Null until wired / on a build without it. */
+     * runtime lives. When the user selects [VelaPiper.ENGINE_ID], guidance goes here instead of
+     * Android TextToSpeech. Null until wired / on a build without it. */
     var neural: NeuralSynth? = null
     private var useNeural = false
 
-    /** The language the nav text is currently GENERATED in (`NavStringsRegistry`) — the language the
-     *  chosen voice must actually be able to speak. */
+    /** The language the nav text is currently GENERATED in (`NavStringsRegistry`) - the language the
+     * chosen voice must actually be able to speak. */
     private fun targetLang(): String =
         app.vela.core.i18n.NavStringsRegistry.current().locale.language.ifBlank { "en" }
 
     /** TTS health for the UI: null = initialising, true = a usable voice is ready,
-     *  false = init failed or the chosen language has no installed voice data. Lets
-     *  Settings tell the user *why* it's silent instead of failing quietly. */
+     * false = init failed or the chosen language has no installed voice data. Lets
+     * Settings tell the user *why* it's silent instead of failing quietly. */
     @Volatile
     var working: Boolean? = null
         private set
@@ -88,7 +88,7 @@ class VoiceGuide @Inject constructor(
     private var focusRequest: AudioFocusRequest? = null
     // Audio focus is held for the whole speech BURST, refcounted per utterance. The old
     // per-utterance request/abandon pair broke on queued prompts: speak(B) overwrote A's
-    // request (leaking it), then A's onDone abandoned B's — the driver's music snapped back
+    // request (leaking it), then A's onDone abandoned B's - the driver's music snapped back
     // to full volume exactly while "Turn right onto Main St" was being spoken over it.
     private val focusLock = Any()
     private var activeUtterances = 0
@@ -97,12 +97,12 @@ class VoiceGuide @Inject constructor(
     private val focusHandler = android.os.Handler(android.os.Looper.getMainLooper())
     // Abandon focus a beat AFTER the last prompt ends (see releaseFocus) rather than instantly, so the
     // driver's music stays ducked CONTINUOUSLY across closely-spaced prompts instead of snapping back to
-    // full between them — the "didn't reliably duck / not ducking enough" bug.
+    // full between them - the "didn't reliably duck / not ducking enough" bug.
     private val abandonFocusRunnable = Runnable {
         synchronized(focusLock) { if (activeUtterances == 0) abandonFocus() }
     }
     private val focusListener = AudioManager.OnAudioFocusChangeListener { change ->
-        // A phone call / VOIP taking focus must SILENCE guidance — without this listener Vela
+        // A phone call / VOIP taking focus must SILENCE guidance - without this listener Vela
         // would announce turns over ringing and active calls. The next scheduled prompt re-fires
         // naturally once the call releases focus.
         if (change == AudioManager.AUDIOFOCUS_LOSS || change == AudioManager.AUDIOFOCUS_LOSS_TRANSIENT) {
@@ -111,13 +111,13 @@ class VoiceGuide @Inject constructor(
             focusHandler.removeCallbacks(abandonFocusRunnable)
             synchronized(focusLock) {
                 activeUtterances = 0
-                abandonFocus() // inside the lock — atomic with a racing acquire's count+request
+                abandonFocus() // inside the lock - atomic with a racing acquire's count+request
             }
         }
     }
 
     private fun acquireFocus() {
-        focusHandler.removeCallbacks(abandonFocusRunnable) // cancel a pending release — keep the duck continuous
+        focusHandler.removeCallbacks(abandonFocusRunnable) // cancel a pending release - keep the duck continuous
         synchronized(focusLock) {
             activeUtterances += 1
             if (!focusHeld) requestFocus() // still held from the last prompt? don't re-request
@@ -146,12 +146,12 @@ class VoiceGuide @Inject constructor(
     }
 
     /** Initialise, or **re-initialise** if [enginePackage] differs from the engine
-     *  currently loaded — so picking a different engine in Settings actually takes
-     *  effect (the old idempotent guard ignored later picks). */
+     * currently loaded - so picking a different engine in Settings actually takes
+     * effect (the old idempotent guard ignored later picks). */
     fun init(enginePackage: String? = null) {
-        // One of Vela's own in-process neural voices (vela.piper) — no Android TextToSpeech
+        // One of Vela's own in-process neural voices (vela.piper) - no Android TextToSpeech
         // involved. The right synth is wired into [neural] by MapViewModel first. Do NOT shut the
-        // system `tts` down here — it stays as the fallback for languages the neural voice can't
+        // system `tts` down here - it stays as the fallback for languages the neural voice can't
         // speak (see speakViaSystem); an unused instance is cheap.
         if (enginePackage != null && enginePackage.startsWith("vela.")) {
             if (useNeural && enginePackage == currentEngine) return
@@ -187,7 +187,7 @@ class VoiceGuide @Inject constructor(
         tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
             override fun onStart(utteranceId: String?) {}
             override fun onDone(utteranceId: String?) = releaseFocus()
-            // QUEUE_FLUSH fires onStop (not onDone) for the flushed utterance — without this
+            // QUEUE_FLUSH fires onStop (not onDone) for the flushed utterance - without this
             // override every interrupt stranded a refcount and focus never released.
             override fun onStop(utteranceId: String?, interrupted: Boolean) = releaseFocus()
             @Deprecated("deprecated") override fun onError(utteranceId: String?) {
@@ -198,7 +198,7 @@ class VoiceGuide @Inject constructor(
     }
 
     /** Speak a sample so the user can confirm the engine actually makes sound (the
-     *  only true test on their hardware — we can't hear it for them). */
+     * only true test on their hardware - we can't hear it for them). */
     fun test() = speak(app.vela.core.i18n.NavStringsRegistry.current().voiceTest(), interrupt = true)
 
     override fun onInit(status: Int) {
@@ -207,12 +207,12 @@ class VoiceGuide @Inject constructor(
             systemReady = false
             systemInitFailed = true
             if (!useNeural) working = false // the PRIMARY engine failed to start
-            pending.clear() // nothing can speak the backlog — drop it instead of replaying it on a later init
+            pending.clear() // nothing can speak the backlog - drop it instead of replaying it on a later init
             if (useNeural) langUnavailable?.invoke(targetLang()) // fallback engine dead → "download a <lang> voice"
             return
         }
         // A measured pace + neutral pitch reads more like a real nav voice than the engine default.
-        // The LANGUAGE is set per-utterance now (speakViaSystem), keyed on the nav-text language —
+        // The LANGUAGE is set per-utterance now (speakViaSystem), keyed on the nav-text language -
         // so a mid-drive app/system-language change is honoured and the engine never reads a
         // language it has no voice for.
         t.setSpeechRate(speechRate)
@@ -227,9 +227,9 @@ class VoiceGuide @Inject constructor(
         }
     }
 
-    /** Pick the highest-quality voice for [lang] that works offline — engines
-     *  often default to a low-quality or download-required voice; this lifts
-     *  guidance to the best installed one so it sounds natural in the car. */
+    /** Pick the highest-quality voice for [lang] that works offline - engines
+     * often default to a low-quality or download-required voice; this lifts
+     * guidance to the best installed one so it sounds natural in the car. */
     private fun selectBestVoice(t: TextToSpeech, lang: Locale) {
         runCatching {
             val best = t.voices.orEmpty()
@@ -244,10 +244,10 @@ class VoiceGuide @Inject constructor(
     }
 
     /** Every TTS engine the user can pick: Vela's neural voice first (when its model is downloaded),
-     *  then every system TTS engine installed on the phone. Enumerated via [android.content.pm.PackageManager]
-     *  (the TTS_SERVICE intent) so the list is complete even when no Android [TextToSpeech] instance
-     *  is active — e.g. while the neural voice is the current engine and `tts` is null. */
-    // Cache the SLOW part — enumerating system TTS engines is a PackageManager binder IPC plus a
+     * then every system TTS engine installed on the phone. Enumerated via [android.content.pm.PackageManager]
+     * (the TTS_SERVICE intent) so the list is complete even when no Android [TextToSpeech] instance
+     * is active - e.g. while the neural voice is the current engine and `tts` is null. */
+    // Cache the SLOW part - enumerating system TTS engines is a PackageManager binder IPC plus a
     // per-engine loadLabel (resource load), which took >5 s on a slow flip phone and ANR'd the UI
     // when called in composition. System engines don't install/uninstall mid-session, so cache the
     // list for the process; the Vela neural entry is recomputed each call so it appears the instant
@@ -285,10 +285,10 @@ class VoiceGuide @Inject constructor(
         val n = neural
         // Use the neural voice ONLY when it can actually speak the target language. A single-
         // language Piper model reading another language's text is gibberish (the "English voice
-        // read Russian" bug) — voiceLanguage==null means unknown → trust it (old behaviour).
+        // read Russian" bug) - voiceLanguage==null means unknown → trust it (old behaviour).
         if (useNeural && n != null && n.voiceLanguage.let { it == null || it == t }) {
             // The neural synth fires onDone exactly ONCE per speak() (including aborted/
-            // interrupted utterances — PiperSynth's finally), so the refcount balances without
+            // interrupted utterances - PiperSynth's finally), so the refcount balances without
             // any interrupt special-casing. Do NOT reset the count here: the interrupted
             // utterance's own onDone is still in flight and a reset would double-count it,
             // abandoning focus while the interrupting prompt speaks.
@@ -299,14 +299,14 @@ class VoiceGuide @Inject constructor(
         speakViaSystem(text, interrupt, t)
     }
 
-    /** Speak through Android TextToSpeech in language [t] — the user's chosen system engine, or a
-     *  lazily-created default engine when the neural voice can't cover [t]. If the system TTS has no
-     *  voice for [t] either, stay SILENT (never read [t]'s text with a non-[t] voice) and surface the
-     *  download hint. */
+    /** Speak through Android TextToSpeech in language [t] - the user's chosen system engine, or a
+     * lazily-created default engine when the neural voice can't cover [t]. If the system TTS has no
+     * voice for [t] either, stay SILENT (never read [t]'s text with a non-[t] voice) and surface the
+     * download hint. */
     private fun speakViaSystem(text: String, interrupt: Boolean, t: String) {
         val engine = tts ?: run { ensureSystemTts(); null }
         if (engine == null || !systemReady) {
-            if (systemInitFailed) langUnavailable?.invoke(t) // init already failed — don't queue into a void forever
+            if (systemInitFailed) langUnavailable?.invoke(t) // init already failed - don't queue into a void forever
             else pending.addLast(text to interrupt) // drained by onInit once the fallback engine is ready
             return
         }
@@ -314,7 +314,7 @@ class VoiceGuide @Inject constructor(
             val avail = runCatching { engine.setLanguage(Locale(t)) }.getOrDefault(TextToSpeech.LANG_NOT_SUPPORTED)
             if (avail < TextToSpeech.LANG_AVAILABLE) {
                 working = false
-                langUnavailable?.invoke(t) // "download a <language> voice" — don't mangle it through the wrong one
+                langUnavailable?.invoke(t) // "download a <language> voice" - don't mangle it through the wrong one
                 return
             }
             selectBestVoice(engine, Locale(t))
@@ -330,7 +330,7 @@ class VoiceGuide @Inject constructor(
         val result = engine.speak(forSpeech(text), mode, null, "vela-${text.hashCode()}")
         if (result == TextToSpeech.ERROR) {
             // The utterance was never enqueued, so NONE of the onDone/onStop/onError callbacks that
-            // release focus will ever fire for it — roll back the acquire here or music stays ducked
+            // release focus will ever fire for it - roll back the acquire here or music stays ducked
             // forever (audit 2026-07-06). Also surface the dead engine like the onError path does.
             releaseFocus()
             working = false
@@ -338,7 +338,7 @@ class VoiceGuide @Inject constructor(
     }
 
     /** Lazily create the DEFAULT system TTS engine as the neural-mismatch fallback, without touching
-     *  the neural selection (`useNeural`/`currentEngine` stay put). Its `onInit` sets [systemReady]. */
+     * the neural selection (`useNeural`/`currentEngine` stay put). Its `onInit` sets [systemReady]. */
     private fun ensureSystemTts() {
         if (tts != null) return
         systemReady = false
@@ -348,9 +348,9 @@ class VoiceGuide @Inject constructor(
     }
 
     /** Expand road abbreviations so the engine SAYS them instead of spelling them: "St" →
-     *  "Street", "Pkwy" → "Parkway", "N" → "North", "I-80" → "Interstate 80". Google's markup
-     *  (and so the on-screen banner) keeps the compact forms; this is for the spoken text only.
-     *  Whole-word, so it never mangles a name that merely contains the letters. */
+     * "Street", "Pkwy" → "Parkway", "N" → "North", "I-80" → "Interstate 80". Google's markup
+     * (and so the on-screen banner) keeps the compact forms; this is for the spoken text only.
+     * Whole-word, so it never mangles a name that merely contains the letters. */
     private fun forSpeech(text: String): String =
         app.vela.core.i18n.NavStringsRegistry.current().expandForSpeech(text)
 
@@ -372,16 +372,16 @@ class VoiceGuide @Inject constructor(
 
     private fun requestFocus() {
         val am = audioManager ?: return
-        // ONE request object reused for the burst (see acquire/releaseFocus) — building a fresh request
+        // ONE request object reused for the burst (see acquire/releaseFocus) - building a fresh request
         // per utterance is what leaked the previous one. GAIN_TRANSIENT_MAY_DUCK, NOT plain GAIN_TRANSIENT:
-        // MAY_DUCK is OS-managed — the system ducks the driver's music AND auto-restores it when we abandon,
+        // MAY_DUCK is OS-managed - the system ducks the driver's music AND auto-restores it when we abandon,
         // bulletproof. Plain TRANSIENT PAUSES the media, and many players don't reliably auto-resume when
         // focus is handed back ("Vela paused the music and didn't restart it"). The real cause of the
         // earlier "not ducking enough" was the FLAPPING (focus dropped between every prompt → music popped
-        // back to full mid-turn), which the release-hold above fixes — so the duck is now continuous, which
+        // back to full mid-turn), which the release-hold above fixes - so the duck is now continuous, which
         // is what actually reads as "ducked", without the pause-and-never-resume risk. (Duck DEPTH is set by
         // the OS/player and isn't tunable via the focus API; pause is the only thing deeper, and its resume
-        // is unreliable — so continuous MAY_DUCK is the safe answer.)
+        // is unreliable - so continuous MAY_DUCK is the safe answer.)
         val req = focusRequest ?: run {
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE)
@@ -393,7 +393,7 @@ class VoiceGuide @Inject constructor(
                 .build()
                 .also { focusRequest = it }
         }
-        // Track whether we actually got focus — a FAILED request means the media app never ducked
+        // Track whether we actually got focus - a FAILED request means the media app never ducked
         // (so Vela would speak over full-volume audio and never know); GRANTED or DELAYED both hold.
         focusHeld = am.requestAudioFocus(req) != AudioManager.AUDIOFOCUS_REQUEST_FAILED
     }
@@ -412,4 +412,4 @@ class VoiceGuide @Inject constructor(
     }
 }
 // (Road-abbreviation → spoken-form expansion moved to EnNavStrings.expandForSpeech in core/i18n, so it's
-//  English-scoped and opt-in — other languages leave road names untouched.)
+//  English-scoped and opt-in - other languages leave road names untouched.)

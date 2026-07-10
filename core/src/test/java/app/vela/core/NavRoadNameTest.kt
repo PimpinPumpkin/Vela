@@ -42,7 +42,7 @@ class NavRoadNameTest {
             assertEquals(ManeuverType.TURN_RIGHT, it.type)
         }
         // Google's feed has no <road> for this turn, so the honest keyless text is the bare turn
-        // (NOT a bug — there is no street name to say). Documents the real ceiling.
+        // (NOT a bug - there is no street name to say). Documents the real ceiling.
         assertEquals("Turn left", DirectionsParser.parseStep(BARE).instruction)
     }
 
@@ -74,7 +74,7 @@ class NavRoadNameTest {
             events.filterIsInstance<NavEvent.Speak>().forEach { spoken += it.text }
             d += 20.0
         }
-        println("MOCK DRIVE — spoken announcements:\n  " + spoken.joinToString("\n  "))
+        println("MOCK DRIVE - spoken announcements:\n  " + spoken.joinToString("\n  "))
 
         // The road-bearing turns MUST be announced with the street (the user's ask).
         assertTrue("expected an 'onto Ave C' announcement, got $spoken", spoken.any { it.contains("onto Ave C") })

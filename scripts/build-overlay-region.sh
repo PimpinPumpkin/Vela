@@ -6,20 +6,20 @@
 # build-routing-region.sh.
 #
 # TWO data sources (both Microsoft, both ODbL), picked by the SOURCE env var:
-#   SOURCE=us-legacy (default) — a US STATE from Microsoft US Building Footprints, one .geojson.zip:
+#   SOURCE=us-legacy (default) - a US STATE from Microsoft US Building Footprints, one .geojson.zip:
 #     scripts/build-overlay-region.sh washington "Washington (state)" \
 #       https://minedbuildings.z5.web.core.windows.net/legacy/usbuildings-v2/Washington.geojson.zip \
 #       "45.54,-124.85,49.00,-116.92"
-#   SOURCE=ms-global LOCATION=<Name> [QKPREFIX=<prefix>] — a COUNTRY (or a sub-national CHUNK of one) from
+#   SOURCE=ms-global LOCATION=<Name> [QKPREFIX=<prefix>] - a COUNTRY (or a sub-national CHUNK of one) from
 #     Microsoft's Global ML Building Footprints (quadkey-partitioned GeoJSONL under global-buildings/, listed
-#     in dataset-links.csv). The 3rd arg (URL) is ignored — pass "-"; LOCATION is the dataset's Location column
+#     in dataset-links.csv). The 3rd arg (URL) is ignored - pass "-"; LOCATION is the dataset's Location column
 #     (spaces stripped, e.g. "Andorra"). QKPREFIX (optional) builds only the quadkeys whose key starts with it,
 #     so a giant country is split into buildable/hostable pieces (the app picks the chunk covering the user):
 #     SOURCE=ms-global LOCATION=Andorra scripts/build-overlay-region.sh andorra "Andorra" - "42.42,1.41,42.66,1.79"
 #     SOURCE=ms-global LOCATION=India QKPREFIX=13 scripts/build-overlay-region.sh india-13 "India (part)" - "<bbox>"
 #
 # Needs: gh (authenticated), tippecanoe, jq, unzip, curl, gzip. LICENSE: Microsoft Building Footprints is
-# ODbL — a DATA licence orthogonal to the app's GPLv3 (same as the OSM tiles). Obligation met by the
+# ODbL - a DATA licence orthogonal to the app's GPLv3 (same as the OSM tiles). Obligation met by the
 # tippecanoe --attribution below (shown in-app) + this release publishing the derived tiles under ODbL.
 set -euo pipefail
 
@@ -45,7 +45,7 @@ if [ "$SOURCE" = "ms-global" ]; then
   [ "$N" -gt 0 ] || { echo "!! no quadkeys for LOCATION='$LOCATION' prefix='$QKPREFIX' in dataset-links.csv" >&2; exit 1; }
   echo "→ $N quadkey file(s); downloading 8-wide + decompressing → GeoJSONL"
   mkdir -p "$WORK/parts"; export WORK
-  # Download each quadkey to its OWN part, IN PARALLEL — a big country is thousands of quadkeys and one
+  # Download each quadkey to its OWN part, IN PARALLEL - a big country is thousands of quadkeys and one
   # curl-at-a-time took ~8 min even for Austria. curl -o (so its exit reflects HTTP status) + --retry
   # (a transient blip among thousands shouldn't fail the build). The file is keyed by the unique quadkey.
   dl_qk() {
@@ -58,7 +58,7 @@ if [ "$SOURCE" = "ms-global" ]; then
   xargs -P 8 -I{} bash -c 'dl_qk "$@"' _ {} < "$WORK/urls.txt" || true
   got=$(find "$WORK/parts" -name '*.geojsonl' | wc -l | tr -d ' ')
   [ "$got" -eq "$N" ] || { echo "!! only $got/$N quadkeys downloaded for $LOCATION (a hard 404, not a blip)" >&2; exit 1; }
-  # Concatenate, deleting each part as it's appended so PEAK disk stays ~1× the decompressed size — a big
+  # Concatenate, deleting each part as it's appended so PEAK disk stays ~1× the decompressed size - a big
   # country decompresses to many GB; keeping every part AND a full combined copy would blow the runner's disk.
   echo "→ concatenating $got parts → GeoJSONL"
   GEOJSON="$WORK/$ID.geojsonl"; : > "$GEOJSON"
@@ -73,7 +73,7 @@ else
 fi
 
 # Footprints render z14→z16 only (overzoomed above), matching the app's OSM `building` layer (minzoom 14)
-# — starting at z14 (not z12) drops the giant statewide low-zoom tiles that made WA balloon to 271 MB.
+# - starting at z14 (not z12) drops the giant statewide low-zoom tiles that made WA balloon to 271 MB.
 # --drop-densest-as-needed + the default 500 KB tile cap keep a packed downtown tile from bloating; the
 # gap-fill overlay doesn't need every last footprint in a dense core (OSM already has those).
 echo "→ tiling with tippecanoe ($SOURCE)"
@@ -86,7 +86,7 @@ BBOX="[$(echo "$BBOX_CSV" | tr -d ' ')]" # [S,W,N,E], same shape the routing man
 ASSET_URL="https://github.com/$REPO/releases/download/$TAG/$ID.pmtiles"
 echo "→ $ID: ${SIZE} MB, bbox $BBOX"
 
-# The overlay catalog release — prerelease so it never becomes the "Latest" the APK auto-tracks.
+# The overlay catalog release - prerelease so it never becomes the "Latest" the APK auto-tracks.
 gh release view "$TAG" --repo "$REPO" >/dev/null 2>&1 || \
   gh release create "$TAG" --repo "$REPO" --prerelease --title "Open building overlays" \
     --notes "Microsoft Building Footprints (US + Global ML, ODbL) as PMTiles for Vela's gap-fill building overlay. Data assets, not a code release. Buildings © Microsoft, licensed under ODbL (opendatacommons.org/licenses/odbl/1-0)."
@@ -96,12 +96,12 @@ gh release upload "$TAG" "$WORK/$ID.pmtiles" --clobber --repo "$REPO"
 ENTRY="$(jq -nc --arg id "$ID" --arg name "$NAME" --arg url "$ASSET_URL" --argjson size "$SIZE" --argjson bbox "$BBOX" \
   '{id:$id,name:$name,url:$url,sizeMb:$size,bbox:$bbox}')"
 
-# MANIFEST_MODE=emit (CI matrix): drop the entry to $ENTRY_OUT and stop — the merge is centralised in one
+# MANIFEST_MODE=emit (CI matrix): drop the entry to $ENTRY_OUT and stop - the merge is centralised in one
 # job (merge-overlay-manifest.sh) so parallel region builds can't clobber the manifest. Default (local
 # single-region): read-modify-write the manifest here.
 if [ "${MANIFEST_MODE:-merge}" = "emit" ]; then
   printf '%s\n' "$ENTRY" > "${ENTRY_OUT:?set ENTRY_OUT in emit mode}"
-  echo "✓ built $ID, pmtiles uploaded, entry → $ENTRY_OUT (manifest merged separately)"
+  echo "[x] built $ID, pmtiles uploaded, entry → $ENTRY_OUT (manifest merged separately)"
 else
   gh release download "$TAG" --repo "$REPO" -p building-overlay-manifest.json -O "$WORK/m.json" 2>/dev/null \
     || echo '{"regions":[]}' > "$WORK/m.json"
@@ -109,5 +109,5 @@ else
     '.regions = ([.regions[] | select(.id != ($entry.id))] + [$entry])' \
     "$WORK/m.json" > "$WORK/building-overlay-manifest.json"
   gh release upload "$TAG" "$WORK/building-overlay-manifest.json" --clobber --repo "$REPO"
-  echo "✓ published $ID — the app's Settings → Offline will list it"
+  echo "[x] published $ID - the app's Settings → Offline will list it"
 fi

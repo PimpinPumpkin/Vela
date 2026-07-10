@@ -8,11 +8,11 @@ import app.vela.core.model.TravelMode
  *
  * Captured from a live request and verified on 2026-06-15 for driving, walking
  * and cycling. Two calibration findings:
- *  - travel mode is the `!1e{N}` field inside the `!20m5` block —
- *    **0 = driving, 1 = cycling, 2 = walking, 3 = transit** (everything else is
- *    identical between modes), and
- *  - the optional `!15m3!1s<token>!7e81` session-token block was removed after
- *    confirming routes still come back without it.
+ * - travel mode is the `!1e{N}` field inside the `!20m5` block -
+ * **0 = driving, 1 = cycling, 2 = walking, 3 = transit** (everything else is
+ * identical between modes), and
+ * - the optional `!15m3!1s<token>!7e81` session-token block was removed after
+ * confirming routes still come back without it.
  *
  * Driving returns traffic-aware ETAs + alternatives; walking/cycling return a
  * single route with no traffic; transit (3) uses a different response shape the

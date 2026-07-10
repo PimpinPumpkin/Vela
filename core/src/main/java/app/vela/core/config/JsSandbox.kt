@@ -10,18 +10,18 @@ import org.mozilla.javascript.ScriptableObject
  * returns its String result (or null on anything going wrong). Pure (no Android / DI),
  * so it's unit-testable on the JVM.
  *
- *  - `initSafeStandardObjects` exposes **no** Java (`Packages`/reflection/IO) — the
- *    script can only read and return the string it's handed.
- *  - `optimizationLevel = -1` (interpreted) — Rhino's bytecode generator doesn't run on
- *    Android/ART, so we never emit classes.
- *  - **Wall-clock kill switch** ([MAX_RUN_MS]) — a private [ContextFactory] arms Rhino's
- *    instruction observer; a script that runs longer (an accidental `while(true)` in a
- *    pushed `transforms.js`) throws, which the `runCatching` below turns into the
- *    documented compiled-Kotlin fallback. Without it a runaway script hangs the calling
- *    search forever AND, via `synchronized(this)`, blocks every subsequent transform.
- *  - `synchronized` — Rhino contexts aren't thread-safe; serialize all use.
- *  - Any exception (parse error, missing function, wrong return type, timeout) → null, so
- *    the caller falls back to compiled Kotlin.
+ * - `initSafeStandardObjects` exposes **no** Java (`Packages`/reflection/IO) - the
+ * script can only read and return the string it's handed.
+ * - `optimizationLevel = -1` (interpreted) - Rhino's bytecode generator doesn't run on
+ * Android/ART, so we never emit classes.
+ * - **Wall-clock kill switch** ([MAX_RUN_MS]) - a private [ContextFactory] arms Rhino's
+ * instruction observer; a script that runs longer (an accidental `while(true)` in a
+ * pushed `transforms.js`) throws, which the `runCatching` below turns into the
+ * documented compiled-Kotlin fallback. Without it a runaway script hangs the calling
+ * search forever AND, via `synchronized(this)`, blocks every subsequent transform.
+ * - `synchronized` - Rhino contexts aren't thread-safe; serialize all use.
+ * - Any exception (parse error, missing function, wrong return type, timeout) → null, so
+ * the caller falls back to compiled Kotlin.
  */
 object JsSandbox {
     private const val MAX_RUN_MS = 2_000L
@@ -29,7 +29,7 @@ object JsSandbox {
 
     private val factory = object : ContextFactory() {
         override fun makeContext(): Context = super.makeContext().apply {
-            optimizationLevel = -1 // interpreted — required on ART, and instruction-observed
+            optimizationLevel = -1 // interpreted - required on ART, and instruction-observed
             languageVersion = Context.VERSION_ES6
             instructionObserverThreshold = 10_000 // observe every ~10k bytecodes
         }

@@ -6,7 +6,7 @@ import timber.log.Timber
 
 /**
  * A [Timber.Tree] that forwards WARN/ERROR logs into the opt-in [DiagLog] breadcrumb ring, so a
- * warning or error logged anywhere through Timber becomes a diagnostic breadcrumb — it then flows
+ * warning or error logged anywhere through Timber becomes a diagnostic breadcrumb - it then flows
  * into the crash report (CrashCatcher reads `DiagLog.snapshot()`) and the shareable JSON export
  * (DiagExporter). [DiagLog.record] is a no-op unless the user opted in, so this inherits the
  * existing privacy gate for free. Planted in ALL builds (cheap); the Logcat-facing `DebugTree` is

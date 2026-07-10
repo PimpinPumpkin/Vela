@@ -124,7 +124,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.launch
-// D-pad-only operation (docs/dpad.md) — one import block so upstream merges stay clean.
+// D-pad-only operation (docs/dpad.md) - one import block so upstream merges stay clean.
 import androidx.compose.foundation.focusable
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -190,7 +190,7 @@ import kotlin.math.roundToInt
 import app.vela.ui.placeStatusColor
 import java.util.Locale
 
-// Google-like, fixed sheet palette — independent of the Material You wallpaper
+// Google-like, fixed sheet palette - independent of the Material You wallpaper
 // tint so the name/time/address always read crisp (white-on-dark / black-on-white)
 // like Google Maps, instead of a washed-out dynamic tone.
 // The sheet palette is shared app-wide (see ui/SheetPalette) so the place sheet,
@@ -247,14 +247,14 @@ fun PlaceSheet(
         label = "placeSheetHeight",
     )
     // Swipe down ANYWHERE on the sheet to dismiss (not just the handle): a nested-
-    // scroll handler watches the body — when it's at the top, a downward drag first
+    // scroll handler watches the body - when it's at the top, a downward drag first
     // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
     val bodyScroll = rememberScrollState()
     val onCloseUpdated = rememberUpdatedState(onClose)
     val dismissConn = remember(place.id) {
         object : NestedScrollConnection {
             private var acc = 0f
-            // One detent step per gesture — lift and swipe again for the next. A single long drag
+            // One detent step per gesture - lift and swipe again for the next. A single long drag
             // steps down once (e.g. peek→minimized) and stops, so it can't blow through to dismiss.
             private var steppedThisGesture = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -272,7 +272,7 @@ fun PlaceSheet(
                     return available
                 }
                 // Scrolling INTO the content (dragging up / content moving up) grows the sheet to
-                // full height first, Google-style — so reading down the POI info expands it without
+                // full height first, Google-style - so reading down the POI info expands it without
                 // reaching for the handle. Doesn't consume the scroll: the body scrolls too.
                 if (available.y < 0f) {
                     acc = 0f
@@ -281,7 +281,7 @@ fun PlaceSheet(
                 }
                 return Offset.Zero
             }
-            // The fling phase runs at the end of every drag (even at zero velocity) — use it as the
+            // The fling phase runs at the end of every drag (even at zero velocity) - use it as the
             // gesture boundary that re-arms stepping for the next swipe. A hard downward flick from
             // peek/minimized dismisses outright (the "dramatic swipe closes" case); an expanded flick
             // just collapses to peek via onPreScroll above.
@@ -337,8 +337,8 @@ fun PlaceSheet(
     val onPanelOverscrollEnd: (Float) -> Unit = { velocityY ->
         pull[0] = 0f; pull[1] = 0f; pull[2] = 0f
         // Disengage at GESTURE END, not per-pixel: re-inserting the header content (rating +
-        // histogram + tabs) mid-drag shifts the layout right under the held finger — flicker.
-        // Fires when the body walked up OR is simply at/near its top — in engaged mode the
+        // histogram + tabs) mid-drag shifts the layout right under the held finger - flicker.
+        // Fires when the body walked up OR is simply at/near its top - in engaged mode the
         // panel fills the sheet, so the body's whole range is tiny and a "walked 150px" test
         // could NEVER pass (engaged got stuck forever; the header never came back).
         if (bodyScroll.value <= 1 || bodyScroll.value < bodyScroll.maxValue - 150) reviewsEngaged.value = false
@@ -367,18 +367,18 @@ fun PlaceSheet(
         // Card background fills to the screen bottom; pad the content up off the nav bar.
         Column(Modifier.navigationBarsPadding()) {
             // D-pad-first (docs/dpad.md): when the sheet opens, land focus ON the handle so the
-            // sheet is the active surface — otherwise Compose leaves focus on the search bar
-            // behind the sheet (measured: sometimes the search field, sometimes a photo — the
+            // sheet is the active surface - otherwise Compose leaves focus on the search bar
+            // behind the sheet (measured: sometimes the search field, sometimes a photo - the
             // exact nondeterminism to kill). No-op under touch.
             val sheetAutoFocus = rememberDpadAutoFocus()
             // Drag the handle UP to expand (reviews), DOWN to shrink, down again to dismiss.
-            // TAP toggles expand/peek. The touch target is a tall (36dp) invisible strip — the
+            // TAP toggles expand/peek. The touch target is a tall (36dp) invisible strip - the
             // 4dp handle is just the visual; a fat hit-area makes it easy to grab.
             Box(
                 Modifier
                     .fillMaxWidth()
                     .focusRequester(sheetAutoFocus)
-                    // D-pad (docs/dpad.md): the handle is a real button — focusable, OK runs the
+                    // D-pad (docs/dpad.md): the handle is a real button - focusable, OK runs the
                     // same one-detent-grow logic as a tap. clickable replaces the tap-only
                     // detector (same behaviour under touch); the drag detector below is untouched.
                     .dpadHighlight(RoundedCornerShape(3.dp))
@@ -457,12 +457,12 @@ fun PlaceSheet(
                 ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
                 return@Column
             }
-            // Photo hero at the top (Google-style) — always visible, even at the
+            // Photo hero at the top (Google-style) - always visible, even at the
             // peek height / in landscape; tap one to open the full gallery.
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
-            // search response can seed a preview photo — don't show it either).
+            // search response can seed a preview photo - don't show it either).
             if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
-                // Category filter chips (Menu / Food & drink / Vibe / By owner …) — only when Google tagged
+                // Category filter chips (Menu / Food & drink / Vibe / By owner …) - only when Google tagged
                 // photos with categories, mirroring its gallery tabs. "All" clears the filter.
                 val photoCats = remember(place.photoCategories) { place.photoCategories.filterNotNull().distinct() }
                 if (photoCats.isNotEmpty()) {
@@ -501,7 +501,7 @@ fun PlaceSheet(
                                 .clickable { galleryStart = i },
                         )
                     }
-                    // The full gallery scrapes in the background a beat after the sheet opens —
+                    // The full gallery scrapes in the background a beat after the sheet opens -
                     // pulse placeholder tiles so it reads as "more photos loading", not "done".
                     if (photosLoading) {
                         item { PhotoShimmerTile(dim) }
@@ -516,7 +516,7 @@ fun PlaceSheet(
                 Text(
                     place.name,
                     // titleLarge (22sp) not headlineSmall (24sp) so a longer name ("Starbucks Coffee
-                    // Company") fits two lines beside the Save/Share/⋮/✕ icons instead of ellipsising.
+                    // Company") fits two lines beside the Save/Share/⋮/x icons instead of ellipsising.
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = ink,
@@ -587,7 +587,7 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 2.dp),
                 )
             }
-            // Dropped-pin coordinates — when a tapped/held point did NOT snap to a street address (an
+            // Dropped-pin coordinates - when a tapped/held point did NOT snap to a street address (an
             // arbitrary spot, a bare road, or a failed reverse-geocode), surface the lat/lng PROMINENTLY
             // right under the name, Google-style, alongside the road name we already carry in the address
             // row below. A house-numbered snap ("123 F St") or a real business POI shows its address
@@ -616,7 +616,7 @@ fun PlaceSheet(
                 }
             }
             if (place.permanentlyClosed) {
-                // Dead POI — call it out clearly (Google-style red) even when Google
+                // Dead POI - call it out clearly (Google-style red) even when Google
                 // sent no hours/status string at all (which is what "no hours" looked
                 // like before we parsed this).
                 Text(
@@ -628,7 +628,7 @@ fun PlaceSheet(
                 )
             }
             if (place.temporarilyClosed && !place.permanentlyClosed) {
-                // Owner-set temporary closure — banner it like Google does, and suppress the ordinary
+                // Owner-set temporary closure - banner it like Google does, and suppress the ordinary
                 // status/hours lines below (an "Opens 11:30 AM Tue" under a temp-closure reads as if the
                 // place will open then, which is exactly the misleading state the closure overrides).
                 Text(
@@ -642,7 +642,7 @@ fun PlaceSheet(
             // Google's live status STRING is PRIMARY: it's the only source that knows an owner-set
             // "closed today" (the weekly hours now carry holiday overrides, but not ad-hoc closures).
             // Only when Google gives NO status do we fall back to an Open/Closed computed from the weekly
-            // hours (past-midnight-aware) — better than a blank, without trusting stale regular hours
+            // hours (past-midnight-aware) - better than a blank, without trusting stale regular hours
             // over a real closure.
             // Ticks each minute so a sheet left open crosses an open/close boundary instead of showing
             // "Open · Closes 9 PM" forever after 9 PM (the fallback is only used when Google sent no status).
@@ -671,8 +671,8 @@ fun PlaceSheet(
                 }
                 Text(annotated, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
             }
-            // Holiday / special hours callout (Google shows these prominently — e.g. "Independence
-            // Day · Hours might differ" — not just buried on one day's row). The parser tags the
+            // Holiday / special hours callout (Google shows these prominently - e.g. "Independence
+            // Day · Hours might differ" - not just buried on one day's row). The parser tags the
             // holiday day's string with " · <label>"; surface the soonest one up top.
             val holiday = remember(place.hours, nowMinute) {
                 upcomingHoliday(place.hours, nowMinute.toLocalDate())
@@ -689,7 +689,7 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
-            // Quick-action pills FIRST — a highlighted Directions + short Call / Website, right under
+            // Quick-action pills FIRST - a highlighted Directions + short Call / Website, right under
             // the identity block so Directions is reachable WITHOUT scrolling (Google's order). Save/
             // Share live in the header; the actual phone number / website domain are tappable detail
             // rows lower down (below the hours), out of the way of the primary action.
@@ -711,7 +711,7 @@ fun PlaceSheet(
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
                         }
                     }
-                    // Street View — opens Google's KEYLESS consumer pano (documented map_action=pano deep
+                    // Street View - opens Google's KEYLESS consumer pano (documented map_action=pano deep
                     // link) EXTERNALLY (Google Maps app or the browser). The interactive pano is keyless but
                     // renders black in an in-app WebView on some devices (ANGLE GL driver + the SV SPA served
                     // a degraded page), so we hand it off rather than embed a maybe-black panel (see ROADMAP).
@@ -742,7 +742,7 @@ fun PlaceSheet(
                 }
             }
 
-            // A permanently-closed POI already says so in red above — don't also
+            // A permanently-closed POI already says so in red above - don't also
             // nag "Hours not listed" beneath it (the dead-POI hours are moot).
             if (place.hours.isNotEmpty()) {
                 HoursSection(place.hours, ink, dim)
@@ -750,7 +750,7 @@ fun PlaceSheet(
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
-            // Phone + website as their own tappable rows showing the actual number / domain — placed
+            // Phone + website as their own tappable rows showing the actual number / domain - placed
             // BELOW the hours (Google's order), well clear of the Directions button up top. The pills
             // are the fast path; these are the detail for when you want to see/copy the number or URL.
             place.phone?.let { ph ->
@@ -786,7 +786,7 @@ fun PlaceSheet(
                 }
             }
 
-            // Action link (Book online / Reserve a table / Order online) — Google shows this
+            // Action link (Book online / Reserve a table / Order online) - Google shows this
             // as a prominent button. Rendered only when the parse found a real URL + label.
             if (place.actionUrl != null && !place.actionLabel.isNullOrBlank() && !app.vela.ui.HideExternalLinks.on.value) {
                 Row(
@@ -817,7 +817,7 @@ fun PlaceSheet(
                 }
             }
 
-            // Attribute highlights (Google-style chips) — the most useful items from About
+            // Attribute highlights (Google-style chips) - the most useful items from About
             // (service options, offerings, accessibility…), surfaced on the overview for
             // quick scanning instead of being buried in the tab. Filled by the detail fetch.
             val highlights = remember(place.about) { attributeHighlights(place.about) }
@@ -846,7 +846,7 @@ fun PlaceSheet(
             place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
             // While the (slow, ~10–20 s) detail fetch is in flight and popular times
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
-            // "missing" — it clears to the chart, or to nothing if this place has none.
+            // "missing" - it clears to the chart, or to nothing if this place has none.
             if (place.popularTimes == null && detailsLoading) {
                 Row(
                     Modifier.fillMaxWidth().padding(top = 12.dp),
@@ -860,7 +860,7 @@ fun PlaceSheet(
             // (The editorial summary + "From the owner" blurb live in the About tab.)
 
             // Other Google listings at the same spot (a co-branded shop's duplicate
-            // profile, or a different unit at the address) — like Google's "Also at
+            // profile, or a different unit at the address) - like Google's "Also at
             // this location". Tap to open one.
             if (placesHere.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
@@ -883,7 +883,7 @@ fun PlaceSheet(
                 }
             }
 
-            // "People also search for" — related places (Google-style). Filled by the
+            // "People also search for" - related places (Google-style). Filled by the
             // detail re-fetch (root [2][11][0]); a horizontal row of tappable cards.
             if (place.similarPlaces.isNotEmpty()) {
                 Spacer(Modifier.height(16.dp))
@@ -921,7 +921,7 @@ fun PlaceSheet(
 }
 
 /**
- * The directions preview — a dedicated bottom panel (not buried in the place
+ * The directions preview - a dedicated bottom panel (not buried in the place
  * sheet) that opens when you tap "Directions": destination header, travel-mode
  * tabs, the route option(s) with traffic-aware ETAs (alternates are selectable),
  * and a prominent Start. Transit shows the results board instead.
@@ -965,7 +965,7 @@ fun DirectionsPanel(
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
-            // Drag handle — swipe down to minimise the chooser (peek the route on the
+            // Drag handle - swipe down to minimise the chooser (peek the route on the
             // map before you Start), swipe up or tap to bring it back.
             Box(
                 Modifier
@@ -984,7 +984,7 @@ fun DirectionsPanel(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    // The "From" row — tappable to route from a different place (Google
+                    // The "From" row - tappable to route from a different place (Google
                     // shows an edit affordance; here a pencil + accent text when editable).
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1008,7 +1008,7 @@ fun DirectionsPanel(
                         }
                     }
                     Spacer(Modifier.height(3.dp))
-                    // Intermediate stops (multi-stop), between From and To like Google — each removable,
+                    // Intermediate stops (multi-stop), between From and To like Google - each removable,
                     // then an "Add stop" row. Only shown for drive/walk/bike (transit has no waypoints).
                     if (currentMode != TravelMode.TRANSIT) {
                         stops.forEachIndexed { i, stopName ->
@@ -1018,7 +1018,7 @@ fun DirectionsPanel(
                                 Text(stopName, style = MaterialTheme.typography.bodyMedium, color = dim, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                                 // Reorder arrows (only with 2+ stops): up unless first, down unless last.
                                 // IconButtons (like the Swap/Close controls in this header), NOT raw 18-20dp
-                                // clickable Icons — three tiny targets 2dp apart invite remove-instead-of-
+                                // clickable Icons - three tiny targets 2dp apart invite remove-instead-of-
                                 // reorder mis-taps, and removal re-routes immediately with no undo.
                                 if (stops.size > 1) {
                                     if (i > 0) IconButton(onClick = { onMoveStop(i, -1) }, modifier = Modifier.size(36.dp)) {
@@ -1045,7 +1045,7 @@ fun DirectionsPanel(
                             Spacer(Modifier.height(3.dp))
                         }
                     }
-                    // The "To" row — editable in the same way as "From", used when the
+                    // The "To" row - editable in the same way as "From", used when the
                     // route is *reversed* (then the custom endpoint is the destination).
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -1076,7 +1076,7 @@ fun DirectionsPanel(
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
             AnimatedVisibility(visible = !collapsed.value) {
-              // Cap the expandable body to ~58% of the screen and let it scroll — on short screens the
+              // Cap the expandable body to ~58% of the screen and let it scroll - on short screens the
               // mode chips + route/transit list + Start button are taller than the bottom-anchored card,
               // so without this the Start button (drive) and the lower transit trips fall off the bottom,
               // unreachable. verticalScroll keeps the whole chooser usable; the map stays visible above.
@@ -1090,7 +1090,7 @@ fun DirectionsPanel(
             // directions panel opens, so it's the active surface (else focus stays on the
             // search bar behind it). No-op under touch.
             val dirAutoFocus = rememberDpadAutoFocus()
-            // Scrollable so all four mode pills keep full size on a narrow screen — without this the
+            // Scrollable so all four mode pills keep full size on a narrow screen - without this the
             // 4th (Bike) overflowed the row and got clipped to the edge as an icon-only stub.
             Row(
                 Modifier.horizontalScroll(rememberScrollState()),
@@ -1113,7 +1113,7 @@ fun DirectionsPanel(
                     )
                 }
             }
-            // ONE depart/arrive time chooser, right under the mode chips — it applies to ALL modes
+            // ONE depart/arrive time chooser, right under the mode chips - it applies to ALL modes
             // (drive/transit/walk/bike), so it lives above the mode-specific results, not inside them.
             Spacer(Modifier.height(12.dp))
             DepartTimeChooser(
@@ -1161,7 +1161,7 @@ fun DirectionsPanel(
                         Modifier.horizontalScroll(rememberScrollState()).padding(end = 12.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
+                        // (localized label, STABLE English query, icon) - query is the logic key, label localizes.
                         listOf(
                             Triple(R.string.cat_gas, "Gas", Icons.Default.LocalGasStation),
                             Triple(R.string.cat_food, "Food", Icons.Default.Restaurant),
@@ -1204,12 +1204,12 @@ fun DirectionsPanel(
 }
 
 /** "Leave now / Depart at / Arrive by" chooser. "Leave now" uses the live
- *  traffic-aware duration; a future "Depart at" / "Arrive by" uses Google's own
- *  *typical* best→worst spread (`Route.typicalRangeSeconds`, from summary[10][4])
- *  to show an honest arrival/leave **window** rather than a false-precision single
- *  time — Google's per-departure prediction needs a login/app-only request field
- *  we can't reach keyless, so we surface the range Google itself plans with. Falls
- *  back to a single ~estimate when no range is shipped (short trips, walk/bike). */
+ * traffic-aware duration; a future "Depart at" / "Arrive by" uses Google's own
+ * *typical* best→worst spread (`Route.typicalRangeSeconds`, from summary[10][4])
+ * to show an honest arrival/leave **window** rather than a false-precision single
+ * time - Google's per-departure prediction needs a login/app-only request field
+ * we can't reach keyless, so we surface the range Google itself plans with. Falls
+ * back to a single ~estimate when no range is shipped (short trips, walk/bike). */
 @Composable
 private fun DepartTimeChooser(
     route: Route?,
@@ -1240,7 +1240,7 @@ private fun DepartTimeChooser(
     ).show()
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        // Mode chips — scroll horizontally so 3–4 chips never clip on a narrow phone.
+        // Mode chips - scroll horizontally so 3–4 chips never clip on a narrow phone.
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1260,7 +1260,7 @@ private fun DepartTimeChooser(
             }
         }
 
-        // Drive ETA estimate (only meaningful with a route — transit shows just the chips). Only claim
+        // Drive ETA estimate (only meaningful with a route - transit shows just the chips). Only claim
         // "current traffic" when the route actually carries a live in-traffic ETA (an offline/GraphHopper
         // route has neither a typical range nor live traffic).
         if (route != null && mode != 3) {
@@ -1291,15 +1291,15 @@ private fun DepartTimeChooser(
 }
 
 /** One route choice in the directions panel: a traffic-coloured ETA + distance/
- *  via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
- *  alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
+ * via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
+ * alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
 @Composable
 private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
     val etaSeconds = r.durationInTrafficSeconds ?: r.durationSeconds
     val eta = formatDuration(etaSeconds)
     val etaColor = trafficEtaColor(r) ?: ink
     // Delta vs the fastest, rounded to the nearest minute. Only ONE route wears the "Fastest" tag
-    // (the caller passes isFastest for the top row — the list is sorted by this exact ETA). A
+    // (the caller passes isFastest for the top row - the list is sorted by this exact ETA). A
     // near-tie under ~30 s rounds its delta to 0 but must NOT also earn the tag (that reads as two
     // "Fastest" routes with different displayed times); it just shows its ETA with no badge.
     val deltaMin = ((etaSeconds - fastestEtaSeconds) / 60.0).roundToInt()
@@ -1330,7 +1330,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                             .padding(horizontal = 6.dp, vertical = 1.dp),
                     )
                 } else if (deltaMin >= 1) {
-                    // "+5 min" vs the fastest — a quiet tag so the fastest still reads as primary.
+                    // "+5 min" vs the fastest - a quiet tag so the fastest still reads as primary.
                     Text(
                         stringResource(R.string.place_delta_min, deltaMin),
                         style = MaterialTheme.typography.labelSmall,
@@ -1354,7 +1354,7 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
 }
 
 /** ETA colour by congestion when live traffic is known: green free-flowing →
- *  amber → red. Null when there's no live-traffic signal (use the ink colour). */
+ * amber → red. Null when there's no live-traffic signal (use the ink colour). */
 private fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
     when {
         it > 1.4 -> SheetPalette.TrafficRed
@@ -1363,9 +1363,9 @@ private fun trafficEtaColor(r: Route): Color? = r.trafficRatio?.let {
     }
 }
 
-/** The transit results board — Google's first transit view: a list of departure
- *  options, each a time window + total duration + the coloured line pills you
- *  ride. Fed by the keyless WebView fetch ([app.vela.web.WebDirectionsFetcher]). */
+/** The transit results board - Google's first transit view: a list of departure
+ * options, each a time window + total duration + the coloured line pills you
+ * ride. Fed by the keyless WebView fetch ([app.vela.web.WebDirectionsFetcher]). */
 @Composable
 private fun TransitBoard(
     trips: List<TransitItinerary>,
@@ -1393,7 +1393,7 @@ private fun TransitBoard(
 }
 
 /** Full-screen step-by-step transit guidance (Moovit-style): the current leg large, the remaining
- *  legs as a timeline, Back / Next controls. Advances automatically as GPS reaches each leg's end. */
+ * legs as a timeline, Back / Next controls. Advances automatically as GPS reaches each leg's end. */
 @Composable
 fun TransitNavSheet(
     nav: TransitNavState,
@@ -1550,10 +1550,10 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
 }
 
 /** One leg in the expanded drill-down: a mode glyph + the line/"Walk" title and a
- *  times·duration·distance subtitle ("Bus 42B / 5:48 AM – 6:41 AM · 53 min"). */
+ * times·duration·distance subtitle ("Bus 42B / 5:48 AM – 6:41 AM · 53 min"). */
 @Composable
 private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }) {
-    // Walk leg — "Walk · 11 min · 0.5 mi", tap to expand turn-by-turn walking directions
+    // Walk leg - "Walk · 11 min · 0.5 mi", tap to expand turn-by-turn walking directions
     // (fetched on demand via the walk router between this leg's endpoints).
     if (s.line == null) {
         val from = s.walkFrom; val to = s.walkTo
@@ -1597,7 +1597,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
         }
         return
     }
-    val line = s.line ?: return // unreachable (walk branch returned) — re-narrows the cross-module type
+    val line = s.line ?: return // unreachable (walk branch returned) - re-narrows the cross-module type
     val lineColor = parseHexColor(line.colorHex) ?: dim
     var stopsOpen by remember { mutableStateOf(false) }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
@@ -1639,7 +1639,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
 }
 
 /** One stop in the transit drill-down: its call time, name, and (for board/alight) the agency
- *  stop code + any real-time delay. Emphasised for board/alight, lighter for the intermediate list. */
+ * stop code + any real-time delay. Emphasised for board/alight, lighter for the intermediate list. */
 @Composable
 private fun StopLine(stop: TransitStopTime, ink: Color, dim: Color, emphasize: Boolean, delay: String? = null) {
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Top) {
@@ -1674,7 +1674,7 @@ private fun StopLine(stop: TransitStopTime, ink: Color, dim: Color, emphasize: B
 }
 
 /** A colour-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
- *  transit pills; falls back to the theme primary when no colour is supplied. */
+ * transit pills; falls back to the theme primary when no colour is supplied. */
 @Composable
 private fun LinePill(line: TransitLine) {
     val fallback = MaterialTheme.colorScheme.primary
@@ -1716,8 +1716,8 @@ private fun parseHexColor(hex: String?): Color? {
     }.getOrNull()
 }
 
-/** A photo-tile-sized placeholder that gently pulses while the full gallery scrapes in —
- *  signals "more photos loading" at the end of the strip (or fills it when there's no preview yet). */
+/** A photo-tile-sized placeholder that gently pulses while the full gallery scrapes in -
+ * signals "more photos loading" at the end of the strip (or fills it when there's no preview yet). */
 @Composable
 private fun PhotoShimmerTile(base: Color) {
     val transition = rememberInfiniteTransition(label = "photoShimmer")
@@ -1840,8 +1840,8 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = Color.White)
                 }
                 // Per-photo caption ("Ele Campbell · a year ago" for reviews). On Android 15/16 a Dialog's
-                // window insets read ZERO and the bottom ~nav-bar strip is CLIPPED (undrawable) — proven on a
-                // Pixel 9 — so a normal bottom caption vanished. A FIXED bottom clearance keeps it in the
+                // window insets read ZERO and the bottom ~nav-bar strip is CLIPPED (undrawable) - proven on a
+                // Pixel 9 - so a normal bottom caption vanished. A FIXED bottom clearance keeps it in the
                 // drawable area regardless (harmlessly a touch higher on phones with no such clip).
                 dates.getOrNull(pager.currentPage)?.let { caption ->
                     Text(
@@ -1862,10 +1862,10 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
-/** Native search / sort / topic chips for the live reviews panel — Vela's own UI driving the
- *  panel's hidden Google controls (the originals are carved out once the chips arrive). Search
- *  is Google's server-side one (ALL reviews, not just those loaded); chips are Google's
- *  auto-parsed review topics; sort mirrors Google's four orders. */
+/** Native search / sort / topic chips for the live reviews panel - Vela's own UI driving the
+ * panel's hidden Google controls (the originals are carved out once the chips arrive). Search
+ * is Google's server-side one (ALL reviews, not just those loaded); chips are Google's
+ * auto-parsed review topics; sort mirrors Google's four orders. */
 @Composable
 private fun PanelControls(
     chips: List<app.vela.web.PanelChip>?,
@@ -1878,8 +1878,8 @@ private fun PanelControls(
     ink: Color,
     dim: Color,
 ) {
-    if (chips == null) return // nothing to control yet — the panel is still booting
-    // NOTE: an EMPTY list is meaningful — the business has no auto-parsed topics; search + sort
+    if (chips == null) return // nothing to control yet - the panel is still booting
+    // NOTE: an EMPTY list is meaningful - the business has no auto-parsed topics; search + sort
     // still render (they exist on every panel), only the chip row is skipped.
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
         OutlinedTextField(
@@ -1924,8 +1924,8 @@ private fun PanelControls(
     }
 }
 
-/** Native rating distribution (Google-style amber bars), counts ordered [5★,4★,3★,2★,1★] —
- *  scraped off the live reviews panel so the histogram renders in Vela's own UI. */
+/** Native rating distribution (Google-style amber bars), counts ordered [5★,4★,3★,2★,1★] -
+ * scraped off the live reviews panel so the histogram renders in Vela's own UI. */
 @Composable
 private fun RatingHistogram(counts: List<Int>, dim: Color, modifier: Modifier = Modifier) {
     val max = (counts.maxOrNull() ?: 0).coerceAtLeast(1)
@@ -1960,7 +1960,7 @@ private fun RatingHistogram(counts: List<Int>, dim: Color, modifier: Modifier = 
 }
 
 /** Reviews / About tabs. Only tabs with content show; the content area is
- *  height-capped and scrolls (e.g. the reviews list). */
+ * height-capped and scrolls (e.g. the reviews list). */
 @Composable
 private fun PlaceTabs(
     place: Place,
@@ -1975,7 +1975,7 @@ private fun PlaceTabs(
     onPanelEngaged: () -> Unit = {},
     panelEngaged: Boolean = false,
 ) {
-    // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
+    // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab -
     // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
     // zero-reviews state if there are none.
     val hasReviews = app.vela.ui.ShowReviews.on.value && (
@@ -1992,7 +1992,7 @@ private fun PlaceTabs(
     val selected = sel.coerceIn(0, tabs.lastIndex)
 
     Column(Modifier.padding(top = 12.dp)) {
-        // In engaged reviews mode the panel takes the WHOLE sheet — no floating tab bar above
+        // In engaged reviews mode the panel takes the WHOLE sheet - no floating tab bar above
         // it (it returns when the user walks the sheet back up and disengages).
         if (!panelEngaged) {
             TabRow(
@@ -2038,8 +2038,8 @@ private fun PlaceTabs(
 }
 
 /** The live Google reviews panel, FULL-SCREEN (the "Read all reviews" view). No nesting inside a
- *  scroll → no scroll-sync, no jitter; Google's own infinite scroll, server-side search, and
- *  native photo/video viewers all work. Back / the top-bar arrow closes it back to the sheet. */
+ * scroll → no scroll-sync, no jitter; Google's own infinite scroll, server-side search, and
+ * native photo/video viewers all work. Back / the top-bar arrow closes it back to the sheet. */
 @Composable
 private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: Color, onClose: () -> Unit) {
     val dark = isAppInDarkTheme()
@@ -2114,7 +2114,7 @@ private fun ReviewsTab(
                 }
             }
         }
-        // Entry to the full-screen live Google reviews — all of them, plus Google's own SORT and
+        // Entry to the full-screen live Google reviews - all of them, plus Google's own SORT and
         // server-side search. The label says so.
         onReadAll?.let { open ->
             OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
@@ -2123,7 +2123,7 @@ private fun ReviewsTab(
                 Text(place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews))
             }
         }
-        // Featured-review quote is only a TEASER while the real reviews are still streaming in —
+        // Featured-review quote is only a TEASER while the real reviews are still streaming in -
         // once they arrive it'd be a redundant "quote break" between the button and the list, so
         // drop it then (the actual reviews below say it better).
         if (reviews.isEmpty()) {
@@ -2138,7 +2138,7 @@ private fun ReviewsTab(
         // The WebView scrape legitimately takes a while (~10-40 s on busy places), so show REAL
         // progress the whole time it runs: the scraper streams its running count (the "N of ~M"
         // bar) AND the reviews themselves, which fill the list BELOW this header as they're found
-        // — the wait reads as work arriving, not a hang.
+        // - the wait reads as work arriving, not a hang.
         if (loading) {
             Column(Modifier.padding(vertical = 8.dp)) {
                 // What the scrape can at most deliver: the place's own count, capped like the scraper.
@@ -2164,9 +2164,9 @@ private fun ReviewsTab(
             }
         }
         when {
-            // Still loading with nothing streamed yet — the header above is the whole story.
+            // Still loading with nothing streamed yet - the header above is the whole story.
             loading && reviews.isEmpty() -> {}
-            // The count says this place HAS reviews but we have none — the RPC flaked (it's
+            // The count says this place HAS reviews but we have none - the RPC flaked (it's
             // intermittent), so this is a load FAILURE, not a review-less place. Say so and
             // let the user retry instead of lying with "No reviews available."
             reviews.isEmpty() && (place.reviewCount ?: 0) > 0 -> Row(
@@ -2179,9 +2179,9 @@ private fun ReviewsTab(
             }
             reviews.isEmpty() -> Text(stringResource(R.string.place_no_reviews), style = MaterialTheme.typography.bodyMedium, color = dim)
             else -> {
-                // Reaches here DURING loading too — partials stream in and render under the
+                // Reaches here DURING loading too - partials stream in and render under the
                 // progress header above, growing until the scrape completes.
-                // Search box (only once there's enough to be worth filtering) — matches text OR
+                // Search box (only once there's enough to be worth filtering) - matches text OR
                 // author. Held back until the scrape COMPLETES: popping a text field in above rows
                 // the user is reading mid-stream shifts everything under their finger; appearing at
                 // completion it takes the space the progress header just vacated (a near-swap).
@@ -2223,8 +2223,8 @@ private fun ReviewsTab(
     }
 }
 
-/** Emphasise every occurrence of [query] in [text] (case-insensitive) in bold — used to show
- *  what a review search matched. Empty query → plain text. */
+/** Emphasise every occurrence of [query] in [text] (case-insensitive) in bold - used to show
+ * what a review search matched. Empty query → plain text. */
 private fun emphasize(text: String, query: String): androidx.compose.ui.text.AnnotatedString = buildAnnotatedString {
     if (query.isBlank()) { append(text); return@buildAnnotatedString }
     val lc = text.lowercase()
@@ -2271,7 +2271,7 @@ private fun ReviewRow(review: Review, ink: Color, dim: Color, onPhotoTap: (List<
         review.text?.let {
             Text(emphasize(it, query), style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(top = 6.dp))
         }
-        // User-attached review photos (Google-style thumbnail strip) — tap to open the shared
+        // User-attached review photos (Google-style thumbnail strip) - tap to open the shared
         // full-screen gallery, captioned "Author · date" (the whole review's photo set, opened
         // at the tapped index).
         if (review.photos.isNotEmpty()) {
@@ -2309,7 +2309,7 @@ private fun AboutTab(
 ) {
     Column {
         // Google's editorial one-liner first, then the owner's "From the owner" blurb,
-        // then the attribute sections — the description before the rest, per request.
+        // then the attribute sections - the description before the rest, per request.
         editorialSummary?.let {
             Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.padding(bottom = 4.dp))
         }
@@ -2336,8 +2336,8 @@ private fun AboutTab(
     }
 }
 
-/** One Google-style action pill — a rounded chip with an icon + label, sized to its content so a row
- *  of them scrolls horizontally. [emphasized] = the filled primary treatment (Directions). */
+/** One Google-style action pill - a rounded chip with an icon + label, sized to its content so a row
+ * of them scrolls horizontally. [emphasized] = the filled primary treatment (Directions). */
 @Composable
 private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = false, onClick: () -> Unit) {
     val bg = if (emphasized) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
@@ -2357,8 +2357,8 @@ private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = f
     }
 }
 
-/** Share action: opens a small menu — a Google Maps link, a keyless geo: pin
- *  (opens in any maps app, incl. Vela), raw coordinates, or just the address. */
+/** Share action: opens a small menu - a Google Maps link, a keyless geo: pin
+ * (opens in any maps app, incl. Vela), raw coordinates, or just the address. */
 @Composable
 private fun ShareIconButton(place: Place, tint: Color) {
     val context = LocalContext.current
@@ -2387,7 +2387,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
         }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
-            // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
+            // A geo: URI opens in ANY maps app (incl. Vela) - no google.com, the
             // degoogled-friendly way to send a pin.
             item(stringResource(R.string.place_share_map_pin)) { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") }
             item(stringResource(R.string.place_share_coordinates)) { share("$lat, $lng") }
@@ -2399,7 +2399,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
 }
 
 /** Google-style "popular times": day chips + an hourly busyness bar chart, today's
- *  current hour highlighted. */
+ * current hour highlighted. */
 @Composable
 private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color, dim: Color) {
     val accent = MaterialTheme.colorScheme.primary
@@ -2407,7 +2407,7 @@ private fun PopularTimesSection(pt: app.vela.core.model.PopularTimes, ink: Color
     val currentHour = remember { java.time.LocalTime.now().hour }
     // Keyed to pt so a different place's histogram resets the selected day (instead of
     // carrying over the day tapped on the previous place). firstOrNull guards an empty
-    // days list — the `day` lookup below also returns early if nothing matches.
+    // days list - the `day` lookup below also returns early if nothing matches.
     var selectedDow by remember(pt) {
         mutableStateOf(
             if (pt.days.any { it.dayOfWeek == today }) today
@@ -2480,8 +2480,8 @@ private fun hourLabel(h: Int): String = when {
     else -> "${h - 12}p"
 }
 
-/** The handful of attribute items worth showing as overview chips — the categories users
- *  scan for first, a few items each, deduped and capped. (Full set stays in the About tab.) */
+/** The handful of attribute items worth showing as overview chips - the categories users
+ * scan for first, a few items each, deduped and capped. (Full set stays in the About tab.) */
 private fun attributeHighlights(about: List<AboutSection>): List<String> {
     if (about.isEmpty()) return emptyList()
     val priority = listOf(
@@ -2507,8 +2507,8 @@ private val HOLIDAY_DAY_NAMES = mapOf(
 )
 
 /** From weekly hours whose affected day is tagged " · <holiday label>" (e.g. "Thursday: Closed ·
- *  Independence Day"), return the SOONEST upcoming special-hours day (today first) so the place card
- *  can flag it Google-style instead of leaving it buried on one day's row. Null if none this week. */
+ * Independence Day"), return the SOONEST upcoming special-hours day (today first) so the place card
+ * can flag it Google-style instead of leaving it buried on one day's row. Null if none this week. */
 private fun upcomingHoliday(hours: List<String>, today: java.time.LocalDate): HolidayHours? {
     val todayDow = today.dayOfWeek
     return hours.mapNotNull { line ->
@@ -2566,7 +2566,7 @@ private fun HoursSection(hours: List<String>, ink: Color, dim: Color) {
             Spacer(Modifier.weight(1f))
             if (!expanded) {
                 days.firstOrNull()?.let {
-                    // Just the hours in the collapsed summary — strip any " · Holiday" suffix (it's
+                    // Just the hours in the collapsed summary - strip any " · Holiday" suffix (it's
                     // already shown in the amber callout above) so it can't squeeze the "Hours" label.
                     Text(
                         it[1].substringBefore("·").trim(),

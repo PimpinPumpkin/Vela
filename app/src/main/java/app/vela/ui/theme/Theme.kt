@@ -9,7 +9,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-// Containers are set to teal tints too — otherwise Material's defaults leave
+// Containers are set to teal tints too - otherwise Material's defaults leave
 // primaryContainer/secondaryContainer a stock purple, which made the map FABs and
 // selected chips read "weirdly purple" against the teal brand.
 private val LightColors = lightColorScheme(

@@ -17,7 +17,7 @@ import kotlinx.serialization.json.put
 /**
  * The flat JSON contract between the app and a remote `transforms.js`. The JS is
  * handed (and returns) an array of these simple objects; we map them to [Place].
- * Only the core scalar fields are carried — the ones a Google reshape would move
+ * Only the core scalar fields are carried - the ones a Google reshape would move
  * and a hot-fix would need to re-extract. Array fields (photos/hours/about) default
  * empty; the compiled path fills those on a normal (non-overridden) response.
  */

@@ -121,7 +121,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
         }
     }
-    // D-pad-first (docs/dpad.md): Settings must open already focused — land on the back
+    // D-pad-first (docs/dpad.md): Settings must open already focused - land on the back
     // button (top of screen) so the first arrow press enters the content, never a wasted
     // "wake up focus" press. No-op under touch.
     val settingsAutoFocus = rememberDpadAutoFocus()
@@ -141,14 +141,14 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
         Column(
             Modifier
                 .padding(padding)
-                // D-pad (docs/dpad.md): Settings is a VERTICAL list — swallow bare LEFT/RIGHT so a
+                // D-pad (docs/dpad.md): Settings is a VERTICAL list - swallow bare LEFT/RIGHT so a
                 // no-target horizontal move can't clear focus. The vibrate FilterChips row (a real
                 // horizontal row) handles its own LEFT/RIGHT first, so this never runs for it.
                 .dpadSwallowHorizontal()
                 // The back button lives in the TopAppBar, a SEPARATE container Compose's directional
                 // UP can't reach, so an UP from the TOP row cleared focus (auditor-found, 1/49). When
                 // the top row holds focus (atTopItem) route its UP straight to Back via requestFocus
-                // (proven to land — it's how opening auto-focuses Back); NEVER moveFocus, which itself
+                // (proven to land - it's how opening auto-focuses Back); NEVER moveFocus, which itself
                 // clears at the top edge. Every other UP falls through to normal list navigation.
                 .onKeyEvent { ev ->
                     if (ev.key == Key.DirectionUp && atTopItem) {
@@ -357,7 +357,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             Hint(stringResource(R.string.settings_traffic_lights_hint))
             Text(stringResource(R.string.settings_vibrate_on_turns), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 4.dp))
-            // One chip per travel mode (was four stacked switch rows — a lot of vertical space
+            // One chip per travel mode (was four stacked switch rows - a lot of vertical space
             // for a setting most people touch once). Selected = that mode vibrates at turns.
             Row(
                 // Scrollable so four localized labels can never squeeze each other off-screen.
@@ -365,7 +365,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 // The ROOT swallows bare LEFT/RIGHT (see above), so this horizontal row drives its
-                // OWN LEFT/RIGHT via FocusRequesters — requestFocus (not moveFocus) never clears at
+                // OWN LEFT/RIGHT via FocusRequesters - requestFocus (not moveFocus) never clears at
                 // the ends, and consuming the key stops it reaching the root swallow.
                 val chipFocus = remember { List(4) { FocusRequester() } }
                 listOf(
@@ -420,7 +420,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             Hint(stringResource(R.string.settings_demo_drive_hint))
 
-            // Simulated location — pretend to be at the current map centre (for demos / screenshots
+            // Simulated location - pretend to be at the current map centre (for demos / screenshots
             // without leaking where you actually are). Reactive holder so the switch reflects state.
             Row(
                 Modifier.fillMaxWidth().padding(vertical = 4.dp),
@@ -436,7 +436,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_voice))
-            // Vela's own on-device neural voices — offer a one-tap download for whichever isn't
+            // Vela's own on-device neural voices - offer a one-tap download for whichever isn't
             // present yet; once downloaded each shows in the engine list below (selectable). No
             // standalone TTS app needed. Kokoro = premium/slower, Piper = fast.
             // A download in flight shows a compact progress line here too, so it's visible even when the
@@ -458,7 +458,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
             val engineList = engines
             if (engineList == null) {
-                // still loading — render nothing
+                // still loading - render nothing
             } else if (engineList.isEmpty()) {
                 Hint(stringResource(R.string.settings_voice_none_hint))
             } else {
@@ -485,9 +485,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Hint(stringResource(R.string.settings_voice_test_hint))
             }
 
-            // Voice library — browse, download, switch between and remove Vela's neural voices (Piper).
+            // Voice library - browse, download, switch between and remove Vela's neural voices (Piper).
             // Auto-expanded when nothing is installed so the download path is obvious.
-            // Auto-expand when nothing is installed so the download path is obvious — EXCEPT when we
+            // Auto-expand when nothing is installed so the download path is obvious - EXCEPT when we
             // arrived to set up offline, where a big open voice list between the top and the Offline
             // section would push it around and fight the scroll-into-view.
             var voiceLibExpanded by remember { mutableStateOf(state.installedVoiceIds.isEmpty() && !openOffline) }
@@ -495,7 +495,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             if (voiceLibExpanded) VoiceLibrary(vm, state)
 
             if (engineList?.isNotEmpty() == true) {
-                // Speed + the niche bits (playground, the multi-speaker variant picker) — most people never
+                // Speed + the niche bits (playground, the multi-speaker variant picker) - most people never
                 // touch these, so tuck them behind a collapsible header (collapsed by default).
                 var voiceAdvExpanded by remember { mutableStateOf(false) }
                 CollapsibleSectionTitle(stringResource(R.string.settings_voice_advanced), voiceAdvExpanded) { voiceAdvExpanded = !voiceAdvExpanded }
@@ -532,7 +532,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     OutlinedButton(onClick = { vm.setVoiceSpeed(0.1f) }) { Text("+") }
                 }
                 Hint(stringResource(R.string.settings_voice_speed_hint))
-                // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) — let the user audition +
+                // Multi-speaker Vela voices (libritts_r=904, VCTK=109, Arctic=18) - let the user audition +
                 // pick a variant. Hidden for single-speaker voices (lessac/hfc/…), where it's meaningless.
                 if (state.selectedEngine?.packageName?.startsWith("vela.") == true && vm.voiceSpeakerCount() > 1) {
                     Spacer(Modifier.height(10.dp))
@@ -577,7 +577,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
             }
 
             Spacer(Modifier.height(20.dp).onGloballyPositioned { offlineSectionY = it.positionInRoot().y })
-            // Collapsed by default — the routing-region list can be long, so don't make the user
+            // Collapsed by default - the routing-region list can be long, so don't make the user
             // scroll past all of it to reach the sections below. Opens expanded when the onboarding
             // offline prompt sent us here.
             var offlineExpanded by remember { mutableStateOf(openOffline) }
@@ -654,7 +654,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 }
                 // The region you're IN = the SMALLEST bbox that contains you. Region boxes carry a Geofabrik
                 // buffer that spills across borders (British Columbia's box dips into Sacramento), so "any box that
-                // covers you" mislabels big neighbours — the smallest covering box is the specific one. Sort:
+                // covers you" mislabels big neighbours - the smallest covering box is the specific one. Sort:
                 // installed first (manage what you have), then that primary region, then everything by name.
                 val primary = state.routingRegions.filter(covers)
                     .minByOrNull { (it.n - it.s) * (it.e - it.w) }
@@ -791,7 +791,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     context.startActivity(
                         android.content.Intent(
                             android.content.Intent.ACTION_VIEW,
-                            android.net.Uri.parse("https://github.com/PimpinPumpkin/Vela/blob/main/PRIVACY.md"),
+                            android.net.Uri.parse("https://github.com/alltechdev/vela-dpad/blob/main/PRIVACY.md"),
                         ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
                     )
                 }
@@ -824,7 +824,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 }) { Text(stringResource(R.string.settings_diag_export)) }
             }
 
-            // Trip recording — more invasive than diagnostics (it's your exact routes),
+            // Trip recording - more invasive than diagnostics (it's your exact routes),
             // so it's a separate opt-in. Records nav GPS traces for replay testing.
             LaunchedEffect(Unit) { vm.refreshTripRecording() }
             var showTripConsent by remember { mutableStateOf(false) }
@@ -861,7 +861,7 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                             Hint(listOfNotNull(recordedAt, stringResource(R.string.settings_trip_points, t.fixCount)).joinToString(" · "))
                         }
                         TextButton(onClick = { vm.replayTrip(t); onBack() }) { Text(stringResource(R.string.settings_trip_replay)) }
-                        // Share the raw trace off-device — works on release builds, so a
+                        // Share the raw trace off-device - works on release builds, so a
                         // drive can be handed over for replay/debug without a dev build.
                         TextButton(onClick = {
                             val intent = vm.exportTripIntent(t)
@@ -982,7 +982,7 @@ private fun SectionTitle(text: String) {
     )
 }
 
-/** A [SectionTitle] that toggles a collapsible body — tap the whole row; a chevron shows the state. */
+/** A [SectionTitle] that toggles a collapsible body - tap the whole row; a chevron shows the state. */
 @Composable
 private fun CollapsibleSectionTitle(text: String, expanded: Boolean, onToggle: () -> Unit) {
     Row(
@@ -1013,7 +1013,7 @@ private fun SelectableRow(label: String, selected: Boolean, onClick: () -> Unit,
         // onClick = null: the RadioButton is display-only so the ROW is the single focus stop. A
         // separately-focusable RadioButton made the row TWO focus stops, and a horizontal (LEFT/
         // RIGHT) D-pad move into that nested target cleared focus with no way back (dpad audit
-        // 2026-07-08) — the Material "clickable row + indicator" pattern.
+        // 2026-07-08) - the Material "clickable row + indicator" pattern.
         RadioButton(selected = selected, onClick = null)
         Text(label, style = MaterialTheme.typography.bodyLarge)
     }
@@ -1045,7 +1045,7 @@ private fun Hint(text: String) {
  * accent/gender/quality/size + a Download / Use / Delete control and inline download progress.
  * Downloaded voices float to the top of their group; the active one is marked "In use"; ★ marks the
  * best few for navigation. A plain Column (the catalog is small and this lives inside the Settings
- * verticalScroll — a LazyColumn would fight it for height).
+ * verticalScroll - a LazyColumn would fight it for height).
  */
 @Composable
 private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
@@ -1056,7 +1056,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
     var confirmDeleteId by remember { mutableStateOf<String?>(null) }
     var query by remember { mutableStateOf("") }
 
-    // The app's language — its voices are floated to the top of the browser (Google-style), and if none
+    // The app's language - its voices are floated to the top of the browser (Google-style), and if none
     // is installed yet we nudge the user to grab the matching voice (so nav text + voice speak the same
     // language, not French words read by an English voice).
     val appLang = app.vela.ui.AppLocale.effective().language
@@ -1087,7 +1087,7 @@ private fun VoiceLibrary(vm: MapViewModel, state: MapUiState) {
         listOf(v.displayName, v.region, PiperCatalog.languageLabel(v.langCode), v.note ?: "")
             .any { it.contains(query.trim(), ignoreCase = true) }
 
-    // Grouped by language — the app's language first (Google-style), then English, then by endonym.
+    // Grouped by language - the app's language first (Google-style), then English, then by endonym.
     // Each language is its own collapsible sub-group so the ~40-voice list isn't one long scroll: a
     // group opens by default only when it's the app's language or already has a voice installed, so you
     // see your own language + what you've got and the rest stays folded away. A search forces all open.
