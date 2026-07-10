@@ -449,7 +449,12 @@ Defaults that make the safe path the easy one:
   `startActivityForResult(ACTION_RECOGNIZE_SPEECH)` and reads `EXTRA_RESULTS` into the query -
   **the provider records, so Vela needs NO RECORD_AUDIO for this tier.** KEY DISTINCTION verified
   2026-07-10: only apps that register the RECOGNIZE_SPEECH **activity** count (FUTO Voice Input
-  does - confirmed in its manifest). Keyboard/IME voice (Sayboard, FUTO Keyboard) provides a
+  does - confirmed in its manifest). **With several voice apps installed the intent pins the
+  user's pick** (2026-07-10): `VoiceSearch.providers()` enumerates them, the Settings picker lists
+  each BY NAME beside Vela Voice, the choice persists as a flattened ComponentName
+  (`voice_search_provider`), and the tier-2 intent sets that component - the old bare implicit
+  intent let ANDROID choose (default-app or a system chooser). An uninstalled pick degrades to the
+  first available provider, never a dead mic. Keyboard/IME voice (Sayboard, FUTO Keyboard) provides a
   RecognitionService or in-IME mic, NOT the activity, so `queryIntentActivities` returns empty and
   the mic correctly hides - Vela can't `startActivityForResult` to them. That's intended: those
   users use the keyboard mic, and tier-1 (on-device Whisper) serves everyone regardless.
