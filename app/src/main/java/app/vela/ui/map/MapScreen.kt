@@ -406,6 +406,45 @@ fun MapScreen(
     LaunchedEffect(Unit) {
         if (hasLocation()) vm.startLocation()
     }
+    // Voice search: launch a system speech recognizer (FUTO Voice Input etc.), drop the recognised
+    // text into the query and search. Vela records nothing itself - the provider does, so no mic
+    // permission here. The mic only shows when a provider exists (VoiceSearch.hasProvider + toggle);
+    // a later branch adds an on-device model as a second path.
+    val voiceLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val heard = result.data
+                ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                ?.trim()
+            if (!heard.isNullOrEmpty()) {
+                focusManager.clearFocus()
+                vm.onQueryChange(heard)
+                vm.search()
+            }
+        }
+    }
+    val voiceAvailable = remember { app.vela.ui.VoiceSearch.hasProvider(context) }
+    val voicePrompt = stringResource(R.string.search_voice_prompt)
+    val onMic: (() -> Unit)? = if (app.vela.ui.VoiceSearch.enabled.value && voiceAvailable) {
+        {
+            val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                putExtra(
+                    android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                    android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM,
+                )
+                putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, app.vela.ui.AppLocale.effective().toLanguageTag())
+                putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, voicePrompt)
+            }
+            // The resolver check can go stale (provider uninstalled since launch); catch it so a
+            // tap can never crash - it just does nothing.
+            runCatching { voiceLauncher.launch(intent) }
+        }
+    } else {
+        null
+    }
+
     // Tapping the locate button with no permission is an unambiguous "I want my location" - request
     // it (no rationale screen needed, the tap IS the intent). Granted → normal recenter.
     val onRecenter: () -> Unit = {
@@ -709,6 +748,7 @@ fun MapScreen(
                         onBack = if (searchOpen) ({ searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
                         offline = state.offline,
                         dpadMode = dpadMode,
+                        onMic = onMic,
                     )
                     when {
                         // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)

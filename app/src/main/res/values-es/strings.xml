@@ -15,6 +15,12 @@
     <string name="settings_units_metric">Métricas (kilómetros, metros)</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_language_hint">Establece el idioma de las indicaciones de voz giro a giro (inglés, francés, alemán, español, italiano, portugués, neerlandés, ruso, polaco, sueco, ucraniano), independiente del idioma del sistema de tu teléfono. Elige una voz acorde en la Biblioteca de voces de más abajo. El resto del texto en pantalla de la app se traducirá próximamente.</string>
+    <string name="settings_search">Búsqueda</string>
+    <string name="settings_voice_search_toggle">Micrófono de búsqueda por voz</string>
+    <string name="settings_voice_search_hint">Muestra un micrófono en la barra de búsqueda. Tócalo para dictar tu búsqueda con una app de entrada de voz del teléfono.</string>
+    <string name="settings_voice_search_none">Muestra un micrófono en la barra de búsqueda para dictar tu búsqueda. Necesita una app de voz como FUTO Voice Input; aún no hay ninguna instalada.</string>
+    <string name="search_voice_cd">Búsqueda por voz</string>
+    <string name="search_voice_prompt">Habla para buscar</string>
     <string name="settings_voice">Voz</string>
     <string name="settings_voice_fallback_name">voz</string>
     <string name="settings_voice_downloading">Descargando %1$s… %2$d%%</string>

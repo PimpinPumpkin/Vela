@@ -42,6 +42,11 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- See whether any app can handle voice input (FUTO Voice Input, Sayboard, …) so the
+             search-bar mic can hand off to it. Package visibility on Android 11+ requires this. -->
+        <intent>
+            <action android:name="android.speech.action.RECOGNIZE_SPEECH" />
+        </intent>
     </queries>
 
     <application
