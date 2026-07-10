@@ -14,6 +14,7 @@
     <string name="settings_units_imperial">Impériales (miles, pieds)</string>
     <string name="settings_units_metric">Métriques (kilomètres, mètres)</string>
     <string name="settings_language">Langue</string>
+    <string name="settings_follow_system_language">Suivre la langue du système</string>
     <string name="settings_language_hint">Définit la langue des instructions vocales de navigation (anglais, français, allemand, espagnol, italien, portugais, néerlandais, russe, polonais, suédois, ukrainien) — indépendamment de la langue système de votre téléphone. Choisissez une voix correspondante dans la Bibliothèque de voix ci-dessous. Le reste des textes de l\'application est en cours de traduction.</string>
     <string name="settings_search">Recherche</string>
     <string name="settings_voice_search_toggle">Micro de recherche vocale</string>
@@ -478,4 +479,10 @@
     <string name="lists_empty_hint">Pas encore de listes. Touchez Nouvelle ou enregistrez un lieu depuis sa page.</string>
     <string name="lists_place_count">%1$d lieux</string>
     <string name="navservice_notif_eta">Arrivée %1$s</string>
+    <string name="settings_advanced">Avancé</string>
+    <string name="settings_advanced_hint">Options de niche et expérimentales que la plupart des gens n\'ont jamais à changer.</string>
+    <string name="settings_developer">Développeur</string>
+    <string name="settings_developer_hint">Outils pour les démos, captures d\'écran et tests. Désactivez-les pour un usage réel.</string>
+    <string name="settings_browse_voices">Parcourir les voix</string>
+    <string name="settings_browse_voices_hint">Téléchargez et changez les voix de Vela sur l\'appareil.</string>
 </resources>
