@@ -2671,10 +2671,11 @@ class MapViewModel @Inject constructor(
     fun neuralVoiceInstalled(): Boolean = VelaPiper.isReady(appContext)
     fun piperInstalled(): Boolean = VelaPiper.isReady(appContext)
 
-    /** Voice playground: speak arbitrary text through the currently-selected voice. */
+    /** Voice playground: speak arbitrary text through the currently-selected voice. Bypasses the
+     *  spoken-directions mute - tapping Speak IS the request for sound. */
     fun speakText(text: String) {
         val t = text.trim()
-        if (t.isNotEmpty()) voice.speak(t, interrupt = true)
+        if (t.isNotEmpty()) voice.speak(t, interrupt = true, ignoreMute = true)
     }
 
     /** Speakers in the SELECTED Vela voice (from the catalog, so it's correct synchronously the instant
