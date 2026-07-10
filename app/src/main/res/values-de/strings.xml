@@ -14,6 +14,7 @@
     <string name="settings_units_imperial">Imperial (Meilen, Fuß)</string>
     <string name="settings_units_metric">Metrisch (Kilometer, Meter)</string>
     <string name="settings_language">Sprache</string>
+    <string name="settings_follow_system_language">Systemsprache verwenden</string>
     <string name="settings_language_hint">Legt die Sprache der gesprochenen Navigationsansagen fest (Englisch, Französisch, Deutsch, Spanisch, Italienisch, Portugiesisch, Niederländisch, Russisch, Polnisch, Schwedisch, Ukrainisch) – unabhängig von der Systemsprache Ihres Telefons. Wählen Sie unten in der Stimmenbibliothek eine passende Stimme. Der übrige Bildschirmtext der App wird als Nächstes übersetzt.</string>
     <string name="settings_search">Suche</string>
     <string name="settings_voice_search_toggle">Mikrofon für Sprachsuche</string>
@@ -478,4 +479,10 @@
     <string name="lists_empty_hint">Noch keine Listen. Tippe auf Neu oder speichere einen Ort von seiner Seite.</string>
     <string name="lists_place_count">%1$d Orte</string>
     <string name="navservice_notif_eta">Ankunft %1$s</string>
+    <string name="settings_advanced">Erweitert</string>
+    <string name="settings_advanced_hint">Nischen- und experimentelle Optionen, die die meisten nie ändern müssen.</string>
+    <string name="settings_developer">Entwickler</string>
+    <string name="settings_developer_hint">Werkzeuge für Demos, Screenshots und Tests. Schalte sie für den echten Einsatz aus.</string>
+    <string name="settings_browse_voices">Stimmen durchsuchen</string>
+    <string name="settings_browse_voices_hint">Vela-Stimmen auf dem Gerät herunterladen und wechseln.</string>
 </resources>

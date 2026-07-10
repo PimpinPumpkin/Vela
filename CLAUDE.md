@@ -240,11 +240,21 @@ Defaults that make the safe path the easy one:
   card + the cluster/HUD nav data; `ManeuverMapper` maps Vela maneuvers → car `Maneuver`/`Step`/`Trip`.
   Manifest also declares `FEATURE_CLUSTER` (instrument-cluster nav) and `CAR_INFO` (AAOS car speed).
   The PHONE also feeds NavSession when not projecting; the car and phone share the one nav loop.
-- **Settings ORDER is deliberate (reorg 2026-07-08):** Appearance → Map (traffic/transit/3D) →
-  **Place pages** (ShowReviews / read-all-reviews / LoadPhotos) → Navigation (keep-screen-on,
-  traffic lights, vibrate-on-turns as FilterChips one per mode, demo LAST) → Voice → Offline →
-  Saved places → Data & privacy → Diagnostics → About/Support/Version(+updater). Put a new setting
-  in the section it serves, not at the end; place-content settings go under Place pages, not Map.
+- **Settings ORDER is deliberate (declutter reorg 2026-07-10, supersedes 2026-07-08):** Appearance →
+  Map style → Units → Language → Search → Map (traffic/transit) → **Offline** → **Place pages**
+  (ShowReviews / read-all-reviews / LoadPhotos) → Navigation (keep-screen-on, vibrate-on-turns as
+  FilterChips one per mode, parking history) → Voice → Saved places → Lists → Data & privacy →
+  Diagnostics (share-diagnostics + the crash card) → **Advanced** → **Developer** → About/Support/
+  Version(+updater). Two **collapsible buckets at the bottom** hold the rarely-touched toggles, moved
+  out of their old sections: **Advanced** = 3D buildings, hide adult, hide external links, traffic-
+  light guidance; **Developer** = demo drive, simulate location, trip recording (each "turn off for
+  real use"). **Offline moved UP** to right after Map (people reach it often). **Language is a "Follow
+  system language" ToggleRow** that reveals the 11-language picker only when OFF (seeded with
+  `AppLocale.deviceDefaultSupported()`); most people never see the list. **The Voice library is a
+  DEDICATED screen** (`VoiceBrowseScreen`, reached by the "Browse voices" `OutlinedButton` in the
+  Voice section) not an inline accordion - `SettingsScreen` early-returns to it when
+  `showVoiceLibrary`; its own Back returns to Settings. Put a new setting in the section it serves;
+  niche/experimental → Advanced, demo/test tools → Developer, place-content → Place pages not Map.
 - **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat

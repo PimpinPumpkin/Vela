@@ -14,6 +14,7 @@
     <string name="settings_units_imperial">Brittiskt (miles, fot)</string>
     <string name="settings_units_metric">Metriskt (kilometer, meter)</string>
     <string name="settings_language">Språk</string>
+    <string name="settings_follow_system_language">Följ systemspråket</string>
     <string name="settings_language_hint">Anger språket för talade vägbeskrivningar sväng för sväng (engelska, franska, tyska, spanska, italienska, portugisiska, nederländska, ryska, polska, svenska, ukrainska) – oberoende av telefonens systemspråk. Välj en röst som matchar i Röstbiblioteket nedan. Resten av appens skärmtext översätts härnäst.</string>
     <string name="settings_search">Sök</string>
     <string name="settings_voice_search_toggle">Mikrofon för röstsökning</string>
@@ -478,4 +479,10 @@
     <string name="lists_empty_hint">Inga listor än. Tryck på Ny eller spara en plats från dess sida.</string>
     <string name="lists_place_count">%1$d platser</string>
     <string name="navservice_notif_eta">Ankomst %1$s</string>
+    <string name="settings_advanced">Avancerat</string>
+    <string name="settings_advanced_hint">Nisch- och experimentella alternativ som de flesta aldrig behöver ändra.</string>
+    <string name="settings_developer">Utvecklare</string>
+    <string name="settings_developer_hint">Verktyg för demos, skärmbilder och tester. Stäng av dem för verklig användning.</string>
+    <string name="settings_browse_voices">Bläddra bland röster</string>
+    <string name="settings_browse_voices_hint">Ladda ner och växla mellan Velas röster på enheten.</string>
 </resources>

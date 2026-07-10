@@ -34,6 +34,12 @@ object AppLocale {
     /** The language's own name (endonym) — what a speaker of it expects to see in a language list. */
     fun endonym(code: String): String = ENDONYMS[code] ?: code.replaceFirstChar { it.uppercase() }
 
+    /** The supported language closest to the device/system locale. Used when the user turns OFF
+     *  "follow system language" so the revealed picker starts on a sensible current choice instead
+     *  of nothing; falls back to English when the system language isn't one Vela ships. */
+    fun deviceDefaultSupported(): String =
+        Locale.getDefault().language.takeIf { it in SUPPORTED } ?: "en"
+
     fun init(context: Context) {
         language.value = prefs(context).getString(KEY, "") ?: ""
         apply()
