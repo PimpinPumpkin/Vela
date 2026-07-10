@@ -3,7 +3,7 @@
 Status legend: [x] done · [~] partial / in progress · [ ] planned
 
 > **At a glance** (jump to a section for the detail). For *how* each of these works, see the
-> "How it works" table in [`README.md`](../README.md#how-it-works--each-capability-and-the-method-behind-it).
+> "How it works" table in [`README.md`](../README.md#how-it-works).
 >
 > | Area | The short version |
 > |---|---|
