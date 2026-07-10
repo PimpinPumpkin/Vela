@@ -40,6 +40,7 @@ class WhisperRecognizer @Inject constructor(
 ) {
     private val loadLock = Any()
     @Volatile private var recognizer: OfflineRecognizer? = null
+    @Volatile private var loadedLang: String? = null
 
     private companion object {
         const val SAMPLE_RATE = 16000
@@ -53,13 +54,22 @@ class WhisperRecognizer @Inject constructor(
         ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
             PackageManager.PERMISSION_GRANTED
 
-    /** Load the Whisper recognizer once, off the model files (language auto-detect handles all 11 of
-     *  Vela's languages without reconfiguration). Returns null if the model isn't installed or the
-     *  native load fails - callers then fall back to the provider intent or hide the mic. */
+    /** The language Whisper is pinned to: the app language when it's one Vela supports, else
+     *  auto-detect. Pinning matters - with auto-detect, a noisy capture can be misread as a whole
+     *  other language and come back in the wrong script (a garbled far-field test transcribed to
+     *  Cyrillic). The app language is what the user speaks to a maps app in practice. */
+    private fun whisperLang(): String =
+        app.vela.ui.AppLocale.effective().language.takeIf { it in app.vela.ui.AppLocale.SUPPORTED } ?: ""
+
+    /** Load the Whisper recognizer once per language (rebuilt if the app language changes). Returns
+     *  null if the model isn't installed or the native load fails - callers then fall back to the
+     *  provider intent or hide the mic. */
     private fun ensureRecognizer(): OfflineRecognizer? {
-        recognizer?.let { return it }
+        val lang = whisperLang()
+        recognizer?.let { if (loadedLang == lang) return it }
         synchronized(loadLock) {
-            recognizer?.let { return it }
+            recognizer?.let { if (loadedLang == lang) return it else runCatching { it.release() } }
+            recognizer = null
             if (!AsrModel.isInstalled(context)) return null
             val dir = AsrModel.dir(context)
             val r = runCatching {
@@ -70,7 +80,7 @@ class WhisperRecognizer @Inject constructor(
                             whisper = OfflineWhisperModelConfig(
                                 encoder = File(dir, AsrModel.ENCODER).absolutePath,
                                 decoder = File(dir, AsrModel.DECODER).absolutePath,
-                                language = "",        // auto-detect
+                                language = lang,      // pinned to the app language ("" = auto)
                                 task = "transcribe",
                                 tailPaddings = -1,
                             ),
@@ -82,6 +92,7 @@ class WhisperRecognizer @Inject constructor(
                 )
             }.getOrNull()
             recognizer = r
+            loadedLang = lang
             return r
         }
     }
@@ -181,16 +192,24 @@ class WhisperRecognizer @Inject constructor(
             val t = rec.getResult(stream).text
             stream.release()
             t
-        }.getOrNull()?.trim().orEmpty()
+        }.getOrNull().orEmpty()
 
-        text.ifBlank { null }
+        cleanTranscript(text).ifBlank { null }
     }
+
+    /** Whisper writes prose: it capitalizes and ends with a period ("Coffee shops near me.").
+     *  A search query wants neither the trailing sentence punctuation nor stray wrapping, so strip
+     *  terminal . ! ? , ; : and quotes from the ends. Periods INSIDE the text are left alone,
+     *  they can be real ("St. Paul"). */
+    private fun cleanTranscript(raw: String): String =
+        raw.trim().trim('"', '\u201C', '\u201D').trimEnd('.', '!', '?', ',', ';', ':', '\u2026').trim()
 
     private fun rms(f: FloatArray): Float {
         if (f.isEmpty()) return 0f
         var sum = 0.0
         for (v in f) sum += v.toDouble() * v
-        // Scale so a normal speaking level reads near the top of the 0..1 range for the animation.
-        return (sqrt(sum / f.size) * 4f).toFloat().coerceIn(0f, 1f)
+        // Scale so a normal speaking level reads near the top of the 0..1 range for the animation
+        // (raised from 4x: speech at arm's length has RMS around 0.05 to 0.15 and the pulse read flat).
+        return (sqrt(sum / f.size) * 7f).toFloat().coerceIn(0f, 1f)
     }
 }
