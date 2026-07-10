@@ -198,6 +198,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Transit lines are opt-in now (2026-07-10).** The purple rail highlight is off by default;
   it reads as mystery lines if you don't know what it is. Settings → Map → "Highlight transit
   lines" brings it back, and an earlier choice is kept either way.
+- ✅ **Language switching leaves nothing behind (2026-07-10).** Switching back to English used to
+  keep dates (parking history months) and freshly fetched place names in the old language until
+  the app was killed; now the switch back is complete immediately. The translations also lost
+  their machine-looking long dashes across all ten languages.
 - ✅ **Pick your voice app (2026-07-10).** Settings → Search lists Vela Voice, "Android default"
   (your system-wide choice, untouched), and every installed voice app by name as a manual
   override. The mic launches exactly what the picker says.
