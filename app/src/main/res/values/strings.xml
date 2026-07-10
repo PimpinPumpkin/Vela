@@ -236,6 +236,9 @@
     <string name="place_delta_min">+%1$d min</string> <!-- format -->
     <string name="place_via">via %1$s</string> <!-- format -->
     <string name="place_live_traffic">live traffic</string>
+    <string name="place_traffic_light">light traffic</string>
+    <string name="place_traffic_moderate">moderate traffic</string>
+    <string name="place_traffic_heavy">heavy traffic</string>
     <string name="place_finding_transit">Finding transit routes…</string>
     <string name="place_no_transit">No transit routes found</string>
     <string name="place_hide_steps">Hide steps</string>
