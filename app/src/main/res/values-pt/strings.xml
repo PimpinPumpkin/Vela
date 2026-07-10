@@ -137,8 +137,8 @@
     <string name="settings_version_line">Vela %1$s  (compilação %2$d)</string>
     <string name="settings_collapse">Recolher</string>
     <string name="settings_expand">Expandir</string>
-    <string name="settings_voice_lib_empty_hint">Transfira uma voz natural no dispositivo para as indicações faladas — escolha uma abaixo. As vozes ★ soam mais como um navegador de mapas (Lessac e HFC são as mais próximas da Google). Transferência única; recomenda-se Wi-Fi.</string>
-    <string name="settings_voice_lib_installed_hint">Instalado: %1$d MB · %2$d voz(es). Toque em Usar para mudar (reproduz uma amostra); o ícone do lixo liberta o espaço.</string> <!-- format -->
+    <string name="settings_voice_lib_empty_hint">★ assinala as vozes recomendadas. Todas funcionam offline no telemóvel.</string>
+    <string name="settings_voice_lib_installed_hint">Instalado: %1$d MB · %2$d voz(es).</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">O idioma da sua aplicação é %1$s — transfira uma voz de %2$s abaixo para que as indicações faladas correspondam (uma voz de inglês pronunciaria mal os nomes das ruas em %3$s).</string>
     <string name="settings_voice_search">Pesquisar vozes</string>
     <string name="settings_voice_show_more">Mostrar mais %1$d</string>
