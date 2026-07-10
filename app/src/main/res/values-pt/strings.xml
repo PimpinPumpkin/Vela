@@ -5,17 +5,17 @@
     <string name="settings_follow_system">Seguir o sistema</string>
     <string name="settings_theme_light">Claro</string>
     <string name="settings_theme_dark">Escuro</string>
-    <string name="settings_appearance_hint">Claro/Escuro aplica-se apenas ao Vela — não altera o tema do sistema do seu telemóvel.</string>
+    <string name="settings_appearance_hint">Aplica-se apenas à Vela.</string>
     <string name="settings_dynamic_color">Cores Material You</string>
-    <string name="settings_dynamic_color_hint">Pinta botões, chips e destaques a partir do seu fundo de ecrã (Android 12+). Desligado = o verde-azulado da Vela. O mapa mantém-se neutro para que estradas e etiquetas conservem o contraste.</string>
+    <string name="settings_dynamic_color_hint">Colore botões e detalhes conforme o fundo. O mapa continua neutro.</string>
     <string name="settings_map_style">Estilo do mapa</string>
-    <string name="settings_map_style_hint">O OpenFreeMap (predefinição) é detalhado e não requer chave. O Protomaps precisa de uma chave de API; o estilo de demonstração mostra apenas contornos de países.</string>
+    <string name="settings_map_style_hint">O OpenFreeMap funciona sem chave de API.</string>
     <string name="settings_units">Unidades</string>
     <string name="settings_units_imperial">Imperial (milhas, pés)</string>
     <string name="settings_units_metric">Métrico (quilómetros, metros)</string>
     <string name="settings_language">Idioma</string>
     <string name="settings_follow_system_language">Seguir o idioma do sistema</string>
-    <string name="settings_language_hint">Define o idioma das indicações de voz curva a curva (inglês, francês, alemão, espanhol, italiano, português, neerlandês, russo, polaco, sueco, ucraniano) — independente do idioma do sistema do seu telemóvel. Escolha uma voz correspondente na Biblioteca de vozes abaixo. O restante texto no ecrã da aplicação será traduzido a seguir.</string>
+    <string name="settings_language_hint">Muda o idioma da app e das indicações faladas. Escolhe uma voz correspondente na biblioteca de vozes.</string>
     <string name="settings_search">Pesquisa</string>
     <string name="settings_voice_search_toggle">Microfone de pesquisa por voz</string>
     <string name="settings_voice_search_hint">Mostra um microfone na barra de pesquisa. Toque para ditar a pesquisa com uma app de entrada de voz do telemóvel.</string>
@@ -50,16 +50,16 @@
     <string name="settings_mode_transit">Transportes públicos</string>
     <string name="settings_vibrate_hint">Vibrações codificadas por direção em cada curva — distintas para esquerda e direita — para poder seguir um percurso pelo tato. Configure por modo de viagem (p. ex. ligado para bicicleta e a pé, desligado de carro).</string>
     <string name="settings_keep_screen_on">Manter o ecrã ligado durante a navegação</string>
-    <string name="settings_keep_screen_on_hint">Impede que o ecrã escureça ou adormeça enquanto a navegação curva a curva está ativa, para que a próxima curva esteja sempre visível sem ter de tocar para o ativar. Ligado por predefinição; o ecrã volta a adormecer normalmente assim que chega ou sai da navegação.</string>
+    <string name="settings_keep_screen_on_hint">Mantém o ecrã aceso durante a navegação.</string>
     <string name="settings_map">Mapa</string>
     <string name="settings_live_traffic">Camada de trânsito em direto</string>
-    <string name="settings_live_traffic_hint">Sombreia as estradas por congestionamento ao explorar o mapa (mosaicos de trânsito sem chave da Google). Desligado por predefinição — a navegação já colore o seu percurso pelo trânsito, portanto isto serve apenas para observar a área envolvente. É uma sobreposição raster, por isso fica um pouco granulada.</string>
+    <string name="settings_live_traffic_hint">Sombreia as estradas conforme o trânsito ao explorar. A navegação já colore a tua rota pelo trânsito.</string>
     <string name="settings_transit_layer">Destacar linhas de transporte</string>
-    <string name="settings_transit_layer_hint">Desenha as linhas de comboio e metro a cores no mapa, para seguir o carril com facilidade. Usa os dados abertos já presentes nos mosaicos, sem rede.</string>
+    <string name="settings_transit_layer_hint">Desenha as linhas de comboio e metro no mapa.</string>
     <string name="settings_read_all_reviews">Botão “Ler todas as avaliações”</string>
-    <string name="settings_read_all_reviews_hint">As avaliações na ficha do local são sempre a lista nativa e fluida do próprio Vela. Isto adiciona um botão “Ler todas as avaliações” que abre a página completa de avaliações da Google em ECRÃ INTEIRO — todas as avaliações (não apenas as primeiras ~50), a pesquisa no servidor da Google e a reprodução de avaliações em vídeo. Rastreadores/balizas são bloqueados, mas executa a página da Google dentro da aplicação. Desligado = apenas a lista nativa, sem página da Google para avaliações.</string>
+    <string name="settings_read_all_reviews_hint">Adiciona um botão que abre a página completa de avaliações do Google na app, com todas as avaliações. Desligado = apenas a lista da Vela.</string>
     <string name="settings_buildings_3d">Edifícios em 3D</string>
-    <string name="settings_buildings_3d_hint">Formas de edifícios em relevo com muito zoom. Desligar pode deixar o arrastar mais fluido em telefones antigos; os contornos planos continuam.</string>
+    <string name="settings_buildings_3d_hint">Edifícios em relevo com zoom próximo. Desligar pode tornar o arrastar mais suave em telemóveis antigos.</string>
     <string name="settings_show_reviews">Mostrar avaliações</string>
     <string name="settings_show_reviews_hint">Desligado = as páginas de locais não mostram avaliações e o Vela nunca as transfere.</string>
     <string name="settings_load_photos">Carregar fotos</string>
@@ -101,15 +101,15 @@
     <string name="settings_export">Exportar</string>
     <string name="settings_import">Importar</string>
     <string name="settings_data_privacy">Fonte de dados e privacidade</string>
-    <string name="settings_data_privacy_hint">O Vela comunica diretamente com os pontos de acesso web públicos da Google a partir deste dispositivo — sem servidor Vela, sem conta Google, sem chave de API e sem telemetria, a menos que ative o Diagnóstico abaixo (desligado por predefinição, apenas local). Cada dispositivo comporta-se como um navegador sem sessão iniciada; a Google vê o seu IP, pesquisa e área do mapa, mas não uma conta. Os locais guardados e o histórico nunca saem do telemóvel.</string>
+    <string name="settings_data_privacy_hint">A Vela fala com os endpoints públicos do Google diretamente deste aparelho: sem backend, sem conta, sem chave de API. O Google vê o teu IP, a pesquisa e a área do mapa, não quem és.</string>
     <string name="settings_privacy_button">Que dados a Google recebe</string>
     <string name="settings_diagnostics">Diagnóstico</string>
-    <string name="settings_diagnostics_hint">Desligado por predefinição. Quando ligado, o Vela mantém um breve registo local do que fez — as suas pesquisas, percursos e quaisquer falhas de “necessita recalibração” — para que, se algo se comportar mal, possa exportá-lo e entregá-lo a um programador. Permanece neste telemóvel e nunca é carregado; é você que escolhe para onde vai a exportação. Desligá-lo apaga o registo.</string>
+    <string name="settings_diagnostics_hint">Desligado por predefinição. Ligado, a Vela mantém um pequeno registo local que podes exportar e entregar a um programador. Nada é enviado, e desligar apaga-o.</string>
     <string name="settings_share_diagnostics">Partilhar diagnóstico</string>
     <string name="settings_diag_nothing">Ainda nada registado — use a aplicação e depois exporte.</string>
     <string name="settings_diag_export">Exportar sessão de depuração</string>
     <string name="settings_save_trips">Guardar as minhas viagens (para reprodução)</string>
-    <string name="settings_save_trips_hint">Regista o traço GPS de cada navegação neste telemóvel para que uma viagem possa ser reproduzida mais tarde e testar a navegação curva a curva sem a percorrer novamente. Mais revelador do que o diagnóstico — são os seus percursos exatos — e nunca sai do telemóvel.</string>
+    <string name="settings_save_trips_hint">Grava o rasto GPS de cada viagem neste telemóvel, para reproduzir depois. Nunca sai do telemóvel.</string>
     <string name="settings_recorded_trips_hint">Viagens gravadas — toque em Reproduzir para reproduzir uma no mapa (3×):</string>
     <string name="settings_trip_points">%1$d pontos</string>
     <string name="settings_trip_replay">Reproduzir</string>
@@ -167,7 +167,7 @@
     <string name="place_permanently_closed">Fechado permanentemente</string>
     <string name="place_temporarily_closed">Fechado temporariamente</string>
     <string name="settings_traffic_lights">Orientação por semáforos</string>
-    <string name="settings_traffic_lights_hint">Diz «passe o semáforo e depois vire» em cruzamentos com semáforo (voz apenas em inglês por enquanto)</string>
+    <string name="settings_traffic_lights_hint">Adiciona pistas como “passa o semáforo e vira à esquerda”. Por agora só em inglês.</string>
     <string name="map_voice_downloading">Baixando a voz Vela · %1$d %%</string>
     <string name="map_voice_installing">Instalando a voz Vela…</string>
     <string name="map_region_downloading">A transferir rotas de %1$s · %2$d%%</string> <!-- format -->
@@ -175,9 +175,9 @@
     <string name="mapvm_poipack_ready">Os locais de %1$s já podem ser pesquisados offline</string> <!-- format -->
     <string name="mapvm_poipack_unavailable">Ainda não há pacote de locais para %1$s. Aparecerá aqui assim que for publicado.</string> <!-- format -->
     <string name="settings_demo_drive">Simular condução (demo)</string>
-    <string name="settings_demo_drive_hint">Para demonstrações, capturas e testes: tocar em Iniciar percorre a rota como um rasto de GPS simulado em vez da tua localização real — a navegação funciona em qualquer lugar. Desliga para navegar a sério.</string>
+    <string name="settings_demo_drive_hint">Iniciar percorre a rota planeada como simulação em vez de usar GPS. Desliga para navegar a sério.</string>
     <string name="settings_sim_location">Simular a minha localização (demo)</string>
-    <string name="settings_sim_location_hint">Para demos e capturas de ecrã: finja que está no centro do mapa agora, para que o ponto de localização, as distâncias e as rotas comecem daí em vez da sua posição real. Desligue para usar o GPS real.</string>
+    <string name="settings_sim_location_hint">Finge que estás no centro do mapa, para demos e capturas. Desliga para usar o GPS real.</string>
     <string name="place_address_copied">Morada copiada</string>
     <string name="place_copy_address">Copiar morada</string>
     <string name="place_directions">Direções</string>
@@ -310,7 +310,7 @@
     <string name="mapscreen_switch">Mudar</string>
     <string name="root_not_now">Agora não</string>
     <string name="root_voice_title">Voz de navegação falada</string>
-    <string name="root_voice_body_intro">A voz própria da Vela funciona inteiramente no telemóvel: indicações naturais, sem conta nem app extra. Recomendada, uma transferência única de ~%1$d MB.</string>
+    <string name="root_voice_body_intro">A voz própria da Vela corre inteiramente no telemóvel: indicações naturais, sem conta, sem outra app. Recomendada, uma transferência única de %1$d MB.</string>
     <string name="root_voice_body_system">Prefere que não? Use uma voz que já tem no telemóvel.</string>
     <string name="root_voice_body_outro">Mude quando quiser em Definições → Voz.</string>
     <string name="root_voice_download">Transferir voz Vela</string>
@@ -372,7 +372,7 @@
     <string name="mapvm_export_trip_subject">Viagem do Vela: %1$s (%2$d pontos)</string>
     <string name="mapvm_share_trip_chooser">Partilhar viagem</string>
     <string name="mapvm_voice_sample">Dentro de 400 metros, vire à direita para a Rua Principal.</string>
-    <string name="mapvm_not_enough_space">Espaço livre insuficiente para %1$s (~%2$d MB)</string>
+    <string name="mapvm_not_enough_space">Espaço livre insuficiente para %1$s (%2$d MB)</string>
     <string name="mapvm_voice_downloaded">%1$s transferida</string>
     <string name="mapvm_voice_download_failed">Falha na transferência de %1$s</string>
     <string name="mapvm_vela_voice_removed">Voz Vela removida</string>
@@ -412,7 +412,7 @@
     <string name="update_install">Atualizar</string>
     <string name="update_download_failed">A transferência da atualização falhou. Tente de novo mais tarde.</string>
     <string name="settings_update_auto">Procurar atualizações ao iniciar</string>
-    <string name="settings_update_auto_hint">Consulta a versão mais recente no GitHub cerca de uma vez por dia e oferece quando é mais nova que esta. A instalação usa o instalador normal do Android. Se já atualiza pelo Obtainium, pode desligar.</string>
+    <string name="settings_update_auto_hint">Verifica o GitHub cerca de uma vez por dia e propõe versões mais recentes. Desliga se atualizas pelo Obtainium.</string>
     <string name="settings_update_check_now">Procurar atualizações</string>
     <string name="settings_update_checking">Verificando…</string>
     <string name="settings_update_none">Você está na versão mais recente.</string>
@@ -480,7 +480,7 @@
     <string name="lists_place_count">%1$d locais</string>
     <string name="navservice_notif_eta">Chegada %1$s</string>
     <string name="settings_advanced">Avançado</string>
-    <string name="settings_advanced_hint">Opções específicas e experimentais que quase ninguém precisa de alterar.</string>
+    <string name="settings_advanced_hint">Opções de que quase ninguém precisa.</string>
     <string name="settings_developer">Programador</string>
     <string name="settings_developer_hint">Ferramentas para demos, capturas de ecrã e testes. Desative-as para uso real.</string>
     <string name="settings_browse_voices">Explorar vozes</string>

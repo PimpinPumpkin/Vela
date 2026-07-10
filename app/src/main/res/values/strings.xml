@@ -19,17 +19,17 @@
     <string name="settings_follow_system">Follow system</string>
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_appearance_hint">Light/Dark applies to Vela only. It won\'t touch your phone\'s system theme.</string>
-    <string name="settings_dynamic_color">Material You colours</string>
-    <string name="settings_dynamic_color_hint">Tints buttons, chips and accents from your wallpaper (Android 12+). Off = Vela\'s own teal. The map itself stays neutral so roads and labels keep their contrast.</string>
+    <string name="settings_appearance_hint">Applies to Vela only.</string>
+    <string name="settings_dynamic_color">Material You colors</string>
+    <string name="settings_dynamic_color_hint">Tints buttons and accents from your wallpaper. The map stays neutral.</string>
     <string name="settings_map_style">Map style</string>
-    <string name="settings_map_style_hint">OpenFreeMap (the default) is keyless and detailed. Protomaps needs an API key; the demo style is country outlines only.</string>
+    <string name="settings_map_style_hint">OpenFreeMap works without any API key.</string>
     <string name="settings_units">Units</string>
     <string name="settings_units_imperial">Imperial (miles, feet)</string>
     <string name="settings_units_metric">Metric (kilometers, meters)</string>
     <string name="settings_language">Language</string>
     <string name="settings_follow_system_language">Follow system language</string>
-    <string name="settings_language_hint">Sets the language for spoken turn-by-turn directions (English, French, German, Spanish, Italian, Portuguese, Dutch, Russian, Polish, Swedish, Ukrainian), independent of your phone\'s system language. Pick a matching voice in Voice library below. The rest of the app\'s on-screen text is being translated next.</string>
+    <string name="settings_language_hint">Changes the app\'s language and the spoken directions. Grab a matching voice in the Voice library.</string>
     <string name="settings_search">Search</string>
     <string name="settings_voice_search_toggle">Voice search mic</string>
     <string name="settings_voice_search_hint">Shows a mic in the search bar. Tap it to speak your search, using a voice-input app on your phone.</string>
@@ -64,9 +64,9 @@
     <string name="settings_mode_transit">Transit</string>
     <string name="settings_vibrate_hint">Direction-coded buzzes at each turn, distinct for left vs right, so you can follow a route by feel. Set it per travel mode (e.g. on for cycling and walking, off while driving).</string>
     <string name="settings_keep_screen_on">Keep screen on while navigating</string>
-    <string name="settings_keep_screen_on_hint">Stops the display from dimming or sleeping while turn-by-turn is running, so the next turn is always visible without tapping to wake it. On by default; the screen sleeps normally again the moment you arrive or leave navigation.</string>
+    <string name="settings_keep_screen_on_hint">Keeps the screen awake during turn-by-turn.</string>
     <string name="settings_traffic_lights">Traffic-light guidance</string>
-    <string name="settings_traffic_lights_hint">Adds Google-style landmark cues to spoken directions (\"pass the traffic light, then turn left\") using open OpenStreetMap signal data (keyless), fetched once when you start a drive. Only added when it helps (one or two lights right before a surface-street turn). Off by default; English only for now, and coverage follows how well signals are mapped in your area.</string>
+    <string name="settings_traffic_lights_hint">Adds cues like “pass the traffic light, then turn left” to spoken directions. English only for now.</string>
     <string name="map_voice_downloading">Downloading Vela voice · %1$d%%</string>
     <string name="map_voice_installing">Installing Vela voice…</string>
     <string name="map_region_downloading">Downloading %1$s routing · %2$d%%</string> <!-- format -->
@@ -74,18 +74,18 @@
     <string name="mapvm_poipack_ready">Places in %1$s are now searchable offline</string> <!-- format -->
     <string name="mapvm_poipack_unavailable">No place pack for %1$s yet. It\'ll appear here once it\'s published.</string> <!-- format -->
     <string name="settings_demo_drive">Simulate driving (demo)</string>
-    <string name="settings_demo_drive_hint">For demos, screenshots and testing: tapping Start drives the planned route as a simulated GPS trace instead of using your real location, so navigation works anywhere. Turn off to navigate for real.</string>
+    <string name="settings_demo_drive_hint">Start drives the planned route as a simulation instead of using GPS. Turn off to navigate for real.</string>
     <string name="settings_sim_location">Simulate my location (demo)</string>
-    <string name="settings_sim_location_hint">For demos and screenshots: pretend you\'re at the centre of the map right now, so the location dot, distances and directions all start from there instead of your real position. Turn off to use real GPS.</string>
+    <string name="settings_sim_location_hint">Pretends you\'re at the map\'s center, for demos and screenshots. Turn off to use real GPS.</string>
     <string name="settings_map">Map</string>
     <string name="settings_live_traffic">Live traffic overlay</string>
-    <string name="settings_live_traffic_hint">Shades roads by congestion while browsing the map (Google\'s keyless traffic tiles). Off by default. Navigation already colours your route by traffic, so this is just for scanning the wider area. It\'s a raster overlay, so it\'s a touch grainy.</string>
+    <string name="settings_live_traffic_hint">Shades roads by congestion while browsing. Navigation already colors your route by traffic.</string>
     <string name="settings_transit_layer">Highlight transit lines</string>
-    <string name="settings_transit_layer_hint">Draws train and subway lines on the map in colour, so rail is easy to follow. Uses the open map data already in the tiles, no network.</string>
+    <string name="settings_transit_layer_hint">Draws train and subway lines on the map.</string>
     <string name="settings_read_all_reviews">“Read all reviews” button</string>
-    <string name="settings_read_all_reviews_hint">Reviews in the place sheet are always Vela\'s own smooth native list. This adds a “Read all reviews” button that opens Google\'s full reviews page FULL-SCREEN, with every review (not just the first ~50), Google\'s server-side search, and video reviews that play. Trackers/beacons are blocked, but it does run Google\'s page inside the app. Off = native list only, no Google page for reviews.</string>
+    <string name="settings_read_all_reviews_hint">Adds a “Read all reviews” button that opens Google\'s full reviews page inside the app, with every review. Off = Vela\'s own review list only.</string>
     <string name="settings_buildings_3d">3D buildings</string>
-    <string name="settings_buildings_3d_hint">Raised building shapes when zoomed right in. Turning this off can make panning smoother on older phones; the flat footprints stay either way.</string>
+    <string name="settings_buildings_3d_hint">Raised buildings at close zoom. Turning this off can make panning smoother on older phones.</string>
     <string name="settings_show_reviews">Show reviews</string>
     <string name="settings_show_reviews_hint">Off = place pages show no reviews, and Vela never fetches them.</string>
     <string name="settings_load_photos">Load photos</string>
@@ -127,15 +127,15 @@
     <string name="settings_export">Export</string>
     <string name="settings_import">Import</string>
     <string name="settings_data_privacy">Data source &amp; privacy</string>
-    <string name="settings_data_privacy_hint">Vela talks to Google\'s public web endpoints directly from this device. No Vela backend, no Google account, no API key, and no telemetry unless you turn on Diagnostics below (off by default, local-only). Each device behaves like a logged-out browser; Google sees your IP, query and map area but not an account. Saved places and history never leave the phone.</string>
+    <string name="settings_data_privacy_hint">Vela talks to Google\'s public endpoints straight from this device: no backend, no account, no API key. Google sees your IP, query and map area, not who you are.</string>
     <string name="settings_privacy_button">What data Google receives</string>
     <string name="settings_diagnostics">Diagnostics</string>
-    <string name="settings_diagnostics_hint">Off by default. When on, Vela keeps a short local log of what it did (your searches, routes, and any “needs recalibration” hiccups) so if something misbehaves you can export it and hand it to a developer. It stays on this phone and is never uploaded; you pick where the export goes. Turning it off wipes the log.</string>
+    <string name="settings_diagnostics_hint">Off by default. When on, Vela keeps a short local log you can export and hand to a developer. Nothing is uploaded, and turning it off wipes the log.</string>
     <string name="settings_share_diagnostics">Share diagnostics</string>
     <string name="settings_diag_nothing">Nothing recorded yet. Use the app, then export.</string>
     <string name="settings_diag_export">Export debug session</string>
     <string name="settings_save_trips">Save my trips (for replay)</string>
-    <string name="settings_save_trips_hint">Records each navigation\'s GPS trace on this phone so a drive can be replayed later to test turn-by-turn without driving it again. More revealing than diagnostics (it\'s your exact routes) and never leaves the phone.</string>
+    <string name="settings_save_trips_hint">Records each drive\'s GPS trace on this phone, so it can be replayed later. Never leaves the phone.</string>
     <string name="settings_recorded_trips_hint">Recorded trips. Tap Replay to play one back on the map (3×):</string>
     <string name="settings_trip_points">%1$d points</string> <!-- format -->
     <string name="settings_trip_replay">Replay</string>
@@ -333,7 +333,7 @@
     <!-- root: VelaRoot.kt -->
     <string name="root_not_now">Not now</string>
     <string name="root_voice_title">Spoken navigation voice</string>
-    <string name="root_voice_body_intro">Vela\'s own voice runs entirely on your phone: natural spoken directions, no account, no extra app. Recommended, a one-time ~%1$d MB download.</string>
+    <string name="root_voice_body_intro">Vela\'s own voice runs entirely on your phone: natural spoken directions, no account, no extra app. Recommended, a one-time %1$d MB download.</string>
     <string name="root_voice_body_system">Prefer not to? Use a voice already on your phone.</string>
     <string name="root_voice_body_outro">Change it any time in Settings → Voice.</string>
     <string name="root_voice_download">Download Vela voice</string>
@@ -407,7 +407,7 @@
     <string name="mapvm_export_trip_subject">Vela trip: %1$s (%2$d points)</string> <!-- format -->
     <string name="mapvm_share_trip_chooser">Share trip</string>
     <string name="mapvm_voice_sample">In a quarter mile, turn right onto Main Street.</string>
-    <string name="mapvm_not_enough_space">Not enough free space for %1$s (~%2$d MB)</string> <!-- format -->
+    <string name="mapvm_not_enough_space">Not enough free space for %1$s (%2$d MB)</string> <!-- format -->
     <string name="mapvm_voice_downloaded">%1$s downloaded</string> <!-- format -->
     <string name="mapvm_voice_download_failed">%1$s download failed</string> <!-- format -->
     <string name="mapvm_vela_voice_removed">Vela voice removed</string>
@@ -435,7 +435,7 @@
     <string name="update_install">Update</string>
     <string name="update_download_failed">Update download failed. Try again later.</string>
     <string name="settings_update_auto">Check for updates on launch</string>
-    <string name="settings_update_auto_hint">Looks at the newest GitHub release about once a day and offers it when it is newer than this build. The update installs through Android\'s normal installer. If you already update through Obtainium you can turn this off.</string>
+    <string name="settings_update_auto_hint">Checks GitHub about once a day and offers newer releases. Turn off if you update through Obtainium.</string>
     <string name="settings_update_check_now">Check for updates</string>
     <string name="settings_update_checking">Checking…</string>
     <string name="settings_update_none">You\'re on the latest version.</string>
@@ -503,7 +503,7 @@
     <string name="lists_place_count">%1$d places</string>
     <string name="navservice_notif_eta">Arrive %1$s</string>
     <string name="settings_advanced">Advanced</string>
-    <string name="settings_advanced_hint">Niche and experimental options most people never need to change.</string>
+    <string name="settings_advanced_hint">Options most people never need.</string>
     <string name="settings_developer">Developer</string>
     <string name="settings_developer_hint">Tools for demos, screenshots and testing. Turn each off for real use.</string>
     <string name="settings_browse_voices">Browse voices</string>

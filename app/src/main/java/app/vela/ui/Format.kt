@@ -8,13 +8,13 @@ import kotlin.math.roundToInt
 /**
  * Distance-unit preference. Backed by Compose state so reads inside composables
  * (via [formatDistance]) recompose when it flips, and persisted so it sticks.
- * Defaults to imperial in the US/Liberia/Myanmar, metric elsewhere.
+ * Defaults to imperial where roads are signed in miles (US, UK, Liberia, Myanmar), metric elsewhere.
  */
 object Units {
     val imperial = mutableStateOf(false)
 
     fun init(context: Context) {
-        val default = Locale.getDefault().country in setOf("US", "LR", "MM")
+        val default = Locale.getDefault().country in setOf("US", "GB", "LR", "MM")
         imperial.value = prefs(context).getBoolean(KEY, default)
     }
 
