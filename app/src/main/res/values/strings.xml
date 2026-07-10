@@ -523,4 +523,11 @@
     <string name="settings_voice_search_engine_system">Other voice app</string>
     <string name="map_asr_offer_title">Voice search</string>
     <string name="map_asr_offer_body">Download Vela Voice to speak your searches. It runs entirely on your phone and uploads nothing.</string>
+    <string name="nav_precise_title">Precise location needed</string>
+    <string name="nav_precise_body">Turn-by-turn follows you with GPS, which needs precise location. Approximate only gives a rough area, so navigation would never find you.</string>
+    <string name="nav_precise_allow">Allow precise</string>
+    <string name="nav_precise_toast">Turn-by-turn needs precise location</string>
+    <string name="loc_off_title">Location is off</string>
+    <string name="loc_off_body">Vela doesn\'t have location access. You can allow it in system settings.</string>
+    <string name="loc_off_settings">Open settings</string>
 </resources>

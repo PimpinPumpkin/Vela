@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Inna aplikacja głosowa</string>
     <string name="map_asr_offer_title">Wyszukiwanie głosowe</string>
     <string name="map_asr_offer_body">Pobierz głos Vela, aby dyktować wyszukiwania. Działa w całości na telefonie i niczego nie wysyła.</string>
+    <string name="nav_precise_title">Potrzebna dokładna lokalizacja</string>
+    <string name="nav_precise_body">Nawigacja śledzi cię przez GPS, co wymaga dokładnej lokalizacji. Przybliżona daje tylko ogólny obszar, więc nawigacja nigdy by cię nie znalazła.</string>
+    <string name="nav_precise_allow">Zezwól na dokładną</string>
+    <string name="nav_precise_toast">Nawigacja wymaga dokładnej lokalizacji</string>
+    <string name="loc_off_title">Lokalizacja jest wyłączona</string>
+    <string name="loc_off_body">Vela nie ma dostępu do lokalizacji. Możesz go włączyć w ustawieniach systemu.</string>
+    <string name="loc_off_settings">Otwórz ustawienia</string>
 </resources>

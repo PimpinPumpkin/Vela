@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Otra app de voz</string>
     <string name="map_asr_offer_title">Búsqueda por voz</string>
     <string name="map_asr_offer_body">Descarga la voz de Vela para dictar tus búsquedas. Funciona por completo en tu teléfono y no sube nada.</string>
+    <string name="nav_precise_title">Se necesita ubicación precisa</string>
+    <string name="nav_precise_body">La navegación te sigue por GPS, que necesita la ubicación precisa. La aproximada solo da una zona general, así que la navegación nunca te encontraría.</string>
+    <string name="nav_precise_allow">Permitir precisa</string>
+    <string name="nav_precise_toast">La navegación necesita la ubicación precisa</string>
+    <string name="loc_off_title">La ubicación está desactivada</string>
+    <string name="loc_off_body">Vela no tiene acceso a la ubicación. Puedes permitirlo en los ajustes del sistema.</string>
+    <string name="loc_off_settings">Abrir ajustes</string>
 </resources>

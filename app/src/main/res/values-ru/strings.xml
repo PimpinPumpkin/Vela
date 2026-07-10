@@ -500,4 +500,11 @@
     <string name="settings_voice_search_engine_system">Другое голосовое приложение</string>
     <string name="map_asr_offer_title">Голосовой поиск</string>
     <string name="map_asr_offer_body">Загрузите голос Vela, чтобы диктовать запросы. Он работает целиком на телефоне и ничего не выгружает.</string>
+    <string name="nav_precise_title">Нужна точная геолокация</string>
+    <string name="nav_precise_body">Навигация ведёт вас по GPS, для этого нужна точная геолокация. Приблизительная даёт лишь общий район, и навигация вас не найдёт.</string>
+    <string name="nav_precise_allow">Разрешить точную</string>
+    <string name="nav_precise_toast">Навигации нужна точная геолокация</string>
+    <string name="loc_off_title">Геолокация выключена</string>
+    <string name="loc_off_body">У Vela нет доступа к геолокации. Разрешить его можно в настройках системы.</string>
+    <string name="loc_off_settings">Открыть настройки</string>
 </resources>
