@@ -69,7 +69,7 @@
     <string name="settings_hide_external_links">Ukryj stronę WWW i linki zewnętrzne</string>
     <string name="settings_hide_external_links_hint">Wł. = strony miejsc nie pokazują przycisków Strona WWW, Street View ani Rezerwuj / Zamów (bez otwierania dowolnych zewnętrznych stron).</string>
     <string name="settings_offline">Offline</string>
-    <string name="settings_offline_hint">Korzystanie z mapy bez zasięgu wymaga dwóch rzeczy — KAFELKÓW mapy, które widzisz, oraz SIECI DRÓG, która wyznacza trasę. Zapisanie obszaru mapy pobiera oba dla tego miejsca; lista regionów poniżej dodaje sieć dróg wszędzie tam, gdzie podróżujesz.</string>
+    <string name="settings_offline_hint">Pobierz obszar, aby zachować jego mapę i trasy w telefonie do użytku offline.</string>
     <string name="settings_offline_map_area">Obszar mapy</string>
     <string name="settings_offline_download_viewport">Pobierz oglądany obszar</string>
     <string name="settings_offline_download_viewport_hint">Zapisuje kafelki dla obszaru mapy, który ostatnio był na ekranie — oraz otaczający go region tras — aby później renderował się i nawigował bez sieci. Wyszukiwanie nadal wymaga połączenia.</string>
