@@ -416,14 +416,17 @@ Defaults that make the safe path the easy one:
   users use the keyboard mic, and tier-1 (PR3, on-device Whisper) will serve everyone regardless.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
-  system dialog. The first ask lives in `VelaRoot` as an onboarding step gated on
-  `Onboarding.showLocationPrompt`, shown via the reusable `PermissionRationale` composable (a
-  plain-words screen before Android's dialog - Google's recommended pattern, and the voice-search
-  mic reuses it at point-of-use). Order: welcome → location → voice. A denial leaves
-  search/browse working; the locate FAB (`onRecenter`) re-requests on tap. `PermissionRationale`
-  and the `VelaDialog` `dismissLowEmphasis` flag (the quiet "Use existing voice" styling) are the
-  reusable pieces - don't re-request location straight from the map, and don't add a raw permission
-  dialog without a rationale screen.
+  system dialog. The first ask lives in `VelaRoot`: when onboarding reaches the location step
+  (`Onboarding.showLocationPrompt`, armed by `completeWelcome`) a `LaunchedEffect` fires the raw
+  Android permission dialog **directly** - no separate rationale screen, the `WelcomeScreen` is
+  context enough for a maps app (user call 2026-07-10: one less thing to tap through). The result
+  callback arms the voice step. Order: welcome → system location dialog → voice. A denial leaves
+  search/browse working (the locate FAB `onRecenter` re-requests on tap); a **coarse-only** grant
+  drives an approximate dot via the NETWORK provider (device-verified: COARSE granted / FINE denied
+  advances the flow and the coarse fix path handles it). The `PermissionRationale` composable is
+  kept (it's still the reusable pre-permission screen the **PR3 voice-search mic** uses at
+  point-of-use for RECORD_AUDIO) - it's just no longer used for location. Don't re-request location
+  straight from the map.
 - **Onboarding is deliberately SHORT - three steps, no more (declutter 2026-07-10).** Welcome →
   location → voice, then the map. The old **offline-maps** onboarding prompt and the **diagnostics/
   trip-recording** onboarding prompt were CUT (they made a long wall of asks a first-run user has no
