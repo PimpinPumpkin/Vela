@@ -137,8 +137,8 @@
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string>
     <string name="settings_collapse">Comprimi</string>
     <string name="settings_expand">Espandi</string>
-    <string name="settings_voice_lib_empty_hint">Scarica una voce naturale sul dispositivo per le indicazioni vocali: scegline una qui sotto. Le voci ★ suonano più simili a un navigatore di mappe (Lessac e HFC sono le più vicine a Google). Download una tantum; consigliato il Wi-Fi.</string>
-    <string name="settings_voice_lib_installed_hint">Installato: %1$d MB · %2$d voce/i. Tocca Usa per cambiare (riproduce un campione); l\'icona del cestino libera lo spazio.</string> <!-- format -->
+    <string name="settings_voice_lib_empty_hint">★ indica le voci consigliate. Ogni voce funziona offline sul telefono.</string>
+    <string name="settings_voice_lib_installed_hint">Installato: %1$d MB · %2$d voci.</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">La lingua dell\'app è %1$s: scarica una voce %2$s qui sotto così le indicazioni vocali corrispondono (una voce inglese pronuncerebbe male i nomi delle strade in %3$s).</string>
     <string name="settings_voice_search">Cerca voci</string>
     <string name="settings_voice_show_more">Mostra altri %1$d</string>

@@ -137,8 +137,8 @@
     <string name="settings_version_line">Vela %1$s  (сборка %2$d)</string>
     <string name="settings_collapse">Свернуть</string>
     <string name="settings_expand">Развернуть</string>
-    <string name="settings_voice_lib_empty_hint">Загрузите естественный голос на устройство для голосовых подсказок — выберите один из списка ниже. Голоса, отмеченные ★, звучат наиболее похоже на навигатор (Lessac и HFC ближе всего к Google). Разовая загрузка; рекомендуется Wi-Fi.</string>
-    <string name="settings_voice_lib_installed_hint">Установлено: %1$d МБ · голосов: %2$d. Нажмите «Выбрать», чтобы переключиться (проигрывается образец); значок корзины освобождает место.</string> <!-- format -->
+    <string name="settings_voice_lib_empty_hint">★ отмечает рекомендуемые голоса. Все голоса работают офлайн на телефоне.</string>
+    <string name="settings_voice_lib_installed_hint">Установлено: %1$d МБ · %2$d голос(ов).</string> <!-- format -->
     <string name="settings_voice_lib_lang_hint">Язык приложения — %1$s. Загрузите голос (%2$s) ниже, чтобы голосовые подсказки совпадали (английский голос неправильно произнёс бы названия улиц (%3$s)).</string>
     <string name="settings_voice_search">Поиск голосов</string>
     <string name="settings_voice_show_more">Показать ещё %1$d</string>
