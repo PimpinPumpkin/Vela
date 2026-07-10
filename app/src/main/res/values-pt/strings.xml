@@ -69,16 +69,16 @@
     <string name="settings_hide_external_links">Ocultar site e links externos</string>
     <string name="settings_hide_external_links_hint">Ativado = as páginas de locais não mostram os botões Site, Street View ou Reservar / Pedir (não abre sites externos arbitrários).</string>
     <string name="settings_offline">Mapas offline</string>
-    <string name="settings_offline_hint">Transfira uma área para manter o mapa e as direções no telemóvel para uso offline.</string>
-    <string name="settings_offline_map_area">Área do mapa</string>
+    <string name="settings_offline_hint">Duas formas de usar a Vela offline: guarda a zona onde estás para trajetos curtos, ou um estado ou país inteiro abaixo para os longos.</string>
+    <string name="settings_offline_map_area">Área local</string>
     <string name="settings_offline_download_viewport">Transferir a área que está a ver</string>
-    <string name="settings_offline_download_viewport_hint">Guarda o mapa e as estradas da área que estás a ver, para mostrar e traçar rotas sem ligação.</string>
+    <string name="settings_offline_download_viewport_hint">Guarda o mapa que estás a ver, com as estradas e moradas, para que esta zona continue a funcionar sem rede.</string>
     <string name="settings_offline_no_areas">Ainda sem áreas guardadas.</string>
     <string name="settings_offline_addresses_missing">As áreas guardadas antes desta atualização não incluem dados de moradas. Atualize-as para pesquisar moradas e traçar rotas offline.</string>
     <string name="settings_offline_addresses_update">Atualizar áreas guardadas</string>
     <string name="settings_offline_delete_area">Eliminar esta área offline</string>
-    <string name="settings_routing_regions">Regiões de percursos</string>
-    <string name="settings_routing_regions_hint">As estradas de uma região inteira (um estado ou país) para as direções funcionarem sem ligação em toda ela. Transfere para onde vais.</string>
+    <string name="settings_routing_regions">Regiões e países</string>
+    <string name="settings_routing_regions_hint">Tudo o que precisas para percorrer um estado, província ou país inteiro offline: as estradas e os lugares, para que as direções e a pesquisa funcionem em toda a área. Transfere para onde vais.</string>
     <string name="settings_routing_no_regions">Ainda sem regiões disponíveis.</string>
     <string name="settings_clear_filter">Limpar filtro</string>
     <string name="settings_routing_filter_placeholder">Pesquisar</string>

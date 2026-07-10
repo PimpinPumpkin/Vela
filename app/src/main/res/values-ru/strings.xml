@@ -69,16 +69,16 @@
     <string name="settings_hide_external_links">Скрывать веб-сайт и внешние ссылки</string>
     <string name="settings_hide_external_links_hint">Вкл. = на страницах мест нет кнопок «Сайт», Street View и «Забронировать / Заказать» (произвольные внешние сайты не открываются).</string>
     <string name="settings_offline">Офлайн-карты</string>
-    <string name="settings_offline_hint">Загрузите область, чтобы сохранить её карту и маршруты на телефоне для работы офлайн.</string>
-    <string name="settings_offline_map_area">Область карты</string>
+    <string name="settings_offline_hint">Два способа пользоваться Vela офлайн: сохраните область, где вы находитесь, для коротких поездок, или целый регион или страну ниже для дальних.</string>
+    <string name="settings_offline_map_area">Местная область</string>
     <string name="settings_offline_download_viewport">Загрузить видимую область</string>
-    <string name="settings_offline_download_viewport_hint">Сохраняет карту и её дороги для показанной области, чтобы она отображалась и строила маршруты офлайн.</string>
+    <string name="settings_offline_download_viewport_hint">Сохраняет карту, которую вы видите, вместе с дорогами и адресами, чтобы эта область работала без связи.</string>
     <string name="settings_offline_no_areas">Области ещё не сохранены.</string>
     <string name="settings_offline_addresses_missing">Области, сохранённые до этого обновления, не содержат данные адресов. Обновите их, чтобы искать адреса и строить маршруты офлайн.</string>
     <string name="settings_offline_addresses_update">Обновить сохранённые области</string>
     <string name="settings_offline_delete_area">Удалить эту офлайн-область</string>
-    <string name="settings_routing_regions">Регионы маршрутизации</string>
-    <string name="settings_routing_regions_hint">Дороги целого региона (штата или страны), чтобы маршруты работали офлайн на всей территории. Скачайте туда, куда едете.</string>
+    <string name="settings_routing_regions">Регионы и страны</string>
+    <string name="settings_routing_regions_hint">Всё, чтобы передвигаться по целому региону, области или стране офлайн: дороги и места, чтобы маршруты и поиск работали на всей территории. Скачайте туда, куда едете.</string>
     <string name="settings_routing_no_regions">Регионы пока недоступны.</string>
     <string name="settings_clear_filter">Очистить фильтр</string>
     <string name="settings_routing_filter_placeholder">Поиск</string>
