@@ -673,7 +673,9 @@ Defaults that make the safe path the easy one:
   voice linked from README's "What you get": generated OFF-DEVICE with the same engine + model +
   pace the app uses (pip `sherpa-onnx`, upstream `vits-piper-en_US-hfc_female-medium`,
   `length_scale=1.25` = the app's 0.8x default), then muxed to MP4 over the nav screenshot as a
-  still poster (ffmpeg loop-image + aac). MP4 not wav ON PURPOSE: GitHub's blob viewer renders a
+  still poster (ffmpeg loop-image + aac). The render uses the app's PiperSynth OVERRIDES
+  (noiseScale 0.45, noiseScaleW 0.55, speed 0.8) - the library-default noise scales sounded
+  audibly different from the app (user caught it). MP4 not wav ON PURPOSE: GitHub's blob viewer renders a
   real PLAYER for mp4 but only a download link for wav (user hit that), and in-repo media in
   README markdown NEVER embeds inline (verified empirically on a test branch - bare raw/blob mp4
   URLs render as plain <a> links; only web-editor drag-drop user-attachments URLs inline). The
@@ -682,7 +684,9 @@ Defaults that make the safe path the easy one:
   semicolon for the pause contour). Regenerate the same way if the default voice/pace changes. README feature copy rule: "What you get" is
   the HUMAN-GLANCE list (what people care about, plain sentences); FEATURES.md is the complete
   record; the README Roadmap holds only OPEN items. Screenshot rules (user 2026-07-10): the NAV
-  shot leads the table, the transit shot stays OUT (read as ugly), the browse-map shots are the
+  shot leads the table, the transit shot shows the SCHEDULE BOARD with the ambient
+  transit-lines layer toggled OFF for the shot (the purple lines over the map read as ugly; the
+  schedules themselves are liked), the browse-map shots are the
   Pixel 9 POI-dense iterations (restored over the 4a retakes), and Install sits directly UNDER
   the screenshots.
 
