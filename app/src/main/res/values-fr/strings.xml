@@ -489,6 +489,8 @@
     <string name="voice_capture_done">Terminé</string>
     <string name="mapvm_asr_ready">La voix Vela est prête</string>
     <string name="mapvm_asr_download_failed">Impossible de télécharger le modèle vocal. Vérifiez votre connexion et réessayez.</string>
+    <string name="mapvm_closing_soon">%1$s ferme à %2$s et vous arrivez vers %3$s</string> <!-- format -->
+    <string name="mapvm_closing_before_arrival">%1$s ferme à %2$s, avant votre arrivée vers %3$s</string> <!-- format -->
     <string name="settings_voice_search_model">Voix Vela</string>
     <string name="settings_voice_search_model_hint">La voix Vela transforme la parole en recherche directement sur votre téléphone : aucune autre appli et rien n\'est envoyé. Téléchargement unique d\'environ %1$d Mo.</string>  <!-- format -->
     <string name="settings_voice_search_download">Télécharger (%1$d Mo)</string>  <!-- format -->
