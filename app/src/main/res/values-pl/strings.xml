@@ -416,7 +416,6 @@
     <string name="settings_update_auto_hint">Mniej więcej raz dziennie sprawdza najnowsze wydanie na GitHubie i proponuje je, gdy jest nowsze niż ta wersja. Instalacja przebiega przez zwykły instalator Androida. Jeśli aktualizujesz przez Obtainium, możesz to wyłączyć.</string>
     <string name="settings_update_check_now">Sprawdź aktualizacje</string>
     <string name="settings_update_checking">Sprawdzanie…</string>
-    <string name="settings_update_found">Dostępna aktualizacja! Wróć do mapy, aby ją zainstalować.</string>
     <string name="settings_update_none">Masz najnowszą wersję.</string>
     <string name="settings_place_pages">Strony miejsc</string>
     <string name="place_transit_stops">%1$d przystanków</string> <!-- format -->
