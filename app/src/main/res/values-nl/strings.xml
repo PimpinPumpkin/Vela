@@ -307,6 +307,9 @@
     <string name="root_diag_trips_desc">Legt uw GPS-navigatiesporen vast zodat ritten voor testen kunnen worden herhaald. Onthullender — uw exacte routes.</string>
     <string name="root_diag_save">Keuzes opslaan</string>
     <string name="root_not_now">Niet nu</string>
+    <string name="root_location_title">Je locatie tonen</string>
+    <string name="root_location_body">Vela gebruikt je locatie om de kaart op jou te centreren en te routeren vanaf waar je bent. Die blijft op je telefoon en wordt nooit geüpload. Je mag nee zeggen en toch zoeken en bladeren; stel dan een startpunt handmatig in als je een route wilt.</string>
+    <string name="root_location_allow">Locatie toestaan</string>
     <string name="root_voice_title">Gesproken navigatiestem</string>
     <string name="root_voice_body_intro">Vela heeft een eigen stem van hoge kwaliteit die volledig op uw telefoon draait — de meest natuurlijke gesproken instructies, zonder account of extra app. Aanbevolen. Het is een eenmalige download van ~%1$d MB (wifi aanbevolen).</string>
     <string name="root_voice_body_system">Liever niet? U kunt in plaats daarvan een tekst-naar-spraak-stem gebruiken die al op uw telefoon is geïnstalleerd.</string>

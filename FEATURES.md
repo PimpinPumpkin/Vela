@@ -179,6 +179,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   previews as results with a **Save list** pill - nothing is added to Your lists until you tap it
   (opt-in, 2026-07-09), then it's a durable local list. Remaining: reorder, share-out, a dedicated
   full-screen list view.
+- ✅ **Location asked with a reason, in onboarding (2026-07-10).** The location permission used to
+  pop the instant the map first loaded, a bare system dialog with no context. It now comes as the
+  first onboarding step: a plain-words screen ("Vela uses your location to center the map and route
+  from you; it stays on your phone; you can say no and still search and browse") before Android's
+  dialog. Declining leaves search and browse working, and the locate button re-asks when you tap it.
+  The rationale screen is a reusable component the voice-search mic will share.
+- ✅ **Honest voice-setup choice (2026-07-10).** The first-run voice offer used to be download-or-
+  dismiss; now it's a real two-way choice with the recommendation shown by emphasis, not by hiding
+  the alternative: a prominent "Download Vela voice" and a quiet, still-functional "Use existing
+  voice" that keeps whatever text-to-speech the phone already has.
 - ✅ **Update from Settings directly (2026-07-09).** The Version section's "Check for updates"
   used to answer "update available, go back to the map to install it" - now the full offer
   renders inline: version line, Update button, live download progress, Not now. Same state and

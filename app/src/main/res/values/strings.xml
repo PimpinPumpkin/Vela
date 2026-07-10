@@ -330,6 +330,9 @@
     <string name="root_diag_trips_desc">Records your nav GPS traces so drives can be replayed for testing. More revealing: your exact routes.</string>
     <string name="root_diag_save">Save choices</string>
     <string name="root_not_now">Not now</string>
+    <string name="root_location_title">Show your location</string>
+    <string name="root_location_body">Vela uses your location to center the map on you and to route from where you are. It stays on your phone and is never uploaded. You can say no and still search and browse; just set a starting point by hand when you want directions.</string>
+    <string name="root_location_allow">Allow location</string>
     <string name="root_voice_title">Spoken navigation voice</string>
     <string name="root_voice_body_intro">Vela has its own high-quality voice that runs entirely on your phone, the most natural spoken directions, with no account or extra app. Recommended. It\'s a one-time ~%1$d MB download (wifi recommended).</string>
     <string name="root_voice_body_system">Prefer not to? You can use a text-to-speech voice already installed on your phone instead.</string>

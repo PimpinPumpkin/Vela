@@ -1,7 +1,10 @@
 package app.vela.ui
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -46,6 +49,15 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
 
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var settingsOpenOffline by rememberSaveable { mutableStateOf(false) }
+    // Location permission launcher for the onboarding rationale. The map no longer fires the raw
+    // system dialog on its own (see MapScreen); this owns the first ask so it comes AFTER a
+    // plain-words explanation. A grant starts location immediately; a denial just moves on.
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        if (result.values.any { it }) vm.startLocation()
+        Onboarding.dismissLocationPrompt(context)
+    }
     Box {
         // MapScreen stays composed even while Settings is open, and Settings draws OVER it as an
         // opaque overlay. Swapping the two out instead disposed the remembered MapLibre MapView, so
@@ -59,17 +71,35 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                 openOffline = settingsOpenOffline,
             )
         } else {
-            if (Onboarding.showVoicePrompt.value) {
+            if (Onboarding.showLocationPrompt.value) {
+                // FIRST first-run step: explain location before Android's system dialog. "Allow"
+                // launches the real request; "Not now" leaves search/browse working (the locate
+                // button re-asks later). Either way we advance to the voice offer.
+                PermissionRationale(
+                    title = stringResource(R.string.root_location_title),
+                    body = stringResource(R.string.root_location_body),
+                    allowText = stringResource(R.string.root_location_allow),
+                    onAllow = {
+                        locationLauncher.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                            ),
+                        )
+                    },
+                    onNotNow = { Onboarding.dismissLocationPrompt(context) },
+                )
+            } else if (Onboarding.showVoicePrompt.value) {
                 VoicePrompt(
-                    // The Vela voice is recommended for EVERYONE — the same prompt regardless of
-                    // whether the phone has a system TTS engine, so every install ends up on the
-                    // same consistent voice unless they deliberately change it in Settings.
+                    // The Vela voice is recommended for EVERYONE, but the choice is honest: the
+                    // prominent button downloads it, the quiet one keeps whatever voice the phone
+                    // already has. Same prompt regardless of what's installed.
                     sizeMb = vm.defaultVoiceSizeMb(),
                     onDownload = {
                         vm.downloadPiper()
                         Onboarding.dismissVoicePrompt(context)
                     },
-                    onSkip = { Onboarding.dismissVoicePrompt(context) },
+                    onUseExisting = { Onboarding.dismissVoicePrompt(context) },
                 )
             } else if (Onboarding.showOfflinePrompt.value) {
                 OfflinePrompt(
@@ -150,24 +180,26 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
     )
 }
 
-/** One-time, first-run offer of Vela's on-device neural voice — RECOMMENDED for everyone, the same
- *  prompt whether or not the phone has a system TTS engine (consistency: every install lands on the
- *  same voice unless the user deliberately changes it). Skipping still leaves nav working via the
- *  system voice if one exists; a different voice — including a system engine — is one tap away in
- *  Settings → Voice. [sizeMb] is the actual download size of the voice that will be fetched, so the
- *  number can never go stale. */
+/** One-time, first-run offer of Vela's on-device neural voice. RECOMMENDED for everyone, but an
+ *  honest two-way choice: the prominent "Download Vela voice" vs a quiet, low-emphasis "Use existing
+ *  voice" that keeps whatever TTS the phone already has (nav still works through it). Not a fake or
+ *  disabled option, just visibly de-emphasised so the recommendation is clear. Either choice is
+ *  one-time; the voice is changeable any time in Settings → Voice. [sizeMb] is the real download
+ *  size, so the number never goes stale. */
 @Composable
-private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit) {
+private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onUseExisting: () -> Unit) {
     VelaDialog(
-        onDismissRequest = onSkip,
+        onDismissRequest = onUseExisting,
         title = stringResource(R.string.root_voice_title),
         confirmText = stringResource(R.string.root_voice_download),
         onConfirm = onDownload,
-        dismissText = stringResource(R.string.root_not_now),
-        onDismiss = onSkip,
+        dismissText = stringResource(R.string.root_voice_use_system),
+        onDismiss = onUseExisting,
+        dismissLowEmphasis = true,
         text = {
             Text(
                 stringResource(R.string.root_voice_body_intro, sizeMb) + " " +
+                    stringResource(R.string.root_voice_body_system) + " " +
                     stringResource(R.string.root_voice_body_outro),
             )
         },

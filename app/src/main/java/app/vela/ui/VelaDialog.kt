@@ -58,6 +58,11 @@ fun VelaDialog(
     dismissText: String,
     onDismiss: () -> Unit,
     icon: (@Composable () -> Unit)? = null,
+    // Renders the dismiss button in a quieter colour than the confirm one - used when the two
+    // choices are NOT equal weight and we want to visibly steer toward confirm (e.g. the voice
+    // prompt nudging "Download Vela voice" over "Use existing voice") without disabling the
+    // other option. It stays fully focusable and tappable; only the tint changes.
+    dismissLowEmphasis: Boolean = false,
     text: @Composable () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismissRequest, properties = DialogProperties()) {
@@ -94,7 +99,7 @@ fun VelaDialog(
                 Spacer(Modifier.height(24.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End, verticalAlignment = Alignment.CenterVertically) {
                     // Dismiss (safe) side auto-focused; confirm reachable by arrow.
-                    DialogButton(dismissText, onDismiss, autoFocus = true)
+                    DialogButton(dismissText, onDismiss, autoFocus = true, lowEmphasis = dismissLowEmphasis)
                     Spacer(Modifier.width(8.dp))
                     DialogButton(confirmText, onConfirm, autoFocus = false)
                 }
@@ -107,7 +112,7 @@ fun VelaDialog(
  *  a Material `TextButton`'s nested focusable does not, verified on-device). Touch tap and D-pad
  *  OK both fire [onClick]; when [autoFocus] it grabs focus on open. */
 @Composable
-private fun DialogButton(text: String, onClick: () -> Unit, autoFocus: Boolean) {
+private fun DialogButton(text: String, onClick: () -> Unit, autoFocus: Boolean, lowEmphasis: Boolean = false) {
     val fr = remember { FocusRequester() }
     val dpadFirst = rememberDpadFirstDevice()
     if (autoFocus) {
@@ -123,7 +128,7 @@ private fun DialogButton(text: String, onClick: () -> Unit, autoFocus: Boolean) 
     }
     Text(
         text,
-        color = MaterialTheme.colorScheme.primary,
+        color = if (lowEmphasis) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
         style = MaterialTheme.typography.labelLarge,
         modifier = Modifier
             .focusRequester(fr)
