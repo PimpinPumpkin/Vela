@@ -209,7 +209,7 @@ class WhisperRecognizer @Inject constructor(
         var sum = 0.0
         for (v in f) sum += v.toDouble() * v
         // Scale so a normal speaking level reads near the top of the 0..1 range for the animation
-        // (raised from 4x: speech at arm's length has RMS around 0.05 to 0.15 and the pulse read flat).
-        return (sqrt(sum / f.size) * 7f).toFloat().coerceIn(0f, 1f)
+        // (speech at arm's length has RMS around 0.05 to 0.15; scaled so it sweeps most of the range).
+        return (sqrt(sum / f.size) * 8.5f).toFloat().coerceIn(0f, 1f)
     }
 }

@@ -468,8 +468,13 @@ Defaults that make the safe path the easy one:
   straight from the map.
 - **Vague fixes draw an ACCURACY HALO (2026-07-10).** `MapUiState.myAccuracyM` carries the live
   fix's reported accuracy (null for sim/unknown); `applyData` draws a translucent meter-true disc
-  (`ACCURACY_LAYER`, a 64-point polygon from `accuracyCircle`, fill #4285F4 at 0.12) under the dot
-  when accuracy > `ACCURACY_HALO_MIN_M` (100 m) and NOT navigating - so an approximate-only
+  (`ACCURACY_LAYER`, a 64-point polygon from `accuracyCircle`, fill #4285F4 at 0.22 + a 1.5 px edge
+  LineLayer - 0.12-0.15 vanished into the dark basemap's own blue) under the dot
+  when accuracy > `ACCURACY_HALO_MIN_M` (100 m) and NOT navigating. With a COARSE-ONLY permission
+  MapScreen falls back to 2000 m when the fix hasn't reported accuracy yet (Android hands coarse
+  apps a fix only every few minutes), and the recenter tap ZOOM-FITS the circle (at street zoom a
+  2 km halo covers the whole screen as an invisible uniform wash; the blob only reads when its edge
+  is on screen) - so an approximate-only
   permission or a weak network fix reads as "somewhere in this blob" instead of a falsely precise
   dot, and ordinary GPS (3-30 m) stays a plain dot. Identity-gated like the other applyData uploads.
   Render verified on-device via a temporary forced-1500 m build (a real coarse fix is
