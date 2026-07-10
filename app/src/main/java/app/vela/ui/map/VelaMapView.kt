@@ -1519,6 +1519,14 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
 }
 
 internal fun applyLight(style: Style) {
+    // Road-name labels get a wide white halo so they stay readable over the dotted walk
+    // line / route line beneath them (dark path does the same; see the symbol pass there).
+    listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
+        style.getLayer(it)?.setProperties(
+            PropertyFactory.textHaloColor("#ffffff"),
+            PropertyFactory.textHaloWidth(1.9f),
+        )
+    }
     // Google-Maps light palette: clean white road fills on a light-grey land, with
     // every casing faded DOWN the hierarchy until minor-road casing == the land, so
     // streets are crisp white lines with NO outline (the outlines were exactly what
@@ -1650,7 +1658,10 @@ internal fun applyDark(style: Style) {
             layer is SymbolLayer -> layer.setProperties(
                 PropertyFactory.textColor("#c3cad6"),
                 PropertyFactory.textHaloColor("#1a2230"),
-                PropertyFactory.textHaloWidth(1.1f),
+                // Road names get a WIDER halo than the 1.1 blanket: the dotted walk line and
+                // the route line run right under them, and at 1.1 the text drowned in the dots
+                // (user 2026-07-09). The halo is the "underlay tint" - Google does the same.
+                PropertyFactory.textHaloWidth(if (layer.id.startsWith("highway-name")) 1.9f else 1.1f),
             )
             layer is FillLayer && layer.id !in greens &&
                 (layer.id.startsWith("landuse") || layer.id.startsWith("landcover")) ->

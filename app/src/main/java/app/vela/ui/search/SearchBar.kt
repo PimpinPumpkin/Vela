@@ -140,6 +140,10 @@ fun SearchBar(
                             Modifier
                                 .dpadHighlight(DpadRoundedCornerShape(20.dp))
                                 .clickable { fieldArmed = true }
+                                // Inset the text INSIDE the focus ring - with none, the first
+                                // letter started at the Box edge and the 2dp ring stroke drew
+                                // straight through it (keypad phones see this on every search).
+                                .padding(horizontal = 10.dp)
                         } else {
                             Modifier
                         },
