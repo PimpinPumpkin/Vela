@@ -69,16 +69,16 @@
     <string name="settings_hide_external_links">Dölj webbplats och externa länkar</string>
     <string name="settings_hide_external_links_hint">På = platssidor visar inte knapparna Webbplats, Street View eller Boka / Beställ (inga godtyckliga externa webbplatser öppnas).</string>
     <string name="settings_offline">Offlinekartor</string>
-    <string name="settings_offline_hint">Ladda ner ett område för att spara dess karta och vägbeskrivningar på telefonen för offline-bruk.</string>
-    <string name="settings_offline_map_area">Kartområde</string>
+    <string name="settings_offline_hint">Två sätt att använda Vela offline: spara området där du är för korta resor, eller en hel delstat eller ett helt land nedan för längre.</string>
+    <string name="settings_offline_map_area">Lokalt område</string>
     <string name="settings_offline_download_viewport">Hämta området du tittar på</string>
-    <string name="settings_offline_download_viewport_hint">Sparar kartan och dess vägar för området du tittar på, så att det visas och beräknar rutter offline.</string>
+    <string name="settings_offline_download_viewport_hint">Sparar kartan du tittar på, med vägar och adresser, så att området fortsätter fungera utan täckning.</string>
     <string name="settings_offline_no_areas">Inga områden sparade ännu.</string>
     <string name="settings_offline_addresses_missing">Områden du sparade före den här uppdateringen innehåller inga adressdata. Uppdatera dem för att söka och navigera till adresser offline.</string>
     <string name="settings_offline_addresses_update">Uppdatera sparade områden</string>
     <string name="settings_offline_delete_area">Ta bort det här offlineområdet</string>
-    <string name="settings_routing_regions">Ruttregioner</string>
-    <string name="settings_routing_regions_hint">Vägarna för en hel region (en delstat eller ett land), så att vägbeskrivningar fungerar offline i hela den. Hämta dit du ska.</string>
+    <string name="settings_routing_regions">Regioner och länder</string>
+    <string name="settings_routing_regions_hint">Allt som behövs för att ta sig runt i en hel delstat, provins eller ett helt land offline: vägar och platser, så att vägbeskrivningar och sökning fungerar överallt där. Hämta dit du ska.</string>
     <string name="settings_routing_no_regions">Inga regioner tillgängliga ännu.</string>
     <string name="settings_clear_filter">Rensa filter</string>
     <string name="settings_routing_filter_placeholder">Sök</string>
