@@ -27,7 +27,11 @@ interface MapDataSource {
      *  viewport's height — a SMALLER span (zoomed in) returns DENSER, more local results than the
      *  wide default search, so a strip mall fills with its own businesses. Default falls back to a
      *  normal "places" search. */
-    suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> =
+    /** [onPartial] (optional) streams the accumulated, ranked pool as category terms land, so
+     *  the map paints its first dots ~1 s in instead of waiting for the slowest of the fan-out
+     *  (the perceived "POIs take forever" - most of the wait was the tail). The final return is
+     *  always the complete set. */
+    suspend fun nearbyPlaces(center: LatLng, spanMeters: Double, onPartial: ((List<Place>) -> Unit)? = null): List<Place> =
         search("places", center).places
 
     suspend fun placeDetails(id: String): Place
