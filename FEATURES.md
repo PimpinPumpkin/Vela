@@ -17,6 +17,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **The Menu photos stop including things that were never the menu (2026-07-10).** The gallery
+  scrape used to tag whatever was on screen while a category tab was selected, page chrome and
+  the previous grid's leftover tiles included. It now snapshots the screen before each tab click
+  and tags only what appears after the switch, dwells more than twice as long on menu tabs so
+  long menus are walked to the end, and recognizes the menu tab's name in all 11 app languages.
+
 - ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
   disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
   transit lines, 3D buildings), then a new **Place pages** section (Show reviews, the "Read all reviews"
