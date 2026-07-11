@@ -1510,7 +1510,10 @@ fun MapScreen(
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = if (parkingSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                // Soft glyph ink when unset (onSecondaryContainer read near-black, same as the
+                // bookmark ribbon; user 2026-07-11). The SET state keeps primary/onPrimary - it
+                // carries state, like the Home/Work rows.
+                contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 shadowElevation = 6.dp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
