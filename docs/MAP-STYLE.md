@@ -34,9 +34,11 @@ at **runtime**, by system theme:
 
 A `MAPTILER_KEY` (CI secret) path stays wired but **off** (`USE_MAPTILER` in
 `MapScreen`): with a key it switches to **MapTiler Streets / Streets Dark**
-(proper fonts) instead of the keyless recolour. The keyless route's remaining
-ceiling is the font (OpenFreeMap fixes it to Noto Sans; a bundled-Roboto attempt
-broke on-device vector rendering and is parked); self-hosted PMTiles is the
-no-key, no-quota path for later. Styles are plain URLs, updatable over-the-air
+(proper fonts) instead of the keyless recolour. The old keyless font ceiling is
+gone: map labels render in Roboto from a self-hosted glyph set (Roboto
+composited over OpenFreeMap's Noto per glyph, so every non-Latin script keeps
+full coverage; `ui/map/MapFonts` patches the live style's glyphs URL at launch
+and falls back to plain Noto if the host is unreachable). Self-hosted PMTiles is
+the no-key, no-quota path for later. Styles are plain URLs, updatable over-the-air
 without an app release.
 
