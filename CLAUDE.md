@@ -323,8 +323,12 @@ Defaults that make the safe path the easy one:
   mid-drop and read as a pop no matter the spring (user 2026-07-10, the "just kinda pops down"
   report); the tick effects animate to the floor and only then flip, the same order the drag
   path always used. The minimized results bar leads with the QUERY (or list name) in ink +
-  SemiBold, then "· N results" in dim (`barTitle` annotated string) — the bare dim count was
-  easy to miss. **Filter
+  SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
+  awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
+  effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):
+  a LaunchedEffect fires on FIRST composition too, so a remounted sheet (pick a place from the
+  list, or return from one) used to replay the stale tick and open pre-minimized (user
+  2026-07-10). Any new tick-style signal into a sheet needs the same guard. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
