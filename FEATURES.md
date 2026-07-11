@@ -17,6 +17,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **One house number per address (2026-07-10).** The open-address overlay used to print an
+  apartment complex's number over its whole footprint (OpenAddresses has a row per unit/parcel);
+  the overlay build now collapses those to a single point per address, so each number appears
+  once. Takes effect per state as the overlays rebuild.
 - ✅ **The full-screen viewers match Google's chrome (2026-07-11).** The photo viewer and the
   full reviews page render in the app's own full-screen window (not a child dialog), so they
   truly reach every edge and survive rotation without the image floating on a shrunken
