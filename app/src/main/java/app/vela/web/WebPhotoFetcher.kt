@@ -47,6 +47,9 @@ class WebPhotoFetcher @Inject constructor(
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val partials = ConcurrentHashMap<String, (String) -> Unit>()
     private val hists = ConcurrentHashMap<String, (List<Int>) -> Unit>()
+    private val infos = ConcurrentHashMap<String, String>()
+    // Feature ids whose TAB-LESS cached gallery already got its one self-heal retry this session.
+    private val retriedTabless = java.util.Collections.synchronizedSet(HashSet<String>())
     // featureId -> [5-star..1-star] counts, so a cached-gallery revisit still gets its histogram
     // (the photo cache hit skips the whole walk). Tiny payloads; same rough cap as the photo LRU.
     private val histCache = ConcurrentHashMap<String, List<Int>>()
@@ -75,6 +78,14 @@ class WebPhotoFetcher @Inject constructor(
         @JavascriptInterface
         fun onPartial(id: String, payload: String) {
             partials[id]?.invoke(payload)
+        }
+
+        // Why the walk ended the way it did (tab count, when the gallery opened, whether the
+        // late-tab rescue fired, total ticks) — the menu tab's no-show diagnosis (user 2026-07-11).
+        @JavascriptInterface
+        fun onInfo(id: String, json: String) {
+            android.util.Log.i("VelaPhotoWalk", "$id $json")
+            infos[id] = json
         }
 
         // The place page's rating distribution ([5-star..1-star] counts) scraped in passing while
@@ -120,9 +131,14 @@ class WebPhotoFetcher @Inject constructor(
         onHistogram: ((List<Int>) -> Unit)? = null,
     ): List<Photo> {
         val cid = cidOf(featureId) ?: return emptyList()
-        synchronized(cache) { cache[featureId] }?.let {
+        synchronized(cache) { cache[featureId] }?.let { cached ->
             if (onHistogram != null) histCache[featureId]?.let(onHistogram) // cached walk = cached histogram
-            return it // instant on revisit — skip the scrape
+            // A CATEGORISED gallery is served from cache forever (it can't get better). A
+            // TAB-LESS one gets ONE fresh walk per session: one flaky fetch used to poison the
+            // place all session — "sometimes there's just no Menu tab" (user 2026-07-11). The
+            // cached set still shows instantly; the retry streams over it if it finds more.
+            if (cached.any { it.category != null } || !retriedTabless.add(featureId)) return cached
+            onPartial?.invoke(cached)
         }
         return mutex.withLock {
             val id = "p" + seq.incrementAndGet()
@@ -220,7 +236,7 @@ class WebPhotoFetcher @Inject constructor(
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0, opened=false;
+              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0, opened=false, openedAt=0, rescued=0;
               // The gallery tabs worth tagging (skip All/Latest/Videos/Street View — All is the fallback sweep).
               var CATRE=/^(menu|food|drink|vibe|by owner)/i;
               function ok(u){ return !!u && u.indexOf('googleusercontent')>=0 && !/streetviewpixels/.test(u) && !/\/a[\/-]|ACg8oc|ALV-/.test(u); }
@@ -235,13 +251,13 @@ class WebPhotoFetcher @Inject constructor(
               function tabSelected(name){ var ts=tabEls(); for(var i=0;i<ts.length;i++){ var t=(((ts[i].getAttribute('aria-label')||ts[i].textContent)||'').trim()); if(t===name) return ts[i].getAttribute('aria-selected')==='true'; } return false; }
               // One-shot: after the gallery opens, its own tiles carry "Photo 2 of 45"-style labels that
               // match /photos?/ — re-firing this would click INTO a photo lightbox and break the tab walk.
-              function clickPhotos(){ if(opened) return; var bs=[].slice.call(document.querySelectorAll('button,a')); for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase(); if((/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l)) && !/street ?view|review|profile|video/.test(l)){ try{ bs[i].click(); }catch(e){} opened=true; return; } } }
+              function clickPhotos(){ if(opened) return; var bs=[].slice.call(document.querySelectorAll('button,a')); for(var i=0;i<bs.length;i++){ var l=((bs[i].getAttribute('aria-label')||'')+' '+(bs[i].textContent||'')).toLowerCase(); if((/(^|\s)photos?(\s|${'$'})|see (all )?photos|all photos/.test(l)) && !/street ?view|review|profile|video/.test(l)){ try{ bs[i].click(); }catch(e){} opened=true; openedAt=tries; return; } } }
               function scroll(){ try{ [].slice.call(document.querySelectorAll('div')).forEach(function(d){ if(d.scrollHeight>d.clientHeight+300 && d.clientHeight>200) d.scrollTop=d.scrollHeight; }); }catch(e){} }
               // A real category tab is a clean name ("Menu", "Food & drink", "By owner") — EXCLUDE photo
               // captions that also start with a category word ("Menu · Photo 1 of 12") via the letters-only test.
               function tabsNow(){ var out=[]; tabEls().forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<20 && CATRE.test(t) && /^[a-z &]+${'$'}/i.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
               function lines(){ var out=[]; for(var k in acc) out.push((acc[k].c||'')+'\t'+acc[k].u); return out.slice(0,CAP).join("\n"); }
-              function finish(){ try{ VelaBridge.onResult(ID, lines()); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
+              function finish(){ try{ VelaBridge.onInfo(ID, JSON.stringify({tabs:cats.length, opened:opened?1:0, openedAt:openedAt, rescued:rescued, ticks:tries})); }catch(e){} try{ VelaBridge.onResult(ID, lines()); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
               var histSent=0;
               // The overview's rating-distribution table (each row: "5 stars, 612 reviews") - the
               // same rows the reviews panel carves; grabbed once in passing, costs nothing extra.
@@ -255,10 +271,14 @@ class WebPhotoFetcher @Inject constructor(
                 hist();
                 if(phase===0){
                   collect(''); clickPhotos(); scroll();
-                  // Wait until the gallery's category tabs actually exist (slow loads) — but not forever:
-                  // a place with no categorized gallery proceeds tab-less to the plain All sweep.
+                  // Wait until the gallery's category tabs actually exist. The old 8-tick (4 s)
+                  // cap counted from SCRIPT START — page load + finding the Photos button + the
+                  // gallery render routinely ate it all on a cold WebView, so real menu tabs got
+                  // skipped and the place walked tab-less (the inconsistent-Menu report, user
+                  // 2026-07-11). Now: give the OPENED gallery 6 more ticks to grow tabs, and only
+                  // hard-stop at 20 ticks when the gallery never opened at all.
                   cats=tabsNow();
-                  if(cats.length>0 || tries>=8){ ci=0; sub=0; phase=1; }
+                  if(cats.length>0 || (opened && tries>=openedAt+6) || tries>=20){ ci=0; sub=0; phase=1; }
                 }
                 else if(phase===1){
                   if(ci>=cats.length){ phase=2; sub=0; }
@@ -268,12 +288,18 @@ class WebPhotoFetcher @Inject constructor(
                   else { if(sub===0) clickTab(cats[ci]); scroll(); if(sub>=2 && tabSelected(cats[ci])) collect(cats[ci]); sub++; if(sub>=6){ ci++; sub=0; } }
                 }
                 else {
+                  // Late-tab rescue: tabs that appeared AFTER phase 0 gave up would silently be
+                  // swept uncategorised — jump back and walk them once.
+                  if(sub===0 && cats.length===0 && !rescued){
+                    var late=tabsNow();
+                    if(late.length>0){ rescued=1; cats=late; ci=0; sub=0; phase=1; partial(); setTimeout(tick, 500); return; }
+                  }
                   // The All sweep: click, give the grid one no-collect settle tick, then sweep uncategorized.
                   if(sub===0) clickTab('All');
                   scroll(); if(sub>=1) collect('');
                   sub++; if(sub>=5){ finish(); return; }
                 }
-                if(tries>58){ collect(''); finish(); return; }
+                if(tries>70){ collect(''); finish(); return; }
                 partial();
                 setTimeout(tick, 500);
               }
@@ -286,7 +312,7 @@ class WebPhotoFetcher @Inject constructor(
         // Must outlast the script's own hard stop (58 ticks × 500 ms = 29 s + page load ≤ 8 s) — if the
         // Kotlin timeout fires first we return NULL and throw away everything the walk accumulated,
         // instead of the partial set the script's salvage path would deliver.
-        const val TOTAL_TIMEOUT_MS = 40_000L
+        const val TOTAL_TIMEOUT_MS = 48_000L
         const val SETTLE_MS = 1_200L
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport so the virtualized category grids render a full batch (not ~1 tile).
