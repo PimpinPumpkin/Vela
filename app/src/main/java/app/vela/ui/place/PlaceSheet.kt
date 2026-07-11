@@ -585,32 +585,7 @@ fun PlaceSheet(
                     .pointerInput(Unit) {
                         // The handle drags the sheet 1:1 and the release coasts to the nearest
                         // detent on the fling velocity - same physics as dragging the body.
-                        val tracker = VelocityTracker()
-                        var acc = 0f
-                        var t0 = 0L
-                        var tN = 0L
-                        detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking(); acc = 0f; t0 = 0L; tN = 0L },
-                            onVerticalDrag = { change, dy ->
-                                change.consume()
-                                // Integrated deltas, not change.position: the position is local
-                                // to a node that MOVES as the sheet resizes, which zeroed the
-                                // measured velocity (user 2026-07-11).
-                                acc += dy
-                                if (t0 == 0L) t0 = change.uptimeMillis
-                                tN = change.uptimeMillis
-                                tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
-                                dragSheetBy(dy)
-                            },
-                            onDragEnd = {
-                                // Whichever is stronger: tracked velocity or the gesture's plain
-                                // average - a short flick can no longer measure as ~zero.
-                                val tracked = tracker.calculateVelocity().y
-                                val avg = if (tN > t0) acc / (tN - t0) * 1000f else 0f
-                                settleFromVelocity(if (kotlin.math.abs(avg) > kotlin.math.abs(tracked)) avg else tracked)
-                            },
-                            onDragCancel = { settleFromVelocity(0f) },
-                        )
+                        sheetDragGestures(dragBy = { dragSheetBy(it) }, settle = { settleFromVelocity(it) })
                     }
                     .heightIn(min = 36.dp)
                     .padding(vertical = 14.dp),
@@ -627,6 +602,16 @@ fun PlaceSheet(
                 Modifier
                     .nestedScroll(dismissConn)
                     .verticalScroll(bodyScroll)
+                    // Minimized, the skeleton fits inside the floor height, so the scrollable
+                    // above has no range and never engages a drag - nothing reached dismissConn
+                    // and a flick on the minimized card read as dead while the same flick on the
+                    // handle worked (user 2026-07-11). Give the minimized body the handle's own
+                    // drag; the key remounts this as a no-op whenever the full body is showing,
+                    // handing drags back to the scrollable's nested-scroll path.
+                    .pointerInput(minimizedState.value, singleDetent) {
+                        if (!minimizedState.value || singleDetent) return@pointerInput
+                        sheetDragGestures(dragBy = { dragSheetBy(it) }, settle = { settleFromVelocity(it) })
+                    }
                     // Minimized: a single tap ANYWHERE on the card pops it back to peek (Google) —
                     // the action pills keep their own taps since inner clickables win their bounds.
                     // Inert (enabled=false) whenever the full body is showing.
@@ -1135,6 +1120,44 @@ fun PlaceSheet(
  *  its direction, however short the drag - the shared sheet-fling grammar. */
 internal const val FLING_COMMIT_DPS = 180f
 
+/**
+ * The shared sheet drag: moves the sheet 1:1 with the finger via [dragBy] (finger px, +down)
+ * and hands the release velocity (px/s) to [settle]. One implementation for every sheet's
+ * hand-driven drag surface (place handle + minimized body, directions panel, results handle)
+ * because the velocity measurement is subtle twice over: the tracker must feed INTEGRATED
+ * drag deltas - change.position is local to a node that MOVES as the sheet resizes, which
+ * zeroed the measured velocity - and the release takes whichever is stronger of the tracked
+ * velocity and the gesture's plain travel/time average, so a short flick can never read as
+ * ~zero (user 2026-07-11). Inner clickables keep their taps (a drag claims the pointer only
+ * past touch slop) and inner scrollables that CAN scroll consume first.
+ */
+internal suspend fun androidx.compose.ui.input.pointer.PointerInputScope.sheetDragGestures(
+    dragBy: (Float) -> Unit,
+    settle: (Float) -> Unit,
+) {
+    val tracker = VelocityTracker()
+    var acc = 0f
+    var t0 = 0L
+    var tN = 0L
+    detectVerticalDragGestures(
+        onDragStart = { tracker.resetTracking(); acc = 0f; t0 = 0L; tN = 0L },
+        onVerticalDrag = { change, dy ->
+            change.consume()
+            acc += dy
+            if (t0 == 0L) t0 = change.uptimeMillis
+            tN = change.uptimeMillis
+            tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
+            dragBy(dy)
+        },
+        onDragEnd = {
+            val tracked = tracker.calculateVelocity().y
+            val avg = if (tN > t0) acc / (tN - t0) * 1000f else 0f
+            settle(if (kotlin.math.abs(avg) > kotlin.math.abs(tracked)) avg else tracked)
+        },
+        onDragCancel = { settle(0f) },
+    )
+}
+
 /** "Save to list" — check the lists this place belongs to; create a new one inline. */
 @Composable
 private fun SaveToListSheet(
@@ -1367,30 +1390,7 @@ fun DirectionsPanel(
                 // (a drag claims the pointer only past touch slop), and the scrolling body keeps
                 // its own nested-scroll path since verticalScroll consumes there first.
                 .pointerInput(Unit) {
-                    val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
-                    var acc = 0f
-                    var t0 = 0L
-                    var tN = 0L
-                    detectVerticalDragGestures(
-                        onDragStart = { tracker.resetTracking(); acc = 0f; t0 = 0L; tN = 0L },
-                        onVerticalDrag = { change, dy ->
-                            change.consume()
-                            // Integrated deltas, not change.position: the position is local to
-                            // a node that MOVES as the sheet resizes, which zeroed the measured
-                            // velocity - flicks read as slow drags (user 2026-07-11).
-                            acc += dy
-                            if (t0 == 0L) t0 = change.uptimeMillis
-                            tN = change.uptimeMillis
-                            tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
-                            dragDirBy(dy)
-                        },
-                        onDragEnd = {
-                            val tracked = tracker.calculateVelocity().y
-                            val avg = if (tN > t0) acc / (tN - t0) * 1000f else 0f
-                            settleDir(if (kotlin.math.abs(avg) > kotlin.math.abs(tracked)) avg else tracked)
-                        },
-                        onDragCancel = { settleDir(0f) },
-                    )
+                    sheetDragGestures(dragBy = { dragDirBy(it) }, settle = { settleDir(it) })
                 }
                 .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
         ) {
