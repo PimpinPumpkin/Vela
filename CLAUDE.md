@@ -487,6 +487,19 @@ Defaults that make the safe path the easy one:
   (only a NEWER release re-offers). The tag parse is **minor-agnostic** (`^v0\.\d+\.(\d+)$` - it
   survived the 0.2→0.3 bump untouched), taking only the run number for the versionCode; it still
   assumes the `2000+run` base, so update `SelfUpdater.check` if the versionCode base ever changes.
+- **POI-speed trio (2026-07-11):** (1) `nearbyPlaces` STREAMS its category fan-out via an
+  `onPartial` callback (paints throttled to >=10 new places + 500 ms apart; the final
+  return is still the complete ranked pool) so first dots stop waiting on the SLOWEST of
+  ~13 requests; (2) `prefetchAmbientNeighbours` warms the 4 view-sized neighbour areas
+  into the ambient LRU after each idle fetch - UNMETERED network only (4 extra fan-outs),
+  sequential with 700 ms gaps, skips cached areas, bails on any non-bare-map state; (3)
+  the ambient LRU PERSISTS to `ambient_cache.json` (newest 8 areas x 200 slim places via
+  :core `AmbientDiskCache` - the app module stays OUT of kotlinx.serialization, the same
+  boundary TransitParser keeps; 24 h validity, loaded stamps read as fresh because the
+  moved-gate refetches the first real view anyway = paint-then-refine, never
+  paint-and-trust). Device-measured on the 4a: cold-launch home-area dots at ~3.0 s
+  (bounded by app+map startup, proven the disk path - no network paint can land by then)
+  vs ~4.0 s fetch-bound before; the streaming win grows on slow links.
 - **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
   to compose when mpp moved >1% - an unconditional write recomposed the scale bar every pan frame;
   keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
