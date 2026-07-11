@@ -280,6 +280,7 @@ class MapViewModel @Inject constructor(
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
+        loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
         // A simulated location (Settings → demo) wins the seed so the app opens "there".
         val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
@@ -3098,8 +3099,54 @@ class MapViewModel @Inject constructor(
         ambientCache.removeAll { it.first.distanceTo(center) < 400.0 } // replace a near-duplicate area
         ambientCache.addLast(Triple(center, places, android.os.SystemClock.elapsedRealtime()))
         while (ambientCache.size > 16) ambientCache.removeFirst()
+        persistAmbientCache()
     }
 
+    // ---- Ambient cache on DISK: the home area paints instantly on a COLD launch too. ----
+    // Slim rows via :core's AmbientDiskCache codec (the app stays out of kotlinx.serialization),
+    // newest 8 areas x 200 places, debounced writes; entries older than a day drop at load.
+    private fun ambientDiskFile() = java.io.File(appContext.filesDir, "ambient_cache.json")
+    private var ambientPersistJob: Job? = null
+
+    private fun persistAmbientCache() {
+        ambientPersistJob?.cancel()
+        ambientPersistJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(2000) // debounce a pan session into one write
+            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            val nowWall = System.currentTimeMillis()
+            val entries = ambientCache.toList().takeLast(8).map { (c, places, atElapsed) ->
+                app.vela.core.data.AmbientCachedArea(
+                    c.lat, c.lng, nowWall - (nowElapsed - atElapsed),
+                    places.take(200).map { app.vela.core.data.AmbientCachedPlace.of(it) },
+                )
+            }
+            runCatching {
+                val tmp = java.io.File(appContext.filesDir, "ambient_cache.json.tmp")
+                tmp.writeText(app.vela.core.data.AmbientDiskCache.encode(entries))
+                tmp.renameTo(ambientDiskFile())
+            }
+        }
+    }
+
+    private fun loadAmbientCacheFromDisk() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val entries = runCatching { ambientDiskFile().readText() }.getOrNull()
+                ?.let { app.vela.core.data.AmbientDiskCache.decode(it) } ?: return@launch
+            val nowWall = System.currentTimeMillis()
+            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            val fresh = entries.filter { nowWall - it.atWallMs < 24 * 3600_000L }
+            if (fresh.isEmpty()) return@launch
+            val loaded = fresh.map { e ->
+                // Timestamps read as fresh: the moved-gate refetches the first real view anyway,
+                // so disk entries are paint-then-refine, never paint-and-trust.
+                Triple(LatLng(e.lat, e.lng), e.places.map { it.toPlace() }, nowElapsed)
+            }
+            // Main-thread hop: the cache deque is only ever touched from the main dispatcher.
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (ambientCache.isEmpty()) loaded.forEach { ambientCache.addLast(it) }
+            }
+        }
+    }
     /** Freshest non-stale cached fetch whose centre is within ~900 m of [center], re-centred so its
      *  distances are correct for the new view. Null if nothing recent+near is cached. */
     private fun cachedAmbientNear(center: LatLng): List<app.vela.core.model.Place>? {
@@ -3109,6 +3156,35 @@ class MapViewModel @Inject constructor(
             .minByOrNull { it.first.distanceTo(center) }
             ?.second
             ?.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
+    }
+
+    /** Warm the ambient LRU for the four neighbouring view-sized areas (N/S/E/W at ~0.9 of the
+     *  span) so a pan in any direction repaints instantly from cache. Gated HARD: bare map only,
+     *  UNMETERED network only (this is real extra traffic: 4 more fan-outs), skips areas already
+     *  cached, sequential (never bursts 52 parallel requests at Google), one round per fetch. */
+    private var prefetchJob: Job? = null
+    private fun prefetchAmbientNeighbours(center: LatLng, span: Double, zoom: Double) {
+        if (zoom < 14.5) return // wide views cover the neighbours already
+        val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return
+        if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) return
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch {
+            val dLat = span * 0.9 / 111_320.0
+            val dLng = dLat / kotlin.math.cos(Math.toRadians(center.lat)).coerceAtLeast(0.2)
+            val neighbours = listOf(
+                LatLng(center.lat + dLat, center.lng), LatLng(center.lat - dLat, center.lng),
+                LatLng(center.lat, center.lng + dLng), LatLng(center.lat, center.lng - dLng),
+            )
+            for (n in neighbours) {
+                delay(700) // spread the extra load; a real pan cancels via ambientJob's own churn
+                val cur = _state.value
+                if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
+                if (cachedAmbientNear(n) != null) continue
+                val res = runCatching { dataSource.nearbyPlaces(n, span) }.getOrNull() ?: continue
+                if (res.isNotEmpty()) cacheAmbient(n, res)
+            }
+        }
     }
 
     /**
@@ -3148,14 +3224,28 @@ class MapViewModel @Inject constructor(
         }
         ambientJob = viewModelScope.launch {
             delay(300) // brief settle so a flick doesn't scrape — but snappy
-            val res = runCatching { dataSource.nearbyPlaces(center, span) }.getOrNull() ?: return@launch
+            // PROGRESSIVE paint: the fan-out streams its accumulated pool as category terms
+            // land, so first dots show ~1 s in instead of waiting for the slowest request
+            // (the tail was most of the perceived wait; user 2026-07-11). Each partial passes
+            // the same bare-map gates as the final.
+            fun bareMap(): Boolean {
+                val cur = _state.value
+                return !(cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null)
+            }
+            val res = runCatching {
+                dataSource.nearbyPlaces(center, span) { partial ->
+                    if (bareMap()) _state.update { it.copy(ambientPois = keepAmbientForView(partial, viewRadiusMeters)) }
+                }
+            }.getOrNull() ?: return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
             cacheAmbient(center, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
-            val cur = _state.value
-            if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
+            if (!bareMap()) return@launch
             _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters)) }
+            // Idle now: quietly warm the four NEIGHBOUR areas into the LRU so panning one screen
+            // over paints instantly (unmetered connections only - it's ~4 extra fan-outs).
+            prefetchAmbientNeighbours(center, span, zoom)
         }
     }
 

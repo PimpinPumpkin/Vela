@@ -37,6 +37,10 @@ import kotlin.math.log2
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -120,7 +124,7 @@ class GoogleMapsDataSource @Inject constructor(
         SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
     }
 
-    override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> = io {
+    override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double, onPartial: ((List<Place>) -> Unit)?): List<Place> = io {
         session.ensure()
         val cal = calibration.current()
         // The wide default search (!1d≈25229, !4f13.1) returns the ~20 most prominent places over a
@@ -143,26 +147,57 @@ class GoogleMapsDataSource @Inject constructor(
             // their prominence low, so they surface in quiet/residential views without crowding businesses.
             "school", "park",
         )
-        val all = coroutineScope {
-            terms.map { term ->
-                async {
-                    runCatching {
-                        val pb = SearchPb.build(term, center, cal.searchPb)
-                            .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
-                            .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
-                            .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
-                        val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
-                        SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
-                    }.getOrDefault(emptyList())
-                }
-            }.awaitAll().flatten()
-        }
+        suspend fun fetchTerm(term: String): List<Place> = runCatching {
+            val pb = SearchPb.build(term, center, cal.searchPb)
+                .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
+                .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
+                .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
+            val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
+            SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
+        }.getOrDefault(emptyList())
         // Dedup by feature id (same place returned under several terms); fall back to name+coords,
         // then rank for the map (locality + prominence — see rankAmbientPlaces).
-        val deduped = all.distinctBy {
-            it.featureId ?: "${it.name}@${(it.location.lat * 1e4).toInt()},${(it.location.lng * 1e4).toInt()}"
+        fun finish(pool: List<Place>): List<Place> = rankAmbientPlaces(
+            CategoryFilter.applyIfEnabled(
+                pool.distinctBy {
+                    it.featureId ?: "${it.name}@${(it.location.lat * 1e4).toInt()},${(it.location.lng * 1e4).toInt()}"
+                },
+            ),
+        )
+        val all = coroutineScope {
+            if (onPartial == null) {
+                terms.map { term -> async { fetchTerm(term) } }.awaitAll().flatten()
+            } else {
+                // STREAM the fan-out: paint the accumulated pool as terms land (growth- and
+                // time-throttled so the map isn't re-tessellating on every landing) instead of
+                // gating the first dots on the SLOWEST of ~13 requests - the tail was most of
+                // the perceived wait. The final return below still carries the complete pool.
+                val pool = mutableListOf<Place>()
+                val mutex = Mutex()
+                var landed = 0
+                var paintedCount = 0
+                var lastPaintNs = 0L
+                terms.map { term ->
+                    launch {
+                        val places = fetchTerm(term)
+                        mutex.withLock {
+                            pool += places
+                            landed++
+                            val now = System.nanoTime()
+                            val grown = pool.size - paintedCount >= 10
+                            val due = now - lastPaintNs > 500_000_000L
+                            if (landed < terms.size && pool.isNotEmpty() && grown && (paintedCount == 0 || due)) {
+                                paintedCount = pool.size
+                                lastPaintNs = now
+                                onPartial(finish(pool.toList()))
+                            }
+                        }
+                    }
+                }.joinAll()
+                pool
+            }
         }
-        rankAmbientPlaces(CategoryFilter.applyIfEnabled(deduped))
+        finish(all)
     }
 
     override suspend fun placeDetails(id: String): Place = io {
