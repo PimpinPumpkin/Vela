@@ -1476,9 +1476,17 @@ fun DirectionsPanel(
                             Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
                             Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
                         ).forEach { (labelRes, query, icon) ->
+                            // One-shot ACTION chips, not selection state - a permanently
+                            // unselected FilterChip read as unfilled/disabled next to the
+                            // filled pills (user 2026-07-11); solid tonal fill, no border.
                             FilterChip(
                                 selected = false,
                                 onClick = { onSearchAlongRoute(query) },
+                                border = null,
+                                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                    containerColor = if (isAppInDarkTheme()) Color(0xFF333539) else Color(0xFFF1F3F4),
+                                    labelColor = ink,
+                                ),
                                 label = { Text(stringResource(labelRes)) },
                                 leadingIcon = {
                                     Icon(
@@ -1546,7 +1554,18 @@ private fun DepartTimeChooser(
     val dateFmt = java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d")
 
     fun epoch(): Long = date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
-    fun emit() = onTimeSelected(mode, if (mode == 0) null else epoch())
+    fun emit() {
+        if (mode == 1 || mode == 2) {
+            // No scheduling in the past (user 2026-07-11): a confirmed pick behind the clock
+            // silently becomes the next 5-minute mark from now, today - same clamp Google does.
+            if (date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toInstant().isBefore(java.time.Instant.now())) {
+                date = java.time.LocalDate.now()
+                val n = java.time.LocalTime.now().withSecond(0).withNano(0)
+                time = n.plusMinutes(((5 - n.minute % 5) % 5).toLong())
+            }
+        }
+        onTimeSelected(mode, if (mode == 0) null else epoch())
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // Mode chips — scroll horizontally so 3–4 chips never clip on a narrow phone.
@@ -1614,6 +1633,13 @@ private fun DepartTimeChooser(
         // system zone, or western-hemisphere picks land one day early.
         val dp = androidx.compose.material3.rememberDatePickerState(
             initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
+            selectableDates = object : androidx.compose.material3.SelectableDates {
+                // Days before today are greyed out (the confirm clamp still backstops a stale
+                // dialog left open across midnight).
+                override fun isSelectableDate(utcTimeMillis: Long) =
+                    utcTimeMillis >= java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+                override fun isSelectableYear(year: Int) = year >= java.time.LocalDate.now().year
+            },
         )
         PickerDialog(
             onConfirm = {
