@@ -244,6 +244,9 @@ fun PlaceSheet(
     onRemoveFromList: (listId: String) -> Unit = {},
     onCreateListWith: (name: String) -> Unit = {},
     onSetNote: (String?) -> Unit = {},
+    // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
+    // card so the map is unobstructed (Google's behaviour). 0 = never.
+    minimizeTick: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -292,6 +295,24 @@ fun PlaceSheet(
         // Skip when a drag-release settle is already animating to this exact detent - restarting
         // would zero the coast velocity mid-glide.
         if (heightAnim.targetValue != target) heightAnim.animateTo(target, settleSpec)
+    }
+    // The user grabbed the map: glide down to the minimized card on a SOFT spring (the settle
+    // stiffness reads as a blink for this unprompted drop). Runs after the state-flip effect
+    // above, so animating on VALUE (not targetValue) deliberately replaces its quicker settle.
+    val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    // Consume-once guard: seenTick INITIALIZES to the tick's CURRENT value, so a fresh mount
+    // (picking a place from the results list re-mounts the sheet) never treats a STALE tick as
+    // a new pan - a LaunchedEffect fires on first composition too, and without this the next
+    // place opened pre-minimized (user 2026-07-10). Only a bump AFTER mount glides.
+    var seenTick by remember { mutableStateOf(minimizeTick) }
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == seenTick) return@LaunchedEffect
+        seenTick = minimizeTick
+        // Glide FIRST, flip the states after: any content keyed on the minimized state then
+        // changes only once the card is already down (flipping first read as a pop, not a glide).
+        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
+        expandedState.value = false
+        minimizedState.value = true
     }
     // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
     // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
