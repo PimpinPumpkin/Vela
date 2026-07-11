@@ -369,7 +369,21 @@ fun PlaceSheet(
         val vDp = with(density) { velocityPxPerSec.toDp().value }
         // Where the throw would naturally coast to, then the nearest detent to THAT point.
         val naturalEnd = flingDecay.calculateTargetValue(heightAnim.value, -vDp)
-        val target = listOf(minH, peekH, expH).minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekH
+        // A real FLICK (>450 dp/s) commits AT LEAST one detent in its direction - the pure
+        // projection needed the coast to cross half the gap, which made short flicks feel
+        // dead (user 2026-07-11). A hard throw still crosses two detents via the projection.
+        val detents = listOf(minH, peekH, expH)
+        val target = when {
+            vDp < -FLING_COMMIT_DPS -> {
+                val up = detents.filter { it > heightAnim.value + 1f }
+                maxOf(up.minOrNull() ?: expH, up.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: expH)
+            }
+            vDp > FLING_COMMIT_DPS -> {
+                val down = detents.filter { it < heightAnim.value - 1f }
+                minOf(down.maxOrNull() ?: minH, down.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: minH)
+            }
+            else -> detents.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekH
+        }
         expandedState.value = target == expH
         minimizedState.value = target == minH
         settleScope.launch {
@@ -1101,6 +1115,10 @@ fun PlaceSheet(
     }
 }
 
+/** A release faster than this (dp/s) counts as a FLICK and commits at least one detent in
+ *  its direction, however short the drag - the shared sheet-fling grammar. */
+internal const val FLING_COMMIT_DPS = 450f
+
 /** "Save to list" — check the lists this place belongs to; create a new one inline. */
 @Composable
 private fun SaveToListSheet(
@@ -1262,7 +1280,13 @@ fun DirectionsPanel(
     fun settleDir(velocityPxPerSec: Float) {
         val vDp = with(dirDensity) { velocityPxPerSec.toDp().value }
         val naturalEnd = dirDecay.calculateTargetValue(dirH.value, -vDp)
-        val target = if (kotlin.math.abs(naturalEnd) < kotlin.math.abs(bodyMax - naturalEnd)) 0f else bodyMax
+        // Flick = commit (see settleFromVelocity): with only two detents 58% of a screen apart,
+        // the coast test needed a huge throw - the "can't quite flick it up" report.
+        val target = when {
+            vDp < -FLING_COMMIT_DPS -> bodyMax
+            vDp > FLING_COMMIT_DPS -> 0f
+            else -> if (kotlin.math.abs(naturalEnd) < kotlin.math.abs(bodyMax - naturalEnd)) 0f else bodyMax
+        }
         dirScope.launch {
             val towardTarget = (naturalEnd - dirH.value) * (target - dirH.value) > 0f
             if (towardTarget && kotlin.math.abs(naturalEnd - dirH.value) >= kotlin.math.abs(target - dirH.value)) {
