@@ -19,13 +19,19 @@ import app.vela.core.model.TravelMode
  * Piped-for-Vela idea), is a drop-in.
  */
 interface MapDataSource {
-    suspend fun search(query: String, near: LatLng? = null): SearchResult
+    /** [spanMeters]: the caller's visible viewport height — widens Google's result window to
+     *  match how far out the map is zoomed (the pb template's baked span is ~25 km). */
+    suspend fun search(query: String, near: LatLng? = null, spanMeters: Double? = null): SearchResult
 
     /** Prominent places in the viewport, for the ambient map-POI overlay. [spanMeters] is the
      *  viewport's height — a SMALLER span (zoomed in) returns DENSER, more local results than the
      *  wide default search, so a strip mall fills with its own businesses. Default falls back to a
      *  normal "places" search. */
-    suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> =
+    /** [onPartial] (optional) streams the accumulated, ranked pool as category terms land, so
+     *  the map paints its first dots ~1 s in instead of waiting for the slowest of the fan-out
+     *  (the perceived "POIs take forever" - most of the wait was the tail). The final return is
+     *  always the complete set. */
+    suspend fun nearbyPlaces(center: LatLng, spanMeters: Double, onPartial: ((List<Place>) -> Unit)? = null): List<Place> =
         search("places", center).places
 
     suspend fun placeDetails(id: String): Place
@@ -43,10 +49,13 @@ interface MapDataSource {
      *  Best-effort — null when the link isn't a list or the fetch/parse fails. */
     suspend fun importList(shareUrl: String): app.vela.core.model.ImportedList? = null
 
-    /** The full place photo gallery (~40+), by Google feature id. The search
-     *  response only carries a ~10-photo preview; this pulls the rest via the
-     *  keyless `hspqX` RPC. Best-effort — empty (→ keep the preview) on failure. */
-    suspend fun placePhotos(featureId: String): List<String> = emptyList()
+    /** The full place photo gallery (~40+), by Google feature id, each with its
+     *  posted date when the response carried one. The search response only holds a
+     *  ~10-photo preview; this pulls the rest via the keyless `hspqX` RPC. The app's
+     *  primary gallery source is the WebView page walk (which has category tags but
+     *  NO dates), so this doubles as the DATE side of that join. Best-effort —
+     *  empty (→ keep the preview) on failure. */
+    suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = emptyList()
 
     suspend fun directions(
         origin: LatLng,
@@ -55,6 +64,11 @@ interface MapDataSource {
         // Intermediate stops the route must pass through, in order (multi-stop trips). Empty = direct
         // origin→destination. A waypointed route is a single path through the stops (no alternates).
         waypoints: List<LatLng> = emptyList(),
+        // Route preference toggles (drive only). Honoured by the OSRM paths via `exclude=`;
+        // Google-fallback routes and offline graphs baked before the avoid profiles cannot
+        // honour them (the fallback still routes rather than failing).
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
     ): List<Route>
 
     /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its
@@ -66,6 +80,8 @@ interface MapDataSource {
         origin: LatLng,
         destination: LatLng,
         mode: TravelMode = TravelMode.DRIVE,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
     ): Route = route
 }
 

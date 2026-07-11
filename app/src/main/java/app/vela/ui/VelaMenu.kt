@@ -83,7 +83,12 @@ fun VelaMenu(expanded: Boolean, onDismissRequest: () -> Unit, content: @Composab
 @Composable
 fun VelaMenuScope.item(text: String, onClick: () -> Unit) {
     if (!dpad) {
-        DropdownMenuItem(text = { Text(text) }, onClick = onClick)
+        // Explicit themed ink: the popup's default let some items render full black next
+        // to the app's softer text (the results Price/Sort menus, user 2026-07-11).
+        DropdownMenuItem(
+            text = { Text(text, color = MaterialTheme.colorScheme.onSurface) },
+            onClick = onClick,
+        )
         return
     }
     val autoFocus = index == 0

@@ -14,9 +14,10 @@ package app.vela.core.data.tiles
 enum class MapStyle(val label: String, val uri: String) {
     // The keyless basemap: OpenFreeMap Liberty loaded from its remote URL — the
     // setup that always rendered on-device. POI markers + colours are applied at
-    // runtime (see VelaMapView.applyMapTheme / PoiIcons.applyToLiberty). A bundled
-    // copy was tried for a Roboto font, but its vector tiles wouldn't load via
-    // fromJson on-device, so that approach was dropped.
+    // runtime (see VelaMapView.applyMapTheme / PoiIcons.applyToLiberty). The app's
+    // MapFonts patches a LIVE-fetched copy of this style for Roboto glyphs; an old
+    // bundled copy blanked the basemap because it pinned a dated tile snapshot
+    // path, NOT because fromJson can't load vector tiles (it can, device-proven).
     LIBERTY("OpenFreeMap Liberty", "https://tiles.openfreemap.org/styles/liberty");
 
     companion object {
