@@ -595,8 +595,14 @@ project's core promise is that neither exists:
   toggles in the route chooser. Caveats to surface in the UI: the Google fallback router
   ignores them, and offline GraphHopper needs a graph re-bake with toll flags before it can
   honour them (CI rebuild of the region graphs).
-- Menu photo dates: recalibrate the hspqX photos RPC (returns 0 photos since the WebView walk
-  replaced it; the in-app join is ready and inert) - a capture + calibration.json bump.
+- Menu photo dates: recalibrate the hspqX photos RPC from a desktop capture (returns 0 photos
+  since the WebView walk replaced it; the in-app join is ready and inert) - a capture +
+  calibration.json bump. The place page itself was probed 2026-07-11 and carries no photo
+  urls/dates keylessly; the RPC is the only route.
+- Map label font trickle-down: map text renders from PBF glyph atlases (currently a bundled
+  Roboto-matching pack, so it matches the app font today); true inheritance means a CI step
+  that generates the glyph pack from the same font file the app ships, then repointing
+  textFont. Runtime inheritance is not possible in MapLibre.
 - Restaurant menu reliability: instrument the gallery walk to classify tab-less fetches,
   stop caching a tab-less result forever, and separate device render timing from Google-side
   variance.
