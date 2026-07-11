@@ -17,6 +17,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **The photo viewer goes truly full screen (2026-07-10).** Google's treatment: system bars
+  hide while viewing (swipe reveals them), the backdrop is the photo itself blurred and dimmed
+  instead of flat black (Android 12+), and the author/date stamp sits bottom-left in every
+  orientation. The full-screen reviews page also draws edge to edge so rotation can't leak the
+  map through the borders. The photo strip's category chips are gone (the Menu tab replaced
+  them), and the header's circled buttons slimmed to 36dp with wider gaps so they never touch.
 - ✅ **Restaurant menus get their own tab (2026-07-10).** A place with menu photos shows a Menu
   tab beside Reviews and About: a browsable photo grid, titled with Google's own localized
   gallery-tab name, tapping through to the full-screen viewer. Google's keyless data carries no

@@ -155,6 +155,9 @@ import app.vela.ui.item
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -596,28 +599,9 @@ fun PlaceSheet(
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
             if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
-                // Category filter chips (Menu / Food & drink / Vibe / By owner …) — only when Google tagged
-                // photos with categories, mirroring its gallery tabs. "All" clears the filter.
-                val photoCats = remember(place.photoCategories) { place.photoCategories.filterNotNull().distinct() }
-                if (photoCats.isNotEmpty()) {
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        (listOf<String?>(null) + photoCats).forEach { cat ->
-                            FilterChip(
-                                selected = photoCat == cat,
-                                onClick = { photoCat = cat },
-                                label = { Text(cat ?: stringResource(R.string.place_photo_category_all)) },
-                            )
-                        }
-                    }
-                }
-                // Indices into the FULL photo list that match the selected category (keeps galleryStart
-                // pointing at the right photo in the full-screen viewer).
-                val shown = remember(place.photoUrls, place.photoCategories, photoCat) {
-                    place.photoUrls.indices.filter { photoCat == null || place.photoCategories.getOrNull(it) == photoCat }
-                }
+                // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
+                // the menu surface now, and the other categories read as noise; user 2026-07-10.)
+                val shown = remember(place.photoUrls) { place.photoUrls.indices.toList() }
                 LazyRow(
                     Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -648,7 +632,7 @@ fun PlaceSheet(
             }
             // spacedBy keeps the circled header buttons from touching now that they carry
             // visible backgrounds (Google's circles have the same small gaps).
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isParking) {
                     Icon(
                         Icons.Default.DirectionsCar,
@@ -679,14 +663,14 @@ fun PlaceSheet(
                     IconButton(
                         onClick = { saveMenu = true },
                         modifier = Modifier
-                            .size(40.dp)
+                            .size(36.dp)
                             .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
                     ) {
                         Icon(
                             if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
                             contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
                             tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
-                            modifier = Modifier.size(20.dp),
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                     VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
@@ -703,10 +687,10 @@ fun PlaceSheet(
                 IconButton(
                     onClick = onClose,
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(36.dp)
                         .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
                 ) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = dim, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = dim, modifier = Modifier.size(18.dp))
                 }
             }
 
@@ -2083,6 +2067,18 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
     // bars / cutout and the map showed through the uncovered strips (user 2026-07-10); drawing
     // edge-to-edge lets the black Box actually cover the screen.
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        // TRUE full screen (Google's viewer): hide the status + nav bars for the dialog window,
+        // swipe reveals them transiently. Restored automatically when the dialog window dies.
+        val dialogView = LocalView.current
+        DisposableEffect(Unit) {
+            val win = (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
+            win?.let {
+                val ctl = androidx.core.view.WindowCompat.getInsetsController(it, dialogView)
+                ctl.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                ctl.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+            }
+            onDispose { }
+        }
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
         // D-pad (docs/dpad.md): the viewer grabs focus so LEFT/RIGHT page through the
         // photos with no touch; BACK already dismisses (Dialog).
@@ -2109,6 +2105,18 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 }
                 .focusable(),
         ) {
+            // Google's diffuse backdrop: the current photo, blurred and dimmed, behind the pager
+            // (Android 12+; older devices keep plain black — Modifier.blur no-ops there and a
+            // sharp copy would read as a glitch, so it's gated).
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                AsyncImage(
+                    model = urls[pager.currentPage].atWidth(240),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().blur(48.dp),
+                )
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+            }
             HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                 // One gesture loop so pinch-zoom, pan-when-zoomed, swipe-down-to-
                 // dismiss, AND the pager's horizontal swipe between photos all work
@@ -2187,15 +2195,15 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 // Pixel 9 — so a normal bottom caption vanished. A FIXED bottom clearance keeps it in the
                 // drawable area regardless (harmlessly a touch higher on phones with no such clip).
                 dates.getOrNull(pager.currentPage)?.let { caption ->
-                    // The clearance is PROPORTIONAL (capped at the old 120dp): a fixed 120dp was
-                    // a third of the screen in landscape and floated the caption to the middle.
-                    val captionClear = (LocalConfiguration.current.screenHeightDp * 0.14f).dp.coerceAtMost(120.dp)
+                    // Bottom-LEFT in every orientation (Google's stamp position). With the system
+                    // bars hidden the window owns the full screen, so a modest fixed clearance
+                    // works in both orientations (the old proportional clearance floated it).
                     Text(
                         caption,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White,
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                            .padding(bottom = captionClear, start = 16.dp, end = 16.dp)
+                        modifier = Modifier.align(Alignment.BottomStart)
+                            .padding(bottom = 28.dp, start = 16.dp, end = 16.dp)
                             .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                     )
@@ -2456,7 +2464,7 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
     // focus on page-finish). The auto-focus loop stops on its first success, so it hands off
     // to the WebView cleanly once the page loads. No-op under touch.
     val reviewsBackFocus = rememberDpadAutoFocus()
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(
@@ -2845,10 +2853,10 @@ private fun ShareIconButton(place: Place, tint: Color) {
         IconButton(
             onClick = { open = true },
             modifier = Modifier
-                .size(40.dp)
+                .size(36.dp)
                 .background(tint.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
         ) {
-            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.place_share), tint = tint, modifier = Modifier.size(20.dp))
+            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.place_share), tint = tint, modifier = Modifier.size(18.dp))
         }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
