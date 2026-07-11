@@ -221,8 +221,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the back gesture exits the search in one press instead of stepping through sizes. Grabbing the
   map GLIDES the list down to its bar so the map is yours to look at, and does the same to an
   open place card (down to its small state); the bar or a drag brings them back. The minimized
-  bar now says WHAT it's holding: the search text (or list name) leads in full ink, then the
-  result count, instead of an easy-to-miss dim "20 results".
+  bar now says WHAT it's holding: the search text (or list name) leads in full ink with the
+  result count under it, instead of an easy-to-miss dim "20 results".
 - ✅ **One tidy notification area (2026-07-10).** Heads-up messages, download progress, update
   offers and notices now stack below the search bar and chips (or just below the turn card during
   navigation, whatever its height), each dismissed on its own, instead of painting over each other.
