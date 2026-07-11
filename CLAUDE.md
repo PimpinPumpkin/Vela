@@ -273,7 +273,10 @@ Defaults that make the safe path the easy one:
   tap with an unpicked "now", then again per dial); the default time rounds to the next 5
   minutes. Pickers are Material 3 TimePicker/DatePicker in `PickerDialog` (a raw-Dialog Vela
   shell, D-pad rule compliant; NB DatePicker's selectedDateMillis is UTC midnight - decode
-  with UTC or picks land a day early). The old android.app Holo dialogs are gone.
+  with UTC or picks land a day early). The old android.app Holo dialogs are gone. The chooser's single-estimate
+  fallback shows the plain time (the "~" prefix read as clutter, user 2026-07-11), and every
+  OutlinedButton on the directions family (Steps, the time/date fields, transit Back) is a
+  FilledTonalButton stadium pill - outlined was the last dated control there.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
