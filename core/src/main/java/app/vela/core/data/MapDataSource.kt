@@ -19,7 +19,9 @@ import app.vela.core.model.TravelMode
  * Piped-for-Vela idea), is a drop-in.
  */
 interface MapDataSource {
-    suspend fun search(query: String, near: LatLng? = null): SearchResult
+    /** [spanMeters]: the caller's visible viewport height — widens Google's result window to
+     *  match how far out the map is zoomed (the pb template's baked span is ~25 km). */
+    suspend fun search(query: String, near: LatLng? = null, spanMeters: Double? = null): SearchResult
 
     /** Prominent places in the viewport, for the ambient map-POI overlay. [spanMeters] is the
      *  viewport's height — a SMALLER span (zoomed in) returns DENSER, more local results than the

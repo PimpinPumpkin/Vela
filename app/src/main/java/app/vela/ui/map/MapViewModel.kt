@@ -730,7 +730,9 @@ class MapViewModel @Inject constructor(
         suggestJob = viewModelScope.launch {
             delay(320) // only fire once typing pauses
             val near = mapCenter ?: _state.value.myLocation // suggestions near the viewport, like search
-            val res = runCatching { dataSource.search(term, near).places }.getOrDefault(emptyList())
+            val vp0 = viewport
+            val spanM0 = vp0?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+            val res = runCatching { dataSource.search(term, near, spanM0).places }.getOrDefault(emptyList())
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
                 _state.update { it.copy(suggestions = res.take(8)) }
             }
@@ -1082,7 +1084,12 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             try {
-                val res = dataSource.search(q, near)
+                // Widen the request to the REAL viewport: the pb template bakes a ~25 km span, so
+                // a zoomed-out search only ever covered a city-sized window however far you could
+                // see (user 2026-07-11). Span = the visible box's vertical extent.
+                val vp = viewport
+                val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+                val res = dataSource.search(q, near, spanM)
                 _state.update {
                     // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
                     // else typing the origin query wiped the "To" and the panel showed an empty
@@ -1706,7 +1713,8 @@ class MapViewModel @Inject constructor(
         // pick-mode left over from a previous place's directions.
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
         // Walking back to the car is the parking spot's whole point — default to WALK there.
-        val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else _state.value.travelMode
+        // Otherwise every session opens on the STICKY last-used mode (user 2026-07-11).
+        val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
         if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
     }
 
@@ -1997,9 +2005,22 @@ class MapViewModel @Inject constructor(
 
     fun setTravelMode(mode: TravelMode) {
         if (_state.value.travelMode == mode) return
+        // Sticky: the pick becomes the default for the NEXT directions session too (a cyclist
+        // shouldn't re-tap Bike every trip; Google remembers the same way). No Settings row -
+        // the habit IS the setting (user 2026-07-11).
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putString("travel_mode", mode.name).apply()
         _state.update { it.copy(travelMode = mode) }
         route(mode)
     }
+
+    /** The remembered last-used travel mode (see [setTravelMode]); DRIVE until first changed. */
+    private fun stickyTravelMode(): TravelMode = runCatching {
+        TravelMode.valueOf(
+            appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+                .getString("travel_mode", null) ?: return TravelMode.DRIVE,
+        )
+    }.getOrDefault(TravelMode.DRIVE)
 
     /** Set the depart/arrive time for directions (mode 0=now, 1=depart at, 2=arrive by, 3=last available;
      *  [epochSec] null for now) and re-route so transit shows departures at that time. */
