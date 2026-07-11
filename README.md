@@ -537,4 +537,6 @@ private vulnerability reporting), not a public issue.
 
 ## License
 
-GPLv3 - copyleft, matching the NewPipe ethos.
+[![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
+
+Vela is Free Software: you can use, study, share, and improve it at your will. You may use, modify, and redistribute this project only if your modifications remain open-source under the same license.
