@@ -176,6 +176,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
@@ -183,6 +184,8 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -2074,45 +2077,27 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
     // bars / cutout and the map showed through the uncovered strips (user 2026-07-10); drawing
     // edge-to-edge lets the black Box actually cover the screen.
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        // TRUE full screen (Google's viewer): hide the status + nav bars for the dialog window,
-        // swipe reveals them transiently. Restored automatically when the dialog window dies.
+        // Google's viewer treatment: DON'T fight to cover the bars — draw edge-to-edge UNDER
+        // TRANSPARENT, still-visible system bars, with a gradient scrim so the status bar reads
+        // cleanly over the photo (user 2026-07-10). The window lays out past the bars via
+        // NO_LIMITS and the content root demands the true display size, so black fills behind the
+        // (transparent) bars top and bottom — no strips, and the clock stays legible.
         val dialogView = LocalView.current
         DisposableEffect(Unit) {
-            val win = (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
-            win?.let {
-                // The dialog WINDOW itself must claim the whole screen — decorFitsSystemWindows
-                // alone leaves the window sized inside the bars on several API levels (the "still
-                // not completely full screen top or bottom" report).
+            (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let {
                 it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
-                // The one flag that UNCONDITIONALLY lets the window lay out past the bars — the
-                // fitting flags alone still left top/bottom strips on this device (2026-07-10).
                 it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                // Compose's DialogLayout re-asserts its own window size/fit params, so the window
-                // stubbornly stays inset from the bars (window-dump-proven twice). The strips it
-                // leaves show the ACTIVITY behind — so paint THAT out: a full dim turns anything
-                // outside the window solid black, which reads as true full screen.
-                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                it.setDimAmount(1f)
-                // API 30+: DIALOG windows fit the bar insets via fitInsetsTypes, which none of
-                // the flags above touch — THIS is what kept the window inset from the screen's
-                // top/bottom through three rounds of "still not full screen" (screenshot-proven).
-                if (android.os.Build.VERSION.SDK_INT >= 30) {
-                    it.attributes = it.attributes.apply { fitInsetsTypes = 0 }
-                }
-                // Paint the WINDOW DECOR black: the compose content is measured to the pre-flag
-                // frame, so the extra NO_LIMITS area showed the sheet ghosting through (the
-                // screenshot-verified "not full screen" strips). The decor background covers the
-                // whole window regardless of content size.
+                it.statusBarColor = android.graphics.Color.TRANSPARENT
+                it.navigationBarColor = android.graphics.Color.TRANSPARENT
                 it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK))
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
                     it.attributes = it.attributes.apply {
                         layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                     }
                 }
-                val ctl = androidx.core.view.WindowCompat.getInsetsController(it, dialogView)
-                ctl.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                ctl.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
+                // Light icons on the dark viewer.
+                androidx.core.view.WindowCompat.getInsetsController(it, dialogView).isAppearanceLightStatusBars = false
             }
             onDispose { }
         }
@@ -2124,7 +2109,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
         LaunchedEffect(Unit) { runCatching { galleryFocus.requestFocus() } }
         Box(
             Modifier
-                .fillMaxSize()
+                .requiredFullScreen()
                 .background(Color.Black)
                 .focusRequester(galleryFocus)
                 .onKeyEvent { ev ->
@@ -2215,6 +2200,11 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 }
             }
             Box(Modifier.fillMaxSize()) {
+                // Gradient fade under the (visible) status bar, Google-style.
+                Box(
+                    Modifier.fillMaxWidth().height(140.dp).align(Alignment.TopCenter)
+                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.55f), 1f to Color.Transparent)),
+                )
                 Text(
                     stringResource(R.string.place_gallery_counter, pager.currentPage + 1, urls.size),
                     style = MaterialTheme.typography.bodyMedium,
@@ -2240,7 +2230,8 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White,
                         modifier = Modifier.align(Alignment.BottomStart)
-                            .padding(bottom = 28.dp, start = 16.dp, end = 16.dp)
+                            .navigationBarsPadding()
+                            .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
                             .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                     )
@@ -2306,6 +2297,21 @@ private fun HeaderCircleButton(
     ) {
         Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
     }
+}
+
+/** Size a full-screen surface's ROOT to the real display bounds so it fills the window even
+ *  under transparent system bars (a Dialog window is measured against INSET bounds, so plain
+ *  fillMaxSize stops a bar short). */
+@Composable
+private fun Modifier.requiredFullScreen(): Modifier {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val bounds = remember {
+        val wm = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        if (android.os.Build.VERSION.SDK_INT >= 30) wm.currentWindowMetrics.bounds
+        else android.graphics.Rect(0, 0, context.resources.displayMetrics.widthPixels, context.resources.displayMetrics.heightPixels)
+    }
+    return with(density) { this@requiredFullScreen.requiredSize(bounds.width().toDp(), bounds.height().toDp()) }
 }
 
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
@@ -2526,6 +2532,7 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
     // focus on page-finish). The auto-focus loop stops on its first success, so it hands off
     // to the WebView cleanly once the page loads. No-op under touch.
     val reviewsBackFocus = rememberDpadAutoFocus()
+    val density = LocalDensity.current
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val panelView = LocalView.current
         DisposableEffect(Unit) {
@@ -2533,35 +2540,33 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                 it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
                 it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                // Compose's DialogLayout re-asserts its own window size/fit params, so the window
-                // stubbornly stays inset from the bars (window-dump-proven twice). The strips it
-                // leaves show the ACTIVITY behind — so paint THAT out: a full dim turns anything
-                // outside the window solid black, which reads as true full screen.
-                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                it.setDimAmount(1f)
-                // API 30+: DIALOG windows fit the bar insets via fitInsetsTypes, which none of
-                // the flags above touch — THIS is what kept the window inset from the screen's
-                // top/bottom through three rounds of "still not full screen" (screenshot-proven).
-                if (android.os.Build.VERSION.SDK_INT >= 30) {
-                    it.attributes = it.attributes.apply { fitInsetsTypes = 0 }
-                }
+                it.statusBarColor = android.graphics.Color.TRANSPARENT
+                it.navigationBarColor = android.graphics.Color.TRANSPARENT
                 it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable((if (dark) SheetDark else SheetLight).toArgb()))
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
                     it.attributes = it.attributes.apply {
                         layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                     }
                 }
+                androidx.core.view.WindowCompat.getInsetsController(it, panelView).isAppearanceLightStatusBars = !dark
             }
             onDispose { }
         }
-        Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
+        // Swipe DOWN from the top to close (user 2026-07-10): the panel forwards a top-edge
+        // overscroll as `pull`; past the threshold at finger-up it dismisses, like a sheet.
+        var pull by remember { mutableStateOf(0f) }
+        Surface(
+            Modifier.requiredFullScreen().offset { IntOffset(0, pull.roundToInt()) },
+            color = if (dark) SheetDark else SheetLight,
+            contentColor = ink,
+        ) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 ) {
                     IconButton(onClick = onClose, modifier = Modifier.focusRequester(reviewsBackFocus)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_back), tint = ink)
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = ink)
                     }
                     Column(Modifier.weight(1f)) {
                         Text(place.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ink, maxLines = 1)
@@ -2577,6 +2582,13 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                     // Tapping a review photo opens Vela's own gallery (Google's photo viewer is a
                     // page-nav the lockdown blocks + the carve can't host).
                     onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
+                    // Top-edge pull-down: move the whole panel with the finger; release past the
+                    // threshold closes it (Google's dismiss). Deltas come from the panel's
+                    // boundary scroll-sync (reviews at their top + dragging down).
+                    onOverscroll = { dy -> pull = (pull + dy).coerceAtLeast(0f) },
+                    onOverscrollEnd = {
+                        if (pull > with(density) { 120.dp.toPx() }) onClose() else pull = 0f
+                    },
                 )
             }
         }
