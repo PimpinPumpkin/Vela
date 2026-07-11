@@ -279,7 +279,10 @@
     <string name="mapscreen_got_it">Begrepen</string>
     <string name="mapscreen_heads_up">Let op</string>
     <string name="mapscreen_dismiss">Sluiten</string>
-    <string name="mapscreen_results_count">%1$d resultaten</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d resultaat</item>
+        <item quantity="other">%1$d resultaten</item>
+    </plurals>
     <string name="mapscreen_shrink_list">Lijst verkleinen</string>
     <string name="mapscreen_expand_list">Lijst vergroten</string>
     <string name="mapscreen_close_results">Zoekresultaten sluiten</string>

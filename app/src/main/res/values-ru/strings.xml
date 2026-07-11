@@ -279,7 +279,12 @@
     <string name="mapscreen_got_it">Понятно</string>
     <string name="mapscreen_heads_up">Обратите внимание</string>
     <string name="mapscreen_dismiss">Закрыть</string>
-    <string name="mapscreen_results_count">%1$d результатов</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d результат</item>
+        <item quantity="few">%1$d результата</item>
+        <item quantity="many">%1$d результатов</item>
+        <item quantity="other">%1$d результата</item>
+    </plurals>
     <string name="mapscreen_shrink_list">Свернуть список</string>
     <string name="mapscreen_expand_list">Развернуть список</string>
     <string name="mapscreen_close_results">Закрыть результаты поиска</string>

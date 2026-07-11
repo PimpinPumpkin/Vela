@@ -297,7 +297,10 @@
     <string name="mapscreen_got_it">Got it</string>
     <string name="mapscreen_heads_up">Heads up</string>
     <string name="mapscreen_dismiss">Dismiss</string>
-    <string name="mapscreen_results_count">%1$d results</string> <!-- format -->
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d result</item>
+        <item quantity="other">%1$d results</item>
+    </plurals>
     <string name="mapscreen_shrink_list">Shrink list</string>
     <string name="mapscreen_expand_list">Expand list</string>
     <string name="mapscreen_close_results">Close search results</string>
