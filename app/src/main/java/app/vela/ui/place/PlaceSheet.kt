@@ -179,6 +179,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
@@ -244,6 +245,9 @@ fun PlaceSheet(
     onRemoveFromList: (listId: String) -> Unit = {},
     onCreateListWith: (name: String) -> Unit = {},
     onSetNote: (String?) -> Unit = {},
+    // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
+    // card so the map is unobstructed (Google's behaviour). 0 = never.
+    minimizeTick: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -292,6 +296,24 @@ fun PlaceSheet(
         // Skip when a drag-release settle is already animating to this exact detent - restarting
         // would zero the coast velocity mid-glide.
         if (heightAnim.targetValue != target) heightAnim.animateTo(target, settleSpec)
+    }
+    // The user grabbed the map: glide down to the minimized card on a SOFT spring (the settle
+    // stiffness reads as a blink for this unprompted drop). Runs after the state-flip effect
+    // above, so animating on VALUE (not targetValue) deliberately replaces its quicker settle.
+    val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    // Consume-once guard: seenTick INITIALIZES to the tick's CURRENT value, so a fresh mount
+    // (picking a place from the results list re-mounts the sheet) never treats a STALE tick as
+    // a new pan - a LaunchedEffect fires on first composition too, and without this the next
+    // place opened pre-minimized (user 2026-07-10). Only a bump AFTER mount glides.
+    var seenTick by remember { mutableStateOf(minimizeTick) }
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == seenTick) return@LaunchedEffect
+        seenTick = minimizeTick
+        // Glide FIRST, flip the states after: any content keyed on the minimized state then
+        // changes only once the card is already down (flipping first read as a pop, not a glide).
+        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
+        expandedState.value = false
+        minimizedState.value = true
     }
     // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
     // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
@@ -2119,7 +2141,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
         LaunchedEffect(Unit) { runCatching { galleryFocus.requestFocus() } }
         Box(
             Modifier
-                .fillMaxSize()
+                .requiredFullScreen()
                 .background(Color.Black)
                 .focusRequester(galleryFocus)
                 .onKeyEvent { ev ->
@@ -2230,7 +2252,24 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
     }
 }
 
+/** Size a dialog's ROOT to the real display bounds. Compose dialogs are wrap-content windows
+ *  measured against INSET bounds, so plain fillMaxSize stops ~status-bar short of the screen
+ *  edges (window-dump-proven: a fixed 1079x2142 request on a 1080x2340 display) — requiredSize
+ *  overrides the constraints and the window grows to match. */
+@Composable
+private fun Modifier.requiredFullScreen(): Modifier {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val bounds = remember {
+        val wm = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        if (android.os.Build.VERSION.SDK_INT >= 30) wm.currentWindowMetrics.bounds
+        else android.graphics.Rect(0, 0, context.resources.displayMetrics.widthPixels, context.resources.displayMetrics.heightPixels)
+    }
+    return with(density) { this@requiredFullScreen.requiredSize(bounds.width().toDp(), bounds.height().toDp()) }
+}
+
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
+
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
 /** Native search / sort / topic chips for the live reviews panel — Vela's own UI driving the
@@ -2423,7 +2462,7 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
     // to the WebView cleanly once the page loads. No-op under touch.
     val reviewsBackFocus = rememberDpadAutoFocus()
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
+        Surface(Modifier.requiredFullScreen(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

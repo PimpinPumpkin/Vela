@@ -17,6 +17,24 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **The full-screen viewers match Google's chrome (2026-07-11).** The photo viewer and the
+  full reviews page render in the app's own full-screen window (not a child dialog), so they
+  truly reach every edge and survive rotation without the image floating on a shrunken
+  background. The status bar stays visible over a gradient at the top, Google-style. The reviews
+  page's back arrow became an X (matching the photo viewer, on the left) and swipes down from the
+  top to close.
+
+- ✅ **The photo viewer and reviews page reach the true screen edges (2026-07-10).** A window
+  dump showed compose dialogs are wrap-content windows measured against inset bounds, so they
+  stopped about a status bar short of the display at each end no matter which window flags were
+  set; their roots now demand the real display size, which pulls the window out to the edges.
+
+- ✅ **The Menu photos stop including things that were never the menu (2026-07-10).** The gallery
+  scrape used to tag whatever was on screen while a category tab was selected, page chrome and
+  the previous grid's leftover tiles included. It now snapshots the screen before each tab click
+  and tags only what appears after the switch, dwells more than twice as long on menu tabs so
+  long menus are walked to the end, and recognizes the menu tab's name in all 11 app languages.
+
 - ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
   disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
   transit lines, 3D buildings), then a new **Place pages** section (Show reviews, the "Read all reviews"
@@ -208,6 +226,22 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The place card follows your finger (2026-07-10).** Dragging the place sheet moves it with
   your finger and, on release, it coasts on the fling to whichever size is closest - no more
   stepping between sizes in fixed hops.
+- ✅ **Search results are Google-style red markers with real glyphs (2026-07-11).** Searching
+  "restaurants" pins the map with named results instead of anonymous pins: every result keeps
+  its grey teardrop and category glyph with the circle turned red, rated restaurants get a wide
+  speech-bubble marker with the rating beside the circled glyph, and in a dense downtown the lesser results collapse into little red dots that
+  expand back into pins as you zoom, so the view never turns into a pile of overlapping icons.
+  The base map's OSM icons now BLEND with the Google dots instead of hiding wholesale: they
+  yield only while the viewport truly sits inside the area the Google fetch covered, so panning
+  or zooming past it keeps icons everywhere and fresh fetches merge in as they land. Stop signs
+  and traffic lights also hold back on the browse map until true street zoom (they stay at nav
+  zoom during turn-by-turn, where they're an aid rather than clutter).
+  Result labels stay plain ink (only ambient POI labels take the category tint, like Google);
+  every POI label on the map (results, ambient dots, base-map icons) can now sit left, right,
+  below or above its icon, whichever side is clear, instead of vanishing when its usual spot
+  was taken;
+  and while a result set is up the base map's own POI icons, stop signs and traffic lights all
+  step aside so the results are the only things on the map.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
@@ -220,6 +254,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   is bigger and bolder, and the redundant "current traffic" note under it is gone (the route ETAs
   already show traffic). The faster-route offer during navigation joined the tidy notification
   stack too, so it can't sit under the turn card.
+- ✅ **The results list moves like the place card (2026-07-11).** Dragging the search results
+  follows your finger and rides the throw's inertia to the nearest size, minimizing included, and
+  the back gesture exits the search in one press instead of stepping through sizes. Grabbing the
+  map GLIDES the list down to its bar so the map is yours to look at, and does the same to an
+  open place card (down to its small state); the bar or a drag brings them back. The minimized
+  bar now says WHAT it's holding: the search text (or list name) leads in full ink with the
+  result count under it, instead of an easy-to-miss dim "20 results".
 - ✅ **One tidy notification area (2026-07-10).** Heads-up messages, download progress, update
   offers and notices now stack below the search bar and chips (or just below the turn card during
   navigation, whatever its height), each dismissed on its own, instead of painting over each other.
@@ -232,6 +273,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   place has an X on its row to remove just that entry (Clear recents still wipes the lot). A real
   place shows its street address in smaller text under the name, and the Home/Work rows show the
   saved address too. The three-dot menus on Home/Work match the row text color now.
+- ✅ **Route chooser and search stay coherent (2026-07-11).** Opening any new place, from search,
+  a suggestion, a pin, or Home/Work, closes an open route chooser instead of leaving it covering
+  the fresh place with a stale route. The locate and parking buttons also stay hidden under the
+  chooser and step list instead of drawing on top of them.
 - ✅ **Warns when you'd arrive near closing time (2026-07-10).** Starting navigation to a place
   that closes within an hour of your arrival (or before you'd get there) shows a heads-up card
   and speaks it: "closes at 9:00 PM and you arrive around 8:40 PM". Reads the closing time from
