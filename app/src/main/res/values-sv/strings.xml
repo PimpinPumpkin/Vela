@@ -284,7 +284,13 @@
     <string name="mapscreen_expand_list">Expandera listan</string>
     <string name="mapscreen_close_results">Stäng sökresultaten</string>
     <string name="mapscreen_filter_open_now">Öppet nu</string>
-    <string name="mapscreen_filter_top_rated">4,0★</string>
+    <string name="mapscreen_filter_rating">Betyg</string>
+    <string name="mapscreen_filter_any_rating">Alla betyg</string>
+    <string name="mapscreen_filter_any_price">Alla priser</string>
+    <string name="mapscreen_filter_accessible">Rullstolsanpassad</string>
+    <string name="mapscreen_sort_relevance">Relevans</string>
+    <string name="mapscreen_sort_rating_item">Betyg</string>
+    <string name="mapscreen_sort_distance_item">Avstånd</string>
     <string name="mapscreen_filter_price">Pris</string>
     <string name="mapscreen_sort">Sortera</string>
     <string name="mapscreen_sort_rating">Sortering: Betyg</string>
