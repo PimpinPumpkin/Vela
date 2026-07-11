@@ -87,6 +87,10 @@ private const val ALT_ROUTE_LAYER = "vela-alt-route"
 private const val ALT_INDEX_PROP = "vela-alt-index"
 private const val MARKERS_SRC = "vela-markers-src"
 private const val MARKERS_LAYER = "vela-markers"
+// Collapsed search results: the same source drawn as small red dots UNDER the pins. The pin layer
+// collides (best rank wins the slot); a result whose pin is culled still shows as its dot, which
+// "expands" into the pin as you zoom in - Google's dense-results behaviour.
+private const val MARKERS_DOTS_LAYER = "vela-markers-dots"
 private const val PIN_IMG = "vela-pin"
 // The saved parking spot: one teal "P" pin, tappable (opens the parked-car sheet).
 private const val PARKING_SRC = "vela-parking-src"
@@ -138,7 +142,7 @@ private const val TRAFFIC_TILES =
 
 /** A tappable search-result pin on the map. [prominence] (0 = unknown/low) drives the ambient dot's
  *  size + keep-distance so anchor stores read bigger and show from farther, Google-style. */
-data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0)
+data class MapMarker(val name: String, val location: LatLng, val category: String? = null, val prominence: Double = 0.0, val rating: Double? = null)
 
 // Last marker/ambient lists actually pushed to the GeoJSON sources, so applyData can skip a redundant
 // setGeoJson (a full symbol re-tessellation) when they're unchanged. Nulled on style reload (the fresh
@@ -150,6 +154,8 @@ private var lastAccuracyLoc: LatLng? = null
 private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
+private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
+private var lastControlsVis: String? = null // identity-gate the traffic-control visibility flips
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
                                                        // thousands-of-vertices linestring per fix burned
@@ -197,6 +203,7 @@ fun VelaMapView(
     navMode: Boolean,
     navFollowing: Boolean = true,
     onNavPanned: () -> Unit = {},
+    ambientCoversView: Boolean = false, // viewport inside the ambient-Google fetch area → OSM POIs yield
     onScaleChanged: (metersPerPixel: Double) -> Unit = {},
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
@@ -292,6 +299,22 @@ fun VelaMapView(
     }
 
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
+    // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
+    // last bearing/tilt used to linger, which also left the compass pinned on the map (it only
+    // hides facing north; user 2026-07-10). Below mapRef so the handle is in scope.
+    LaunchedEffect(navMode, mapRef) {
+        if (navMode) return@LaunchedEffect
+        val m = mapRef ?: return@LaunchedEffect
+        val cam = m.cameraPosition
+        if (kotlin.math.abs(cam.bearing) > 0.5 || cam.tilt > 0.5) {
+            m.animateCamera(
+                org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
+                    org.maplibre.android.camera.CameraPosition.Builder(cam).bearing(0.0).tilt(0.0).build(),
+                ),
+                600,
+            )
+        }
+    }
     var styleRef by remember { mutableStateOf<Style?>(null) }
     var appliedStyleKey by remember { mutableStateOf<String?>(null) }
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
@@ -333,6 +356,17 @@ fun VelaMapView(
             listOf("poi_r1", "poi_r7", "poi_r20", "poi_transit").forEach { id ->
                 style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis))
             }
+        }
+        // This write races applyData's ambient/search suppression of the same layers: forcing
+        // VISIBLE on nav end while its gate still says NONE left doubled icons until the next
+        // state flip. Nulling the gate makes the next applyData frame re-assert the right value.
+        lastOsmPoiVis = null
+        // Stop signs + lights stay a NAV aid at z16; on the browse map they hold back until true
+        // street zoom (user 2026-07-10: too busy mid-zoom without a route on screen).
+        runCatching {
+            val minZ = if (navMode) 16f else 17.5f
+            (style.getLayer(CONTROLS_LAYER))?.minZoom = minZ
+            (style.getLayer(CONTROLS_CLAIM_LAYER))?.minZoom = minZ
         }
     }
 
@@ -1034,6 +1068,8 @@ fun VelaMapView(
                 styleRef = style
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
+                lastOsmPoiVis = null
+                lastControlsVis = null
                 parkingApplied = false
                 lastAppliedAmbient = null
                 lastAppliedControls = null
@@ -1041,13 +1077,13 @@ fun VelaMapView(
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(map, style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
             }
@@ -1320,12 +1356,46 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
         style.addSource(GeoJsonSource(MARKERS_SRC))
+        // Search results, Google's treatment: every result is a RED marker that keeps its
+        // category glyph (rated food places get the wide rating bubble instead - see PoiIcons),
+        // and the pins COLLIDE by rank instead of stacking - in a dense downtown the best
+        // results keep their pins and the rest collapse to the little red dots below, expanding
+        // back into pins as you zoom in. Labels sit under the pin and yield when crowded.
+        PoiIcons.addResultDot(style)
         style.addLayer(
-            SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
-                PropertyFactory.iconImage(PIN_IMG),
-                PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+            SymbolLayer(MARKERS_DOTS_LAYER, MARKERS_SRC).withProperties(
+                PropertyFactory.iconImage(PoiIcons.RESULT_DOT_IMG),
                 PropertyFactory.iconAllowOverlap(true),
                 PropertyFactory.iconIgnorePlacement(true),
+            ),
+        )
+        style.addLayer(
+            SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
+                PropertyFactory.iconImage(Expression.get("icon")),
+                PropertyFactory.iconSize(1.15f),
+                PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+                PropertyFactory.iconAllowOverlap(false),
+                PropertyFactory.iconIgnorePlacement(false),
+                PropertyFactory.iconPadding(2f),
+                PropertyFactory.symbolSortKey(Expression.get("rank")),
+                PropertyFactory.textField(Expression.get("name")),
+                PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                PropertyFactory.textSize(13f),
+                // Labels try BELOW the pin first, then the pin's right side, then its left —
+                // a below-only anchor made crowded results drop labels (or sit on a neighbour's
+                // dot) when the space under the pin was taken; a side slot usually still fits.
+                // (Anchor semantics: TOP = text below the point, LEFT = text right of it.)
+                PropertyFactory.textVariableAnchor(
+                    arrayOf(Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_LEFT, Property.TEXT_ANCHOR_RIGHT),
+                ),
+                PropertyFactory.textRadialOffset(0.7f),
+                PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
+                PropertyFactory.textMaxWidth(7f),
+                PropertyFactory.textOptional(true),
+                PropertyFactory.textAllowOverlap(false),
+                PropertyFactory.textColor("#3C4043"),
+                PropertyFactory.textHaloColor("#FFFFFF"),
+                PropertyFactory.textHaloWidth(0.9f),
             ),
         )
     }
@@ -1381,8 +1451,16 @@ private fun ensureLayers(style: Style) {
                 // centre→text-edge gap in ems; 1.4 sits the label right up against the dot (was 2.7 → 2.0 →
                 // 1.4 across "too far" reports) while still clearing it. justify=auto so the left form
                 // right-justifies and the under form centres. (Tune from a device glance if it crowds the dot.)
+                // Four anchor slots (left of the icon, right of it, below, above) instead of the
+                // old two — with only left/below to try, a crowded block DROPPED labels (or let
+                // one sit on a neighbour's dot) when both slots were taken; a third/fourth side
+                // usually still fits. Icons still collide by design; this only helps the labels
+                // of the icons that DO render find a clear side (user 2026-07-10).
                 PropertyFactory.textVariableAnchor(
-                    arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                    arrayOf(
+                        Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT,
+                        Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_BOTTOM,
+                    ),
                 ),
                 PropertyFactory.textRadialOffset(1.4f),
                 PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
@@ -1618,6 +1696,12 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
+        PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+    )
+    // Search-result labels stay NEUTRAL ink - Google doesn't category-tint result labels the
+    // way it tints ambient POI labels (the red pin is the result signal, not the text colour).
+    (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.textColor(if (dark) "#E8EAED" else "#3C4043"),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
     )
     // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
@@ -2106,6 +2190,9 @@ private fun routeGradient(
 private fun applyData(
     map: org.maplibre.android.maps.MapLibreMap,
     style: Style,
+    context: android.content.Context,
+    dark: Boolean,
+    ambientCoversView: Boolean,
     route: List<LatLng>,
     routeColor: String,
     routeDashed: Boolean,
@@ -2238,8 +2325,16 @@ private fun applyData(
     if (markers != lastAppliedMarkers) {
         val markersFc = FeatureCollection.fromFeatures(
             markers.mapIndexed { i, m ->
+                // Results arrive in relevance order, so the index IS the collision rank (lower
+                // sort key places first = wins the slot). Rated food places get the rating
+                // bubble, everything else the red category pin; bitmaps are generated on demand
+                // per style (they're theme-dependent), see PoiIcons.ensureResultIcon.
+                val iconKey = PoiIcons.resultIconKey(m.name, m.category, m.rating)
+                PoiIcons.ensureResultIcon(context, style, iconKey, dark)
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
                     addStringProperty("name", m.name)
+                    addStringProperty("icon", iconKey)
+                    addNumberProperty("rank", i)
                     addNumberProperty(MARKER_INDEX_PROP, i)
                 }
             },
@@ -2265,14 +2360,36 @@ private fun applyData(
             },
         )
         style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
-        // Google-first: while ambient Google POIs are showing, hide the OSM *business* POIs
-        // (poi_r1/r7/r20) so the layers don't duplicate. OSM transit + the whole OSM basemap stay; when
-        // there are no ambient POIs (zoomed out / offline / nav / search) the OSM POIs come back.
-        val osmPoiVis = if (ambientPois.isNotEmpty()) Property.NONE else Property.VISIBLE
+        lastAppliedAmbient = ambientPois
+    }
+
+    // Google-first: hide the OSM *business* POIs (poi_r1/r7/r20) while EITHER the ambient Google
+    // dots are up (the layers would duplicate) OR a search's result set is on the map — during
+    // search only the results should read as places (Google declutters the same way). A single
+    // selected place (markers.size == 1) keeps the basemap POIs: its neighbours are context, not
+    // clutter. Its OWN identity gate (not the ambient one): results can appear/clear while the
+    // ambient list stays empty, and the old placement inside the ambient gate would strand the
+    // visibility stale. OSM transit + the rest of the basemap always stay.
+    // BLEND, don't blanket-hide (user 2026-07-10): the OSM basemap POIs hide only while the
+    // viewport truly sits inside the ambient fetch's covered area — pan or zoom past it and the
+    // OSM icons return immediately (the ambient dots still draw where they exist, so the covered
+    // core keeps Google's data and the outskirts keep OSM's, merging as fresh fetches land).
+    val osmPoiVis = if (ambientCoversView || markers.size > 1) Property.NONE else Property.VISIBLE
+    if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
         }
-        lastAppliedAmbient = ambientPois
+        lastOsmPoiVis = osmPoiVis
+    }
+    // Stop signs + traffic lights step aside during a search too (results are the subject; the
+    // junction furniture reads as clutter behind them) — but UNLIKE the basemap POIs they stay
+    // up alongside the ambient dots on the browse map, so this keys on the result set alone.
+    val controlsVis = if (markers.size > 1) Property.NONE else Property.VISIBLE
+    if (controlsVis != lastControlsVis) {
+        listOf(CONTROLS_LAYER, CONTROLS_CLAIM_LAYER).forEach { id ->
+            style.getLayer(id)?.setProperties(PropertyFactory.visibility(controlsVis))
+        }
+        lastControlsVis = controlsVis
     }
 
     // Traffic controls (lights + stop signs) → icon features. Identity-gated like markers/ambient so a

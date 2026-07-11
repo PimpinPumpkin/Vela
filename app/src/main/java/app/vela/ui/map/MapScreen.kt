@@ -683,6 +683,7 @@ fun MapScreen(
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
+            ambientCoversView = state.ambientCoversView,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
@@ -1670,7 +1671,7 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
     }
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
-    displayedPlaces(state).map { MapMarker(it.name, it.location) }
+    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category, rating = it.rating) }
 
 @Composable
 private fun SearchResults(
