@@ -2599,8 +2599,9 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                     // threshold closes it (Google's dismiss). Deltas come from the panel's
                     // boundary scroll-sync (reviews at their top + dragging down).
                     onOverscroll = { dy -> pull = (pull + dy).coerceAtLeast(0f) },
-                    onOverscrollEnd = {
-                        if (pull > with(density) { 120.dp.toPx() }) onClose() else pull = 0f
+                    onOverscrollEnd = { vel ->
+                        // Close on a real pull OR a hard downward flick, like the photo viewer.
+                        if (pull > with(density) { 120.dp.toPx() } || vel > 2500f) onClose() else pull = 0f
                     },
                 )
             }
