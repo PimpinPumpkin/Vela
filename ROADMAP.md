@@ -451,7 +451,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     Dependency hygiene confirmed: the OSM-**import** deps (`osmosis-osm-binary`, `protobuf-java`,
     `jackson-dataformat-xml`/`woodstox`/StAX, `xmlgraphics-commons`) are **excluded** from the app - we ship
     prebuilt graphs, so they're never on the load/route/match path, and it dexes + runs clean without them.
-    **Net: GraphHopper v11 on Android is PROVEN.** The `:ghprobe` module is the reference recipe; delete it
+    **Net: GraphHopper v11 on Android is PROVEN.** The `:ghprobe` module was the reference recipe; DELETED 2026-07-11 (this section is the surviving record); it
     once the real `:core` integration ports these three workarounds.
   - **Phasing.** **Phase 1 = GraphHopper as the OFFLINE router** (the hybrid the user described:
     online OSRM+option-3+Google-traffic when connected, GraphHopper A→B with named turns when not) - the
