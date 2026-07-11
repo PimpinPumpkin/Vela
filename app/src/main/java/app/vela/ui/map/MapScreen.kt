@@ -705,6 +705,7 @@ fun MapScreen(
                 if (resultsShown) resultsPanTick++
                 if (state.selected != null && !searchOpen) sheetPanTick++
             },
+            ambientCoversView = state.ambientCoversView,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
@@ -1345,7 +1346,25 @@ fun MapScreen(
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
             // A pill under the search bar, clear of the results sheet at the bottom.
-            state.pendingImport?.let { imp ->
+            // A pushed URGENT notice (calibration.json, level "urgent") is a modal, not a card —
+        // for announcements that must be seen (the "servers overloaded" class of message).
+        // Same signed channel + the same one-time dismissal persistence as the cards.
+        state.notices.firstOrNull { it.level == app.vela.core.config.Notice.LEVEL_URGENT }?.let { n ->
+            app.vela.ui.VelaDialog(
+                onDismissRequest = { vm.dismissNotice(n.id) },
+                title = n.title,
+                confirmText = stringResource(android.R.string.ok),
+                onConfirm = { vm.dismissNotice(n.id) },
+                dismissText = if (n.url != null) stringResource(R.string.mapscreen_learn_more) else stringResource(R.string.place_close),
+                onDismiss = {
+                    n.url?.let { u -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) } }
+                    vm.dismissNotice(n.id)
+                },
+            ) {
+                Text(n.body)
+            }
+        }
+        state.pendingImport?.let { imp ->
                 val savedMsg = stringResource(R.string.map_list_saved, imp.title)
                 Surface(
                     shape = RoundedCornerShape(28.dp),
@@ -1445,7 +1464,12 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
+        // The locate + parking buttons yield to EVERY bottom surface, the route chooser and the
+        // step list included - a search from an open chooser could null the selection while
+        // directionsOpen stayed true, and both buttons drew on top of the panel.
+        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null &&
+            !resultsShown && !state.directionsOpen && !state.showSteps
+        ) {
             // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
             // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
@@ -1634,7 +1658,7 @@ fun MapScreen(
                             onDismiss = { vm.dismissUpdate() },
                         )
                     }
-                    state.notices.forEach { n ->
+                    state.notices.filterNot { it.level == app.vela.core.config.Notice.LEVEL_URGENT }.forEach { n ->
                         NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
                     }
                 }
@@ -1690,7 +1714,7 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
     }
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
-    displayedPlaces(state).map { MapMarker(it.name, it.location) }
+    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice) }
 
 @Composable
 private fun SearchResults(
@@ -2119,6 +2143,28 @@ private fun SearchResults(
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.padding(top = 1.dp),
                         )
+                    }
+                    // Gas stations: the live price on its own line under the address, bold with a
+                    // pump glyph in the title ink so it pops out of the row (user 2026-07-10).
+                    place.fuelPrice?.let { fp ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 2.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.LocalGasStation,
+                                contentDescription = null,
+                                tint = SheetPalette.ink(dark),
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                fp,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = SheetPalette.ink(dark),
+                                modifier = Modifier.padding(start = 5.dp),
+                            )
+                        }
                     }
                     if (place.permanentlyClosed) {
                         Text(

@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.vela.R
+import app.vela.ui.place.PlaceOverlays
 import androidx.hilt.navigation.compose.hiltViewModel
 import app.vela.ui.map.MapScreen
 import app.vela.ui.map.MapViewModel
@@ -173,6 +174,10 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                 )
             }
         }
+        // Full-screen photo viewer + reviews page render HERE, in the activity's own edge-to-edge
+        // window (not a child Dialog) — genuinely full-screen and rotation-safe. Last child = top
+        // z-order, above the map + sheet + settings.
+        PlaceOverlays()
     }
 }
 
