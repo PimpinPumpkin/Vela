@@ -311,6 +311,7 @@ fun MapScreen(
     // minimized form on its bump (see onUserPan below).
     var sheetPanTick by remember { mutableStateOf(0) }
     var resultsPanTick by remember { mutableStateOf(0) }
+    var dirPanTick by remember { mutableStateOf(0) }
     // Expanded detent of the results bottom sheet, hoisted here so the BACK gesture can step it
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
@@ -711,6 +712,7 @@ fun MapScreen(
                 // straight away unmounted the content mid-drop — the "pops down" report).
                 if (resultsShown) resultsPanTick++
                 if (state.selected != null && !searchOpen) sheetPanTick++
+                if (state.directionsOpen && !searchOpen) dirPanTick++
             },
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
@@ -1291,6 +1293,7 @@ fun MapScreen(
                 onModeSelected = vm::setTravelMode,
                 onSelectRoute = vm::selectRoute,
                 onStartNav = onStartNav,
+                minimizeTick = dirPanTick,
                 onSteps = if (state.activeRoute != null) vm::openSteps else null,
                 onSearchAlongRoute = vm::searchAlongRoute,
                 onWalkDirections = vm::walkDirections,
