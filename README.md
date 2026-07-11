@@ -29,19 +29,11 @@ light/dark themes (decoupled from the OS).*
 Tap a badge - no Play Store, no account. Obtainium auto-tracks the
 **weekly stable** release; turn on "include prereleases" and you get the
 **nightly** channel instead (every push to main). The F-Droid badge is
-**Vela's own repository**, not the f-droid.org catalog - it works in any
-F-Droid client and serves the same signed APKs. Or grab an APK straight from
+**Vela's own repository**, not the f-droid.org catalog - add
+`https://pimpinpumpkin.github.io/Vela/repo` to any F-Droid client and it serves
+the same signed APKs, weekly stable by default (fingerprint and nightly-channel
+setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
 [Releases](https://github.com/PimpinPumpkin/Vela/releases).
-
-**F-Droid setup:** add the repo to your client and install/update from there.
-It follows the weekly stable by default; nightlies are there too if you enable
-unstable updates for Vela in your client (details in [FDROID.md](FDROID.md)):
-
-```
-https://pimpinpumpkin.github.io/Vela/repo
-```
-
-Fingerprint and full instructions in [FDROID.md](FDROID.md).
 
 ---
 
@@ -100,8 +92,6 @@ The complete running feature list lives in [FEATURES.md](FEATURES.md).
 - **Import a Google Maps list**: paste a `maps.app.goo.gl` share link into the
   search bar. The list's places show up as results with the owner's notes; tap
   **Save list** to keep a local copy.
-- **Nightly builds**: Settings → Version → "Include nightly builds" updates you to
-  the newest build instead of weekly stable.
 
 ## Why a degoogled app uses Google
 
@@ -115,41 +105,6 @@ or another no-GMS ROM, this gets you working maps back.
 
 The map itself, the streets, the labels, and the house numbers all come from OpenStreetMap. Google is only used for places, search, routing, and traffic. So street names and house numbers can differ from what Google Maps shows, and how much detail you see offline depends on how well OpenStreetMap covers your area. I'm thinking of ways to improve OSM and fill the gaps in the data. Stay tuned.
 
-> Status: **a genuinely usable day-to-day maps app.** Calibrated against live
-> captures and verified end-to-end on-device:
->
-> - **Search & places** - real POIs with name, rating, **reviews**, full address,
->   category, price, website, weekly hours, distance, a **full photo gallery**,
->   **popular times**, and **"people also search for"**; **Home/Work shortcuts**,
->   saved places, and **deep links** (Vela opens `geo:`/Google-Maps links and
->   shares a place as a keyless `geo:` pin).
-> - **Routing** - drive / walk / bike / **public transit**. Turn-by-turn comes from
->   the **open OSRM** router (complete street-named steps, incl. highway refs / exit
->   numbers / shields); **Google is overlaid for the live-traffic ETA and to reroute
->   around jams** (it re-runs OSRM through Google's jam-avoiding path only when they
->   diverge). Selectable **alternates**, **reverse-trip swap**, **live-traffic overlay**,
->   **search-along-route**, and depart/arrive-time planning.
-> - **Offline routing** - full turn-by-turn **on the phone** via an embedded
->   **GraphHopper** engine, from a downloadable **135-region world catalog** (all US
->   states, Canada, Europe, + more) hosted as GitHub release assets. Saving offline
->   map tiles for an area grabs its routing graph too.
-> - **Navigation** - turn-by-turn with a Google-style maneuver banner: a **real
->   per-lane diagram** (which lane to be in), **highway/exit shields**,
->   swipe-to-look-ahead, spoken + haptic guidance, a **speedometer**, a
->   **posted speed-limit sign** (OSM `maxspeed`, keyless + offline, reddens when
->   speeding), pan-away **re-center**, faster-route re-checks, and an arrival summary.
-> - **Polish** - in-app light/dark, one consistent Google-grey UI, custom POI
->   markers, hillshade relief, a **map scale bar**, and **offline** basemap + POI
->   download.
->
-> Every push to `main` publishes a signed nightly prerelease; a weekly job promotes
-> the newest nightly to the stable release Obtainium tracks by default.
-> `MockMapDataSource` stays as an offline fallback; both build types are green.
->
-> See **[`SPEC.md`](SPEC.md)** for the full architecture / extractor contract /
-> resilience-layer specification (the rebuild target), and **[`ROADMAP.md`](ROADMAP.md)**
-> for what's planned (opt-in telemetry, a Vela-own traffic layer, predictive depart-time ETA, …).
-
 ## Privacy
 
 There is **no Vela backend, no account, and no telemetry**. Vela fetches from Google
@@ -159,39 +114,10 @@ map area, but **not a Google account or any app key**, much like using
 never leave the device. **[Read the full breakdown of exactly what each service
 receives → `PRIVACY.md`](PRIVACY.md).**
 
-How that compares, honestly:
-
-| What Google gets | Google Maps app | Google Maps web | Vela |
-| --- | --- | --- | --- |
-| Tied to your Google account | Yes, always signed in | Yes unless incognito | Never - there is no login |
-| A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; just an IP like any website visitor |
-| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never sent. Position stays on the phone; searches send the map area you are looking at |
-| Every pan and zoom of the map | Yes - their servers render the map | Yes | No - map tiles come from OpenFreeMap, so Google never sees you browse |
-| Your searches | Yes, saved to your account history | Yes | The query text reaches Google anonymously, only when you search |
-| Place pages you open | Yes | Yes | The place lookup reaches Google anonymously |
-| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM/GraphHopper; Google sees one anonymous ETA check, never your live position |
-| Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
-| Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
-| Works with no Google contact at all | No | No | Yes - downloaded regions search, route, and navigate fully offline |
-
 The short version: Google shrinks from *knowing who you are and everywhere you go* to
 *occasionally answering an anonymous question*. And the parts that matter most while
-driving - your GPS trace, your map browsing - never reach Google at all.
-
-## Why it's built this way
-
-Two decisions from the planning phase shape everything:
-
-1. **No Vela backend.** Like NewPipe, every install talks to Google directly
-   from the user's own IP, behaving like a single browser. There is no shared
-   API key and no server farm to run, scrape from, or get subpoenaed. The cost
-   is a maintenance lifestyle: Google rotates these endpoints, so the extractor
-   will periodically need re-calibration and an app update.
-2. **Open tiles, scraped intelligence.** The *basemap* is open vector tiles
-   (Protomaps/MapLibre), so the heaviest per-user load never touches Google and
-   we control the cartography. We only scrape Google for POIs, routing, and the
-   traffic that's baked into its directions responses - the parts where Google
-   genuinely has unique data.
+driving - your GPS trace, your map browsing - never reach Google at all. A row-by-row
+comparison against the Google Maps app and web is in [PRIVACY.md](PRIVACY.md).
 
 ## How it works - each capability and the method behind it
 
@@ -235,55 +161,14 @@ The one-screen map of *what Vela does* and *how*, with the entry point to read n
 
 ## Architecture
 
-Two Gradle modules (AGP 8.7.3, Kotlin 2.1, Compose, Hilt, version catalog,
-R8 release builds):
-
-```
-:core   the "extractor" - no UI dependency, the NewPipeExtractor pattern
-        ├─ model/            LatLng, Place, Route, Maneuver … (pure Kotlin)
-        ├─ data/
-        │   ├─ MapDataSource         the one seam every screen talks to
-        │   ├─ MockMapDataSource     canned data → the app runs with no network
-        │   ├─ google/               the real scraper
-        │   │   ├─ GoogleSession         per-user bootstrap (token extraction)
-        │   │   ├─ GoogleMapsDataSource  search / directions / place details
-        │   │   ├─ PbBuilder             builds Google's `pb` URL protobuf
-        │   │   ├─ GoogleResponse        XSSI strip + positional-array navigator
-        │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
-        │   │   └─ parse/                 Search / Directions / Transit / Photos / Reviews
-        │   ├─ RouteGeometry             OSRM turn-by-turn (open router) + parse of steps/lanes/refs
-        │   ├─ RouteEngine               offline-routing interface (connectivity/graph-presence picks it)
-        │   ├─ GraphHopperRouteEngine    on-device GraphHopper CH graphs, one per downloaded region
-        │   ├─ RouteCorridor             "search along route" - filter results to the line
-        │   ├─ OverpassPois              keyless OSM POI + addr + street fetch (offline-search/geocode source)
-        │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
-        │   ├─ OfflineAddressStore       on-device SQLite forward geocoder (typed address → coord, offline)
-        │   ├─ OfflinePacks              registry of downloaded whole-region place packs (both stores query them)
-        │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
-        ├─ location/         LocationProvider - AOSP LocationManager (no Fused)
-        ├─ voice/            VoiceGuide - AOSP TextToSpeech, engine-selectable
-        ├─ feedback/         Haptics - direction-coded vibration turn cues
-        ├─ config/           Calibration + CalibrationStore (remote pb/paths)
-        ├─ nav/              NavEngine - pure turn-by-turn logic + NavReplay auditor (unit-tested)
-        ├─ replay/           TripLog - trip CSV format + offline route audit
-        └─ di/               Hilt wiring; picks Mock vs Google off VelaConfig
-
-:app    Jetpack Compose UI (Material 3)
-        ├─ MainActivity, VelaApp
-        ├─ ui/map/           MapScreen, VelaMapView (MapLibre), MapViewModel, PoiIcons
-        ├─ ui/search/        SearchBar
-        ├─ ui/place/         PlaceSheet, DirectionsPanel, transit board, photo gallery
-        ├─ ui/nav/           ManeuverBanner (lanes/shields/swipe), NavControls, StepsSheet
-        ├─ ui/theme/         AppTheme - in-app light/dark, decoupled from the OS
-        ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
-        ├─ web/              WebPhotoFetcher, WebDirectionsFetcher - hidden-WebView scrapes
-        ├─ offline/          OfflineMaps (MapLibre tiles) + RoutingGraphStore (GraphHopper graphs) + PoiPackStore (place packs) + OverlayTileStore (building-footprint PMTiles)
-        └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / keep-screen-on / offline)
-```
-
-The `MapDataSource` interface is the load-bearing seam: Mock today, Google once
-calibrated, and a future Overture/OSM source or self-hostable backend (the
-"Piped for Vela" idea) drops in the same way.
+Two Gradle modules with a strict boundary (AGP 8.7.3, Kotlin 2.1, Compose, Hilt,
+R8 release builds): **`:core`** is the UI-agnostic "extractor" in the
+NewPipeExtractor mold - models, the Google scraper and parsers, the open routers,
+the pure nav engine, and the remote-config layer - and **`:app`** is the Compose
+UI over MapLibre. `MapDataSource` is the load-bearing seam between them: Mock for
+offline dev, Google today, and a future Overture/OSM source or self-hostable
+backend drops in the same way. The full module tree and every seam are in
+[`SPEC.md`](SPEC.md).
 
 ## Build & run
 
@@ -305,21 +190,13 @@ Release signing comes from CI env vars (`VELA_KEYSTORE_PATH`,
 `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`); local builds fall back to the
 debug keystore so `adb install` still works.
 
-**CI** (`.github/workflows/`): every push to `main` builds + tests the APK,
-uploads it as an artifact, and publishes a **normal versioned release**
-(`v0.3.<run>`, versionCode `2000+run`) - nightlies as prereleases, the weekly
-promoted stable as the normal release, so Obtainium
-tracks the latest with zero configuration and no pre-release toggle. The release APK is signed with the keystore from repo secrets
-`VELA_KEYSTORE_BASE64`, `VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS` (without them
-it's debug-signed - installable, but not update-compatible across builds). An
-optional `MAPTILER_KEY` secret is injected into `BuildConfig` (`-PmaptilerKey`)
-to switch the basemap to MapTiler; it's never committed, and the app falls back
-to keyless OpenFreeMap without it. The repo is public, so release assets (e.g.
-for Obtainium) download with no token; workflow artifacts still need you signed
-in to GitHub.
-
-Out of the box the app talks to the live Google source over the keyless
-OpenFreeMap basemap; `MockMapDataSource` is the offline fallback.
+**CI**: every push to `main` builds, tests, and publishes a signed nightly
+prerelease (`v0.4.<run>`); a weekly job promotes the newest nightly to the
+stable release, and the F-Droid repo index rebuilds off both. The release
+pipeline details (secrets, channels, versioning) live in
+[`CLAUDE.md`](CLAUDE.md). Out of the box the app talks to the live Google
+source over the keyless OpenFreeMap basemap; `MockMapDataSource` is the
+offline fallback.
 
 ## The Google extractor & calibration
 
@@ -328,22 +205,14 @@ extractor, the signed remote-repair channel, and the recalibration playbook.
 
 ## Degoogled / GrapheneOS notes
 
-- **Location:** AOSP `LocationManager` (GPS + NETWORK simultaneously), never
-  `FusedLocationProviderClient`. We cache last-known to seed an instant map and
-  show a one-time PSDS tip when the cold fix is slow - on GrapheneOS, enabling
-  PSDS (Settings → Location) drops TTFF from ~30s to a few seconds.
-- **Voice:** a built-in **neural voice** that runs entirely on-device - Vela bundles the sherpa-onnx
-  runtime and downloads a Piper model itself (progress bar), no standalone app. A **Voice library**
-  (Settings → Voice) lets you browse, download and switch between ~40 Piper voices (Lessac, HFC, Ryan,
-  the HFC Female default, British voices, …) to find the read you like. Plus AOSP
-  `TextToSpeech`: we enumerate the phone's installed engines so you can override to any system voice.
-  Spoken directions have an on/off switch that the in-nav mute button shares. **Voice search** is
-  on-device too: the search-bar mic records and transcribes with Vela's own downloadable Whisper
-  model (same bundled runtime, mic permission asked at first use), or hands off to a voice-input
-  app you already have; with neither installed the mic offers the download.
-- **No GMS anywhere:** no Fused location, no FCM, no Firebase, no Play Integrity.
-  Everything (MapLibre, OkHttp, Compose, Hilt) is pure AOSP. OrganicMaps is the
-  existence proof; Vela's stack is a superset.
+- **Location:** AOSP `LocationManager`, never `FusedLocationProviderClient`. On
+  GrapheneOS, enabling PSDS (Settings → Location) drops the cold GPS fix from
+  ~30s to a few seconds - Vela shows a one-time tip when it notices a slow fix.
+- **Voice:** the neural nav voice and Whisper voice search both run entirely
+  on-device (bundled sherpa-onnx runtime, models downloaded in-app); any system
+  TTS engine can be selected instead. Details in [FEATURES.md](FEATURES.md).
+- **No GMS anywhere:** no Fused location, no FCM, no Firebase, no Play
+  Integrity. Everything (MapLibre, OkHttp, Compose, Hilt) is pure AOSP.
 
 ## Map style
 
@@ -354,7 +223,6 @@ Details moved to [`docs/MAP-STYLE.md`](docs/MAP-STYLE.md).
 Everything shipped so far is in [FEATURES.md](FEATURES.md) (the complete list) and the
 release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
-- [ ] Avoid tolls / avoid highways (the open router already supports it per request)
 - [ ] Restaurant menu reliability (Google tags menu photos inconsistently; digging in)
 - [ ] Satellite imagery layer (open Esri World Imagery)
 - [ ] **Predictive** (future-traffic) depart-time ETA - needs a directions-`pb` calibration
