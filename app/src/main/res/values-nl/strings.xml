@@ -533,6 +533,10 @@
     <string name="notif_ask_skip">Overslaan</string>
     <string name="place_time_past_toast">Die tijd is al geweest. Ingesteld op nu.</string>
     <string name="settings_ui_scale">Interfacegrootte</string>
+    <string name="settings_map_colors">Kaartkleuren</string>
+    <string name="settings_map_colors_modern">Modern</string>
+    <string name="settings_map_colors_classic">Klassiek</string>
+    <string name="settings_map_colors_hint">Modern volgt het huidige palet van Google Maps. Klassiek is de eerdere look van Vela: witte wegen, gele snelwegen, echte groentinten.</string>
     <string name="place_avoid_tolls">Tolwegen vermijden</string>
     <string name="place_avoid_highways">Snelwegen vermijden</string>
 </resources>
