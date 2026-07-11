@@ -946,11 +946,14 @@ Defaults that make the safe path the easy one:
 
 ## README layout rule (2026-07-11)
 
-The README stays SHORT: pitch, screenshots, install, what-you-get, the how-it-works table,
-privacy, build. Deep dives live in docs/ (CALIBRATION.md, MAP-STYLE.md, dpad.md) and get a
-pointer line, not a section. The Roadmap section carries a "Not going to happen" split for
-login/backend features - keep new won't-dos there AND in ROADMAP.md. Remote calibration is a
-HEADLINE feature in What-you-get (the self-healing pitch), not just an architecture note.
+The README stays SHORT: pitch, screenshots, install, what-you-get, the **privacy comparison
+matrix** (kept IN the README - user 2026-07-11, it's the sharpest one-glance pitch), build.
+Deep dives live in docs/ and get a pointer line, not a section: the capability/method
+**how-it-works table lives in `docs/HOW-IT-WORKS.md`** (moved out 2026-07-11, README just links
+it), alongside CALIBRATION.md, MAP-STYLE.md, dpad.md. The Roadmap section carries a "Not going
+to happen" split for login/backend features - keep new won't-dos there AND in ROADMAP.md.
+Remote calibration is a HEADLINE feature in What-you-get (the self-healing pitch), not just an
+architecture note.
 
 - **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
   Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
