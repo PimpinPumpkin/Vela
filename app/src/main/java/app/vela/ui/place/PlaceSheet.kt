@@ -178,6 +178,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
@@ -2033,7 +2034,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
         LaunchedEffect(Unit) { runCatching { galleryFocus.requestFocus() } }
         Box(
             Modifier
-                .fillMaxSize()
+                .requiredFullScreen()
                 .background(Color.Black)
                 .focusRequester(galleryFocus)
                 .onKeyEvent { ev ->
@@ -2144,7 +2145,24 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
     }
 }
 
+/** Size a dialog's ROOT to the real display bounds. Compose dialogs are wrap-content windows
+ *  measured against INSET bounds, so plain fillMaxSize stops ~status-bar short of the screen
+ *  edges (window-dump-proven: a fixed 1079x2142 request on a 1080x2340 display) — requiredSize
+ *  overrides the constraints and the window grows to match. */
+@Composable
+private fun Modifier.requiredFullScreen(): Modifier {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val bounds = remember {
+        val wm = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        if (android.os.Build.VERSION.SDK_INT >= 30) wm.currentWindowMetrics.bounds
+        else android.graphics.Rect(0, 0, context.resources.displayMetrics.widthPixels, context.resources.displayMetrics.heightPixels)
+    }
+    return with(density) { this@requiredFullScreen.requiredSize(bounds.width().toDp(), bounds.height().toDp()) }
+}
+
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
+
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
 /** Native search / sort / topic chips for the live reviews panel — Vela's own UI driving the
@@ -2337,7 +2355,7 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
     // to the WebView cleanly once the page loads. No-op under touch.
     val reviewsBackFocus = rememberDpadAutoFocus()
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
+        Surface(Modifier.requiredFullScreen(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
