@@ -299,8 +299,14 @@ fun PlaceSheet(
     // stiffness reads as a blink for this unprompted drop). Runs after the state-flip effect
     // above, so animating on VALUE (not targetValue) deliberately replaces its quicker settle.
     val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    // Consume-once guard: seenTick INITIALIZES to the tick's CURRENT value, so a fresh mount
+    // (picking a place from the results list re-mounts the sheet) never treats a STALE tick as
+    // a new pan - a LaunchedEffect fires on first composition too, and without this the next
+    // place opened pre-minimized (user 2026-07-10). Only a bump AFTER mount glides.
+    var seenTick by remember { mutableStateOf(minimizeTick) }
     LaunchedEffect(minimizeTick) {
-        if (minimizeTick == 0) return@LaunchedEffect
+        if (minimizeTick == seenTick) return@LaunchedEffect
+        seenTick = minimizeTick
         // Glide FIRST, flip the states after: any content keyed on the minimized state then
         // changes only once the card is already down (flipping first read as a pop, not a glide).
         if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
