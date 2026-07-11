@@ -148,20 +148,42 @@ object RouteGeometry {
      *  came back with 2 of ~10 turns), whereas OSRM gives them all. Free-flow duration only (no
      *  traffic — Google is queried separately for the live ETA and overlaid). Empty on any failure
      *  → caller falls back to the Google scrape. */
-    fun route(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<Route> =
-        routeOsrm(http, listOf(origin, dest), mode, alternatives = true)
+    fun route(
+        http: OkHttpClient,
+        origin: LatLng,
+        dest: LatLng,
+        mode: TravelMode,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+    ): List<Route> =
+        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways)
 
     /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
      *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
      *  No alternatives (OSRM doesn't return them for multi-waypoint routes). */
-    fun routeVia(http: OkHttpClient, waypoints: List<LatLng>, mode: TravelMode): List<Route> =
-        if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false)
+    fun routeVia(
+        http: OkHttpClient,
+        waypoints: List<LatLng>,
+        mode: TravelMode,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+    ): List<Route> =
+        if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways)
 
-    private fun routeOsrm(http: OkHttpClient, points: List<LatLng>, mode: TravelMode, alternatives: Boolean): List<Route> {
+    private fun routeOsrm(
+        http: OkHttpClient,
+        points: List<LatLng>,
+        mode: TravelMode,
+        alternatives: Boolean,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+    ): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
         val url = "$OSRM_BASE/$backend/route/v1/driving/$coords" +
-            "?overview=full&geometries=polyline&steps=true" + if (alternatives) "&alternatives=3" else ""
+            "?overview=full&geometries=polyline&steps=true" +
+            (if (alternatives) "&alternatives=3" else "") +
+            excludeParam(mode, avoidTolls, avoidHighways)
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.USER_AGENT).build()
         // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops
         // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
@@ -175,6 +197,10 @@ object RouteGeometry {
                             .jsonObject["routes"]?.jsonArray
                         if (routes != null) return routes.mapNotNull { parseOsrmRoute(it.jsonObject) }
                     }
+                    // A 4xx is deterministic (e.g. FOSSGIS answers InvalidValue for exclude=
+                    // classes its profile wasn't built with - probed 2026-07-11): retrying can't
+                    // help, bail to the fallback chain immediately.
+                    if (resp.code in 400..499) return emptyList()
                     // unsuccessful (5xx / 429 rate-limit) — fall through to retry
                 }
             } catch (e: Exception) {
@@ -183,6 +209,18 @@ object RouteGeometry {
             if (attempt < OSRM_TRIES - 1) runCatching { Thread.sleep(200L * (attempt + 1)) }
         }
         return emptyList()
+    }
+
+    /** OSRM `exclude=` classes for the avoid toggles. The FOSSGIS car profile understands
+     *  `toll` and `motorway`; bike/foot have neither, so only DRIVE sends the param (an
+     *  unknown class makes OSRM 400 the whole request). */
+    private fun excludeParam(mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): String {
+        if (mode != TravelMode.DRIVE) return ""
+        val classes = buildList {
+            if (avoidTolls) add("toll")
+            if (avoidHighways) add("motorway")
+        }
+        return if (classes.isEmpty()) "" else "&exclude=" + classes.joinToString(",")
     }
 
     private fun parseOsrmRoute(r: JsonObject): Route? {
