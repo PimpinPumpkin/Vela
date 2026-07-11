@@ -1703,8 +1703,8 @@ internal fun applyLight(style: Style) {
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#90daee")) // Google Maps light water (verbatim)
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#d3f8e2"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c9f2da"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#d4edd5"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c8e6cb"), PropertyFactory.fillOpacity(1f))
     // Buildings (OSM footprints, already in the Liberty tiles — no key/data needed).
     // The old #e2e3e6 was a hair off the #e8eaed land, so they were ~invisible; give
     // them a touch more grey + a subtle outline so they read like Google's at z15+.
@@ -1750,17 +1750,17 @@ internal fun applyLight(style: Style) {
     listOf("road_motorway_casing", "road_motorway_link_casing", "bridge_motorway_casing", "bridge_motorway_link_casing").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f0b85a"))
     }
-    listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
+    listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#bfd0de")) }
     listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#cfd9e3")) }
-    listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
+    listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#c3d3e0")) }
     listOf("road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#d3dce4")) }
+    // The Google APP fills roads with a solid blue-grey (the web is white-with-grey-frame;
+    // the user matched to the APP screenshots 2026-07-11) — minor roads are one grey ribbon.
     listOf("road_minor", "road_link", "road_service_track", "bridge_street", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#ffffff"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#cbd9e3"))
     }
-    // Casings are Google's blue-grey #cfd9e3 (sampled 2026-07-11) — that grey FRAME is what makes
-    // Google's roads read grey where ours (near-invisible land-coloured casings) read white.
     listOf("road_minor_casing", "road_link_casing", "road_service_track_casing", "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#d3dce4"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#bccbd8"))
     }
     // Terrain relief: a soft warm-grey shadow, subtle so hills read as depth, not dirt.
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
@@ -1776,9 +1776,9 @@ internal fun applyDark(style: Style) {
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
     style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f)) // Google-dark park green: visible over the navy land (old #1c3326 was darker than the land, user 2026-07-11)
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(0.9f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#274330"), PropertyFactory.fillOpacity(0.95f))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#1a4a4d"), PropertyFactory.fillOpacity(1f)) // Google-app dark vegetation: a TEAL green (matched to the user's Google dark screenshot 2026-07-11), clearly lighter than the land
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#1a4a4d"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#17434a"), PropertyFactory.fillOpacity(0.95f))
     listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
         "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#49536a"))
@@ -1830,7 +1830,7 @@ internal fun applyDark(style: Style) {
         }
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
-    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#26403c"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#194247"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).

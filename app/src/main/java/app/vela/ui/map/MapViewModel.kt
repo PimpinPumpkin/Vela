@@ -1330,7 +1330,23 @@ class MapViewModel @Inject constructor(
             // partial can't touch the next place; the final result clears the flag in the same
             // atomic copy, so a straggler can't overwrite it — same pattern as review streaming).
             val full = runCatching {
-                webPhotos.fetch(fid, onHistogram = { counts ->
+                webPhotos.fetch(fid, onPhotoDates = { pairs ->
+                    // The walk mined per-photo dates from the place page itself (the dead RPC's
+                    // replacement). Absolute Y-M-D entries get a localized short date; relative
+                    // "N ago" strings pass through. Merged INTO the join map - the final apply
+                    // (after the walk) restamps everything with whatever arrived.
+                    val mined = pairs.mapNotNull { (u, d) ->
+                        val text = if (Regex("^\\d{4}-\\d{1,2}-\\d{1,2}$").matches(d)) {
+                            runCatching {
+                                val p3 = d.split("-").map { it.toInt() }
+                                java.time.LocalDate.of(p3[0], p3[1], p3[2])
+                                    .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM))
+                            }.getOrNull()
+                        } else d
+                        text?.let { u.substringBefore('=') to it }
+                    }.toMap()
+                    if (mined.isNotEmpty()) rpcDates = mined + rpcDates // RPC (if ever revived) wins ties
+                }, onHistogram = { counts ->
                     // The page's [5-star..1-star] review counts, grabbed in passing by the walk -
                     // drives the native histogram on the inline Reviews tab. Feature-id gated.
                     _state.update { st ->
