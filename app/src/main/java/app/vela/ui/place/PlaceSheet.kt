@@ -122,7 +122,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -1456,7 +1456,7 @@ fun DirectionsPanel(
                             Text(stringResource(R.string.place_start))
                         }
                         onSteps?.let {
-                            OutlinedButton(onClick = it) {
+                            FilledTonalButton(onClick = it) {
                                 Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
                                 Text(stringResource(R.string.place_steps))
                             }
@@ -1567,8 +1567,8 @@ private fun DepartTimeChooser(
         // Time + date fields for depart/arrive (Google-style: a time field AND a date field).
         if (mode == 1 || mode == 2) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { showTimePicker = true }) { Text(time.format(fmt)) }
-                OutlinedButton(onClick = { showDatePicker = true }) { Text(date.format(dateFmt)) }
+                FilledTonalButton(onClick = { showTimePicker = true }) { Text(time.format(fmt)) }
+                FilledTonalButton(onClick = { showDatePicker = true }) { Text(date.format(dateFmt)) }
             }
         }
 
@@ -1579,7 +1579,7 @@ private fun DepartTimeChooser(
             fun window(base: java.time.LocalTime, lo: Double, hi: Double, sign: Int): String =
                 if (range != null)
                     "${base.plusSeconds((sign * lo).toLong()).format(fmt)}–${base.plusSeconds((sign * hi).toLong()).format(fmt)}"
-                else "~${base.plusSeconds((sign * nowDur).toLong()).format(fmt)}"
+                else base.plusSeconds((sign * nowDur).toLong()).format(fmt)
             val lo = range?.first ?: nowDur
             val hi = range?.second ?: nowDur
             val hasLive = route.hasLiveTraffic
@@ -1818,7 +1818,7 @@ fun TransitNavSheet(
             }
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
+                FilledTonalButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_back))
                 }
                 Button(onClick = onNext, modifier = Modifier.weight(1f)) {
