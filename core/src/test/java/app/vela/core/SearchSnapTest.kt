@@ -32,6 +32,21 @@ class SearchSnapTest {
         assertEquals(38.54, result.places[0].location.lat, 1e-9)
     }
 
+    /** Wheelchair accessibility rides the search response's attribute block ([1][100][1],
+     *  groups of [id, label, ...] entries) keyed on the LANGUAGE-NEUTRAL attribute id — the
+     *  labels arrive localized, so only the id can drive the filter. */
+    @Test fun parsesWheelchairAccessibility() {
+        fun place(name: String, about: String?) = "[null," + arr(
+            101,
+            9 to "[null,null,38.55,-121.74]",
+            11 to "\"$name\"",
+            100 to (about ?: "null"),
+        ) + "]"
+        val acc = """[null,[[null,"Accessibility",[["/geo/type/establishment_poi/has_wheelchair_accessible_entrance","Wheelchair accessible entrance"]]]]]"""
+        val root = arr(65, 64 to "[" + place("Accessible Cafe", acc) + "," + place("Unknown Cafe", null) + "]")
+        val places = SearchParser.parse("cafes", Json.parseToJsonElement(root)).places
+        assertEquals(true, places[0].wheelchairAccessible)
+        assertEquals(false, places[1].wheelchairAccessible)
     /** Gas stations: the live fuel price rides the place node at [88][0] ("$5.34/Regular",
      *  pinned from a live capture 2026-07-10). A digit-less string there (a shape drift putting
      *  a label where the price was) must be rejected, not shown as a price. */
