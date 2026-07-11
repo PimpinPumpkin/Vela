@@ -292,13 +292,24 @@ Defaults that make the safe path the easy one:
   and the "All reviews" button are CircleShape stadium pills (the outlined button was the last
   outlined control on the sheet); the reviews summary block is LEFT-ALIGNED (displaySmall number
   + stars/count stacked beside it), not centered; the MINIMIZED card is NOT a separate surface
-  (2026-07-10 refactor): the body is a SKELETON (name row, rating, the full action-pill row) plus
-  `MinimizeExtras` sections (photos / status+hours / address+tabs) that shrink + fade in place on
-  minimize while the height glides, so the skeleton settles into the small card with no content
-  swap - the old swap-to-a-mini-card popped. A tap anywhere on the minimized body restores peek
-  (a `clickable(enabled = minimized)` on the body Column); parking (singleDetent) keeps its
-  extras. Keep new sheet content inside one of the extras sections unless it genuinely belongs
-  in the minimized card. Keep new sheet controls on this language. NB `RatingHistogram` in
+  (2026-07-10 refactor, height-locked 2026-07-11): the body is a SKELETON (name row, rating, the
+  full action-pill row) plus `MinimizeExtras` sections (photos / status+hours / address+tabs)
+  whose height+alpha are a FRACTION of natural = the sheet height's own position between the
+  minimized floor and peek, read per frame in the layout/graphicsLayer phase. The fold is
+  therefore byte-locked to whatever moves the height (pan glide, a slow drag folds them WITH the
+  finger, the release settle) - a separately-clocked exit animation (the first cut used tweens)
+  could not stay in step with the height spring and read as staccato. Extras stay composed while
+  any part shows and unmount at the settled floor (`derivedStateOf` gate, one recomposition at
+  the flip), keeping zero-height controls out of D-pad focus search; the old swap-to-a-mini-card
+  popped. A tap anywhere on the minimized body restores peek (a `clickable(enabled = minimized)`
+  on the body Column); parking (singleDetent) keeps its extras. Keep new sheet content inside
+  one of the extras sections unless it genuinely belongs in the minimized card. **The
+  full-screen reviews page closes by pull alone (2026-07-11):** the top-edge pull follows the
+  finger; in fullScreen a STARTED pull owns every move until finger-up (the ownership clause
+  sits OUTSIDE ReviewsPanel's verticality test - a sideways wobble used to trip the
+  boundary-exit end and close mid-drag), and release closes on DISTANCE ONLY (> 120dp) with a
+  spring-back below it - the photo viewer's judge-at-release grammar; the old vel > 2500 px/s
+  flick escape read as a hair trigger. Keep new sheet controls on this language. NB `RatingHistogram` in
   PlaceSheet is ORPHANED (its per-star counts only exist in the live panel DOM) - wire it or
   delete it, don't duplicate it. **The MENU TAB (2026-07-10)** appears beside Reviews/About when
   `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
