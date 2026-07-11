@@ -2333,21 +2333,6 @@ private fun HeaderCircleButton(
     }
 }
 
-/** Size a full-screen surface's ROOT to the real display bounds so it fills the window even
- *  under transparent system bars (a Dialog window is measured against INSET bounds, so plain
- *  fillMaxSize stops a bar short). */
-@Composable
-private fun Modifier.requiredFullScreen(): Modifier {
-    val context = LocalContext.current
-    val density = LocalDensity.current
-    val bounds = remember {
-        val wm = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
-        if (android.os.Build.VERSION.SDK_INT >= 30) wm.currentWindowMetrics.bounds
-        else android.graphics.Rect(0, 0, context.resources.displayMetrics.widthPixels, context.resources.displayMetrics.heightPixels)
-    }
-    return with(density) { this@requiredFullScreen.requiredSize(bounds.width().toDp(), bounds.height().toDp()) }
-}
-
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
