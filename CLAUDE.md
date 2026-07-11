@@ -881,7 +881,20 @@ Defaults that make the safe path the easy one:
   hint) rather than reading, e.g., Russian nav text through the English Piper model (see the voice bullet under
   Degoogled constraints). (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
-  the 10 translated languages (fr de es it pt nl ru pl sv uk), referenced via `stringResource`/`getString`.
+  the 13 translated languages (fr de es it pt nl ru pl sv uk + zh zh-rTW ja, CJK added 2026-07-11),
+  referenced via `stringResource`/`getString`. **CJK notes (2026-07-11):** Chinese ships as
+  `values-zh` (Simplified, also the fallback for any zh region without its own folder) +
+  `values-zh-rTW` (Traditional, Taiwan wording - issue #55); the in-app picker codes are "zh",
+  "zh-TW" and "ja" and hyphenated codes MUST resolve via `Locale.forLanguageTag` (a `Locale("zh-TW")`
+  constructor makes a bogus lowercase LANGUAGE and matches nothing - AppLocale.effective/wrap do this).
+  `NavStringsRegistry.tagOf(locale)` splits Chinese by SCRIPT (Hant script or TW/HK/MO country ->
+  the zh-tw table, else zh); `localized()` mirrors it for the scrape (`hl=zh-TW` vs `hl=zh-CN` -
+  bare hl=zh is Simplified). `parseOpenNow` keys stay the bare "zh" with BOTH scripts' keywords in
+  one table. TTS: ONE Mandarin Piper voice (`zh_CN-huayan-medium`, langCode "zh") pairs with both
+  Chinese tables; **Japanese has NO Piper voice** - ja spoken guidance rides VoiceGuide's
+  system-TTS-in-target-language fallback (silent + hint when none installed); a non-Piper sherpa
+  ja model is the follow-up (needs PiperSynth config work, see ROADMAP). Whisper dictation pins
+  zh/ja automatically (multilingual tiny; whisperLang reads `.language`, so zh-TW dictates as zh).
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale; when FOLLOWING
   the system it also RESTORES `Locale.setDefault` to the captured device locale - the override is
   process-global and survived the recreate, so switching Russian back to English left
