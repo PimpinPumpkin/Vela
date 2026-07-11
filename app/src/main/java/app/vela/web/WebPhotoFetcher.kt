@@ -298,10 +298,15 @@ class WebPhotoFetcher @Inject constructor(
               // photo entries carry the url at [6][0] (the dead RPC's shape) with a relative
               // "N ago" string or an absolute [Y,M,D] array nearby. One shot per page; zero
               // extra requests (menu-date hunt, user 2026-07-11).
+              // Mine the page's APP_INITIALIZATION_STATE for photo urls with a nearby date -
+              // relative "N ago" string or absolute [Y,M,D] array. The url match is LOOSE (any
+              // array carrying a googleusercontent string directly or as a member's [0]): the
+              // first cut required the dead RPC's [6][0] shape and found nothing (2026-07-11).
+              // Review photos pairing with their review's date is CORRECT data. One shot/page.
               function aisDates(){
                 if(window.__velaAisDates) return; window.__velaAisDates=1;
                 try{
-                  var out=[];
+                  var out=[], urls=0, seen={};
                   function isArr(x){ return Object.prototype.toString.call(x)==='[object Array]'; }
                   function hunt(m,dd){
                     if(!m || dd>4) return null;
@@ -311,22 +316,30 @@ class WebPhotoFetcher @Inject constructor(
                         return m[0]+'-'+m[1]+'-'+m[2];
                       }
                       for(var i=0;i<m.length;i++){ var r=hunt(m[i],dd+1); if(r) return r; }
-                    } else if(typeof m==='string' && / ago$/.test(m) && m.length<40){ return m; }
+                    } else if(typeof m==='string' && / ago${'$'}/.test(m) && m.length<40){ return m; }
+                    return null;
+                  }
+                  function urlIn(n){
+                    for(var i=0;i<n.length;i++){
+                      var v=n[i];
+                      if(typeof v==='string' && v.indexOf('http')===0 && v.indexOf('googleusercontent.com')>=0) return v;
+                      if(isArr(v) && typeof v[0]==='string' && v[0].indexOf('http')===0 && v[0].indexOf('googleusercontent.com')>=0) return v[0];
+                    }
                     return null;
                   }
                   function walk(n,d){
-                    if(!n || d>16 || out.length>=200) return;
+                    if(!n || d>18 || out.length>=250) return;
                     if(isArr(n)){
-                      var u=n[6] && isArr(n[6]) ? n[6][0] : null;
-                      if(typeof u==='string' && u.indexOf('googleusercontent')>=0){
-                        var dt=hunt(n,0);
-                        if(dt) out.push([u,dt]);
+                      var u=urlIn(n);
+                      if(u){
+                        var k=u.replace(/=[^=]*${'$'}/,'');
+                        if(!seen[k]){ seen[k]=1; urls++; var dt=hunt(n,0); if(dt) out.push([u,dt]); }
                       }
                       for(var i=0;i<n.length;i++) walk(n[i],d+1);
                     }
                   }
                   walk(window.APP_INITIALIZATION_STATE,0);
-                  try{ VelaBridge.onInfo(ID, JSON.stringify({aisDates:out.length})); }catch(e2){}
+                  try{ VelaBridge.onInfo(ID, JSON.stringify({aisUrls:urls, aisDated:out.length, sample:(out[0]||[])[0]||''})); }catch(e2){}
                   if(out.length) VelaBridge.onDates(ID, JSON.stringify(out));
                 }catch(e){}
               }
