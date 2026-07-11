@@ -279,7 +279,10 @@
     <string name="mapscreen_got_it">Uppfattat</string>
     <string name="mapscreen_heads_up">Obs</string>
     <string name="mapscreen_dismiss">Stäng</string>
-    <string name="mapscreen_results_count">%1$d resultat</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d resultat</item>
+        <item quantity="other">%1$d resultat</item>
+    </plurals>
     <string name="mapscreen_shrink_list">Krymp listan</string>
     <string name="mapscreen_expand_list">Expandera listan</string>
     <string name="mapscreen_close_results">Stäng sökresultaten</string>
