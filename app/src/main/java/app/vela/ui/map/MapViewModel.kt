@@ -179,6 +179,10 @@ data class MapUiState(
     val showSteps: Boolean = false,
     val previewStepIndex: Int? = null,
     val styleUri: String = MapStyle.DEFAULT.uri,
+    // Route preference toggles (drive): honoured on-device where the region graph carries the
+    // avoid profiles; online falls back to a normal route (the public OSRM can't exclude).
+    val avoidTolls: Boolean = false,
+    val avoidHighways: Boolean = false,
     val styleName: String = MapStyle.DEFAULT.label,
     val selectedEngine: VoiceEngine? = null,
     val searching: Boolean = false,
@@ -1730,6 +1734,8 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
         // Walking back to the car is the parking spot's whole point — default to WALK there.
         // Otherwise every session opens on the STICKY last-used mode (user 2026-07-11).
+        val (avTolls, avHighways) = stickyAvoid()
+        _state.update { it.copy(avoidTolls = avTolls, avoidHighways = avHighways) }
         val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
         if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
     }
@@ -2015,7 +2021,7 @@ class MapViewModel @Inject constructor(
         if (!route.provisional) return route
         val o = route.polyline.firstOrNull() ?: return route.copy(provisional = false)
         val d = route.polyline.lastOrNull() ?: return route.copy(provisional = false)
-        return runCatching { dataSource.nameRoute(route, o, d, _state.value.travelMode) }
+        return runCatching { dataSource.nameRoute(route, o, d, _state.value.travelMode, _state.value.avoidTolls, _state.value.avoidHighways) }
             .getOrNull() ?: route.copy(provisional = false)
     }
 
@@ -2029,6 +2035,28 @@ class MapViewModel @Inject constructor(
         _state.update { it.copy(travelMode = mode) }
         route(mode)
     }
+
+    fun setAvoidTolls(on: Boolean) {
+        if (_state.value.avoidTolls == on) return
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("avoid_tolls", on).apply()
+        _state.update { it.copy(avoidTolls = on) }
+        route(_state.value.travelMode) // re-route with the new preference
+    }
+
+    fun setAvoidHighways(on: Boolean) {
+        if (_state.value.avoidHighways == on) return
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("avoid_highways", on).apply()
+        _state.update { it.copy(avoidHighways = on) }
+        route(_state.value.travelMode)
+    }
+
+    /** The persisted avoid toggles (sticky like the travel mode - the habit is the setting). */
+    private fun stickyAvoid(): Pair<Boolean, Boolean> = runCatching {
+        val p = appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+        p.getBoolean("avoid_tolls", false) to p.getBoolean("avoid_highways", false)
+    }.getOrDefault(false to false)
 
     /** The remembered last-used travel mode (see [setTravelMode]); DRIVE until first changed. */
     private fun stickyTravelMode(): TravelMode = runCatching {
@@ -2071,7 +2099,7 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel()
         routeJob = viewModelScope.launch {
             try {
-                val routes = dataSource.directions(origin, dest, mode, stops)
+                val routes = dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways)
                 if (!stillWanted()) return@launch // backed out / switched mode mid-fetch — don't resurrect it
                 _state.update {
                     it.copy(

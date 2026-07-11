@@ -524,4 +524,6 @@
     <string name="notif_ask_skip">Hoppa över</string>
     <string name="place_time_past_toast">Den tiden har passerat. Inställd på nu.</string>
     <string name="settings_ui_scale">Gränssnittsstorlek</string>
+    <string name="place_avoid_tolls">Undvik vägtullar</string>
+    <string name="place_avoid_highways">Undvik motorvägar</string>
 </resources>
