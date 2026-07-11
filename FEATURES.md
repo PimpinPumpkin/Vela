@@ -17,6 +17,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Gallery survives rotation + the save menu (2026-07-10).** The full-screen photo viewer
+  draws edge to edge, so rotating to landscape no longer lets the map peek through the system-bar
+  strips, and the photo caption's bottom clearance scales with the screen instead of floating to
+  the middle in landscape. The place header's star is now the whole save menu (quick save, save
+  to a list, edit note, set as home/work), replacing the separate overflow button that crowded
+  the circled header.
 - ✅ **Place sheet modernization (2026-07-10).** The header's Save/Share/more/close buttons sit in
   Google's subtle grey circles, every pill on the sheet shares the app's stadium shape, the
   reviews summary is Google's block (big number, stars and count stacked beside it, left-aligned)

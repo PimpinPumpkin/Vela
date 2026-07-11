@@ -671,43 +671,35 @@ fun PlaceSheet(
                 )
                 // Save + Share as compact header actions (preferred look). The name has weight(1f) and
                 // wraps to 2 lines if long, so these stay put without shoving it off.
-                IconButton(
-                    onClick = onToggleSave,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
-                ) {
-                    Icon(
-                        if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
-                        contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
-                        tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
-                        modifier = Modifier.size(20.dp),
-                    )
-                }
-                ShareIconButton(place, dim)
-                // Overflow: pin this place straight to Home/Work (Google-style).
-                var headerMenu by remember { mutableStateOf(false) }
+                // The STAR is the whole save/pin menu now (quick save, lists, note, home/work) —
+                // four circled buttons crowded the header, and the overflow's items were all
+                // save-family anyway (user 2026-07-10). D-pad-first via VelaMenu (docs/dpad.md).
+                var saveMenu by remember { mutableStateOf(false) }
                 Box {
                     IconButton(
-                        onClick = { headerMenu = true },
+                        onClick = { saveMenu = true },
                         modifier = Modifier
                             .size(40.dp)
                             .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
                     ) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.place_more_options), tint = dim, modifier = Modifier.size(20.dp))
+                        Icon(
+                            if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                            contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
+                            tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
+                            modifier = Modifier.size(20.dp),
+                        )
                     }
-                    // D-pad-first (docs/dpad.md): VelaMenu renders the normal anchored DropdownMenu
-                    // under touch, but a raw-Dialog chooser that AUTO-FOCUSES its first item under
-                    // D-pad (a DropdownMenu Popup can't be pre-focused; a raw Dialog can).
-                    VelaMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
+                    VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
+                        item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
                         if (!isParking) {
-                            item(stringResource(R.string.place_save_to_list)) { headerMenu = false; showListChooser = true }
-                            if (inAnyList) item(stringResource(R.string.place_edit_note)) { headerMenu = false; showNoteEditor = true }
+                            item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
+                            if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
                         }
-                        item(stringResource(R.string.place_set_as_home)) { headerMenu = false; onSetShortcut(ShortcutKind.HOME) }
-                        item(stringResource(R.string.place_set_as_work)) { headerMenu = false; onSetShortcut(ShortcutKind.WORK) }
+                        item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
+                        item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }
                     }
                 }
+                ShareIconButton(place, dim)
                 IconButton(
                     onClick = onClose,
                     modifier = Modifier
@@ -1008,7 +1000,7 @@ fun PlaceSheet(
             val highlights = remember(place.about) { attributeHighlights(place.about) }
             if (highlights.isNotEmpty()) {
                 Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 16.dp),
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     highlights.forEach { h ->
@@ -1028,7 +1020,10 @@ fun PlaceSheet(
 
             // Popular times sit BELOW the action buttons (Google's order). Lazily
             // filled by the WebView detail fetch, so it pops in a beat after open.
-            place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
+            place.popularTimes?.let {
+                Spacer(Modifier.height(10.dp)) // clear air between the attribute chips and the chart
+                PopularTimesSection(it, ink, dim)
+            }
             // While the (slow, ~10–20 s) detail fetch is in flight and popular times
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
             // "missing" — it clears to the chart, or to nothing if this place has none.
@@ -2084,7 +2079,10 @@ private fun PhotoShimmerTile(base: Color) {
 @Composable
 private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) {
     if (urls.isEmpty()) return
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    // decorFitsSystemWindows=false: in LANDSCAPE the default dialog window stops at the system
+    // bars / cutout and the map showed through the uncovered strips (user 2026-07-10); drawing
+    // edge-to-edge lets the black Box actually cover the screen.
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
         // D-pad (docs/dpad.md): the viewer grabs focus so LEFT/RIGHT page through the
         // photos with no touch; BACK already dismisses (Dialog).
@@ -2189,12 +2187,15 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 // Pixel 9 — so a normal bottom caption vanished. A FIXED bottom clearance keeps it in the
                 // drawable area regardless (harmlessly a touch higher on phones with no such clip).
                 dates.getOrNull(pager.currentPage)?.let { caption ->
+                    // The clearance is PROPORTIONAL (capped at the old 120dp): a fixed 120dp was
+                    // a third of the screen in landscape and floated the caption to the middle.
+                    val captionClear = (LocalConfiguration.current.screenHeightDp * 0.14f).dp.coerceAtMost(120.dp)
                     Text(
                         caption,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White,
                         modifier = Modifier.align(Alignment.BottomCenter)
-                            .padding(bottom = 120.dp, start = 16.dp, end = 16.dp)
+                            .padding(bottom = captionClear, start = 16.dp, end = 16.dp)
                             .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                     )
