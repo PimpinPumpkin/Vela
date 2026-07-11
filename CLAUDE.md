@@ -877,13 +877,14 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   forests read as flat green like Google, not icon confetti. Nav mute/steps/End are 54dp.
   The search bar hides while an expanded place sheet covers it (its sliver still took taps).
 
-- **Photo DATES are mined from the place page (2026-07-11):** the walk's one-shot `aisDates()`
-  scans APP_INITIALIZATION_STATE for photo entries (url at [6][0], the dead hspqX RPC's shape)
-  with a nearby relative "N ago" string or absolute [Y,M,D] array, bridges [[url,date],...]
-  via `VelaBridge.onDates`, cached per feature id beside the photo LRU; `fetchPhotos` merges
-  them into the date-join map (absolute dates localized, ofLocalizedDate MEDIUM). Zero extra
-  requests; supersedes reviving the hspqX RPC. Review photos are a SEPARATE pipeline (author +
-  date come from the review itself) and already had dates.
+- **Photo DATES: every keyless in-page route is DEAD (probed exhaustively 2026-07-11).** The
+  place page's APP_INITIALIZATION_STATE carries NO photo urls at walk time (census: one big
+  string leaf, zero googleusercontent, zero "ago") - photos are id-referenced and urls come
+  from lazy responses. The walk's `aisDates()`/`onDates` plumbing stays (inert, one-shot,
+  lights up if Google ever re-embeds it), and `fetchPhotos` still merges any mined/RPC dates
+  into the join. The ONE live route is recalibrating the hspqX RPC from a desktop capture
+  (remote-fixable via calibration.json, see ROADMAP) - do NOT re-probe AIS. Review photos are
+  a SEPARATE pipeline (author + date come from the review itself) and already show dates.
 - **Flick = commit (2026-07-11):** a release faster than `FLING_COMMIT_DPS` (450 dp/s, shared
   const in PlaceSheet) advances AT LEAST one detent in the flick's direction on all three
   sheets (place/results/directions) - the pure coast projection needed the throw to cross half
