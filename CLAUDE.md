@@ -918,8 +918,9 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   - AND Liberty's own `landuse_pitch`/`landuse_track` layers (they sit ABOVE the twin) are
   coloured directly + exempted from the landuse-neutralise loops, else the tint never showed
   (found at a park with ball courts).
-  Trail light = #7fcdb0 (P9-SAMPLED); pitch light #c2ecd4 stays the one estimate (no court
-  in the light captures).
+  Trail light = #7fcdb0 (P9-SAMPLED); pitch light = #a9eac2 (P9-SAMPLED at Toomey Field,
+  no estimates left); campuses (landuse_school) = #f0eded warm grey (sampled at UC Davis,
+  light only - dark keeps the neutralised land).
 - **LIGHT palette is PIXEL-SAMPLED from the Google app on the P9 (2026-07-11, definitive,
   supersedes every earlier light set):** land #f8f7f7 (the app is cooler than the web's
   #f6f6f6 and the user's kept #f2f1ee - verbatim wins per user "all of it"), roads are ONE
@@ -929,7 +930,17 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   mint), water #90daee (unchanged), plaza/parking surface #dbe0e8, trails #7fcdb0,
   COMMERCIAL/RETAIL blocks cream #fdf9ef via the `vela-commercial` twin (Liberty ships no
   layer for those classes; dark paints the twin #1c2638 = the other-landuse navy so dark
-  is unchanged). Google light also marks on-street BIKE ROUTES dark teal #007b8b - NOT
+  is unchanged).
+- **Glyph ink rule (2026-07-11): leading/functional GLYPHS wear the SOFT ink, text keeps
+  the strong ink.** Solid Material icons read heavier than text at the same colour, and
+  several sites were outright BLACK (an untinted Icon on a non-Surface container falls
+  back to LocalContentColor black - the search page is a plain Box). Fixed sites: search
+  bar gear (now onSurfaceVariant, matches the mic), map category chips
+  (leadingIconContentColor onSurfaceVariant), the lists-bookmark ribbon circle
+  (onSurfaceVariant both modes), ShortcutRow unset Home/Work (onSurfaceVariant, was
+  SheetPalette.dim and mismatched the recents pin), the chooser Steps glyph + the
+  search-along-route chip icons (SheetPalette dim beside ink labels). Give any NEW
+  glyph-next-to-text the same treatment. Google light also marks on-street BIKE ROUTES dark teal #007b8b - NOT
   drawn by Vela (bike lanes are not the trails layer; noted as a possible future accent).
 - **Ambient POI DOT TIER (2026-07-11):** `vela-ambient-dots`, a CircleLayer UNDER the
   ambient icon layer on the same source - every ambient place draws a small category-
