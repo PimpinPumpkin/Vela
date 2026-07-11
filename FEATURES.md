@@ -214,8 +214,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   speech-bubble marker with the rating beside the circled glyph, and in a dense downtown the lesser results collapse into little red dots that
   expand back into pins as you zoom, so the view never turns into a pile of overlapping icons.
   Result labels stay plain ink (only ambient POI labels take the category tint, like Google),
-  and while a result set is up the base map's own POI icons step aside so the results are the
-  only places on the map.
+  and while a result set is up the base map's own POI icons, stop signs and traffic lights all
+  step aside so the results are the only things on the map.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -

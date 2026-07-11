@@ -155,6 +155,7 @@ private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
+private var lastControlsVis: String? = null // identity-gate the traffic-control visibility flips
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
                                                        // every recomposition and re-tessellating a
                                                        // thousands-of-vertices linestring per fix burned
@@ -1040,6 +1041,7 @@ fun VelaMapView(
                 ensureLayers(style)
                 lastAppliedMarkers = null // fresh style = empty sources; force applyData to repopulate
                 lastOsmPoiVis = null
+                lastControlsVis = null
                 parkingApplied = false
                 lastAppliedAmbient = null
                 lastAppliedControls = null
@@ -2331,6 +2333,16 @@ private fun applyData(
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
         }
         lastOsmPoiVis = osmPoiVis
+    }
+    // Stop signs + traffic lights step aside during a search too (results are the subject; the
+    // junction furniture reads as clutter behind them) — but UNLIKE the basemap POIs they stay
+    // up alongside the ambient dots on the browse map, so this keys on the result set alone.
+    val controlsVis = if (markers.size > 1) Property.NONE else Property.VISIBLE
+    if (controlsVis != lastControlsVis) {
+        listOf(CONTROLS_LAYER, CONTROLS_CLAIM_LAYER).forEach { id ->
+            style.getLayer(id)?.setProperties(PropertyFactory.visibility(controlsVis))
+        }
+        lastControlsVis = controlsVis
     }
 
     // Traffic controls (lights + stop signs) → icon features. Identity-gated like markers/ambient so a
