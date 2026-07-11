@@ -338,8 +338,22 @@ class WebPhotoFetcher @Inject constructor(
                       for(var i=0;i<n.length;i++) walk(n[i],d+1);
                     }
                   }
-                  walk(window.APP_INITIALIZATION_STATE,0);
-                  try{ VelaBridge.onInfo(ID, JSON.stringify({aisUrls:urls, aisDated:out.length, sample:(out[0]||[])[0]||''})); }catch(e2){}
+                  // AIS's payloads are EMBEDDED JSON STRINGS (the ")]}'"-guarded blobs the
+                  // transit fetcher reads) - the live tree has no photo urls (probed: 0).
+                  // Parse every big string leaf that mentions photos and walk the PARSED tree.
+                  var blobs=0;
+                  function harvest(n,d){
+                    if(!n || d>8) return;
+                    if(isArr(n)){ for(var i=0;i<n.length;i++) harvest(n[i],d+1); }
+                    else if(typeof n==='string' && n.length>5000 && n.indexOf('googleusercontent')>=0){
+                      var t=n; if(t.indexOf(")]}'")===0) t=t.substring(4);
+                      var k=t.indexOf('['); if(k>=0 && k<8){
+                        try{ var parsed=JSON.parse(t.substring(k)); blobs++; walk(parsed,0); }catch(e3){}
+                      }
+                    }
+                  }
+                  harvest(window.APP_INITIALIZATION_STATE,0);
+                  try{ VelaBridge.onInfo(ID, JSON.stringify({blobs:blobs, aisUrls:urls, aisDated:out.length, sample:((out[0]||[])[0]||'').slice(0,60)})); }catch(e2){}
                   if(out.length) VelaBridge.onDates(ID, JSON.stringify(out));
                 }catch(e){}
               }
