@@ -522,4 +522,5 @@
     <string name="notif_ask_body">Navigatie houdt je volgende afslag in een melding, zodat de aanwijzingen bij je blijven met het scherm uit of in een andere app. Zonder melding zie je aanwijzingen alleen in Vela.</string>
     <string name="notif_ask_allow">Toestaan</string>
     <string name="notif_ask_skip">Overslaan</string>
+    <string name="place_time_past_toast">Die tijd is al geweest. Ingesteld op nu.</string>
 </resources>

@@ -1535,6 +1535,7 @@ private fun DepartTimeChooser(
     isTransit: Boolean = false,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
 ) {
+    val context = LocalContext.current
     val ink = if (isAppInDarkTheme()) InkDark else InkLight
     // Keyed to the destination so switching places resets the picked time. mode: 0 now, 1 depart at,
     // 2 arrive by, 3 last available (transit only). date + time compose the chosen wall-clock.
@@ -1562,6 +1563,9 @@ private fun DepartTimeChooser(
                 date = java.time.LocalDate.now()
                 val n = java.time.LocalTime.now().withSecond(0).withNano(0)
                 time = n.plusMinutes(((5 - n.minute % 5) % 5).toLong())
+                // Say so: the pill now shows a different time than the one just picked, and an
+                // unexplained rewrite of explicit input reads as a bug (user 2026-07-11).
+                Toast.makeText(context, context.getString(R.string.place_time_past_toast), Toast.LENGTH_SHORT).show()
             }
         }
         onTimeSelected(mode, if (mode == 0) null else epoch())

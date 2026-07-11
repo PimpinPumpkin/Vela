@@ -522,4 +522,5 @@
     <string name="notif_ask_body">Navigeringen håller nästa sväng i en avisering, så att anvisningarna följer med när skärmen är släckt eller du byter app. Utan den syns anvisningar bara inne i Vela.</string>
     <string name="notif_ask_allow">Tillåt</string>
     <string name="notif_ask_skip">Hoppa över</string>
+    <string name="place_time_past_toast">Den tiden har passerat. Inställd på nu.</string>
 </resources>
