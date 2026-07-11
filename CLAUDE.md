@@ -342,7 +342,13 @@ Defaults that make the safe path the easy one:
   neighbour's dot - Google doesn't category-tint result labels,
   only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
   0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
-  keep the two in lockstep. While a result SET is on the map (markers.size > 1) the basemap
+  keep the two in lockstep. **OSM POIs hide by COVERAGE, not ambient non-emptiness (2026-07-10):**
+  `MapUiState.ambientCoversView` (computed each onViewport settle: ambient non-empty AND centre
+  within 0.35x of `lastAmbientSpan` of the fetch centre AND viewRadius ≤ 0.55x span; forced true
+  when a fresh fetch lands, false under z14) drives the poi_r* visibility - blanket-hiding left
+  the outskirts iconless because one fetch only covers ~3.5-9 km (user 2026-07-10). Controls
+  (signs/lights) render from z17.5 on the browse map but z16 during nav (set in the nav
+  declutter effect). While a result SET is on the map (markers.size > 1) the basemap
   poi_r1/r7/r20 icons hide too, AND the traffic-control layers (stop signs + lights,
   `lastControlsVis` - controls stay up beside the ambient dots on the browse map, so their
   predicate is the result set alone). Own identity gates, NOT inside the ambient gate -
