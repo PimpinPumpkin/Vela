@@ -1698,13 +1698,13 @@ internal fun applyLight(style: Style) {
     // made it look un-Google). Soft-yellow motorways, neutralised landuse (no tan
     // residential/commercial blobs), subtle buildings. Tuned live in a MapLibre GL
     // JS harness against Google for reference.
-    val land = "#e8eaed"
+    val land = "#f2f1ee" // Google Maps light land (sampled 2026-07-11, warmer/lighter than the old #e8eaed)
     val white = "#ffffff"
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
-    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#a9d3f0"))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#90daee")) // Google Maps light water (verbatim)
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(0.7f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c4e6bf"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#d3f8e2"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c9f2da"), PropertyFactory.fillOpacity(1f))
     // Buildings (OSM footprints, already in the Liberty tiles — no key/data needed).
     // The old #e2e3e6 was a hair off the #e8eaed land, so they were ~invisible; give
     // them a touch more grey + a subtle outline so they read like Google's at z15+.
@@ -1740,7 +1740,7 @@ internal fun applyLight(style: Style) {
     }
     // Liberty fills wetlands with a fern-hatch pattern and pedestrian plazas with a
     // dotted one — Google shows both flat. Clear the pattern so the flat fill shows.
-    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#d6e8d0"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#cdeff0"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#ededed"))
     // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
     // roads. Bridges mirror their road tier so overpasses match.
@@ -1774,9 +1774,9 @@ internal fun applyDark(style: Style) {
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
     style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.7f))
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.5f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#1a3023"), PropertyFactory.fillOpacity(0.6f))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f)) // Google-dark park green: visible over the navy land (old #1c3326 was darker than the land, user 2026-07-11)
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#274330"), PropertyFactory.fillOpacity(0.95f))
     listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
         "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#49536a"))
@@ -1828,7 +1828,7 @@ internal fun applyDark(style: Style) {
         }
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
-    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#26403c"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
