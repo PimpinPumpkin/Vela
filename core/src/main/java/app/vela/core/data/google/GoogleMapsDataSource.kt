@@ -282,7 +282,7 @@ class GoogleMapsDataSource @Inject constructor(
                 // single-destination path's offline fallback; only then fall to Google's DIRECT route
                 // (which reaches the destination but loses the stops).
                 val onDevice = if (via == null && routeEngine.isReady(mode))
-                    chainOnDevice(listOf(origin) + waypoints + destination, mode) else null
+                    chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) else null
                 val result = when {
                     via != null -> listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
                     onDevice != null -> listOf(onDevice)
