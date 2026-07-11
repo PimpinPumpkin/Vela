@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -244,6 +245,9 @@ fun PlaceSheet(
     onRemoveFromList: (listId: String) -> Unit = {},
     onCreateListWith: (name: String) -> Unit = {},
     onSetNote: (String?) -> Unit = {},
+    // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
+    // card so the map is unobstructed (Google's behaviour). 0 = never.
+    minimizeTick: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -292,6 +296,24 @@ fun PlaceSheet(
         // Skip when a drag-release settle is already animating to this exact detent - restarting
         // would zero the coast velocity mid-glide.
         if (heightAnim.targetValue != target) heightAnim.animateTo(target, settleSpec)
+    }
+    // The user grabbed the map: glide down to the minimized card on a SOFT spring (the settle
+    // stiffness reads as a blink for this unprompted drop). Runs after the state-flip effect
+    // above, so animating on VALUE (not targetValue) deliberately replaces its quicker settle.
+    val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    // Consume-once guard: seenTick INITIALIZES to the tick's CURRENT value, so a fresh mount
+    // (picking a place from the results list re-mounts the sheet) never treats a STALE tick as
+    // a new pan - a LaunchedEffect fires on first composition too, and without this the next
+    // place opened pre-minimized (user 2026-07-10). Only a bump AFTER mount glides.
+    var seenTick by remember { mutableStateOf(minimizeTick) }
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == seenTick) return@LaunchedEffect
+        seenTick = minimizeTick
+        // Glide FIRST, flip the states after: any content keyed on the minimized state then
+        // changes only once the card is already down (flipping first read as a pop, not a glide).
+        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
+        expandedState.value = false
+        minimizedState.value = true
     }
     // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
     // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
@@ -1198,21 +1220,97 @@ fun DirectionsPanel(
     // Keyed to the destination so opening directions for a different place starts
     // expanded again instead of inheriting the previous session's collapsed state.
     val collapsed = remember(destinationName) { mutableStateOf(false) }
+    // The chooser body collapses CONTINUOUSLY, the place card's physics: `frac` (1 = full body,
+    // 0 = minimized to the header + Start) tracks the finger 1:1 from the handle or a body drag
+    // at its top, and releases ride the fling's own decay to whichever end the momentum points
+    // at - the old handle-only threshold flip read as no gesture at all (user 2026-07-11).
+    val frac = remember(destinationName) { Animatable(1f) }
+    var bodyHPx by remember(destinationName) { mutableStateOf(0) }
+    val panelSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    val panelDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    val panelScope = rememberCoroutineScope()
+    val panelScroll = rememberScrollState()
+    LaunchedEffect(destinationName, collapsed.value) {
+        val target = if (collapsed.value) 0f else 1f
+        if (frac.targetValue != target) frac.animateTo(target, panelSettle)
+    }
+    fun dragPanelBy(dyPx: Float) {
+        if (bodyHPx <= 0) return
+        panelScope.launch { frac.snapTo((frac.value - dyPx / bodyHPx).coerceIn(0f, 1f)) }
+    }
+    fun settlePanel(velocityPxPerSec: Float) {
+        if (bodyHPx <= 0) return
+        val vFrac = velocityPxPerSec / bodyHPx
+        val naturalEnd = panelDecay.calculateTargetValue(frac.value, -vFrac)
+        val target = if (kotlin.math.abs(naturalEnd - 0f) < kotlin.math.abs(naturalEnd - 1f)) 0f else 1f
+        panelScope.launch {
+            if (target == 1f) collapsed.value = false // body must be composed while it grows
+            val towardTarget = (naturalEnd - frac.value) * (target - frac.value) > 0f
+            if (towardTarget && kotlin.math.abs(naturalEnd - frac.value) >= kotlin.math.abs(target - frac.value)) {
+                try {
+                    frac.updateBounds(lowerBound = minOf(frac.value, target), upperBound = maxOf(frac.value, target))
+                    frac.animateDecay(-vFrac, panelDecay)
+                } finally {
+                    frac.updateBounds(lowerBound = null, upperBound = null)
+                }
+                if (kotlin.math.abs(frac.value - target) > 0.005f) frac.animateTo(target, panelSettle)
+            } else {
+                frac.animateTo(target, panelSettle, initialVelocity = -vFrac)
+            }
+            if (target == 0f) collapsed.value = true
+        }
+    }
+    // Body drags at the scroll top move the chooser 1:1 (the natural "swipe the sheet down"
+    // lands on the body, not the thin handle); content scrolls once the body is fully open.
+    val panelConn = remember(destinationName) {
+        object : NestedScrollConnection {
+            private var dragging = false
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && panelScroll.value == 0 && frac.value > 0f) {
+                    dragging = true
+                    dragPanelBy(available.y)
+                    return available
+                }
+                if (available.y < 0f && frac.value < 1f) {
+                    dragging = true
+                    dragPanelBy(available.y)
+                    return available
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (dragging) {
+                    dragging = false
+                    settlePanel(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
-            // Drag handle — swipe down to minimise the chooser (peek the route on the
-            // map before you Start), swipe up or tap to bring it back.
+            // Drag handle — the chooser follows the finger; tap still toggles.
             Box(
                 Modifier
                     .fillMaxWidth()
                     .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dy ->
-                            if (dy > 6f) collapsed.value = true else if (dy < -6f) collapsed.value = false
-                        }
+                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                        detectVerticalDragGestures(
+                            onDragStart = { tracker.resetTracking() },
+                            onVerticalDrag = { change, dy ->
+                                change.consume()
+                                tracker.addPosition(change.uptimeMillis, change.position)
+                                if (collapsed.value && dy < 0f) collapsed.value = false
+                                dragPanelBy(dy)
+                            },
+                            onDragEnd = { settlePanel(tracker.calculateVelocity().y) },
+                            onDragCancel = { settlePanel(0f) },
+                        )
                     }
                     .dpadHighlight(RoundedCornerShape(3.dp)) // D-pad: OK toggles (docs/dpad.md)
                     .clickable { collapsed.value = !collapsed.value }
@@ -1351,15 +1449,24 @@ fun DirectionsPanel(
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
-            AnimatedVisibility(visible = !collapsed.value) {
+            if (!collapsed.value || frac.value > 0.005f) {
               // Cap the expandable body to ~58% of the screen and let it scroll — on short screens the
               // mode chips + route/transit list + Start button are taller than the bottom-anchored card,
               // so without this the Start button (drive) and the lower transit trips fall off the bottom,
               // unreachable. verticalScroll keeps the whole chooser usable; the map stays visible above.
+              // The frac read lives in the LAYOUT modifier so animation frames never recompose the body.
               Column(
                   Modifier
+                      .layout { measurable, constraints ->
+                          val pl = measurable.measure(constraints)
+                          bodyHPx = maxOf(bodyHPx, pl.height)
+                          val h = (pl.height * frac.value).toInt().coerceAtLeast(0)
+                          layout(pl.width, h) { pl.place(0, 0) }
+                      }
+                      .clipToBounds()
                       .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.58f).dp)
-                      .verticalScroll(rememberScrollState()),
+                      .nestedScroll(panelConn)
+                      .verticalScroll(panelScroll),
               ) {
             Spacer(Modifier.height(10.dp))
             // D-pad-first (docs/dpad.md): land focus on the first travel-mode tab when the
@@ -1466,7 +1573,7 @@ fun DirectionsPanel(
               }
             }
             // Minimised: keep a Start button reachable without expanding.
-            if (collapsed.value) {
+            if (collapsed.value && frac.value < 0.05f) {
                 Button(
                     onClick = onStartNav,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
