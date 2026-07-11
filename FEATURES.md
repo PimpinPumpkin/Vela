@@ -17,6 +17,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is now a white chevron inside
+  a filled blue circle with a white ring and a soft shadow, matching Google's current puck; it
+  rotates about the exact GPS point. Replaces the bare blue chevron.
+- ✅ **Bold street names (2026-07-11).** Road-name labels render in the Bold font stack in both
+  themes, like Google; other labels keep regular weight.
+- ✅ **Bike paths in Google's teal (2026-07-11).** Dedicated cycleways (OSM highway=cycleway)
+  draw as their own teal line layer, split out of the green foot-trail network. On-street
+  painted lanes are not in the keyless tile schema (Overpass follow-up in ROADMAP).
+- ✅ **"1 result" is finally singular (2026-07-11, issue #56).** The results-count bar uses real
+  Android plurals in all 11 locales, with the correct plural categories per language (Russian,
+  Polish and Ukrainian get their one/few/many forms).
 - ✅ **Result filters grew up (2026-07-10).** The rating and price chips open real menus (rating
   tiers 3.5+/4.0+/4.5+ like Google, price levels $ through $$$$) and Sort is a menu of
   Relevance / Rating / Distance, instead of chips that blindly cycled through hidden states. New
@@ -886,6 +897,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **"Take the ramp" pronounced right (2026-07-11, ear-verified).** espeak's phonemizer
+  mis-voweled "take" ("tyke") when the whole ramp sentence was phonemized in one breath; the
+  spoken text now inserts a comma before "toward", so the maneuver clause and the sign
+  destination are separate beats (Google pauses there too). Banner text unchanged.
 - ✅ **Android Auto, full car-side navigation (2026-07-08, PR #17 by jacobjeger; replaces the first cut).**
   Vela registers as a navigation-category templated car app (sideloads appear once AA's developer "Unknown
   sources" switch is on). The car now runs the WHOLE flow by itself: a home screen (Home/Work, recents,
