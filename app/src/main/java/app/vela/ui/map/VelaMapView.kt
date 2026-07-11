@@ -1269,6 +1269,54 @@ private fun ensureLayers(style: Style) {
             )
         style.addLayerAbove(plaza, "road_area_pattern")
     }
+    // Sports fields (pitch/playground/track/stadium) get their own accent fill - the Google
+    // app tints them a touch lighter than the surrounding park (dark #0d4956 vs #0d3847,
+    // sampled on the P9 side-by-side 2026-07-11). Drawn above the vegetation fills.
+    if (style.getLayer("vela-pitch") == null && style.getLayer("park") != null) {
+        val pitch = FillLayer("vela-pitch", "openmaptiles").withSourceLayer("landuse")
+            .withFilter(
+                Expression.match(
+                    Expression.get("class"), Expression.literal(false),
+                    Expression.stop("pitch", true), Expression.stop("playground", true),
+                    Expression.stop("track", true), Expression.stop("stadium", true),
+                ),
+            )
+        pitch.minZoom = 13f
+        style.addLayerAbove(pitch, "park")
+    }
+    // Park + bike TRAILS, Google-style green lines (dark #167055, sampled 2026-07-11).
+    // Liberty's own path layers stay hidden (class path+pedestrian = every sidewalk, the
+    // June "weird walking tracks" clutter); this twin keeps ONLY the deliberate trail
+    // network - subclass path/cycleway/bridleway - and skips footway/steps/pedestrian.
+    if (style.getLayer("vela-trails") == null && style.getLayer("road_minor") != null) {
+        val trails = LineLayer("vela-trails", "openmaptiles").withSourceLayer("transportation")
+            .withFilter(
+                Expression.all(
+                    Expression.match(
+                        Expression.geometryType(), Expression.literal(false),
+                        Expression.stop("LineString", true), Expression.stop("MultiLineString", true),
+                    ),
+                    Expression.eq(Expression.get("class"), Expression.literal("path")),
+                    Expression.match(
+                        Expression.get("subclass"), Expression.literal(false),
+                        Expression.stop("path", true), Expression.stop("cycleway", true),
+                        Expression.stop("bridleway", true),
+                    ),
+                ),
+            )
+        trails.minZoom = 14f
+        trails.setProperties(
+            PropertyFactory.lineWidth(
+                Expression.interpolate(
+                    Expression.exponential(1.4f), Expression.zoom(),
+                    Expression.stop(14f, 0.7f), Expression.stop(16f, 1.6f), Expression.stop(19f, 4f),
+                ),
+            ),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+        )
+        // Under the real streets so a trail crossing merges beneath the road, like Google.
+        style.addLayerBelow(trails, "road_minor")
+    }
     // (2) The OSM poi tiers scatter park/garden/tree icons across every wood - Google keeps
     // forests flat colour. Rebuild each tier's rank-band filter with vegetation excluded.
     run {
@@ -1770,6 +1818,10 @@ internal fun applyLight(style: Style) {
     // dotted one — Google shows both flat. Clear the pattern so the flat fill shows.
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#ededed"))
+    // Light-mode pitch/trail colours are ESTIMATES (harmonised with the light palette);
+    // the sampled truth is dark-mode only so far - resample when a light P9 capture exists.
+    style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#c2ecd4"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#8fbfa0"))
     // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
     // roads. Bridges mirror their road tier so overpasses match.
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
@@ -1869,6 +1921,8 @@ internal fun applyDark(style: Style) {
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
+    style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#0d4956"), PropertyFactory.fillOpacity(1f)) // sports fields, sampled
+    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055")) // park/bike trails, sampled
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
     style.getLayer(HILLSHADE_LAYER)?.setProperties(

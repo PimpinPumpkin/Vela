@@ -910,10 +910,13 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   (DARKER than land, the inverted relationship matters), vegetation #0d3847 (teal), buildings
   #1c3b69 w/ outline #2e3d6d (Google's own second shade), minor roads #3d5a77,
   arterials/trunk/motorway #476789, casings = land, service/alley tier #2a4056 (Google
-  draws alleys DARKER than streets - second P9 side-by-side 2026-07-11). Known deltas
-  MEASURED but not applied (user call pending): Google draws park/bike TRAILS as green
-  lines (#167055) where Vela hides all paths (the June "weird walking tracks" call), and
-  a tiny lighter-teal accent (#0d4956, sports fields/playgrounds, <1% of park pixels). 3D extrusions = the flat colour at
+  draws alleys DARKER than streets - second P9 side-by-side 2026-07-11). Both former deltas are APPLIED (user 2026-07-11): `vela-trails` (LineLayer twin,
+  class=path subclass path/cycleway/bridleway ONLY - footway/steps/pedestrian stay hidden,
+  that was the June "weird walking tracks" clutter; inserted BELOW road_minor, minZoom 14)
+  draws the trail network green (dark #167055 sampled); `vela-pitch` (landuse
+  pitch/playground/track/stadium, above park) tints sports fields (dark #0d4956 sampled).
+  Their LIGHT-mode colours (#8fbfa0 / #c2ecd4) are harmonised ESTIMATES - resample when a
+  light-mode P9 capture exists. 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
