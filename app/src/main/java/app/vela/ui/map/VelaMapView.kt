@@ -1867,12 +1867,14 @@ internal fun applyLight(style: Style) {
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#d3f8e1"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#dbe0e8")) // pedestrian/parking surface, sampled
     style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#fdf9ef"), PropertyFactory.fillOpacity(1f)) // cream, sampled
-    // Pitch light colour is the one remaining ESTIMATE (no sports court in the light
-    // captures); everything else in this function is P9-sampled.
-    style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#c2ecd4"), PropertyFactory.fillOpacity(1f))
+    // Sports fields: P9-sampled #a9eac2 (Toomey Field + the tennis centre both read it).
+    style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#a9eac2"), PropertyFactory.fillOpacity(1f))
     listOf("landuse_pitch", "landuse_track").forEach { // Liberty's own pitch layers sit ABOVE the twin and covered it
-        style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#c2ecd4"), PropertyFactory.fillOpacity(1f))
+        style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#a9eac2"), PropertyFactory.fillOpacity(1f))
     }
+    // Institutional campuses (schools/universities) wear a warm pale grey distinct from
+    // the city land in the Google app (#f0eded, P9-sampled at UC Davis 2026-07-11).
+    style.getLayer("landuse_school")?.setProperties(PropertyFactory.fillColor("#f0eded"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#7fcdb0")) // sampled
     // Roads: the app uses ONE blue-grey fill for streets and arterials alike, a deeper
     // blue for motorways, a darker tier for driveways, and NO visible casings (they
