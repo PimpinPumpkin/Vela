@@ -898,6 +898,34 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   #90daee. The map-style Settings row is REMOVED (single style; plumbing kept). Nav-card trip
   time is a FitText (shrinks to fit, floor 55%, never wraps/ellipsises).
 
+- **Sheet flick velocity is measured on INTEGRATED deltas (2026-07-11):** the manual
+  VelocityTrackers (place handle, results handle, the drag-anywhere directions panel) fed
+  change.position, which is local to a node that MOVES as the sheet resizes - measured
+  velocity ~0, flicks read as slow drags and never committed. They now feed a running sum of
+  the drag deltas. `FLING_COMMIT_DPS` dropped 450 -> 260. The nested-scroll body paths were
+  never affected (Compose computes those velocities properly), which is why the place sheet
+  body always felt right.
+- **Map palette is USER-EYEDROPPED from the Google app (2026-07-11, supersedes my web/screen
+  estimates):** DARK land #111c31, buildings #172b56 (outline #243970), roads #304864 (trunk
+  #3d5878, casings = land), vegetation #0d2b38. LIGHT vegetation #caf8dc, buildings #e2e3e9,
+  roads #b0c1d4 (secondary #aabdd0, trunk #a4b8cd, casings #a2b4c9); light land stays #f2f1ee
+  (user prefers it over Google's #f6f6f6). Their eyedrop had macOS colour-shift on - expect a
+  fine-tune pass.
+- **Map font CANNOT be Roboto via OpenFreeMap (probed 2026-07-11):** their glyph server 404s
+  every Roboto stack (Noto only). The plan (ROADMAP): host our own Roboto glyph PBFs on the
+  repo's GitHub Pages next to the F-Droid repo, fetch the LIVE style JSON at runtime, patch
+  its `glyphs` URL + fontstack names, and load fromJson - keeps auto-following OpenFreeMap's
+  tile snapshots (the parked asset style failed because it PINNED a dated tile path, not
+  because fromJson is wrong). Touches offline style caching - do it as its own change.
+- **Two-finger tilt: shove detector widened** (maxShoveAngle 55, pixelDeltaThreshold 8) - the
+  stock 20-degree parallel requirement made tilt nearly impossible. **Photo viewer:**
+  double-tap zooms 2.5x at the tap point / back out (a tap-detector pointerInput layered
+  before the custom pinch/dismiss loop, which never consumes bare taps).
+- **"Also at this location" is ALIVE (`placesHere`/`othersAt`)** - it fills only when the
+  selected place resolves alongside OTHER listings at the same address (strip malls, tapping
+  an address). Rarely seeing it = data-dependent, not removed. "People also search for"
+  (`similarPlaces`) is the different, related-places row.
+
 ## Working on the scraper
 
 - The `pb` request *grammar* (`PbBuilder`) and `PolylineCodec` are correct and
