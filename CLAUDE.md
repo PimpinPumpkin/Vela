@@ -914,7 +914,10 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   class=path subclass path/cycleway/bridleway ONLY - footway/steps/pedestrian stay hidden,
   that was the June "weird walking tracks" clutter; inserted BELOW road_minor, minZoom 14)
   draws the trail network green (dark #167055 sampled); `vela-pitch` (landuse
-  pitch/playground/track/stadium, above park) tints sports fields (dark #0d4956 sampled).
+  pitch/playground/track/stadium, above park) tints sports fields (dark #0d4956 sampled)
+  - AND Liberty's own `landuse_pitch`/`landuse_track` layers (they sit ABOVE the twin) are
+  coloured directly + exempted from the landuse-neutralise loops, else the tint never showed
+  (found at a park with ball courts).
   Their LIGHT-mode colours (#8fbfa0 / #c2ecd4) are harmonised ESTIMATES - resample when a
   light-mode P9 capture exists. 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
