@@ -1714,7 +1714,6 @@ private fun SearchResults(
     // one; tap the handle to step up. The X exits the search entirely (results + query),
     // same as backing all the way out.
     var openOnly by remember { mutableStateOf(false) }
-    var topRated by remember { mutableStateOf(false) }
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
     var priceMax by remember { mutableStateOf(0) }
     val screenH = LocalConfiguration.current.screenHeightDp
@@ -1811,8 +1810,18 @@ private fun SearchResults(
             }
         }
     }
-    // Sort: 0 = relevance (Google's order), 1 = rating, 2 = distance. Tapping the chip cycles.
+    // Sort: 0 = relevance (Google's order), 1 = rating, 2 = distance. Picked from a menu — a
+    // cycling chip hid what the options even were (user 2026-07-10, same for price + rating).
     var sortMode by remember { mutableStateOf(0) }
+    var sortMenu by remember { mutableStateOf(false) }
+    var priceMenu by remember { mutableStateOf(false) }
+    var ratingMenu by remember { mutableStateOf(false) }
+    // Rating floor: 0 = off, else 3.5 / 4.0 / 4.5 (Google's tiers).
+    var minRating by remember { mutableStateOf(0.0) }
+    // Wheelchair accessible only — the one attribute the keyless search response carries
+    // per result (see Place.wheelchairAccessible); the rest of Google's attribute filters
+    // would need a details fetch per place.
+    var accessibleOnly by remember { mutableStateOf(false) }
     // Google-style filters: currently open, 4.0★+, and price (≤ the chosen level).
     // "Open now" falls back to the WEEKLY HOURS when Google sent no live status (openNow == null) —
     // the multi-result response often omits the status string, and dropping those places made the
@@ -1825,8 +1834,9 @@ private fun SearchResults(
                 p.openNow ?: (app.vela.core.util.OpeningHours.statusAt(p.hours, nowForHours)?.open == true)
             }
         }
-        .let { list -> if (topRated) list.filter { (it.rating ?: 0.0) >= 4.0 } else list }
+        .let { list -> if (minRating > 0.0) list.filter { (it.rating ?: 0.0) >= minRating } else list }
         .let { list -> if (priceMax > 0) list.filter { (it.priceLevel ?: Int.MAX_VALUE) <= priceMax } else list }
+        .let { list -> if (accessibleOnly) list.filter { it.wheelchairAccessible } else list }
         .let { list ->
             when (sortMode) {
                 1 -> list.sortedByDescending { it.rating ?: -1.0 }
@@ -1963,43 +1973,80 @@ private fun SearchResults(
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
+                    // Rating floor: a MENU of Google's tiers (3.5+/4.0+/4.5+) — the old fixed
+                    // 4.0★ toggle couldn't say what it did or offer another bar.
+                    Box {
+                        ElevatedFilterChip(
+                            selected = minRating > 0.0,
+                            onClick = { ratingMenu = true },
+                            label = { Text(if (minRating > 0.0) String.format(Locale.US, "%.1f+ ★", minRating) else stringResource(R.string.mapscreen_filter_rating)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            colors = chipColors,
+                            border = null,
+                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        )
+                        VelaMenu(expanded = ratingMenu, onDismissRequest = { ratingMenu = false }) {
+                            item(stringResource(R.string.mapscreen_filter_any_rating)) { minRating = 0.0; ratingMenu = false }
+                            item("3.5+ ★") { minRating = 3.5; ratingMenu = false }
+                            item("4.0+ ★") { minRating = 4.0; ratingMenu = false }
+                            item("4.5+ ★") { minRating = 4.5; ratingMenu = false }
+                        }
+                    }
+                    // Price ceiling: a menu of the four levels instead of blind cycling.
+                    Box {
+                        ElevatedFilterChip(
+                            selected = priceMax > 0,
+                            onClick = { priceMenu = true },
+                            label = { Text(if (priceMax == 0) stringResource(R.string.mapscreen_filter_price) else "≤ " + "$".repeat(priceMax)) },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            colors = chipColors,
+                            border = null,
+                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        )
+                        VelaMenu(expanded = priceMenu, onDismissRequest = { priceMenu = false }) {
+                            item(stringResource(R.string.mapscreen_filter_any_price)) { priceMax = 0; priceMenu = false }
+                            (1..4).forEach { lvl ->
+                                item("$".repeat(lvl)) { priceMax = lvl; priceMenu = false }
+                            }
+                        }
+                    }
+                    // Wheelchair accessible — the one attribute filter the keyless response supports.
                     ElevatedFilterChip(
-                        selected = topRated,
-                        onClick = { topRated = !topRated },
-                        label = { Text(stringResource(R.string.mapscreen_filter_top_rated)) },
+                        selected = accessibleOnly,
+                        onClick = { accessibleOnly = !accessibleOnly },
+                        label = { Text(stringResource(R.string.mapscreen_filter_accessible)) },
                         shape = androidx.compose.foundation.shape.CircleShape,
                         colors = chipColors,
                         border = null,
-                        leadingIcon = if (topRated) {
+                        leadingIcon = if (accessibleOnly) {
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
-                    // Price: tap to cycle off → ≤$ → ≤$$ → ≤$$$ → ≤$$$$ → off.
-                    ElevatedFilterChip(
-                        selected = priceMax > 0,
-                        onClick = { priceMax = (priceMax + 1) % 5 },
-                        label = { Text(if (priceMax == 0) stringResource(R.string.mapscreen_filter_price) else "≤ " + "$".repeat(priceMax)) },
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        colors = chipColors,
-                        border = null,
-                    )
-                    // Sort: tap to cycle relevance (Google's order) → rating → distance.
-                    ElevatedFilterChip(
-                        selected = sortMode > 0,
-                        onClick = { sortMode = (sortMode + 1) % 3 },
-                        label = {
-                            Text(
-                                when (sortMode) {
-                                    1 -> stringResource(R.string.mapscreen_sort_rating)
-                                    2 -> stringResource(R.string.mapscreen_sort_distance)
-                                    else -> stringResource(R.string.mapscreen_sort)
-                                },
-                            )
-                        },
-                        shape = androidx.compose.foundation.shape.CircleShape,
-                        colors = chipColors,
-                        border = null,
-                    )
+                    // Sort: a menu (Relevance / Rating / Distance) instead of blind cycling.
+                    Box {
+                        ElevatedFilterChip(
+                            selected = sortMode > 0,
+                            onClick = { sortMenu = true },
+                            label = {
+                                Text(
+                                    when (sortMode) {
+                                        1 -> stringResource(R.string.mapscreen_sort_rating)
+                                        2 -> stringResource(R.string.mapscreen_sort_distance)
+                                        else -> stringResource(R.string.mapscreen_sort)
+                                    },
+                                )
+                            },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            colors = chipColors,
+                            border = null,
+                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        )
+                        VelaMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                            item(stringResource(R.string.mapscreen_sort_relevance)) { sortMode = 0; sortMenu = false }
+                            item(stringResource(R.string.mapscreen_sort_rating_item)) { sortMode = 1; sortMenu = false }
+                            item(stringResource(R.string.mapscreen_sort_distance_item)) { sortMode = 2; sortMenu = false }
+                        }
+                    }
                 }
                 } // if (!collapsed) — chips
             }

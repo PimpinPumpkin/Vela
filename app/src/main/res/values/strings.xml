@@ -302,7 +302,13 @@
     <string name="mapscreen_expand_list">Expand list</string>
     <string name="mapscreen_close_results">Close search results</string>
     <string name="mapscreen_filter_open_now">Open now</string>
-    <string name="mapscreen_filter_top_rated">4.0★</string>
+    <string name="mapscreen_filter_rating">Rating</string>
+    <string name="mapscreen_filter_any_rating">Any rating</string>
+    <string name="mapscreen_filter_any_price">Any price</string>
+    <string name="mapscreen_filter_accessible">Wheelchair accessible</string>
+    <string name="mapscreen_sort_relevance">Relevance</string>
+    <string name="mapscreen_sort_rating_item">Rating</string>
+    <string name="mapscreen_sort_distance_item">Distance</string>
     <string name="mapscreen_filter_price">Price</string>
     <string name="mapscreen_sort">Sort</string>
     <string name="mapscreen_sort_rating">Sort: Rating</string>
