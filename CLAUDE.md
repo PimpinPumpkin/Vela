@@ -281,7 +281,9 @@ Defaults that make the safe path the easy one:
   unselected FilterChip read as disabled) while the REAL selection groups (travel mode,
   leave/depart/arrive) keep the M3 filled-when-selected contrast on purpose - filling those
   would erase the selection signal. Past picks are impossible: the date picker greys out days
-  before today and a confirmed past time clamps to the next 5-minute mark now.
+  before today and a confirmed past time clamps to the next 5-minute mark now, WITH a toast
+  (`place_time_past_toast`, all 11 locales): the pill shows a different time than the pick,
+  and a silent rewrite of explicit input reads as a bug.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range

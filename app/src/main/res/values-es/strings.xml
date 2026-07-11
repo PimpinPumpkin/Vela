@@ -522,4 +522,5 @@
     <string name="notif_ask_body">La navegación mantiene tu próximo giro en una notificación, para que las indicaciones te acompañen con la pantalla apagada o en otra app. Sin ella, solo hay indicaciones dentro de Vela.</string>
     <string name="notif_ask_allow">Permitir</string>
     <string name="notif_ask_skip">Omitir</string>
+    <string name="place_time_past_toast">Esa hora ya pasó. Ajustado a ahora.</string>
 </resources>
