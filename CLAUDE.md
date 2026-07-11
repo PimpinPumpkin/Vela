@@ -353,7 +353,15 @@ Defaults that make the safe path the easy one:
   list, or return from one) used to replay the stale tick and open pre-minimized (user
   2026-07-10). Any new tick-style signal into a sheet needs the same guard. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
-  `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
+  `primary` teal + check on, `border = null`). **Rating/Price/Sort are VelaMenu chips (2026-07-10)**
+  (tiers 3.5+/4.0+/4.5+, price levels, Relevance/Rating/Distance) - blind cycling hid the options;
+  plus a "Wheelchair accessible" toggle chip filtering `Place.wheelchairAccessible`, parsed in
+  SearchParser off the LANGUAGE-NEUTRAL attribute id `has_wheelchair_accessible_entrance` in the
+  `[1][100][1]` attribute block (labels arrive localized, ids don't; unit-tested). That block is
+  the ONE attribute family the keyless search ships per result - vegetarian/reservations/etc.
+  exist only in per-place About data, so result-list filtering on them is not feasible keyless
+  (don't re-chase). Filters stay LOCAL to the fetched results by design; no cuisine facets (the
+  query is the cuisine filter). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
   `chromeLift` (76dp) so nothing sits on the minimized bar. The compass is MapLibre's built-in
   (`setCompassMargins`), which fades facing north (Google's behaviour) and reappears when
