@@ -144,8 +144,8 @@ Defaults that make the safe path the easy one:
   assume 400+ releases and paginate or bound by tag - unpaginated list queries caused both the
   deletion and a wrong damage report.
 - CI: **nightly + weekly channels (2026-07-08).** `.github/workflows/ci.yml`: every push to
-  `main` builds + tests the APK and publishes a **PRERELEASE** `v0.3.<run>` (versionName
-  `0.3.<run>`, versionCode `2000+run`) - the nightly channel; Obtainium users opt in with
+  `main` builds + tests the APK and publishes a **PRERELEASE** `v0.4.<run>` (versionName
+  `0.4.<run>`, versionCode `2000+run`) - the nightly channel; Obtainium users opt in with
   "include prereleases". **Docs-only pushes don't run CI or cut a nightly (2026-07-09):**
   `paths-ignore` skips markdown/docs/LICENSE/fdroid-metadata/issue-template changes (a mixed
   docs+code push still builds - it skips only when EVERY changed file matches). Workflow-file
@@ -170,7 +170,11 @@ Defaults that make the safe path the easy one:
   1000s, got installed on a test phone, and left it *ahead* of the release line - 
   Obtainium then saw the next release as a downgrade. **Keep local dev builds
   below 1000**, e.g. `-PappVersionCode=1`, so the release line always wins. Bumped
-  versionName `0.2.<run>` → `0.3.<run>` on 2026-07-08 - a big UI batch (stadium-pill
+  versionName `0.2.<run>` → `0.3.<run>` on 2026-07-08, and `0.3.<run>` → `0.4.<run>` on
+  2026-07-11 (the twelve-PR polish wave: sampled palettes, Roboto glyphs, dot tier, POI
+  speed, avoid toggles). NEVER a literal `0.4.0`: the updater's tag regex takes the RUN
+  number for the versionCode compare, so a hand-named v0.4.0 would read as vc 2000 and
+  never be offered. (The 0.3 bump was a big UI batch: stadium-pill
   chips, rebuilt results detents, full-screen-results z-order fix) plus community
   files + the in-app updater. The versionCode base stays `2000+run` because the run
   number is global/monotonic, so vc keeps rising across the minor bump; only the
