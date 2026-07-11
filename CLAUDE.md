@@ -1265,9 +1265,14 @@ architecture note.
   weightings (Toll.ALL / RoadClass.MOTORWAY -> infinite weight; tolls wins when both toggles
   are on). directions() tries the on-device avoid route FIRST when a toggle is on; a graph
   without the profiles returns EMPTY (never silently routes through a toll) and the online
-  chain falls back to a NORMAL route. **The avoid profiles go LIVE per region at the next
-  `routing-graphs.yml` rebake (planned after the polish pass)** - until then the toggles
-  re-route but only change anything where a v2 graph is installed.
+  chain falls back to a NORMAL route. **LIVE since 2026-07-11: all 135 regions are rebaked as the v2 generation**
+  (`<id>-v2.zip` + `routing-manifest-v2.json` beside the untouched v1 assets on the
+  `routing-graphs` release - the workflow's `variant` input publishes parallel generations)
+  and the app's `ROUTING_MANIFEST_URL` default points at the v2 manifest; rollback = revert
+  that one build.gradle.kts line. Graphs installed before the cutover keep working (the
+  engine try-loads the v2 EV string then legacy) but lack the avoid profiles until
+  re-downloaded. Device-verified: Dover-Smyrna with Avoid tolls swung off the DE-1 toll road
+  onto the free route, single on-device route, no live-traffic tag.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
   `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
   the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
