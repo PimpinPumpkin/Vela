@@ -134,6 +134,7 @@
     <string name="settings_support_button">Apoiar o Vela</string>
     <string name="settings_version">Versão</string>
     <string name="settings_version_line">Vela %1$s  (compilação %2$d)</string>
+    <string name="settings_version_copied">Versão copiada</string>
     <string name="settings_collapse">Recolher</string>
     <string name="settings_expand">Expandir</string>
     <string name="settings_voice_lib_empty_hint">★ assinala as vozes recomendadas. Todas funcionam offline no telemóvel.</string>
