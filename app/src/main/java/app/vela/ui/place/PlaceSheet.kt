@@ -2505,23 +2505,24 @@ private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (I
  *  box past the visible circle, which is why the header circles overlapped through two rounds
  *  of "make them smaller" (user 2026-07-10). Here the layout size IS the circle, full stop. */
 @Composable
-private fun HeaderCircleButton(
+internal fun HeaderCircleButton(
     icon: ImageVector,
     contentDescription: String?,
     tint: Color,
     bg: Color,
+    size: androidx.compose.ui.unit.Dp = 36.dp,
     onClick: () -> Unit,
 ) {
     Box(
         Modifier
-            .size(36.dp)
+            .size(size)
             .clip(androidx.compose.foundation.shape.CircleShape)
             .background(bg.copy(alpha = 0.12f))
             .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(size / 2))
     }
 }
 
