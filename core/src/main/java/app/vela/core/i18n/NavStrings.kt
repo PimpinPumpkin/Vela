@@ -1331,7 +1331,7 @@ object ZhNavStrings : NavStrings {
         val m = modWord(mod)
         val side = sideWord(mod)
         return when (type) {
-            "depart" -> if (road != null) "沿$road出发" else "开始行程"
+            "depart" -> if (road != null) "沿${road}出发" else "开始行程"
             "arrive" -> "到达目的地"
             "turn", "end of road" -> (m.ifBlank { "转弯" }) + onto
             "continue", "new name" -> if (side.isNotBlank() && m != "直行") "${side}行驶$onto" else "继续直行$onto"
@@ -1428,7 +1428,7 @@ object ZhTwNavStrings : NavStrings {
         val m = modWord(mod)
         val side = sideWord(mod)
         return when (type) {
-            "depart" -> if (road != null) "沿$road出發" else "開始行程"
+            "depart" -> if (road != null) "沿${road}出發" else "開始行程"
             "arrive" -> "到達目的地"
             "turn", "end of road" -> (m.ifBlank { "轉彎" }) + onto
             "continue", "new name" -> if (side.isNotBlank() && m != "直行") "${side}行駛$onto" else "繼續直行$onto"
