@@ -70,6 +70,21 @@ at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-
   three category chips fit where before only one did. `MIN_WIDTH_DP` is tuned VISUALLY (smaller text is
   the cost) - re-verify on-screen if you change it. NB density fixes LAYOUT/clipping, not focus - the
   D-pad focus rules below are separate.
+- **"Fully supported" is a HARD REQUIREMENT, not a vibe.** You may call a device (or its screen size)
+  FULLY SUPPORTED only when **EVERY screen** is reachable, opens focused, is D-pad-navigable, and is
+  clip-free at that device's screen size - **verified VISUALLY by screenshot**, not by a passing script
+  alone. "Every screen" means the WHOLE app, not a core subset: first-run (Welcome + every onboarding
+  dialog), bare map, search overlay + results, place sheet + expanded + reviews + overflow menu,
+  directions + route alternates + steps, turn-by-turn navigation cards, transit, AND every Settings
+  section + sub-screen (Voice library, Offline, Saved places, Diagnostics, ...), plus every menu/dialog.
+  The reproducible gate is **`tests/devices/full_coverage.sh <id>`** - it drives every surface at the
+  device's simulated size, captures a labeled screenshot of each, and prints a COVERED/MISSED checklist;
+  a device is fully supported only when it reports **FULLY COVERED (0 MISSED)** and you have LOOKED at
+  the frames. Content surfaces (search/place/nav/transit) need live search+routing, so run it with the
+  network up - a MISSED row (including network-blocked) means NOT fully supported yet. Until every row
+  is covered, the status is "core surfaces at the simulated size", NOT "fully supported" - say so.
+  **Everything must be reproducible in scripts** so a NEW phone is added by: a matrix row + its geometry
+  in `capture.sh`/`full_coverage.sh`/`run_matrix.sh`, then running them - no bespoke manual steps.
 - **Every screen opens focused AND stays D-pad-navigable at a SMALL display, not just native.**
   Verify at a real target size - `adb shell wm size 240x320; adb shell wm density 160` (Kyocera e4810;
   see `tests/devices/`) - by SCREENSHOT: the screen lands a visible focus ring on open AND arrows move
