@@ -17,6 +17,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Minimizing the place card fades gracefully (2026-07-10).** The photos and body content
+  fade out with the height as the sheet glides down instead of vanishing in one frame at the
+  swap, and the compact card (name, stars, action pills) fades in — nothing pops. The header
+  circles also became fixed-size plain buttons: the Material button's minimum-touch-target
+  machinery kept re-inflating their layout past the visible circle, which is why they overlapped
+  through two rounds of shrinking.
 - ✅ **The photo viewer goes truly full screen (2026-07-10).** Google's treatment: system bars
   hide while viewing (swipe reveals them), the backdrop is the photo itself blurred and dimmed
   instead of flat black (Android 12+), and the author/date stamp sits bottom-left in every
