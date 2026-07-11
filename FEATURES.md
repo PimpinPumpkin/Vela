@@ -1345,3 +1345,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   dialogs that refuse past times; search-along-route chips are filled action chips.
 - Save is a bookmark icon; sheet headers share one circled-button language (place sheet,
   directions close, results chevron and close, recent-search remove).
+
+- ✅ **Hebrew (עברית) — the 12th language and first RTL locale (2026-07-09/11).** All three i18n
+  layers cover Hebrew: the ~531 UI strings (`res/values-he/strings.xml`, every format-placeholder
+  validated against English), the generated spoken nav voice (`HeNavStrings` in `:core` — masculine
+  singular Waze/Google-Maps register: "פנה ימינה", "בעוד 300 מטר", feminine roundabout-exit ordinals
+  "ביציאה השלישית", "היעד שלך מצד שמאל/ימין"), and the Google POI scrape (`hl` follows the locale).
+  Registered under **`he`**: on JDK 17+ (`useOldISOCodes=false`) `Locale` canonicalizes `iw`→`he`, so
+  the resolved code, the `values-he` folder and `NavStrings.forLanguage` all agree (`forLanguage` also
+  accepts `iw`). RTL is automatic — the app already declares `android:supportsRtl` and re-creates the
+  Activity with a Hebrew config, so Compose's `LayoutDirection` flips (a whole-app scan found no
+  hardcoded left/right, `Absolute` arrangements or forced `LayoutDirection`). Unit-tested for `he`.
