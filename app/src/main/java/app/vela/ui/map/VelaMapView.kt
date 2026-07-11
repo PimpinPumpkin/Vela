@@ -654,6 +654,14 @@ fun VelaMapView(
                 // satisfying near-horizon 3D is reachable; browse-camera moves use
                 // newLatLngZoom (which preserves pitch), so a tilt the user sets sticks.
                 map.uiSettings.isTiltGesturesEnabled = true
+                // Two-finger tilt was nearly impossible to trigger (user 2026-07-11): stock
+                // shove detection wants both fingers moving in near-perfect vertical parallel
+                // (20 degrees). Widen the accepted angle and drop the start threshold so a
+                // casual two-finger drag tilts.
+                runCatching {
+                    map.gesturesManager.shoveGestureDetector.maxShoveAngle = 55f
+                    map.gesturesManager.shoveGestureDetector.pixelDeltaThreshold = 8f
+                }
                 map.setMaxPitchPreference(70.0)
                 // Tap a labelled POI on the map to open it. (Named so the D-pad
                 // controller's OK-at-crosshair runs the EXACT same resolution path;
@@ -1702,14 +1710,14 @@ internal fun applyLight(style: Style) {
     val white = "#ffffff"
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#90daee")) // Google Maps light water (verbatim)
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#d4edd5"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c8e6cb"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
     // Buildings (OSM footprints, already in the Liberty tiles — no key/data needed).
     // The old #e2e3e6 was a hair off the #e8eaed land, so they were ~invisible; give
     // them a touch more grey + a subtle outline so they read like Google's at z15+.
     style.getLayer("building")?.setProperties(
-        PropertyFactory.fillColor("#dde1e7"),
+        PropertyFactory.fillColor("#e2e3e9"),
         PropertyFactory.fillOutlineColor("#c4c9d1"),
     )
     // Show footprints from neighbourhood zoom (Liberty hid them until ~z16-17, so
@@ -1722,7 +1730,7 @@ internal fun applyLight(style: Style) {
     style.getLayer("building")?.setMinZoom(14f)
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#dde1e7"),
+        PropertyFactory.fillExtrusionColor("#e2e3e9"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
     // Extrusions only once zoomed into a block — the flat fill+outline gives the footprint
@@ -1740,7 +1748,7 @@ internal fun applyLight(style: Style) {
     }
     // Liberty fills wetlands with a fern-hatch pattern and pedestrian plazas with a
     // dotted one — Google shows both flat. Clear the pattern so the flat fill shows.
-    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#cdeff0"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#ededed"))
     // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
     // roads. Bridges mirror their road tier so overpasses match.
@@ -1750,17 +1758,17 @@ internal fun applyLight(style: Style) {
     listOf("road_motorway_casing", "road_motorway_link_casing", "bridge_motorway_casing", "bridge_motorway_link_casing").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f0b85a"))
     }
-    listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#bfd0de")) }
+    listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#a4b8cd")) }
     listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#cfd9e3")) }
-    listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#c3d3e0")) }
+    listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#aabdd0")) }
     listOf("road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#d3dce4")) }
     // The Google APP fills roads with a solid blue-grey (the web is white-with-grey-frame;
     // the user matched to the APP screenshots 2026-07-11) — minor roads are one grey ribbon.
     listOf("road_minor", "road_link", "road_service_track", "bridge_street", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#cbd9e3"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#b0c1d4"))
     }
     listOf("road_minor_casing", "road_link_casing", "road_service_track_casing", "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#bccbd8"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#a2b4c9"))
     }
     // Terrain relief: a soft warm-grey shadow, subtle so hills read as depth, not dirt.
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
@@ -1773,18 +1781,18 @@ internal fun applyLight(style: Style) {
 
 /** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */
 internal fun applyDark(style: Style) {
-    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#111c31"))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
     style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#1a4a4d"), PropertyFactory.fillOpacity(1f)) // Google-app dark vegetation: a TEAL green (matched to the user's Google dark screenshot 2026-07-11), clearly lighter than the land
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#1a4a4d"), PropertyFactory.fillOpacity(0.9f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#17434a"), PropertyFactory.fillOpacity(0.95f))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(1f)) // Google-app dark vegetation: a TEAL green (matched to the user's Google dark screenshot 2026-07-11), clearly lighter than the land
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(0.95f))
     listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
         "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#49536a"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#304864"))
     }
     listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#5e6a85"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#3d5878"))
     }
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6f7a96"))
@@ -1795,18 +1803,18 @@ internal fun applyDark(style: Style) {
         "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
         "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
         "bridge_street_casing", "bridge_link_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#242f3e"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#111c31"))
     }
     // Buildings a touch lighter than the #242f3e land + a lit edge, so they read in
     // dark mode instead of melting into the ground (same reasoning as the light path).
     style.getLayer("building")?.setProperties(
-        PropertyFactory.fillColor("#323f54"),
-        PropertyFactory.fillOutlineColor("#3f4e66"),
+        PropertyFactory.fillColor("#172b56"),
+        PropertyFactory.fillOutlineColor("#243970"),
     )
     style.getLayer("building")?.setMinZoom(14f) // houses from neighbourhood zoom (see light path)
     style.getLayer("building")?.setMaxZoom(24f) // re-open the maxzoom:14 clamp (see light path — was collapsing the flat fill to empty)
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#323f54"),
+        PropertyFactory.fillExtrusionColor("#172b56"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
     style.getLayer("building-3d")?.setMinZoom(16f) // extrusions only high-zoom (Pixel 5a perf)
@@ -1830,7 +1838,7 @@ internal fun applyDark(style: Style) {
         }
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
-    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#194247"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).

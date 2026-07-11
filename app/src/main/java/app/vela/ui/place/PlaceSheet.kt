@@ -26,6 +26,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
@@ -1117,7 +1118,7 @@ fun PlaceSheet(
 
 /** A release faster than this (dp/s) counts as a FLICK and commits at least one detent in
  *  its direction, however short the drag - the shared sheet-fling grammar. */
-internal const val FLING_COMMIT_DPS = 450f
+internal const val FLING_COMMIT_DPS = 260f
 
 /** "Save to list" — check the lists this place belongs to; create a new one inline. */
 @Composable
@@ -1352,11 +1353,16 @@ fun DirectionsPanel(
                 // its own nested-scroll path since verticalScroll consumes there first.
                 .pointerInput(Unit) {
                     val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                    var acc = 0f
                     detectVerticalDragGestures(
-                        onDragStart = { tracker.resetTracking() },
+                        onDragStart = { tracker.resetTracking(); acc = 0f },
                         onVerticalDrag = { change, dy ->
                             change.consume()
-                            tracker.addPosition(change.uptimeMillis, change.position)
+                            // Integrated deltas, not change.position: the position is local to
+                            // a node that MOVES as the sheet resizes, which zeroed the measured
+                            // velocity - flicks read as slow drags (user 2026-07-11).
+                            acc += dy
+                            tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
                             dragDirBy(dy)
                         },
                         onDragEnd = { settleDir(tracker.calculateVelocity().y) },
@@ -2404,6 +2410,19 @@ private fun PhotoGalleryContent(urls: List<String>, dates: List<String?>, start:
                 Box(
                     Modifier
                         .fillMaxSize()
+                        // Double-tap zooms 2.5x at the tap point / back out (user 2026-07-11).
+                        // Coexists with the custom loop below: bare taps are never consumed
+                        // there, so this detector sees the full down-up-down-up.
+                        .pointerInput(Unit) {
+                            detectTapGestures(onDoubleTap = { pos ->
+                                if (scale > 1f) {
+                                    scale = 1f; offset = Offset.Zero
+                                } else {
+                                    scale = 2.5f
+                                    offset = (Offset(size.width / 2f, size.height / 2f) - pos) * (2.5f - 1f)
+                                }
+                            })
+                        }
                         .pointerInput(Unit) {
                             awaitEachGesture {
                                 awaitFirstDown(requireUnconsumed = false)
