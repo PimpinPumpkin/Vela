@@ -912,9 +912,22 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   arterials/trunk/motorway #476789, casings = land. 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk).
   Sampling recipe: screencap Google Maps on the Pixel 9 over the target area, Counter the
-  band, probe specifics. **Flick velocity, final form:** all three manual trackers integrate
+  band, probe specifics. **Flick velocity, final form:** all manual trackers integrate
   deltas AND take max(tracked, plain travel/time average) at release - a flick can never
-  measure ~zero; FLING_COMMIT_DPS = 180.
+  measure ~zero; FLING_COMMIT_DPS = 180. **The whole gesture lives in ONE helper now
+  (`sheetDragGestures` in PlaceSheet.kt, 2026-07-11)** used by every hand-driven drag
+  surface: place handle, minimized place body, directions panel, results handle (MapScreen
+  imports it) - the velocity subtleties are too easy to fork-and-drift as copies.
+- **The MINIMIZED place-card body is its own drag surface (2026-07-11):** minimized, the
+  skeleton fits inside the floor height, so the body's verticalScroll has NO range - and an
+  unscrollable scrollable never engages a drag, so nothing reached dismissConn: a flick on
+  the minimized card read as dead while the same flick on the handle worked (device-proven
+  both ways). A `pointerInput(minimizedState, singleDetent)` on the body Column runs
+  `sheetDragGestures` ONLY while minimized (keyed remount hands drags back to the
+  nested-scroll path when the full body shows); tap-to-restore still wins bare taps (a drag
+  claims the pointer only past slop). Same class of hole the directions panel had ("finger
+  basically right on the pull bar") - if a sheet region ever feels drag-dead, check whether
+  its scrollable has zero range there.
 - **(older eyedrop note)** **Map palette is USER-EYEDROPPED from the Google app (2026-07-11, supersedes my web/screen
   estimates):** DARK land #111c31, buildings #172b56 (outline #243970), roads #304864 (trunk
   #3d5878, casings = land), vegetation #0d2b38. LIGHT vegetation #caf8dc, buildings #e2e3e9,
