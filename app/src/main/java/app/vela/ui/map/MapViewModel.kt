@@ -1300,6 +1300,22 @@ class MapViewModel @Inject constructor(
         val photoWorthy = p.rating != null || p.reviewCount != null || p.photoUrls.isNotEmpty()
         if (photoWorthy) _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
         viewModelScope.launch {
+            // The gallery has TWO keyless sources with complementary halves: the WebView page
+            // walk carries the CATEGORY tags (the Menu tab) but no per-photo dates, while the
+            // hspqX RPC carries each photo's POSTED DATE but no categories. Fire the cheap RPC
+            // alongside the walk and join its dates onto the streamed photos by the stable
+            // image id (the URL up to the size suffix both pipelines share), so a menu tile
+            // can say how old the menu shot is (user 2026-07-11). No author anywhere keyless:
+            // the RPC documents it's absent, and mining the page DOM for it isn't worth the
+            // extra walking. Best-effort like everything else here.
+            var rpcDates: Map<String, String> = emptyMap()
+            val datesJob = launch {
+                rpcDates = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+                    .mapNotNull { ph -> ph.postedText?.let { ph.url.substringBefore('=') to it } }
+                    .toMap()
+            }
+            fun datesFor(photos: List<app.vela.core.model.Photo>) =
+                photos.map { it.postedText ?: rpcDates[it.url.substringBefore('=')] }
             // Photos STREAM in: the scraper reports the accumulated set whenever it grows, so the
             // strip fills progressively (first partial = the page's hero photos, ~1s after load)
             // instead of waiting ~20s for the full category walk. Monotonic (a partial never
@@ -1307,19 +1323,29 @@ class MapViewModel @Inject constructor(
             // partial can't touch the next place; the final result clears the flag in the same
             // atomic copy, so a straggler can't overwrite it — same pattern as review streaming).
             val full = runCatching {
-                webPhotos.fetch(fid, onPartial = { part ->
+                webPhotos.fetch(fid, onHistogram = { counts ->
+                    // The page's [5-star..1-star] review counts, grabbed in passing by the walk -
+                    // drives the native histogram on the inline Reviews tab. Feature-id gated.
+                    _state.update { st ->
+                        val sel = st.selected
+                        if (sel?.featureId == fid) st.copy(selected = sel.copy(ratingHistogram = counts)) else st
+                    }
+                }, onPartial = { part ->
                     if (part.isNotEmpty()) _state.update { st ->
                         val sel = st.selected
                         if (sel?.featureId == fid && st.photosLoading && part.size > sel.photoUrls.size) st.copy(
-                            selected = sel.copy(photoUrls = part.map { it.url }, photoDates = part.map { it.postedText }, photoCategories = part.map { it.category }),
+                            selected = sel.copy(photoUrls = part.map { it.url }, photoDates = datesFor(part), photoCategories = part.map { it.category }),
                         ) else st
                     }
                 })
             }.getOrDefault(emptyList())
+            // Wait for the date fetch before the final apply so the settled gallery is dated
+            // even when the RPC was slower than the walk (partials may have gone out dateless).
+            datesJob.join()
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.featureId == fid) st.copy(
-                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = full.map { it.postedText }, photoCategories = full.map { it.category }) else sel,
+                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = datesFor(full), photoCategories = full.map { it.category }) else sel,
                     photosLoading = false,
                 ) else st
             }
@@ -1981,7 +2007,12 @@ class MapViewModel @Inject constructor(
         val s = _state.value
         if (s.directionsTimeMode == mode && s.directionsTimeEpochSec == epochSec) return
         _state.update { it.copy(directionsTimeMode = mode, directionsTimeEpochSec = if (mode == 0) null else epochSec) }
-        route(_state.value.travelMode)
+        // Only TRANSIT re-routes on a time change: the schedule board is genuinely
+        // time-dependent. The keyless drive/walk/bike request has no departure field at all,
+        // so refetching those returned identical routes and just flickered the list while the
+        // chooser's own arrival-window arithmetic was the only thing that changed (the "kinda
+        // janky" report, user 2026-07-11).
+        if (_state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT)
     }
 
     private fun route(mode: TravelMode) {

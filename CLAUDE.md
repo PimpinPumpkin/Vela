@@ -265,6 +265,15 @@ Defaults that make the safe path the easy one:
   auditions the nav sample on an EXPLICIT library pick ("Use" button); the download-completion
   (firstEver) and delete-fallback paths pass audition=false - a phone that starts talking on its
   own right after an install reads as a bug (user report). The Test button is the on-demand way.
+- **Depart at / Arrive by is confirm-driven (2026-07-11):** a time change re-routes TRANSIT
+  ONLY (`setDirectionsTime`) - the keyless drive/walk/bike request has no departure field, so
+  refetching it returned identical routes and just flickered the list; the chooser's arrival
+  window math is what actually changes. The Depart-at/Arrive-by chips open the time picker
+  DIRECTLY and NOTHING emits until a picker confirms (the old flow fetched on the bare chip
+  tap with an unpicked "now", then again per dial); the default time rounds to the next 5
+  minutes. Pickers are Material 3 TimePicker/DatePicker in `PickerDialog` (a raw-Dialog Vela
+  shell, D-pad rule compliant; NB DatePicker's selectedDateMillis is UTC midnight - decode
+  with UTC or picks land a day early). The old android.app Holo dialogs are gone.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
@@ -297,7 +306,9 @@ Defaults that make the safe path the easy one:
   shared primitive in `ui/SheetFold.kt`, also used by the results sheet's chips) whose
   height+alpha are a FRACTION of natural = the sheet height's own position between the
   minimized floor and peek, read per frame in the layout/graphicsLayer phase. While the fold is
-  engaged (fraction < 1) the CARD FLOORS AT THE MINIMIZED DETENT: the folding content dips just
+  engaged (fraction < 1) the CARD FLOORS AT THE MINIMIZED DETENT (as a measurement minHeight,
+  never just the reported layout size - report-only flooring left the card surface short and a
+  strip of map showed under the minimized card, user 2026-07-11): the folding content dips just
   under minH near the floor (the skeleton is a touch shorter than the detent) and the wrap-cap
   card used to dive that last slack in a blink - the end-of-fold hop (user 2026-07-11); at rest
   with fraction = 1 the card still hugs short content (dropped pins, parked car). Landing
@@ -321,8 +332,17 @@ Defaults that make the safe path the easy one:
   `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
   Google's LOCALIZED gallery-tab name, which is reused as the tab title); content = the tagged
   photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery; each tile stamps the
-  photo's UPLOAD DATE (from `Place.photoDates`, the gallery scrape) in a corner scrim so a
-  menu's age reads at a glance (user 2026-07-11). There is NO keyless
+  photo's UPLOAD DATE in a corner scrim so a menu's age reads at a glance (user 2026-07-11).
+  **Gallery dates are a JOIN of two keyless sources (2026-07-11):** the WebView page walk has
+  the CATEGORY tags but no dates, the hspqX RPC has each photo's date but no categories - so
+  `fetchPhotos` fires the cheap RPC alongside the walk and joins dates by the stable image id
+  (URL up to the size suffix). There is NO uploader/author keyless (the RPC documents it;
+  mining the page DOM for it was judged not worth the walking - user leaned that way too).
+  **The inline Reviews tab renders a NATIVE RATING HISTOGRAM (2026-07-11):**
+  `Place.ratingHistogram` ([5-star..1-star] counts) is scraped IN PASSING by the photo walk
+  from the place page's aria-label star rows (the same rows the full-screen panel carves),
+  bridged via `WebPhotoFetcher.fetch(onHistogram=...)`, cached per feature id beside the photo
+  LRU, and drawn by `RatingHistogram` beside the big rating number; absent = no bars, no cost. There is NO keyless
   menu URL (probed 2026-07-10: search payload [38] empty, zero menu links) - don't chase the
   link; the quality follow-up is making WebPhotoFetcher scrape the menu TAB exhaustively. The
   inline review search hides behind a circled magnifier beside the All-reviews pill
