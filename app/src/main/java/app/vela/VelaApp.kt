@@ -35,6 +35,7 @@ class VelaApp : Application() {
         TransitLayer.init(this)
         app.vela.ui.SimLocation.init(this)
         app.vela.ui.UiScale.init(this)
+        app.vela.ui.MapColors.init(this)
         app.vela.ui.LiveReviews.init(this)
         app.vela.ui.ShowReviews.init(this)
         app.vela.ui.LoadPhotos.init(this)
