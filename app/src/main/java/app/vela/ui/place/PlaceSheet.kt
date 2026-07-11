@@ -542,8 +542,13 @@ fun PlaceSheet(
                     // recomposition), and the minimized card below fades in at the swap - the
                     // content no longer vanishes in one frame at the flip.
                     .graphicsLayer {
-                        alpha = if (minimizedState.value) 1f
-                        else ((heightAnim.value - minH) / 110f).coerceIn(0f, 1f)
+                        if (minimizedState.value) { alpha = 1f; translationY = 0f } else {
+                            val f = ((heightAnim.value - minH) / 110f).coerceIn(0f, 1f)
+                            alpha = f
+                            // The content SLIDES DOWN as it fades (user 2026-07-10) — the exit
+                            // reads as the extras dropping away rather than a plain dissolve.
+                            translationY = (1f - f) * 48.dp.toPx()
+                        }
                     }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
@@ -2079,6 +2084,9 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 // not completely full screen top or bottom" report).
                 it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
+                // The one flag that UNCONDITIONALLY lets the window lay out past the bars — the
+                // fitting flags alone still left top/bottom strips on this device (2026-07-10).
+                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
                     it.attributes = it.attributes.apply {
                         layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -2506,6 +2514,7 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
             (panelView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let {
                 it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
+                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
                     it.attributes = it.attributes.apply {
                         layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
