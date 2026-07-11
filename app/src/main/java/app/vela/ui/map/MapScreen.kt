@@ -1345,7 +1345,25 @@ fun MapScreen(
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
             // A pill under the search bar, clear of the results sheet at the bottom.
-            state.pendingImport?.let { imp ->
+            // A pushed URGENT notice (calibration.json, level "urgent") is a modal, not a card —
+        // for announcements that must be seen (the "servers overloaded" class of message).
+        // Same signed channel + the same one-time dismissal persistence as the cards.
+        state.notices.firstOrNull { it.level == app.vela.core.config.Notice.LEVEL_URGENT }?.let { n ->
+            app.vela.ui.VelaDialog(
+                onDismissRequest = { vm.dismissNotice(n.id) },
+                title = n.title,
+                confirmText = stringResource(android.R.string.ok),
+                onConfirm = { vm.dismissNotice(n.id) },
+                dismissText = if (n.url != null) stringResource(R.string.mapscreen_learn_more) else stringResource(R.string.place_close),
+                onDismiss = {
+                    n.url?.let { u -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) } }
+                    vm.dismissNotice(n.id)
+                },
+            ) {
+                Text(n.body)
+            }
+        }
+        state.pendingImport?.let { imp ->
                 val savedMsg = stringResource(R.string.map_list_saved, imp.title)
                 Surface(
                     shape = RoundedCornerShape(28.dp),
@@ -1634,7 +1652,7 @@ fun MapScreen(
                             onDismiss = { vm.dismissUpdate() },
                         )
                     }
-                    state.notices.forEach { n ->
+                    state.notices.filterNot { it.level == app.vela.core.config.Notice.LEVEL_URGENT }.forEach { n ->
                         NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
                     }
                 }
