@@ -132,7 +132,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import app.vela.R
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -297,9 +300,10 @@ fun MapScreen(
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
     // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
-    // Bumped when the user grabs the map with the place sheet open — PlaceSheet glides down to
-    // its minimized card on each bump (see onUserPan below).
+    // Bumped when the user grabs the map with a sheet open — each sheet glides down to its
+    // minimized form on its bump (see onUserPan below).
     var sheetPanTick by remember { mutableStateOf(0) }
+    var resultsPanTick by remember { mutableStateOf(0) }
     // Expanded detent of the results bottom sheet, hoisted here so the BACK gesture can step it
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
@@ -695,7 +699,10 @@ fun MapScreen(
             // to look at (Google does the same): the results sheet to its bar, the place sheet to
             // its minimized card. The bar / a drag brings them back.
             onUserPan = {
-                if (resultsShown) vm.collapseResults()
+                // Bump ticks, don't flip state here: each sheet GLIDES down first and only then
+                // flips its collapsed state, so the bar/card swap happens invisibly (flipping
+                // straight away unmounted the content mid-drop — the "pops down" report).
+                if (resultsShown) resultsPanTick++
                 if (state.selected != null && !searchOpen) sheetPanTick++
             },
             onScaleChanged = { metersPerPixel = it },
@@ -1332,6 +1339,8 @@ fun MapScreen(
                 onExpand = vm::expandResults,
                 onClose = vm::clearSearch,
                 listName = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id }?.name },
+                query = state.query,
+                minimizeTick = resultsPanTick,
                 modifier = Modifier.align(Alignment.BottomCenter),
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
@@ -1694,6 +1703,8 @@ private fun SearchResults(
     onExpand: () -> Unit,
     onClose: () -> Unit,
     listName: String? = null, // set when the results ARE an open list — shown as the sheet title
+    query: String = "", // the search text — leads the minimized bar so it says WHAT the results are
+    minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, THEN flip collapsed
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -1723,6 +1734,13 @@ private fun SearchResults(
     LaunchedEffect(collapsed, expanded) {
         val target = if (collapsed) 0f else if (expanded) expL else peekL
         if (listH.targetValue != target) listH.animateTo(target, if (target == 0f) resultsGlideSpec else resultsSettleSpec)
+    }
+    // Map grabbed: glide the OPEN list down to zero and only then flip collapsed — the same
+    // order the drag path uses. Flipping first unmounts the list mid-drop (the visible "pop").
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == 0 || collapsed) return@LaunchedEffect
+        listH.animateTo(0f, resultsGlideSpec)
+        onMinimize()
     }
     val listState = rememberLazyListState()
     val minimize = rememberUpdatedState(onMinimize)
@@ -1868,14 +1886,25 @@ private fun SearchResults(
                         .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = if (collapsed) 8.dp else 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // An open list leads with its NAME (the count alone didn't say which
-                    // list you were looking at); plain searches keep the count.
+                    // The bar says WHAT you're looking at, not just how many: the list name or
+                    // the search text leads in full ink, then a dot and the count in dim — the
+                    // bare dim "20 results" was easy to miss (user 2026-07-10).
+                    val barTitle = listName ?: query.trim().ifBlank { null }
                     Text(
-                        listName?.let { "$it · ${shown.size}" }
-                            ?: stringResource(R.string.mapscreen_results_count, shown.size),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = if (listName != null) SheetPalette.ink(dark) else SheetPalette.dim(dark),
+                        buildAnnotatedString {
+                            if (barTitle != null) {
+                                withStyle(
+                                    SpanStyle(color = SheetPalette.ink(dark), fontWeight = FontWeight.SemiBold),
+                                ) { append(barTitle) }
+                                append("  ·  ")
+                            }
+                            append(
+                                if (listName != null) "${shown.size}"
+                                else stringResource(R.string.mapscreen_results_count, shown.size),
+                            )
+                        },
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = SheetPalette.dim(dark),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),

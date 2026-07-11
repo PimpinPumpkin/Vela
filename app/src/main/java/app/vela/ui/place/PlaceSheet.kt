@@ -301,9 +301,11 @@ fun PlaceSheet(
     val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
     LaunchedEffect(minimizeTick) {
         if (minimizeTick == 0) return@LaunchedEffect
+        // Glide FIRST, flip the states after: any content keyed on the minimized state then
+        // changes only once the card is already down (flipping first read as a pop, not a glide).
+        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
         expandedState.value = false
         minimizedState.value = true
-        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
     }
     // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
     // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
