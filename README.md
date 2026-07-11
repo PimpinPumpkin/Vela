@@ -12,14 +12,15 @@ GrapheneOS and other no-GMS ROMs.
 |:-:|:-:|:-:|:-:|:-:|
 | <img src="docs/screenshots/05-navigation.png" width="150"> | <img src="docs/screenshots/01-map.png" width="150"> | <img src="docs/screenshots/03-place.png" width="150"> | <img src="docs/screenshots/04-directions.png" width="150"> | <img src="docs/screenshots/02-search.png" width="150"> |
 
-| Public transit | Photo gallery | Light theme - map | Light theme - place |
-|:-:|:-:|:-:|:-:|
-| <img src="docs/screenshots/06-transit.png" width="150"> | <img src="docs/screenshots/07-gallery.png" width="150"> | <img src="docs/screenshots/08-map-light.png" width="150"> | <img src="docs/screenshots/09-place-light.png" width="150"> |
+| Public transit | Light theme - map | Light theme - place |
+|:-:|:-:|:-:|
+| <img src="docs/screenshots/06-transit.png" width="150"> | <img src="docs/screenshots/08-map-light.png" width="150"> | <img src="docs/screenshots/09-place-light.png" width="150"> |
 
-*Turn-by-turn with the maneuver banner, exit badges and speedometer; the keyless
-OpenFreeMap basemap with Google-style POI markers; live place data with the full
-photo gallery; the directions panel with alternates and traffic in plain words;
-and the in-app light/dark themes (decoupled from the OS).*
+*Turn-by-turn with lane guidance, route shields and the speedometer; the keyless
+OpenFreeMap basemap wearing Google's own sampled colors and Roboto labels, with
+rated POI icons and the tiered dots; live place data; the directions panel with
+alternates, traffic in plain words and the avoid toggles; and the in-app
+light/dark themes (decoupled from the OS).*
 
 ## Install
 
