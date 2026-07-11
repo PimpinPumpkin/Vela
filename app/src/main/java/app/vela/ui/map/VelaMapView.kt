@@ -97,6 +97,7 @@ private const val MARKER_INDEX_PROP = "vela-marker-index"
 // "Google for the businesses" layer that replaces the OSM business POIs on the bare browse map.
 private const val AMBIENT_SRC = "vela-ambient-src"
 private const val AMBIENT_LAYER = "vela-ambient"
+private const val AMBIENT_DOT_LAYER = "vela-ambient-dots"
 private const val CONTROLS_SRC = "vela-controls-src" // OSM traffic lights + stop signs drawn at high zoom
 private const val CONTROLS_LAYER = "vela-controls"
 private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible collision box over the labels
@@ -1534,6 +1535,29 @@ private fun ensureLayers(style: Style) {
             ),
             MARKERS_LAYER,
         )
+        // The DOT TIER, Google-style: every ambient place also draws as a small category-
+        // coloured circle UNDER the icon layer. Icons collide and only the prominent
+        // survive a crowded view - the losers used to VANISH; now their dot still marks
+        // them (tap works, the rect query reads any layer carrying the index prop), and
+        // zooming in upgrades dots to icons as collision slots free up. Circles skip the
+        // collision engine entirely, so 140 of them cost ~nothing on a weak GPU (the
+        // icon that renders on top simply covers its own dot - the coloured dot is the
+        // marker bitmap's centre). Radius scales gently with prominence.
+        style.addLayerBelow(
+            CircleLayer(AMBIENT_DOT_LAYER, AMBIENT_SRC).withProperties(
+                PropertyFactory.circleColor(Expression.toColor(Expression.get("dotColor"))),
+                PropertyFactory.circleRadius(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.get("prominence"),
+                        Expression.stop(0.0, 2.6f), Expression.stop(8.0, 4.2f),
+                    ),
+                ),
+                PropertyFactory.circleStrokeWidth(1.2f),
+                PropertyFactory.circleStrokeColor("#FFFFFF"),
+                PropertyFactory.circleOpacity(0.92f),
+            ),
+            AMBIENT_LAYER,
+        )
     }
     // Traffic controls (OSM `highway=traffic_signals`/`stop`): non-interactive icons drawn at high zoom
     // BENEATH the POI dots + pins. Two images keyed by the feature "icon" prop; collision (allowOverlap
@@ -1758,6 +1782,10 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
     (style.getLayer(AMBIENT_LAYER) as? SymbolLayer)?.setProperties(
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+    )
+    // The mini-dot tier wears a land-coloured ring so dots read as crisp beads per theme.
+    (style.getLayer(AMBIENT_DOT_LAYER) as? CircleLayer)?.setProperties(
+        PropertyFactory.circleStrokeColor(if (dark) "#162640" else "#f8f7f7"),
     )
     // Hide Liberty's dashed clutter that Google doesn't draw: footpaths/sidewalks,
     // park outlines, the stepped admin/city/county BOUNDARY lines, and the railroad
@@ -2416,8 +2444,10 @@ private fun applyData(
         val ambientFc = FeatureCollection.fromFeatures(
             ambientPois.mapIndexed { i, m ->
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
+                    val group = PoiIcons.groupFor(m.name, m.category)
                     addStringProperty("name", m.name)
-                    addStringProperty("icon", "vela-poi-${PoiIcons.groupFor(m.name, m.category)}")
+                    addStringProperty("icon", "vela-poi-$group")
+                    addStringProperty("dotColor", PoiIcons.colorFor(group)) // mini-dot tier tint
                     addNumberProperty(AMBIENT_INDEX_PROP, i)
                     // Collision priority: the data source returns the most prominent places first, so a
                     // lower index wins its slot (MapLibre places lower symbol-sort-key first).
