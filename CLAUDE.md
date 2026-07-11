@@ -265,6 +265,46 @@ Defaults that make the safe path the easy one:
   auditions the nav sample on an EXPLICIT library pick ("Use" button); the download-completion
   (firstEver) and delete-fallback paths pass audition=false - a phone that starts talking on its
   own right after an install reads as a bug (user report). The Test button is the on-demand way.
+- **Depart at / Arrive by is confirm-driven (2026-07-11):** a time change re-routes TRANSIT
+  ONLY (`setDirectionsTime`) - the keyless drive/walk/bike request has no departure field, so
+  refetching it returned identical routes and just flickered the list; the chooser's arrival
+  window math is what actually changes. The Depart-at/Arrive-by chips open the time picker
+  DIRECTLY and NOTHING emits until a picker confirms (the old flow fetched on the bare chip
+  tap with an unpicked "now", then again per dial); the default time rounds to the next 5
+  minutes. Pickers are Material 3 TimePicker/DatePicker in `PickerDialog` (a raw-Dialog Vela
+  shell, D-pad rule compliant; NB DatePicker's selectedDateMillis is UTC midnight - decode
+  with UTC or picks land a day early). The old android.app Holo dialogs are gone. The chooser's single-estimate
+  fallback shows the plain time (the "~" prefix read as clutter, user 2026-07-11), and every
+  OutlinedButton on the directions family (Steps, the time/date fields, transit Back) is a
+  FilledTonalButton stadium pill - outlined was the last dated control there. The
+  search-along-route chips are SOLID tonal (they are one-shot actions; a permanently
+  unselected FilterChip read as disabled) while the REAL selection groups (travel mode,
+  leave/depart/arrive) keep the M3 filled-when-selected contrast on purpose - filling those
+  would erase the selection signal. Past picks are impossible: the date picker greys out days
+  before today and a confirmed past time clamps to the next 5-minute mark now, WITH a toast
+  (`place_time_past_toast`, all 11 locales): the pill shows a different time than the pick,
+  and a silent rewrite of explicit input reads as a bug.
+- **The directions chooser drags like the other sheets (2026-07-11):** its settle flips
+  `collapsed` AFTER the glide, never before - flipping first fired `LaunchedEffect(collapsed)`
+  into a SECOND animateTo racing the decay (the "bounces off the top" on swipe-up-to-reopen,
+  fixed 2026-07-11); it also pan-minimizes via `minimizeTick`/`dirPanTick` (consume-once
+  guard) like the place + results sheets. the drag detector sits
+  on the WHOLE panel column, not the handle (finger anywhere grows/shrinks it; inner clickables
+  keep their taps, the scrolling body keeps its nested-scroll path). Travel mode is STICKY
+  (pref `travel_mode`, set in `setTravelMode`, restored by `routeToSelected` - the pick is the
+  default next session; parking still forces WALK). The directions X wears the place-sheet
+  circle; the swap glyph deliberately stays bare. Save is a BOOKMARK icon, not a star (a star
+  reads "rate it"; matches the saved-places map button). Search span: `SearchPb.build` takes
+  the caller's real viewport height and stretches the template's baked ~25 km `!1d` window
+  (floor 3 km, cap 500 km) - zoomed-out searches used to keep a city-sized net; the VM threads
+  its live viewport span into the main + category-chip searches. Results-sheet FILTERS drop
+  MAP PINS too: SearchResults reports surviving ids via onShownChange -> MapScreen's
+  filteredResultIds -> markersOf (null = filters off).
+ its body height is a
+  hand-driven Animatable (0 = minimized, ~0.58 screen = open) - handle AND body-at-top drags
+  move it 1:1, release rides the throw's decay to an end (the shared grammar). The body and
+  the minimized Start bar both fold with that height (SheetFold, inverse fractions), so the
+  collapsed flip swaps nothing visible; the old collapse was a 6px-threshold boolean flip.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
@@ -298,14 +338,62 @@ Defaults that make the safe path the easy one:
   40dp icons in `dim.copy(alpha = 0.12f)` CIRCLES with 5dp gaps (Google's treatment); ActionPill
   and the "All reviews" button are CircleShape stadium pills (the outlined button was the last
   outlined control on the sheet); the reviews summary block is LEFT-ALIGNED (displaySmall number
-  + stars/count stacked beside it), not centered; the MINIMIZED card carries Directions + Call +
-  Website pills in a horizontal scroll row with the same gating as the full action row (website
-  behind HideExternalLinks). Keep new sheet controls on this language. NB `RatingHistogram` in
+  + stars/count stacked beside it), not centered; the MINIMIZED card is NOT a separate surface
+  (2026-07-10 refactor, height-locked 2026-07-11): the body is a SKELETON (name row, rating, the
+  full action-pill row) plus `SheetFold` sections (photos / status+hours / address+tabs; the
+  shared primitive in `ui/SheetFold.kt`, also used by the results sheet's chips) whose
+  height+alpha are a FRACTION of natural = the sheet height's own position between the
+  minimized floor and peek, read per frame in the layout/graphicsLayer phase. While the fold is
+  engaged (fraction < 1) the CARD FLOORS AT THE MINIMIZED DETENT (as a measurement minHeight,
+  never just the reported layout size - report-only flooring left the card surface short and a
+  strip of map showed under the minimized card, user 2026-07-11): the folding content dips just
+  under minH near the floor (the skeleton is a touch shorter than the detent) and the wrap-cap
+  card used to dive that last slack in a blink - the end-of-fold hop (user 2026-07-11); at rest
+  with fraction = 1 the card still hugs short content (dropped pins, parked car). Landing
+  minimized also rescrolls a scrolled body to its top. The fold is
+  therefore byte-locked to whatever moves the height (pan glide, a slow drag folds them WITH the
+  finger, the release settle) - a separately-clocked exit animation (the first cut used tweens)
+  could not stay in step with the height spring and read as staccato. Extras stay composed while
+  any part shows and unmount at the settled floor (`derivedStateOf` gate, one recomposition at
+  the flip), keeping zero-height controls out of D-pad focus search; the old swap-to-a-mini-card
+  popped. A tap anywhere on the minimized body restores peek (a `clickable(enabled = minimized)`
+  on the body Column); parking (singleDetent) keeps its extras. Keep new sheet content inside
+  one of the extras sections unless it genuinely belongs in the minimized card. **The
+  full-screen reviews page closes by pull alone (2026-07-11):** the top-edge pull follows the
+  finger; in fullScreen a STARTED pull owns every move until finger-up (the ownership clause
+  sits OUTSIDE ReviewsPanel's verticality test - a sideways wobble used to trip the
+  boundary-exit end and close mid-drag), and release closes on DISTANCE ONLY (> 120dp) with a
+  spring-back below it - the photo viewer's judge-at-release grammar; the old vel > 2500 px/s
+  flick escape read as a hair trigger. Keep new sheet controls on this language. NB `RatingHistogram` in
   PlaceSheet is ORPHANED (its per-star counts only exist in the live panel DOM) - wire it or
   delete it, don't duplicate it. **The MENU TAB (2026-07-10)** appears beside Reviews/About when
   `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
   Google's LOCALIZED gallery-tab name, which is reused as the tab title); content = the tagged
-  photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery. There is NO keyless
+  photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery; each tile stamps the
+  photo's UPLOAD DATE in a corner scrim so a menu's age reads at a glance (user 2026-07-11).
+  **Gallery dates are a JOIN of two keyless sources (2026-07-11):** the WebView page walk has
+  the CATEGORY tags but no dates, the hspqX RPC has each photo's date but no categories - so
+  `fetchPhotos` fires the cheap RPC alongside the walk and joins dates by the stable image id
+  (URL up to the size suffix). There is NO uploader/author keyless (the RPC documents it;
+  mining the page DOM for it was judged not worth the walking - user leaned that way too).
+  **The inline Reviews tab renders a NATIVE RATING HISTOGRAM (2026-07-11):**
+  `Place.ratingHistogram` ([5-star..1-star] counts) is scraped IN PASSING by the photo walk
+  from the place page's aria-label star rows (the same rows the full-screen panel carves),
+  bridged via `WebPhotoFetcher.fetch(onHistogram=...)`, cached per feature id beside the photo
+  LRU, and drawn by `RatingHistogram` beside the big rating number; absent = no bars, no cost. **Menu photo DATES are BLOCKED on a dead RPC (2026-07-11):** the hspqX
+  placePhotos RPC returns 0 photos now (logcat tag `VelaPhotoDates`: rpc=0) - it rotted
+  unnoticed after the WebView walk replaced it as the gallery source (June calibration). The
+  date-join plumbing is correct and inert (stamps render only when a date exists). Reviving
+  dates = recapture `photosProto`/`photosEndpoint` from a live gallery RPC and bump
+  calibration.json (remote-fixable, no app release). Don't chase it in-app.
+  **Menu-tab reliability hardening (2026-07-11):** the walk's tab wait
+  counts from the GALLERY OPENING (6 ticks after open, hard cap 20) instead of 8 ticks from
+  script start - cold-WebView loads ate the old window and real tabs got skipped; a late-tab
+  rescue in the All sweep walks tabs that appear after phase 0 gave up; every walk reports
+  {tabs, opened, openedAt, rescued, ticks} via `VelaBridge.onInfo` (logcat tag
+  `VelaPhotoWalk`); and a TAB-LESS cached gallery self-heals with ONE fresh walk per session
+  (`retriedTabless`) instead of being served forever - one flaky fetch used to hide a menu all
+  session. Walk cap 70 ticks, Kotlin timeout 48 s. There is NO keyless
   menu URL (probed 2026-07-10: search payload [38] empty, zero menu links) - don't chase the
   link; the quality follow-up is making WebPhotoFetcher scrape the menu TAB exhaustively. The
   inline review search hides behind a circled magnifier beside the All-reviews pill
@@ -341,11 +429,13 @@ Defaults that make the safe path the easy one:
   bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
   an open place card to its minimized detent — Google's behaviour; programmatic framing (a
   different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
-  the 350f settle) and both GLIDE FIRST, FLIP STATE AFTER — the pan path used to flip
-  `resultsCollapsed`/`minimizedState` immediately, which unmounted/switched the content
-  mid-drop and read as a pop no matter the spring (user 2026-07-10, the "just kinda pops down"
-  report); the tick effects animate to the floor and only then flip, the same order the drag
-  path always used. The minimized results bar leads with the QUERY (or list name) in ink +
+  the 350f settle). Flip order differs BY DESIGN: the RESULTS sheet still GLIDES FIRST and flips
+  `resultsCollapsed` after; its FILTER CHIPS + divider fold with the list height over its last
+  140dp of travel (`SheetFold`, and the bar's bottom padding is constant), so by the flip they
+  are zero-height and nothing visible pops - they used to pop out after the sheet had already
+  stopped moving (user 2026-07-11). The PLACE sheet flips `minimizedState` FIRST so its
+  SheetFold extras run concurrently with the height glide (no swap anymore, see the place-sheet
+  surface-language bullet) - the same order its drag-release path uses. The minimized results bar leads with the QUERY (or list name) in ink +
   SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
   awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
   effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):
@@ -462,6 +552,19 @@ Defaults that make the safe path the easy one:
   (only a NEWER release re-offers). The tag parse is **minor-agnostic** (`^v0\.\d+\.(\d+)$` - it
   survived the 0.2→0.3 bump untouched), taking only the run number for the versionCode; it still
   assumes the `2000+run` base, so update `SelfUpdater.check` if the versionCode base ever changes.
+- **POI-speed trio (2026-07-11):** (1) `nearbyPlaces` STREAMS its category fan-out via an
+  `onPartial` callback (paints throttled to >=10 new places + 500 ms apart; the final
+  return is still the complete ranked pool) so first dots stop waiting on the SLOWEST of
+  ~13 requests; (2) `prefetchAmbientNeighbours` warms the 4 view-sized neighbour areas
+  into the ambient LRU after each idle fetch - UNMETERED network only (4 extra fan-outs),
+  sequential with 700 ms gaps, skips cached areas, bails on any non-bare-map state; (3)
+  the ambient LRU PERSISTS to `ambient_cache.json` (newest 8 areas x 200 slim places via
+  :core `AmbientDiskCache` - the app module stays OUT of kotlinx.serialization, the same
+  boundary TransitParser keeps; 24 h validity, loaded stamps read as fresh because the
+  moved-gate refetches the first real view anyway = paint-then-refine, never
+  paint-and-trust). Device-measured on the 4a: cold-launch home-area dots at ~3.0 s
+  (bounded by app+map startup, proven the disk path - no network paint can land by then)
+  vs ~4.0 s fetch-bound before; the streaming win grows on slow links.
 - **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
   to compose when mpp moved >1% - an unconditional write recomposed the scale bar every pan frame;
   keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
@@ -826,6 +929,172 @@ Defaults that make the safe path the easy one:
   Pixel 9 POI-dense iterations (restored over the 4a retakes), and Install sits directly UNDER
   the screenshots.
 
+## README layout rule (2026-07-11)
+
+The README stays SHORT: pitch, screenshots, install, what-you-get, the how-it-works table,
+privacy, build. Deep dives live in docs/ (CALIBRATION.md, MAP-STYLE.md, dpad.md) and get a
+pointer line, not a section. The Roadmap section carries a "Not going to happen" split for
+login/backend features - keep new won't-dos there AND in ROADMAP.md. Remote calibration is a
+HEADLINE feature in What-you-get (the self-healing pitch), not just an architecture note.
+
+- **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
+  Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
+  Compose UI scales, the map AndroidView keeps native size (built for car/vertical screens).
+- **Map colours are Google-verbatim (2026-07-11):** greens/water/land sampled from
+  maps.google.com at the arboretum. LIGHT: park/grass `#d3f8e2`, wood `#c9f2da`, water
+  `#90daee`, land `#f2f1ee` - opaque (the old 0.3-0.7 over land washed them olive). DARK: park
+  green was `#1c3326`, DARKER than the `#242f3e` navy land so it vanished (user 2026-07-11) -
+  now `#2c4a34`/`#274330`, opaque, clearly readable. Re-sample the same way if either drifts.
+  The **Map style Settings row was removed** (only one style ships; MapStyle/setStyle plumbing
+  kept for a future re-add). Nav card trip time is a `FitText` (shrinks to fit, never wraps/
+  ellipsises) so the 54dp buttons + Interface-size scale can't clip the arrival time.
+- **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
+  with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
+  `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark
+  colour; the OSM poi tiers' filters exclude vegetation classes (park/garden/wood/tree/...) so
+  forests read as flat green like Google, not icon confetti. Nav mute/steps/End are 54dp.
+  The search bar hides while an expanded place sheet covers it (its sliver still took taps).
+
+- **Photo DATES: every keyless in-page route is DEAD (probed exhaustively 2026-07-11).** The
+  place page's APP_INITIALIZATION_STATE carries NO photo urls at walk time (census: one big
+  string leaf, zero googleusercontent, zero "ago") - photos are id-referenced and urls come
+  from lazy responses. The walk's `aisDates()`/`onDates` plumbing stays (inert, one-shot,
+  lights up if Google ever re-embeds it), and `fetchPhotos` still merges any mined/RPC dates
+  into the join. The ONE live route is recalibrating the hspqX RPC from a desktop capture
+  (remote-fixable via calibration.json, see ROADMAP) - do NOT re-probe AIS. Review photos are
+  a SEPARATE pipeline (author + date come from the review itself) and already show dates.
+- **Flick = commit (2026-07-11):** a release faster than `FLING_COMMIT_DPS` (450 dp/s, shared
+  const in PlaceSheet) advances AT LEAST one detent in the flick's direction on all three
+  sheets (place/results/directions) - the pure coast projection needed the throw to cross half
+  the gap and made short flicks feel dead, worst on the two-detent chooser. Hard throws still
+  cross two detents via the projection.
+- **Map palette matched to the GOOGLE APP screenshots (2026-07-11):** DARK vegetation is TEAL
+  (#1a4a4d park/grass, #17434a wood, #194247 wetland) - the app's dark green, clearly lighter
+  than the #242f3e land; LIGHT roads are FILLED blue-grey (#cbd9e3 minor, #c3d3e0 secondary,
+  #bfd0de trunk/primary, casing #bccbd8) - the APP fills roads solid where the web uses
+  white-with-a-grey-frame; light vegetation #d4edd5/#c8e6cb (app mint), land #f2f1ee, water
+  #90daee. The map-style Settings row is REMOVED (single style; plumbing kept). Nav-card trip
+  time is a FitText (shrinks to fit, floor 55%, never wraps/ellipsises).
+
+- **Sheet flick velocity is measured on INTEGRATED deltas (2026-07-11):** the manual
+  VelocityTrackers (place handle, results handle, the drag-anywhere directions panel) fed
+  change.position, which is local to a node that MOVES as the sheet resizes - measured
+  velocity ~0, flicks read as slow drags and never committed. They now feed a running sum of
+  the drag deltas. `FLING_COMMIT_DPS` dropped 450 -> 260. The nested-scroll body paths were
+  never affected (Compose computes those velocities properly), which is why the place sheet
+  body always felt right.
+- **DARK palette is PIXEL-SAMPLED from Google Maps on the attached Pixel 9 (2026-07-11,
+  definitive - supersedes the eyedrop):** land #162640, other-landuse #1c2638, water #000d2a
+  (DARKER than land, the inverted relationship matters), vegetation #0d3847 (teal), buildings
+  #1c3b69 w/ outline #2e3d6d (Google's own second shade), minor roads #3d5a77,
+  arterials/trunk/motorway #476789, casings = land, service/alley tier #2a4056 (Google
+  draws alleys DARKER than streets - second P9 side-by-side 2026-07-11). Both former deltas are APPLIED (user 2026-07-11): `vela-trails` (LineLayer twin,
+  class=path subclass path/cycleway/bridleway ONLY - footway/steps/pedestrian stay hidden,
+  that was the June "weird walking tracks" clutter; inserted BELOW road_minor, minZoom 14)
+  draws the trail network green (dark #167055 sampled); `vela-pitch` (landuse
+  pitch/playground/track/stadium, above park) tints sports fields (dark #0d4956 sampled)
+  - AND Liberty's own `landuse_pitch`/`landuse_track` layers (they sit ABOVE the twin) are
+  coloured directly + exempted from the landuse-neutralise loops, else the tint never showed
+  (found at a park with ball courts).
+  Trail light = #7fcdb0 (P9-SAMPLED); pitch light = #a9eac2 (P9-SAMPLED at Toomey Field,
+  no estimates left); campuses (landuse_school) = #f0eded warm grey (sampled at UC Davis,
+  light only - dark keeps the neutralised land).
+- **LIGHT palette is PIXEL-SAMPLED from the Google app on the P9 (2026-07-11, definitive,
+  supersedes every earlier light set):** land #f8f7f7 (the app is cooler than the web's
+  #f6f6f6 and the user's kept #f2f1ee - verbatim wins per user "all of it"), roads are ONE
+  blue-grey fill #aab9c9 for streets AND arterials with NO casings (casings = land),
+  driveways/service #9bacbc, motorway #8aa4c0, buildings #e8e9ed w/ outline #d6d9e6
+  (extrusion = fill, light killed), vegetation #d3f8e1 (park/grass/wood/wetland all one
+  mint), water #90daee (unchanged), plaza/parking surface #dbe0e8, trails #7fcdb0,
+  COMMERCIAL/RETAIL blocks cream #fdf9ef via the `vela-commercial` twin (Liberty ships no
+  layer for those classes; dark paints the twin #1c2638 = the other-landuse navy so dark
+  is unchanged).
+- **Glyph ink rule (2026-07-11): leading/functional GLYPHS wear the SOFT ink, text keeps
+  the strong ink.** Solid Material icons read heavier than text at the same colour, and
+  several sites were outright BLACK (an untinted Icon on a non-Surface container falls
+  back to LocalContentColor black - the search page is a plain Box). Fixed sites: search
+  bar gear (now onSurfaceVariant, matches the mic), map category chips
+  (leadingIconContentColor onSurfaceVariant), the lists-bookmark ribbon circle
+  (onSurfaceVariant both modes), ShortcutRow unset Home/Work (onSurfaceVariant, was
+  SheetPalette.dim and mismatched the recents pin), the chooser Steps glyph + the
+  search-along-route chip icons (SheetPalette dim beside ink labels). Give any NEW
+  glyph-next-to-text the same treatment. Google light also marks on-street BIKE ROUTES dark teal #007b8b - NOT
+  drawn by Vela (bike lanes are not the trails layer; noted as a possible future accent).
+- **Ambient POI DOT TIER (2026-07-11):** `vela-ambient-dots`, a CircleLayer UNDER the
+  ambient icon layer on the same source - every ambient place draws a small category-
+  coloured circle (`dotColor` prop from PoiIcons.colorFor; radius 2.6-4.2 by prominence,
+  ring = land colour per theme). Icons still collide; the losers now stay visible as dots
+  and upgrade to icons as slots free up while zooming - Google's tiering. Circles skip the
+  collision engine (cheap on the 5a/4a class GPUs); taps work through the same
+  AMBIENT_INDEX_PROP rect query. Don't gate the dots on zoom - the ambient FETCH gate
+  (z>=14) already bounds them. 3D extrusions = the flat colour at
+  opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
+  AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
+  default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
+  side-by-side P9 sample proved Google keeps buildings one colour at every zoom, 2026-07-11).
+  Sampling recipe: screencap Google Maps on the Pixel 9 over the target area, Counter the
+  band, probe specifics. **Flick velocity, final form:** all manual trackers integrate
+  deltas AND take max(tracked, plain travel/time average) at release - a flick can never
+  measure ~zero; FLING_COMMIT_DPS = 180. **The whole gesture lives in ONE helper now
+  (`sheetDragGestures` in PlaceSheet.kt, 2026-07-11)** used by every hand-driven drag
+  surface: place handle, minimized place body, directions panel, results handle (MapScreen
+  imports it) - the velocity subtleties are too easy to fork-and-drift as copies.
+- **The MINIMIZED place-card body is its own drag surface (2026-07-11):** minimized, the
+  skeleton fits inside the floor height, so the body's verticalScroll has NO range - and an
+  unscrollable scrollable never engages a drag, so nothing reached dismissConn: a flick on
+  the minimized card read as dead while the same flick on the handle worked (device-proven
+  both ways). A `pointerInput(minimizedState, singleDetent)` on the body Column runs
+  `sheetDragGestures` ONLY while minimized (keyed remount hands drags back to the
+  nested-scroll path when the full body shows); tap-to-restore still wins bare taps (a drag
+  claims the pointer only past slop). Same class of hole the directions panel had ("finger
+  basically right on the pull bar") - if a sheet region ever feels drag-dead, check whether
+  its scrollable has zero range there.
+- **(older eyedrop note)** **Map palette is USER-EYEDROPPED from the Google app (2026-07-11, supersedes my web/screen
+  estimates):** DARK land #111c31, buildings #172b56 (outline #243970), roads #304864 (trunk
+  #3d5878, casings = land), vegetation #0d2b38. LIGHT vegetation #caf8dc, buildings #e2e3e9,
+  roads #b0c1d4 (secondary #aabdd0, trunk #a4b8cd, casings #a2b4c9); light land stays #f2f1ee
+  (user prefers it over Google's #f6f6f6). Their eyedrop had macOS colour-shift on - expect a
+  fine-tune pass.
+- **Basemap labels are ROBOTO via self-hosted glyphs (built 2026-07-11, device-verified;
+  dark-launched pending infra).** OpenFreeMap's glyph server is Noto-only (every Roboto stack
+  404s), so Vela hosts its own set on the repo's GitHub Pages at `/Vela/fonts`:
+  `scripts/build-map-fonts.sh` composites Roboto OVER OpenFreeMap's live Noto PER GLYPH
+  (`scripts/composite_glyphs.py`, pure-python protobuf; Roboto wins its 896
+  Latin/Cyrillic/Greek glyphs per stack, Noto keeps every other script - Shinjuku CJK
+  device-verified intact), and the folders KEEP the "Noto Sans Regular/Bold/Italic" names so
+  the ONLY style change is the `glyphs` URL (zero layer edits; the runtime textFont sites
+  stay untouched; the inner PBF name field is decorative - OFM's own files carry a 23-font
+  composite name). `ui/map/MapFonts` (init in VelaApp) fetches the LIVE Liberty JSON at
+  launch - tile paths keep auto-following OFM's snapshot rotation, the property the old
+  bundled asset lost - patches `glyphs`, caches to `filesDir/style/liberty-roboto.json`,
+  and MapScreen swaps it in via `MapFonts.effective` (VelaMapView reads `file://` styles
+  itself and falls back to the plain URL on a bad file). GUARDS, each device-proven: the
+  font host is PROBED (range 0-255) and an unreachable host EVICTS the cache - a style
+  whose glyph URLs fail renders NO labels, and the evicted fallback is byte-identical to
+  the pre-font map (RMS 0.0 vs a Noto reference shot); a style-fetch failure keeps the
+  last-good cache max 7 days (snapshot-rot guard), then the live URL wins. Offline REGION
+  DEFINITIONS keep the plain Liberty URL on purpose (a definition outlives file paths, and
+  its download caches Noto glyphs as the offline floor; the patched style's offline labels
+  ride the ambient cache warmed by browsing). Local test loop: `python3 -m http.server` on
+  the glyph dir + `adb reverse tcp:8099 tcp:8099` + `-PmapFontsUrl=http://127.0.0.1:8099`.
+  NB `InputStream.readNBytes` is API 33+ (minSdk 26) - the probe reads manually. The
+  ANDROID AUTO snapshotter resolves the same style (CarMapRenderer reads the patched
+  file + `withStyleJson`; a plain `.withStyle(LIBERTY.uri)` kept the car on Noto).
+  **ROLLOUT GATE (until all three land, every install just stays on Noto):** (1) publish
+  the glyph zip: `gh release create map-fonts <zip> --prerelease` (staged at
+  `build/map-fonts.zip`, or rebuild with the script - and it joins the DO-NOT-DELETE infra
+  releases); (2) merge so `fdroid-repo.yml` carries the unpack-to-Pages step; (3) an
+  fdroid-repo.yml run deploys the site. Then MapFonts' probe starts passing and Roboto
+  lights up on next app launch, no app release needed.
+- **Two-finger tilt: shove detector widened** (maxShoveAngle 55, pixelDeltaThreshold 8) - the
+  stock 20-degree parallel requirement made tilt nearly impossible. **Photo viewer:**
+  double-tap zooms 2.5x at the tap point / back out (a tap-detector pointerInput layered
+  before the custom pinch/dismiss loop, which never consumes bare taps).
+- **"Also at this location" is ALIVE (`placesHere`/`othersAt`)** - it fills only when the
+  selected place resolves alongside OTHER listings at the same address (strip malls, tapping
+  an address). Rarely seeing it = data-dependent, not removed. "People also search for"
+  (`similarPlaces`) is the different, related-places row.
+
 ## Working on the scraper
 
 - The `pb` request *grammar* (`PbBuilder`) and `PolylineCodec` are correct and
@@ -953,6 +1222,23 @@ Defaults that make the safe path the easy one:
   frozen-speedo/creeping-puck bug). Measured speeds pass a SYMMETRIC accel-bounded gate against the
   last ACCEPTED value (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided
   spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+- **Avoid tolls / avoid highways (2026-07-11):** two sticky FilterChips in the route
+  chooser (DRIVE only; prefs `avoid_tolls`/`avoid_highways`, seeded in routeToSelected like
+  the sticky mode). PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`
+  carry the flags end to end. The public FOSSGIS OSRM REJECTS `exclude=` (probed 2026-07-11:
+  InvalidValue - its profiles lack excludable classes; routeOsrm bails on any 4xx instead
+  of retrying, AND `OSRM_SUPPORTS_EXCLUDE=false` keeps the param OFF entirely - sending it
+  400'd the whole request and lost the clean named-turn route while a chip was on, a worse
+  route than just not honouring avoid online; flip the const on a self-hosted OSRM), so the AUTHORITATIVE avoid router is the ON-DEVICE graph: `GraphBuilder` bakes
+  `car_avoid_toll`/`car_avoid_motorway` CH profiles (EV string grew `toll, road_class` - a
+  BREAKING graph change; the engine try-loads the v2 EV string then the old one so existing
+  graphs keep working, minus avoid) and `GraphHopperRouteEngine` mirrors the blocking
+  weightings (Toll.ALL / RoadClass.MOTORWAY -> infinite weight; tolls wins when both toggles
+  are on). directions() tries the on-device avoid route FIRST when a toggle is on; a graph
+  without the profiles returns EMPTY (never silently routes through a toll) and the online
+  chain falls back to a NORMAL route. **The avoid profiles go LIVE per region at the next
+  `routing-graphs.yml` rebake (planned after the polish pass)** - until then the toggles
+  re-route but only change anything where a v2 graph is installed.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
   `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
   the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +

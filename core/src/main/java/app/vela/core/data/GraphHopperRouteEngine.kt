@@ -52,8 +52,17 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
     override fun isReady(mode: TravelMode): Boolean =
         mode == TravelMode.DRIVE && regions().any { it.id !in failed && hasGraph(it.id) }
 
-    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
+    override fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): List<Route> {
         if (mode != TravelMode.DRIVE) return emptyList()
+        // Avoid requests need the matching CH profile (new-format graphs). Tolls win when both
+        // toggles are on: a toll-free route rarely rides a motorway the whole way, but the
+        // reverse is common. A graph without the profile errors per-region and we fall through,
+        // ending empty - the caller falls back rather than silently routing through the toll.
+        val profile = when {
+            avoidTolls -> PROFILE_AVOID_TOLL
+            avoidHighways -> PROFILE_AVOID_MOTORWAY
+            else -> PROFILE
+        }
         // A single graph can't route across regions, so we need one region covering BOTH ends. Region boxes
         // overlap at borders (Geofabrik extracts carry a buffer — British Columbia's box dips into the metro),
         // so try the most specific (smallest-box) covering region first and fall through to the next if its
@@ -64,7 +73,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
         for (region in candidates) {
             val gh = hopper(region) ?: continue
             try {
-                val rsp = gh.route(GHRequest(origin.lat, origin.lng, destination.lat, destination.lng).setProfile(PROFILE))
+                val rsp = gh.route(GHRequest(origin.lat, origin.lng, destination.lat, destination.lng).setProfile(profile))
                 if (!rsp.hasErrors()) return listOf(toRoute(rsp.best))
             } catch (e: Exception) {
                 // try the next covering region
@@ -142,17 +151,36 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
         }
     }
 
-    /** Load one prebuilt CH graph with the three ART workarounds. */
-    private fun load(dir: File): GraphHopper {
+    /** Load one prebuilt CH graph: try the v2 format (toll/road_class EVs + the avoid CH
+     *  profiles) first, then the original format - the EV string and profile list must match
+     *  what the graph was BAKED with, so each generation needs its own load config. */
+    private fun load(dir: File): GraphHopper =
+        try {
+            loadWith(dir, v2 = true)
+        } catch (e: Throwable) {
+            loadWith(dir, v2 = false)
+        }
+
+    /** Load with one config generation; the three ART workarounds apply to both. */
+    private fun loadWith(dir: File, v2: Boolean): GraphHopper {
         val hopper = object : GraphHopper() {
             override fun createWeightingFactory(): WeightingFactory =
-                WeightingFactory { _, _, _ ->
+                WeightingFactory { profile, _, _ ->
                     val speed = encodingManager.getDecimalEncodedValue(SPEED_EV)
                     val access = encodingManager.getBooleanEncodedValue(ACCESS_EV)
+                    // Mirror GraphBuilder's per-profile weighting EXACTLY - CH is baked per
+                    // profile, and a mismatched query weighting routes wrong.
+                    val avoidToll = profile.name == PROFILE_AVOID_TOLL
+                    val avoidMotorway = profile.name == PROFILE_AVOID_MOTORWAY
+                    val toll = if (avoidToll) encodingManager.getEnumEncodedValue("toll", com.graphhopper.routing.ev.Toll::class.java) else null
+                    val roadClass = if (avoidMotorway) encodingManager.getEnumEncodedValue("road_class", com.graphhopper.routing.ev.RoadClass::class.java) else null
                     object : SpeedWeighting(speed) {
                         override fun calcEdgeWeight(edge: EdgeIteratorState, reverse: Boolean): Double {
                             val ok = if (reverse) edge.getReverse(access) else edge.get(access)
-                            return if (!ok) Double.POSITIVE_INFINITY else super.calcEdgeWeight(edge, reverse)
+                            if (!ok) return Double.POSITIVE_INFINITY
+                            if (toll != null && edge.get(toll) == com.graphhopper.routing.ev.Toll.ALL) return Double.POSITIVE_INFINITY
+                            if (roadClass != null && edge.get(roadClass) == com.graphhopper.routing.ev.RoadClass.MOTORWAY) return Double.POSITIVE_INFINITY
+                            return super.calcEdgeWeight(edge, reverse)
                         }
 
                         // car_average_speed is km/h; SpeedWeighting reports time as if it were m/s (3.6x
@@ -167,10 +195,11 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
         val cfg = GraphHopperConfig().apply {
             putObject("graph.location", dir.absolutePath)
             putObject("graph.dataaccess", "MMAP") // ART lacks RAMDataAccess's VarHandle method
-            putObject("graph.encoded_values", ENCODED_VALUES)
+            putObject("graph.encoded_values", if (v2) ENCODED_VALUES_V2 else ENCODED_VALUES)
             putObject("import.osm.ignored_highways", "") // import-only; required by init() validation
-            profiles = listOf(Profile(PROFILE).setCustomModel(GHUtility.loadCustomModelFromJar("car.json")))
-            setCHProfiles(listOf(CHProfile(PROFILE))) // prebuilt CH → fast on-device routing
+            val names = if (v2) listOf(PROFILE, PROFILE_AVOID_TOLL, PROFILE_AVOID_MOTORWAY) else listOf(PROFILE)
+            profiles = names.map { Profile(it).setCustomModel(GHUtility.loadCustomModelFromJar("car.json")) }
+            setCHProfiles(names.map { CHProfile(it) }) // prebuilt CH → fast on-device routing
         }
         hopper.init(cfg)
         hopper.importOrLoad()
@@ -215,7 +244,12 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
             lat in s..n && lng in w..e
 
         private const val PROFILE = "car"
+        private const val PROFILE_AVOID_TOLL = "car_avoid_toll"
+        private const val PROFILE_AVOID_MOTORWAY = "car_avoid_motorway"
         private const val ENCODED_VALUES = "car_access, car_average_speed, road_access, max_speed"
+        // Graphs baked 2026-07-11+ carry toll/road_class + the avoid CH profiles. Loading
+        // tries this string first and falls back to the old one, so both generations work.
+        private const val ENCODED_VALUES_V2 = "car_access, car_average_speed, road_access, max_speed, toll, road_class"
         private const val SPEED_EV = "car_average_speed"
         private const val ACCESS_EV = "car_access"
         private const val MAX_SPEED_EV = "max_speed" // OSM posted limit (km/h); == GraphHopper MaxSpeed.KEY
