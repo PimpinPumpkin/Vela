@@ -402,6 +402,9 @@ class NavSession @Inject constructor(
         if (now - lastRerouteSpokeMs > REROUTE_SPEAK_MIN_MS) {
             lastRerouteSpokeMs = now
             voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
+            // A buzz too (its own pattern, see Haptics.reroute) — the voice is useless muted or on
+            // a windy ride, and the banner's "rerouting…" needs eyes on the screen.
+            haptics.reroute(mode)
         }
         // Reroute THROUGH the stops you haven't reached yet — not straight to the final destination
         // (that used to silently drop your remaining stops on any off-route wobble).
