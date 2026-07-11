@@ -46,6 +46,10 @@ class WebPhotoFetcher @Inject constructor(
 ) {
     private val pending = ConcurrentHashMap<String, CompletableDeferred<String>>()
     private val partials = ConcurrentHashMap<String, (String) -> Unit>()
+    private val hists = ConcurrentHashMap<String, (List<Int>) -> Unit>()
+    // featureId -> [5-star..1-star] counts, so a cached-gallery revisit still gets its histogram
+    // (the photo cache hit skips the whole walk). Tiny payloads; same rough cap as the photo LRU.
+    private val histCache = ConcurrentHashMap<String, List<Int>>()
     private val seq = AtomicInteger()
     private val mutex = Mutex()
     private val main = Handler(Looper.getMainLooper())
@@ -71,6 +75,17 @@ class WebPhotoFetcher @Inject constructor(
         @JavascriptInterface
         fun onPartial(id: String, payload: String) {
             partials[id]?.invoke(payload)
+        }
+
+        // The place page's rating distribution ([5-star..1-star] counts) scraped in passing while
+        // the photo walk is on the overview - the same aria-label table rows the reviews panel
+        // reads. One-shot per fetch; JavaBridge thread, callback must be thread-safe.
+        @JavascriptInterface
+        fun onHistogram(id: String, json: String) {
+            val counts = runCatching {
+                val a = org.json.JSONArray(json); (0 until a.length()).map { a.getInt(it) }
+            }.getOrNull()?.takeIf { it.size == 5 } ?: return
+            hists[id]?.invoke(counts)
         }
     }
 
@@ -98,14 +113,23 @@ class WebPhotoFetcher @Inject constructor(
     /** The gallery for [featureId] (`0x..:0x..`) — each [Photo] is its URL plus the gallery-tab
      *  [Photo.category] when Google tagged it (Menu / Food & drink / Vibe / By owner; null = All).
      *  No posted date from a DOM scrape. Empty on any failure. [count] caps how many we keep. */
-    suspend fun fetch(featureId: String, count: Int = 80, onPartial: ((List<Photo>) -> Unit)? = null): List<Photo> {
+    suspend fun fetch(
+        featureId: String,
+        count: Int = 80,
+        onPartial: ((List<Photo>) -> Unit)? = null,
+        onHistogram: ((List<Int>) -> Unit)? = null,
+    ): List<Photo> {
         val cid = cidOf(featureId) ?: return emptyList()
-        synchronized(cache) { cache[featureId] }?.let { return it } // instant on revisit — skip the scrape
+        synchronized(cache) { cache[featureId] }?.let {
+            if (onHistogram != null) histCache[featureId]?.let(onHistogram) // cached walk = cached histogram
+            return it // instant on revisit — skip the scrape
+        }
         return mutex.withLock {
             val id = "p" + seq.incrementAndGet()
             val deferred = CompletableDeferred<String>()
             pending[id] = deferred
             if (onPartial != null) partials[id] = { raw -> onPartial(parseLines(raw)) }
+            hists[id] = { counts -> histCache[featureId] = counts; onHistogram?.invoke(counts) }
             val raw = try {
                 withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
                     withContext(Dispatchers.Main) {
@@ -141,6 +165,7 @@ class WebPhotoFetcher @Inject constructor(
             } finally {
                 pending.remove(id)
                 partials.remove(id)
+                hists.remove(id)
             }
             val out = raw?.let { parseLines(it) } ?: emptyList()
             if (out.isNotEmpty()) synchronized(cache) { cache[featureId] = out } // cache only real results
@@ -217,12 +242,17 @@ class WebPhotoFetcher @Inject constructor(
               function tabsNow(){ var out=[]; tabEls().forEach(function(e){ var t=((e.getAttribute('aria-label')||e.textContent)||'').trim(); if(t && t.length<20 && CATRE.test(t) && /^[a-z &]+${'$'}/i.test(t) && out.indexOf(t)<0) out.push(t); }); return out; }
               function lines(){ var out=[]; for(var k in acc) out.push((acc[k].c||'')+'\t'+acc[k].u); return out.slice(0,CAP).join("\n"); }
               function finish(){ try{ VelaBridge.onResult(ID, lines()); }catch(e){ try{ VelaBridge.onResult(ID,''); }catch(e2){} } }
+              var histSent=0;
+              // The overview's rating-distribution table (each row: "5 stars, 612 reviews") - the
+              // same rows the reviews panel carves; grabbed once in passing, costs nothing extra.
+              function hist(){ if(histSent) return; var rows=[].slice.call(document.querySelectorAll('tr[aria-label]')).filter(function(r){ return /^\s*\d\s+stars?,/i.test(r.getAttribute('aria-label')||''); }); if(rows.length<5) return; var c={}; rows.forEach(function(r){ var m=(r.getAttribute('aria-label')||'').match(/^\s*(\d)\s+stars?,\s*([\d,]+)/i); if(m) c[m[1]]=parseInt(m[2].replace(/,/g,''),10); }); if(c['5']!==undefined && c['1']!==undefined){ histSent=1; try{ VelaBridge.onHistogram(ID, JSON.stringify([c['5']||0,c['4']||0,c['3']||0,c['2']||0,c['1']||0])); }catch(e){} } }
               var sentN=0;
               // Stream growth: the sheet fills in as photos are found instead of waiting ~20s for
               // the full tab walk (first partial = the OVERVIEW's hero photos, ~1 tick after load).
               function partial(){ var n=0; for(var k in acc) n++; if(n>sentN){ sentN=n; try{ VelaBridge.onPartial(ID, lines()); }catch(e){} } }
               function tick(){
                 tries++;
+                hist();
                 if(phase===0){
                   collect(''); clickPhotos(); scroll();
                   // Wait until the gallery's category tabs actually exist (slow loads) — but not forever:

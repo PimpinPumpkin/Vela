@@ -43,10 +43,13 @@ interface MapDataSource {
      *  Best-effort — null when the link isn't a list or the fetch/parse fails. */
     suspend fun importList(shareUrl: String): app.vela.core.model.ImportedList? = null
 
-    /** The full place photo gallery (~40+), by Google feature id. The search
-     *  response only carries a ~10-photo preview; this pulls the rest via the
-     *  keyless `hspqX` RPC. Best-effort — empty (→ keep the preview) on failure. */
-    suspend fun placePhotos(featureId: String): List<String> = emptyList()
+    /** The full place photo gallery (~40+), by Google feature id, each with its
+     *  posted date when the response carried one. The search response only holds a
+     *  ~10-photo preview; this pulls the rest via the keyless `hspqX` RPC. The app's
+     *  primary gallery source is the WebView page walk (which has category tags but
+     *  NO dates), so this doubles as the DATE side of that join. Best-effort —
+     *  empty (→ keep the preview) on failure. */
+    suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = emptyList()
 
     suspend fun directions(
         origin: LatLng,

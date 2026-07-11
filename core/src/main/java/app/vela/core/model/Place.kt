@@ -39,6 +39,9 @@ data class Place(
     // Empty for the search-response preview; the WebView gallery fills it in (the dates
     // live in the gallery RPC, not the search response). Read by the full-screen viewer.
     val photoDates: List<String?> = emptyList(),
+    /** Rating distribution as [5-star, 4-star, 3-star, 2-star, 1-star] counts, when known
+     *  (scraped in passing from the place page during the photo walk). */
+    val ratingHistogram: List<Int>? = null,
     // Gallery category per photo ("Menu" / "Food & drink" / "Vibe" / "By owner" / null = All),
     // index-aligned with [photoUrls]. Filled by the WebView gallery scrape; drives the gallery's
     // category filter chips.
