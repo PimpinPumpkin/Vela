@@ -231,7 +231,10 @@ fun MapScreen(
         val variant = if (darkTheme) "streets-v2-dark" else "streets-v2"
         "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
     } else {
-        state.styleUri
+        // Liberty is swapped for the cached Roboto-glyph patch when MapFonts has it
+        // ready (reactive - flips once the first refresh lands). Offline REGION
+        // DEFINITIONS deliberately keep state.styleUri (see MapFonts).
+        MapFonts.effective(state.styleUri)
     }
     val context = LocalContext.current
 

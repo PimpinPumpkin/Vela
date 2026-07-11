@@ -1034,6 +1034,14 @@ fun VelaMapView(
                 val json = context.assets.open(styleUri.removePrefix("asset://"))
                     .bufferedReader().use { it.readText() }
                 Style.Builder().fromJson(json)
+            } else if (styleUri.startsWith("file://")) {
+                // MapFonts' patched Liberty (live style re-pointed at the Roboto
+                // glyph host). Read + fromJson rather than trusting native file://
+                // handling; a vanished/empty file falls back to the plain URL.
+                val f = java.io.File(styleUri.removePrefix("file://"))
+                val json = runCatching { f.readText() }.getOrNull()
+                if (json.isNullOrBlank()) Style.Builder().fromUri(app.vela.core.data.tiles.MapStyle.LIBERTY.uri)
+                else Style.Builder().fromJson(json)
             } else {
                 Style.Builder().fromUri(styleUri)
             }

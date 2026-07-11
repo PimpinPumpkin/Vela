@@ -569,7 +569,11 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   them would need finding a separate (likely gated) video source + a player dependency
   (ExoPlayer/media3) + handling expiring stream URLs - high effort for a feature most
   places don't have. Skip unless a specific place with videos motivates it.
-- **Roboto font** - no keyless glyph host serves it; Noto Sans stays.
+- **Roboto font** - DONE 2026-07-11: self-hosted glyphs (Roboto composited over Noto per
+  glyph, built by `scripts/build-map-fonts.sh`) served from the repo's GitHub Pages; the
+  app patches the live Liberty style's glyphs URL at launch (`ui/map/MapFonts`) with a
+  probe-and-fall-back to plain Noto. Needs the `map-fonts` release published + one
+  fdroid-repo.yml run to light up.
 
 ## Resilience (built - extend as needed)
 
@@ -602,10 +606,10 @@ project's core promise is that neither exists:
 - Ambient POI dot tiers like Google (user 2026-07-11): when zoomed out, lower-rank ambient
   POIs should degrade to small dots before hiding entirely, tiered by prominence - the
   search-result collapsed-dot mechanic generalized to the browse map.
-- Map label font trickle-down: map text renders from PBF glyph atlases (currently a bundled
-  Roboto-matching pack, so it matches the app font today); true inheritance means a CI step
-  that generates the glyph pack from the same font file the app ships, then repointing
-  textFont. Runtime inheritance is not possible in MapLibre.
+- Map label font trickle-down: map text now renders from the self-hosted Roboto glyph pack
+  (matches the app font today); true inheritance means regenerating that pack from the same
+  font file the app ships (`scripts/build-map-fonts.sh` is the hook) and republishing the
+  `map-fonts` release. Runtime inheritance is not possible in MapLibre.
 - Restaurant menu reliability: instrument the gallery walk to classify tab-less fetches,
   stop caching a tab-less result forever, and separate device render timing from Google-side
   variance.
