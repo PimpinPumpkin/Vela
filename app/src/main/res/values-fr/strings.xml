@@ -279,7 +279,10 @@
     <string name="mapscreen_got_it">Compris</string>
     <string name="mapscreen_heads_up">À noter</string>
     <string name="mapscreen_dismiss">Ignorer</string>
-    <string name="mapscreen_results_count">%1$d résultats</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d résultat</item>
+        <item quantity="other">%1$d résultats</item>
+    </plurals>
     <string name="mapscreen_shrink_list">Réduire la liste</string>
     <string name="mapscreen_expand_list">Agrandir la liste</string>
     <string name="mapscreen_close_results">Fermer les résultats de recherche</string>
