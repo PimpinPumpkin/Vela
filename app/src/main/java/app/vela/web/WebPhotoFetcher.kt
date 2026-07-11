@@ -195,13 +195,16 @@ class WebPhotoFetcher @Inject constructor(
         val idj = "\"" + id.replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         return """
             (function(){
-              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0, opened=false;
-              // The gallery tabs worth tagging (skip All/Latest/Videos/Street View — All is the fallback sweep).
-              var CATRE=/^(menu|food|drink|vibe|by owner)/i;
+              var ID=$idj, CAP=$cap, acc={}, tries=0, phase=0, cats=[], ci=0, sub=0, opened=false, pre={};
+              // The gallery tabs worth tagging (skip All/Latest/Videos/Street View — All is the fallback
+              // sweep). Menu names cover the app's 11 languages (tabs arrive localized).
+              var CATRE=/^(menu|menú|menù|speisekarte|cardápio|menukaart|меню|meny|food|drink|vibe|by owner)/i;
+              var MENURE=/^(menu|menú|menù|speisekarte|cardápio|menukaart|меню|meny)/i;
               function ok(u){ return !!u && u.indexOf('googleusercontent')>=0 && !/streetviewpixels/.test(u) && !/\/a[\/-]|ACg8oc|ALV-/.test(u); }
               function idOf(u){ return u.replace(/=[wshpc].*$/,''); }
               function urlOf(el){ var u=el.currentSrc||el.src||''; if(!u || u.indexOf('googleusercontent')<0){ var bg=el.style.backgroundImage||''; if(!bg){ try{ bg=getComputedStyle(el).backgroundImage||''; }catch(e){} } var m=bg.match(/url\(["']?([^"')]+)/); if(m) u=m[1]; } return u; }
-              function collect(cat){ [].slice.call(document.querySelectorAll('img,[role="img"],button,a,[style*="background"]')).forEach(function(el){ var u=urlOf(el); if(ok(u)){ var k=idOf(u); if(!acc[k]) acc[k]={c:cat,u:u}; } }); }
+              function collect(cat,skip){ [].slice.call(document.querySelectorAll('img,[role="img"],button,a,[style*="background"]')).forEach(function(el){ var u=urlOf(el); if(ok(u)){ var k=idOf(u); if(skip && skip[k]) return; if(!acc[k]) acc[k]={c:cat,u:u}; } }); }
+              function snap(){ var s={}; [].slice.call(document.querySelectorAll('img,[role="img"],button,a,[style*="background"]')).forEach(function(el){ var u=urlOf(el); if(ok(u)) s[idOf(u)]=1; }); return s; }
               // Tabs come from role="tab" ONLY: the place overview also has a bare "Menu" ACTION LINK (an
               // <a> to the restaurant's own site) — clicking that would navigate the WebView off Maps and
               // kill the scrape. (The Kotlin side also blocks off-google navigations as a belt-and-braces.)
@@ -232,10 +235,12 @@ class WebPhotoFetcher @Inject constructor(
                 }
                 else if(phase===1){
                   if(ci>=cats.length){ phase=2; sub=0; }
-                  // Per tab: click it, then scroll + COLLECT each tick — but only once the tab is actually
-                  // SELECTED (aria-selected), else a slow grid swap would tag the previous tab's photos
-                  // with this category. Accumulate across ticks (the grid virtualizes).
-                  else { if(sub===0) clickTab(cats[ci]); scroll(); if(sub>=2 && tabSelected(cats[ci])) collect(cats[ci]); sub++; if(sub>=6){ ci++; sub=0; } }
+                  // Per tab: SNAPSHOT what's already on screen, click, then collect ONLY images that
+                  // appear after the switch (and only once aria-selected confirms it) — the whole-document
+                  // sweep was tagging page chrome + the previous grid's leftover tiles with the category
+                  // (the "Menu tab full of non-menu pics" report, 2026-07-10). Menu tabs get a LONGER
+                  // scroll dwell so a long menu is walked to the end, not sampled.
+                  else { if(sub===0){ pre=snap(); clickTab(cats[ci]); } scroll(); if(sub>=2 && tabSelected(cats[ci])) collect(cats[ci], pre); sub++; var dwell=MENURE.test(cats[ci])?14:6; if(sub>=dwell){ ci++; sub=0; } }
                 }
                 else {
                   // The All sweep: click, give the grid one no-collect settle tick, then sweep uncategorized.
@@ -243,7 +248,7 @@ class WebPhotoFetcher @Inject constructor(
                   scroll(); if(sub>=1) collect('');
                   sub++; if(sub>=5){ finish(); return; }
                 }
-                if(tries>58){ collect(''); finish(); return; }
+                if(tries>84){ collect(''); finish(); return; }
                 partial();
                 setTimeout(tick, 500);
               }
@@ -253,10 +258,10 @@ class WebPhotoFetcher @Inject constructor(
     }
 
     private companion object {
-        // Must outlast the script's own hard stop (58 ticks × 500 ms = 29 s + page load ≤ 8 s) — if the
+        // Must outlast the script's own hard stop (84 ticks × 500 ms = 42 s + page load ≤ 8 s) — if the
         // Kotlin timeout fires first we return NULL and throw away everything the walk accumulated,
         // instead of the partial set the script's salvage path would deliver.
-        const val TOTAL_TIMEOUT_MS = 40_000L
+        const val TOTAL_TIMEOUT_MS = 55_000L
         const val SETTLE_MS = 1_200L
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport so the virtualized category grids render a full batch (not ~1 tile).

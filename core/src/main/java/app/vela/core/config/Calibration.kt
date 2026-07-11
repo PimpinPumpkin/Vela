@@ -94,6 +94,10 @@ data class Calibration(
             "rating" to listOf(1, 4, 7),
             "reviewCount" to listOf(1, 4, 8),
             "priceText" to listOf(1, 4, 2),
+            // Gas stations: the live fuel price string ("$5.34/Regular") — pinned from a live
+            // "gas stations" capture 2026-07-10 ([88] also carries the station type marker +
+            // chain name; [0] is the price). Null on every non-fuel place.
+            "fuelPrice" to listOf(1, 88, 0),
             "website" to listOf(1, 7, 0),
             // Action link (Google's "Book online" / "Reserve a table" / "Order online"
             // button): the primary action node at [1][75][0][0][5] — label [0], URL [1][2][0].
