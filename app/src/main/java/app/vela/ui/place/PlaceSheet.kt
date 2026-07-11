@@ -286,9 +286,14 @@ fun PlaceSheet(
     // whole detent the moment a drag crossed a pixel threshold, which read as staccato steps
     // (user 2026-07-10). State flips from taps / the reviews panel / auto-expand still animate,
     // via the LaunchedEffect below.
-    val minH = screenH * 0.26f
-    val peekH = screenH * 0.56f
-    val expH = screenH * 0.92f
+    // A parked-car (or any minimal-content) sheet has nothing to minimize INTO — one compact
+    // fixed height, so a drag can't shrink it and hide the actions (user 2026-07-10). All three
+    // detents equal that height, so every detent computation resolves to it and the drag can't
+    // resize the sheet.
+    val singleDetent = isParking
+    val minH = if (singleDetent) screenH * 0.30f else screenH * 0.26f
+    val peekH = if (singleDetent) screenH * 0.30f else screenH * 0.56f
+    val expH = if (singleDetent) screenH * 0.30f else screenH * 0.92f
     fun detentFor(expanded: Boolean, minimized: Boolean) = when {
         expanded -> expH
         minimized -> minH
@@ -336,6 +341,7 @@ fun PlaceSheet(
     // linear projection factor of 0.15 - it's the one knob for "how hard must I throw it".
     val flingDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
     fun settleFromVelocity(velocityPxPerSec: Float) {
+        if (singleDetent) { settleScope.launch { heightAnim.animateTo(peekH, settleSpec) }; return }
         val vDp = with(density) { velocityPxPerSec.toDp().value }
         // Where the throw would naturally coast to, then the nearest detent to THAT point.
         val naturalEnd = flingDecay.calculateTargetValue(heightAnim.value, -vDp)
@@ -508,8 +514,11 @@ fun PlaceSheet(
                     .dpadHighlight(RoundedCornerShape(3.dp))
                     .clickable {
                         // Tap grows one detent: minimized→peek, peek→expanded, expanded→peek.
-                        if (minimizedState.value) minimizedState.value = false
-                        else expandedState.value = !expandedState.value
+                        // (No-op on a single-detent sheet — a parked car has nowhere to step.)
+                        if (!singleDetent) {
+                            if (minimizedState.value) minimizedState.value = false
+                            else expandedState.value = !expandedState.value
+                        }
                     }
                     .pointerInput(Unit) {
                         // The handle drags the sheet 1:1 and the release coasts to the nearest
@@ -546,7 +555,7 @@ fun PlaceSheet(
                     // recomposition), and the minimized card below fades in at the swap - the
                     // content no longer vanishes in one frame at the flip.
                     .graphicsLayer {
-                        if (minimizedState.value) { alpha = 1f; translationY = 0f } else {
+                        if (minimizedState.value || singleDetent) { alpha = 1f; translationY = 0f } else {
                             val f = ((heightAnim.value - minH) / 110f).coerceIn(0f, 1f)
                             alpha = f
                             // The content SLIDES DOWN as it fades (user 2026-07-10) — the exit
@@ -559,7 +568,7 @@ fun PlaceSheet(
             // Minimized detent: a compact card (name, rating, Directions) instead of the full body,
             // like Google's collapsed sheet. At this small height leading with the photo hero showed
             // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
-            if (minimizedState.value) {
+            if (minimizedState.value && !singleDetent) {
                 val miniIn = remember { androidx.compose.animation.core.Animatable(0f) }
                 LaunchedEffect(Unit) { miniIn.animateTo(1f, tween(220)) }
                 // A single tap ANYWHERE on the minimized card pops it back to peek (Google) —
