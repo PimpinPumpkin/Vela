@@ -1144,6 +1144,21 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   frozen-speedo/creeping-puck bug). Measured speeds pass a SYMMETRIC accel-bounded gate against the
   last ACCEPTED value (`gateMeasuredSpeed`, 2-fix persistence escape, shared with replay) - one-sided
   spike filters self-latch (a down-glitch to 0 then rejects every real speed as an up-spike forever).
+- **Avoid tolls / avoid highways (2026-07-11):** two sticky FilterChips in the route
+  chooser (DRIVE only; prefs `avoid_tolls`/`avoid_highways`, seeded in routeToSelected like
+  the sticky mode). PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`
+  carry the flags end to end. The public FOSSGIS OSRM REJECTS `exclude=` (probed 2026-07-11:
+  InvalidValue - its profiles lack excludable classes; routeOsrm now bails on any 4xx instead
+  of retrying), so the AUTHORITATIVE avoid router is the ON-DEVICE graph: `GraphBuilder` bakes
+  `car_avoid_toll`/`car_avoid_motorway` CH profiles (EV string grew `toll, road_class` - a
+  BREAKING graph change; the engine try-loads the v2 EV string then the old one so existing
+  graphs keep working, minus avoid) and `GraphHopperRouteEngine` mirrors the blocking
+  weightings (Toll.ALL / RoadClass.MOTORWAY -> infinite weight; tolls wins when both toggles
+  are on). directions() tries the on-device avoid route FIRST when a toggle is on; a graph
+  without the profiles returns EMPTY (never silently routes through a toll) and the online
+  chain falls back to a NORMAL route. **The avoid profiles go LIVE per region at the next
+  `routing-graphs.yml` rebake (planned after the polish pass)** - until then the toggles
+  re-route but only change anything where a v2 graph is installed.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
   `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
   the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +

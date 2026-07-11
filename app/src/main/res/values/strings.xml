@@ -547,4 +547,6 @@
     <string name="notif_ask_skip">Skip</string>
     <string name="place_time_past_toast">That time has passed. Set to now.</string>
     <string name="settings_ui_scale">Interface size</string>
+    <string name="place_avoid_tolls">Avoid tolls</string>
+    <string name="place_avoid_highways">Avoid highways</string>
 </resources>
