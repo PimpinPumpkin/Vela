@@ -1731,7 +1731,7 @@ internal fun applyLight(style: Style) {
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#e2e3e9"),
-        PropertyFactory.fillExtrusionOpacity(0.9f),
+        PropertyFactory.fillExtrusionOpacity(1f),
     )
     // Extrusions only once zoomed into a block — the flat fill+outline gives the footprint
     // look at browse zoom, and fill-extrusion is the per-pixel-expensive part on a Pixel 5a.
@@ -1781,21 +1781,24 @@ internal fun applyLight(style: Style) {
 
 /** Google-Maps-dark-ish palette applied over the OpenMapTiles layers. */
 internal fun applyDark(style: Style) {
-    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#111c31"))
-    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
-    style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(1f)) // Google-app dark vegetation: a TEAL green (matched to the user's Google dark screenshot 2026-07-11), clearly lighter than the land
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(0.9f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(0.95f))
+    // Every dark value below is PIXEL-SAMPLED from Google Maps (the app) on the attached
+    // Pixel 9, 2026-07-11: land #162640, water #000d2a, vegetation #0d3847, buildings
+    // #1c3b69 (alt shade #2e3d6d), minor roads #3d5a77, arterials/motorway #476789.
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#162640"))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#000d2a"))
+    style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#000d2a"))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(1f)) // Google-app dark vegetation: a TEAL green (matched to the user's Google dark screenshot 2026-07-11), clearly lighter than the land
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.95f))
     listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
         "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#304864"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#3d5a77"))
     }
     listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#3d5878"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#476789"))
     }
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6f7a96"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#476789"))
     }
     // Casings blend into the night land so roads are clean (no hard outline), like
     // Google dark — the lighter road fills still read against the dark land.
@@ -1803,19 +1806,19 @@ internal fun applyDark(style: Style) {
         "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
         "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
         "bridge_street_casing", "bridge_link_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#111c31"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#162640"))
     }
     // Buildings a touch lighter than the #242f3e land + a lit edge, so they read in
     // dark mode instead of melting into the ground (same reasoning as the light path).
     style.getLayer("building")?.setProperties(
-        PropertyFactory.fillColor("#172b56"),
-        PropertyFactory.fillOutlineColor("#243970"),
+        PropertyFactory.fillColor("#1c3b69"),
+        PropertyFactory.fillOutlineColor("#2e3d6d"),
     )
     style.getLayer("building")?.setMinZoom(14f) // houses from neighbourhood zoom (see light path)
     style.getLayer("building")?.setMaxZoom(24f) // re-open the maxzoom:14 clamp (see light path — was collapsing the flat fill to empty)
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#172b56"),
-        PropertyFactory.fillExtrusionOpacity(0.9f),
+        PropertyFactory.fillExtrusionColor("#1c3b69"),
+        PropertyFactory.fillExtrusionOpacity(1f),
     )
     style.getLayer("building-3d")?.setMinZoom(16f) // extrusions only high-zoom (Pixel 5a perf)
     // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
@@ -1838,7 +1841,7 @@ internal fun applyDark(style: Style) {
         }
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
-    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d2b38"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
