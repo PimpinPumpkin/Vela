@@ -43,6 +43,16 @@ class Haptics @Inject constructor(
         runCatching { v.vibrate(VibrationEffect.createWaveform(pattern, -1)) }
     }
 
+    /** Off-route buzz, fired alongside the spoken "Rerouting" (and just as sparsely — the caller's
+     *  throttle gates both). Three quick ticks then a long buzz: unlike any turn pattern, so a rider
+     *  who can't hear the voice still knows the route changed rather than a turn coming up. Honours
+     *  the same per-mode "Vibrate on turns" setting. */
+    fun reroute(mode: TravelMode) {
+        if (!enabled(mode)) return
+        val v = vibrator?.takeIf { it.hasVibrator() } ?: return
+        runCatching { v.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 60, 60, 60, 60, 60, 90, 320), -1)) }
+    }
+
     private fun isLeft(t: ManeuverType) = t in LEFTS
     private fun isRight(t: ManeuverType) = t in RIGHTS
 
