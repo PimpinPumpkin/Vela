@@ -43,6 +43,9 @@ object PoiIcons {
         Triple("default", 0xe55f, "#5F6368"),
     )
 
+    /** The category colour for a dot group (the ambient mini-dot tier tints circles with it). */
+    fun colorFor(group: String): String = GROUPS.firstOrNull { it.first == group }?.third ?: "#5F6368"
+
     fun addTo(context: Context, style: Style) {
         val tf = runCatching {
             Typeface.createFromAsset(context.assets, "fonts/MaterialIcons-Regular.ttf")

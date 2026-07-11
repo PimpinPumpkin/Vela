@@ -930,7 +930,15 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   COMMERCIAL/RETAIL blocks cream #fdf9ef via the `vela-commercial` twin (Liberty ships no
   layer for those classes; dark paints the twin #1c2638 = the other-landuse navy so dark
   is unchanged). Google light also marks on-street BIKE ROUTES dark teal #007b8b - NOT
-  drawn by Vela (bike lanes are not the trails layer; noted as a possible future accent). 3D extrusions = the flat colour at
+  drawn by Vela (bike lanes are not the trails layer; noted as a possible future accent).
+- **Ambient POI DOT TIER (2026-07-11):** `vela-ambient-dots`, a CircleLayer UNDER the
+  ambient icon layer on the same source - every ambient place draws a small category-
+  coloured circle (`dotColor` prop from PoiIcons.colorFor; radius 2.6-4.2 by prominence,
+  ring = land colour per theme). Icons still collide; the losers now stay visible as dots
+  and upgrade to icons as slots free up while zooming - Google's tiering. Circles skip the
+  collision engine (cheap on the 5a/4a class GPUs); taps work through the same
+  AMBIENT_INDEX_PROP rect query. Don't gate the dots on zoom - the ambient FETCH gate
+  (z>=14) already bounds them. 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
