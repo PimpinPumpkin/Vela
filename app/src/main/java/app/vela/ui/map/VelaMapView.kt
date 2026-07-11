@@ -1889,9 +1889,11 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
 
 internal fun applyLight(style: Style) {
     // Road-name labels get a wide white halo so they stay readable over the dotted walk
-    // line / route line beneath them (dark path does the same; see the symbol pass there).
+    // line / route line beneath them (dark path does the same; see the symbol pass there),
+    // and the BOLD font stack - Google boldens street names on the map (user 2026-07-11).
     listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
         style.getLayer(it)?.setProperties(
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
             PropertyFactory.textHaloColor("#ffffff"),
             PropertyFactory.textHaloWidth(1.9f),
         )
@@ -2062,6 +2064,11 @@ internal fun applyDark(style: Style) {
                 (layer.id.startsWith("landuse") || layer.id.startsWith("landcover")) ->
                 layer.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
         }
+    }
+    // Street names in BOLD (Google boldens them; user 2026-07-11) - a dedicated pass AFTER the
+    // blanket loop so only the road-name layers get the Bold stack, not every label.
+    listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.textFont(arrayOf("Noto Sans Bold")))
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
