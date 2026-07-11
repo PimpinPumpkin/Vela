@@ -5,26 +5,29 @@ any F-Droid client (F-Droid, Droid-ify, Neo Store) without sideloading.
 
 ## Add the repo
 
-1. In your F-Droid client, open **Settings → Repositories → Add repository**.
-2. Enter the repo address:
-
-   ```
-   https://pimpinpumpkin.github.io/Vela/repo
-   ```
-
-3. When asked for the fingerprint (or to confirm it), check it matches:
-
-   ```
-   F374920F2F5F38D7508D0B042125B8EAF23CF0F06FA7490280FB77115BB091DE
-   ```
-
-4. Refresh, search for **Vela Maps**, install.
-
-Or use the one-line form some clients accept directly:
+Paste this one line as the repository address — the official F-Droid client,
+Droid-ify and Neo Store all accept it and pick up the fingerprint automatically:
 
 ```
 https://pimpinpumpkin.github.io/Vela/repo?fingerprint=F374920F2F5F38D7508D0B042125B8EAF23CF0F06FA7490280FB77115BB091DE
 ```
+
+(In your client: **Settings → Repositories → Add repository**, paste, refresh,
+search for **Vela Maps**, install.)
+
+If your client wants the address and fingerprint separately, use:
+
+- Address:
+
+  ```
+  https://pimpinpumpkin.github.io/Vela/repo
+  ```
+
+- Fingerprint:
+
+  ```
+  F374920F2F5F38D7508D0B042125B8EAF23CF0F06FA7490280FB77115BB091DE
+  ```
 
 ## What the repo serves
 
