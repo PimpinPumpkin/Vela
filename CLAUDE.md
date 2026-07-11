@@ -356,6 +356,15 @@ Defaults that make the safe path the easy one:
   WITHOUT the restricted build flavor (user's call, 2026-07-08) - the flavor/LockableToggle machinery
   was deliberately dropped, keep holders in the plain `ShowReviews` shape. Gate any new external-link
   surface on a place page behind this holder.
+- **Full-screen viewers = VISIBLE bars + gradient, NOT hidden bars (2026-07-10).** After many
+  rounds fighting a Compose Dialog window to COVER the system bars (window dumps proved it
+  re-asserts inset-fitted params and refuses), the working recipe is Google's own: NO_LIMITS +
+  TRANSPARENT status/nav bar colors + `Modifier.requiredFullScreen()` on the content root (sizes
+  to the true display so it fills UNDER the transparent bars) + a top gradient scrim so the
+  status bar reads over the photo. Applies to `PhotoGalleryContent`-era gallery + `FullScreenReviews`.
+  Don't reach for hide-bars/dim/decor tricks again — they leave strips. The reviews page uses an
+  X (left, matching the gallery) and a top-edge pull-down (panel `onOverscroll`/`onOverscrollEnd`
+  → `offset` the Surface → dismiss past 120dp).
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
   `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
