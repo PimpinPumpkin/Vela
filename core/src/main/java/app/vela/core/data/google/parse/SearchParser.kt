@@ -144,6 +144,9 @@ object SearchParser {
             // label (its lower bound, or the count of '$' for the "$$" symbol style) — the
             // price filter has nothing to compare against otherwise.
             priceLevel = priceLevelOf(field("priceText").str()),
+            // Gas stations carry a live fuel price ("$5.34/Regular"); sanity-gate on a digit so
+            // a shape drift can never put a stray label where the UI expects a price.
+            fuelPrice = field("fuelPrice").str()?.trim()?.takeIf { it.any(Char::isDigit) && it.length <= 24 },
             website = field("website").str(),
             // Action link (Book/Reserve/Order) — only when there's a real http(s) URL, so a
             // shape change can never render a button that opens garbage.
@@ -182,6 +185,15 @@ object SearchParser {
             featureId = field("featureId").str(),  // "0x..:0x.." → reviews RPC
             placeId = field("placeId").str(),      // "ChIJ.." → deep links
             about = parseAbout(entry, paths),
+            // Keyed on the LANGUAGE-NEUTRAL attribute id (the display strings arrive localized
+            // via hl=, so they can't drive a filter). The search response ships only the
+            // accessibility attribute family per result; the rest of the About attributes come
+            // with the per-place details, which is why this is the one attribute filter.
+            wheelchairAccessible = entry.atPath(pathOf(paths, "about")).arr()?.any { g ->
+                g.at(2).arr()?.any { a ->
+                    a.at(0).str()?.endsWith("wheelchair_accessible_entrance") == true
+                } == true
+            } == true,
             editorialSummary = field("editorialSummary").str()?.trim()?.ifBlank { null },
             ownerDescription = field("ownerDescription").str()?.trim()?.ifBlank { null },
             popularTimes = parsePopularTimes(entry, paths),
