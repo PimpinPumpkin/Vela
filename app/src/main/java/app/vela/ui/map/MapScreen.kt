@@ -299,6 +299,10 @@ fun MapScreen(
     // chrome (scale bar / locate FAB / Search this area) so it never draws on top of the list at
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
     // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
+    // Which result ids survive the results sheet's filters (null = filters off) - feeds the
+    // map markers so filtered-out places lose their pins, not just their rows.
+    var filteredResultIds by remember { mutableStateOf<Set<String>?>(null) }
+    LaunchedEffect(state.results) { filteredResultIds = null }
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
     // Bumped when the user grabs the map with a sheet open — each sheet glides down to its
     // minimized form on its bump (see onUserPan below).
@@ -690,7 +694,7 @@ fun MapScreen(
             },
             altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
             onSelectAlternate = vm::selectRoute,
-            markers = markersOf(state),
+            markers = markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
@@ -1328,6 +1332,7 @@ fun MapScreen(
             state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null -> {
               SearchResults(
                 results = state.results,
+                onShownChange = { filteredResultIds = it },
                 collapsed = state.resultsCollapsed,
                 expanded = resultsExpanded,
                 onExpandedChange = { resultsExpanded = it },
@@ -1707,8 +1712,12 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
         emptyList()
     }
 
-private fun markersOf(state: MapUiState): List<MapMarker> =
-    displayedPlaces(state).map { MapMarker(it.name, it.location) }
+private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMarker> =
+    displayedPlaces(state)
+        // The results sheet's filters (Open now / rating / price) report the surviving ids up;
+        // pins the LIST dropped must drop off the MAP too (user 2026-07-11). null = no filter on.
+        .let { list -> if (filteredIds == null) list else list.filter { it.id in filteredIds } }
+        .map { MapMarker(it.name, it.location) }
 
 @Composable
 private fun SearchResults(
@@ -1723,6 +1732,7 @@ private fun SearchResults(
     listName: String? = null, // set when the results ARE an open list — shown as the sheet title
     query: String = "", // the search text — leads the minimized bar so it says WHAT the results are
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, THEN flip collapsed
+    onShownChange: (Set<String>?) -> Unit = {}, // filtered-surviving ids (null = no filter active)
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -1852,6 +1862,10 @@ private fun SearchResults(
                 else -> list
             }
         }
+    // Tell the map which pins survived (sort doesn't change membership, so it isn't a key).
+    LaunchedEffect(openOnly, topRated, priceMax, results) {
+        onShownChange(if (!openOnly && !topRated && priceMax == 0) null else shown.mapTo(HashSet()) { it.id })
+    }
     // Same fixed sheet grey as the place sheet, not the wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
     Card(

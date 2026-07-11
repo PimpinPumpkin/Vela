@@ -284,7 +284,19 @@ Defaults that make the safe path the easy one:
   before today and a confirmed past time clamps to the next 5-minute mark now, WITH a toast
   (`place_time_past_toast`, all 11 locales): the pill shows a different time than the pick,
   and a silent rewrite of explicit input reads as a bug.
-- **The directions chooser drags like the other sheets (2026-07-11):** its body height is a
+- **The directions chooser drags like the other sheets (2026-07-11):** the drag detector sits
+  on the WHOLE panel column, not the handle (finger anywhere grows/shrinks it; inner clickables
+  keep their taps, the scrolling body keeps its nested-scroll path). Travel mode is STICKY
+  (pref `travel_mode`, set in `setTravelMode`, restored by `routeToSelected` - the pick is the
+  default next session; parking still forces WALK). The directions X wears the place-sheet
+  circle; the swap glyph deliberately stays bare. Save is a BOOKMARK icon, not a star (a star
+  reads "rate it"; matches the saved-places map button). Search span: `SearchPb.build` takes
+  the caller's real viewport height and stretches the template's baked ~25 km `!1d` window
+  (floor 3 km, cap 500 km) - zoomed-out searches used to keep a city-sized net; the VM threads
+  its live viewport span into the main + category-chip searches. Results-sheet FILTERS drop
+  MAP PINS too: SearchResults reports surviving ids via onShownChange -> MapScreen's
+  filteredResultIds -> markersOf (null = filters off).
+ its body height is a
   hand-driven Animatable (0 = minimized, ~0.58 screen = open) - handle AND body-at-top drags
   move it 1:1, release rides the throw's decay to an end (the shared grammar). The body and
   the minimized Start bar both fold with that height (SheetFold, inverse fractions), so the

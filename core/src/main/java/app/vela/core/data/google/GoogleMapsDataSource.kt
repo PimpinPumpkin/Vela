@@ -84,13 +84,13 @@ class GoogleMapsDataSource @Inject constructor(
     private val routeEngine: RouteEngine,
 ) : MapDataSource {
 
-    override suspend fun search(query: String, near: LatLng?): SearchResult = io {
+    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?): SearchResult = io {
         session.ensure()
         // Results are viewport-driven, so a location is required; callers
         // normally pass the user's location, with a fallback for the rare null.
         val viewport = near ?: DEFAULT_VIEWPORT
         val cal = calibration.current()
-        val pb = SearchPb.build(query, viewport, cal.searchPb)
+        val pb = SearchPb.build(query, viewport, cal.searchPb, spanMeters)
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}".localized()
         val raw = get(url)
         // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
