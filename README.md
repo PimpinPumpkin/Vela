@@ -116,40 +116,36 @@ receives → `PRIVACY.md`](PRIVACY.md).**
 
 The short version: Google shrinks from *knowing who you are and everywhere you go* to
 *occasionally answering an anonymous question*. And the parts that matter most while
-driving - your GPS trace, your map browsing - never reach Google at all. A row-by-row
-comparison against the Google Maps app and web is in [PRIVACY.md](PRIVACY.md).
+driving - your GPS trace, your map browsing - never reach Google at all.
 
-## How it works - each capability and the method behind it
+| What Google gets | Google Maps app | Google Maps web | Vela |
+| --- | --- | --- | --- |
+| Tied to your Google account | Yes, always signed in | Yes unless incognito | Never - there is no login |
+| A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; just an IP like any website visitor |
+| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never sent. Position stays on the phone; searches send the map area you are looking at |
+| Every pan and zoom of the map | Yes - their servers render the map | Yes | No - map tiles come from OpenFreeMap, so Google never sees you browse |
+| Your searches | Yes, saved to your account history | Yes | The query text reaches Google anonymously, only when you search |
+| Place pages you open | Yes | Yes | The place lookup reaches Google anonymously |
+| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM/GraphHopper; Google sees one anonymous ETA check, never your live position |
+| Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
+| Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
+| Works with no Google contact at all | No | No | Yes - downloaded regions search, route, and navigate fully offline |
 
-The one-screen map of *what Vela does* and *how*, with the entry point to read next. Deeper detail is in [`SPEC.md`](SPEC.md); this is the index into it.
+Full per-request detail is in [PRIVACY.md](PRIVACY.md).
 
-| Capability | Method (how) | Start here |
-|---|---|---|
-| **Basemap** | Open vector tiles (OpenFreeMap / Protomaps) via MapLibre - keyless, no Google | `core/data/tiles/`, `app/ui/map/VelaMapView.kt` |
-| **Search, places, reviews, hours** | Per-user keyless scrape of `google.com` `pb` endpoints (browser-like session token); responses are positional arrays walked by calibrated index paths | `core/data/google/`, SPEC §3 |
-| **Photo gallery** | Hidden **anonymous WebView** same-origin-fetches the gallery RPC (OkHttp gets a bot-degraded reply) | `app/web/WebPhotoFetcher.kt` |
-| **Public transit** | Hidden WebView reads the directions SPA's `APP_INITIALIZATION_STATE` | `app/web/WebDirectionsFetcher.kt`, `core/…/TransitParser` |
-| **Turn-by-turn routing** | **FOSSGIS OSRM** (open) - complete street-named steps incl. highway `ref`/exit/lanes; retried on blips | `core/data/RouteGeometry.kt` |
-| **Traffic ETA + jam reroute** | Google's directions overlaid on the OSRM route; re-runs OSRM through Google's path only when they diverge (option 3) | `GoogleMapsDataSource.directions`/`applyTraffic` |
-| **Offline routing** | On-device **GraphHopper** CH graphs, one per region, downloaded from a 135-region world catalog | `core/data/GraphHopperRouteEngine.kt`, `app/offline/RoutingGraphStore.kt`, `tools/routing-regions.json` |
-| **Offline address geocoding** | Typed street address → coordinate → GraphHopper route with no signal; keyless OSM `addr:housenumber` + named-road centrelines indexed on area download (house-precise, interpolated, or street-level fallback) | `core/data/OfflineAddressStore.kt`, `core/data/OverpassPois.kt` |
-| **Offline place packs** | Downloading a state also pulls its whole-region place pack (CI-baked SQLite of every OSM POI/address/street), so offline search covers the entire state, Organic-Maps-style. Packs rebuild monthly from fresh OSM; installed ones update in place with small row-level deltas | `app/offline/PoiPackStore.kt`, `core/data/OfflinePacks.kt`, `scripts/build-poi-region.sh`, `scripts/poipack_delta.py`, `.github/workflows/poi-packs.yml` |
-| **Open building overlay** | Microsoft building footprints (ODbL) as per-region PMTiles, rendered beneath OSM to fill areas OSM never mapped; world catalog of 51 US states + ~185 countries (US + Global ML sources) | `app/offline/OverlayTileStore.kt`, `app/ui/map/VelaMapView.kt`, `scripts/build-overlay-region.sh`, `tools/overlay-regions.json` |
-| **Open house-number overlay** | OpenAddresses address points as per-state PMTiles, streamed + rendered as a house-number SymbolLayer where OSM lacks `addr:housenumber` | `app/ui/map/VelaMapView.kt`, `scripts/build-address-region.sh`, `tools/address-regions.json` |
-| **Navigation (banner, voice, haptics)** | Pure `NavEngine` turn logic (unit-tested) → maneuver banner (lane diagram / shields), AOSP TTS, direction-coded vibration | `core/nav/`, `app/ui/nav/`, `core/voice/`, `core/feedback/` |
-| **Android Auto (full nav)** | Navigation-category CarAppService with car-side search, route preview with live-traffic alternates, and active turn-by-turn (turn card, "then" step, lane diagram, cluster support). The map renders through MapLibre's MapSnapshotter with route map-matching and smoothed puck motion. Sideloads show up with AA's "Unknown sources" on | `app/car/` (`VelaCarAppService.kt`, `CarMapRenderer.kt`, `screen/`) |
-| **Location & heading** | AOSP `LocationManager` + raw rotation-vector sensor - never GMS/Fused | `core/location/` |
-| **D-pad-only operation** | The whole UI works with a 5-key D-pad, no touchscreen (touch is a bonus): key-drivable map (arrows pan, OK-at-crosshair taps, hold-OK drops a pin, on-screen zoom buttons), focus rings, key alternatives for every gesture | [`docs/dpad.md`](docs/dpad.md), `app/ui/DpadFocus.kt`, `app/ui/map/MapDpadController.kt` |
-| **Lists & Google Maps list import** | Local place lists (icon + colour, notes per place, export/import to a file); pasting a Google Maps share link previews the list's places with a one-tap Save | `core/data/PlaceListStore.kt`, `core/data/google/parse/EntityListParser.kt` |
-| **Parking spot memory** | One tap on the P button saves where you parked (teal pin, walking directions back); long-press for the history so an accidental overwrite never loses the car | `core/data/ParkingStore.kt` |
-| **Fix drift without an app update** | ECDSA-signed remote `calibration.json` (pb templates, field-index paths, JS transforms) + notices, verified against a pinned key | `core/config/CalibrationStore.kt`, SPEC §5 |
-| **Distribution** | Code push to `main` → signed nightly prerelease (docs-only changes don't cut releases); weekly promote to stable (same APK); Obtainium tracks stable by default, nightlies via the prerelease toggle; a self-hosted F-Droid repo serves both channels ([FDROID.md](FDROID.md)) | `.github/workflows/ci.yml` + `promote-stable.yml` + `fdroid-repo.yml` |
+## How it works
+
+Every capability, the keyless method behind it, and the file to read first is laid out in
+**[docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md)** - the one-screen index into the codebase
+(basemap, the Google scrape, open routing, the offline stack, remote self-repair, …).
+Deeper still is [`SPEC.md`](SPEC.md).
 
 ## Docs - where to look
 
 | File | What's in it |
 |---|---|
-| [`README.md`](README.md) | This - what Vela is, why, the how-it-works map above, and build/run |
+| [`README.md`](README.md) | This - what Vela is, why, the privacy comparison, and build/run |
+| [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | Every capability, the keyless method behind it, and the file to read first |
 | [`FEATURES.md`](FEATURES.md) | The full, categorised list of every shipped capability (the encyclopaedia) |
 | [`SPEC.md`](SPEC.md) | The authoritative **rebuild spec** - architecture, extractor contract (pb layouts + response indices), resilience layer, hard constraints |
 | [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |
