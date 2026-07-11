@@ -895,6 +895,13 @@ Defaults that make the safe path the easy one:
   system-TTS-in-target-language fallback (silent + hint when none installed); a non-Piper sherpa
   ja model is the follow-up (needs PiperSynth config work, see ROADMAP). Whisper dictation pins
   zh/ja automatically (multilingual tiny; whisperLang reads `.language`, so zh-TW dictates as zh).
+  **TWO CJK build traps that a warm Gradle daemon HIDES locally but CI catches (2026-07-11):**
+  (1) in a Kotlin string template, `"$road出发"` parses `road出发` as ONE identifier (CJK chars
+  are valid in Kotlin identifiers) -> "unresolved reference"; ALWAYS brace a `$var` that touches a
+  CJK char: `"${road}出发"`. (2) in strings.xml a raw apostrophe (`app's`, `l'ancien`) is an AAPT
+  error the RELEASE resource merge rejects even though a cached debug build passed; escape as `\'`
+  (the whole file already does). Both slipped a local `:core:test`/`assembleDebug` because the
+  daemon reused stale outputs - trust CI, or `--rerun-tasks` when touching these.
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale; when FOLLOWING
   the system it also RESTORES `Locale.setDefault` to the captured device locale - the override is
   process-global and survived the recreate, so switching Russian back to English left
