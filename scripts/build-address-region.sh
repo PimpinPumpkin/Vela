@@ -54,6 +54,13 @@ LINES=$(wc -l < "$GEOJSON" | tr -d ' ')
 [ "$LINES" -gt 0 ] || { echo "!! empty address data for $SRC" >&2; exit 1; }
 echo "→ $LINES address points"
 
+# OpenAddresses carries one row per UNIT/PARCEL, so an apartment complex repeats the same house
+# number dozens of times across its footprint - rendered as the number printed all over the
+# building. Collapse to one point per (number, street, ~150 m cell) before tiling.
+echo "→ collapsing repeated per-unit/parcel points"
+python3 "$(cd "$(dirname "$0")" && pwd)/dedup-addresses.py" "$GEOJSON" "$WORK/$ID.dedup.geojsonl"
+mv "$WORK/$ID.dedup.geojsonl" "$GEOJSON"
+
 # House numbers render only at z>=17.5 (VelaMapView minZoom — Google street-level parity), so bake
 # -Z16 -z17: the app never requests tiles below 16 (dead pyramid weight), and maxzoom 17 quarters the
 # per-tile point count vs the old -z16 — at maxzoom tippecanoe keeps EVERY point, and overzooming a
