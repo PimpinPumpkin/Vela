@@ -1338,11 +1338,16 @@ private fun ensureLayers(style: Style) {
         comm.minZoom = 12f
         style.addLayerAbove(comm, "park")
     }
-    // Park + bike TRAILS, Google-style green lines (dark #167055, sampled 2026-07-11).
+    // Park TRAILS, Google-style green lines (dark #167055, sampled 2026-07-11).
     // Liberty's own path layers stay hidden (class path+pedestrian = every sidewalk, the
-    // June "weird walking tracks" clutter); this twin keeps ONLY the deliberate trail
-    // network - subclass path/cycleway/bridleway - and skips footway/steps/pedestrian.
+    // June "weird walking tracks" clutter); this twin keeps ONLY the deliberate FOOT trail
+    // network - subclass path/bridleway - and skips footway/steps/pedestrian. Dedicated bike
+    // paths (subclass cycleway) get their OWN teal layer below (Google's bike-route accent).
     if (style.getLayer("vela-trails") == null && style.getLayer("road_minor") != null) {
+        val pathWidth = Expression.interpolate(
+            Expression.exponential(1.4f), Expression.zoom(),
+            Expression.stop(14f, 0.7f), Expression.stop(16f, 1.6f), Expression.stop(19f, 4f),
+        )
         val trails = LineLayer("vela-trails", "openmaptiles").withSourceLayer("transportation")
             .withFilter(
                 Expression.all(
@@ -1353,23 +1358,32 @@ private fun ensureLayers(style: Style) {
                     Expression.eq(Expression.get("class"), Expression.literal("path")),
                     Expression.match(
                         Expression.get("subclass"), Expression.literal(false),
-                        Expression.stop("path", true), Expression.stop("cycleway", true),
-                        Expression.stop("bridleway", true),
+                        Expression.stop("path", true), Expression.stop("bridleway", true),
                     ),
                 ),
             )
         trails.minZoom = 14f
-        trails.setProperties(
-            PropertyFactory.lineWidth(
-                Expression.interpolate(
-                    Expression.exponential(1.4f), Expression.zoom(),
-                    Expression.stop(14f, 0.7f), Expression.stop(16f, 1.6f), Expression.stop(19f, 4f),
-                ),
-            ),
-            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
-        )
+        trails.setProperties(PropertyFactory.lineWidth(pathWidth), PropertyFactory.lineCap(Property.LINE_CAP_ROUND))
         // Under the real streets so a trail crossing merges beneath the road, like Google.
         style.addLayerBelow(trails, "road_minor")
+
+        // Dedicated bike paths (OSM highway=cycleway) in Google's teal accent. NB the keyless
+        // OMT tiles carry off-street cycleways only; ON-STREET painted lanes (cycleway=lane on
+        // a road) aren't in the tile schema - those need an Overpass layer (see ROADMAP).
+        val bike = LineLayer("vela-bikeroutes", "openmaptiles").withSourceLayer("transportation")
+            .withFilter(
+                Expression.all(
+                    Expression.match(
+                        Expression.geometryType(), Expression.literal(false),
+                        Expression.stop("LineString", true), Expression.stop("MultiLineString", true),
+                    ),
+                    Expression.eq(Expression.get("class"), Expression.literal("path")),
+                    Expression.eq(Expression.get("subclass"), Expression.literal("cycleway")),
+                ),
+            )
+        bike.minZoom = 14f
+        bike.setProperties(PropertyFactory.lineWidth(pathWidth), PropertyFactory.lineCap(Property.LINE_CAP_ROUND))
+        style.addLayerBelow(bike, "road_minor")
     }
     // (2) The OSM poi tiers scatter park/garden/tree icons across every wood - Google keeps
     // forests flat colour. Rebuild each tier's rank-band filter with vegetation excluded.
@@ -1965,6 +1979,7 @@ internal fun applyLight(style: Style) {
     // the city land in the Google app (#f0eded, P9-sampled at UC Davis 2026-07-11).
     style.getLayer("landuse_school")?.setProperties(PropertyFactory.fillColor("#f0eded"), PropertyFactory.fillOpacity(1f))
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#7fcdb0")) // sampled
+    style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#007b8b")) // Google's bike teal (light)
     // Roads: the app uses ONE blue-grey fill for streets and arterials alike, a deeper
     // blue for motorways, a darker tier for driveways, and NO visible casings (they
     // fade into the land, same rule as dark). All sampled.
@@ -2078,7 +2093,8 @@ internal fun applyDark(style: Style) {
     listOf("landuse_pitch", "landuse_track").forEach { // Liberty's own pitch layers sit ABOVE the twin and covered it
         style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#0d4956"), PropertyFactory.fillOpacity(1f))
     }
-    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055")) // park/bike trails, sampled
+    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055")) // park foot trails, sampled
+    style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#1f8f9c")) // bike teal, lightened for the dark land
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
