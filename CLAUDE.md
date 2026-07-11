@@ -910,6 +910,13 @@ Defaults that make the safe path the easy one:
   they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA - never
   translated.** Adding a user-facing string means: add it to `values/strings.xml` AND all `values-<lang>/`,
   and match the `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
+  **Count strings use `<plurals>`, not a bare `%d X` (2026-07-11, issue #56 "1 results"):** the
+  results-count bar is a `<plurals name="mapscreen_results_count">` read via `pluralStringResource(...,
+  n, n)`. Use the CORRECT CLDR categories PER LANGUAGE - en/de/es/it/pt/nl/sv/fr = `one`+`other`
+  (sv "resultat" is invariable); ru/uk/pl need `one`+`few`+`many`+`other` (e.g. ru результат/
+  результата/результатов/результата). Any NEW "N &lt;noun&gt;" that can equal 1 (reviews, stops,
+  places) should become a plural the same way; `place_review_count`/`place_transit_stops` are still
+  bare and are the follow-up.
   **No em dashes in translations** (swept 2026-07-10): the 10 locale files carried 100+ of them as
   clause glue (plus German/Swedish spaced en dashes used the same way) - they read as machine-
   translation tells. Use a comma, a colon, or rephrase; the one legitimate dash is the numeric
