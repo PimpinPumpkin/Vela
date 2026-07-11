@@ -261,7 +261,14 @@ fun SearchBar(
                 CircularProgressIndicator(Modifier.padding(end = 10.dp).size(22.dp), strokeWidth = 2.dp)
             } else {
                 IconButton(onClick = onOpenSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.search_settings_cd))
+                    // Explicit soft ink: this row is not a Surface, so an untinted Icon fell
+                    // back to LocalContentColor's BLACK and the gear read darker than the mic
+                    // beside it (user 2026-07-11). Glyphs wear onSurfaceVariant, text keeps ink.
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = stringResource(R.string.search_settings_cd),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
