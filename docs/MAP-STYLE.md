@@ -46,10 +46,12 @@ without an app release.
 ## Archived palette: the pre-pixel-sample "greens fixed" look (commit 071c6c3)
 
 The palette that shipped between the flat-vegetation work and the final
-pixel-sampled match of the Google app (2026-07-11). Kept as a rollback
-reference; to restore it wholesale, take `applyLight`/`applyDark` from commit
-`071c6c3` ("Map greens match Google now and are actually visible in dark
-mode"). The current palette lives in CLAUDE.md and the code.
+pixel-sampled match of the Google app (2026-07-11). No longer just an archive:
+since 2026-07-11 it ships compiled as the **Classic** colour set
+(`applyClassicLight`/`applyClassicDark`), selectable in Settings → Appearance →
+Map colors; the Google-sampled palette is **Modern**, the default (remote-
+defaultable via calibration.json `defaultMapPalette`). The values below stay
+as the reference for those functions.
 
 Light: land `#f2f1ee`, water `#90daee`, park `#cfeccd`, grass `#d3f8e2`,
 wood `#c9f2da`, wetland `#cdeff0`, plaza `#ededed`, buildings `#dde1e7`

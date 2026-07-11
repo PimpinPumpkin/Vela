@@ -17,6 +17,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Two map colour sets, remote-defaultable (2026-07-11).** Settings → Appearance → Map
+  colors: Modern (the Google-app pixel-sampled palette, the default) or Classic (Vela's
+  archived earlier look: white roads, yellow motorways, true greens). The fleet default rides
+  the signed calibration channel (`defaultMapPalette`), so it can change without an app
+  release; an explicit pick always wins.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is now a white chevron inside
   a filled blue circle with a white ring and a soft shadow, matching Google's current puck; it
   rotates about the exact GPS point. Replaces the bare blue chevron.
