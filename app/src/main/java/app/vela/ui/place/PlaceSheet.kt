@@ -320,7 +320,7 @@ fun PlaceSheet(
     LaunchedEffect(minimizeTick) {
         if (minimizeTick == seenTick) return@LaunchedEffect
         seenTick = minimizeTick
-        // Flip the states FIRST so the extras' shrink-and-fade (MinimizeExtras) runs CONCURRENTLY
+        // Flip the states FIRST so the extras' shrink-and-fade (SheetFold) runs CONCURRENTLY
         // with the height glide - one continuous motion, same order the drag-release path uses.
         // (The old glide-then-flip order existed for the swap-based mini card, since removed.)
         expandedState.value = false
@@ -333,6 +333,26 @@ fun PlaceSheet(
     // composition was the dropped-frames report on the tap-to-expand animation (user 2026-07-10).
     val density = LocalDensity.current
     val settleScope = rememberCoroutineScope()
+    // The body is a SKELETON (name row, rating, action pills - the minimized card) plus
+    // SheetFold sections between/around it. The extras' fold is LOCKED TO THE SHEET
+    // HEIGHT: their height/alpha scale by how far the sheet sits between the minimized
+    // floor and peek, read in the layout/render phase each frame. Whatever drives the
+    // height (pan glide, a slow drag, the release settle) drives the fold identically -
+    // a separately-clocked exit animation could never stay in step with a spring and
+    // read as staccato (user 2026-07-11). A parked car (singleDetent) keeps its extras:
+    // nothing to minimize into. (Declared up here because the Card's height layout also
+    // reads the fraction: the card floors at the minimized detent while the fold is engaged.)
+    val extrasFraction: () -> Float = {
+        if (singleDetent) 1f else ((heightAnim.value - minH) / (peekH - minH)).coerceIn(0f, 1f)
+    }
+    // Composition gate: extras stay MOUNTED while any part of them shows (so a fold or a
+    // partial drag always has content) and unmount only once the sheet settles at the
+    // floor - the same lifecycle the old mini-card swap gave the hidden body, keeping
+    // zero-height controls out of D-pad focus search. derivedStateOf collapses the
+    // per-frame height reads into one recomposition at the flip points.
+    val extrasComposed by remember(place.id, singleDetent, minH) {
+        derivedStateOf { singleDetent || !minimizedState.value || heightAnim.value > minH + 1f }
+    }
     // Release: project where the fling would coast to, snap the STATES to the nearest detent (so
     // everything keyed on them stays honest), and glide there carrying the finger's velocity. A
     // hard fling projects past the middle detent and lands on MINIMIZED from anywhere; a gentle
@@ -500,7 +520,14 @@ fun PlaceSheet(
                 val p = measurable.measure(
                     constraints.copy(maxHeight = minOf(constraints.maxHeight, maxHPx)),
                 )
-                layout(p.width, p.height) { p.place(0, 0) }
+                // While the minimize fold is engaged (fraction < 1) the card must not under-run
+                // the minimized detent: the folding content dips just below minH near the floor
+                // (the skeleton is a touch shorter than the detent), and a pure wrap-cap card
+                // then dived that last bit of slack in a blink - the end-of-fold hop (user
+                // 2026-07-11). At rest above the fold (fraction = 1) the card keeps hugging
+                // short content: dropped pins and the parked car stay compact.
+                val floorPx = if (extrasFraction() < 1f) minOf(minH.dp.roundToPx(), maxHPx) else 0
+                layout(p.width, maxOf(p.height, floorPx)) { p.place(0, 0) }
             },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
@@ -567,29 +594,10 @@ fun PlaceSheet(
                     .clickable(enabled = minimizedState.value && !singleDetent) { minimizedState.value = false }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
-            // The body is a SKELETON (name row, rating, action pills - the minimized card) plus
-            // MinimizeExtras sections between/around it. The extras' fold is LOCKED TO THE SHEET
-            // HEIGHT: their height/alpha scale by how far the sheet sits between the minimized
-            // floor and peek, read in the layout/render phase each frame. Whatever drives the
-            // height (pan glide, a slow drag, the release settle) drives the fold identically -
-            // a separately-clocked exit animation could never stay in step with a spring and
-            // read as staccato (user 2026-07-11). A parked car (singleDetent) keeps its extras:
-            // nothing to minimize into.
-            val extrasFraction: () -> Float = {
-                if (singleDetent) 1f else ((heightAnim.value - minH) / (peekH - minH)).coerceIn(0f, 1f)
-            }
-            // Composition gate: extras stay MOUNTED while any part of them shows (so a fold or a
-            // partial drag always has content) and unmount only once the sheet settles at the
-            // floor - the same lifecycle the old mini-card swap gave the hidden body, keeping
-            // zero-height controls out of D-pad focus search. derivedStateOf collapses the
-            // per-frame height reads into one recomposition at the flip points.
-            val extrasComposed by remember(place.id, singleDetent, minH) {
-                derivedStateOf { singleDetent || !minimizedState.value || heightAnim.value > minH + 1f }
-            }
             // Photo hero at the top (Google-style); tap one to open the full gallery.
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
-            MinimizeExtras(extrasComposed, extrasFraction) {
+            app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
             if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
                 // the menu surface now, and the other categories read as noise; user 2026-07-10.)
@@ -688,7 +696,7 @@ fun PlaceSheet(
                     }
                 }
             }
-            MinimizeExtras(extrasComposed, extrasFraction) {
+            app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
             // Distance (when the place came from a located search) + price +
             // category on their own line so a long category ("Hamburger restaurant")
             // doesn't wrap mid-word next to the stars; ellipsised if huge.
@@ -848,7 +856,7 @@ fun PlaceSheet(
                 }
             }
 
-            MinimizeExtras(extrasComposed, extrasFraction) {
+            app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
             place.address?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
@@ -1082,33 +1090,6 @@ fun PlaceSheet(
             onDismiss = { showNoteEditor = false },
         )
     }
-}
-
-/**
- * A collapsible section of the sheet body: everything EXCEPT the name / rating / action-pill
- * skeleton sits in one of these. Its height and alpha are `fraction()` of natural - the caller
- * derives that fraction from the sheet's own animated height, so the fold tracks the card's
- * travel frame-for-frame (a slow drag folds it WITH the finger; there is no second animation
- * clock to fall out of step with the height spring). Top-anchored and clipped, so it collapses
- * upward and the content below slides over it. `composed=false` (sheet settled at the minimized
- * floor) removes the content entirely - the lifecycle the old mini-card short-circuit gave the
- * hidden body, keeping zero-height controls out of D-pad focus search.
- *
- * fraction() is deliberately read ONLY inside the layout and graphicsLayer blocks: a fold frame
- * re-measures this section but never recomposes it (the sheet-height discipline).
- */
-@Composable
-private fun MinimizeExtras(composed: Boolean, fraction: () -> Float, content: @Composable () -> Unit) {
-    if (!composed) return
-    Column(
-        Modifier
-            .graphicsLayer { clip = true; alpha = fraction() }
-            .layout { measurable, constraints ->
-                val placeable = measurable.measure(constraints)
-                val h = (placeable.height * fraction()).roundToInt()
-                layout(placeable.width, h) { placeable.placeRelative(0, 0) }
-            },
-    ) { content() }
 }
 
 /** "Save to list" — check the lists this place belongs to; create a new one inline. */
@@ -2282,25 +2263,45 @@ private val MENU_TAB_WORDS = listOf("menu", "menú", "menù", "speisekarte", "ca
 /** The Menu tab: the menu-tagged gallery photos as a browsable 2-up grid (tap → full-screen).
  *  Only mounted when the place HAS menu photos, so no empty state is needed. Plain Column of
  *  chunked rows, not a lazy grid — the sheet body already scrolls, and menu sets are tens of
- *  photos at most. */
+ *  photos at most. Each tile carries the photo's upload date as a corner stamp when the
+ *  gallery scrape had one — a menu shot's age says whether the prices still hold
+ *  (user 2026-07-11); the full-screen viewer shows the same date in its caption. */
 @Composable
 private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         menuIndices.chunked(2).forEach { rowIdx ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                 rowIdx.forEach { i ->
-                    AsyncImage(
-                        model = place.photoUrls.getOrNull(i),
-                        contentDescription = stringResource(R.string.place_photo_number, i + 1),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
+                    Box(
+                        Modifier
                             .weight(1f)
                             .height(150.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(dim.copy(alpha = 0.2f))
                             .dpadHighlight(RoundedCornerShape(12.dp))
                             .clickable { onOpen(i) },
-                    )
+                    ) {
+                        AsyncImage(
+                            model = place.photoUrls.getOrNull(i),
+                            contentDescription = stringResource(R.string.place_photo_number, i + 1),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        place.photoDates.getOrNull(i)?.let { date ->
+                            Text(
+                                date,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(6.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black.copy(alpha = 0.55f))
+                                    .padding(horizontal = 7.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
                 }
                 if (rowIdx.size == 1) Spacer(Modifier.weight(1f))
             }
