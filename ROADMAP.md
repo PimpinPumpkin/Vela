@@ -605,10 +605,15 @@ project's core promise is that neither exists:
   toggles in the route chooser. Caveats to surface in the UI: the Google fallback router
   ignores them, and offline GraphHopper needs a graph re-bake with toll flags before it can
   honour them (CI rebuild of the region graphs).
-- Menu photo dates: recalibrate the hspqX photos RPC from a desktop capture (returns 0 photos
-  since the WebView walk replaced it; the in-app join is ready and inert) - a capture +
-  calibration.json bump. The place page itself was probed 2026-07-11 and carries no photo
-  urls/dates keylessly; the RPC is the only route.
+- Menu photo dates: CLOSED as a calibration fix (desktop capture, 2026-07-11). A live
+  `maps.google.com` capture of the on-load `hspqX` RPC proves the endpoint + field-index matrix
+  are byte-identical to `calibration.json`'s `photosProto` - nothing drifted, so a bump is a
+  no-op. The RPC is bot-gated to zero photos: Vela's ftid form, the captured per-page photo-token
+  form, and the genuine page's own fresh-token request all returned an empty photo list from an
+  automated browser (same TLS/behavioural degradation OkHttp hits). The live gallery the app shows
+  comes from the WebView DOM walk (categories, no dates). Dates would need the RPC answered inside
+  a trusted non-automated session the keyless model can't mint - not pursued. The in-app date-join
+  plumbing stays ready + inert (see CLAUDE.md).
 - Ambient POI dot tiers like Google - DONE 2026-07-11: a circle layer under the ambient
   icons draws every place as a small category-coloured dot; collision losers stay visible
   as dots and upgrade to icons on zoom-in.
