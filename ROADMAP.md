@@ -605,6 +605,11 @@ project's core promise is that neither exists:
   toggles in the route chooser. Caveats to surface in the UI: the Google fallback router
   ignores them, and offline GraphHopper needs a graph re-bake with toll flags before it can
   honour them (CI rebuild of the region graphs).
+- On-street bike lanes: dedicated cycleways (OSM highway=cycleway) now render in Google's teal
+  via `vela-bikeroutes` (2026-07-11). On-street painted lanes (`cycleway=lane` on a road way) are
+  not in the keyless OMT tile schema, so a full "bike lanes everywhere" accent would need an
+  Overpass layer (a sibling of `OverpassTrafficSignals`) fetching `cycleway`/`bicycle=designated`
+  ways in the viewport. Deferred; the off-street network covers most of what Google shows.
 - Menu photo dates: CLOSED as a calibration fix (desktop capture, 2026-07-11). A live
   `maps.google.com` capture of the on-load `hspqX` RPC proves the endpoint + field-index matrix
   are byte-identical to `calibration.json`'s `photosProto` - nothing drifted, so a bump is a
