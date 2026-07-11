@@ -391,8 +391,16 @@ Defaults that make the safe path the easy one:
   poi_r1/r7/r20 icons hide too, AND the traffic-control layers (stop signs + lights,
   `lastControlsVis` - controls stay up beside the ambient dots on the browse map, so their
   predicate is the result set alone). Own identity gates, NOT inside the ambient gate -
-  results can appear/clear while ambient stays empty; a single selected place keeps both. Dots carry the same MARKER_INDEX_PROP feature prop, so
-  a collapsed result is still tappable.
+  results can appear/clear while ambient stays empty; a single selected place keeps both. Dots
+  carry the same MARKER_INDEX_PROP feature prop, so a collapsed result is still tappable.
+  **Gas stations put their LIVE PRICE in the bubble** (2026-07-10): `Place.fuelPrice`
+  ("$5.34/Regular") parses off the place node at `[88][0]` (calibration `paths.fuelPrice`,
+  remote-recalibratable, digit-gated in SearchParser so a shape drift can't show a label as a
+  price; calibration.json is at **v14** for it), the bubble shows the short "$5.34"
+  (`PoiIcons.fuelShort`), and the full string renders BOLD - its own pump-glyph line under the
+  address in the result row (glyph + text in title ink, theme-responsive) and bold inline on the
+  place sheet's price/category line (user 2026-07-10). EV chargers carry NO detail in the
+  keyless response (probed 2026-07-10 - type marker only, no price/kW/availability); see ROADMAP.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI

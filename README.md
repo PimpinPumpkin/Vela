@@ -68,6 +68,8 @@ Fingerprint and full instructions in [FDROID.md](FDROID.md).
   driving somewhere, with a warning if it would be closed when you arrive.
 - **Traffic you can read.** Route choices say light, moderate or heavy traffic in
   words next to their green/amber/red times, and the fastest route leads the list.
+- **Live gas prices.** Search for gas and every station's current price is right
+  on its map marker, in the result list, and on the place page.
 - **Material You theming, if you want it.** An optional toggle tints Vela's chrome
   with your wallpaper colors (Android 12+); off by default, and the map itself
   stays clean either way.
