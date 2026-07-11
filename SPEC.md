@@ -63,6 +63,51 @@ Two Gradle modules, strict boundary:
   the **four hidden WebViews** (photos, transit, reviews, popular-times). Root package
   `app.vela`, app class `VelaApp`, config `VelaConfig`.
 
+### Module tree
+
+```
+:core   the "extractor" - no UI dependency, the NewPipeExtractor pattern
+        ├─ model/            LatLng, Place, Route, Maneuver … (pure Kotlin)
+        ├─ data/
+        │   ├─ MapDataSource         the one seam every screen talks to
+        │   ├─ MockMapDataSource     canned data → the app runs with no network
+        │   ├─ google/               the real scraper
+        │   │   ├─ GoogleSession         per-user bootstrap (token extraction)
+        │   │   ├─ GoogleMapsDataSource  search / directions / place details
+        │   │   ├─ PbBuilder             builds Google's `pb` URL protobuf
+        │   │   ├─ GoogleResponse        XSSI strip + positional-array navigator
+        │   │   ├─ PolylineCodec          encoded-polyline decode (calibration-free)
+        │   │   └─ parse/                 Search / Directions / Transit / Photos / Reviews
+        │   ├─ RouteGeometry             OSRM turn-by-turn (open router) + parse of steps/lanes/refs
+        │   ├─ RouteEngine               offline-routing interface (connectivity/graph-presence picks it)
+        │   ├─ GraphHopperRouteEngine    on-device GraphHopper CH graphs, one per downloaded region
+        │   ├─ RouteCorridor             "search along route" - filter results to the line
+        │   ├─ OverpassPois              keyless OSM POI + addr + street fetch (offline-search/geocode source)
+        │   ├─ OfflinePoiStore           on-device SQLite POI index (offline search)
+        │   ├─ OfflineAddressStore       on-device SQLite forward geocoder (typed address → coord, offline)
+        │   ├─ OfflinePacks              registry of downloaded whole-region place packs (both stores query them)
+        │   └─ tiles/                MapStyle catalog (OpenFreeMap default / Positron / Protomaps)
+        ├─ location/         LocationProvider - AOSP LocationManager (no Fused)
+        ├─ voice/            VoiceGuide - AOSP TextToSpeech, engine-selectable
+        ├─ feedback/         Haptics - direction-coded vibration turn cues
+        ├─ config/           Calibration + CalibrationStore (remote pb/paths)
+        ├─ nav/              NavEngine - pure turn-by-turn logic + NavReplay auditor (unit-tested)
+        ├─ replay/           TripLog - trip CSV format + offline route audit
+        └─ di/               Hilt wiring; picks Mock vs Google off VelaConfig
+
+:app    Jetpack Compose UI (Material 3)
+        ├─ MainActivity, VelaApp
+        ├─ ui/map/           MapScreen, VelaMapView (MapLibre), MapViewModel, PoiIcons
+        ├─ ui/search/        SearchBar
+        ├─ ui/place/         PlaceSheet, DirectionsPanel, transit board, photo gallery
+        ├─ ui/nav/           ManeuverBanner (lanes/shields/swipe), NavControls, StepsSheet
+        ├─ ui/theme/         AppTheme - in-app light/dark, decoupled from the OS
+        ├─ ui/               SheetPalette (one shared sheet palette), Format, Units
+        ├─ web/              WebPhotoFetcher, WebDirectionsFetcher - hidden-WebView scrapes
+        ├─ offline/          OfflineMaps (MapLibre tiles) + RoutingGraphStore (GraphHopper graphs) + PoiPackStore (place packs) + OverlayTileStore (building-footprint PMTiles)
+        └─ ui/settings/      SettingsScreen (appearance / style / voice / haptics / keep-screen-on / offline)
+```
+
 ### Key seams
 - **`MapDataSource`** (`:core/data`) - the one interface the UI depends on.
   - `MockMapDataSource` (default; keeps the whole app usable offline) and
