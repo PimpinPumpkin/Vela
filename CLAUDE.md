@@ -319,7 +319,23 @@ Defaults that make the safe path the easy one:
   while the sheet is minimized so expanding re-frames; and the fit CONSUMES `lastCameraTarget` - the
   inset-grow nulls it, and with it null the else-recenter branch re-fired on the STALE VM center one
   recomposition later and yanked the camera back to wherever you were before the search (device-found
-  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Filter
+  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Grabbing the map minimizes the sheets (2026-07-10):**
+  `VelaMapView.onUserPan` (fired from the camera-move-started listener on REASON_API_GESTURE,
+  the same signal "Search this area" keys off) → MapScreen collapses the results sheet to its
+  bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
+  an open place card to its minimized detent — Google's behaviour; programmatic framing (a
+  different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
+  the 350f settle) and both GLIDE FIRST, FLIP STATE AFTER — the pan path used to flip
+  `resultsCollapsed`/`minimizedState` immediately, which unmounted/switched the content
+  mid-drop and read as a pop no matter the spring (user 2026-07-10, the "just kinda pops down"
+  report); the tick effects animate to the floor and only then flip, the same order the drag
+  path always used. The minimized results bar leads with the QUERY (or list name) in ink +
+  SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
+  awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
+  effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):
+  a LaunchedEffect fires on FIRST composition too, so a remounted sheet (pick a place from the
+  list, or return from one) used to replay the stale tick and open pre-minimized (user
+  2026-07-10). Any new tick-style signal into a sheet needs the same guard. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
@@ -328,6 +344,39 @@ Defaults that make the safe path the easy one:
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
+- **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
+  the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result keeps the app's own
+  marker language - grey teardrop, circle, white glyph - with the circle RED (`resultPin`,
+  drawn a step smaller than the ambient icons' backing); rated FOOD results get the wide rating
+  "speech bubble": the same red circle + white glyph beside the rating in plain ink, NO star
+  glyph (`ratingBubble`, label passed as a string so non-rating labels can ride the same bubble;
+  theme-surfaced, regenerated per style load because bitmaps can't theme).
+  Bitmaps are generated ON DEMAND in applyData's marker loop (`ensureResultIcon` - bubble keys
+  carry the rating tenths, so only the ratings actually on screen get bitmaps). The pin layer
+  COLLIDES by rank (`symbolSortKey` = result order, allowOverlap false): in a dense downtown the
+  best results keep pins and the rest draw as the small red dots of `vela-markers-dots` (same
+  source, below, allowOverlap+ignorePlacement true), expanding back into pins on zoom - never a
+  pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels try UNDER the pin,
+  then its right, then its left (variableAnchor TOP/LEFT/RIGHT, radialOffset 0.7 - below-only
+  dropped labels in crowded views, user 2026-07-10) in NEUTRAL ink both themes. The AMBIENT and
+  OSM poi layers got the same treatment (2026-07-10): four anchor slots (RIGHT/LEFT/TOP/BOTTOM,
+  = left of icon / right of it / below / above) instead of the old two - icons still collide by
+  design, but a rendered icon's label now finds a clear side instead of dropping or sitting on a
+  neighbour's dot - Google doesn't category-tint result labels,
+  only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
+  0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
+  keep the two in lockstep. **OSM POIs hide by COVERAGE, not ambient non-emptiness (2026-07-10):**
+  `MapUiState.ambientCoversView` (computed each onViewport settle: ambient non-empty AND centre
+  within 0.35x of `lastAmbientSpan` of the fetch centre AND viewRadius ≤ 0.55x span; forced true
+  when a fresh fetch lands, false under z14) drives the poi_r* visibility - blanket-hiding left
+  the outskirts iconless because one fetch only covers ~3.5-9 km (user 2026-07-10). Controls
+  (signs/lights) render from z17.5 on the browse map but z16 during nav (set in the nav
+  declutter effect). While a result SET is on the map (markers.size > 1) the basemap
+  poi_r1/r7/r20 icons hide too, AND the traffic-control layers (stop signs + lights,
+  `lastControlsVis` - controls stay up beside the ambient dots on the browse map, so their
+  predicate is the result set alone). Own identity gates, NOT inside the ambient gate -
+  results can appear/clear while ambient stays empty; a single selected place keeps both. Dots carry the same MARKER_INDEX_PROP feature prop, so
+  a collapsed result is still tappable.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
@@ -363,6 +412,15 @@ Defaults that make the safe path the easy one:
   WITHOUT the restricted build flavor (user's call, 2026-07-08) - the flavor/LockableToggle machinery
   was deliberately dropped, keep holders in the plain `ShowReviews` shape. Gate any new external-link
   surface on a place page behind this holder.
+- **Full-screen viewers = VISIBLE bars + gradient, NOT hidden bars (2026-07-10).** After many
+  rounds fighting a Compose Dialog window to COVER the system bars (window dumps proved it
+  re-asserts inset-fitted params and refuses), the working recipe is Google's own: NO_LIMITS +
+  TRANSPARENT status/nav bar colors + `Modifier.requiredFullScreen()` on the content root (sizes
+  to the true display so it fills UNDER the transparent bars) + a top gradient scrim so the
+  status bar reads over the photo. Applies to `PhotoGalleryContent`-era gallery + `FullScreenReviews`.
+  Don't reach for hide-bars/dim/decor tricks again — they leave strips. The reviews page uses an
+  X (left, matching the gallery) and a top-edge pull-down (panel `onOverscroll`/`onOverscrollEnd`
+  → `offset` the Surface → dismiss past 120dp).
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
   `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
