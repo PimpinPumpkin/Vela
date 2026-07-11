@@ -106,6 +106,10 @@ data class MapUiState(
     val query: String = "",
     val results: List<Place> = emptyList(),
     val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
+    // True while the CURRENT viewport sits inside the area the ambient Google fetch covered —
+    // the basemap OSM POIs hide only then, so panning/zooming past the fetched area blends the
+    // OSM icons back in instead of leaving the outskirts iconless (user 2026-07-10).
+    val ambientCoversView: Boolean = false,
     val suggestions: List<Place> = emptyList(),
     val selected: Place? = null,
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
@@ -3006,6 +3010,7 @@ class MapViewModel @Inject constructor(
 
     private var ambientJob: Job? = null
     private var lastAmbientCenter: LatLng? = null
+    private var lastAmbientSpan = 9000.0 // span of the last completed ambient fetch (m)
     private var lastAmbientZoom = 0.0
     // LRU (most-recent last, cap 16) of recent ambient fetches — revisiting ANY of the last ~16 areas
     // repaints POIs INSTANTLY (the ~2 s Google floor only hits genuinely-new areas), with no empty-map
@@ -3046,8 +3051,19 @@ class MapViewModel @Inject constructor(
         if (zoom < 14.0) {
             ambientJob?.cancel()
             lastAmbientCenter = null
-            if (s.ambientPois.isNotEmpty()) _state.update { it.copy(ambientPois = emptyList()) }
+            if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
+                _state.update { it.copy(ambientPois = emptyList(), ambientCoversView = false) }
+            }
             return
+        }
+        // Coverage check EVERY settle (cheap): the OSM basemap POIs hide only while the view is
+        // truly inside the fetched ambient area — outside it they stay, so the map is never
+        // iconless past the fetch's ~3.5-9 km span. Fresh fetches below re-tighten this.
+        run {
+            val covers = s.ambientPois.isNotEmpty() &&
+                (lastAmbientCenter?.let { it.distanceTo(center) < lastAmbientSpan * 0.35 } == true) &&
+                viewRadiusMeters <= lastAmbientSpan * 0.55
+            if (covers != s.ambientCoversView) _state.update { it.copy(ambientCoversView = covers) }
         }
         // Re-query only on a real pan or a real zoom change (not every settle).
         val moved = lastAmbientCenter?.let { it.distanceTo(center) >= 180.0 } ?: true
@@ -3070,11 +3086,12 @@ class MapViewModel @Inject constructor(
             val res = runCatching { dataSource.nearbyPlaces(center, span) }.getOrNull() ?: return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
+            lastAmbientSpan = span
             cacheAmbient(center, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters)) }
+            _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters), ambientCoversView = true) }
         }
     }
 

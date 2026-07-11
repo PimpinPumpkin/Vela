@@ -321,6 +321,39 @@ Defaults that make the safe path the easy one:
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
+- **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
+  the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result keeps the app's own
+  marker language - grey teardrop, circle, white glyph - with the circle RED (`resultPin`,
+  drawn a step smaller than the ambient icons' backing); rated FOOD results get the wide rating
+  "speech bubble": the same red circle + white glyph beside the rating in plain ink, NO star
+  glyph (`ratingBubble`, label passed as a string so non-rating labels can ride the same bubble;
+  theme-surfaced, regenerated per style load because bitmaps can't theme).
+  Bitmaps are generated ON DEMAND in applyData's marker loop (`ensureResultIcon` - bubble keys
+  carry the rating tenths, so only the ratings actually on screen get bitmaps). The pin layer
+  COLLIDES by rank (`symbolSortKey` = result order, allowOverlap false): in a dense downtown the
+  best results keep pins and the rest draw as the small red dots of `vela-markers-dots` (same
+  source, below, allowOverlap+ignorePlacement true), expanding back into pins on zoom - never a
+  pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels try UNDER the pin,
+  then its right, then its left (variableAnchor TOP/LEFT/RIGHT, radialOffset 0.7 - below-only
+  dropped labels in crowded views, user 2026-07-10) in NEUTRAL ink both themes. The AMBIENT and
+  OSM poi layers got the same treatment (2026-07-10): four anchor slots (RIGHT/LEFT/TOP/BOTTOM,
+  = left of icon / right of it / below / above) instead of the old two - icons still collide by
+  design, but a rendered icon's label now finds a clear side instead of dropping or sitting on a
+  neighbour's dot - Google doesn't category-tint result labels,
+  only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
+  0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
+  keep the two in lockstep. **OSM POIs hide by COVERAGE, not ambient non-emptiness (2026-07-10):**
+  `MapUiState.ambientCoversView` (computed each onViewport settle: ambient non-empty AND centre
+  within 0.35x of `lastAmbientSpan` of the fetch centre AND viewRadius ≤ 0.55x span; forced true
+  when a fresh fetch lands, false under z14) drives the poi_r* visibility - blanket-hiding left
+  the outskirts iconless because one fetch only covers ~3.5-9 km (user 2026-07-10). Controls
+  (signs/lights) render from z17.5 on the browse map but z16 during nav (set in the nav
+  declutter effect). While a result SET is on the map (markers.size > 1) the basemap
+  poi_r1/r7/r20 icons hide too, AND the traffic-control layers (stop signs + lights,
+  `lastControlsVis` - controls stay up beside the ambient dots on the browse map, so their
+  predicate is the result set alone). Own identity gates, NOT inside the ambient gate -
+  results can appear/clear while ambient stays empty; a single selected place keeps both. Dots carry the same MARKER_INDEX_PROP feature prop, so
+  a collapsed result is still tappable.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
