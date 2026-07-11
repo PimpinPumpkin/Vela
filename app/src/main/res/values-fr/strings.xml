@@ -536,7 +536,7 @@
     <string name="settings_map_colors">Couleurs de la carte</string>
     <string name="settings_map_colors_modern">Moderne</string>
     <string name="settings_map_colors_classic">Classique</string>
-    <string name="settings_map_colors_hint">Moderne reprend la palette actuelle de Google Maps. Classique est l'ancien style de Vela : routes blanches, autoroutes jaunes, verts francs.</string>
+    <string name="settings_map_colors_hint">Moderne reprend la palette actuelle de Google Maps. Classique est l\'ancien style de Vela : routes blanches, autoroutes jaunes, verts francs.</string>
     <string name="place_avoid_tolls">Éviter les péages</string>
     <string name="place_avoid_highways">Éviter les autoroutes</string>
 </resources>
