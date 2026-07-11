@@ -144,6 +144,9 @@ object SearchParser {
             // label (its lower bound, or the count of '$' for the "$$" symbol style) — the
             // price filter has nothing to compare against otherwise.
             priceLevel = priceLevelOf(field("priceText").str()),
+            // Gas stations carry a live fuel price ("$5.34/Regular"); sanity-gate on a digit so
+            // a shape drift can never put a stray label where the UI expects a price.
+            fuelPrice = field("fuelPrice").str()?.trim()?.takeIf { it.any(Char::isDigit) && it.length <= 24 },
             website = field("website").str(),
             // Action link (Book/Reserve/Order) — only when there's a real http(s) URL, so a
             // shape change can never render a button that opens garbage.
