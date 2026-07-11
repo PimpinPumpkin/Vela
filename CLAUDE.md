@@ -856,7 +856,9 @@ Defaults that make the safe path the easy one:
   fails verification is ignored (app keeps the last-good config). An unsigned/older
   cached copy falls back to the compiled `DEFAULT` for one launch.
 - **Notices.** `calibration.json` carries a `notices` array (`id`/`level`/`title`/
-  `body`/`url`) shown as dismissable cards on the bare map (`MapViewModel.refreshNotices`,
+  `body`/`url`) shown as dismissable cards on the bare map; **level "urgent" (2026-07-10)
+  renders as a MODAL VelaDialog instead** (OK dismisses; a `url` adds a Learn-more button) —
+  for pushed announcements that must be seen. Cards for routine notes, urgent sparingly. (`MapViewModel.refreshNotices`,
   dismissed ids in `vela_notices` prefs) - push "search is down, fix coming" with no
   app update. Rides the same signed channel.
 - **Phase 3 (done): remote parse *logic*** via `transformsJs` - a signed JS bundle
