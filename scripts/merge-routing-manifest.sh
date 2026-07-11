@@ -11,10 +11,14 @@ set -euo pipefail
 DIR="${1:?dir of *.json entry files}"
 REPO="${VELA_REPO:-PimpinPumpkin/Vela}"
 TAG="routing-graphs"
+# VARIANT (e.g. "v2") reads/writes routing-manifest-v2.json so a new graph generation keeps
+# its own catalog beside the legacy one (see build-routing-region.sh).
+SUFFIX="${VARIANT:+-$VARIANT}"
+MANIFEST_NAME="routing-manifest$SUFFIX.json"
 WORK="$(mktemp -d)"; trap 'rm -rf "$WORK"' EXIT
 
 # start from the live manifest (preserve regions not in this batch); empty catalog if none yet
-gh release download "$TAG" --repo "$REPO" -p routing-manifest.json -O "$WORK/manifest.json" 2>/dev/null \
+gh release download "$TAG" --repo "$REPO" -p "$MANIFEST_NAME" -O "$WORK/manifest.json" 2>/dev/null \
   || echo '{"regions":[]}' > "$WORK/manifest.json"
 
 # collect this batch's entries into one array, then upsert each by id
@@ -26,8 +30,8 @@ jq --slurpfile batch "$WORK/batch.json" '
   ($batch[0] | map(.id)) as $ids
   | .regions = ([.regions[] | select(.id as $i | $ids | index($i) | not)] + $batch[0])
   | .regions |= sort_by(.name)
-' "$WORK/manifest.json" > "$WORK/routing-manifest.json"
+' "$WORK/manifest.json" > "$WORK/$MANIFEST_NAME"
 
-jq -r '.regions[] | "   \(.name)  \(.sizeMb) MB  \(.bbox)"' "$WORK/routing-manifest.json"
-gh release upload "$TAG" "$WORK/routing-manifest.json" --clobber --repo "$REPO"
-echo "✓ manifest now lists $(jq '.regions | length' "$WORK/routing-manifest.json") regions"
+jq -r '.regions[] | "   \(.name)  \(.sizeMb) MB  \(.bbox)"' "$WORK/$MANIFEST_NAME"
+gh release upload "$TAG" "$WORK/$MANIFEST_NAME" --clobber --repo "$REPO"
+echo "✓ $MANIFEST_NAME now lists $(jq '.regions | length' "$WORK/$MANIFEST_NAME") regions"
