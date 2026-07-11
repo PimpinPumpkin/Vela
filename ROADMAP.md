@@ -457,7 +457,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     Dependency hygiene confirmed: the OSM-**import** deps (`osmosis-osm-binary`, `protobuf-java`,
     `jackson-dataformat-xml`/`woodstox`/StAX, `xmlgraphics-commons`) are **excluded** from the app - we ship
     prebuilt graphs, so they're never on the load/route/match path, and it dexes + runs clean without them.
-    **Net: GraphHopper v11 on Android is PROVEN.** The `:ghprobe` module is the reference recipe; delete it
+    **Net: GraphHopper v11 on Android is PROVEN.** The `:ghprobe` module was the reference recipe; DELETED 2026-07-11 (this section is the surviving record); it
     once the real `:core` integration ports these three workarounds.
   - **Phasing.** **Phase 1 = GraphHopper as the OFFLINE router** (the hybrid the user described:
     online OSRM+option-3+Google-traffic when connected, GraphHopper A→B with named turns when not) - the
@@ -575,10 +575,49 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   them would need finding a separate (likely gated) video source + a player dependency
   (ExoPlayer/media3) + handling expiring stream URLs - high effort for a feature most
   places don't have. Skip unless a specific place with videos motivates it.
-- **Roboto font** - no keyless glyph host serves it; Noto Sans stays.
+- **Roboto font** - DONE 2026-07-11: self-hosted glyphs (Roboto composited over Noto per
+  glyph, built by `scripts/build-map-fonts.sh`) served from the repo's GitHub Pages; the
+  app patches the live Liberty style's glyphs URL at launch (`ui/map/MapFonts`) with a
+  probe-and-fall-back to plain Noto. Needs the `map-fonts` release published + one
+  fdroid-repo.yml run to light up.
 
 ## Resilience (built - extend as needed)
 
 The signed `calibration.json` channel can already hot-push **config, field paths,
 user notices, and sandboxed JS parse-logic** with no app update (see SPEC §5). Future
 breakages should be fixed there first.
+
+## Not going to happen (accounts and backends)
+
+These stay off the table because they require a Google login or a Vela server, and the
+project's core promise is that neither exists:
+
+- Contributing reviews, photos, or map edits (needs a Google account)
+- Live location sharing / share-ETA (needs a rendezvous backend)
+- Location history / timeline (an anti-goal outright)
+- Live "busier than usual" popular times (Google strips the live histogram from every
+  anonymous request; the typical-week bars we show are the keyless maximum - probed and
+  documented, do not re-chase)
+
+## Queued near-term
+
+- Avoid tolls / avoid highways: FOSSGIS OSRM accepts per-request exclusions; two persisted
+  toggles in the route chooser. Caveats to surface in the UI: the Google fallback router
+  ignores them, and offline GraphHopper needs a graph re-bake with toll flags before it can
+  honour them (CI rebuild of the region graphs).
+- Menu photo dates: recalibrate the hspqX photos RPC from a desktop capture (returns 0 photos
+  since the WebView walk replaced it; the in-app join is ready and inert) - a capture +
+  calibration.json bump. The place page itself was probed 2026-07-11 and carries no photo
+  urls/dates keylessly; the RPC is the only route.
+- Ambient POI dot tiers like Google - DONE 2026-07-11: a circle layer under the ambient
+  icons draws every place as a small category-coloured dot; collision losers stay visible
+  as dots and upgrade to icons on zoom-in.
+- Map label font trickle-down: map text now renders from the self-hosted Roboto glyph pack
+  (matches the app font today); true inheritance means regenerating that pack from the same
+  font file the app ships (`scripts/build-map-fonts.sh` is the hook) and republishing the
+  `map-fonts` release. Runtime inheritance is not possible in MapLibre.
+- Restaurant menu reliability: instrument the gallery walk to classify tab-less fetches,
+  stop caching a tab-less result forever, and separate device render timing from Google-side
+  variance.
+- Satellite imagery layer via open Esri World Imagery tiles (attribution required).
+- Performance pass: frame profiling of dense-marker pans and the POI sheet in/out churn.

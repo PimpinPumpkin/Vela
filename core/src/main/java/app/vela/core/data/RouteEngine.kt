@@ -18,8 +18,12 @@ interface RouteEngine {
      *  Cheap — must not trigger an expensive load. */
     fun isReady(mode: TravelMode): Boolean
 
-    /** Best-first routes for origin→destination, or empty if unavailable/failed. Never throws. */
-    fun route(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route>
+    /** Best-first routes for origin→destination, or empty if unavailable/failed. Never throws.
+     *  The avoid flags are honoured only when the loaded graph carries the matching CH profile
+     *  (car_avoid_toll / car_avoid_motorway, baked by tools/graphbuilder); a graph without them
+     *  returns empty for an avoid request so the caller can fall through - never a silent
+     *  route-through-the-toll. */
+    fun route(origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false): List<Route>
 
     /** The posted speed limit (km/h) of the road nearest ([lat],[lng]), or null if unknown. Only the
      *  on-device engine can answer (from the OSM `maxspeed` in the graph); online engines have no offline

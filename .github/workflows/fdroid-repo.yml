@@ -112,6 +112,21 @@ jobs:
           rm -f keystore.p12 config.yml
           ls -la repo
 
+      - name: Add map font glyphs to the site
+        # The basemap's Roboto glyph set (ui/map/MapFonts; built by
+        # scripts/build-map-fonts.sh) is served from this same Pages site at
+        # /Vela/fonts/. The zip lives on the fixed-tag `map-fonts` release; skip
+        # quietly if that release doesn't exist yet so the F-Droid repo still
+        # deploys (the app probes the URL and falls back to Noto on a 404).
+        run: |
+          if curl -sfL -o map-fonts.zip https://github.com/${{ github.repository }}/releases/download/map-fonts/map-fonts.zip; then
+            mkdir -p fdroid/fonts
+            unzip -q -o map-fonts.zip -d fdroid/fonts
+            echo "Fonts added: $(find fdroid/fonts -name '*.pbf' | wc -l) glyph ranges"
+          else
+            echo "map-fonts release not found; site builds without fonts"
+          fi
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

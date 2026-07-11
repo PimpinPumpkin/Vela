@@ -528,4 +528,8 @@
     <string name="notif_ask_body">Навигация держит следующий поворот в уведомлении, чтобы подсказки оставались с вами при выключенном экране или в другом приложении. Без него подсказки видны только внутри Vela.</string>
     <string name="notif_ask_allow">Разрешить</string>
     <string name="notif_ask_skip">Пропустить</string>
+    <string name="place_time_past_toast">Это время уже прошло. Установлено на сейчас.</string>
+    <string name="settings_ui_scale">Размер интерфейса</string>
+    <string name="place_avoid_tolls">Избегать платных дорог</string>
+    <string name="place_avoid_highways">Избегать шоссе</string>
 </resources>

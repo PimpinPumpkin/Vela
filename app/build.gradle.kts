@@ -66,6 +66,15 @@ android {
             "\"${(project.findProperty("poiPackManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/poi-packs/poi-pack-manifest.json"}\"",
         )
+        // Self-hosted map-font glyphs (Roboto composited over Noto; see ui/map/MapFonts) served
+        // from the repo's GitHub Pages — same override pattern (-PmapFontsUrl=http://127.0.0.1:8099
+        // via `adb reverse` against a local `python3 -m http.server` on the glyph directory).
+        buildConfigField(
+            "String",
+            "MAP_FONTS_URL",
+            "\"${(project.findProperty("mapFontsUrl") as String?)
+                ?: "https://pimpinpumpkin.github.io/Vela/fonts"}\"",
+        )
     }
 
     // Real release signing comes from CI env vars; local dev falls back to the

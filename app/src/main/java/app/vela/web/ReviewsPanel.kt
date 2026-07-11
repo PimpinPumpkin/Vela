@@ -293,10 +293,19 @@ private fun buildPanelWebView(
                     val dy = y - lastY
                     val dx = x - lastX
                     lastY = y; lastX = x
-                    // Forward only clearly-vertical boundary drags (a horizontal chip swipe with
-                    // a slight slope must not jiggle the sheet).
-                    if (kotlin.math.abs(dy) > kotlin.math.abs(dx) &&
-                        ((panelAtTop.get() && dy > 0f) || (!fullScreen && panelAtBottom.get() && dy < 0f))
+                    // Full-screen: once a top-edge pull has STARTED, the whole gesture belongs to
+                    // it — EVERY move forwards, whatever its direction, until the finger lifts.
+                    // This clause sits OUTSIDE the verticality test on purpose: a sideways wobble
+                    // mid-pull (one move with abs(dx) >= abs(dy)) used to fail that test, fall
+                    // into the boundary-exit branch below and fire the end signal with the finger
+                    // still down — past the threshold that closed the page mid-drag (user
+                    // 2026-07-11). Like the photo viewer, the pull now judges only at release.
+                    if ((fullScreen && forwarded) ||
+                        // Otherwise forward only clearly-vertical boundary drags (a horizontal
+                        // chip swipe with a slight slope must not jiggle the sheet).
+                        (kotlin.math.abs(dy) > kotlin.math.abs(dx) &&
+                            ((panelAtTop.get() && dy > 0f) ||
+                                (!fullScreen && panelAtBottom.get() && dy < 0f)))
                     ) {
                         forwarded = true
                         forwardDist += kotlin.math.abs(dy)

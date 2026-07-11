@@ -294,8 +294,17 @@ class CarMapRenderer(
             return
         }
         runCatching { s?.cancel() }
+        // Same style resolution as the phone map: MapFonts' Roboto-patched Liberty when its
+        // cache is ready (read + handed over as JSON - the snapshotter has no file:// branch
+        // of its own), else the plain URL. Without this the car screen kept Noto after the
+        // phone flipped to Roboto.
+        val effectiveStyle = app.vela.ui.map.MapFonts.effective(MapStyle.LIBERTY.uri)
+        val patchedJson = if (effectiveStyle.startsWith("file://")) {
+            runCatching { java.io.File(effectiveStyle.removePrefix("file://")).readText() }
+                .getOrNull()?.takeIf { it.isNotBlank() }
+        } else null
         val opts = MapSnapshotter.Options(width, height)
-            .withStyle(MapStyle.LIBERTY.uri)
+            .let { if (patchedJson != null) it.withStyleJson(patchedJson) else it.withStyle(MapStyle.LIBERTY.uri) }
             .withPixelRatio(1.0f)
             .withLogo(false)
         snapshotter = runCatching { MapSnapshotter(carContext, opts) }.getOrNull()
