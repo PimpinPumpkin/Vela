@@ -338,8 +338,10 @@ Defaults that make the safe path the easy one:
   only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
   0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
   keep the two in lockstep. While a result SET is on the map (markers.size > 1) the basemap
-  poi_r1/r7/r20 icons hide too (own identity gate `lastOsmPoiVis`, NOT inside the ambient gate -
-  results can appear/clear while ambient stays empty); a single selected place keeps them. Dots carry the same MARKER_INDEX_PROP feature prop, so
+  poi_r1/r7/r20 icons hide too, AND the traffic-control layers (stop signs + lights,
+  `lastControlsVis` - controls stay up beside the ambient dots on the browse map, so their
+  predicate is the result set alone). Own identity gates, NOT inside the ambient gate -
+  results can appear/clear while ambient stays empty; a single selected place keeps both. Dots carry the same MARKER_INDEX_PROP feature prop, so
   a collapsed result is still tappable.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
