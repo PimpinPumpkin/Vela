@@ -1827,11 +1827,20 @@ class MapViewModel @Inject constructor(
     fun showParkedCar(label: String) {
         val spot = _state.value.parkingSpot ?: return
         val p = Place(id = "parking:${spot.lat},${spot.lng}", name = label, location = spot)
+        // A parked car never fetches reviews/photos/details — but the PREVIOUS place's in-flight
+        // scrape (and its reviews/shimmer flags) would otherwise bleed onto the parking sheet
+        // ("loading reviews on the parked car" bug). Cancel + clear them, like the pin/POI paths.
+        reviewsJob?.cancel()
+        routeJob?.cancel()
         // Frame the spot too — opened from the P button while browsing another city, the
         // sheet alone doesn't tell you WHERE the car is.
         _state.update {
             it.copy(
                 selected = p, results = emptyList(), query = "", directionsOpen = false,
+                placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false,
+                reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                routes = emptyList(), activeRoute = null, showSteps = false, previewStepIndex = null,
+                transit = emptyList(), transitLoading = false,
                 center = spot, recenterTick = it.recenterTick + 1,
             )
         }
