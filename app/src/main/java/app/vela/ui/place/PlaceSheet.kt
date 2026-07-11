@@ -7,10 +7,6 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -160,6 +156,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
@@ -562,15 +559,28 @@ fun PlaceSheet(
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
             // The body is a SKELETON (name row, rating, action pills - the minimized card) plus
-            // MinimizeExtras sections between/around it. On minimize the extras shrink + fade IN
-            // PLACE while the height glides down, so the skeleton settles into the minimized card
-            // with no content swap - the old swap-to-a-mini-card read as a pop (user 2026-07-10).
-            // A parked car (singleDetent) keeps its extras: nothing to minimize into.
-            val extrasVisible = !minimizedState.value || singleDetent
+            // MinimizeExtras sections between/around it. The extras' fold is LOCKED TO THE SHEET
+            // HEIGHT: their height/alpha scale by how far the sheet sits between the minimized
+            // floor and peek, read in the layout/render phase each frame. Whatever drives the
+            // height (pan glide, a slow drag, the release settle) drives the fold identically -
+            // a separately-clocked exit animation could never stay in step with a spring and
+            // read as staccato (user 2026-07-11). A parked car (singleDetent) keeps its extras:
+            // nothing to minimize into.
+            val extrasFraction: () -> Float = {
+                if (singleDetent) 1f else ((heightAnim.value - minH) / (peekH - minH)).coerceIn(0f, 1f)
+            }
+            // Composition gate: extras stay MOUNTED while any part of them shows (so a fold or a
+            // partial drag always has content) and unmount only once the sheet settles at the
+            // floor - the same lifecycle the old mini-card swap gave the hidden body, keeping
+            // zero-height controls out of D-pad focus search. derivedStateOf collapses the
+            // per-frame height reads into one recomposition at the flip points.
+            val extrasComposed by remember(place.id, singleDetent, minH) {
+                derivedStateOf { singleDetent || !minimizedState.value || heightAnim.value > minH + 1f }
+            }
             // Photo hero at the top (Google-style); tap one to open the full gallery.
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
-            MinimizeExtras(extrasVisible) {
+            MinimizeExtras(extrasComposed, extrasFraction) {
             if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
                 // the menu surface now, and the other categories read as noise; user 2026-07-10.)
@@ -669,7 +679,7 @@ fun PlaceSheet(
                     }
                 }
             }
-            MinimizeExtras(extrasVisible) {
+            MinimizeExtras(extrasComposed, extrasFraction) {
             // Distance (when the place came from a located search) + price +
             // category on their own line so a long category ("Hamburger restaurant")
             // doesn't wrap mid-word next to the stars; ellipsised if huge.
@@ -829,7 +839,7 @@ fun PlaceSheet(
                 }
             }
 
-            MinimizeExtras(extrasVisible) {
+            MinimizeExtras(extrasComposed, extrasFraction) {
             place.address?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
@@ -1067,20 +1077,29 @@ fun PlaceSheet(
 
 /**
  * A collapsible section of the sheet body: everything EXCEPT the name / rating / action-pill
- * skeleton sits in one of these. On minimize it shrinks + fades in place (top-anchored, so the
- * content below slides up over it) concurrently with the sheet's height glide; on restore it
- * grows back. Content is removed from composition once fully hidden — same lifecycle the old
- * mini-card short-circuit gave the hidden body.
+ * skeleton sits in one of these. Its height and alpha are `fraction()` of natural - the caller
+ * derives that fraction from the sheet's own animated height, so the fold tracks the card's
+ * travel frame-for-frame (a slow drag folds it WITH the finger; there is no second animation
+ * clock to fall out of step with the height spring). Top-anchored and clipped, so it collapses
+ * upward and the content below slides over it. `composed=false` (sheet settled at the minimized
+ * floor) removes the content entirely - the lifecycle the old mini-card short-circuit gave the
+ * hidden body, keeping zero-height controls out of D-pad focus search.
+ *
+ * fraction() is deliberately read ONLY inside the layout and graphicsLayer blocks: a fold frame
+ * re-measures this section but never recomposes it (the sheet-height discipline).
  */
 @Composable
-private fun MinimizeExtras(visible: Boolean, content: @Composable () -> Unit) {
-    AnimatedVisibility(
-        visible = visible,
-        enter = expandVertically(tween(260), expandFrom = Alignment.Top) + fadeIn(tween(260)),
-        exit = shrinkVertically(tween(260), shrinkTowards = Alignment.Top) + fadeOut(tween(160)),
-    ) {
-        Column { content() }
-    }
+private fun MinimizeExtras(composed: Boolean, fraction: () -> Float, content: @Composable () -> Unit) {
+    if (!composed) return
+    Column(
+        Modifier
+            .graphicsLayer { clip = true; alpha = fraction() }
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                val h = (placeable.height * fraction()).roundToInt()
+                layout(placeable.width, h) { placeable.placeRelative(0, 0) }
+            },
+    ) { content() }
 }
 
 /** "Save to list" — check the lists this place belongs to; create a new one inline. */
@@ -2564,10 +2583,13 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                     // threshold closes it (Google's dismiss). Deltas come from the panel's
                     // boundary scroll-sync (reviews at their top + dragging down).
                     onOverscroll = { dy -> pullScope.launch { pull.snapTo((pull.value + dy).coerceAtLeast(0f)) } },
-                    onOverscrollEnd = { vel ->
-                        // Close on a real pull OR a hard downward flick, like the photo viewer;
-                        // anything less springs the page back up.
-                        if (pull.value > with(density) { 120.dp.toPx() } || vel > 2500f) onClose()
+                    onOverscrollEnd = { _ ->
+                        // DISTANCE ONLY, judged at release — the photo viewer's dismiss grammar
+                        // (user 2026-07-11): you have to really drag it; anything less springs
+                        // back up. No velocity escape: the old flick close (vel > 2500 px/s)
+                        // tripped on the release jerk of a medium pull and read as a hair
+                        // trigger next to the photo viewer.
+                        if (pull.value > with(density) { 120.dp.toPx() }) onClose()
                         else pullScope.launch { pull.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f)) }
                     },
                 )
