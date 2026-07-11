@@ -47,6 +47,8 @@ class SearchSnapTest {
         val places = SearchParser.parse("cafes", Json.parseToJsonElement(root)).places
         assertEquals(true, places[0].wheelchairAccessible)
         assertEquals(false, places[1].wheelchairAccessible)
+    }
+
     /** Gas stations: the live fuel price rides the place node at [88][0] ("$5.34/Regular",
      *  pinned from a live capture 2026-07-10). A digit-less string there (a shape drift putting
      *  a label where the price was) must be rejected, not shown as a price. */
