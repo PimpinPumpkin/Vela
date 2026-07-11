@@ -1043,8 +1043,12 @@ architecture note.
   (onSurfaceVariant both modes), ShortcutRow unset Home/Work (onSurfaceVariant, was
   SheetPalette.dim and mismatched the recents pin), the chooser Steps glyph + the
   search-along-route chip icons (SheetPalette dim beside ink labels). Give any NEW
-  glyph-next-to-text the same treatment. Google light also marks on-street BIKE ROUTES dark teal #007b8b - NOT
-  drawn by Vela (bike lanes are not the trails layer; noted as a possible future accent).
+  glyph-next-to-text the same treatment. **Bike routes: DEDICATED bike paths (OSM highway=cycleway,
+  OMT subclass=cycleway) now draw in Google's teal #007b8b (light) / #1f8f9c (dark) via the
+  `vela-bikeroutes` LineLayer, split OUT of `vela-trails` (which keeps foot subclass path/bridleway
+  green) - 2026-07-11.** ON-STREET painted lanes (`cycleway=lane`/`cycleway:left/right` tagged on a
+  road way) are NOT in the keyless OMT tile schema, so they still aren't drawn; that needs an
+  Overpass layer (sibling of `OverpassTrafficSignals`) - see ROADMAP.
 - **Ambient POI DOT TIER (2026-07-11):** `vela-ambient-dots`, a CircleLayer UNDER the
   ambient icon layer on the same source - every ambient place draws a small category-
   coloured circle (`dotColor` prop from PoiIcons.colorFor; radius 2.6-4.2 by prominence,
