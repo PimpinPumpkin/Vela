@@ -226,6 +226,22 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The place card follows your finger (2026-07-10).** Dragging the place sheet moves it with
   your finger and, on release, it coasts on the fling to whichever size is closest - no more
   stepping between sizes in fixed hops.
+- ✅ **Search results are Google-style red markers with real glyphs (2026-07-11).** Searching
+  "restaurants" pins the map with named results instead of anonymous pins: every result keeps
+  its grey teardrop and category glyph with the circle turned red, rated restaurants get a wide
+  speech-bubble marker with the rating beside the circled glyph, and in a dense downtown the lesser results collapse into little red dots that
+  expand back into pins as you zoom, so the view never turns into a pile of overlapping icons.
+  The base map's OSM icons now BLEND with the Google dots instead of hiding wholesale: they
+  yield only while the viewport truly sits inside the area the Google fetch covered, so panning
+  or zooming past it keeps icons everywhere and fresh fetches merge in as they land. Stop signs
+  and traffic lights also hold back on the browse map until true street zoom (they stay at nav
+  zoom during turn-by-turn, where they're an aid rather than clutter).
+  Result labels stay plain ink (only ambient POI labels take the category tint, like Google);
+  every POI label on the map (results, ambient dots, base-map icons) can now sit left, right,
+  below or above its icon, whichever side is clear, instead of vanishing when its usual spot
+  was taken;
+  and while a result set is up the base map's own POI icons, stop signs and traffic lights all
+  step aside so the results are the only things on the map.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
