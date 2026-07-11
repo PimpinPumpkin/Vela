@@ -213,6 +213,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   its grey teardrop and category glyph with the circle turned red, rated restaurants get a wide
   speech-bubble marker with the rating beside the circled glyph, and in a dense downtown the lesser results collapse into little red dots that
   expand back into pins as you zoom, so the view never turns into a pile of overlapping icons.
+  The base map's OSM icons now BLEND with the Google dots instead of hiding wholesale: they
+  yield only while the viewport truly sits inside the area the Google fetch covered, so panning
+  or zooming past it keeps icons everywhere and fresh fetches merge in as they land. Stop signs
+  and traffic lights also hold back on the browse map until true street zoom (they stay at nav
+  zoom during turn-by-turn, where they're an aid rather than clutter).
   Result labels stay plain ink (only ambient POI labels take the category tint, like Google);
   every POI label on the map (results, ambient dots, base-map icons) can now sit left, right,
   below or above its icon, whichever side is clear, instead of vanishing when its usual spot
