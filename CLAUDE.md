@@ -269,6 +269,13 @@ Defaults that make the safe path the easy one:
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
   note stays. `place_current_traffic` was deleted from all 11 locales.
+- **The sheet physics recipe is SHARED (2026-07-11):** the place sheet, the search-results sheet
+  and the DirectionsPanel body all use the same grammar - a hand-driven `Animatable` (height for
+  the sheets, a 0..1 body FRACTION for the chooser) dragged 1:1 (handle + content-at-top nested
+  scroll), settled by `exponentialDecay(1.6)` picking the nearest detent from the natural coast
+  endpoint with a bounds-clamped `animateDecay` ride (spring only when the throw doesn't carry),
+  and the animated value read in a LAYOUT modifier so frames never recompose content. Port this
+  recipe to any new sheet; don't invent a fourth gesture system.
 - **Place-sheet drag physics are CONTINUOUS (2026-07-10):** the sheet height is a hand-driven
   `Animatable` - drags (handle or body-at-top) move it 1:1 with the finger, release projects the
   fling and RIDES THE THROW'S OWN INERTIA to the nearest detent: the landing point comes from
