@@ -279,7 +279,10 @@
     <string name="mapscreen_got_it">Percebi</string>
     <string name="mapscreen_heads_up">Atenção</string>
     <string name="mapscreen_dismiss">Dispensar</string>
-    <string name="mapscreen_results_count">%1$d resultados</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d resultado</item>
+        <item quantity="other">%1$d resultados</item>
+    </plurals>
     <string name="mapscreen_shrink_list">Encolher lista</string>
     <string name="mapscreen_expand_list">Expandir lista</string>
     <string name="mapscreen_close_results">Fechar os resultados da pesquisa</string>
