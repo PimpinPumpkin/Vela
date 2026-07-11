@@ -683,6 +683,7 @@ fun MapScreen(
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
+            ambientCoversView = state.ambientCoversView,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
