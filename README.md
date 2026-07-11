@@ -75,7 +75,7 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
   step-by-step guidance to the platform.
 - **No account, no tracking.** No Google account, no GMS, no telemetry. What
   Google's servers can and cannot see is documented plainly in [PRIVACY.md](PRIVACY.md).
-- **The rest.** Android Auto, 11 languages, in-app light/dark, full D-pad operation
+- **The rest.** Android Auto, 14 languages, in-app light/dark, full D-pad operation
   for keypad phones, parking memory, place lists, and a built-in updater with
   weekly-stable or nightly channels.
 
@@ -242,7 +242,7 @@ trademark collisions.
 
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first - it covers the hard rules (no
 backend, no static Google keys, degoogled runtime, the `:core`/`:app` module
-boundary, docs-in-the-same-commit, and translations for all 11 locales) and how to
+boundary, docs-in-the-same-commit, and translations for all 14 locales) and how to
 send a change. There is no separate code-of-conduct document by design: keep it
 about the code. Security issues go through [`SECURITY.md`](SECURITY.md) (GitHub
 private vulnerability reporting), not a public issue.
