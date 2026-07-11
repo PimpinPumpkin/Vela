@@ -1280,7 +1280,13 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   are left alone. Unit-tested. (3) **Feet steps**
  - `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round feet Google-style: 50 ft at/above
   100 ft, 10 ft below. (4) **Voice K/C** - `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) →
-  "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. (6) **Continue/straight lane silence** - a CONTINUE/STRAIGHT speaks its lane preface ONLY for a GENUINE fork (an "off" lane whose OWN indication is an explicit `straight`/`slight*` arrow, e.g. "use the left 2 lanes to stay on I-80"); a plain turn bay at an intersection (off lane marked only `left`/`right`, OR **`none`** = OSRM's "no painted arrow" sentinel, which is NOT "goes straight") while you sail straight through is silenced (`Route.continueHasGenuineFork` gates `NavEngine`'s escape hatch; it matches only `straight`/`slight*` on an off lane - `none`/`through` are excluded) - Google stays silent there and the road-just-renames case had been over-speaking. (5) **Traffic-light landmarks
+  "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. **(4b) "take" → "tyke"
+  (2026-07-11):** espeak's G2P is context-sensitive - on a full "take the ramp toward Woodland" it
+  mis-voweled "take", but "take the ramp" alone was correct (user A/B). `expandForSpeech` now inserts a
+  comma before " toward " (`", toward "`), which is a `SpeechText.speechFragments` boundary, so the model
+  phonemizes "take the ramp" in isolation and reads the sign destination as its own beat (Google pauses
+  there too). "toward" only appears on ramp/exit/highway-sign steps, so plain "onto" turns are untouched;
+  unit-tested. Verify-by-ear pending (can't hear it here). (6) **Continue/straight lane silence** - a CONTINUE/STRAIGHT speaks its lane preface ONLY for a GENUINE fork (an "off" lane whose OWN indication is an explicit `straight`/`slight*` arrow, e.g. "use the left 2 lanes to stay on I-80"); a plain turn bay at an intersection (off lane marked only `left`/`right`, OR **`none`** = OSRM's "no painted arrow" sentinel, which is NOT "goes straight") while you sail straight through is silenced (`Route.continueHasGenuineFork` gates `NavEngine`'s escape hatch; it matches only `straight`/`slight*` on an off lane - `none`/`through` are excluded) - Google stays silent there and the road-just-renames case had been over-speaking. (5) **Traffic-light landmarks
   ("pass the light, then turn") - BUILT (Settings → Navigation → "Traffic-light guidance", OFF by default,
   English-only):** `RouteGeometry.enrichWithLights` folds a "pass the light, then …" clause into a surface-street
   TURN when 1–2 signals fall on the approach (`NavStrings.passLights`); signals from `OverpassTrafficSignals.fetchAlong`
