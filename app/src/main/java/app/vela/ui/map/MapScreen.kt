@@ -1800,7 +1800,20 @@ private fun SearchResults(
     fun settleList(velocityPxPerSec: Float) {
         val vDp = with(density) { velocityPxPerSec.toDp().value }
         val naturalEnd = resultsDecay.calculateTargetValue(listH.value, -vDp)
-        val target = listOf(0f, peekL, expL).minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekL
+        // Flick = commit at least one detent in the flick's direction (the place sheet's
+        // grammar; the pure projection made short flicks feel dead - user 2026-07-11).
+        val detents = listOf(0f, peekL, expL)
+        val target = when {
+            vDp < -app.vela.ui.place.FLING_COMMIT_DPS -> {
+                val up = detents.filter { it > listH.value + 1f }
+                maxOf(up.minOrNull() ?: expL, up.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: expL)
+            }
+            vDp > app.vela.ui.place.FLING_COMMIT_DPS -> {
+                val down = detents.filter { it < listH.value - 1f }
+                minOf(down.maxOrNull() ?: 0f, down.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: 0f)
+            }
+            else -> detents.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekL
+        }
         sheetScope.launch {
             // States first for peek/expanded so everything keyed on them stays honest; the
             // MINIMIZED flip waits until the list has ridden down to zero (see above).

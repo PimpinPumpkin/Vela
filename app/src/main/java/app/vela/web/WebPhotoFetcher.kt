@@ -48,6 +48,9 @@ class WebPhotoFetcher @Inject constructor(
     private val partials = ConcurrentHashMap<String, (String) -> Unit>()
     private val hists = ConcurrentHashMap<String, (List<Int>) -> Unit>()
     private val infos = ConcurrentHashMap<String, String>()
+    private val dateCbs = ConcurrentHashMap<String, (List<Pair<String, String>>) -> Unit>()
+    // featureId -> (image id -> date text) mined from the place page, so cache-hits keep dates.
+    private val dateCache = ConcurrentHashMap<String, List<Pair<String, String>>>()
     // Feature ids whose TAB-LESS cached gallery already got its one self-heal retry this session.
     private val retriedTabless = java.util.Collections.synchronizedSet(HashSet<String>())
     // featureId -> [5-star..1-star] counts, so a cached-gallery revisit still gets its histogram
@@ -78,6 +81,23 @@ class WebPhotoFetcher @Inject constructor(
         @JavascriptInterface
         fun onPartial(id: String, payload: String) {
             partials[id]?.invoke(payload)
+        }
+
+        // Per-photo posted dates mined from the place page's own APP_INITIALIZATION_STATE -
+        // the replacement for the dead hspqX RPC (probe 2026-07-11: the blob carries relative
+        // "N ago" strings AND absolute [Y,M,D] arrays beside the photo urls). Zero extra
+        // requests; JSON = [[url, dateText], ...].
+        @JavascriptInterface
+        fun onDates(id: String, json: String) {
+            val pairs = runCatching {
+                val a = org.json.JSONArray(json)
+                (0 until a.length()).mapNotNull { i ->
+                    val e = a.optJSONArray(i) ?: return@mapNotNull null
+                    val u = e.optString(0); val d = e.optString(1)
+                    if (u.isNotBlank() && d.isNotBlank()) u to d else null
+                }
+            }.getOrNull().orEmpty()
+            if (pairs.isNotEmpty()) dateCbs[id]?.invoke(pairs)
         }
 
         // Why the walk ended the way it did (tab count, when the gallery opened, whether the
@@ -129,10 +149,12 @@ class WebPhotoFetcher @Inject constructor(
         count: Int = 80,
         onPartial: ((List<Photo>) -> Unit)? = null,
         onHistogram: ((List<Int>) -> Unit)? = null,
+        onPhotoDates: ((List<Pair<String, String>>) -> Unit)? = null,
     ): List<Photo> {
         val cid = cidOf(featureId) ?: return emptyList()
         synchronized(cache) { cache[featureId] }?.let { cached ->
             if (onHistogram != null) histCache[featureId]?.let(onHistogram) // cached walk = cached histogram
+            if (onPhotoDates != null) dateCache[featureId]?.let(onPhotoDates)
             // A CATEGORISED gallery is served from cache forever (it can't get better). A
             // TAB-LESS one gets ONE fresh walk per session: one flaky fetch used to poison the
             // place all session — "sometimes there's just no Menu tab" (user 2026-07-11). The
@@ -146,6 +168,7 @@ class WebPhotoFetcher @Inject constructor(
             pending[id] = deferred
             if (onPartial != null) partials[id] = { raw -> onPartial(parseLines(raw)) }
             hists[id] = { counts -> histCache[featureId] = counts; onHistogram?.invoke(counts) }
+            dateCbs[id] = { pairs -> dateCache[featureId] = pairs; onPhotoDates?.invoke(pairs) }
             val raw = try {
                 withTimeoutOrNull(TOTAL_TIMEOUT_MS) {
                     withContext(Dispatchers.Main) {
@@ -182,6 +205,7 @@ class WebPhotoFetcher @Inject constructor(
                 pending.remove(id)
                 partials.remove(id)
                 hists.remove(id)
+                dateCbs.remove(id)
             }
             val out = raw?.let { parseLines(it) } ?: emptyList()
             if (out.isNotEmpty()) synchronized(cache) { cache[featureId] = out } // cache only real results
@@ -270,19 +294,45 @@ class WebPhotoFetcher @Inject constructor(
               // APP_INITIALIZATION_STATE carry per-photo relative dates ("3 months ago")? If a
               // clean url-near-date shape shows in the snippet, extraction replaces the dead
               // hspqX RPC as the date source at zero extra requests. Logcat: VelaPhotoWalk.
-              function aisProbe(){
-                if(window.__velaAisProbed) return; window.__velaAisProbed=1;
+              // Mine the page's APP_INITIALIZATION_STATE for per-photo posted dates - the
+              // photo entries carry the url at [6][0] (the dead RPC's shape) with a relative
+              // "N ago" string or an absolute [Y,M,D] array nearby. One shot per page; zero
+              // extra requests (menu-date hunt, user 2026-07-11).
+              function aisDates(){
+                if(window.__velaAisDates) return; window.__velaAisDates=1;
                 try{
-                  var a=JSON.stringify(window.APP_INITIALIZATION_STATE||'');
-                  var n=(a.match(/ ago\\"/g)||[]).length;
-                  var i=a.indexOf(' ago\\"');
-                  var snip=i>=0?a.substring(Math.max(0,i-300),i+30):'';
-                  VelaBridge.onInfo(ID, JSON.stringify({ais:a.length, ago:n, snip:snip.slice(0,330)}));
-                }catch(e){ try{ VelaBridge.onInfo(ID, JSON.stringify({aisErr:''+e})); }catch(e2){} }
+                  var out=[];
+                  function isArr(x){ return Object.prototype.toString.call(x)==='[object Array]'; }
+                  function hunt(m,dd){
+                    if(!m || dd>4) return null;
+                    if(isArr(m)){
+                      if(m.length>=3 && m.length<=4 && typeof m[0]==='number' && m[0]>2004 && m[0]<2100 &&
+                         typeof m[1]==='number' && m[1]>=1 && m[1]<=12 && typeof m[2]==='number' && m[2]>=1 && m[2]<=31){
+                        return m[0]+'-'+m[1]+'-'+m[2];
+                      }
+                      for(var i=0;i<m.length;i++){ var r=hunt(m[i],dd+1); if(r) return r; }
+                    } else if(typeof m==='string' && / ago$/.test(m) && m.length<40){ return m; }
+                    return null;
+                  }
+                  function walk(n,d){
+                    if(!n || d>16 || out.length>=200) return;
+                    if(isArr(n)){
+                      var u=n[6] && isArr(n[6]) ? n[6][0] : null;
+                      if(typeof u==='string' && u.indexOf('googleusercontent')>=0){
+                        var dt=hunt(n,0);
+                        if(dt) out.push([u,dt]);
+                      }
+                      for(var i=0;i<n.length;i++) walk(n[i],d+1);
+                    }
+                  }
+                  walk(window.APP_INITIALIZATION_STATE,0);
+                  try{ VelaBridge.onInfo(ID, JSON.stringify({aisDates:out.length})); }catch(e2){}
+                  if(out.length) VelaBridge.onDates(ID, JSON.stringify(out));
+                }catch(e){}
               }
               function tick(){
                 tries++;
-                aisProbe();
+                aisDates();
                 hist();
                 if(phase===0){
                   collect(''); clickPhotos(); scroll();
