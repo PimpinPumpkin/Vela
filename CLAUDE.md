@@ -905,7 +905,17 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   the drag deltas. `FLING_COMMIT_DPS` dropped 450 -> 260. The nested-scroll body paths were
   never affected (Compose computes those velocities properly), which is why the place sheet
   body always felt right.
-- **Map palette is USER-EYEDROPPED from the Google app (2026-07-11, supersedes my web/screen
+- **DARK palette is PIXEL-SAMPLED from Google Maps on the attached Pixel 9 (2026-07-11,
+  definitive - supersedes the eyedrop):** land #162640, other-landuse #1c2638, water #000d2a
+  (DARKER than land, the inverted relationship matters), vegetation #0d3847 (teal), buildings
+  #1c3b69 w/ outline #2e3d6d (Google's own second shade), minor roads #3d5a77,
+  arterials/trunk/motorway #476789, casings = land. 3D extrusions = the flat colour at
+  opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk).
+  Sampling recipe: screencap Google Maps on the Pixel 9 over the target area, Counter the
+  band, probe specifics. **Flick velocity, final form:** all three manual trackers integrate
+  deltas AND take max(tracked, plain travel/time average) at release - a flick can never
+  measure ~zero; FLING_COMMIT_DPS = 180.
+- **(older eyedrop note)** **Map palette is USER-EYEDROPPED from the Google app (2026-07-11, supersedes my web/screen
   estimates):** DARK land #111c31, buildings #172b56 (outline #243970), roads #304864 (trunk
   #3d5878, casings = land), vegetation #0d2b38. LIGHT vegetation #caf8dc, buildings #e2e3e9,
   roads #b0c1d4 (secondary #aabdd0, trunk #a4b8cd, casings #a2b4c9); light land stays #f2f1ee
