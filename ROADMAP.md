@@ -595,6 +595,8 @@ project's core promise is that neither exists:
   toggles in the route chooser. Caveats to surface in the UI: the Google fallback router
   ignores them, and offline GraphHopper needs a graph re-bake with toll flags before it can
   honour them (CI rebuild of the region graphs).
+- Menu photo dates: recalibrate the hspqX photos RPC (returns 0 photos since the WebView walk
+  replaced it; the in-app join is ready and inert) - a capture + calibration.json bump.
 - Restaurant menu reliability: instrument the gallery walk to classify tab-less fetches,
   stop caching a tab-less result forever, and separate device render timing from Google-side
   variance.

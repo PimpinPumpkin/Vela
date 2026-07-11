@@ -369,7 +369,13 @@ Defaults that make the safe path the easy one:
   `Place.ratingHistogram` ([5-star..1-star] counts) is scraped IN PASSING by the photo walk
   from the place page's aria-label star rows (the same rows the full-screen panel carves),
   bridged via `WebPhotoFetcher.fetch(onHistogram=...)`, cached per feature id beside the photo
-  LRU, and drawn by `RatingHistogram` beside the big rating number; absent = no bars, no cost. **Menu-tab reliability hardening (2026-07-11):** the walk's tab wait
+  LRU, and drawn by `RatingHistogram` beside the big rating number; absent = no bars, no cost. **Menu photo DATES are BLOCKED on a dead RPC (2026-07-11):** the hspqX
+  placePhotos RPC returns 0 photos now (logcat tag `VelaPhotoDates`: rpc=0) - it rotted
+  unnoticed after the WebView walk replaced it as the gallery source (June calibration). The
+  date-join plumbing is correct and inert (stamps render only when a date exists). Reviving
+  dates = recapture `photosProto`/`photosEndpoint` from a live gallery RPC and bump
+  calibration.json (remote-fixable, no app release). Don't chase it in-app.
+  **Menu-tab reliability hardening (2026-07-11):** the walk's tab wait
   counts from the GALLERY OPENING (6 ticks after open, hard cap 20) instead of 8 ticks from
   script start - cold-WebView loads ate the old window and real tabs got skipped; a late-tab
   rescue in the All sweep walks tabs that appear after phase 0 gave up; every walk reports
