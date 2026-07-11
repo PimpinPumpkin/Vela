@@ -1423,8 +1423,16 @@ private fun ensureLayers(style: Style) {
                 // centre→text-edge gap in ems; 1.4 sits the label right up against the dot (was 2.7 → 2.0 →
                 // 1.4 across "too far" reports) while still clearing it. justify=auto so the left form
                 // right-justifies and the under form centres. (Tune from a device glance if it crowds the dot.)
+                // Four anchor slots (left of the icon, right of it, below, above) instead of the
+                // old two — with only left/below to try, a crowded block DROPPED labels (or let
+                // one sit on a neighbour's dot) when both slots were taken; a third/fourth side
+                // usually still fits. Icons still collide by design; this only helps the labels
+                // of the icons that DO render find a clear side (user 2026-07-10).
                 PropertyFactory.textVariableAnchor(
-                    arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                    arrayOf(
+                        Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT,
+                        Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_BOTTOM,
+                    ),
                 ),
                 PropertyFactory.textRadialOffset(1.4f),
                 PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
