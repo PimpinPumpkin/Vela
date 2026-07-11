@@ -368,7 +368,12 @@ object PoiIcons {
                     // search) — the old fixed -2.6 offset here was the "state where labels are too far
                     // from the icon until they re-render" (the re-render = ambient taking over).
                     PropertyFactory.textVariableAnchor(
-                        arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                        // Four slots like the ambient layer: left/right/below/above the icon, so a
+                        // crowded block keeps its labels instead of dropping them (see VelaMapView).
+                        arrayOf(
+                            Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT,
+                            Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_BOTTOM,
+                        ),
                     ),
                     PropertyFactory.textRadialOffset(1.4f),
                     PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
@@ -400,7 +405,12 @@ object PoiIcons {
                     PropertyFactory.symbolSortKey(Expression.get("rank")),
                     // Same tight variable-anchor placement as the poi_r* layers above / the ambient layer.
                     PropertyFactory.textVariableAnchor(
-                        arrayOf(Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_TOP),
+                        // Four slots like the ambient layer: left/right/below/above the icon, so a
+                        // crowded block keeps its labels instead of dropping them (see VelaMapView).
+                        arrayOf(
+                            Property.TEXT_ANCHOR_RIGHT, Property.TEXT_ANCHOR_LEFT,
+                            Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_BOTTOM,
+                        ),
                     ),
                     PropertyFactory.textRadialOffset(1.4f),
                     PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
