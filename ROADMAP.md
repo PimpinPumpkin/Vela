@@ -603,9 +603,9 @@ project's core promise is that neither exists:
   since the WebView walk replaced it; the in-app join is ready and inert) - a capture +
   calibration.json bump. The place page itself was probed 2026-07-11 and carries no photo
   urls/dates keylessly; the RPC is the only route.
-- Ambient POI dot tiers like Google (user 2026-07-11): when zoomed out, lower-rank ambient
-  POIs should degrade to small dots before hiding entirely, tiered by prominence - the
-  search-result collapsed-dot mechanic generalized to the browse map.
+- Ambient POI dot tiers like Google - DONE 2026-07-11: a circle layer under the ambient
+  icons draws every place as a small category-coloured dot; collision losers stay visible
+  as dots and upgrade to icons on zoom-in.
 - Map label font trickle-down: map text now renders from the self-hosted Roboto glyph pack
   (matches the app font today); true inheritance means regenerating that pack from the same
   font file the app ships (`scripts/build-map-fonts.sh` is the hook) and republishing the
