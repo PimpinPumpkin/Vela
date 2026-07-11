@@ -537,15 +537,30 @@ fun PlaceSheet(
                 Modifier
                     .nestedScroll(dismissConn)
                     .verticalScroll(bodyScroll)
+                    // GRACEFUL EXIT (user 2026-07-10): while the sheet glides toward the minimized
+                    // floor the full body FADES OUT with the height (render-phase read, no
+                    // recomposition), and the minimized card below fades in at the swap - the
+                    // content no longer vanishes in one frame at the flip.
+                    .graphicsLayer {
+                        alpha = if (minimizedState.value) 1f
+                        else ((heightAnim.value - minH) / 110f).coerceIn(0f, 1f)
+                    }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
             // Minimized detent: a compact card (name, rating, Directions) instead of the full body,
             // like Google's collapsed sheet. At this small height leading with the photo hero showed
             // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
             if (minimizedState.value) {
+                val miniIn = remember { androidx.compose.animation.core.Animatable(0f) }
+                LaunchedEffect(Unit) { miniIn.animateTo(1f, tween(220)) }
                 // A single tap ANYWHERE on the minimized card pops it back to peek (Google) —
                 // the Directions pill keeps its own tap since inner clickables win their bounds.
-                Column(Modifier.fillMaxWidth().clickable { minimizedState.value = false }) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer { alpha = miniIn.value }
+                        .clickable { minimizedState.value = false },
+                ) {
                 Text(
                     place.name,
                     style = MaterialTheme.typography.titleLarge,
@@ -660,19 +675,12 @@ fun PlaceSheet(
                 // save-family anyway (user 2026-07-10). D-pad-first via VelaMenu (docs/dpad.md).
                 var saveMenu by remember { mutableStateOf(false) }
                 Box {
-                    IconButton(
-                        onClick = { saveMenu = true },
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
-                    ) {
-                        Icon(
-                            if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
-                            contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
-                            tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
+                    HeaderCircleButton(
+                        icon = if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                        contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
+                        tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
+                        bg = dim,
+                    ) { saveMenu = true }
                     VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
                         item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
                         if (!isParking) {
@@ -684,14 +692,7 @@ fun PlaceSheet(
                     }
                 }
                 ShareIconButton(place, dim)
-                IconButton(
-                    onClick = onClose,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = dim, modifier = Modifier.size(18.dp))
-                }
+                HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close), dim, dim, onClick = onClose)
             }
 
             if (place.rating != null) {
@@ -2073,6 +2074,16 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
         DisposableEffect(Unit) {
             val win = (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window
             win?.let {
+                // The dialog WINDOW itself must claim the whole screen — decorFitsSystemWindows
+                // alone leaves the window sized inside the bars on several API levels (the "still
+                // not completely full screen top or bottom" report).
+                it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
+                if (android.os.Build.VERSION.SDK_INT >= 28) {
+                    it.attributes = it.attributes.apply {
+                        layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+                }
                 val ctl = androidx.core.view.WindowCompat.getInsetsController(it, dialogView)
                 ctl.systemBarsBehavior = androidx.core.view.WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
                 ctl.hide(androidx.core.view.WindowInsetsCompat.Type.systemBars())
@@ -2243,6 +2254,31 @@ private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (I
                 if (rowIdx.size == 1) Spacer(Modifier.weight(1f))
             }
         }
+    }
+}
+
+/** A header action: an 18dp icon in a fixed 36dp grey circle. A plain clickable Box, NOT an M3
+ *  IconButton — the IconButton's minimum-touch-target machinery kept re-inflating the layout
+ *  box past the visible circle, which is why the header circles overlapped through two rounds
+ *  of "make them smaller" (user 2026-07-10). Here the layout size IS the circle, full stop. */
+@Composable
+private fun HeaderCircleButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    tint: Color,
+    bg: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(bg.copy(alpha = 0.12f))
+            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -2465,6 +2501,19 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
     // to the WebView cleanly once the page loads. No-op under touch.
     val reviewsBackFocus = rememberDpadAutoFocus()
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        val panelView = LocalView.current
+        DisposableEffect(Unit) {
+            (panelView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let {
+                it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
+                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
+                if (android.os.Build.VERSION.SDK_INT >= 28) {
+                    it.attributes = it.attributes.apply {
+                        layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+                    }
+                }
+            }
+            onDispose { }
+        }
         Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(
@@ -2850,14 +2899,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
     }
 
     Box {
-        IconButton(
-            onClick = { open = true },
-            modifier = Modifier
-                .size(36.dp)
-                .background(tint.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
-        ) {
-            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.place_share), tint = tint, modifier = Modifier.size(18.dp))
-        }
+        HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
