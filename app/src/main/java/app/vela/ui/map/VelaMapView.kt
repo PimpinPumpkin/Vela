@@ -1751,14 +1751,16 @@ internal fun applyLight(style: Style) {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f0b85a"))
     }
     listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
-    listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#dadde2")) }
+    listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#cfd9e3")) }
     listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
-    listOf("road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#e4e6ea")) }
+    listOf("road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#d3dce4")) }
     listOf("road_minor", "road_link", "road_service_track", "bridge_street", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#ffffff"))
     }
+    // Casings are Google's blue-grey #cfd9e3 (sampled 2026-07-11) — that grey FRAME is what makes
+    // Google's roads read grey where ours (near-invisible land-coloured casings) read white.
     listOf("road_minor_casing", "road_link_casing", "road_service_track_casing", "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(land))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#d3dce4"))
     }
     // Terrain relief: a soft warm-grey shadow, subtle so hills read as depth, not dirt.
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
