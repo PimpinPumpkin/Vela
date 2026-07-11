@@ -1221,6 +1221,51 @@ fun VelaMapView(
 }
 
 private fun ensureLayers(style: Style) {
+    // FLAT vegetation, like Google (user 2026-07-11). Two parts. (1) Liberty's wetland +
+    // pedestrian-plaza layers ship with a fill-PATTERN (fern hatch / dots), and setting
+    // fill-pattern to an empty literal does NOT clear it on device (both themes tried - the
+    // repeating icons kept rendering). So the patterned originals are hidden outright and
+    // clean flat twins take their place; applyLight/applyDark colour the twins.
+    style.getLayer("landcover_wetland")?.setProperties(PropertyFactory.visibility(Property.NONE))
+    style.getLayer("road_area_pattern")?.setProperties(PropertyFactory.visibility(Property.NONE))
+    if (style.getLayer("vela-wetland") == null && style.getLayer("landcover_wetland") != null) {
+        val wet = FillLayer("vela-wetland", "openmaptiles").withSourceLayer("landcover")
+            .withFilter(Expression.eq(Expression.get("class"), "wetland"))
+        wet.minZoom = 12f
+        style.addLayerAbove(wet, "landcover_wetland")
+        val plaza = FillLayer("vela-plaza", "openmaptiles").withSourceLayer("transportation")
+            .withFilter(
+                Expression.match(
+                    Expression.geometryType(), Expression.literal(false),
+                    Expression.stop("Polygon", true), Expression.stop("MultiPolygon", true),
+                ),
+            )
+        style.addLayerAbove(plaza, "road_area_pattern")
+    }
+    // (2) The OSM poi tiers scatter park/garden/tree icons across every wood - Google keeps
+    // forests flat colour. Rebuild each tier's rank-band filter with vegetation excluded.
+    run {
+        val isPoint = Expression.match(
+            Expression.geometryType(), Expression.literal(false),
+            Expression.stop("Point", true), Expression.stop("MultiPoint", true),
+        )
+        val veg = Expression.match(
+            Expression.get("class"), Expression.literal(false),
+            Expression.stop("park", true), Expression.stop("garden", true),
+            Expression.stop("picnic_site", true), Expression.stop("wood", true),
+            Expression.stop("forest", true), Expression.stop("tree", true),
+            Expression.stop("grass", true), Expression.stop("wetland", true),
+        )
+        fun tier(id: String, lo: Int, hi: Int?) {
+            val parts = mutableListOf(isPoint, Expression.gte(Expression.get("rank"), Expression.literal(lo)), Expression.not(veg))
+            if (hi != null) parts += Expression.lt(Expression.get("rank"), Expression.literal(hi))
+            (style.getLayer(id) as? SymbolLayer)?.setFilter(Expression.all(*parts.toTypedArray()))
+        }
+        tier("poi_r1", 1, 7)
+        tier("poi_r7", 7, 20)
+        tier("poi_r20", 20, null)
+    }
+
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
     if (style.getImage(NAV_PUCK_IMG) == null) style.addImage(NAV_PUCK_IMG, navPuckBitmap())
 
@@ -1695,14 +1740,8 @@ internal fun applyLight(style: Style) {
     }
     // Liberty fills wetlands with a fern-hatch pattern and pedestrian plazas with a
     // dotted one — Google shows both flat. Clear the pattern so the flat fill shows.
-    style.getLayer("landcover_wetland")?.setProperties(
-        PropertyFactory.fillColor("#d6e8d0"),
-        PropertyFactory.fillPattern(Expression.literal("")),
-    )
-    style.getLayer("road_area_pattern")?.setProperties(
-        PropertyFactory.fillColor("#ededed"),
-        PropertyFactory.fillPattern(Expression.literal("")),
-    )
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#d6e8d0"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#ededed"))
     // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
     // roads. Bridges mirror their road tier so overpasses match.
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
@@ -1789,14 +1828,8 @@ internal fun applyDark(style: Style) {
         }
     }
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
-    style.getLayer("landcover_wetland")?.setProperties(
-        PropertyFactory.fillColor("#1c3326"),
-        PropertyFactory.fillPattern(Expression.literal("")),
-    )
-    style.getLayer("road_area_pattern")?.setProperties(
-        PropertyFactory.fillColor("#2a3546"),
-        PropertyFactory.fillPattern(Expression.literal("")),
-    )
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#1c3326"), PropertyFactory.fillOpacity(0.7f))
+    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
     style.getLayer(HILLSHADE_LAYER)?.setProperties(

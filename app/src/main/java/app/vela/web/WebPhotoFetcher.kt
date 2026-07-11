@@ -266,8 +266,23 @@ class WebPhotoFetcher @Inject constructor(
               // Stream growth: the sheet fills in as photos are found instead of waiting ~20s for
               // the full tab walk (first partial = the OVERVIEW's hero photos, ~1 tick after load).
               function partial(){ var n=0; for(var k in acc) n++; if(n>sentN){ sentN=n; try{ VelaBridge.onPartial(ID, lines()); }catch(e){} } }
+              // One-shot probe (menu-date hunt, user 2026-07-11): does the place page's own
+              // APP_INITIALIZATION_STATE carry per-photo relative dates ("3 months ago")? If a
+              // clean url-near-date shape shows in the snippet, extraction replaces the dead
+              // hspqX RPC as the date source at zero extra requests. Logcat: VelaPhotoWalk.
+              function aisProbe(){
+                if(window.__velaAisProbed) return; window.__velaAisProbed=1;
+                try{
+                  var a=JSON.stringify(window.APP_INITIALIZATION_STATE||'');
+                  var n=(a.match(/ ago\\"/g)||[]).length;
+                  var i=a.indexOf(' ago\\"');
+                  var snip=i>=0?a.substring(Math.max(0,i-300),i+30):'';
+                  VelaBridge.onInfo(ID, JSON.stringify({ais:a.length, ago:n, snip:snip.slice(0,330)}));
+                }catch(e){ try{ VelaBridge.onInfo(ID, JSON.stringify({aisErr:''+e})); }catch(e2){} }
+              }
               function tick(){
                 tries++;
+                aisProbe();
                 hist();
                 if(phase===0){
                   collect(''); clickPhotos(); scroll();
