@@ -312,11 +312,15 @@ Defaults that make the safe path the easy one:
   while the sheet is minimized so expanding re-frames; and the fit CONSUMES `lastCameraTarget` - the
   inset-grow nulls it, and with it null the else-recenter branch re-fired on the STALE VM center one
   recomposition later and yanked the camera back to wherever you were before the search (device-found
-  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Grabbing the map minimizes the list (2026-07-10):**
+  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Grabbing the map minimizes the sheets (2026-07-10):**
   `VelaMapView.onUserPan` (fired from the camera-move-started listener on REASON_API_GESTURE,
-  the same signal "Search this area" keys off) → MapScreen collapses the sheet to its bar while
-  `resultsShown` — Google's behaviour; programmatic framing (a different move reason) never
-  triggers it. **Filter
+  the same signal "Search this area" keys off) → MapScreen collapses the results sheet to its
+  bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
+  an open place card to its minimized detent — Google's behaviour; programmatic framing (a
+  different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
+  the 350f settle) — at settle stiffness the unprompted drop read as a blink (user 2026-07-10);
+  the place-sheet tick effect animates on VALUE not targetValue so it deliberately replaces the
+  state-flip effect's quicker settle. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
