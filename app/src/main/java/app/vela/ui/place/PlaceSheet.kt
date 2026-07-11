@@ -2070,37 +2070,72 @@ private fun PhotoShimmerTile(base: Color) {
 }
 
 /** Full-screen, swipeable photo viewer (tap a photo in the strip to open). */
+// ---- Activity-window full-screen overlays -------------------------------------------------------
+// A nested compose Dialog window can NOT reach the screen edges (window-dump-proven: it re-asserts
+// inset-fitted params) AND it re-captures stale display bounds on rotation (the "image floats,
+// background gone" report). The MAIN ACTIVITY window is already edge-to-edge, so these surfaces
+// render there instead — genuinely full-screen, and they re-lay-out on rotation for free. Deep call
+// sites push a request to a holder; [PlaceOverlays] (mounted at VelaRoot's root Box) renders it.
+
+object GalleryOverlay {
+    data class Req(val urls: List<String>, val dates: List<String?>, val start: Int, val onDismiss: () -> Unit)
+    var req by mutableStateOf<Req?>(null)
+        private set
+    fun show(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) { req = Req(urls, dates, start, onDismiss) }
+    fun dismiss() { val r = req; req = null; r?.onDismiss?.invoke() }
+    fun clear() { req = null } // caller unmounted its own state — no callback
+}
+
+object FullReviewsOverlay {
+    data class Req(val featureId: String, val place: Place, val onDismiss: () -> Unit)
+    var req by mutableStateOf<Req?>(null)
+        private set
+    fun show(featureId: String, place: Place, onDismiss: () -> Unit) { req = Req(featureId, place, onDismiss) }
+    fun dismiss() { val r = req; req = null; r?.onDismiss?.invoke() }
+    fun clear() { req = null }
+}
+
+/** Rendered LAST in VelaRoot's root Box, so it sits above the map + sheet in the activity's own
+ *  edge-to-edge window. The gallery is drawn after the reviews page so a review-photo tap layers on top. */
+@Composable
+fun PlaceOverlays() {
+    FullReviewsOverlay.req?.let { r ->
+        val dark = isAppInDarkTheme()
+        FullScreenReviewsContent(r.featureId, r.place, if (dark) InkDark else InkLight, if (dark) DimDark else DimLight) { FullReviewsOverlay.dismiss() }
+    }
+    GalleryOverlay.req?.let { r ->
+        PhotoGalleryContent(r.urls, r.dates, r.start) { GalleryOverlay.dismiss() }
+    }
+}
+
 @Composable
 private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) {
+    // Shim → the activity-window overlay (see GalleryOverlay). The call site keeps its own open/close
+    // state; unmounting clears the overlay without re-firing onDismiss.
+    DisposableEffect(urls, start) {
+        GalleryOverlay.show(urls, dates, start, onDismiss)
+        onDispose { GalleryOverlay.clear() }
+    }
+}
+
+@Composable
+private fun PhotoGalleryContent(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) {
     if (urls.isEmpty()) return
-    // decorFitsSystemWindows=false: in LANDSCAPE the default dialog window stops at the system
-    // bars / cutout and the map showed through the uncovered strips (user 2026-07-10); drawing
-    // edge-to-edge lets the black Box actually cover the screen.
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        // Google's viewer treatment: DON'T fight to cover the bars — draw edge-to-edge UNDER
-        // TRANSPARENT, still-visible system bars, with a gradient scrim so the status bar reads
-        // cleanly over the photo (user 2026-07-10). The window lays out past the bars via
-        // NO_LIMITS and the content root demands the true display size, so black fills behind the
-        // (transparent) bars top and bottom — no strips, and the clock stays legible.
-        val dialogView = LocalView.current
-        DisposableEffect(Unit) {
-            (dialogView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let {
-                it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
-                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
-                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                it.statusBarColor = android.graphics.Color.TRANSPARENT
-                it.navigationBarColor = android.graphics.Color.TRANSPARENT
-                it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK))
-                if (android.os.Build.VERSION.SDK_INT >= 28) {
-                    it.attributes = it.attributes.apply {
-                        layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                    }
-                }
-                // Light icons on the dark viewer.
-                androidx.core.view.WindowCompat.getInsetsController(it, dialogView).isAppearanceLightStatusBars = false
+    BackHandler(onBack = onDismiss)
+    // The viewer is always black, so force LIGHT status/nav icons while it's up (the map theme
+    // may have set them dark); MainActivity's theme effect restores them when this leaves.
+    val galleryView = LocalView.current
+    DisposableEffect(Unit) {
+        val ctx = galleryView.context
+        val win = (ctx as? android.app.Activity)?.window
+        val prevLight = win?.let { androidx.core.view.WindowCompat.getInsetsController(it, galleryView).isAppearanceLightStatusBars }
+        win?.let { androidx.core.view.WindowCompat.getInsetsController(it, galleryView).isAppearanceLightStatusBars = false }
+        onDispose {
+            if (win != null && prevLight != null) {
+                androidx.core.view.WindowCompat.getInsetsController(win, galleryView).isAppearanceLightStatusBars = prevLight
             }
-            onDispose { }
         }
+    }
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
         // D-pad (docs/dpad.md): the viewer grabs focus so LEFT/RIGHT page through the
         // photos with no touch; BACK already dismisses (Dialog).
@@ -2109,7 +2144,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
         LaunchedEffect(Unit) { runCatching { galleryFocus.requestFocus() } }
         Box(
             Modifier
-                .requiredFullScreen()
+                .fillMaxSize()
                 .background(Color.Black)
                 .focusRequester(galleryFocus)
                 .onKeyEvent { ev ->
@@ -2238,7 +2273,6 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 }
             }
         }
-    }
 }
 
 // Google's gallery-tab name for the menu, per app language (the categories arrive localized via
@@ -2523,43 +2557,28 @@ private fun PlaceTabs(
  *  native photo/video viewers all work. Back / the top-bar arrow closes it back to the sheet. */
 @Composable
 private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: Color, onClose: () -> Unit) {
+    // Shim → the activity-window overlay (see FullReviewsOverlay).
+    DisposableEffect(featureId) {
+        FullReviewsOverlay.show(featureId, place, onClose)
+        onDispose { FullReviewsOverlay.clear() }
+    }
+}
+
+@Composable
+private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color, dim: Color, onClose: () -> Unit) {
     val dark = isAppInDarkTheme()
     var reviewPhotos by remember(featureId) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
-    // Back closes the photo gallery first (if open), else the whole screen.
     BackHandler(onBack = { if (reviewPhotos != null) reviewPhotos = null else onClose() })
-    // D-pad-first (docs/dpad.md): land focus on the back arrow immediately so the panel isn't
-    // unfocused during the WebView's load window (the WebView itself is alpha-0 + only grabs
-    // focus on page-finish). The auto-focus loop stops on its first success, so it hands off
-    // to the WebView cleanly once the page loads. No-op under touch.
     val reviewsBackFocus = rememberDpadAutoFocus()
     val density = LocalDensity.current
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        val panelView = LocalView.current
-        DisposableEffect(Unit) {
-            (panelView.parent as? androidx.compose.ui.window.DialogWindowProvider)?.window?.let {
-                it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
-                androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
-                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
-                it.statusBarColor = android.graphics.Color.TRANSPARENT
-                it.navigationBarColor = android.graphics.Color.TRANSPARENT
-                it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable((if (dark) SheetDark else SheetLight).toArgb()))
-                if (android.os.Build.VERSION.SDK_INT >= 28) {
-                    it.attributes = it.attributes.apply {
-                        layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
-                    }
-                }
-                androidx.core.view.WindowCompat.getInsetsController(it, panelView).isAppearanceLightStatusBars = !dark
-            }
-            onDispose { }
-        }
-        // Swipe DOWN from the top to close (user 2026-07-10): the panel forwards a top-edge
-        // overscroll as `pull`; past the threshold at finger-up it dismisses, like a sheet.
-        var pull by remember { mutableStateOf(0f) }
-        Surface(
-            Modifier.requiredFullScreen().offset { IntOffset(0, pull.roundToInt()) },
-            color = if (dark) SheetDark else SheetLight,
-            contentColor = ink,
-        ) {
+    // Swipe DOWN from the top to close (user 2026-07-10): the panel forwards a top-edge overscroll
+    // as `pull`; past the threshold at finger-up it dismisses, like a sheet.
+    var pull by remember { mutableStateOf(0f) }
+    Surface(
+        Modifier.fillMaxSize().offset { IntOffset(0, pull.roundToInt()) },
+        color = if (dark) SheetDark else SheetLight,
+        contentColor = ink,
+    ) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -2591,7 +2610,6 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                     },
                 )
             }
-        }
     }
     reviewPhotos?.let { (urls, caps, start) ->
         PhotoGallery(urls, caps, start) { reviewPhotos = null }
