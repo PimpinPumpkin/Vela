@@ -2088,6 +2088,12 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 // The one flag that UNCONDITIONALLY lets the window lay out past the bars — the
                 // fitting flags alone still left top/bottom strips on this device (2026-07-10).
                 it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+                // Compose's DialogLayout re-asserts its own window size/fit params, so the window
+                // stubbornly stays inset from the bars (window-dump-proven twice). The strips it
+                // leaves show the ACTIVITY behind — so paint THAT out: a full dim turns anything
+                // outside the window solid black, which reads as true full screen.
+                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                it.setDimAmount(1f)
                 // API 30+: DIALOG windows fit the bar insets via fitInsetsTypes, which none of
                 // the flags above touch — THIS is what kept the window inset from the screen's
                 // top/bottom through three rounds of "still not full screen" (screenshot-proven).
@@ -2527,6 +2533,12 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                 it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
                 it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+                // Compose's DialogLayout re-asserts its own window size/fit params, so the window
+                // stubbornly stays inset from the bars (window-dump-proven twice). The strips it
+                // leaves show the ACTIVITY behind — so paint THAT out: a full dim turns anything
+                // outside the window solid black, which reads as true full screen.
+                it.addFlags(android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+                it.setDimAmount(1f)
                 // API 30+: DIALOG windows fit the bar insets via fitInsetsTypes, which none of
                 // the flags above touch — THIS is what kept the window inset from the screen's
                 // top/bottom through three rounds of "still not full screen" (screenshot-proven).
