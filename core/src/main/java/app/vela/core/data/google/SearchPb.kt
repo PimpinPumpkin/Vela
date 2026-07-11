@@ -39,9 +39,22 @@ object SearchPb {
         "!23b1!25b1!26b1!31b1!37m1!1e81!42b1!49m10!3b1!6m2!1b1!2b1!7m2!1e3!2b1!8b1!9b1!10e2!50m3" +
         "!2e2!3m1!3b1!61b1!67m5!7b1!10b1!14b1!15m1!1b0!69i782!77b1"
 
-    fun build(query: String, viewport: LatLng, template: String = DEFAULT_TEMPLATE): String =
-        template
+    fun build(
+        query: String,
+        viewport: LatLng,
+        template: String = DEFAULT_TEMPLATE,
+        spanMeters: Double? = null,
+    ): String {
+        val pb = template
             .replace("{QUERY}", query.replace('!', ' ').trim())
             .replace("{LNG}", viewport.lng.toString())
             .replace("{LAT}", viewport.lat.toString())
+        // The template's !1d span is a BAKED ~25 km window - fine at street zoom, but a
+        // zoomed-out search silently kept a city-sized net (user 2026-07-11). When the caller
+        // knows its real viewport, stretch the window to it (floored so street-level searches
+        // keep the calibrated behaviour; capped so a whole-globe zoom asks something sane).
+        return if (spanMeters != null) {
+            pb.replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.coerceIn(3_000.0, 500_000.0).toInt()}")
+        } else pb
+    }
 }

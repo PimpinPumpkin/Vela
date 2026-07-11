@@ -528,4 +528,8 @@
     <string name="notif_ask_body">La navigation garde votre prochain virage dans une notification, pour que les indications vous suivent quand l\'écran est éteint ou que vous changez d\'appli. Sans elle, les indications ne s\'affichent que dans Vela.</string>
     <string name="notif_ask_allow">Autoriser</string>
     <string name="notif_ask_skip">Ignorer</string>
+    <string name="place_time_past_toast">Cette heure est passée. Réglé sur maintenant.</string>
+    <string name="settings_ui_scale">Taille de l\'interface</string>
+    <string name="place_avoid_tolls">Éviter les péages</string>
+    <string name="place_avoid_highways">Éviter les autoroutes</string>
 </resources>
