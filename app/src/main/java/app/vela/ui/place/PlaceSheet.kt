@@ -1588,9 +1588,11 @@ fun DirectionsPanel(
             // Minimised: keep a Start button reachable without expanding. It FOLDS IN as the
             // body folds out (inverse fraction of the same height), so neither end pops.
             val startComposed by remember(destinationName) {
-                derivedStateOf { collapsed.value || dirH.value < bodyMax - 1f }
+                derivedStateOf { collapsed.value || dirH.value < 160f }
             }
-            app.vela.ui.SheetFold(startComposed, { ((bodyMax - dirH.value) / 160f).coerceIn(0f, 1f) }) {
+            // Grows in only over the SAME last-160dp window the body fades out in - starting
+            // it at the first pixel of travel had two Start buttons on screen mid-drag.
+            app.vela.ui.SheetFold(startComposed, { ((160f - dirH.value) / 160f).coerceIn(0f, 1f) }) {
                 Button(
                     onClick = onStartNav,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
