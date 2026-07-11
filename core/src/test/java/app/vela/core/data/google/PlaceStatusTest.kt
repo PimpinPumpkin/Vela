@@ -20,6 +20,20 @@ import org.junit.Test
  */
 class PlaceStatusTest {
 
+    @Test fun `chinese - both scripts parse, closed words win first`() {
+        assertEquals(false, SearchParser.parseOpenNow("已打烊 ⋅ 明天09:00开始营业", "zh"))
+        assertEquals(false, SearchParser.parseOpenNow("已打烊 ⋅ 明天09:00開始營業", "zh"))
+        assertEquals(false, SearchParser.parseOpenNow("暂停营业", "zh"))
+        assertEquals(true, SearchParser.parseOpenNow("营业中 ⋅ 22:00打烊", "zh"))
+        assertEquals(true, SearchParser.parseOpenNow("營業中 ⋅ 營業至22:00", "zh"))
+    }
+
+    @Test fun `japanese - closed words win first`() {
+        assertEquals(false, SearchParser.parseOpenNow("営業時間外 ⋅ 営業開始: 9:00", "ja"))
+        assertEquals(false, SearchParser.parseOpenNow("臨時休業", "ja"))
+        assertEquals(true, SearchParser.parseOpenNow("営業中 ⋅ 営業終了: 22:00", "ja"))
+    }
+
     @Test fun `english - Opens-prefixed statuses are CLOSED, not swallowed by the Open prefix`() {
         assertEquals(false, SearchParser.parseOpenNow("Opens 5 AM", "en"))
         assertEquals(false, SearchParser.parseOpenNow("Opens soon ⋅ 5 AM", "en"))

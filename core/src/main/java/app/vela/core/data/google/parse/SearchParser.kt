@@ -325,6 +325,13 @@ object SearchParser {
         "pl" to listOf("Zamknięte", "Otwarcie", "Tymczasowo"),
         "sv" to listOf("Stängt", "Öppnar", "Tillfälligt"),
         "uk" to listOf("Зачинено", "Відчиниться", "Тимчасово"),
+        // Chinese carries BOTH scripts under one key: parseOpenNow is keyed by the bare language
+        // ("zh"), and hl=zh-CN answers Simplified while hl=zh-TW answers Traditional.
+        // 已打烊/已歇業 = closed; 即将开始营业/即將開始營業 and 尚未营业 = opens later (closed now);
+        // 暂停营业/暫停營業 = temporarily closed; 永久停业/永久歇業 = permanently closed.
+        "zh" to listOf("已打烊", "已歇業", "开始营业", "開始營業", "尚未营业", "尚未營業", "暂停营业", "暫停營業", "永久停业", "永久歇業", "休息中"),
+        // 営業時間外 = outside opening hours; 営業開始 = opens (later); 臨時休業/閉業 = temp/permanent.
+        "ja" to listOf("営業時間外", "営業開始", "臨時休業", "閉業", "休業"),
     )
 
     /** Languages [parseOpenNow] actually has a keyword table for. `GoogleMapsDataSource.localized()`
@@ -347,6 +354,10 @@ object SearchParser {
         "pl" to listOf("Otwarte", "Zamknięcie"),
         "sv" to listOf("Öppet", "Stänger"),
         "uk" to listOf("Відчинено", "Зачиняється"),
+        // 营业中/營業中 = open now; 即将打烊/即將打烊 and 打烊时间/打烊時間 = closes later (open now).
+        "zh" to listOf("营业中", "營業中", "打烊", "營業至", "营业至"),
+        // 営業中 = open now; 営業終了時間/まもなく営業終了 = closes later (open now).
+        "ja" to listOf("営業中", "営業終了", "まもなく営業終了"),
     )
 
     /** Live status text → open/closed, in the language the scrape requested (`hl=` follows
