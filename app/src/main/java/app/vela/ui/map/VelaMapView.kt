@@ -1268,7 +1268,10 @@ private fun ensureLayers(style: Style) {
                     Expression.stop("Polygon", true), Expression.stop("MultiPolygon", true),
                 ),
             )
-        style.addLayerAbove(plaza, "road_area_pattern")
+        // Guard the anchor itself: this block is gated on landcover_wetland existing, but a
+        // Liberty drift could drop road_area_pattern alone and the addLayerAbove would throw
+        // on every style load (review 2026-07-11).
+        if (style.getLayer("road_area_pattern") != null) style.addLayerAbove(plaza, "road_area_pattern")
     }
     // Sports fields (pitch/playground/track/stadium) get their own accent fill - the Google
     // app tints them a touch lighter than the surrounding park (dark #0d4956 vs #0d3847,
