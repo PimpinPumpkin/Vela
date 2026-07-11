@@ -213,7 +213,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   its grey teardrop and category glyph with the circle turned red, rated restaurants get a wide
   speech-bubble marker with the rating beside the circled glyph, and in a dense downtown the lesser results collapse into little red dots that
   expand back into pins as you zoom, so the view never turns into a pile of overlapping icons.
-  Result labels stay plain ink (only ambient POI labels take the category tint, like Google),
+  Result labels stay plain ink (only ambient POI labels take the category tint, like Google);
+  every POI label on the map (results, ambient dots, base-map icons) can now sit left, right,
+  below or above its icon, whichever side is clear, instead of vanishing when its usual spot
+  was taken;
   and while a result set is up the base map's own POI icons, stop signs and traffic lights all
   step aside so the results are the only things on the map.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
