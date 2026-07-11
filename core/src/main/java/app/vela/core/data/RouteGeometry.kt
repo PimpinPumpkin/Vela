@@ -148,20 +148,42 @@ object RouteGeometry {
      *  came back with 2 of ~10 turns), whereas OSRM gives them all. Free-flow duration only (no
      *  traffic — Google is queried separately for the live ETA and overlaid). Empty on any failure
      *  → caller falls back to the Google scrape. */
-    fun route(http: OkHttpClient, origin: LatLng, dest: LatLng, mode: TravelMode): List<Route> =
-        routeOsrm(http, listOf(origin, dest), mode, alternatives = true)
+    fun route(
+        http: OkHttpClient,
+        origin: LatLng,
+        dest: LatLng,
+        mode: TravelMode,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+    ): List<Route> =
+        routeOsrm(http, listOf(origin, dest), mode, alternatives = true, avoidTolls, avoidHighways)
 
     /** OSRM forced THROUGH [waypoints] (origin, vias…, dest) — used to follow Google's
      *  traffic-smart path with OSRM's full street-named steps (option 3: traffic-aware routing).
      *  No alternatives (OSRM doesn't return them for multi-waypoint routes). */
-    fun routeVia(http: OkHttpClient, waypoints: List<LatLng>, mode: TravelMode): List<Route> =
-        if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false)
+    fun routeVia(
+        http: OkHttpClient,
+        waypoints: List<LatLng>,
+        mode: TravelMode,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+    ): List<Route> =
+        if (waypoints.size < 2) emptyList() else routeOsrm(http, waypoints, mode, alternatives = false, avoidTolls, avoidHighways)
 
-    private fun routeOsrm(http: OkHttpClient, points: List<LatLng>, mode: TravelMode, alternatives: Boolean): List<Route> {
+    private fun routeOsrm(
+        http: OkHttpClient,
+        points: List<LatLng>,
+        mode: TravelMode,
+        alternatives: Boolean,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
+    ): List<Route> {
         val backend = backend(mode) ?: return emptyList()
         val coords = points.joinToString(";") { "${it.lng},${it.lat}" }
         val url = "$OSRM_BASE/$backend/route/v1/driving/$coords" +
-            "?overview=full&geometries=polyline&steps=true" + if (alternatives) "&alternatives=3" else ""
+            "?overview=full&geometries=polyline&steps=true" +
+            (if (alternatives) "&alternatives=3" else "") +
+            excludeParam(mode, avoidTolls, avoidHighways)
         val req = Request.Builder().url(url).header("User-Agent", VelaConfig.USER_AGENT).build()
         // The FOSSGIS community OSRM transiently 5xx/429/resets on mobile, and each miss otherwise drops
         // nav to Google's ABBREVIATED (nameless) steps — the "why aren't these street names?" bug. So retry
@@ -175,6 +197,10 @@ object RouteGeometry {
                             .jsonObject["routes"]?.jsonArray
                         if (routes != null) return routes.mapNotNull { parseOsrmRoute(it.jsonObject) }
                     }
+                    // A 4xx is deterministic (e.g. FOSSGIS answers InvalidValue for exclude=
+                    // classes its profile wasn't built with - probed 2026-07-11): retrying can't
+                    // help, bail to the fallback chain immediately.
+                    if (resp.code in 400..499) return emptyList()
                     // unsuccessful (5xx / 429 rate-limit) — fall through to retry
                 }
             } catch (e: Exception) {
@@ -183,6 +209,24 @@ object RouteGeometry {
             if (attempt < OSRM_TRIES - 1) runCatching { Thread.sleep(200L * (attempt + 1)) }
         }
         return emptyList()
+    }
+
+    /** True when [OSRM_BASE] honours `exclude=` for toll/motorway. The FOSSGIS community
+     *  server does NOT (probed 2026-07-11: InvalidValue - its profiles were built without
+     *  excludable classes), and sending the param 400s the WHOLE request, losing the clean
+     *  named-turn route too. Flip this on a self-hosted OSRM built with the exclude classes. */
+    private const val OSRM_SUPPORTS_EXCLUDE = false
+
+    /** OSRM `exclude=` classes for the avoid toggles (drive only; an unknown class makes
+     *  OSRM 400 the whole request). Empty while [OSRM_SUPPORTS_EXCLUDE] is off - the
+     *  on-device avoid profiles are the real avoid router until then. */
+    private fun excludeParam(mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): String {
+        if (!OSRM_SUPPORTS_EXCLUDE || mode != TravelMode.DRIVE) return ""
+        val classes = buildList {
+            if (avoidTolls) add("toll")
+            if (avoidHighways) add("motorway")
+        }
+        return if (classes.isEmpty()) "" else "&exclude=" + classes.joinToString(",")
     }
 
     private fun parseOsrmRoute(r: JsonObject): Route? {
@@ -366,6 +410,13 @@ object RouteGeometry {
         return Maneuver(
             type = osrmType(type, mod),
             instruction = osrmPhrase(type, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
+            side = if (type == "arrive" && mod != null) {
+                when {
+                    mod.contains("left") -> "left"
+                    mod.contains("right") -> "right"
+                    else -> null
+                }
+            } else null,
             location = LatLng(lat, lng),
             distanceMeters = s["distance"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
             durationSeconds = s["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
@@ -426,8 +477,17 @@ object RouteGeometry {
     // The instruction TEXT is localized: it delegates to the active NavStrings (English by default,
     // byte-identical to the original template set). This is the seam that lets nav be spoken/shown in
     // the app's language — the road/dest name passed in stays in its native local form. See core/i18n.
-    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String =
-        app.vela.core.i18n.NavStringsRegistry.current().phrase(type, mod, road, dest, exitNo, rbExit)
+    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val strings = app.vela.core.i18n.NavStringsRegistry.current()
+        // OSRM's arrive modifier says WHICH SIDE the destination is on — the banner + the
+        // pre-arrival prompt become Google's "Your destination is on the right" instead of the
+        // generic line (user 2026-07-11). A sideless arrive keeps the generic phrase.
+        if (type == "arrive" && mod != null) {
+            if (mod.contains("left")) return strings.destinationSide(left = true)
+            if (mod.contains("right")) return strings.destinationSide(left = false)
+        }
+        return strings.phrase(type, mod, road, dest, exitNo, rbExit)
+    }
 
     // --- traffic-aware routing (option 3) -------------------------------------
 

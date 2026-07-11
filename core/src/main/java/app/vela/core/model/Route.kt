@@ -21,6 +21,8 @@ data class Maneuver(
     val ref: String? = null,      // highway ref of the road entered ("I 80") for the shield badge —
                                   // separate from [road] because a highway can have a name AND a ref
     val laneHint: String? = null, // e.g. "Use the right 2 lanes" (from Google's step markup)
+    val side: String? = null,     // ARRIVE only: "left"/"right" — which side the destination is on
+                                  // (OSRM's arrive modifier); null = unknown/straight ahead
     val lanes: List<Lane> = emptyList(), // per-lane turn guidance (from OSRM) for the Google-style diagram
 )
 

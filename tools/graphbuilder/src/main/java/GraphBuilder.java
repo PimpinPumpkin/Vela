@@ -6,6 +6,9 @@ import com.graphhopper.config.Profile;
 import com.graphhopper.routing.WeightingFactory;
 import com.graphhopper.routing.ev.BooleanEncodedValue;
 import com.graphhopper.routing.ev.DecimalEncodedValue;
+import com.graphhopper.routing.ev.EnumEncodedValue;
+import com.graphhopper.routing.ev.RoadClass;
+import com.graphhopper.routing.ev.Toll;
 import com.graphhopper.routing.weighting.SpeedWeighting;
 import com.graphhopper.util.EdgeIteratorState;
 import com.graphhopper.util.GHUtility;
@@ -30,7 +33,10 @@ import com.graphhopper.util.Instruction;
  * Build region extracts with: osmium extract -b <W,S,E,N> <state>.osm.pbf -o <region>.osm.pbf
  */
 public class GraphBuilder {
-    static final String ENCODED_VALUES = "car_access, car_average_speed, road_access, max_speed";
+    // toll + road_class power the car_avoid_toll / car_avoid_motorway profiles (2026-07-11).
+    // Adding EVs is a BREAKING graph-format change: the app engine try-loads new-then-old
+    // strings, so graphs baked before this line keep working (without the avoid profiles).
+    static final String ENCODED_VALUES = "car_access, car_average_speed, road_access, max_speed, toll, road_class";
 
     public static void main(String[] args) {
         if (args.length < 2) {
@@ -44,11 +50,23 @@ public class GraphBuilder {
                 return (profile, hints, disableTurnCosts) -> {
                     DecimalEncodedValue speed = getEncodingManager().getDecimalEncodedValue("car_average_speed");
                     BooleanEncodedValue access = getEncodingManager().getBooleanEncodedValue("car_access");
+                    // The avoid profiles block their road class outright (infinite weight) on top of
+                    // the base access block. CH is prepared PER PROFILE, so each bakes its own
+                    // weighting - must stay identical to GraphHopperRouteEngine's factory.
+                    String name = profile.getName();
+                    boolean avoidToll = name.equals("car_avoid_toll");
+                    boolean avoidMotorway = name.equals("car_avoid_motorway");
+                    EnumEncodedValue<Toll> toll = avoidToll ? getEncodingManager().getEnumEncodedValue("toll", Toll.class) : null;
+                    EnumEncodedValue<RoadClass> roadClass = avoidMotorway ? getEncodingManager().getEnumEncodedValue("road_class", RoadClass.class) : null;
                     return new SpeedWeighting(speed) {
                         @Override
                         public double calcEdgeWeight(EdgeIteratorState e, boolean reverse) {
                             boolean ok = reverse ? e.getReverse(access) : e.get(access);
-                            return ok ? super.calcEdgeWeight(e, reverse) : Double.POSITIVE_INFINITY;
+                            if (!ok) return Double.POSITIVE_INFINITY;
+                            // Toll.ALL = tolls every vehicle pays; HGV-only tolls stay routable for cars.
+                            if (toll != null && e.get(toll) == Toll.ALL) return Double.POSITIVE_INFINITY;
+                            if (roadClass != null && e.get(roadClass) == RoadClass.MOTORWAY) return Double.POSITIVE_INFINITY;
+                            return super.calcEdgeWeight(e, reverse);
                         }
 
                         // car_average_speed is km/h; SpeedWeighting reports time as if it were m/s
@@ -65,8 +83,12 @@ public class GraphBuilder {
         hopper.setOSMFile(args[0]);
         hopper.setGraphHopperLocation(args[1]);
         hopper.setEncodedValuesString(ENCODED_VALUES);
-        hopper.setProfiles(new Profile("car").setCustomModel(GHUtility.loadCustomModelFromJar("car.json")));
-        hopper.getCHPreparationHandler().setCHProfiles(new CHProfile("car"));
+        hopper.setProfiles(
+                new Profile("car").setCustomModel(GHUtility.loadCustomModelFromJar("car.json")),
+                new Profile("car_avoid_toll").setCustomModel(GHUtility.loadCustomModelFromJar("car.json")),
+                new Profile("car_avoid_motorway").setCustomModel(GHUtility.loadCustomModelFromJar("car.json")));
+        hopper.getCHPreparationHandler().setCHProfiles(
+                new CHProfile("car"), new CHProfile("car_avoid_toll"), new CHProfile("car_avoid_motorway"));
         hopper.importOrLoad();
         System.out.println("built " + args[1] + " from " + args[0] + " in " + (System.currentTimeMillis() - t0) + " ms");
         // bbox for the region's manifest entry ([S,W,N,E] — the order RoutingGraphStore/engine expect).
