@@ -1353,8 +1353,14 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.textField(Expression.get("name")),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(13f),
-                PropertyFactory.textVariableAnchor(arrayOf(Property.TEXT_ANCHOR_TOP)),
-                PropertyFactory.textRadialOffset(0.5f),
+                // Labels try BELOW the pin first, then the pin's right side, then its left —
+                // a below-only anchor made crowded results drop labels (or sit on a neighbour's
+                // dot) when the space under the pin was taken; a side slot usually still fits.
+                // (Anchor semantics: TOP = text below the point, LEFT = text right of it.)
+                PropertyFactory.textVariableAnchor(
+                    arrayOf(Property.TEXT_ANCHOR_TOP, Property.TEXT_ANCHOR_LEFT, Property.TEXT_ANCHOR_RIGHT),
+                ),
+                PropertyFactory.textRadialOffset(0.7f),
                 PropertyFactory.textJustify(Property.TEXT_JUSTIFY_AUTO),
                 PropertyFactory.textMaxWidth(7f),
                 PropertyFactory.textOptional(true),
