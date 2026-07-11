@@ -106,6 +106,10 @@ data class MapUiState(
     val query: String = "",
     val results: List<Place> = emptyList(),
     val ambientPois: List<Place> = emptyList(), // Google places for the visible area, shown on the bare browse map
+    // True while the CURRENT viewport sits inside the area the ambient Google fetch covered —
+    // the basemap OSM POIs hide only then, so panning/zooming past the fetched area blends the
+    // OSM icons back in instead of leaving the outskirts iconless (user 2026-07-10).
+    val ambientCoversView: Boolean = false,
     val suggestions: List<Place> = emptyList(),
     val selected: Place? = null,
     val placesHere: List<Place> = emptyList(), // other Google listings at the selected spot
@@ -934,7 +938,16 @@ class MapViewModel @Inject constructor(
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
-        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false) }
+        routeJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(),
+                reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                // Same cohesion rule as selectPlace: a new destination closes the old chooser.
+                directionsOpen = false, routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false, showSteps = false,
+            )
+        }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
@@ -1191,10 +1204,16 @@ class MapViewModel @Inject constructor(
         if (_state.value.pickingStop) { addStop(p); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(p); return }
         suggestJob?.cancel()
+        routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
                 selected = withListNote(p), center = p.location, reviews = emptyList(), suggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
+                // Picking a NEW place while a route chooser is open closes it: the chooser
+                // belonged to the previous destination and kept covering the fresh place
+                // (the along-route / pick-origin / pick-stop flows early-return above).
+                directionsOpen = false, routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false, showSteps = false,
             )
         }
         fetchReviews(p)
@@ -2203,7 +2222,9 @@ class MapViewModel @Inject constructor(
                 val engine = _state.value.selectedEngine?.packageName
                 neuralSynthFor(engine)?.let { voice.neural = it }
                 navSession.replayMode = true
-                navSession.start(route, dest, label, engine)
+                // Pass the REAL travel mode: haptics are per-mode (bike buzzes by default, driving
+                // doesn't), so a demo of a bike route must buzz like the real ride would.
+                navSession.start(route, dest, label, engine, mode = _state.value.travelMode)
                 replayOwnsNav = true
                 // Demo mode presents as REAL nav, so the ongoing turn notification is part of
                 // what's being demoed (and how it gets verified without a drive).
@@ -3000,6 +3021,7 @@ class MapViewModel @Inject constructor(
 
     private var ambientJob: Job? = null
     private var lastAmbientCenter: LatLng? = null
+    private var lastAmbientSpan = 9000.0 // span of the last completed ambient fetch (m)
     private var lastAmbientZoom = 0.0
     // LRU (most-recent last, cap 16) of recent ambient fetches — revisiting ANY of the last ~16 areas
     // repaints POIs INSTANTLY (the ~2 s Google floor only hits genuinely-new areas), with no empty-map
@@ -3040,8 +3062,19 @@ class MapViewModel @Inject constructor(
         if (zoom < 14.0) {
             ambientJob?.cancel()
             lastAmbientCenter = null
-            if (s.ambientPois.isNotEmpty()) _state.update { it.copy(ambientPois = emptyList()) }
+            if (s.ambientPois.isNotEmpty() || s.ambientCoversView) {
+                _state.update { it.copy(ambientPois = emptyList(), ambientCoversView = false) }
+            }
             return
+        }
+        // Coverage check EVERY settle (cheap): the OSM basemap POIs hide only while the view is
+        // truly inside the fetched ambient area — outside it they stay, so the map is never
+        // iconless past the fetch's ~3.5-9 km span. Fresh fetches below re-tighten this.
+        run {
+            val covers = s.ambientPois.isNotEmpty() &&
+                (lastAmbientCenter?.let { it.distanceTo(center) < lastAmbientSpan * 0.35 } == true) &&
+                viewRadiusMeters <= lastAmbientSpan * 0.55
+            if (covers != s.ambientCoversView) _state.update { it.copy(ambientCoversView = covers) }
         }
         // Re-query only on a real pan or a real zoom change (not every settle).
         val moved = lastAmbientCenter?.let { it.distanceTo(center) >= 180.0 } ?: true
@@ -3064,11 +3097,12 @@ class MapViewModel @Inject constructor(
             val res = runCatching { dataSource.nearbyPlaces(center, span) }.getOrNull() ?: return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
+            lastAmbientSpan = span
             cacheAmbient(center, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             val cur = _state.value
             if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
-            _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters)) }
+            _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters), ambientCoversView = true) }
         }
     }
 
