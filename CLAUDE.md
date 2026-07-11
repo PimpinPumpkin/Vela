@@ -312,7 +312,23 @@ Defaults that make the safe path the easy one:
   while the sheet is minimized so expanding re-frames; and the fit CONSUMES `lastCameraTarget` - the
   inset-grow nulls it, and with it null the else-recenter branch re-fired on the STALE VM center one
   recomposition later and yanked the camera back to wherever you were before the search (device-found
-  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Filter
+  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Grabbing the map minimizes the sheets (2026-07-10):**
+  `VelaMapView.onUserPan` (fired from the camera-move-started listener on REASON_API_GESTURE,
+  the same signal "Search this area" keys off) → MapScreen collapses the results sheet to its
+  bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
+  an open place card to its minimized detent — Google's behaviour; programmatic framing (a
+  different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
+  the 350f settle) and both GLIDE FIRST, FLIP STATE AFTER — the pan path used to flip
+  `resultsCollapsed`/`minimizedState` immediately, which unmounted/switched the content
+  mid-drop and read as a pop no matter the spring (user 2026-07-10, the "just kinda pops down"
+  report); the tick effects animate to the floor and only then flip, the same order the drag
+  path always used. The minimized results bar leads with the QUERY (or list name) in ink +
+  SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
+  awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
+  effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):
+  a LaunchedEffect fires on FIRST composition too, so a remounted sheet (pick a place from the
+  list, or return from one) used to replay the stale tick and open pre-minimized (user
+  2026-07-10). Any new tick-style signal into a sheet needs the same guard. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
