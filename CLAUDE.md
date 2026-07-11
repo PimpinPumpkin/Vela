@@ -318,9 +318,13 @@ Defaults that make the safe path the easy one:
   bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
   an open place card to its minimized detent — Google's behaviour; programmatic framing (a
   different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
-  the 350f settle) — at settle stiffness the unprompted drop read as a blink (user 2026-07-10);
-  the place-sheet tick effect animates on VALUE not targetValue so it deliberately replaces the
-  state-flip effect's quicker settle. **Filter
+  the 350f settle) and both GLIDE FIRST, FLIP STATE AFTER — the pan path used to flip
+  `resultsCollapsed`/`minimizedState` immediately, which unmounted/switched the content
+  mid-drop and read as a pop no matter the spring (user 2026-07-10, the "just kinda pops down"
+  report); the tick effects animate to the floor and only then flip, the same order the drag
+  path always used. The minimized results bar leads with the QUERY (or list name) in ink +
+  SemiBold, then "· N results" in dim (`barTitle` annotated string) — the bare dim count was
+  easy to miss. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
