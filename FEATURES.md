@@ -17,6 +17,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Restaurant menus get their own tab (2026-07-10).** A place with menu photos shows a Menu
+  tab beside Reviews and About: a browsable photo grid, titled with Google's own localized
+  gallery-tab name, tapping through to the full-screen viewer. Google's keyless data carries no
+  menu LINK (probed: the search payload has none), so photos are the menu surface; making the
+  gallery scrape menu-exhaustive is the known follow-up for places where the tagged set is
+  partial. The inline review search also folds into a magnifier beside the All-reviews pill —
+  the stacked text field read as clutter, and the full-screen panel's server-side search stays
+  the headline way to dig.
 - ✅ **Gallery survives rotation + the save menu (2026-07-10).** The full-screen photo viewer
   draws edge to edge, so rotating to landscape no longer lets the map peek through the system-bar
   strips, and the photo caption's bottom clearance scales with the screen instead of floating to

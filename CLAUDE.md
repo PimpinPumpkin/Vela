@@ -295,7 +295,14 @@ Defaults that make the safe path the easy one:
   Website pills in a horizontal scroll row with the same gating as the full action row (website
   behind HideExternalLinks). Keep new sheet controls on this language. NB `RatingHistogram` in
   PlaceSheet is ORPHANED (its per-star counts only exist in the live panel DOM) - wire it or
-  delete it, don't duplicate it.
+  delete it, don't duplicate it. **The MENU TAB (2026-07-10)** appears beside Reviews/About when
+  `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
+  Google's LOCALIZED gallery-tab name, which is reused as the tab title); content = the tagged
+  photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery. There is NO keyless
+  menu URL (probed 2026-07-10: search payload [38] empty, zero menu links) - don't chase the
+  link; the quality follow-up is making WebPhotoFetcher scrape the menu TAB exhaustively. The
+  inline review search hides behind a circled magnifier beside the All-reviews pill
+  (`reviewSearchOpen`; toggling closed clears the query so a hidden filter can't keep filtering).
 - **Chip style = stadium pills (2026-07-08):** EVERY chip (map CategoryChips, results-panel filter
   chips Open-now/top-rated/price/sort + the collapsed "N results" pill, PlaceSheet travel-mode chips
   now with a leading `Icons.Default.Directions*` glyph, Settings vibrate-on-turns FilterChips) sets
