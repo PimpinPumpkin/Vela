@@ -17,6 +17,24 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **The full-screen viewers match Google's chrome (2026-07-11).** The photo viewer and the
+  full reviews page render in the app's own full-screen window (not a child dialog), so they
+  truly reach every edge and survive rotation without the image floating on a shrunken
+  background. The status bar stays visible over a gradient at the top, Google-style. The reviews
+  page's back arrow became an X (matching the photo viewer, on the left) and swipes down from the
+  top to close.
+
+- ✅ **The photo viewer and reviews page reach the true screen edges (2026-07-10).** A window
+  dump showed compose dialogs are wrap-content windows measured against inset bounds, so they
+  stopped about a status bar short of the display at each end no matter which window flags were
+  set; their roots now demand the real display size, which pulls the window out to the edges.
+
+- ✅ **The Menu photos stop including things that were never the menu (2026-07-10).** The gallery
+  scrape used to tag whatever was on screen while a category tab was selected, page chrome and
+  the previous grid's leftover tiles included. It now snapshots the screen before each tab click
+  and tags only what appears after the switch, dwells more than twice as long on menu tabs so
+  long menus are walked to the end, and recognizes the menu tab's name in all 11 app languages.
+
 - ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
   disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
   transit lines, 3D buildings), then a new **Place pages** section (Show reviews, the "Read all reviews"
