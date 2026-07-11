@@ -2,7 +2,14 @@
 
 This fork's reason to exist is 100% D-pad operation on real feature phones. This folder tracks
 every device we commit to supporting, with the exact screen geometry to test against and the
-per-device findings (with screenshots) from driving the app as a real user.
+per-device findings (with screenshots).
+
+**Scope caveat (read this):** all results here are from **SIMULATING** the screen size (`wm size` /
+`wm density`) on a test device - **nothing has run on the actual phones**, so real-hardware quirks are
+unconfirmed. And "verified" below means the **core surfaces** (first-run flow, bare map, search, place
+sheet, directions, Settings) fit and are D-pad-navigable at that simulated size - NOT full D-pad
+coverage of every screen. Targets collapse to two sizes (240x320 and 480x854), so a phone's status is
+its size's status.
 
 ## How to test a device (as a REAL user, verified VISUALLY)
 
@@ -41,10 +48,16 @@ physical size but all round to ~160. More models will be added as they are named
 
 ## Tooling
 
-- **`bash tests/devices/capture.sh <id>`** - AUTO-captures labeled screenshots of the full first-run
-  flow + core surfaces (Welcome, voice/offline/consent dialogs, bare map, search overlay, Settings) at
-  the device's real geometry, into `<id>/screenshots/auto/`. `--warm` skips the fresh `pm clear`;
-  `capture.sh all` does every device. This is the one-command way to regenerate the visual proof.
+- **`bash tests/devices/full_coverage.sh <id>`** - the FULL-COVERAGE gate. Drives EVERY surface
+  (first-run + all dialogs, bare map, search + results, place sheet + expanded, directions + steps,
+  Settings + sub-screens: Voice library / Offline / Saved places) at the device's simulated geometry,
+  captures a labeled screenshot of each into `<id>/screenshots/full/`, and prints a COVERED/MISSED
+  checklist. **A device is "fully supported" only when this reports FULLY COVERED (0 MISSED) and you
+  have looked at the frames** (AGENTS.md hard rule). Content surfaces need live search+routing - run
+  with the network up and a location that has data (e.g. `VELA_LAT=39.9526 VELA_LNG=-75.1652`).
+- **`bash tests/devices/capture.sh <id>`** - lighter AUTO-capture of the first-run flow + core surfaces
+  into `<id>/screenshots/auto/` (`--warm` skips the fresh `pm clear`; `capture.sh all` does every
+  device). Use `full_coverage.sh` for the support gate; `capture.sh` for a quick visual refresh.
 - **`bash tests/small_screen/run_matrix.sh`** - runs `audit_smallscreen.sh` at EVERY target geometry
   (240x320@160 and 480x854@320) and prints a per-geometry PASS/FAIL summary. Use it to confirm every
   density level is green in one shot.

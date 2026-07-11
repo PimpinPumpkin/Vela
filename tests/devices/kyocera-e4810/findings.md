@@ -4,7 +4,7 @@
 - **Emulate:** `adb shell wm size 240x320; adb shell wm density 160`
 - **Auditor:** default (`bash tests/small_screen/audit_smallscreen.sh`).
 
-## Status: D-PAD + SMALL-SCREEN VERIFIED (240x320)
+## Status: core surfaces PASS at SIMULATED 240x320 (not full coverage, not real hardware)
 
 ### Works
 - **Adaptive density fits the UI.** With `AdaptiveDensity` (the app scales its own density on small

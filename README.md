@@ -8,6 +8,23 @@
 
 A degoogled maps and navigation client for Android. Runs on GrapheneOS and other no-GMS ROMs.
 
+## Phone status
+
+**All testing is SIMULATED** - the screen size is set with `wm size`/`wm density` on a test device;
+**nothing has run on the actual phones**. Because the targets collapse to two screen sizes, that is
+what's tested (each phone with that size shares the result):
+
+| Simulated size | Target phones | Coverage so far (screenshots in [`tests/devices/`](tests/devices/)) |
+|---|---|---|
+| 240x320 | Kyocera e4810, TCL Flip 2, Sonim XP3 (XP3800) | first-run (Welcome + voice/offline/consent dialogs), bare map, search overlay, place sheet, directions, Settings open + basic navigation |
+| 480x854 | Sonim X320 (XP3 Plus 5G) | bare map, consent dialog, Settings open + navigation |
+
+**Not full D-pad coverage.** Only the surfaces above were checked. NOT yet exercised at any size: every
+Settings sub-screen, turn-by-turn navigation cards, transit, offline-download UI, saved places, and
+every menu/dialog. **Real-hardware confirmation: none.** So this is "fits and is D-pad-navigable on the
+core surfaces at these simulated sizes," not "fully verified." New models drop straight into the matrix
+- open an issue with the model + screen size and resolution.
+
 - **D-pad first.** Fully operable with a 5-key D-pad (arrows + OK) and hardware BACK on a
   device with **no touchscreen**. Touch is a bonus.
 - **Tiny screens.** Fits real feature-phone displays (240x320-class): the app checks its screen and

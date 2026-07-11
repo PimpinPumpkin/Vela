@@ -136,7 +136,7 @@ ycenter() { echo "$1" | sed -E 's/^\[[0-9]+,([0-9]+)\]\[[0-9]+,([0-9]+)\].*/\1 \
 # the focused clickable Row often has no text of its own. Returns non-zero if unreached in 30 presses.
 focus_and_ok() {
   local want="$1" i tb cy fb fy1 fy2
-  for i in $(seq 1 30); do
+  for i in $(seq 1 55); do   # deep enough to reach lower Settings sections (Voice library / Offline / Saved places)
     tb="$(find_text "$want")"
     if [ -n "$tb" ]; then
       cy="$(ycenter "$tb")"
