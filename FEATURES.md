@@ -17,6 +17,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Privacy comparison matrix in the README (2026-07-11).** A plain-words table under
+  Privacy comparing the Google Maps app, Google Maps web, and Vela: account linkage, device
+  identifiers, GPS exposure, map-browsing visibility, search anonymity, routing telemetry,
+  saved-place storage, ad profiling, and offline capability. PRIVACY.md stays the per-endpoint
+  deep dive; the table is the ten-second version.
+
 - ✅ **Urgent pushed notices can be a modal (2026-07-10).** A calibration.json notice with
   level "urgent" renders as a dialog (OK + optional Learn-more link) instead of a map card, for
   announcements that must be seen — the "servers overloaded, hang tight" class of message. Same
