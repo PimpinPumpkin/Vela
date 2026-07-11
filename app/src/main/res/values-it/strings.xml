@@ -524,4 +524,6 @@
     <string name="notif_ask_skip">Salta</string>
     <string name="place_time_past_toast">Quell\'ora è passata. Impostato su adesso.</string>
     <string name="settings_ui_scale">Dimensione dell\'interfaccia</string>
+    <string name="place_avoid_tolls">Evita i pedaggi</string>
+    <string name="place_avoid_highways">Evita le autostrade</string>
 </resources>

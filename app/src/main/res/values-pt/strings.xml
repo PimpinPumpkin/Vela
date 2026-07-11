@@ -524,4 +524,6 @@
     <string name="notif_ask_skip">Pular</string>
     <string name="place_time_past_toast">Esse horário já passou. Definido para agora.</string>
     <string name="settings_ui_scale">Tamanho da interface</string>
+    <string name="place_avoid_tolls">Evitar pedágios</string>
+    <string name="place_avoid_highways">Evitar rodovias</string>
 </resources>

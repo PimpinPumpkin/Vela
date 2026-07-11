@@ -1277,6 +1277,10 @@ fun DirectionsPanel(
     transit: List<TransitItinerary>,
     transitLoading: Boolean,
     onModeSelected: (TravelMode) -> Unit,
+    avoidTolls: Boolean = false,
+    avoidHighways: Boolean = false,
+    onAvoidTolls: (Boolean) -> Unit = {},
+    onAvoidHighways: (Boolean) -> Unit = {},
     onSelectRoute: (Int) -> Unit,
     onStartNav: () -> Unit,
     onSteps: (() -> Unit)?,
@@ -1594,6 +1598,31 @@ fun DirectionsPanel(
                 isTransit = currentMode == TravelMode.TRANSIT,
                 onTimeSelected = onTimeSelected,
             )
+            // Route preferences, drive only (tolls/motorways mean nothing on foot or transit).
+            // Honoured on-device where the region graph carries the avoid profiles; online the
+            // route falls back to normal rather than failing (the public OSRM can't exclude).
+            if (currentMode == TravelMode.DRIVE) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()).padding(end = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = avoidTolls,
+                        onClick = { onAvoidTolls(!avoidTolls) },
+                        label = { Text(stringResource(R.string.place_avoid_tolls)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                    FilterChip(
+                        selected = avoidHighways,
+                        onClick = { onAvoidHighways(!avoidHighways) },
+                        label = { Text(stringResource(R.string.place_avoid_highways)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                }
+            }
             if (currentMode == TravelMode.TRANSIT) {
                 TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit)
             } else {

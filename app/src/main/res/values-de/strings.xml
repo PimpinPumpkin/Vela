@@ -524,4 +524,6 @@
     <string name="notif_ask_skip">Überspringen</string>
     <string name="place_time_past_toast">Diese Zeit ist vorbei. Auf jetzt gesetzt.</string>
     <string name="settings_ui_scale">Größe der Oberfläche</string>
+    <string name="place_avoid_tolls">Mautstraßen vermeiden</string>
+    <string name="place_avoid_highways">Autobahnen vermeiden</string>
 </resources>
