@@ -2205,6 +2205,39 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
     }
 }
 
+// Google's gallery-tab name for the menu, per app language (the categories arrive localized via
+// hl=). Lowercase contains-match, so "Menu", "Menú", "Speisekarte & Getränke" all hit.
+private val MENU_TAB_WORDS = listOf("menu", "menú", "menù", "speisekarte", "cardápio", "menukaart", "меню", "meny")
+
+/** The Menu tab: the menu-tagged gallery photos as a browsable 2-up grid (tap → full-screen).
+ *  Only mounted when the place HAS menu photos, so no empty state is needed. Plain Column of
+ *  chunked rows, not a lazy grid — the sheet body already scrolls, and menu sets are tens of
+ *  photos at most. */
+@Composable
+private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        menuIndices.chunked(2).forEach { rowIdx ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                rowIdx.forEach { i ->
+                    AsyncImage(
+                        model = place.photoUrls.getOrNull(i),
+                        contentDescription = stringResource(R.string.place_photo_number, i + 1),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(150.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(dim.copy(alpha = 0.2f))
+                            .dpadHighlight(RoundedCornerShape(12.dp))
+                            .clickable { onOpen(i) },
+                    )
+                }
+                if (rowIdx.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
@@ -2329,8 +2362,21 @@ private fun PlaceTabs(
             (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
         )
     val hasAbout = place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null
+    // Menu photos get their OWN TAB beside Reviews/About (user 2026-07-10) — the gallery's
+    // category chip buried them. Detection is by Google's own gallery-tab name (it arrives
+    // localized, so match a per-language keyword set; the matched name is reused as the tab
+    // title so it's localized for free). Indices are photoCategories↔photoUrls aligned.
+    val menuIndices = remember(place.photoCategories) {
+        place.photoCategories.withIndex()
+            .filter { (_, cat) -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
+            .map { it.index }
+    }
+    val menuTabName = remember(place.photoCategories) {
+        place.photoCategories.firstOrNull { cat -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
+    }
     val tabs = buildList {
         if (hasReviews) add("Reviews")
+        if (menuIndices.isNotEmpty() && app.vela.ui.LoadPhotos.on.value) add("Menu")
         if (hasAbout) add("About")
     }
     if (tabs.isEmpty()) return
@@ -2347,7 +2393,9 @@ private fun PlaceTabs(
                 contentColor = ink,
             ) {
                 tabs.forEachIndexed { i, title ->
-                    Tab(selected = i == selected, onClick = { sel = i }, text = { Text(title) })
+                    // The Menu tab shows Google's own (localized) gallery-tab name.
+                    val display = if (title == "Menu") (menuTabName ?: title) else title
+                    Tab(selected = i == selected, onClick = { sel = i }, text = { Text(display) })
                 }
             }
         }
@@ -2375,6 +2423,17 @@ private fun PlaceTabs(
                     }
                     if (showFullPanel && fid != null) {
                         FullScreenReviews(fid, place, ink, dim) { showFullPanel = false }
+                    }
+                }
+                "Menu" -> {
+                    var menuStart by remember(place.id) { mutableStateOf<Int?>(null) }
+                    MenuTab(place, menuIndices, dim) { i -> menuStart = i }
+                    menuStart?.let { start ->
+                        PhotoGallery(
+                            place.photoUrls,
+                            place.photoDates.map { d -> d?.let { stringResource(R.string.place_photo_caption, it) } },
+                            start,
+                        ) { menuStart = null }
                     }
                 }
                 "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
@@ -2444,6 +2503,10 @@ private fun ReviewsTab(
 ) {
     // Search within the loaded reviews (author or text, case-insensitive). Resets per place.
     var reviewQuery by remember(place.id) { mutableStateOf("") }
+    // The local search hides behind a magnifier beside the All-reviews pill — a full text field
+    // stacked right under the pill read as clutter (user 2026-07-10); the panel's server-side
+    // search stays the headline way to get granular.
+    var reviewSearchOpen by remember(place.id) { mutableStateOf(false) }
     Column {
         place.rating?.let { r ->
             // Google's summary block: the big number leads, stars + count stack beside it,
@@ -2476,28 +2539,48 @@ private fun ReviewsTab(
         // Entry to the full-screen live Google reviews — all of them, plus Google's own SORT and
         // server-side search. The label says so (the button used to just say "Read all").
         onReadAll?.let { open ->
-            // Tonal pill, matching the sheet's action language — the outlined button was the
-            // one outlined control left on the sheet and read as dated beside the pills.
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 10.dp)
-                    .clip(androidx.compose.foundation.shape.CircleShape)
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
-                    .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
-                    .clickable(onClick = open)
-                    .padding(vertical = 12.dp),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium,
-                )
+            // Tonal pill, matching the sheet's action language, with the LOCAL search folded
+            // into a circled magnifier beside it (progressive disclosure — see reviewSearchOpen).
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+                        .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                        .clickable(onClick = open)
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                if (!loading && reviews.size >= 5) {
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            reviewSearchOpen = !reviewSearchOpen
+                            if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
+                        },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+                    ) {
+                        Icon(
+                            if (reviewSearchOpen) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = stringResource(R.string.place_search_reviews),
+                            tint = dim,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
             }
         }
         // Featured-review quote is only a TEASER while the real reviews are still streaming in —
@@ -2562,7 +2645,7 @@ private fun ReviewsTab(
                 // author. Held back until the scrape COMPLETES: popping a text field in above rows
                 // the user is reading mid-stream shifts everything under their finger; appearing at
                 // completion it takes the space the progress header just vacated (a near-swap).
-                if (!loading && reviews.size >= 5) {
+                if (!loading && reviews.size >= 5 && (reviewSearchOpen || onReadAll == null)) {
                     OutlinedTextField(
                         value = reviewQuery,
                         onValueChange = { reviewQuery = it },
