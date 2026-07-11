@@ -565,7 +565,29 @@ fun PlaceSheet(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                // The full sheet's key actions, not just Directions — a minimized card you can
+                // call or open the website from saves a pointless re-expand (user 2026-07-10).
+                // Same gating as the full action row (website behind the external-links toggle).
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                    place.phone?.let { ph ->
+                        ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
+                            val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
+                            runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                        }
+                    }
+                    if (!app.vela.ui.HideExternalLinks.on.value) {
+                        place.website?.let { site ->
+                            ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                            }
+                        }
+                    }
+                }
                 }
                 return@Column
             }
@@ -624,7 +646,9 @@ fun PlaceSheet(
                     }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // spacedBy keeps the circled header buttons from touching now that they carry
+            // visible backgrounds (Google's circles have the same small gaps).
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 if (isParking) {
                     Icon(
                         Icons.Default.DirectionsCar,
@@ -647,7 +671,12 @@ fun PlaceSheet(
                 )
                 // Save + Share as compact header actions (preferred look). The name has weight(1f) and
                 // wraps to 2 lines if long, so these stay put without shoving it off.
-                IconButton(onClick = onToggleSave, modifier = Modifier.size(40.dp)) {
+                IconButton(
+                    onClick = onToggleSave,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+                ) {
                     Icon(
                         if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
                         contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
@@ -659,7 +688,12 @@ fun PlaceSheet(
                 // Overflow: pin this place straight to Home/Work (Google-style).
                 var headerMenu by remember { mutableStateOf(false) }
                 Box {
-                    IconButton(onClick = { headerMenu = true }, modifier = Modifier.size(40.dp)) {
+                    IconButton(
+                        onClick = { headerMenu = true },
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+                    ) {
                         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.place_more_options), tint = dim, modifier = Modifier.size(20.dp))
                     }
                     // D-pad-first (docs/dpad.md): VelaMenu renders the normal anchored DropdownMenu
@@ -674,7 +708,12 @@ fun PlaceSheet(
                         item(stringResource(R.string.place_set_as_work)) { headerMenu = false; onSetShortcut(ShortcutKind.WORK) }
                     }
                 }
-                IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
+                IconButton(
+                    onClick = onClose,
+                    modifier = Modifier
+                        .size(40.dp)
+                        .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+                ) {
                     Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = dim, modifier = Modifier.size(20.dp))
                 }
             }
@@ -969,8 +1008,8 @@ fun PlaceSheet(
             val highlights = remember(place.about) { attributeHighlights(place.about) }
             if (highlights.isNotEmpty()) {
                 Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     highlights.forEach { h ->
                         Text(
@@ -2406,27 +2445,58 @@ private fun ReviewsTab(
     var reviewQuery by remember(place.id) { mutableStateOf("") }
     Column {
         place.rating?.let { r ->
+            // Google's summary block: the big number leads, stars + count stack beside it,
+            // left-aligned with the reviews below — the old centered strip floated oddly
+            // between the tabs and the button (user 2026-07-10).
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 10.dp),
             ) {
-                Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
-                Spacer(Modifier.width(8.dp))
-                RatingStars(r)
-                place.reviewCount?.let {
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.place_review_count, it), style = MaterialTheme.typography.bodyMedium, color = dim)
+                Text(
+                    String.format(Locale.US, "%.1f", r),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = ink,
+                )
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    RatingStars(r)
+                    place.reviewCount?.let {
+                        Text(
+                            stringResource(R.string.place_review_count, it),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = dim,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    }
                 }
             }
         }
         // Entry to the full-screen live Google reviews — all of them, plus Google's own SORT and
         // server-side search. The label says so (the button used to just say "Read all").
         onReadAll?.let { open ->
-            OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
+            // Tonal pill, matching the sheet's action language — the outlined button was the
+            // one outlined control left on the sheet and read as dated beside the pills.
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 10.dp)
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+                    .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                    .clickable(onClick = open)
+                    .padding(vertical = 12.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text(place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews))
+                Text(
+                    place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium,
+                )
             }
         }
         // Featured-review quote is only a TEASER while the real reviews are still streaming in —
@@ -2650,9 +2720,9 @@ private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = f
     val fg = if (emphasized) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
     Row(
         Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(androidx.compose.foundation.shape.CircleShape)
             .background(bg)
-            .dpadHighlight(RoundedCornerShape(20.dp))
+            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2688,7 +2758,12 @@ private fun ShareIconButton(place: Place, tint: Color) {
     }
 
     Box {
-        IconButton(onClick = { open = true }, modifier = Modifier.size(40.dp)) {
+        IconButton(
+            onClick = { open = true },
+            modifier = Modifier
+                .size(40.dp)
+                .background(tint.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+        ) {
             Icon(Icons.Default.Share, contentDescription = stringResource(R.string.place_share), tint = tint, modifier = Modifier.size(20.dp))
         }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
