@@ -120,8 +120,25 @@ class NavStringsTest {
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
     }
 
+    @Test fun `chinese and japanese phrases plus the zh script split in the registry`() {
+        assertEquals(ZhNavStrings, NavStringsRegistry.forLanguage("zh"))
+        assertEquals(ZhTwNavStrings, NavStringsRegistry.forLanguage("zh-TW"))
+        assertEquals(JaNavStrings, NavStringsRegistry.forLanguage("ja"))
+        assertEquals("zh", NavStringsRegistry.tagOf(Locale.SIMPLIFIED_CHINESE))
+        assertEquals("zh-tw", NavStringsRegistry.tagOf(Locale.TAIWAN))
+        assertEquals("zh-tw", NavStringsRegistry.tagOf(Locale.forLanguageTag("zh-Hant")))
+        assertEquals("向左转，进入中山路", ZhNavStrings.phrase("turn", "left", "中山路", null, null, null))
+        assertEquals("迴轉，進入中山路", ZhTwNavStrings.phrase("uturn", null, "中山路", null, null, null))
+        assertEquals("左に曲がります、本町通り に入ります", JaNavStrings.phrase("turn", "left", "本町通り", null, null, null))
+        assertEquals("150 米", ZhNavStrings.spokenDistance(150.0, false))
+        assertEquals("150 公尺", ZhTwNavStrings.spokenDistance(150.0, false))
+        assertEquals("150 メートル", JaNavStrings.spokenDistance(150.0, false))
+        assertEquals("500 米后，向右转", ZhNavStrings.inThen("500 米", "向右转"))
+        assertEquals("500 メートル先、右に曲がります", JaNavStrings.inThen("500 メートル", "右に曲がります"))
+    }
+
     @Test fun `every registered language produces non-blank nav strings and keeps road names`() {
-        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk")
+        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja")
         for (code in langs) {
             val ns = NavStringsRegistry.forLanguage(code)
             assertEquals("$code should map to its own NavStrings", code, ns.locale.language)
