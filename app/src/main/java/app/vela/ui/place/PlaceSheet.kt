@@ -1230,6 +1230,68 @@ fun DirectionsPanel(
     // Keyed to the destination so opening directions for a different place starts
     // expanded again instead of inheriting the previous session's collapsed state.
     val collapsed = remember(destinationName) { mutableStateOf(false) }
+    // The body height is HAND-DRIVEN, the place/results sheets' exact grammar (user 2026-07-11:
+    // the old collapse was a 6px threshold flip - no finger tracking, no inertia): drags move it
+    // 1:1, release projects the throw's decay to the nearest end (0 = minimized, bodyMax = open)
+    // and rides the coast there. The body and the minimized Start bar both fold WITH this height
+    // (SheetFold), so the collapsed flip changes nothing visible.
+    val bodyMax = LocalConfiguration.current.screenHeightDp * 0.58f
+    val dirH = remember(destinationName) { Animatable(if (collapsed.value) 0f else bodyMax) }
+    val dirSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    val dirDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    val dirScope = rememberCoroutineScope()
+    val dirDensity = LocalDensity.current
+    val dirBodyScroll = rememberScrollState()
+    LaunchedEffect(collapsed.value) {
+        val target = if (collapsed.value) 0f else bodyMax
+        // Skip when a drag-release settle already targets this end - restarting would zero
+        // the coast velocity mid-glide (same guard as the place sheet's detent effect).
+        if (dirH.targetValue != target) dirH.animateTo(target, dirSettle)
+    }
+    fun dragDirBy(dyPx: Float) {
+        val dyDp = with(dirDensity) { dyPx.toDp().value }
+        dirScope.launch { dirH.snapTo((dirH.value - dyDp).coerceIn(0f, bodyMax)) }
+    }
+    fun settleDir(velocityPxPerSec: Float) {
+        val vDp = with(dirDensity) { velocityPxPerSec.toDp().value }
+        val naturalEnd = dirDecay.calculateTargetValue(dirH.value, -vDp)
+        val target = if (kotlin.math.abs(naturalEnd) < kotlin.math.abs(bodyMax - naturalEnd)) 0f else bodyMax
+        collapsed.value = target == 0f
+        dirScope.launch {
+            val towardTarget = (naturalEnd - dirH.value) * (target - dirH.value) > 0f
+            if (towardTarget && kotlin.math.abs(naturalEnd - dirH.value) >= kotlin.math.abs(target - dirH.value)) {
+                // The throw carries: ride its own inertia and let the end just stop it.
+                try {
+                    dirH.updateBounds(lowerBound = minOf(dirH.value, target), upperBound = maxOf(dirH.value, target))
+                    dirH.animateDecay(-vDp, dirDecay)
+                } finally {
+                    dirH.updateBounds(lowerBound = null, upperBound = null)
+                }
+                if (kotlin.math.abs(dirH.value - target) > 0.5f) dirH.animateTo(target, dirSettle)
+            } else {
+                dirH.animateTo(target, dirSettle, initialVelocity = -vDp)
+            }
+        }
+    }
+    // Body-at-top drags collapse the panel and upward drags grow it, like the other sheets.
+    val dirConn = remember(destinationName) {
+        object : NestedScrollConnection {
+            private var dragging = false
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && dirBodyScroll.value == 0 && dirH.value > 0f) {
+                    dragging = true; dragDirBy(available.y); return available
+                }
+                if (available.y < 0f && dirH.value < bodyMax) {
+                    dragging = true; dragDirBy(available.y); return available
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (dragging) { dragging = false; settleDir(available.y); return available }
+                return Velocity.Zero
+            }
+        }
+    }
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -1242,9 +1304,19 @@ fun DirectionsPanel(
                 Modifier
                     .fillMaxWidth()
                     .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dy ->
-                            if (dy > 6f) collapsed.value = true else if (dy < -6f) collapsed.value = false
-                        }
+                        // Same physics as dragging the body: 1:1 with the finger, release
+                        // rides the fling to whichever end it carries to.
+                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                        detectVerticalDragGestures(
+                            onDragStart = { tracker.resetTracking() },
+                            onVerticalDrag = { change, dy ->
+                                change.consume()
+                                tracker.addPosition(change.uptimeMillis, change.position)
+                                dragDirBy(dy)
+                            },
+                            onDragEnd = { settleDir(tracker.calculateVelocity().y) },
+                            onDragCancel = { settleDir(0f) },
+                        )
                     }
                     .dpadHighlight(RoundedCornerShape(3.dp)) // D-pad: OK toggles (docs/dpad.md)
                     .clickable { collapsed.value = !collapsed.value }
@@ -1383,15 +1455,23 @@ fun DirectionsPanel(
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
-            AnimatedVisibility(visible = !collapsed.value) {
-              // Cap the expandable body to ~58% of the screen and let it scroll — on short screens the
-              // mode chips + route/transit list + Start button are taller than the bottom-anchored card,
-              // so without this the Start button (drive) and the lower transit trips fall off the bottom,
-              // unreachable. verticalScroll keeps the whole chooser usable; the map stays visible above.
+            // The body caps at the ANIMATED height (bodyMax when open = the old ~58% screen cap,
+            // still scrollable inside) and fades over its last stretch; composed while any of it
+            // shows, unmounted once settled at zero (the extras-gate pattern).
+            val bodyComposed by remember(destinationName) {
+                derivedStateOf { !collapsed.value || dirH.value > 1f }
+            }
+            if (bodyComposed) {
               Column(
                   Modifier
-                      .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.58f).dp)
-                      .verticalScroll(rememberScrollState()),
+                      .graphicsLayer { alpha = (dirH.value / 160f).coerceIn(0f, 1f); clip = true }
+                      .layout { measurable, constraints ->
+                          val capPx = dirH.value.dp.roundToPx().coerceAtLeast(0)
+                          val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, capPx)))
+                          layout(pl.width, pl.height) { pl.place(0, 0) }
+                      }
+                      .nestedScroll(dirConn)
+                      .verticalScroll(dirBodyScroll),
               ) {
             Spacer(Modifier.height(10.dp))
             // D-pad-first (docs/dpad.md): land focus on the first travel-mode tab when the
@@ -1505,8 +1585,12 @@ fun DirectionsPanel(
             }
               }
             }
-            // Minimised: keep a Start button reachable without expanding.
-            if (collapsed.value) {
+            // Minimised: keep a Start button reachable without expanding. It FOLDS IN as the
+            // body folds out (inverse fraction of the same height), so neither end pops.
+            val startComposed by remember(destinationName) {
+                derivedStateOf { collapsed.value || dirH.value < bodyMax - 1f }
+            }
+            app.vela.ui.SheetFold(startComposed, { ((bodyMax - dirH.value) / 160f).coerceIn(0f, 1f) }) {
                 Button(
                     onClick = onStartNav,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),

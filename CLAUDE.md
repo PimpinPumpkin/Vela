@@ -284,6 +284,11 @@ Defaults that make the safe path the easy one:
   before today and a confirmed past time clamps to the next 5-minute mark now, WITH a toast
   (`place_time_past_toast`, all 11 locales): the pill shows a different time than the pick,
   and a silent rewrite of explicit input reads as a bug.
+- **The directions chooser drags like the other sheets (2026-07-11):** its body height is a
+  hand-driven Animatable (0 = minimized, ~0.58 screen = open) - handle AND body-at-top drags
+  move it 1:1, release rides the throw's decay to an end (the shared grammar). The body and
+  the minimized Start bar both fold with that height (SheetFold, inverse fractions), so the
+  collapsed flip swaps nothing visible; the old collapse was a 6px-threshold boolean flip.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
