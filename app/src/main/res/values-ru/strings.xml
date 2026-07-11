@@ -523,4 +523,5 @@
     <string name="notif_ask_allow">Разрешить</string>
     <string name="notif_ask_skip">Пропустить</string>
     <string name="place_time_past_toast">Это время уже прошло. Установлено на сейчас.</string>
+    <string name="settings_ui_scale">Размер интерфейса</string>
 </resources>

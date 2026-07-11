@@ -302,6 +302,9 @@ fun MapScreen(
     // Which result ids survive the results sheet's filters (null = filters off) - feeds the
     // map markers so filtered-out places lose their pins, not just their rows.
     var filteredResultIds by remember { mutableStateOf<Set<String>?>(null) }
+    // True while the place sheet sits at its EXPANDED detent (covers the search bar).
+    var placeSheetExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(state.selected?.id) { if (state.selected == null) placeSheetExpanded = false }
     LaunchedEffect(state.results) { filteredResultIds = null }
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
     // Bumped when the user grabs the map with a sheet open — each sheet glides down to its
@@ -930,6 +933,9 @@ fun MapScreen(
                     ),
             ) {
                 Column(Modifier.statusBarsPadding().padding(12.dp)) {
+                    // The bar hides while an expanded place sheet covers it: the visible sliver
+                    // still took taps and opened search OVER the card (user 2026-07-11).
+                    if (!(state.selected != null && placeSheetExpanded && !searchOpen)) {
                     SearchBar(
                         query = state.query,
                         searching = state.searching,
@@ -952,6 +958,7 @@ fun MapScreen(
                         dpadMode = dpadMode,
                         onMic = onMic,
                     )
+                    }
                     when {
                         // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)
                         // when the field is focused, when there are no results yet, OR while picking an
@@ -1295,6 +1302,7 @@ fun MapScreen(
 
             state.selected != null && !searchOpen && state.pickOnMap == null -> PlaceSheet(
                 place = state.selected!!,
+                onExpandedChange = { placeSheetExpanded = it },
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
                 reviewsLoading = state.reviewsLoading,
