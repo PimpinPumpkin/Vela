@@ -112,6 +112,14 @@ class NavStringsTest {
         assertEquals("Biegen Sie ab auf Hauptstr", DeNavStrings.expandForSpeech("Biegen Sie ab auf Hauptstr"))
     }
 
+    @Test fun `a comma breaks the maneuver off the sign destination so espeak keeps take`() {
+        // "take the ramp toward Woodland" mis-voweled "take" -> the comma isolates the verb clause.
+        assertEquals("Take the ramp, toward Woodland", EnNavStrings.expandForSpeech("Take the ramp toward Woodland"))
+        assertEquals("Take exit 15, toward Sacramento", EnNavStrings.expandForSpeech("Take exit 15 toward Sacramento"))
+        // Plain turns use "onto", not "toward", so they are untouched (no stray comma).
+        assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
+    }
+
     @Test fun `every registered language produces non-blank nav strings and keeps road names`() {
         val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk")
         for (code in langs) {
