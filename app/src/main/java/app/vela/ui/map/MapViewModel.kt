@@ -938,7 +938,16 @@ class MapViewModel @Inject constructor(
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
-        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false) }
+        routeJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(),
+                reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                // Same cohesion rule as selectPlace: a new destination closes the old chooser.
+                directionsOpen = false, routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false, showSteps = false,
+            )
+        }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
@@ -1195,10 +1204,16 @@ class MapViewModel @Inject constructor(
         if (_state.value.pickingStop) { addStop(p); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(p); return }
         suggestJob?.cancel()
+        routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
                 selected = withListNote(p), center = p.location, reviews = emptyList(), suggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
+                // Picking a NEW place while a route chooser is open closes it: the chooser
+                // belonged to the previous destination and kept covering the fresh place
+                // (the along-route / pick-origin / pick-stop flows early-return above).
+                directionsOpen = false, routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false, showSteps = false,
             )
         }
         fetchReviews(p)
@@ -1831,11 +1846,20 @@ class MapViewModel @Inject constructor(
     fun showParkedCar(label: String) {
         val spot = _state.value.parkingSpot ?: return
         val p = Place(id = "parking:${spot.lat},${spot.lng}", name = label, location = spot)
+        // A parked car never fetches reviews/photos/details — but the PREVIOUS place's in-flight
+        // scrape (and its reviews/shimmer flags) would otherwise bleed onto the parking sheet
+        // ("loading reviews on the parked car" bug). Cancel + clear them, like the pin/POI paths.
+        reviewsJob?.cancel()
+        routeJob?.cancel()
         // Frame the spot too — opened from the P button while browsing another city, the
         // sheet alone doesn't tell you WHERE the car is.
         _state.update {
             it.copy(
                 selected = p, results = emptyList(), query = "", directionsOpen = false,
+                placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false,
+                reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                routes = emptyList(), activeRoute = null, showSteps = false, previewStepIndex = null,
+                transit = emptyList(), transitLoading = false,
                 center = spot, recenterTick = it.recenterTick + 1,
             )
         }
@@ -2198,7 +2222,9 @@ class MapViewModel @Inject constructor(
                 val engine = _state.value.selectedEngine?.packageName
                 neuralSynthFor(engine)?.let { voice.neural = it }
                 navSession.replayMode = true
-                navSession.start(route, dest, label, engine)
+                // Pass the REAL travel mode: haptics are per-mode (bike buzzes by default, driving
+                // doesn't), so a demo of a bike route must buzz like the real ride would.
+                navSession.start(route, dest, label, engine, mode = _state.value.travelMode)
                 replayOwnsNav = true
                 // Demo mode presents as REAL nav, so the ongoing turn notification is part of
                 // what's being demoed (and how it gets verified without a drive).
