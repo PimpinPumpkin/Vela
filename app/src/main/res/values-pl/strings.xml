@@ -284,7 +284,13 @@
     <string name="mapscreen_expand_list">Rozwiń listę</string>
     <string name="mapscreen_close_results">Zamknij wyniki wyszukiwania</string>
     <string name="mapscreen_filter_open_now">Otwarte teraz</string>
-    <string name="mapscreen_filter_top_rated">4,0★</string>
+    <string name="mapscreen_filter_rating">Ocena</string>
+    <string name="mapscreen_filter_any_rating">Dowolna ocena</string>
+    <string name="mapscreen_filter_any_price">Dowolna cena</string>
+    <string name="mapscreen_filter_accessible">Dostępne dla wózków inwalidzkich</string>
+    <string name="mapscreen_sort_relevance">Trafność</string>
+    <string name="mapscreen_sort_rating_item">Ocena</string>
+    <string name="mapscreen_sort_distance_item">Odległość</string>
     <string name="mapscreen_filter_price">Cena</string>
     <string name="mapscreen_sort">Sortuj</string>
     <string name="mapscreen_sort_rating">Sortowanie: Ocena</string>

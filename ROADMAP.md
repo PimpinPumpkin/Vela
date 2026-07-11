@@ -369,6 +369,12 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   (Bay-Bridge approach = one long level-2 span). The whole-map raster stays off during
   nav - the route now carries the traffic, like Google. *(Level→colour mapping is the
   best read of the 1/2 grades seen; trivially flipped if a heavy drive shows otherwise.)*
+- **EV charger detail (price / kW / plug availability) - INVESTIGATED 2026-07-10, keyless-stripped.**
+  Gas stations carry their live price in the keyless search response (shipped: the fuelPrice path),
+  but EV charging stations come back with the type marker only - no price, no connector counts, no
+  availability (probed live: Electrify America / EVgo / Tesla Supercharger nodes all empty beyond
+  the marker). Same class of gap as popular times: the data exists logged-in. Revisit if a keyless
+  surface appears; OpenChargeMap could fill it as an open-data source.
 - **Individual traffic incidents (crashes / construction / closures) - INVESTIGATED 2026-07-01, no clean
   keyless source yet.** Google shows discrete incident icons/cards ("Crash ahead", "Road closed"); Vela
   today has only the aggregate **congestion spans** (`route[3][5]`, per-segment colour). Probed the raw
