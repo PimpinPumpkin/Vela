@@ -351,8 +351,12 @@ fun VelaMapView(
         // (theme flip mid-effect), and a dead style throws on ANY access, not just mutation.
         runCatching { style.layers.filter { it.id.startsWith("vela-ovl-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-ovl-src-") }.forEach { style.removeSource(it) } }
-        val fill = if (darkTheme) "#323f54" else "#dde1e7" // == the OSM building fill (applyLight/applyDark)
-        val line = if (darkTheme) "#3f4e66" else "#c4c9d1"
+        // MUST equal the OSM `building` fill/outline in applyDark/applyLight, or the
+        // Microsoft-only footprints read as a second building colour beside the OSM
+        // ones (the "some buildings are still grey" report after the pixel-sampled
+        // palette landed - this pair was left on the old greys, user 2026-07-11).
+        val fill = if (darkTheme) "#1c3b69" else "#e2e3e9"
+        val line = if (darkTheme) "#2e3d6d" else "#c4c9d1"
         val below = runCatching { style.getLayer("building")?.id }.getOrNull() // beneath OSM buildings so they win wherever OSM has them
         buildingOverlays.forEachIndexed { i, uri ->
             runCatching {
