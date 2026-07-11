@@ -309,6 +309,13 @@ Defaults that make the safe path the easy one:
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
   note stays. `place_current_traffic` was deleted from all 11 locales.
+- **The sheet physics recipe is SHARED (2026-07-11):** the place sheet, the search-results sheet
+  and the DirectionsPanel body all use the same grammar - a hand-driven `Animatable` (height for
+  the sheets, a 0..1 body FRACTION for the chooser) dragged 1:1 (handle + content-at-top nested
+  scroll), settled by `exponentialDecay(1.6)` picking the nearest detent from the natural coast
+  endpoint with a bounds-clamped `animateDecay` ride (spring only when the throw doesn't carry),
+  and the animated value read in a LAYOUT modifier so frames never recompose content. Port this
+  recipe to any new sheet; don't invent a fourth gesture system.
 - **Place-sheet drag physics are CONTINUOUS (2026-07-10):** the sheet height is a hand-driven
   `Animatable` - drags (handle or body-at-top) move it 1:1 with the finger, release projects the
   fling and RIDES THE THROW'S OWN INERTIA to the nearest detent: the landing point comes from
@@ -436,13 +443,62 @@ Defaults that make the safe path the easy one:
   list, or return from one) used to replay the stale tick and open pre-minimized (user
   2026-07-10). Any new tick-style signal into a sheet needs the same guard. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
-  `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
+  `primary` teal + check on, `border = null`). **Rating/Price/Sort are VelaMenu chips (2026-07-10)**
+  (tiers 3.5+/4.0+/4.5+, price levels, Relevance/Rating/Distance) - blind cycling hid the options;
+  plus a "Wheelchair accessible" toggle chip filtering `Place.wheelchairAccessible`, parsed in
+  SearchParser off the LANGUAGE-NEUTRAL attribute id `has_wheelchair_accessible_entrance` in the
+  `[1][100][1]` attribute block (labels arrive localized, ids don't; unit-tested). That block is
+  the ONE attribute family the keyless search ships per result - vegetarian/reservations/etc.
+  exist only in per-place About data, so result-list filtering on them is not feasible keyless
+  (don't re-chase). Filters stay LOCAL to the fetched results by design; no cuisine facets (the
+  query is the cuisine filter). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
   `chromeLift` (76dp) so nothing sits on the minimized bar. The compass is MapLibre's built-in
   (`setCompassMargins`), which fades facing north (Google's behaviour) and reappears when
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
+- **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
+  the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result keeps the app's own
+  marker language - grey teardrop, circle, white glyph - with the circle RED (`resultPin`,
+  drawn a step smaller than the ambient icons' backing); rated FOOD results get the wide rating
+  "speech bubble": the same red circle + white glyph beside the rating in plain ink, NO star
+  glyph (`ratingBubble`, label passed as a string so non-rating labels can ride the same bubble;
+  theme-surfaced, regenerated per style load because bitmaps can't theme).
+  Bitmaps are generated ON DEMAND in applyData's marker loop (`ensureResultIcon` - bubble keys
+  carry the rating tenths, so only the ratings actually on screen get bitmaps). The pin layer
+  COLLIDES by rank (`symbolSortKey` = result order, allowOverlap false): in a dense downtown the
+  best results keep pins and the rest draw as the small red dots of `vela-markers-dots` (same
+  source, below, allowOverlap+ignorePlacement true), expanding back into pins on zoom - never a
+  pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels try UNDER the pin,
+  then its right, then its left (variableAnchor TOP/LEFT/RIGHT, radialOffset 0.7 - below-only
+  dropped labels in crowded views, user 2026-07-10) in NEUTRAL ink both themes. The AMBIENT and
+  OSM poi layers got the same treatment (2026-07-10): four anchor slots (RIGHT/LEFT/TOP/BOTTOM,
+  = left of icon / right of it / below / above) instead of the old two - icons still collide by
+  design, but a rendered icon's label now finds a clear side instead of dropping or sitting on a
+  neighbour's dot - Google doesn't category-tint result labels,
+  only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
+  0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
+  keep the two in lockstep. **OSM POIs hide by COVERAGE, not ambient non-emptiness (2026-07-10):**
+  `MapUiState.ambientCoversView` (computed each onViewport settle: ambient non-empty AND centre
+  within 0.35x of `lastAmbientSpan` of the fetch centre AND viewRadius ≤ 0.55x span; forced true
+  when a fresh fetch lands, false under z14) drives the poi_r* visibility - blanket-hiding left
+  the outskirts iconless because one fetch only covers ~3.5-9 km (user 2026-07-10). Controls
+  (signs/lights) render from z17.5 on the browse map but z16 during nav (set in the nav
+  declutter effect). While a result SET is on the map (markers.size > 1) the basemap
+  poi_r1/r7/r20 icons hide too, AND the traffic-control layers (stop signs + lights,
+  `lastControlsVis` - controls stay up beside the ambient dots on the browse map, so their
+  predicate is the result set alone). Own identity gates, NOT inside the ambient gate -
+  results can appear/clear while ambient stays empty; a single selected place keeps both. Dots
+  carry the same MARKER_INDEX_PROP feature prop, so a collapsed result is still tappable.
+  **Gas stations put their LIVE PRICE in the bubble** (2026-07-10): `Place.fuelPrice`
+  ("$5.34/Regular") parses off the place node at `[88][0]` (calibration `paths.fuelPrice`,
+  remote-recalibratable, digit-gated in SearchParser so a shape drift can't show a label as a
+  price; calibration.json is at **v14** for it), the bubble shows the short "$5.34"
+  (`PoiIcons.fuelShort`), and the full string renders BOLD - its own pump-glyph line under the
+  address in the result row (glyph + text in title ink, theme-responsive) and bold inline on the
+  place sheet's price/category line (user 2026-07-10). EV chargers carry NO detail in the
+  keyless response (probed 2026-07-10 - type marker only, no price/kW/availability); see ROADMAP.
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
@@ -478,6 +534,15 @@ Defaults that make the safe path the easy one:
   WITHOUT the restricted build flavor (user's call, 2026-07-08) - the flavor/LockableToggle machinery
   was deliberately dropped, keep holders in the plain `ShowReviews` shape. Gate any new external-link
   surface on a place page behind this holder.
+- **Full-screen viewers = VISIBLE bars + gradient, NOT hidden bars (2026-07-10).** After many
+  rounds fighting a Compose Dialog window to COVER the system bars (window dumps proved it
+  re-asserts inset-fitted params and refuses), the working recipe is Google's own: NO_LIMITS +
+  TRANSPARENT status/nav bar colors + `Modifier.requiredFullScreen()` on the content root (sizes
+  to the true display so it fills UNDER the transparent bars) + a top gradient scrim so the
+  status bar reads over the photo. Applies to `PhotoGalleryContent`-era gallery + `FullScreenReviews`.
+  Don't reach for hide-bars/dim/decor tricks again — they leave strips. The reviews page uses an
+  X (left, matching the gallery) and a top-edge pull-down (panel `onOverscroll`/`onOverscrollEnd`
+  → `offset` the Surface → dismiss past 120dp).
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
   `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
@@ -1282,7 +1347,11 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
-  (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.
+  (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation. **Reroute buzzes
+  too (2026-07-10):** `Haptics.reroute(mode)` (three ticks + a long buzz, distinct from every turn
+  pattern) fires beside the throttled spoken "Rerouting" in `NavSession.reroute` - same per-mode
+  setting, works muted. Demo drives pass `travelMode` into `navSession.start` so per-mode haptics
+  behave in a simulation like the real ride (they used to default to DRIVE = silent).
 - EU consent: `InMemoryCookieJar` (CoreModule) pre-seeds Google's `SOCS`/`CONSENT`
   cookies so a cookieless EU session isn't bounced to `consent.google.com` - don't
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
@@ -1554,7 +1623,12 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   device-verified in the test suburb).** Microsoft footprints have geometry but **no addresses**, so house numbers
   come from a SECOND overlay: **OpenAddresses** address POINTS → per-state `.pmtiles` (`-l address`, keep the
   `number` prop) → `address-overlays` GitHub release + `address-overlay-manifest.json` (`ADDRESS_MANIFEST_URL`,
-  `-PaddressManifestUrl=`). Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
+  `-PaddressManifestUrl=`). **The bake DEDUPES per-unit/parcel repeats (2026-07-10, `scripts/dedup-addresses.py`):**
+  OpenAddresses carries one row per unit/parcel, so a complex repeated its number all over its
+  footprint on the map; the build keeps one point per (number, street, ~150 m cell). Takes
+  effect per region on the next `address-overlays` workflow run (streamed tiles pick it up
+  automatically; a LOCALLY DOWNLOADED overlay keeps the old points until re-downloaded).
+  Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
   → its current `job` → `https://v2.openaddresses.io/batch-prod/job/<job>/source.geojson.gz` (GeoJSONL of Points
   with `number`/`street`; **42 US states have a `statewide` source**, the rest are county-only). Render:
   `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**

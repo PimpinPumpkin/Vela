@@ -284,7 +284,13 @@
     <string name="mapscreen_expand_list">Развернуть список</string>
     <string name="mapscreen_close_results">Закрыть результаты поиска</string>
     <string name="mapscreen_filter_open_now">Открыто сейчас</string>
-    <string name="mapscreen_filter_top_rated">4,0★</string>
+    <string name="mapscreen_filter_rating">Рейтинг</string>
+    <string name="mapscreen_filter_any_rating">Любой рейтинг</string>
+    <string name="mapscreen_filter_any_price">Любая цена</string>
+    <string name="mapscreen_filter_accessible">Доступно для инвалидных колясок</string>
+    <string name="mapscreen_sort_relevance">Релевантность</string>
+    <string name="mapscreen_sort_rating_item">Рейтинг</string>
+    <string name="mapscreen_sort_distance_item">Расстояние</string>
     <string name="mapscreen_filter_price">Цена</string>
     <string name="mapscreen_sort">Сортировка</string>
     <string name="mapscreen_sort_rating">Сортировка: Рейтинг</string>
