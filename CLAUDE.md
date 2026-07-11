@@ -287,6 +287,15 @@ Defaults that make the safe path the easy one:
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).
+- **Place-sheet surface language (2026-07-10):** header icon buttons (Save/Share/more/close) are
+  40dp icons in `dim.copy(alpha = 0.12f)` CIRCLES with 5dp gaps (Google's treatment); ActionPill
+  and the "All reviews" button are CircleShape stadium pills (the outlined button was the last
+  outlined control on the sheet); the reviews summary block is LEFT-ALIGNED (displaySmall number
+  + stars/count stacked beside it), not centered; the MINIMIZED card carries Directions + Call +
+  Website pills in a horizontal scroll row with the same gating as the full action row (website
+  behind HideExternalLinks). Keep new sheet controls on this language. NB `RatingHistogram` in
+  PlaceSheet is ORPHANED (its per-star counts only exist in the live panel DOM) - wire it or
+  delete it, don't duplicate it.
 - **Chip style = stadium pills (2026-07-08):** EVERY chip (map CategoryChips, results-panel filter
   chips Open-now/top-rated/price/sort + the collapsed "N results" pill, PlaceSheet travel-mode chips
   now with a leading `Icons.Default.Directions*` glyph, Settings vibrate-on-turns FilterChips) sets
