@@ -735,12 +735,22 @@ fun PlaceSheet(
             // doesn't wrap mid-word next to the stars; ellipsised if huge.
             val rest = listOfNotNull(
                 place.distanceMeters?.let { formatDistance(it) },
+                place.fuelPrice, // gas stations: the live price sits with the price/category line
                 place.priceText,
                 place.category,
             )
             if (rest.isNotEmpty()) {
                 Text(
-                    rest.joinToString("  ·  "),
+                    // The fuel price renders BOLD inside the line — it's the number a gas
+                    // search is actually about (user 2026-07-10).
+                    buildAnnotatedString {
+                        rest.forEachIndexed { i, part ->
+                            if (i > 0) append("  ·  ")
+                            if (part == place.fuelPrice) {
+                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(part) }
+                            } else append(part)
+                        }
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = dim,
                     maxLines = 1,
