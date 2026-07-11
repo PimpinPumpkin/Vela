@@ -17,6 +17,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **The full-screen viewers match Google's chrome (2026-07-10).** The photo viewer and the
+  full reviews page draw edge to edge under transparent, still-visible system bars, with a
+  gradient scrim so the status bar reads over the photo, ending the see-through strips for good.
+  The reviews page's back arrow became an X (matching the photo viewer, on the left) and it can
+  be swiped down from the top to close.
+
 - ✅ **The photo viewer and reviews page reach the true screen edges (2026-07-10).** A window
   dump showed compose dialogs are wrap-content windows measured against inset bounds, so they
   stopped about a status bar short of the display at each end no matter which window flags were
