@@ -23,13 +23,16 @@ object AppLocale {
     /** The languages Vela's generated nav voice is translated into (and, rolling out, the UI chrome).
      *  This is the source of truth for the in-app language picker — keep it in sync with the NavStrings
      *  table in :core. */
-    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "zh-TW", "ja")
+    // "he" is the modern Hebrew code the picker + NavStrings use; the Android RESOURCES live in the
+    // legacy-qualifier folder res/values-iw (AAPT's Hebrew qualifier), and the platform maps a "he"
+    // locale onto values-iw, so the two agree. (Same legacy-pair handling as id/in, yi/ji.)
+    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "zh-TW", "ja", "he")
 
     private val ENDONYMS = mapOf(
         "en" to "English", "fr" to "Français", "de" to "Deutsch", "es" to "Español",
         "it" to "Italiano", "pt" to "Português", "nl" to "Nederlands", "ru" to "Русский",
         "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська",
-        "zh" to "简体中文", "zh-TW" to "繁體中文（台灣）", "ja" to "日本語",
+        "zh" to "简体中文", "zh-TW" to "繁體中文（台灣）", "ja" to "日本語", "he" to "עברית",
     )
 
     /** The language's own name (endonym) — what a speaker of it expects to see in a language list. */
