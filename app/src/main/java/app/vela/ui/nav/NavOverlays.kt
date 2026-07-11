@@ -530,16 +530,19 @@ fun NavControls(
             // Steps is icon-only so the row stays compact (the left ETA column can
             // grow with a longer "X mi · 7:42 PM"); End keeps its label.
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                FilledTonalIconButton(onClick = onToggleVoice) {
+                // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons,
+                // 26dp glyphs; End matches the height so the row reads as one control set.
+                FilledTonalIconButton(onClick = onToggleVoice, modifier = Modifier.size(54.dp)) {
                     Icon(
                         if (voiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
                         contentDescription = if (voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
+                        modifier = Modifier.size(26.dp),
                     )
                 }
-                FilledTonalIconButton(onClick = onSteps) {
-                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps))
+                FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
+                    Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
                 }
-                Button(onClick = onStop) {
+                Button(onClick = onStop, modifier = Modifier.height(54.dp)) {
                     Text(stringResource(R.string.nav_end), maxLines = 1, softWrap = false)
                 }
             }
