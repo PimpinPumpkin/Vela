@@ -32,6 +32,23 @@ class SearchSnapTest {
         assertEquals(38.54, result.places[0].location.lat, 1e-9)
     }
 
+    /** Wheelchair accessibility rides the search response's attribute block ([1][100][1],
+     *  groups of [id, label, ...] entries) keyed on the LANGUAGE-NEUTRAL attribute id — the
+     *  labels arrive localized, so only the id can drive the filter. */
+    @Test fun parsesWheelchairAccessibility() {
+        fun place(name: String, about: String?) = "[null," + arr(
+            101,
+            9 to "[null,null,38.55,-121.74]",
+            11 to "\"$name\"",
+            100 to (about ?: "null"),
+        ) + "]"
+        val acc = """[null,[[null,"Accessibility",[["/geo/type/establishment_poi/has_wheelchair_accessible_entrance","Wheelchair accessible entrance"]]]]]"""
+        val root = arr(65, 64 to "[" + place("Accessible Cafe", acc) + "," + place("Unknown Cafe", null) + "]")
+        val places = SearchParser.parse("cafes", Json.parseToJsonElement(root)).places
+        assertEquals(true, places[0].wheelchairAccessible)
+        assertEquals(false, places[1].wheelchairAccessible)
+    }
+
     /** "People also search for": the focused result's sibling list at root[2][11][0], each
      *  entry [featureId, name, [[_,_,lat,lng], …, rating@6]]. (Verified on-device against a
      *  real response: 8 related salons for a focused nail-salon search.) */

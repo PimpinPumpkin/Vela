@@ -15,6 +15,9 @@ data class Place(
     val reviewCount: Int? = null,
     val priceLevel: Int? = null,   // 0..4, Google-style ($ to $$$$)
     val priceText: String? = null, // Google's own label, e.g. "$1–10" / "$$"
+    // The place data carries its accessibility attributes right in the search response (the one
+    // attribute family Google ships per-result keyless), so results can be FILTERED on it.
+    val wheelchairAccessible: Boolean = false,
     val phone: String? = null,
     val website: String? = null,
     val actionLabel: String? = null,  // Google's action button text ("Book online", "Reserve a table", "Order online")

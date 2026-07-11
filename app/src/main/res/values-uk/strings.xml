@@ -284,7 +284,13 @@
     <string name="mapscreen_expand_list">Розгорнути список</string>
     <string name="mapscreen_close_results">Закрити результати пошуку</string>
     <string name="mapscreen_filter_open_now">Відкрито зараз</string>
-    <string name="mapscreen_filter_top_rated">4.0★</string>
+    <string name="mapscreen_filter_rating">Рейтинг</string>
+    <string name="mapscreen_filter_any_rating">Будь-який рейтинг</string>
+    <string name="mapscreen_filter_any_price">Будь-яка ціна</string>
+    <string name="mapscreen_filter_accessible">Доступно для інвалідних візків</string>
+    <string name="mapscreen_sort_relevance">Релевантність</string>
+    <string name="mapscreen_sort_rating_item">Рейтинг</string>
+    <string name="mapscreen_sort_distance_item">Відстань</string>
     <string name="mapscreen_filter_price">Ціна</string>
     <string name="mapscreen_sort">Сортування</string>
     <string name="mapscreen_sort_rating">Сортування: Рейтинг</string>
