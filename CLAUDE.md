@@ -1027,7 +1027,11 @@ Defaults that make the safe path the easy one:
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
-  (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.
+  (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation. **Reroute buzzes
+  too (2026-07-10):** `Haptics.reroute(mode)` (three ticks + a long buzz, distinct from every turn
+  pattern) fires beside the throttled spoken "Rerouting" in `NavSession.reroute` - same per-mode
+  setting, works muted. Demo drives pass `travelMode` into `navSession.start` so per-mode haptics
+  behave in a simulation like the real ride (they used to default to DRIVE = silent).
 - EU consent: `InMemoryCookieJar` (CoreModule) pre-seeds Google's `SOCS`/`CONSENT`
   cookies so a cookieless EU session isn't bounced to `consent.google.com` - don't
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
