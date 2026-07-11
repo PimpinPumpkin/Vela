@@ -269,6 +269,13 @@ Defaults that make the safe path the easy one:
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
   note stays. `place_current_traffic` was deleted from all 11 locales.
+- **The sheet physics recipe is SHARED (2026-07-11):** the place sheet, the search-results sheet
+  and the DirectionsPanel body all use the same grammar - a hand-driven `Animatable` (height for
+  the sheets, a 0..1 body FRACTION for the chooser) dragged 1:1 (handle + content-at-top nested
+  scroll), settled by `exponentialDecay(1.6)` picking the nearest detent from the natural coast
+  endpoint with a bounds-clamped `animateDecay` ride (spring only when the throw doesn't carry),
+  and the animated value read in a LAYOUT modifier so frames never recompose content. Port this
+  recipe to any new sheet; don't invent a fourth gesture system.
 - **Place-sheet drag physics are CONTINUOUS (2026-07-10):** the sheet height is a hand-driven
   `Animatable` - drags (handle or body-at-top) move it 1:1 with the finger, release projects the
   fling and RIDES THE THROW'S OWN INERTIA to the nearest detent: the landing point comes from
@@ -287,6 +294,22 @@ Defaults that make the safe path the easy one:
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).
+- **Place-sheet surface language (2026-07-10):** header icon buttons (Save/Share/more/close) are
+  40dp icons in `dim.copy(alpha = 0.12f)` CIRCLES with 5dp gaps (Google's treatment); ActionPill
+  and the "All reviews" button are CircleShape stadium pills (the outlined button was the last
+  outlined control on the sheet); the reviews summary block is LEFT-ALIGNED (displaySmall number
+  + stars/count stacked beside it), not centered; the MINIMIZED card carries Directions + Call +
+  Website pills in a horizontal scroll row with the same gating as the full action row (website
+  behind HideExternalLinks). Keep new sheet controls on this language. NB `RatingHistogram` in
+  PlaceSheet is ORPHANED (its per-star counts only exist in the live panel DOM) - wire it or
+  delete it, don't duplicate it. **The MENU TAB (2026-07-10)** appears beside Reviews/About when
+  `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
+  Google's LOCALIZED gallery-tab name, which is reused as the tab title); content = the tagged
+  photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery. There is NO keyless
+  menu URL (probed 2026-07-10: search payload [38] empty, zero menu links) - don't chase the
+  link; the quality follow-up is making WebPhotoFetcher scrape the menu TAB exhaustively. The
+  inline review search hides behind a circled magnifier beside the All-reviews pill
+  (`reviewSearchOpen`; toggling closed clears the query so a hidden filter can't keep filtering).
 - **Chip style = stadium pills (2026-07-08):** EVERY chip (map CategoryChips, results-panel filter
   chips Open-now/top-rated/price/sort + the collapsed "N results" pill, PlaceSheet travel-mode chips
   now with a leading `Icons.Default.Directions*` glyph, Settings vibrate-on-turns FilterChips) sets
@@ -312,7 +335,23 @@ Defaults that make the safe path the easy one:
   while the sheet is minimized so expanding re-frames; and the fit CONSUMES `lastCameraTarget` - the
   inset-grow nulls it, and with it null the else-recenter branch re-fired on the STALE VM center one
   recomposition later and yanked the camera back to wherever you were before the search (device-found
-  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Filter
+  2026-07-09, the "search framed then snapped home" bug). There is **NO "hide results" button**. **Grabbing the map minimizes the sheets (2026-07-10):**
+  `VelaMapView.onUserPan` (fired from the camera-move-started listener on REASON_API_GESTURE,
+  the same signal "Search this area" keys off) → MapScreen collapses the results sheet to its
+  bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
+  an open place card to its minimized detent — Google's behaviour; programmatic framing (a
+  different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
+  the 350f settle) and both GLIDE FIRST, FLIP STATE AFTER — the pan path used to flip
+  `resultsCollapsed`/`minimizedState` immediately, which unmounted/switched the content
+  mid-drop and read as a pop no matter the spring (user 2026-07-10, the "just kinda pops down"
+  report); the tick effects animate to the floor and only then flip, the same order the drag
+  path always used. The minimized results bar leads with the QUERY (or list name) in ink +
+  SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
+  awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
+  effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):
+  a LaunchedEffect fires on FIRST composition too, so a remounted sheet (pick a place from the
+  list, or return from one) used to replay the stale tick and open pre-minimized (user
+  2026-07-10). Any new tick-style signal into a sheet needs the same guard. **Filter
   chips are `ElevatedFilterChip` with an explicit filled `chipColors`** (subtle alpha tint off, solid
   `primary` teal + check on, `border = null`). **Chrome:** `resultsShown` (peek/expanded) hides the
   scale bar / locate FAB / "Search this area"; `resultsMinimized` shows them again but LIFTED by
@@ -397,6 +436,15 @@ Defaults that make the safe path the easy one:
   WITHOUT the restricted build flavor (user's call, 2026-07-08) - the flavor/LockableToggle machinery
   was deliberately dropped, keep holders in the plain `ShowReviews` shape. Gate any new external-link
   surface on a place page behind this holder.
+- **Full-screen viewers = VISIBLE bars + gradient, NOT hidden bars (2026-07-10).** After many
+  rounds fighting a Compose Dialog window to COVER the system bars (window dumps proved it
+  re-asserts inset-fitted params and refuses), the working recipe is Google's own: NO_LIMITS +
+  TRANSPARENT status/nav bar colors + `Modifier.requiredFullScreen()` on the content root (sizes
+  to the true display so it fills UNDER the transparent bars) + a top gradient scrim so the
+  status bar reads over the photo. Applies to `PhotoGalleryContent`-era gallery + `FullScreenReviews`.
+  Don't reach for hide-bars/dim/decor tricks again — they leave strips. The reviews page uses an
+  X (left, matching the gallery) and a top-edge pull-down (panel `onOverscroll`/`onOverscrollEnd`
+  → `offset` the Surface → dismiss past 120dp).
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
   `v0.<minor>.<run>` → versionCode `2000+run` compared to BuildConfig; newer → `MapUiState.updateInfo`
   card on the bare map. Download = no-call-timeout client (~80 MB APK) + zip-magic check →
@@ -865,7 +913,9 @@ Defaults that make the safe path the easy one:
   fails verification is ignored (app keeps the last-good config). An unsigned/older
   cached copy falls back to the compiled `DEFAULT` for one launch.
 - **Notices.** `calibration.json` carries a `notices` array (`id`/`level`/`title`/
-  `body`/`url`) shown as dismissable cards on the bare map (`MapViewModel.refreshNotices`,
+  `body`/`url`) shown as dismissable cards on the bare map; **level "urgent" (2026-07-10)
+  renders as a MODAL VelaDialog instead** (OK dismisses; a `url` adds a Learn-more button) —
+  for pushed announcements that must be seen. Cards for routine notes, urgent sparingly. (`MapViewModel.refreshNotices`,
   dismissed ids in `vela_notices` prefs) - push "search is down, fix coming" with no
   app update. Rides the same signed channel.
 - **Phase 3 (done): remote parse *logic*** via `transformsJs` - a signed JS bundle
@@ -1003,7 +1053,11 @@ Defaults that make the safe path the easy one:
   dirs and sanitizes stale `vela.kokoro`/`vela.matcha` prefs to Piper. `project_vela_kokoro_tts` memory
   is that historical record, not the current design.)**
 - Nav feedback: spoken guidance (`VoiceGuide`) + **direction-coded haptic turn cues**
-  (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation.
+  (`core/feedback/Haptics`, `NavEvent.Haptic`); toggle in Settings → Navigation. **Reroute buzzes
+  too (2026-07-10):** `Haptics.reroute(mode)` (three ticks + a long buzz, distinct from every turn
+  pattern) fires beside the throttled spoken "Rerouting" in `NavSession.reroute` - same per-mode
+  setting, works muted. Demo drives pass `travelMode` into `navSession.start` so per-mode haptics
+  behave in a simulation like the real ride (they used to default to DRIVE = silent).
 - EU consent: `InMemoryCookieJar` (CoreModule) pre-seeds Google's `SOCS`/`CONSENT`
   cookies so a cookieless EU session isn't bounced to `consent.google.com` - don't
   strip those, and don't let a `Set-Cookie` downgrade `CONSENT` to `PENDING`.
@@ -1275,7 +1329,12 @@ Defaults that make the safe path the easy one:
   device-verified in the test suburb).** Microsoft footprints have geometry but **no addresses**, so house numbers
   come from a SECOND overlay: **OpenAddresses** address POINTS → per-state `.pmtiles` (`-l address`, keep the
   `number` prop) → `address-overlays` GitHub release + `address-overlay-manifest.json` (`ADDRESS_MANIFEST_URL`,
-  `-PaddressManifestUrl=`). Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
+  `-PaddressManifestUrl=`). **The bake DEDUPES per-unit/parcel repeats (2026-07-10, `scripts/dedup-addresses.py`):**
+  OpenAddresses carries one row per unit/parcel, so a complex repeated its number all over its
+  footprint on the map; the build keeps one point per (number, street, ~150 m cell). Takes
+  effect per region on the next `address-overlays` workflow run (streamed tiles pick it up
+  automatically; a LOCALLY DOWNLOADED overlay keeps the old points until re-downloaded).
+  Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
   → its current `job` → `https://v2.openaddresses.io/batch-prod/job/<job>/source.geojson.gz` (GeoJSONL of Points
   with `number`/`street`; **42 US states have a `statewide` source**, the rest are county-only). Render:
   `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
