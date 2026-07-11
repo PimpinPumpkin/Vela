@@ -120,13 +120,22 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.calculateTargetValue
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import app.vela.R
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -291,6 +300,10 @@ fun MapScreen(
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
     // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
+    // Bumped when the user grabs the map with a sheet open — each sheet glides down to its
+    // minimized form on its bump (see onUserPan below).
+    var sheetPanTick by remember { mutableStateOf(0) }
+    var resultsPanTick by remember { mutableStateOf(0) }
     // Expanded detent of the results bottom sheet, hoisted here so the BACK gesture can step it
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
@@ -346,11 +359,10 @@ fun MapScreen(
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
             state.selected != null -> vm.clearSelection()
-            // Results sheet: back steps ONE detent (expanded -> peek -> minimized -> cleared),
-            // never straight out of the app (a back on the minimized bar used to exit Vela).
-            resultsExpanded -> resultsExpanded = false
-            !state.resultsCollapsed -> vm.collapseResults()
-            else -> vm.clearSearch()
+            // Results sheet: BACK exits the search outright - the drag gestures, the handle and
+            // the X already cover stepping between sizes, so back-stepping detents just made
+            // leaving take three presses (user 2026-07-11).
+            else -> { resultsExpanded = false; vm.clearSearch() }
         }
     }
     // The map target is the focus surface ONLY when the map is primary — hidden while any
@@ -683,6 +695,16 @@ fun MapScreen(
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
+            // Grabbing the map with a sheet up drops it down out of the way so the map is yours
+            // to look at (Google does the same): the results sheet to its bar, the place sheet to
+            // its minimized card. The bar / a drag brings them back.
+            onUserPan = {
+                // Bump ticks, don't flip state here: each sheet GLIDES down first and only then
+                // flips its collapsed state, so the bar/card swap happens invisibly (flipping
+                // straight away unmounted the content mid-drop — the "pops down" report).
+                if (resultsShown) resultsPanTick++
+                if (state.selected != null && !searchOpen) sheetPanTick++
+            },
             ambientCoversView = state.ambientCoversView,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
@@ -1294,6 +1316,7 @@ fun MapScreen(
                 onRemoveFromList = { listId -> vm.removePlaceFromList(listId, state.selected!!) },
                 onCreateListWith = { name -> val id = vm.createList(name); vm.addPlaceToList(id, state.selected!!) },
                 onSetNote = { note -> vm.setPlaceNote(state.selected!!, note) },
+                minimizeTick = sheetPanTick,
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
@@ -1317,11 +1340,31 @@ fun MapScreen(
                 onExpand = vm::expandResults,
                 onClose = vm::clearSearch,
                 listName = state.openListId?.let { id -> state.lists.firstOrNull { it.id == id }?.name },
+                query = state.query,
+                minimizeTick = resultsPanTick,
                 modifier = Modifier.align(Alignment.BottomCenter),
               )
             // Imported Google list preview: offer to save (nothing persisted until tapped).
             // A pill under the search bar, clear of the results sheet at the bottom.
-            state.pendingImport?.let { imp ->
+            // A pushed URGENT notice (calibration.json, level "urgent") is a modal, not a card —
+        // for announcements that must be seen (the "servers overloaded" class of message).
+        // Same signed channel + the same one-time dismissal persistence as the cards.
+        state.notices.firstOrNull { it.level == app.vela.core.config.Notice.LEVEL_URGENT }?.let { n ->
+            app.vela.ui.VelaDialog(
+                onDismissRequest = { vm.dismissNotice(n.id) },
+                title = n.title,
+                confirmText = stringResource(android.R.string.ok),
+                onConfirm = { vm.dismissNotice(n.id) },
+                dismissText = if (n.url != null) stringResource(R.string.mapscreen_learn_more) else stringResource(R.string.place_close),
+                onDismiss = {
+                    n.url?.let { u -> runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(u))) } }
+                    vm.dismissNotice(n.id)
+                },
+            ) {
+                Text(n.body)
+            }
+        }
+        state.pendingImport?.let { imp ->
                 val savedMsg = stringResource(R.string.map_list_saved, imp.title)
                 Surface(
                     shape = RoundedCornerShape(28.dp),
@@ -1421,7 +1464,12 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
+        // The locate + parking buttons yield to EVERY bottom surface, the route chooser and the
+        // step list included - a search from an open chooser could null the selection while
+        // directionsOpen stayed true, and both buttons drew on top of the panel.
+        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null &&
+            !resultsShown && !state.directionsOpen && !state.showSteps
+        ) {
             // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
             // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
@@ -1610,7 +1658,7 @@ fun MapScreen(
                             onDismiss = { vm.dismissUpdate() },
                         )
                     }
-                    state.notices.forEach { n ->
+                    state.notices.filterNot { it.level == app.vela.core.config.Notice.LEVEL_URGENT }.forEach { n ->
                         NoticeCard(n, onDismiss = { vm.dismissNotice(n.id) })
                     }
                 }
@@ -1679,6 +1727,8 @@ private fun SearchResults(
     onExpand: () -> Unit,
     onClose: () -> Unit,
     listName: String? = null, // set when the results ARE an open list — shown as the sheet title
+    query: String = "", // the search text — leads the minimized bar so it says WHAT the results are
+    minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, THEN flip collapsed
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -1692,44 +1742,95 @@ private fun SearchResults(
     // 0 = off; else the max price level to show (1=$ … 4=$$$$). Tapping the chip cycles.
     var priceMax by remember { mutableStateOf(0) }
     val screenH = LocalConfiguration.current.screenHeightDp
-    val listMaxH by animateDpAsState(
-        if (expanded) (screenH * 0.82f).dp else (screenH * 0.42f).dp,
-        label = "resultsListHeight",
-    )
-    // Bottom-sheet nested scroll, mirroring PlaceSheet.dismissConn: ONE detent step per
-    // gesture (re-armed at the fling boundary), a down-drag at the list top shrinks a
-    // detent (expanded → peek → minimized), an up-drag into the content grows to full.
+    // The list height is a hand-driven Animatable, the place sheet's physics: drags move it 1:1
+    // with the finger, releases ride the throw's own decay to the nearest size (0 = the minimized
+    // bar, peek, expanded), and the detent just stops the coast. Minimizing animates the list to
+    // ZERO first and only then flips the collapsed state, so the bar swap happens invisibly.
+    val peekL = screenH * 0.42f
+    val expL = screenH * 0.82f
+    val listH = remember { Animatable(if (collapsed) 0f else if (expanded) expL else peekL) }
+    val resultsSettleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    // Dropping to the bar GLIDES on a soft spring — at the settle stiffness the pan-triggered
+    // drop read as an abrupt blink (user 2026-07-10). Growing keeps the quicker settle so taps
+    // feel responsive.
+    val resultsGlideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    val resultsDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    LaunchedEffect(collapsed, expanded) {
+        val target = if (collapsed) 0f else if (expanded) expL else peekL
+        if (listH.targetValue != target) listH.animateTo(target, if (target == 0f) resultsGlideSpec else resultsSettleSpec)
+    }
+    // Map grabbed: glide the OPEN list down to zero and only then flip collapsed — the same
+    // order the drag path uses. Flipping first unmounts the list mid-drop (the visible "pop").
+    // seenTick consumes the mount-time value so a REMOUNT (returning from a place sheet) can't
+    // replay a stale pan as a fresh minimize (same guard as the place sheet).
+    var seenTick by remember { mutableStateOf(minimizeTick) }
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == seenTick || collapsed) return@LaunchedEffect
+        seenTick = minimizeTick
+        listH.animateTo(0f, resultsGlideSpec)
+        onMinimize()
+    }
     val listState = rememberLazyListState()
     val minimize = rememberUpdatedState(onMinimize)
+    val expand = rememberUpdatedState(onExpand)
+    val isCollapsed = rememberUpdatedState(collapsed)
     val isExpanded = rememberUpdatedState(expanded)
     val setExpanded = rememberUpdatedState(onExpandedChange)
-    val dismissConn = remember(collapsed) {
+    val density = LocalDensity.current
+    val sheetScope = rememberCoroutineScope()
+    fun dragListBy(dyPx: Float) {
+        val dyDp = with(density) { dyPx.toDp().value }
+        sheetScope.launch { listH.snapTo((listH.value - dyDp).coerceIn(0f, expL)) }
+    }
+    fun settleList(velocityPxPerSec: Float) {
+        val vDp = with(density) { velocityPxPerSec.toDp().value }
+        val naturalEnd = resultsDecay.calculateTargetValue(listH.value, -vDp)
+        val target = listOf(0f, peekL, expL).minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekL
+        sheetScope.launch {
+            // States first for peek/expanded so everything keyed on them stays honest; the
+            // MINIMIZED flip waits until the list has ridden down to zero (see above).
+            if (target != 0f) {
+                if (isCollapsed.value) expand.value()
+                setExpanded.value(target == expL)
+            }
+            val towardTarget = (naturalEnd - listH.value) * (target - listH.value) > 0f
+            if (towardTarget && kotlin.math.abs(naturalEnd - listH.value) >= kotlin.math.abs(target - listH.value)) {
+                try {
+                    listH.updateBounds(lowerBound = minOf(listH.value, target), upperBound = maxOf(listH.value, target))
+                    listH.animateDecay(-vDp, resultsDecay)
+                } finally {
+                    listH.updateBounds(lowerBound = null, upperBound = null)
+                }
+                if (kotlin.math.abs(listH.value - target) > 0.5f) listH.animateTo(target, resultsSettleSpec)
+            } else {
+                listH.animateTo(target, resultsSettleSpec, initialVelocity = -vDp)
+            }
+            if (target == 0f && !isCollapsed.value) minimize.value()
+        }
+    }
+    val dismissConn = remember {
         object : NestedScrollConnection {
-            private var acc = 0f
-            private var steppedThisGesture = false
+            private var draggingSheet = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 val atTop = listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
-                if (available.y > 0f && atTop) {
-                    acc += available.y
-                    if (!steppedThisGesture) {
-                        when {
-                            isExpanded.value && acc > 90f -> { setExpanded.value(false); steppedThisGesture = true; acc = 0f }
-                            !isExpanded.value && !collapsed && acc > 150f -> { steppedThisGesture = true; acc = 0f; minimize.value() }
-                        }
-                    }
+                if (available.y > 0f && atTop && listH.value > 0f) {
+                    draggingSheet = true
+                    dragListBy(available.y)
                     return available
                 }
-                if (available.y < 0f) {
-                    acc = 0f
-                    if (!isExpanded.value) setExpanded.value(true)
+                if (available.y < 0f && listH.value < expL) {
+                    draggingSheet = true
+                    dragListBy(available.y)
+                    return available
                 }
                 return Offset.Zero
             }
-            // Fling phase closes every drag (even at zero velocity) — the gesture boundary
-            // that re-arms stepping for the next swipe, exactly like the place sheet.
             override suspend fun onPreFling(available: Velocity): Velocity {
-                acc = 0f
-                steppedThisGesture = false
+                if (draggingSheet) {
+                    draggingSheet = false
+                    settleList(available.y)
+                    return available
+                }
                 return Velocity.Zero
             }
         }
@@ -1779,19 +1880,20 @@ private fun SearchResults(
                             if (collapsed) onExpand() else onExpandedChange(!expanded)
                         })
                     }
-                    .pointerInput(collapsed, expanded) {
-                        var total = 0f
+                    .pointerInput(Unit) {
+                        // Same physics as the body: the handle drags the list 1:1 and the release
+                        // rides the fling to the nearest size.
+                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
                         detectVerticalDragGestures(
-                            onDragStart = { total = 0f },
-                            onVerticalDrag = { change, dy -> change.consume(); total += dy },
-                            onDragEnd = {
-                                when {
-                                    total < -40f && collapsed -> onExpand()
-                                    total < -40f -> onExpandedChange(true)
-                                    total > 40f && expanded -> onExpandedChange(false)
-                                    total > 40f && !collapsed -> onMinimize()
-                                }
+                            onDragStart = { tracker.resetTracking() },
+                            onVerticalDrag = { change, dy ->
+                                change.consume()
+                                tracker.addPosition(change.uptimeMillis, change.position)
+                                if (isCollapsed.value && dy < 0f) expand.value() // list mounts at 0 and grows with the finger
+                                dragListBy(dy)
                             },
+                            onDragEnd = { settleList(tracker.calculateVelocity().y) },
+                            onDragCancel = { settleList(0f) },
                         )
                     },
             ) {
@@ -1812,18 +1914,29 @@ private fun SearchResults(
                         .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = if (collapsed) 8.dp else 0.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // An open list leads with its NAME (the count alone didn't say which
-                    // list you were looking at); plain searches keep the count.
-                    Text(
-                        listName?.let { "$it · ${shown.size}" }
-                            ?: stringResource(R.string.mapscreen_results_count, shown.size),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium,
-                        color = if (listName != null) SheetPalette.ink(dark) else SheetPalette.dim(dark),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
+                    // The bar says WHAT you're looking at, not just how many: the list name or
+                    // the search text leads in full ink with the count on its own line UNDER it —
+                    // the inline "title · count" floated awkwardly against the right-side buttons
+                    // (user 2026-07-10); stacked left-aligned lines read like a proper header.
+                    val barTitle = listName ?: query.trim().ifBlank { null }
+                    Column(Modifier.weight(1f)) {
+                        if (barTitle != null) {
+                            Text(
+                                barTitle,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = SheetPalette.ink(dark),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Text(
+                            stringResource(R.string.mapscreen_results_count, shown.size),
+                            style = if (barTitle != null) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                            color = SheetPalette.dim(dark),
+                            maxLines = 1,
+                        )
+                    }
                     IconButton(onClick = { if (collapsed) onExpand() else onExpandedChange(!expanded) }) {
                         Icon(
                             if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
@@ -1916,7 +2029,17 @@ private fun SearchResults(
             }
             if (!collapsed) {
             Divider()
-            LazyColumn(Modifier.nestedScroll(dismissConn).heightIn(max = listMaxH), state = listState) {
+            LazyColumn(
+                Modifier
+                    .nestedScroll(dismissConn)
+                    .layout { measurable, constraints ->
+                        // Layout-phase read: animation frames re-layout the list, never recompose it.
+                        val maxHPx = listH.value.dp.roundToPx().coerceAtLeast(0)
+                        val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, maxHPx)))
+                        layout(pl.width, pl.height) { pl.place(0, 0) }
+                    },
+                state = listState,
+            ) {
                 items(shown) { place ->
                 Column(
                     Modifier

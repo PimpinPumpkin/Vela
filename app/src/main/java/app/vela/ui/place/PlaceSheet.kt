@@ -42,6 +42,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -155,6 +156,9 @@ import app.vela.ui.item
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -173,12 +177,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.layout
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -243,6 +252,9 @@ fun PlaceSheet(
     onRemoveFromList: (listId: String) -> Unit = {},
     onCreateListWith: (name: String) -> Unit = {},
     onSetNote: (String?) -> Unit = {},
+    // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
+    // card so the map is unobstructed (Google's behaviour). 0 = never.
+    minimizeTick: Int = 0,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -276,9 +288,14 @@ fun PlaceSheet(
     // whole detent the moment a drag crossed a pixel threshold, which read as staccato steps
     // (user 2026-07-10). State flips from taps / the reviews panel / auto-expand still animate,
     // via the LaunchedEffect below.
-    val minH = screenH * 0.26f
-    val peekH = screenH * 0.56f
-    val expH = screenH * 0.92f
+    // A parked-car (or any minimal-content) sheet has nothing to minimize INTO — one compact
+    // fixed height, so a drag can't shrink it and hide the actions (user 2026-07-10). All three
+    // detents equal that height, so every detent computation resolves to it and the drag can't
+    // resize the sheet.
+    val singleDetent = isParking
+    val minH = if (singleDetent) screenH * 0.30f else screenH * 0.26f
+    val peekH = if (singleDetent) screenH * 0.30f else screenH * 0.56f
+    val expH = if (singleDetent) screenH * 0.30f else screenH * 0.92f
     fun detentFor(expanded: Boolean, minimized: Boolean) = when {
         expanded -> expH
         minimized -> minH
@@ -291,6 +308,24 @@ fun PlaceSheet(
         // Skip when a drag-release settle is already animating to this exact detent - restarting
         // would zero the coast velocity mid-glide.
         if (heightAnim.targetValue != target) heightAnim.animateTo(target, settleSpec)
+    }
+    // The user grabbed the map: glide down to the minimized card on a SOFT spring (the settle
+    // stiffness reads as a blink for this unprompted drop). Runs after the state-flip effect
+    // above, so animating on VALUE (not targetValue) deliberately replaces its quicker settle.
+    val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    // Consume-once guard: seenTick INITIALIZES to the tick's CURRENT value, so a fresh mount
+    // (picking a place from the results list re-mounts the sheet) never treats a STALE tick as
+    // a new pan - a LaunchedEffect fires on first composition too, and without this the next
+    // place opened pre-minimized (user 2026-07-10). Only a bump AFTER mount glides.
+    var seenTick by remember { mutableStateOf(minimizeTick) }
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == seenTick) return@LaunchedEffect
+        seenTick = minimizeTick
+        // Glide FIRST, flip the states after: any content keyed on the minimized state then
+        // changes only once the card is already down (flipping first read as a pop, not a glide).
+        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
+        expandedState.value = false
+        minimizedState.value = true
     }
     // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
     // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
@@ -308,6 +343,7 @@ fun PlaceSheet(
     // linear projection factor of 0.15 - it's the one knob for "how hard must I throw it".
     val flingDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
     fun settleFromVelocity(velocityPxPerSec: Float) {
+        if (singleDetent) { settleScope.launch { heightAnim.animateTo(peekH, settleSpec) }; return }
         val vDp = with(density) { velocityPxPerSec.toDp().value }
         // Where the throw would naturally coast to, then the nearest detent to THAT point.
         val naturalEnd = flingDecay.calculateTargetValue(heightAnim.value, -vDp)
@@ -480,8 +516,11 @@ fun PlaceSheet(
                     .dpadHighlight(RoundedCornerShape(3.dp))
                     .clickable {
                         // Tap grows one detent: minimized→peek, peek→expanded, expanded→peek.
-                        if (minimizedState.value) minimizedState.value = false
-                        else expandedState.value = !expandedState.value
+                        // (No-op on a single-detent sheet — a parked car has nowhere to step.)
+                        if (!singleDetent) {
+                            if (minimizedState.value) minimizedState.value = false
+                            else expandedState.value = !expandedState.value
+                        }
                     }
                     .pointerInput(Unit) {
                         // The handle drags the sheet 1:1 and the release coasts to the nearest
@@ -513,15 +552,35 @@ fun PlaceSheet(
                 Modifier
                     .nestedScroll(dismissConn)
                     .verticalScroll(bodyScroll)
+                    // GRACEFUL EXIT (user 2026-07-10): while the sheet glides toward the minimized
+                    // floor the full body FADES OUT with the height (render-phase read, no
+                    // recomposition), and the minimized card below fades in at the swap - the
+                    // content no longer vanishes in one frame at the flip.
+                    .graphicsLayer {
+                        if (minimizedState.value || singleDetent) { alpha = 1f; translationY = 0f } else {
+                            val f = ((heightAnim.value - minH) / 110f).coerceIn(0f, 1f)
+                            alpha = f
+                            // The content SLIDES DOWN as it fades (user 2026-07-10) — the exit
+                            // reads as the extras dropping away rather than a plain dissolve.
+                            translationY = (1f - f) * 48.dp.toPx()
+                        }
+                    }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
             // Minimized detent: a compact card (name, rating, Directions) instead of the full body,
             // like Google's collapsed sheet. At this small height leading with the photo hero showed
             // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
-            if (minimizedState.value) {
+            if (minimizedState.value && !singleDetent) {
+                val miniIn = remember { androidx.compose.animation.core.Animatable(0f) }
+                LaunchedEffect(Unit) { miniIn.animateTo(1f, tween(220)) }
                 // A single tap ANYWHERE on the minimized card pops it back to peek (Google) —
                 // the Directions pill keeps its own tap since inner clickables win their bounds.
-                Column(Modifier.fillMaxWidth().clickable { minimizedState.value = false }) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .graphicsLayer { alpha = miniIn.value }
+                        .clickable { minimizedState.value = false },
+                ) {
                 Text(
                     place.name,
                     style = MaterialTheme.typography.titleLarge,
@@ -544,7 +603,29 @@ fun PlaceSheet(
                     }
                 }
                 Spacer(Modifier.height(10.dp))
-                ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                // The full sheet's key actions, not just Directions — a minimized card you can
+                // call or open the website from saves a pointless re-expand (user 2026-07-10).
+                // Same gating as the full action row (website behind the external-links toggle).
+                Row(
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                    place.phone?.let { ph ->
+                        ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
+                            val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
+                            runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
+                        }
+                    }
+                    if (!app.vela.ui.HideExternalLinks.on.value) {
+                        place.website?.let { site ->
+                            ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                            }
+                        }
+                    }
+                }
                 }
                 return@Column
             }
@@ -553,28 +634,9 @@ fun PlaceSheet(
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
             if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
-                // Category filter chips (Menu / Food & drink / Vibe / By owner …) — only when Google tagged
-                // photos with categories, mirroring its gallery tabs. "All" clears the filter.
-                val photoCats = remember(place.photoCategories) { place.photoCategories.filterNotNull().distinct() }
-                if (photoCats.isNotEmpty()) {
-                    Row(
-                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(bottom = 8.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        (listOf<String?>(null) + photoCats).forEach { cat ->
-                            FilterChip(
-                                selected = photoCat == cat,
-                                onClick = { photoCat = cat },
-                                label = { Text(cat ?: stringResource(R.string.place_photo_category_all)) },
-                            )
-                        }
-                    }
-                }
-                // Indices into the FULL photo list that match the selected category (keeps galleryStart
-                // pointing at the right photo in the full-screen viewer).
-                val shown = remember(place.photoUrls, place.photoCategories, photoCat) {
-                    place.photoUrls.indices.filter { photoCat == null || place.photoCategories.getOrNull(it) == photoCat }
-                }
+                // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
+                // the menu surface now, and the other categories read as noise; user 2026-07-10.)
+                val shown = remember(place.photoUrls) { place.photoUrls.indices.toList() }
                 LazyRow(
                     Modifier.fillMaxWidth().padding(bottom = 12.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -603,7 +665,9 @@ fun PlaceSheet(
                     }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // spacedBy keeps the circled header buttons from touching now that they carry
+            // visible backgrounds (Google's circles have the same small gaps).
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isParking) {
                     Icon(
                         Icons.Default.DirectionsCar,
@@ -626,36 +690,29 @@ fun PlaceSheet(
                 )
                 // Save + Share as compact header actions (preferred look). The name has weight(1f) and
                 // wraps to 2 lines if long, so these stay put without shoving it off.
-                IconButton(onClick = onToggleSave, modifier = Modifier.size(40.dp)) {
-                    Icon(
-                        if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                // The STAR is the whole save/pin menu now (quick save, lists, note, home/work) —
+                // four circled buttons crowded the header, and the overflow's items were all
+                // save-family anyway (user 2026-07-10). D-pad-first via VelaMenu (docs/dpad.md).
+                var saveMenu by remember { mutableStateOf(false) }
+                Box {
+                    HeaderCircleButton(
+                        icon = if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
                         contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
                         tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
-                        modifier = Modifier.size(20.dp),
-                    )
+                        bg = dim,
+                    ) { saveMenu = true }
+                    VelaMenu(expanded = saveMenu, onDismissRequest = { saveMenu = false }) {
+                        item(stringResource(if (isSaved) R.string.place_saved else R.string.place_save)) { saveMenu = false; onToggleSave() }
+                        if (!isParking) {
+                            item(stringResource(R.string.place_save_to_list)) { saveMenu = false; showListChooser = true }
+                            if (inAnyList) item(stringResource(R.string.place_edit_note)) { saveMenu = false; showNoteEditor = true }
+                        }
+                        item(stringResource(R.string.place_set_as_home)) { saveMenu = false; onSetShortcut(ShortcutKind.HOME) }
+                        item(stringResource(R.string.place_set_as_work)) { saveMenu = false; onSetShortcut(ShortcutKind.WORK) }
+                    }
                 }
                 ShareIconButton(place, dim)
-                // Overflow: pin this place straight to Home/Work (Google-style).
-                var headerMenu by remember { mutableStateOf(false) }
-                Box {
-                    IconButton(onClick = { headerMenu = true }, modifier = Modifier.size(40.dp)) {
-                        Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.place_more_options), tint = dim, modifier = Modifier.size(20.dp))
-                    }
-                    // D-pad-first (docs/dpad.md): VelaMenu renders the normal anchored DropdownMenu
-                    // under touch, but a raw-Dialog chooser that AUTO-FOCUSES its first item under
-                    // D-pad (a DropdownMenu Popup can't be pre-focused; a raw Dialog can).
-                    VelaMenu(expanded = headerMenu, onDismissRequest = { headerMenu = false }) {
-                        if (!isParking) {
-                            item(stringResource(R.string.place_save_to_list)) { headerMenu = false; showListChooser = true }
-                            if (inAnyList) item(stringResource(R.string.place_edit_note)) { headerMenu = false; showNoteEditor = true }
-                        }
-                        item(stringResource(R.string.place_set_as_home)) { headerMenu = false; onSetShortcut(ShortcutKind.HOME) }
-                        item(stringResource(R.string.place_set_as_work)) { headerMenu = false; onSetShortcut(ShortcutKind.WORK) }
-                    }
-                }
-                IconButton(onClick = onClose, modifier = Modifier.size(40.dp)) {
-                    Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = dim, modifier = Modifier.size(20.dp))
-                }
+                HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close), dim, dim, onClick = onClose)
             }
 
             if (place.rating != null) {
@@ -958,8 +1015,8 @@ fun PlaceSheet(
             val highlights = remember(place.about) { attributeHighlights(place.about) }
             if (highlights.isNotEmpty()) {
                 Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 12.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 20.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     highlights.forEach { h ->
                         Text(
@@ -978,7 +1035,10 @@ fun PlaceSheet(
 
             // Popular times sit BELOW the action buttons (Google's order). Lazily
             // filled by the WebView detail fetch, so it pops in a beat after open.
-            place.popularTimes?.let { PopularTimesSection(it, ink, dim) }
+            place.popularTimes?.let {
+                Spacer(Modifier.height(10.dp)) // clear air between the attribute chips and the chart
+                PopularTimesSection(it, ink, dim)
+            }
             // While the (slow, ~10–20 s) detail fetch is in flight and popular times
             // haven't landed yet, show a subtle indicator so it reads as "loading", not
             // "missing" — it clears to the chart, or to nothing if this place has none.
@@ -1207,21 +1267,97 @@ fun DirectionsPanel(
     // Keyed to the destination so opening directions for a different place starts
     // expanded again instead of inheriting the previous session's collapsed state.
     val collapsed = remember(destinationName) { mutableStateOf(false) }
+    // The chooser body collapses CONTINUOUSLY, the place card's physics: `frac` (1 = full body,
+    // 0 = minimized to the header + Start) tracks the finger 1:1 from the handle or a body drag
+    // at its top, and releases ride the fling's own decay to whichever end the momentum points
+    // at - the old handle-only threshold flip read as no gesture at all (user 2026-07-11).
+    val frac = remember(destinationName) { Animatable(1f) }
+    var bodyHPx by remember(destinationName) { mutableStateOf(0) }
+    val panelSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    val panelDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    val panelScope = rememberCoroutineScope()
+    val panelScroll = rememberScrollState()
+    LaunchedEffect(destinationName, collapsed.value) {
+        val target = if (collapsed.value) 0f else 1f
+        if (frac.targetValue != target) frac.animateTo(target, panelSettle)
+    }
+    fun dragPanelBy(dyPx: Float) {
+        if (bodyHPx <= 0) return
+        panelScope.launch { frac.snapTo((frac.value - dyPx / bodyHPx).coerceIn(0f, 1f)) }
+    }
+    fun settlePanel(velocityPxPerSec: Float) {
+        if (bodyHPx <= 0) return
+        val vFrac = velocityPxPerSec / bodyHPx
+        val naturalEnd = panelDecay.calculateTargetValue(frac.value, -vFrac)
+        val target = if (kotlin.math.abs(naturalEnd - 0f) < kotlin.math.abs(naturalEnd - 1f)) 0f else 1f
+        panelScope.launch {
+            if (target == 1f) collapsed.value = false // body must be composed while it grows
+            val towardTarget = (naturalEnd - frac.value) * (target - frac.value) > 0f
+            if (towardTarget && kotlin.math.abs(naturalEnd - frac.value) >= kotlin.math.abs(target - frac.value)) {
+                try {
+                    frac.updateBounds(lowerBound = minOf(frac.value, target), upperBound = maxOf(frac.value, target))
+                    frac.animateDecay(-vFrac, panelDecay)
+                } finally {
+                    frac.updateBounds(lowerBound = null, upperBound = null)
+                }
+                if (kotlin.math.abs(frac.value - target) > 0.005f) frac.animateTo(target, panelSettle)
+            } else {
+                frac.animateTo(target, panelSettle, initialVelocity = -vFrac)
+            }
+            if (target == 0f) collapsed.value = true
+        }
+    }
+    // Body drags at the scroll top move the chooser 1:1 (the natural "swipe the sheet down"
+    // lands on the body, not the thin handle); content scrolls once the body is fully open.
+    val panelConn = remember(destinationName) {
+        object : NestedScrollConnection {
+            private var dragging = false
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y > 0f && panelScroll.value == 0 && frac.value > 0f) {
+                    dragging = true
+                    dragPanelBy(available.y)
+                    return available
+                }
+                if (available.y < 0f && frac.value < 1f) {
+                    dragging = true
+                    dragPanelBy(available.y)
+                    return available
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (dragging) {
+                    dragging = false
+                    settlePanel(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
         Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
-            // Drag handle — swipe down to minimise the chooser (peek the route on the
-            // map before you Start), swipe up or tap to bring it back.
+            // Drag handle — the chooser follows the finger; tap still toggles.
             Box(
                 Modifier
                     .fillMaxWidth()
                     .pointerInput(Unit) {
-                        detectVerticalDragGestures { _, dy ->
-                            if (dy > 6f) collapsed.value = true else if (dy < -6f) collapsed.value = false
-                        }
+                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                        detectVerticalDragGestures(
+                            onDragStart = { tracker.resetTracking() },
+                            onVerticalDrag = { change, dy ->
+                                change.consume()
+                                tracker.addPosition(change.uptimeMillis, change.position)
+                                if (collapsed.value && dy < 0f) collapsed.value = false
+                                dragPanelBy(dy)
+                            },
+                            onDragEnd = { settlePanel(tracker.calculateVelocity().y) },
+                            onDragCancel = { settlePanel(0f) },
+                        )
                     }
                     .dpadHighlight(RoundedCornerShape(3.dp)) // D-pad: OK toggles (docs/dpad.md)
                     .clickable { collapsed.value = !collapsed.value }
@@ -1360,15 +1496,24 @@ fun DirectionsPanel(
                 }
                 IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
             }
-            AnimatedVisibility(visible = !collapsed.value) {
+            if (!collapsed.value || frac.value > 0.005f) {
               // Cap the expandable body to ~58% of the screen and let it scroll — on short screens the
               // mode chips + route/transit list + Start button are taller than the bottom-anchored card,
               // so without this the Start button (drive) and the lower transit trips fall off the bottom,
               // unreachable. verticalScroll keeps the whole chooser usable; the map stays visible above.
+              // The frac read lives in the LAYOUT modifier so animation frames never recompose the body.
               Column(
                   Modifier
+                      .layout { measurable, constraints ->
+                          val pl = measurable.measure(constraints)
+                          bodyHPx = maxOf(bodyHPx, pl.height)
+                          val h = (pl.height * frac.value).toInt().coerceAtLeast(0)
+                          layout(pl.width, h) { pl.place(0, 0) }
+                      }
+                      .clipToBounds()
                       .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.58f).dp)
-                      .verticalScroll(rememberScrollState()),
+                      .nestedScroll(panelConn)
+                      .verticalScroll(panelScroll),
               ) {
             Spacer(Modifier.height(10.dp))
             // D-pad-first (docs/dpad.md): land focus on the first travel-mode tab when the
@@ -1475,7 +1620,7 @@ fun DirectionsPanel(
               }
             }
             // Minimised: keep a Start button reachable without expanding.
-            if (collapsed.value) {
+            if (collapsed.value && frac.value < 0.05f) {
                 Button(
                     onClick = onStartNav,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
@@ -2031,10 +2176,72 @@ private fun PhotoShimmerTile(base: Color) {
 }
 
 /** Full-screen, swipeable photo viewer (tap a photo in the strip to open). */
+// ---- Activity-window full-screen overlays -------------------------------------------------------
+// A nested compose Dialog window can NOT reach the screen edges (window-dump-proven: it re-asserts
+// inset-fitted params) AND it re-captures stale display bounds on rotation (the "image floats,
+// background gone" report). The MAIN ACTIVITY window is already edge-to-edge, so these surfaces
+// render there instead — genuinely full-screen, and they re-lay-out on rotation for free. Deep call
+// sites push a request to a holder; [PlaceOverlays] (mounted at VelaRoot's root Box) renders it.
+
+object GalleryOverlay {
+    data class Req(val urls: List<String>, val dates: List<String?>, val start: Int, val onDismiss: () -> Unit)
+    var req by mutableStateOf<Req?>(null)
+        private set
+    fun show(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) { req = Req(urls, dates, start, onDismiss) }
+    fun dismiss() { val r = req; req = null; r?.onDismiss?.invoke() }
+    fun clear() { req = null } // caller unmounted its own state — no callback
+}
+
+object FullReviewsOverlay {
+    data class Req(val featureId: String, val place: Place, val onDismiss: () -> Unit)
+    var req by mutableStateOf<Req?>(null)
+        private set
+    fun show(featureId: String, place: Place, onDismiss: () -> Unit) { req = Req(featureId, place, onDismiss) }
+    fun dismiss() { val r = req; req = null; r?.onDismiss?.invoke() }
+    fun clear() { req = null }
+}
+
+/** Rendered LAST in VelaRoot's root Box, so it sits above the map + sheet in the activity's own
+ *  edge-to-edge window. The gallery is drawn after the reviews page so a review-photo tap layers on top. */
+@Composable
+fun PlaceOverlays() {
+    FullReviewsOverlay.req?.let { r ->
+        val dark = isAppInDarkTheme()
+        FullScreenReviewsContent(r.featureId, r.place, if (dark) InkDark else InkLight, if (dark) DimDark else DimLight) { FullReviewsOverlay.dismiss() }
+    }
+    GalleryOverlay.req?.let { r ->
+        PhotoGalleryContent(r.urls, r.dates, r.start) { GalleryOverlay.dismiss() }
+    }
+}
+
 @Composable
 private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) {
+    // Shim → the activity-window overlay (see GalleryOverlay). The call site keeps its own open/close
+    // state; unmounting clears the overlay without re-firing onDismiss.
+    DisposableEffect(urls, start) {
+        GalleryOverlay.show(urls, dates, start, onDismiss)
+        onDispose { GalleryOverlay.clear() }
+    }
+}
+
+@Composable
+private fun PhotoGalleryContent(urls: List<String>, dates: List<String?>, start: Int, onDismiss: () -> Unit) {
     if (urls.isEmpty()) return
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+    BackHandler(onBack = onDismiss)
+    // The viewer is always black, so force LIGHT status/nav icons while it's up (the map theme
+    // may have set them dark); MainActivity's theme effect restores them when this leaves.
+    val galleryView = LocalView.current
+    DisposableEffect(Unit) {
+        val ctx = galleryView.context
+        val win = (ctx as? android.app.Activity)?.window
+        val prevLight = win?.let { androidx.core.view.WindowCompat.getInsetsController(it, galleryView).isAppearanceLightStatusBars }
+        win?.let { androidx.core.view.WindowCompat.getInsetsController(it, galleryView).isAppearanceLightStatusBars = false }
+        onDispose {
+            if (win != null && prevLight != null) {
+                androidx.core.view.WindowCompat.getInsetsController(win, galleryView).isAppearanceLightStatusBars = prevLight
+            }
+        }
+    }
         val pager = rememberPagerState(initialPage = start.coerceIn(0, urls.lastIndex)) { urls.size }
         // D-pad (docs/dpad.md): the viewer grabs focus so LEFT/RIGHT page through the
         // photos with no touch; BACK already dismisses (Dialog).
@@ -2043,7 +2250,7 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
         LaunchedEffect(Unit) { runCatching { galleryFocus.requestFocus() } }
         Box(
             Modifier
-                .fillMaxSize()
+                .requiredFullScreen()
                 .background(Color.Black)
                 .focusRequester(galleryFocus)
                 .onKeyEvent { ev ->
@@ -2061,6 +2268,18 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 }
                 .focusable(),
         ) {
+            // Google's diffuse backdrop: the current photo, blurred and dimmed, behind the pager
+            // (Android 12+; older devices keep plain black — Modifier.blur no-ops there and a
+            // sharp copy would read as a glitch, so it's gated).
+            if (android.os.Build.VERSION.SDK_INT >= 31) {
+                AsyncImage(
+                    model = urls[pager.currentPage].atWidth(240),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize().blur(48.dp),
+                )
+                Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.55f)))
+            }
             HorizontalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
                 // One gesture loop so pinch-zoom, pan-when-zoomed, swipe-down-to-
                 // dismiss, AND the pager's horizontal swipe between photos all work
@@ -2122,6 +2341,11 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 }
             }
             Box(Modifier.fillMaxSize()) {
+                // Gradient fade under the (visible) status bar, Google-style.
+                Box(
+                    Modifier.fillMaxWidth().height(140.dp).align(Alignment.TopCenter)
+                        .background(androidx.compose.ui.graphics.Brush.verticalGradient(0f to Color.Black.copy(alpha = 0.55f), 1f to Color.Transparent)),
+                )
                 Text(
                     stringResource(R.string.place_gallery_counter, pager.currentPage + 1, urls.size),
                     style = MaterialTheme.typography.bodyMedium,
@@ -2139,22 +2363,100 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 // Pixel 9 — so a normal bottom caption vanished. A FIXED bottom clearance keeps it in the
                 // drawable area regardless (harmlessly a touch higher on phones with no such clip).
                 dates.getOrNull(pager.currentPage)?.let { caption ->
+                    // Bottom-LEFT in every orientation (Google's stamp position). With the system
+                    // bars hidden the window owns the full screen, so a modest fixed clearance
+                    // works in both orientations (the old proportional clearance floated it).
                     Text(
                         caption,
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White,
-                        modifier = Modifier.align(Alignment.BottomCenter)
-                            .padding(bottom = 120.dp, start = 16.dp, end = 16.dp)
+                        modifier = Modifier.align(Alignment.BottomStart)
+                            .navigationBarsPadding()
+                            .padding(bottom = 16.dp, start = 16.dp, end = 16.dp)
                             .background(Color.Black.copy(alpha = 0.6f), RoundedCornerShape(50))
                             .padding(horizontal = 14.dp, vertical = 7.dp),
                     )
                 }
             }
         }
+}
+
+// Google's gallery-tab name for the menu, per app language (the categories arrive localized via
+// hl=). Lowercase contains-match, so "Menu", "Menú", "Speisekarte & Getränke" all hit.
+private val MENU_TAB_WORDS = listOf("menu", "menú", "menù", "speisekarte", "cardápio", "menukaart", "меню", "meny")
+
+/** The Menu tab: the menu-tagged gallery photos as a browsable 2-up grid (tap → full-screen).
+ *  Only mounted when the place HAS menu photos, so no empty state is needed. Plain Column of
+ *  chunked rows, not a lazy grid — the sheet body already scrolls, and menu sets are tens of
+ *  photos at most. */
+@Composable
+private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (Int) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        menuIndices.chunked(2).forEach { rowIdx ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
+                rowIdx.forEach { i ->
+                    AsyncImage(
+                        model = place.photoUrls.getOrNull(i),
+                        contentDescription = stringResource(R.string.place_photo_number, i + 1),
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(150.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(dim.copy(alpha = 0.2f))
+                            .dpadHighlight(RoundedCornerShape(12.dp))
+                            .clickable { onOpen(i) },
+                    )
+                }
+                if (rowIdx.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
     }
 }
 
+/** A header action: an 18dp icon in a fixed 36dp grey circle. A plain clickable Box, NOT an M3
+ *  IconButton — the IconButton's minimum-touch-target machinery kept re-inflating the layout
+ *  box past the visible circle, which is why the header circles overlapped through two rounds
+ *  of "make them smaller" (user 2026-07-10). Here the layout size IS the circle, full stop. */
+@Composable
+private fun HeaderCircleButton(
+    icon: ImageVector,
+    contentDescription: String?,
+    tint: Color,
+    bg: Color,
+    onClick: () -> Unit,
+) {
+    Box(
+        Modifier
+            .size(36.dp)
+            .clip(androidx.compose.foundation.shape.CircleShape)
+            .background(bg.copy(alpha = 0.12f))
+            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
+    }
+}
+
+/** Size a dialog's ROOT to the real display bounds. Compose dialogs are wrap-content windows
+ *  measured against INSET bounds, so plain fillMaxSize stops ~status-bar short of the screen
+ *  edges (window-dump-proven: a fixed 1079x2142 request on a 1080x2340 display) — requiredSize
+ *  overrides the constraints and the window grows to match. */
+@Composable
+private fun Modifier.requiredFullScreen(): Modifier {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val bounds = remember {
+        val wm = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
+        if (android.os.Build.VERSION.SDK_INT >= 30) wm.currentWindowMetrics.bounds
+        else android.graphics.Rect(0, 0, context.resources.displayMetrics.widthPixels, context.resources.displayMetrics.heightPixels)
+    }
+    return with(density) { this@requiredFullScreen.requiredSize(bounds.width().toDp(), bounds.height().toDp()) }
+}
+
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
+
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
 /** Native search / sort / topic chips for the live reviews panel — Vela's own UI driving the
@@ -2278,8 +2580,21 @@ private fun PlaceTabs(
             (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
         )
     val hasAbout = place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null
+    // Menu photos get their OWN TAB beside Reviews/About (user 2026-07-10) — the gallery's
+    // category chip buried them. Detection is by Google's own gallery-tab name (it arrives
+    // localized, so match a per-language keyword set; the matched name is reused as the tab
+    // title so it's localized for free). Indices are photoCategories↔photoUrls aligned.
+    val menuIndices = remember(place.photoCategories) {
+        place.photoCategories.withIndex()
+            .filter { (_, cat) -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
+            .map { it.index }
+    }
+    val menuTabName = remember(place.photoCategories) {
+        place.photoCategories.firstOrNull { cat -> cat != null && MENU_TAB_WORDS.any { cat.lowercase().contains(it) } }
+    }
     val tabs = buildList {
         if (hasReviews) add("Reviews")
+        if (menuIndices.isNotEmpty() && app.vela.ui.LoadPhotos.on.value) add("Menu")
         if (hasAbout) add("About")
     }
     if (tabs.isEmpty()) return
@@ -2296,7 +2611,9 @@ private fun PlaceTabs(
                 contentColor = ink,
             ) {
                 tabs.forEachIndexed { i, title ->
-                    Tab(selected = i == selected, onClick = { sel = i }, text = { Text(title) })
+                    // The Menu tab shows Google's own (localized) gallery-tab name.
+                    val display = if (title == "Menu") (menuTabName ?: title) else title
+                    Tab(selected = i == selected, onClick = { sel = i }, text = { Text(display) })
                 }
             }
         }
@@ -2326,6 +2643,17 @@ private fun PlaceTabs(
                         FullScreenReviews(fid, place, ink, dim) { showFullPanel = false }
                     }
                 }
+                "Menu" -> {
+                    var menuStart by remember(place.id) { mutableStateOf<Int?>(null) }
+                    MenuTab(place, menuIndices, dim) { i -> menuStart = i }
+                    menuStart?.let { start ->
+                        PhotoGallery(
+                            place.photoUrls,
+                            place.photoDates.map { d -> d?.let { stringResource(R.string.place_photo_caption, it) } },
+                            start,
+                        ) { menuStart = null }
+                    }
+                }
                 "About" -> AboutTab(place.about, place.editorialSummary, place.ownerDescription, ink, dim)
             }
         }
@@ -2337,24 +2665,35 @@ private fun PlaceTabs(
  *  native photo/video viewers all work. Back / the top-bar arrow closes it back to the sheet. */
 @Composable
 private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: Color, onClose: () -> Unit) {
+    // Shim → the activity-window overlay (see FullReviewsOverlay).
+    DisposableEffect(featureId) {
+        FullReviewsOverlay.show(featureId, place, onClose)
+        onDispose { FullReviewsOverlay.clear() }
+    }
+}
+
+@Composable
+private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color, dim: Color, onClose: () -> Unit) {
     val dark = isAppInDarkTheme()
     var reviewPhotos by remember(featureId) { mutableStateOf<Triple<List<String>, List<String?>, Int>?>(null) }
-    // Back closes the photo gallery first (if open), else the whole screen.
     BackHandler(onBack = { if (reviewPhotos != null) reviewPhotos = null else onClose() })
-    // D-pad-first (docs/dpad.md): land focus on the back arrow immediately so the panel isn't
-    // unfocused during the WebView's load window (the WebView itself is alpha-0 + only grabs
-    // focus on page-finish). The auto-focus loop stops on its first success, so it hands off
-    // to the WebView cleanly once the page loads. No-op under touch.
     val reviewsBackFocus = rememberDpadAutoFocus()
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight, contentColor = ink) {
+    val density = LocalDensity.current
+    // Swipe DOWN from the top to close (user 2026-07-10): the panel forwards a top-edge overscroll
+    // as `pull`; past the threshold at finger-up it dismisses, like a sheet.
+    var pull by remember { mutableStateOf(0f) }
+    Surface(
+        Modifier.fillMaxSize().offset { IntOffset(0, pull.roundToInt()) },
+        color = if (dark) SheetDark else SheetLight,
+        contentColor = ink,
+    ) {
             Column(Modifier.fillMaxSize().statusBarsPadding()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                 ) {
                     IconButton(onClick = onClose, modifier = Modifier.focusRequester(reviewsBackFocus)) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_back), tint = ink)
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close), tint = ink)
                     }
                     Column(Modifier.weight(1f)) {
                         Text(place.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ink, maxLines = 1)
@@ -2370,9 +2709,16 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                     // Tapping a review photo opens Vela's own gallery (Google's photo viewer is a
                     // page-nav the lockdown blocks + the carve can't host).
                     onPhotos = { urls, caps, start -> reviewPhotos = Triple(urls, caps, start) },
+                    // Top-edge pull-down: move the whole panel with the finger; release past the
+                    // threshold closes it (Google's dismiss). Deltas come from the panel's
+                    // boundary scroll-sync (reviews at their top + dragging down).
+                    onOverscroll = { dy -> pull = (pull + dy).coerceAtLeast(0f) },
+                    onOverscrollEnd = { vel ->
+                        // Close on a real pull OR a hard downward flick, like the photo viewer.
+                        if (pull > with(density) { 120.dp.toPx() } || vel > 2500f) onClose() else pull = 0f
+                    },
                 )
             }
-        }
     }
     reviewPhotos?.let { (urls, caps, start) ->
         PhotoGallery(urls, caps, start) { reviewPhotos = null }
@@ -2393,29 +2739,84 @@ private fun ReviewsTab(
 ) {
     // Search within the loaded reviews (author or text, case-insensitive). Resets per place.
     var reviewQuery by remember(place.id) { mutableStateOf("") }
+    // The local search hides behind a magnifier beside the All-reviews pill — a full text field
+    // stacked right under the pill read as clutter (user 2026-07-10); the panel's server-side
+    // search stays the headline way to get granular.
+    var reviewSearchOpen by remember(place.id) { mutableStateOf(false) }
     Column {
         place.rating?.let { r ->
+            // Google's summary block: the big number leads, stars + count stack beside it,
+            // left-aligned with the reviews below — the old centered strip floated oddly
+            // between the tabs and the button (user 2026-07-10).
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center,
-                modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                modifier = Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 10.dp),
             ) {
-                Text(String.format(Locale.US, "%.1f", r), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = ink)
-                Spacer(Modifier.width(8.dp))
-                RatingStars(r)
-                place.reviewCount?.let {
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.place_review_count, it), style = MaterialTheme.typography.bodyMedium, color = dim)
+                Text(
+                    String.format(Locale.US, "%.1f", r),
+                    style = MaterialTheme.typography.displaySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = ink,
+                )
+                Spacer(Modifier.width(14.dp))
+                Column {
+                    RatingStars(r)
+                    place.reviewCount?.let {
+                        Text(
+                            stringResource(R.string.place_review_count, it),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = dim,
+                            modifier = Modifier.padding(top = 3.dp),
+                        )
+                    }
                 }
             }
         }
         // Entry to the full-screen live Google reviews — all of them, plus Google's own SORT and
         // server-side search. The label says so (the button used to just say "Read all").
         onReadAll?.let { open ->
-            OutlinedButton(onClick = open, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews))
+            // Tonal pill, matching the sheet's action language, with the LOCAL search folded
+            // into a circled magnifier beside it (progressive disclosure — see reviewSearchOpen).
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .clip(androidx.compose.foundation.shape.CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
+                        .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                        .clickable(onClick = open)
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        place.reviewCount?.let { stringResource(R.string.place_all_n_reviews, it) } ?: stringResource(R.string.place_all_reviews),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+                if (!loading && reviews.size >= 5) {
+                    Spacer(Modifier.width(8.dp))
+                    IconButton(
+                        onClick = {
+                            reviewSearchOpen = !reviewSearchOpen
+                            if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
+                        },
+                        modifier = Modifier
+                            .size(44.dp)
+                            .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+                    ) {
+                        Icon(
+                            if (reviewSearchOpen) Icons.Default.Close else Icons.Default.Search,
+                            contentDescription = stringResource(R.string.place_search_reviews),
+                            tint = dim,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
             }
         }
         // Featured-review quote is only a TEASER while the real reviews are still streaming in —
@@ -2480,7 +2881,7 @@ private fun ReviewsTab(
                 // author. Held back until the scrape COMPLETES: popping a text field in above rows
                 // the user is reading mid-stream shifts everything under their finger; appearing at
                 // completion it takes the space the progress header just vacated (a near-swap).
-                if (!loading && reviews.size >= 5) {
+                if (!loading && reviews.size >= 5 && (reviewSearchOpen || onReadAll == null)) {
                     OutlinedTextField(
                         value = reviewQuery,
                         onValueChange = { reviewQuery = it },
@@ -2639,9 +3040,9 @@ private fun ActionPill(icon: ImageVector, label: String, emphasized: Boolean = f
     val fg = if (emphasized) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.primary
     Row(
         Modifier
-            .clip(RoundedCornerShape(20.dp))
+            .clip(androidx.compose.foundation.shape.CircleShape)
             .background(bg)
-            .dpadHighlight(RoundedCornerShape(20.dp))
+            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2677,9 +3078,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
     }
 
     Box {
-        IconButton(onClick = { open = true }, modifier = Modifier.size(40.dp)) {
-            Icon(Icons.Default.Share, contentDescription = stringResource(R.string.place_share), tint = tint, modifier = Modifier.size(20.dp))
-        }
+        HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
