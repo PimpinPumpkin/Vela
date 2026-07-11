@@ -524,4 +524,6 @@
     <string name="notif_ask_skip">Pomiń</string>
     <string name="place_time_past_toast">Ten czas już minął. Ustawiono na teraz.</string>
     <string name="settings_ui_scale">Rozmiar interfejsu</string>
+    <string name="place_avoid_tolls">Unikaj opłat drogowych</string>
+    <string name="place_avoid_highways">Unikaj autostrad</string>
 </resources>

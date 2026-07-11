@@ -524,4 +524,6 @@
     <string name="notif_ask_skip">Пропустити</string>
     <string name="place_time_past_toast">Цей час уже минув. Встановлено на зараз.</string>
     <string name="settings_ui_scale">Розмір інтерфейсу</string>
+    <string name="place_avoid_tolls">Уникати платних доріг</string>
+    <string name="place_avoid_highways">Уникати шосе</string>
 </resources>
