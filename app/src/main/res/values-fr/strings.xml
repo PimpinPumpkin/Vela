@@ -284,7 +284,13 @@
     <string name="mapscreen_expand_list">Agrandir la liste</string>
     <string name="mapscreen_close_results">Fermer les résultats de recherche</string>
     <string name="mapscreen_filter_open_now">Ouvert</string>
-    <string name="mapscreen_filter_top_rated">4,0★</string>
+    <string name="mapscreen_filter_rating">Note</string>
+    <string name="mapscreen_filter_any_rating">Toutes les notes</string>
+    <string name="mapscreen_filter_any_price">Tous les prix</string>
+    <string name="mapscreen_filter_accessible">Accessible en fauteuil roulant</string>
+    <string name="mapscreen_sort_relevance">Pertinence</string>
+    <string name="mapscreen_sort_rating_item">Note</string>
+    <string name="mapscreen_sort_distance_item">Distance</string>
     <string name="mapscreen_filter_price">Prix</string>
     <string name="mapscreen_sort">Trier</string>
     <string name="mapscreen_sort_rating">Tri : Note</string>
