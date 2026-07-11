@@ -1916,11 +1916,15 @@ private fun SearchResults(
                         // Same physics as the body: the handle drags the list 1:1 and the release
                         // rides the fling to the nearest size.
                         val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                        var acc = 0f
                         detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking() },
+                            onDragStart = { tracker.resetTracking(); acc = 0f },
                             onVerticalDrag = { change, dy ->
                                 change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
+                                // Integrated deltas (see the place sheet): position is local to
+                                // a moving node and zeroed the velocity (user 2026-07-11).
+                                acc += dy
+                                tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
                                 if (isCollapsed.value && dy < 0f) expand.value() // list mounts at 0 and grows with the finger
                                 dragListBy(dy)
                             },
