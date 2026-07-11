@@ -293,9 +293,15 @@ Defaults that make the safe path the easy one:
   outlined control on the sheet); the reviews summary block is LEFT-ALIGNED (displaySmall number
   + stars/count stacked beside it), not centered; the MINIMIZED card is NOT a separate surface
   (2026-07-10 refactor, height-locked 2026-07-11): the body is a SKELETON (name row, rating, the
-  full action-pill row) plus `MinimizeExtras` sections (photos / status+hours / address+tabs)
-  whose height+alpha are a FRACTION of natural = the sheet height's own position between the
-  minimized floor and peek, read per frame in the layout/graphicsLayer phase. The fold is
+  full action-pill row) plus `SheetFold` sections (photos / status+hours / address+tabs; the
+  shared primitive in `ui/SheetFold.kt`, also used by the results sheet's chips) whose
+  height+alpha are a FRACTION of natural = the sheet height's own position between the
+  minimized floor and peek, read per frame in the layout/graphicsLayer phase. While the fold is
+  engaged (fraction < 1) the CARD FLOORS AT THE MINIMIZED DETENT: the folding content dips just
+  under minH near the floor (the skeleton is a touch shorter than the detent) and the wrap-cap
+  card used to dive that last slack in a blink - the end-of-fold hop (user 2026-07-11); at rest
+  with fraction = 1 the card still hugs short content (dropped pins, parked car). Landing
+  minimized also rescrolls a scrolled body to its top. The fold is
   therefore byte-locked to whatever moves the height (pan glide, a slow drag folds them WITH the
   finger, the release settle) - a separately-clocked exit animation (the first cut used tweens)
   could not stay in step with the height spring and read as staccato. Extras stay composed while
@@ -314,7 +320,9 @@ Defaults that make the safe path the easy one:
   delete it, don't duplicate it. **The MENU TAB (2026-07-10)** appears beside Reviews/About when
   `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
   Google's LOCALIZED gallery-tab name, which is reused as the tab title); content = the tagged
-  photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery. There is NO keyless
+  photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery; each tile stamps the
+  photo's UPLOAD DATE (from `Place.photoDates`, the gallery scrape) in a corner scrim so a
+  menu's age reads at a glance (user 2026-07-11). There is NO keyless
   menu URL (probed 2026-07-10: search payload [38] empty, zero menu links) - don't chase the
   link; the quality follow-up is making WebPhotoFetcher scrape the menu TAB exhaustively. The
   inline review search hides behind a circled magnifier beside the All-reviews pill
@@ -351,11 +359,12 @@ Defaults that make the safe path the easy one:
   an open place card to its minimized detent — Google's behaviour; programmatic framing (a
   different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
   the 350f settle). Flip order differs BY DESIGN: the RESULTS sheet still GLIDES FIRST and flips
-  `resultsCollapsed` after (its minimized bar is a content swap, so flipping early reads as a
-  pop - user 2026-07-10, the "just kinda pops down" report); the PLACE sheet flips
-  `minimizedState` FIRST so its `MinimizeExtras` shrink-and-fade runs concurrently with the
-  height glide (no swap anymore, see the place-sheet surface-language bullet) - the same order
-  its drag-release path uses. The minimized results bar leads with the QUERY (or list name) in ink +
+  `resultsCollapsed` after; its FILTER CHIPS + divider fold with the list height over its last
+  140dp of travel (`SheetFold`, and the bar's bottom padding is constant), so by the flip they
+  are zero-height and nothing visible pops - they used to pop out after the sheet had already
+  stopped moving (user 2026-07-11). The PLACE sheet flips `minimizedState` FIRST so its
+  SheetFold extras run concurrently with the height glide (no swap anymore, see the place-sheet
+  surface-language bullet) - the same order its drag-release path uses. The minimized results bar leads with the QUERY (or list name) in ink +
   SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
   awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
   effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):
