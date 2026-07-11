@@ -1905,7 +1905,7 @@ private fun SearchResults(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = if (collapsed) 8.dp else 0.dp),
+                        .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // The bar says WHAT you're looking at, not just how many: the list name or
@@ -1946,7 +1946,13 @@ private fun SearchResults(
                         )
                     }
                 }
-                if (!collapsed) {
+                // The chips (and the divider under them) FOLD with the sheet height over
+                // its last 140dp of travel (SheetFold, the place sheet's minimize primitive):
+                // by the time only the bar remains they are zero-height, so the collapsed
+                // flip removes nothing visible - they used to pop out at the flip while the
+                // sheet itself had already stopped moving (user 2026-07-11).
+                val chipsFraction: () -> Float = { (listH.value / 140f).coerceIn(0f, 1f) }
+                app.vela.ui.SheetFold(composed = !collapsed, fraction = chipsFraction) {
                 // Filter chips on their own horizontally-scrollable row, so a third (or
                 // future) chip never crowds the header or clips on a narrow screen. Filled pills
                 // (a subtle tint when off, solid teal when on) so they read modern on the sheet —
@@ -2019,10 +2025,10 @@ private fun SearchResults(
                         border = null,
                     )
                 }
-                } // if (!collapsed) — chips
+                Divider()
+                } // SheetFold - chips
             }
             if (!collapsed) {
-            Divider()
             LazyColumn(
                 Modifier
                     .nestedScroll(dismissConn)
