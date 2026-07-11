@@ -576,3 +576,27 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
 The signed `calibration.json` channel can already hot-push **config, field paths,
 user notices, and sandboxed JS parse-logic** with no app update (see SPEC §5). Future
 breakages should be fixed there first.
+
+## Not going to happen (accounts and backends)
+
+These stay off the table because they require a Google login or a Vela server, and the
+project's core promise is that neither exists:
+
+- Contributing reviews, photos, or map edits (needs a Google account)
+- Live location sharing / share-ETA (needs a rendezvous backend)
+- Location history / timeline (an anti-goal outright)
+- Live "busier than usual" popular times (Google strips the live histogram from every
+  anonymous request; the typical-week bars we show are the keyless maximum - probed and
+  documented, do not re-chase)
+
+## Queued near-term
+
+- Avoid tolls / avoid highways: FOSSGIS OSRM accepts per-request exclusions; two persisted
+  toggles in the route chooser. Caveats to surface in the UI: the Google fallback router
+  ignores them, and offline GraphHopper needs a graph re-bake with toll flags before it can
+  honour them (CI rebuild of the region graphs).
+- Restaurant menu reliability: instrument the gallery walk to classify tab-less fetches,
+  stop caching a tab-less result forever, and separate device render timing from Google-side
+  variance.
+- Satellite imagery layer via open Esri World Imagery tiles (attribution required).
+- Performance pass: frame profiling of dense-marker pans and the POI sheet in/out churn.

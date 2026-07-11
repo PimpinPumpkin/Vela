@@ -315,7 +315,11 @@ object NavEngine {
                 (remaining <= 50.0 && !moving && crow <= 60.0)
             if (arrivedNow) {
                 events += NavEvent.Arrived
-                events += NavEvent.Speak(nav().arrived(), interrupt = true)
+                // Say the side too when the route knows it ("You have arrived; Your destination
+                // is on the right") — the approach banner already showed it (user 2026-07-11).
+                val side = route.maneuvers.lastOrNull()?.side
+                val sidePhrase = side?.let { " " + nav().destinationSide(left = it == "left") } ?: ""
+                events += NavEvent.Speak(nav().arrived() + sidePhrase, interrupt = true)
                 return state.copy(
                     arrived = true,
                     distanceToNextManeuver = 0.0,

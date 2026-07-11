@@ -834,6 +834,14 @@ Defaults that make the safe path the easy one:
   Pixel 9 POI-dense iterations (restored over the 4a retakes), and Install sits directly UNDER
   the screenshots.
 
+## README layout rule (2026-07-11)
+
+The README stays SHORT: pitch, screenshots, install, what-you-get, the how-it-works table,
+privacy, build. Deep dives live in docs/ (CALIBRATION.md, MAP-STYLE.md, dpad.md) and get a
+pointer line, not a section. The Roadmap section carries a "Not going to happen" split for
+login/backend features - keep new won't-dos there AND in ROADMAP.md. Remote calibration is a
+HEADLINE feature in What-you-get (the self-healing pitch), not just an architecture note.
+
 ## Working on the scraper
 
 - The `pb` request *grammar* (`PbBuilder`) and `PolylineCodec` are correct and
