@@ -2628,6 +2628,8 @@ private fun ShortcutRow(
     onClear: (ShortcutKind) -> Unit,
 ) {
     val icon = if (kind == ShortcutKind.HOME) Icons.Default.Home else Icons.Default.Work
+    // Localized display label (the ShortcutKind.label enum value stays the stable "Home"/"Work" key).
+    val label = stringResource(if (kind == ShortcutKind.HOME) R.string.shortcut_home else R.string.shortcut_work)
     // Fixed sheet palette (not the theme's on-surface, which renders dark/black on our
     // fixed grey under some Material-You themes / light mode).
     val dark = isAppInDarkTheme()
@@ -2649,10 +2651,10 @@ private fun ShortcutRow(
         )
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
-            Text(kind.label, style = MaterialTheme.typography.bodyLarge, color = SheetPalette.ink(dark))
+            Text(label, style = MaterialTheme.typography.bodyLarge, color = SheetPalette.ink(dark))
             Text(
                 place?.let { it.address ?: it.name }
-                    ?: stringResource(R.string.mapscreen_set_shortcut_address, kind.label.lowercase()),
+                    ?: stringResource(R.string.mapscreen_set_shortcut_address, label.lowercase()),
                 style = MaterialTheme.typography.bodySmall,
                 color = SheetPalette.dim(dark),
                 maxLines = 1,
@@ -2667,7 +2669,7 @@ private fun ShortcutRow(
                     // on the fixed sheet grey under some themes (user report).
                     Icon(
                         Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.mapscreen_edit_shortcut, kind.label),
+                        contentDescription = stringResource(R.string.mapscreen_edit_shortcut, label),
                         tint = SheetPalette.ink(dark),
                     )
                 }

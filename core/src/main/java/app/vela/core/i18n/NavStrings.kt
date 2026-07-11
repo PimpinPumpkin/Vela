@@ -1581,6 +1581,103 @@ object JaNavStrings : NavStrings {
 }
 
 /**
+ * Hebrew (עברית) — RTL. Spoken/banner nav text uses masculine-singular imperatives, the register
+ * Israeli drivers hear from Waze/Google Maps ("פנה ימינה", "המשך ישר"). Road/dest NAMES are DATA and
+ * never translated; the templates only decide the word ORDER around them ("פנה שמאלה אל <רחוב>").
+ * Metric only in practice, but the imperial branch is kept for parity.
+ */
+object HeNavStrings : NavStrings {
+    override val locale: Locale = Locale("he", "IL")
+
+    private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "שמאלה"
+        "right" -> "ימינה"
+        "slight left" -> "קלות שמאלה"
+        "slight right" -> "קלות ימינה"
+        "sharp left" -> "בחדות שמאלה"
+        "sharp right" -> "בחדות ימינה"
+        "straight" -> "ישר"
+        "uturn" -> "פניית פרסה"
+        else -> ""
+    }
+
+    // Feminine ordinals for roundabout exits ("ביציאה השלישית"); falls back to "ה-N".
+    private fun exitOrdinal(n: Int): String = when (n) {
+        1 -> "הראשונה"; 2 -> "השנייה"; 3 -> "השלישית"; 4 -> "הרביעית"
+        5 -> "החמישית"; 6 -> "השישית"; 7 -> "השביעית"; 8 -> "השמינית"
+        else -> "ה-$n"
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) " אל $road" else ""
+        val toward = when {
+            dest != null -> " לכיוון $dest"
+            road != null -> " אל $road"
+            else -> ""
+        }
+        val m = modWord(mod)
+        return when (type) {
+            "depart" -> if (road != null) "צא לדרך על $road" else "התחל את המסלול"
+            "arrive" -> "הגעת ליעד"
+            "turn", "end of road" -> ("פנה $m").trim() + onto
+            "continue", "new name" -> if (m.isNotBlank() && m != "ישר") ("סטה $m").trim() + onto else "המשך$onto"
+            "merge" -> "השתלב$toward"
+            "on ramp", "ramp" -> "עלה ברמפה$toward"
+            "off ramp" -> if (exitNo != null) "צא ביציאה $exitNo$toward" else "צא ביציאה$toward"
+            "fork" -> ("היצמד $m").trim() + toward
+            "roundabout", "rotary", "exit roundabout", "exit rotary" -> if (rbExit != null) "בכיכר, צא ביציאה ${exitOrdinal(rbExit)}$onto" else "היכנס לכיכר$onto"
+            "roundabout turn" -> ("בכיכר, פנה $m").trim() + onto
+            "uturn" -> "בצע פניית פרסה$onto"
+            else -> if (m.isNotBlank()) ("פנה $m").trim() + onto else "המשך$onto"
+        }
+    }
+
+    // Israel is metric; the imperial branch is kept for parity. Colloquial nav register keeps the unit
+    // singular after a number ("300 מטר", "2 קילומטר"), as Waze/Google Maps Hebrew speak it.
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} רגל"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "מייל" else "$miles מייל"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} מטר"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "קילומטר" else "$km קילומטר"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "בעוד $distancePhrase, $instruction"
+
+    override fun arrived(): String = "הגעת"
+
+    override fun destinationSide(left: Boolean): String = if (left) "היעד שלך מצד שמאל" else "היעד שלך מצד ימין"
+
+    override fun startNav(firstInstruction: String): String = "מתחיל ניווט. $firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "הגעת ל$label" else "הגעת לעצירה שלך"
+
+    override fun fasterRoute(firstInstruction: String): String = "עובר למסלול המהיר יותר. $firstInstruction"
+    override fun rerouting(): String = "מחשב מסלול מחדש"
+    override fun fasterRouteAvailable(minutes: Int): String = "מסלול מהיר יותר זמין, חוסך בערך $minutes דקות"
+    override fun stopsNotIncluded(): String = "לא הצלחתי לכלול את העצירות שלך במסלול הזה. אמשיך לנסות."
+    override fun destinationAhead(): String = "היעד שלך יהיה לפניך"
+
+    override fun voiceTest(): String = "ההנחיה הקולית מופעלת. פנה ימינה בעוד ארבע מאות מטר."
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val one = when (side) { LaneSide.LEFT -> "השמאלי"; LaneSide.RIGHT -> "הימני"; LaneSide.CENTER -> "האמצעי" }
+        val many = when (side) { LaneSide.LEFT -> "השמאליים"; LaneSide.RIGHT -> "הימניים"; LaneSide.CENTER -> "האמצעיים" }
+        return if (count > 1) "השתמש ב-$count הנתיבים $many" else "השתמש בנתיב $one"
+    }
+
+    // expandForSpeech is left as the interface default (identity) — Hebrew road names are read natively.
+}
+
+/**
  * Holds the active [NavStrings] for the process. Set explicitly from the resolved app locale on startup
  * and on every language change — do NOT read `Locale.getDefault()` at the leaf, because nav/TTS text is
  * assembled off the main thread. Defaults to [EnNavStrings] so nothing (and no test) depends on the
@@ -1619,6 +1716,7 @@ object NavStringsRegistry {
         "zh" -> ZhNavStrings
         "zh-tw" -> ZhTwNavStrings
         "ja" -> JaNavStrings
+        "he", "iw" -> HeNavStrings // JDK 17+ normalizes the old code "iw" → "he"; accept both
         else -> EnNavStrings
     }
 }
