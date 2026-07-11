@@ -279,24 +279,7 @@ fun VelaMapView(
     // when you PAN (in the move listener, so a pan→Re-center returns to auto-zoom) and when nav
     // ends. Keyed on navMode, NOT navFollowing — navFollowing flips while panning and would
     // otherwise nuke a just-set pinch zoom, snapping it back to auto a beat later.
-    LaunchedEffect(navMode) {
-        if (navMode) return@LaunchedEffect
-        navUserZoom[0] = Double.NaN
-        // Ending nav returns the camera to Google's flat north-up browse view — the follow
-        // camera's last bearing/tilt used to linger, which also left the compass pinned on the
-        // map (it only hides facing north; user 2026-07-10).
-        mapRef?.let { m ->
-            val cam = m.cameraPosition
-            if (kotlin.math.abs(cam.bearing) > 0.5 || cam.tilt > 0.5) {
-                m.animateCamera(
-                    org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
-                        org.maplibre.android.camera.CameraPosition.Builder(cam).bearing(0.0).tilt(0.0).build(),
-                    ),
-                    600,
-                )
-            }
-        }
-    }
+    LaunchedEffect(navMode) { if (!navMode) navUserZoom[0] = Double.NaN }
     remember { MapLibre.getInstance(context) }
     // D-pad-only operation (docs/dpad.md): MapLibre's MapView calls requestFocus() on
     // itself and overrides onKeyDown to handle hardware D-pad keys (DPAD_CENTER = zoom in,
@@ -315,6 +298,22 @@ fun VelaMapView(
     }
 
     var mapRef by remember { mutableStateOf<MapLibreMap?>(null) }
+    // Ending nav returns the camera to Google's flat north-up browse view — the follow camera's
+    // last bearing/tilt used to linger, which also left the compass pinned on the map (it only
+    // hides facing north; user 2026-07-10). Below mapRef so the handle is in scope.
+    LaunchedEffect(navMode, mapRef) {
+        if (navMode) return@LaunchedEffect
+        val m = mapRef ?: return@LaunchedEffect
+        val cam = m.cameraPosition
+        if (kotlin.math.abs(cam.bearing) > 0.5 || cam.tilt > 0.5) {
+            m.animateCamera(
+                org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
+                    org.maplibre.android.camera.CameraPosition.Builder(cam).bearing(0.0).tilt(0.0).build(),
+                ),
+                600,
+            )
+        }
+    }
     var styleRef by remember { mutableStateOf<Style?>(null) }
     var appliedStyleKey by remember { mutableStateOf<String?>(null) }
     var lastCameraTarget by remember { mutableStateOf<LatLng?>(null) }
