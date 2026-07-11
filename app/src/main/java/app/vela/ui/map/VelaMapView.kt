@@ -203,6 +203,7 @@ fun VelaMapView(
     navMode: Boolean,
     navFollowing: Boolean = true,
     onNavPanned: () -> Unit = {},
+    ambientCoversView: Boolean = false, // viewport inside the ambient-Google fetch area → OSM POIs yield
     onScaleChanged: (metersPerPixel: Double) -> Unit = {},
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
@@ -360,6 +361,13 @@ fun VelaMapView(
         // VISIBLE on nav end while its gate still says NONE left doubled icons until the next
         // state flip. Nulling the gate makes the next applyData frame re-assert the right value.
         lastOsmPoiVis = null
+        // Stop signs + lights stay a NAV aid at z16; on the browse map they hold back until true
+        // street zoom (user 2026-07-10: too busy mid-zoom without a route on screen).
+        runCatching {
+            val minZ = if (navMode) 16f else 17.5f
+            (style.getLayer(CONTROLS_LAYER))?.minZoom = minZ
+            (style.getLayer(CONTROLS_CLAIM_LAYER))?.minZoom = minZ
+        }
     }
 
     // Open building-footprint overlays (Microsoft, ODbL — PMTiles): render each region's footprints in a fill
@@ -1069,13 +1077,13 @@ fun VelaMapView(
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(map, style, context, darkTheme, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
             }
@@ -2184,6 +2192,7 @@ private fun applyData(
     style: Style,
     context: android.content.Context,
     dark: Boolean,
+    ambientCoversView: Boolean,
     route: List<LatLng>,
     routeColor: String,
     routeDashed: Boolean,
@@ -2361,7 +2370,11 @@ private fun applyData(
     // clutter. Its OWN identity gate (not the ambient one): results can appear/clear while the
     // ambient list stays empty, and the old placement inside the ambient gate would strand the
     // visibility stale. OSM transit + the rest of the basemap always stay.
-    val osmPoiVis = if (ambientPois.isNotEmpty() || markers.size > 1) Property.NONE else Property.VISIBLE
+    // BLEND, don't blanket-hide (user 2026-07-10): the OSM basemap POIs hide only while the
+    // viewport truly sits inside the ambient fetch's covered area — pan or zoom past it and the
+    // OSM icons return immediately (the ambient dots still draw where they exist, so the covered
+    // core keeps Google's data and the outskirts keep OSM's, merging as fresh fetches land).
+    val osmPoiVis = if (ambientCoversView || markers.size > 1) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
