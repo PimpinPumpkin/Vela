@@ -1228,6 +1228,7 @@ fun DirectionsPanel(
     onStartTransit: (TransitItinerary) -> Unit = {},
     onClose: () -> Unit,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
+    minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -1262,7 +1263,6 @@ fun DirectionsPanel(
         val vDp = with(dirDensity) { velocityPxPerSec.toDp().value }
         val naturalEnd = dirDecay.calculateTargetValue(dirH.value, -vDp)
         val target = if (kotlin.math.abs(naturalEnd) < kotlin.math.abs(bodyMax - naturalEnd)) 0f else bodyMax
-        collapsed.value = target == 0f
         dirScope.launch {
             val towardTarget = (naturalEnd - dirH.value) * (target - dirH.value) > 0f
             if (towardTarget && kotlin.math.abs(naturalEnd - dirH.value) >= kotlin.math.abs(target - dirH.value)) {
@@ -1277,6 +1277,11 @@ fun DirectionsPanel(
             } else {
                 dirH.animateTo(target, dirSettle, initialVelocity = -vDp)
             }
+            // Flip the state AFTER the glide (glide first, flip after). Flipping BEFORE fired the
+            // LaunchedEffect(collapsed) into a SECOND animateTo racing this decay - the "bounces
+            // off the top" on a swipe-up-to-reopen (user 2026-07-11). dirH is at target now, so
+            // that effect's targetValue guard skips it.
+            collapsed.value = target == 0f
         }
     }
     // Body-at-top drags collapse the panel and upward drags grow it, like the other sheets.
@@ -1297,6 +1302,17 @@ fun DirectionsPanel(
                 return Velocity.Zero
             }
         }
+    }
+    // Grab the map: glide the OPEN chooser down to its Start bar, then flip collapsed - the same
+    // pan-minimize the place + results sheets do (user 2026-07-11). Consume-once guard so a
+    // remount can't replay a stale tick.
+    val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    var seenDirTick by remember { mutableStateOf(minimizeTick) }
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == seenDirTick || collapsed.value) return@LaunchedEffect
+        seenDirTick = minimizeTick
+        if (dirH.value > 0.5f) dirH.animateTo(0f, glideSpec)
+        collapsed.value = true
     }
     Card(
         modifier.fillMaxWidth(),
