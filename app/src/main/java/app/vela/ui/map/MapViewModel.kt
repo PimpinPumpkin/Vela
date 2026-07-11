@@ -183,6 +183,10 @@ data class MapUiState(
     val showSteps: Boolean = false,
     val previewStepIndex: Int? = null,
     val styleUri: String = MapStyle.DEFAULT.uri,
+    // Route preference toggles (drive): honoured on-device where the region graph carries the
+    // avoid profiles; online falls back to a normal route (the public OSRM can't exclude).
+    val avoidTolls: Boolean = false,
+    val avoidHighways: Boolean = false,
     val styleName: String = MapStyle.DEFAULT.label,
     val selectedEngine: VoiceEngine? = null,
     val searching: Boolean = false,
@@ -280,6 +284,7 @@ class MapViewModel @Inject constructor(
     private val noticePrefs = appContext.getSharedPreferences("vela_notices", Context.MODE_PRIVATE)
 
     init {
+        loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
         // A simulated location (Settings → demo) wins the seed so the app opens "there".
         val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
@@ -734,7 +739,9 @@ class MapViewModel @Inject constructor(
         suggestJob = viewModelScope.launch {
             delay(320) // only fire once typing pauses
             val near = mapCenter ?: _state.value.myLocation // suggestions near the viewport, like search
-            val res = runCatching { dataSource.search(term, near).places }.getOrDefault(emptyList())
+            val vp0 = viewport
+            val spanM0 = vp0?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+            val res = runCatching { dataSource.search(term, near, spanM0).places }.getOrDefault(emptyList())
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
                 _state.update { it.copy(suggestions = res.take(8)) }
             }
@@ -1095,7 +1102,12 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             try {
-                val res = dataSource.search(q, near)
+                // Widen the request to the REAL viewport: the pb template bakes a ~25 km span, so
+                // a zoomed-out search only ever covered a city-sized window however far you could
+                // see (user 2026-07-11). Span = the visible box's vertical extent.
+                val vp = viewport
+                val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+                val res = dataSource.search(q, near, spanM)
                 _state.update {
                     // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
                     // else typing the origin query wiped the "To" and the panel showed an empty
@@ -1319,6 +1331,34 @@ class MapViewModel @Inject constructor(
         val photoWorthy = p.rating != null || p.reviewCount != null || p.photoUrls.isNotEmpty()
         if (photoWorthy) _state.update { if (it.selected?.featureId == fid) it.copy(photosLoading = true) else it }
         viewModelScope.launch {
+            // The gallery has TWO keyless sources with complementary halves: the WebView page
+            // walk carries the CATEGORY tags (the Menu tab) but no per-photo dates, while the
+            // hspqX RPC carries each photo's POSTED DATE but no categories. Fire the cheap RPC
+            // alongside the walk and join its dates onto the streamed photos by the stable
+            // image id (the URL up to the size suffix both pipelines share), so a menu tile
+            // can say how old the menu shot is (user 2026-07-11). No author anywhere keyless:
+            // the RPC documents it's absent, and mining the page DOM for it isn't worth the
+            // extra walking. Best-effort like everything else here.
+            var rpcDates: Map<String, String> = emptyMap()
+            val datesJob = launch {
+                val rpc = runCatching { dataSource.placePhotos(fid) }.getOrDefault(emptyList())
+                rpcDates = rpc.mapNotNull { ph -> ph.postedText?.let { ph.url.substringBefore('=') to it } }.toMap()
+                // Join diagnostics (menu dates weren't showing, user 2026-07-11): how many photos
+                // the RPC returned, how many carried dates, and a sample key from each side so a
+                // key-namespace mismatch (gps-cs-s vs /p/) is visible at a glance in logcat.
+                android.util.Log.i(
+                    "VelaPhotoDates",
+                    "rpc=${rpc.size} dated=${rpcDates.size} rpcKey=${rpc.firstOrNull()?.url?.substringBefore('=')?.takeLast(40)}",
+                )
+            }
+            fun datesFor(photos: List<app.vela.core.model.Photo>): List<String?> {
+                val joined = photos.map { it.postedText ?: rpcDates[it.url.substringBefore('=')] }
+                android.util.Log.i(
+                    "VelaPhotoDates",
+                    "join walk=${photos.size} matched=${joined.count { it != null }} walkKey=${photos.firstOrNull()?.url?.substringBefore('=')?.takeLast(40)}",
+                )
+                return joined
+            }
             // Photos STREAM in: the scraper reports the accumulated set whenever it grows, so the
             // strip fills progressively (first partial = the page's hero photos, ~1s after load)
             // instead of waiting ~20s for the full category walk. Monotonic (a partial never
@@ -1326,19 +1366,45 @@ class MapViewModel @Inject constructor(
             // partial can't touch the next place; the final result clears the flag in the same
             // atomic copy, so a straggler can't overwrite it — same pattern as review streaming).
             val full = runCatching {
-                webPhotos.fetch(fid, onPartial = { part ->
+                webPhotos.fetch(fid, onPhotoDates = { pairs ->
+                    // The walk mined per-photo dates from the place page itself (the dead RPC's
+                    // replacement). Absolute Y-M-D entries get a localized short date; relative
+                    // "N ago" strings pass through. Merged INTO the join map - the final apply
+                    // (after the walk) restamps everything with whatever arrived.
+                    val mined = pairs.mapNotNull { (u, d) ->
+                        val text = if (Regex("^\\d{4}-\\d{1,2}-\\d{1,2}$").matches(d)) {
+                            runCatching {
+                                val p3 = d.split("-").map { it.toInt() }
+                                java.time.LocalDate.of(p3[0], p3[1], p3[2])
+                                    .format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.MEDIUM))
+                            }.getOrNull()
+                        } else d
+                        text?.let { u.substringBefore('=') to it }
+                    }.toMap()
+                    if (mined.isNotEmpty()) rpcDates = mined + rpcDates // RPC (if ever revived) wins ties
+                }, onHistogram = { counts ->
+                    // The page's [5-star..1-star] review counts, grabbed in passing by the walk -
+                    // drives the native histogram on the inline Reviews tab. Feature-id gated.
+                    _state.update { st ->
+                        val sel = st.selected
+                        if (sel?.featureId == fid) st.copy(selected = sel.copy(ratingHistogram = counts)) else st
+                    }
+                }, onPartial = { part ->
                     if (part.isNotEmpty()) _state.update { st ->
                         val sel = st.selected
                         if (sel?.featureId == fid && st.photosLoading && part.size > sel.photoUrls.size) st.copy(
-                            selected = sel.copy(photoUrls = part.map { it.url }, photoDates = part.map { it.postedText }, photoCategories = part.map { it.category }),
+                            selected = sel.copy(photoUrls = part.map { it.url }, photoDates = datesFor(part), photoCategories = part.map { it.category }),
                         ) else st
                     }
                 })
             }.getOrDefault(emptyList())
+            // Wait for the date fetch before the final apply so the settled gallery is dated
+            // even when the RPC was slower than the walk (partials may have gone out dateless).
+            datesJob.join()
             _state.update { st ->
                 val sel = st.selected
                 if (sel?.featureId == fid) st.copy(
-                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = full.map { it.postedText }, photoCategories = full.map { it.category }) else sel,
+                    selected = if (full.isNotEmpty()) sel.copy(photoUrls = full.map { it.url }, photoDates = datesFor(full), photoCategories = full.map { it.category }) else sel,
                     photosLoading = false,
                 ) else st
             }
@@ -1699,7 +1765,10 @@ class MapViewModel @Inject constructor(
         // pick-mode left over from a previous place's directions.
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
         // Walking back to the car is the parking spot's whole point — default to WALK there.
-        val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else _state.value.travelMode
+        // Otherwise every session opens on the STICKY last-used mode (user 2026-07-11).
+        val (avTolls, avHighways) = stickyAvoid()
+        _state.update { it.copy(avoidTolls = avTolls, avoidHighways = avHighways) }
+        val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else stickyTravelMode()
         if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
     }
 
@@ -1993,15 +2062,50 @@ class MapViewModel @Inject constructor(
         if (!route.provisional) return route
         val o = route.polyline.firstOrNull() ?: return route.copy(provisional = false)
         val d = route.polyline.lastOrNull() ?: return route.copy(provisional = false)
-        return runCatching { dataSource.nameRoute(route, o, d, _state.value.travelMode) }
+        return runCatching { dataSource.nameRoute(route, o, d, _state.value.travelMode, _state.value.avoidTolls, _state.value.avoidHighways) }
             .getOrNull() ?: route.copy(provisional = false)
     }
 
     fun setTravelMode(mode: TravelMode) {
         if (_state.value.travelMode == mode) return
+        // Sticky: the pick becomes the default for the NEXT directions session too (a cyclist
+        // shouldn't re-tap Bike every trip; Google remembers the same way). No Settings row -
+        // the habit IS the setting (user 2026-07-11).
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putString("travel_mode", mode.name).apply()
         _state.update { it.copy(travelMode = mode) }
         route(mode)
     }
+
+    fun setAvoidTolls(on: Boolean) {
+        if (_state.value.avoidTolls == on) return
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("avoid_tolls", on).apply()
+        _state.update { it.copy(avoidTolls = on) }
+        route(_state.value.travelMode) // re-route with the new preference
+    }
+
+    fun setAvoidHighways(on: Boolean) {
+        if (_state.value.avoidHighways == on) return
+        appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("avoid_highways", on).apply()
+        _state.update { it.copy(avoidHighways = on) }
+        route(_state.value.travelMode)
+    }
+
+    /** The persisted avoid toggles (sticky like the travel mode - the habit is the setting). */
+    private fun stickyAvoid(): Pair<Boolean, Boolean> = runCatching {
+        val p = appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+        p.getBoolean("avoid_tolls", false) to p.getBoolean("avoid_highways", false)
+    }.getOrDefault(false to false)
+
+    /** The remembered last-used travel mode (see [setTravelMode]); DRIVE until first changed. */
+    private fun stickyTravelMode(): TravelMode = runCatching {
+        TravelMode.valueOf(
+            appContext.getSharedPreferences("vela_settings", android.content.Context.MODE_PRIVATE)
+                .getString("travel_mode", null) ?: return TravelMode.DRIVE,
+        )
+    }.getOrDefault(TravelMode.DRIVE)
 
     /** Set the depart/arrive time for directions (mode 0=now, 1=depart at, 2=arrive by, 3=last available;
      *  [epochSec] null for now) and re-route so transit shows departures at that time. */
@@ -2009,7 +2113,12 @@ class MapViewModel @Inject constructor(
         val s = _state.value
         if (s.directionsTimeMode == mode && s.directionsTimeEpochSec == epochSec) return
         _state.update { it.copy(directionsTimeMode = mode, directionsTimeEpochSec = if (mode == 0) null else epochSec) }
-        route(_state.value.travelMode)
+        // Only TRANSIT re-routes on a time change: the schedule board is genuinely
+        // time-dependent. The keyless drive/walk/bike request has no departure field at all,
+        // so refetching those returned identical routes and just flickered the list while the
+        // chooser's own arrival-window arithmetic was the only thing that changed (the "kinda
+        // janky" report, user 2026-07-11).
+        if (_state.value.travelMode == TravelMode.TRANSIT) route(TravelMode.TRANSIT)
     }
 
     private fun route(mode: TravelMode) {
@@ -2031,7 +2140,7 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel()
         routeJob = viewModelScope.launch {
             try {
-                val routes = dataSource.directions(origin, dest, mode, stops)
+                val routes = dataSource.directions(origin, dest, mode, stops, s.avoidTolls, s.avoidHighways)
                 if (!stillWanted()) return@launch // backed out / switched mode mid-fetch — don't resurrect it
                 _state.update {
                     it.copy(
@@ -3033,8 +3142,58 @@ class MapViewModel @Inject constructor(
         ambientCache.removeAll { it.first.distanceTo(center) < 400.0 } // replace a near-duplicate area
         ambientCache.addLast(Triple(center, places, android.os.SystemClock.elapsedRealtime()))
         while (ambientCache.size > 16) ambientCache.removeFirst()
+        persistAmbientCache()
     }
 
+    // ---- Ambient cache on DISK: the home area paints instantly on a COLD launch too. ----
+    // Slim rows via :core's AmbientDiskCache codec (the app stays out of kotlinx.serialization),
+    // newest 8 areas x 200 places, debounced writes; entries older than a day drop at load.
+    private fun ambientDiskFile() = java.io.File(appContext.filesDir, "ambient_cache.json")
+    private var ambientPersistJob: Job? = null
+
+    private fun persistAmbientCache() {
+        ambientPersistJob?.cancel()
+        // Snapshot on the caller (main) thread: the deque is main-only, and reading it from
+        // the IO worker raced cacheAmbient's mutations (a prefetch landing while a persist
+        // read = ConcurrentModificationException; review 2026-07-11).
+        val snapshot = ambientCache.toList()
+        ambientPersistJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(2000) // debounce a pan session into one write
+            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            val nowWall = System.currentTimeMillis()
+            val entries = snapshot.takeLast(8).map { (c, places, atElapsed) ->
+                app.vela.core.data.AmbientCachedArea(
+                    c.lat, c.lng, nowWall - (nowElapsed - atElapsed),
+                    places.take(200).map { app.vela.core.data.AmbientCachedPlace.of(it) },
+                )
+            }
+            runCatching {
+                val tmp = java.io.File(appContext.filesDir, "ambient_cache.json.tmp")
+                tmp.writeText(app.vela.core.data.AmbientDiskCache.encode(entries))
+                tmp.renameTo(ambientDiskFile())
+            }
+        }
+    }
+
+    private fun loadAmbientCacheFromDisk() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val entries = runCatching { ambientDiskFile().readText() }.getOrNull()
+                ?.let { app.vela.core.data.AmbientDiskCache.decode(it) } ?: return@launch
+            val nowWall = System.currentTimeMillis()
+            val nowElapsed = android.os.SystemClock.elapsedRealtime()
+            val fresh = entries.filter { nowWall - it.atWallMs < 24 * 3600_000L }
+            if (fresh.isEmpty()) return@launch
+            val loaded = fresh.map { e ->
+                // Timestamps read as fresh: the moved-gate refetches the first real view anyway,
+                // so disk entries are paint-then-refine, never paint-and-trust.
+                Triple(LatLng(e.lat, e.lng), e.places.map { it.toPlace() }, nowElapsed)
+            }
+            // Main-thread hop: the cache deque is only ever touched from the main dispatcher.
+            withContext(kotlinx.coroutines.Dispatchers.Main) {
+                if (ambientCache.isEmpty()) loaded.forEach { ambientCache.addLast(it) }
+            }
+        }
+    }
     /** Freshest non-stale cached fetch whose centre is within ~900 m of [center], re-centred so its
      *  distances are correct for the new view. Null if nothing recent+near is cached. */
     private fun cachedAmbientNear(center: LatLng): List<app.vela.core.model.Place>? {
@@ -3044,6 +3203,35 @@ class MapViewModel @Inject constructor(
             .minByOrNull { it.first.distanceTo(center) }
             ?.second
             ?.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
+    }
+
+    /** Warm the ambient LRU for the four neighbouring view-sized areas (N/S/E/W at ~0.9 of the
+     *  span) so a pan in any direction repaints instantly from cache. Gated HARD: bare map only,
+     *  UNMETERED network only (this is real extra traffic: 4 more fan-outs), skips areas already
+     *  cached, sequential (never bursts 52 parallel requests at Google), one round per fetch. */
+    private var prefetchJob: Job? = null
+    private fun prefetchAmbientNeighbours(center: LatLng, span: Double, zoom: Double) {
+        if (zoom < 14.5) return // wide views cover the neighbours already
+        val cm = appContext.getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager ?: return
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return
+        if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) return
+        prefetchJob?.cancel()
+        prefetchJob = viewModelScope.launch {
+            val dLat = span * 0.9 / 111_320.0
+            val dLng = dLat / kotlin.math.cos(Math.toRadians(center.lat)).coerceAtLeast(0.2)
+            val neighbours = listOf(
+                LatLng(center.lat + dLat, center.lng), LatLng(center.lat - dLat, center.lng),
+                LatLng(center.lat, center.lng + dLng), LatLng(center.lat, center.lng - dLng),
+            )
+            for (n in neighbours) {
+                delay(700) // spread the extra load; a real pan cancels via ambientJob's own churn
+                val cur = _state.value
+                if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
+                if (cachedAmbientNear(n) != null) continue
+                val res = runCatching { dataSource.nearbyPlaces(n, span) }.getOrNull() ?: continue
+                if (res.isNotEmpty()) cacheAmbient(n, res)
+            }
+        }
     }
 
     /**
@@ -3081,6 +3269,7 @@ class MapViewModel @Inject constructor(
         val zoomed = abs(zoom - lastAmbientZoom) >= 0.8
         if (!moved && !zoomed && s.ambientPois.isNotEmpty()) return
         ambientJob?.cancel()
+        prefetchJob?.cancel() // the old neighbourhood's warm-up is moot once the view moved
         // Span ≈ viewport height: ~9 km at z14 down to ~3.5 km zoomed in (kept ≥3.5 km — tighter
         // than that returns FEWER local hits, per the live calibration).
         val span = (9000.0 / 2.0.pow(zoom - 14.0)).coerceIn(3500.0, 9000.0)
@@ -3094,15 +3283,37 @@ class MapViewModel @Inject constructor(
         }
         ambientJob = viewModelScope.launch {
             delay(300) // brief settle so a flick doesn't scrape — but snappy
-            val res = runCatching { dataSource.nearbyPlaces(center, span) }.getOrNull() ?: return@launch
+            // PROGRESSIVE paint: the fan-out streams its accumulated pool as category terms
+            // land, so first dots show ~1 s in instead of waiting for the slowest request
+            // (the tail was most of the perceived wait; user 2026-07-11). Each partial passes
+            // the same bare-map gates as the final.
+            fun bareMap(): Boolean {
+                val cur = _state.value
+                return !(cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null)
+            }
+            // A cancelled fetch's SLOW straggler must not paint: the fan-out children have no
+            // suspension point between the blocking HTTP call and the merge, so they outlive
+            // cancel() long enough to fire onPartial for the OLD centre - and the moved-gate
+            // would then hold the wrong dots on screen (review 2026-07-11). Gate every paint
+            // on this launch still being the live one.
+            val self = kotlin.coroutines.coroutineContext[Job]
+            fun live() = self?.isActive == true
+            val res = runCatching {
+                dataSource.nearbyPlaces(center, span) { partial ->
+                    if (live() && bareMap()) _state.update { it.copy(ambientPois = keepAmbientForView(partial, viewRadiusMeters)) }
+                }
+            }.getOrNull() ?: return@launch
+            if (!live()) return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
             lastAmbientSpan = span
             cacheAmbient(center, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
-            val cur = _state.value
-            if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
+            if (!bareMap()) return@launch
             _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters), ambientCoversView = true) }
+            // Idle now: quietly warm the four NEIGHBOUR areas into the LRU so panning one screen
+            // over paints instantly (unmetered connections only - it's ~4 extra fan-outs).
+            prefetchAmbientNeighbours(center, span, zoom)
         }
     }
 

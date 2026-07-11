@@ -395,8 +395,11 @@ itself shows the traffic, not the whole map.
   landuse, killed fill-patterns). Hillshade relief from the keyless terrarium DEM
   (`encoding="terrarium"`). Custom Google-style POI markers (`PoiIcons`, Material-icon
   glyphs over coloured circles), nameless POIs hidden, transit density tuned to z16+.
-  Font is **Noto Sans** (Roboto is definitively blocked keyless - no server serves the
-  glyphs + bundling blanks the map; don't re-chase).
+  Font is **Roboto** via self-hosted glyphs on the repo's GitHub Pages: Roboto composited
+  over OpenFreeMap's Noto per glyph (all non-Latin scripts keep full coverage), the live
+  Liberty style patched at launch with only its glyphs URL (`ui/map/MapFonts`), probed and
+  falling back to plain Noto when the host is unreachable. The old "bundling blanks the
+  map" failure was the bundled style's dated tile path, not the glyph swap.
 - **MapTiler** Streets is wired as an alternative (needs the `MAPTILER_KEY` secret,
   never committed) but **off** (`USE_MAPTILER=false`) for keyless full control.
 - **D-pad-only operation (constraint - don't regress)**: the whole UI must stay drivable

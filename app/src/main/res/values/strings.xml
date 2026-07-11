@@ -551,4 +551,8 @@
     <string name="notif_ask_body">Navigation keeps your next turn in a notification, so directions stay with you when the screen is off or you switch apps. Without it, directions only show inside Vela.</string>
     <string name="notif_ask_allow">Allow</string>
     <string name="notif_ask_skip">Skip</string>
+    <string name="place_time_past_toast">That time has passed. Set to now.</string>
+    <string name="settings_ui_scale">Interface size</string>
+    <string name="place_avoid_tolls">Avoid tolls</string>
+    <string name="place_avoid_highways">Avoid highways</string>
 </resources>

@@ -169,6 +169,7 @@ import app.vela.ui.placeStatusColor
 import app.vela.ui.Traffic
 import app.vela.ui.place.DirectionsPanel
 import app.vela.ui.place.PlaceSheet
+import app.vela.ui.place.sheetDragGestures
 import app.vela.ui.search.SearchBar
 import java.util.Locale
 // D-pad-only operation (docs/dpad.md) — kept as one import block so upstream merges stay clean.
@@ -230,7 +231,10 @@ fun MapScreen(
         val variant = if (darkTheme) "streets-v2-dark" else "streets-v2"
         "https://api.maptiler.com/maps/$variant/style.json?key=${BuildConfig.MAPTILER_KEY}"
     } else {
-        state.styleUri
+        // Liberty is swapped for the cached Roboto-glyph patch when MapFonts has it
+        // ready (reactive - flips once the first refresh lands). Offline REGION
+        // DEFINITIONS deliberately keep state.styleUri (see MapFonts).
+        MapFonts.effective(state.styleUri)
     }
     val context = LocalContext.current
 
@@ -299,11 +303,19 @@ fun MapScreen(
     // chrome (scale bar / locate FAB / Search this area) so it never draws on top of the list at
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
     // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
+    // Which result ids survive the results sheet's filters (null = filters off) - feeds the
+    // map markers so filtered-out places lose their pins, not just their rows.
+    var filteredResultIds by remember { mutableStateOf<Set<String>?>(null) }
+    // True while the place sheet sits at its EXPANDED detent (covers the search bar).
+    var placeSheetExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(state.selected?.id) { if (state.selected == null) placeSheetExpanded = false }
+    LaunchedEffect(state.results) { filteredResultIds = null }
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
     // Bumped when the user grabs the map with a sheet open — each sheet glides down to its
     // minimized form on its bump (see onUserPan below).
     var sheetPanTick by remember { mutableStateOf(0) }
     var resultsPanTick by remember { mutableStateOf(0) }
+    var dirPanTick by remember { mutableStateOf(0) }
     // Expanded detent of the results bottom sheet, hoisted here so the BACK gesture can step it
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
@@ -690,11 +702,12 @@ fun MapScreen(
             },
             altColor = if (darkTheme) "#C8CDD4" else "#9AA0A6",
             onSelectAlternate = vm::selectRoute,
-            markers = markersOf(state),
+            markers = markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
+            ambientCoversView = state.ambientCoversView,
             // Grabbing the map with a sheet up drops it down out of the way so the map is yours
             // to look at (Google does the same): the results sheet to its bar, the place sheet to
             // its minimized card. The bar / a drag brings them back.
@@ -704,8 +717,8 @@ fun MapScreen(
                 // straight away unmounted the content mid-drop — the "pops down" report).
                 if (resultsShown) resultsPanTick++
                 if (state.selected != null && !searchOpen) sheetPanTick++
+                if (state.directionsOpen && !searchOpen) dirPanTick++
             },
-            ambientCoversView = state.ambientCoversView,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
@@ -927,6 +940,9 @@ fun MapScreen(
                     ),
             ) {
                 Column(Modifier.statusBarsPadding().padding(12.dp)) {
+                    // The bar hides while an expanded place sheet covers it: the visible sliver
+                    // still took taps and opened search OVER the card (user 2026-07-11).
+                    if (!(state.selected != null && placeSheetExpanded && !searchOpen)) {
                     SearchBar(
                         query = state.query,
                         searching = state.searching,
@@ -949,6 +965,7 @@ fun MapScreen(
                         dpadMode = dpadMode,
                         onMic = onMic,
                     )
+                    }
                     when {
                         // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)
                         // when the field is focused, when there are no results yet, OR while picking an
@@ -1279,8 +1296,13 @@ fun MapScreen(
                 transit = state.transit,
                 transitLoading = state.transitLoading,
                 onModeSelected = vm::setTravelMode,
+                avoidTolls = state.avoidTolls,
+                avoidHighways = state.avoidHighways,
+                onAvoidTolls = vm::setAvoidTolls,
+                onAvoidHighways = vm::setAvoidHighways,
                 onSelectRoute = vm::selectRoute,
                 onStartNav = onStartNav,
+                minimizeTick = dirPanTick,
                 onSteps = if (state.activeRoute != null) vm::openSteps else null,
                 onSearchAlongRoute = vm::searchAlongRoute,
                 onWalkDirections = vm::walkDirections,
@@ -1292,6 +1314,7 @@ fun MapScreen(
 
             state.selected != null && !searchOpen && state.pickOnMap == null -> PlaceSheet(
                 place = state.selected!!,
+                onExpandedChange = { placeSheetExpanded = it },
                 isSaved = state.saved.any { it.id == state.selected!!.id },
                 reviews = state.reviews,
                 reviewsLoading = state.reviewsLoading,
@@ -1329,6 +1352,7 @@ fun MapScreen(
             state.results.isNotEmpty() && !searchOpen && state.pickOnMap == null -> {
               SearchResults(
                 results = state.results,
+                onShownChange = { filteredResultIds = it },
                 collapsed = state.resultsCollapsed,
                 expanded = resultsExpanded,
                 onExpandedChange = { resultsExpanded = it },
@@ -1496,7 +1520,10 @@ fun MapScreen(
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = if (parkingSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer,
+                // Soft glyph ink when unset (onSecondaryContainer read near-black, same as the
+                // bookmark ribbon; user 2026-07-11). The SET state keeps primary/onPrimary - it
+                // carries state, like the Home/Work rows.
+                contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                 shadowElevation = 6.dp,
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
@@ -1713,8 +1740,12 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
         emptyList()
     }
 
-private fun markersOf(state: MapUiState): List<MapMarker> =
-    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice) }
+private fun markersOf(state: MapUiState, filteredIds: Set<String>?): List<MapMarker> =
+    displayedPlaces(state)
+        // The results sheet's filters (Open now / rating / price) report the surviving ids up;
+        // pins the LIST dropped must drop off the MAP too (user 2026-07-11). null = no filter on.
+        .let { list -> if (filteredIds == null) list else list.filter { it.id in filteredIds } }
+        .map { MapMarker(it.name, it.location, it.category, rating = it.rating, fuelPrice = it.fuelPrice) }
 
 @Composable
 private fun SearchResults(
@@ -1729,6 +1760,7 @@ private fun SearchResults(
     listName: String? = null, // set when the results ARE an open list — shown as the sheet title
     query: String = "", // the search text — leads the minimized bar so it says WHAT the results are
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, THEN flip collapsed
+    onShownChange: (Set<String>?) -> Unit = {}, // filtered-surviving ids (null = no filter active)
     modifier: Modifier = Modifier,
 ) {
     // A BOTTOM sheet, Google-style, sharing the place sheet's detent grammar:
@@ -1784,7 +1816,20 @@ private fun SearchResults(
     fun settleList(velocityPxPerSec: Float) {
         val vDp = with(density) { velocityPxPerSec.toDp().value }
         val naturalEnd = resultsDecay.calculateTargetValue(listH.value, -vDp)
-        val target = listOf(0f, peekL, expL).minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekL
+        // Flick = commit at least one detent in the flick's direction (the place sheet's
+        // grammar; the pure projection made short flicks feel dead - user 2026-07-11).
+        val detents = listOf(0f, peekL, expL)
+        val target = when {
+            vDp < -app.vela.ui.place.FLING_COMMIT_DPS -> {
+                val up = detents.filter { it > listH.value + 1f }
+                maxOf(up.minOrNull() ?: expL, up.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: expL)
+            }
+            vDp > app.vela.ui.place.FLING_COMMIT_DPS -> {
+                val down = detents.filter { it < listH.value - 1f }
+                minOf(down.maxOrNull() ?: 0f, down.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: 0f)
+            }
+            else -> detents.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekL
+        }
         sheetScope.launch {
             // States first for peek/expanded so everything keyed on them stays honest; the
             // MINIMIZED flip waits until the list has ridden down to zero (see above).
@@ -1868,6 +1913,13 @@ private fun SearchResults(
                 else -> list
             }
         }
+    // Tell the map which pins survived (sort doesn't change membership, so it isn't a key).
+    LaunchedEffect(openOnly, minRating, priceMax, accessibleOnly, results) {
+        onShownChange(
+            if (!openOnly && minRating == 0.0 && priceMax == 0 && !accessibleOnly) null
+            else shown.mapTo(HashSet()) { it.id },
+        )
+    }
     // Same fixed sheet grey as the place sheet, not the wallpaper-tinted Material card.
     val dark = isAppInDarkTheme()
     Card(
@@ -1891,19 +1943,13 @@ private fun SearchResults(
                         })
                     }
                     .pointerInput(Unit) {
-                        // Same physics as the body: the handle drags the list 1:1 and the release
-                        // rides the fling to the nearest size.
-                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
-                        detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking() },
-                            onVerticalDrag = { change, dy ->
-                                change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
+                        // Same physics as the place sheet (the shared sheetDragGestures grammar).
+                        sheetDragGestures(
+                            dragBy = { dy ->
                                 if (isCollapsed.value && dy < 0f) expand.value() // list mounts at 0 and grows with the finger
                                 dragListBy(dy)
                             },
-                            onDragEnd = { settleList(tracker.calculateVelocity().y) },
-                            onDragCancel = { settleList(0f) },
+                            settle = { settleList(it) },
                         )
                     },
             ) {
@@ -1921,7 +1967,7 @@ private fun SearchResults(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = if (collapsed) 8.dp else 0.dp),
+                        .padding(start = 16.dp, end = 4.dp, top = 2.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // The bar says WHAT you're looking at, not just how many: the list name or
@@ -1947,22 +1993,32 @@ private fun SearchResults(
                             maxLines = 1,
                         )
                     }
-                    IconButton(onClick = { if (collapsed) onExpand() else onExpandedChange(!expanded) }) {
-                        Icon(
-                            if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                            contentDescription = if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
-                            tint = SheetPalette.dim(dark),
-                        )
-                    }
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = stringResource(R.string.mapscreen_close_results),
-                            tint = SheetPalette.dim(dark),
-                        )
-                    }
+                    // Circled like the place-sheet header (one control language). The chevron
+                    // STAYS: it's the discoverable expand affordance AND the D-pad path (the
+                    // handle's tap detector isn't focusable) — removing it would orphan keypad
+                    // users (user 2026-07-11).
+                    app.vela.ui.place.HeaderCircleButton(
+                        if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
+                        tint = SheetPalette.ink(dark),
+                        bg = SheetPalette.dim(dark),
+                    ) { if (collapsed) onExpand() else onExpandedChange(!expanded) }
+                    Spacer(Modifier.width(8.dp))
+                    app.vela.ui.place.HeaderCircleButton(
+                        Icons.Default.Close,
+                        stringResource(R.string.mapscreen_close_results),
+                        tint = SheetPalette.ink(dark),
+                        bg = SheetPalette.dim(dark),
+                    ) { onClose() }
+                    Spacer(Modifier.width(8.dp))
                 }
-                if (!collapsed) {
+                // The chips (and the divider under them) FOLD with the sheet height over
+                // its last 140dp of travel (SheetFold, the place sheet's minimize primitive):
+                // by the time only the bar remains they are zero-height, so the collapsed
+                // flip removes nothing visible - they used to pop out at the flip while the
+                // sheet itself had already stopped moving (user 2026-07-11).
+                val chipsFraction: () -> Float = { (listH.value / 140f).coerceIn(0f, 1f) }
+                app.vela.ui.SheetFold(composed = !collapsed, fraction = chipsFraction) {
                 // Filter chips on their own horizontally-scrollable row, so a third (or
                 // future) chip never crowds the header or clips on a narrow screen. Filled pills
                 // (a subtle tint when off, solid teal when on) so they read modern on the sheet —
@@ -2072,10 +2128,10 @@ private fun SearchResults(
                         }
                     }
                 }
-                } // if (!collapsed) — chips
+                Divider()
+                } // SheetFold - chips
             }
             if (!collapsed) {
-            Divider()
             LazyColumn(
                 Modifier
                     .nestedScroll(dismissConn)
@@ -2242,7 +2298,9 @@ private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}
             onClick = onOpenLists,
             shape = CircleShape,
             color = if (dark) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = if (dark) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondaryContainer,
+            // Soft glyph ink both modes - onSecondaryContainer read near-black next to the
+            // grey chip glyphs (user 2026-07-11).
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             shadowElevation = 2.dp,
             modifier = Modifier.dpadHighlight(CircleShape).size(40.dp),
         ) {
@@ -2258,10 +2316,12 @@ private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}
                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 // Full pill, Google-style — the M3 default 8dp corners read dated on a map chip row.
                 shape = androidx.compose.foundation.shape.CircleShape,
-                // MONOCHROME glyphs (user 2026-07-06): the M3 default tints the leading icon with the
-                // theme primary (teal), Google's chips are single-ink — icon matches the label colour.
+                // MONOCHROME glyphs (user 2026-07-06), SOFT ink (user 2026-07-11): the M3
+                // default tints the icon primary teal; full onSurface made the solid glyph
+                // read DARKER than the label. onSurfaceVariant matches the glyph weight to
+                // the text, like Google's rows.
                 colors = androidx.compose.material3.AssistChipDefaults.elevatedAssistChipColors(
-                    leadingIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             )
         }
@@ -2500,7 +2560,10 @@ private fun ShortcutRow(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (place != null) MaterialTheme.colorScheme.primary else SheetPalette.dim(dark),
+            // Unset rows share the page's glyph ink (onSurfaceVariant) - the old SheetPalette
+            // dim was LIGHTER than the recents pin beside it and the pair read mismatched
+            // (user 2026-07-11). Set rows keep the primary tint (they carry state).
+            tint = if (place != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
@@ -2687,13 +2750,14 @@ private fun SuggestionRow(
         // Per-row remove (the X on recents). Its own focus stop with a visible ring, so a D-pad
         // walk can reach it after the row itself.
         if (onRemove != null) {
-            IconButton(onClick = onRemove, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(R.string.mapscreen_menu_remove),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // Same circle language as the sheet headers, sized down for a list row.
+            app.vela.ui.place.HeaderCircleButton(
+                Icons.Default.Close,
+                stringResource(R.string.mapscreen_menu_remove),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                bg = MaterialTheme.colorScheme.onSurfaceVariant,
+                size = 32.dp,
+            ) { onRemove() }
         }
     }
 }
@@ -2942,6 +3006,9 @@ private fun ListsSheet(
 ) {
     var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
     var creating by remember { mutableStateOf(false) }
+    // D-pad-first initial focus (hard rule, docs/dpad.md): a raw Dialog must place focus
+    // itself - land it on the New-list button so the menu opens usable with no wasted press.
+    val listsAutoFocus = app.vela.ui.rememberDpadAutoFocus()
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
@@ -2955,7 +3022,7 @@ private fun ListsSheet(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { creating = true }) {
+                    TextButton(onClick = { creating = true }, modifier = Modifier.focusRequester(listsAutoFocus).dpadHighlight(RoundedCornerShape(20.dp))) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(stringResource(R.string.mapscreen_new_list))
