@@ -2928,6 +2928,9 @@ private fun ListsSheet(
 ) {
     var editing by remember { mutableStateOf<app.vela.core.model.PlaceList?>(null) }
     var creating by remember { mutableStateOf(false) }
+    // D-pad-first initial focus (hard rule, docs/dpad.md): a raw Dialog must place focus
+    // itself - land it on the New-list button so the menu opens usable with no wasted press.
+    val listsAutoFocus = app.vela.ui.rememberDpadAutoFocus()
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
         Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
             Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
@@ -2941,7 +2944,7 @@ private fun ListsSheet(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = { creating = true }) {
+                    TextButton(onClick = { creating = true }, modifier = Modifier.focusRequester(listsAutoFocus).dpadHighlight(RoundedCornerShape(20.dp))) {
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(4.dp))
                         Text(stringResource(R.string.mapscreen_new_list))
