@@ -3110,11 +3110,15 @@ class MapViewModel @Inject constructor(
 
     private fun persistAmbientCache() {
         ambientPersistJob?.cancel()
+        // Snapshot on the caller (main) thread: the deque is main-only, and reading it from
+        // the IO worker raced cacheAmbient's mutations (a prefetch landing while a persist
+        // read = ConcurrentModificationException; review 2026-07-11).
+        val snapshot = ambientCache.toList()
         ambientPersistJob = viewModelScope.launch(Dispatchers.IO) {
             delay(2000) // debounce a pan session into one write
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
             val nowWall = System.currentTimeMillis()
-            val entries = ambientCache.toList().takeLast(8).map { (c, places, atElapsed) ->
+            val entries = snapshot.takeLast(8).map { (c, places, atElapsed) ->
                 app.vela.core.data.AmbientCachedArea(
                     c.lat, c.lng, nowWall - (nowElapsed - atElapsed),
                     places.take(200).map { app.vela.core.data.AmbientCachedPlace.of(it) },
@@ -3211,6 +3215,7 @@ class MapViewModel @Inject constructor(
         val zoomed = abs(zoom - lastAmbientZoom) >= 0.8
         if (!moved && !zoomed && s.ambientPois.isNotEmpty()) return
         ambientJob?.cancel()
+        prefetchJob?.cancel() // the old neighbourhood's warm-up is moot once the view moved
         // Span ≈ viewport height: ~9 km at z14 down to ~3.5 km zoomed in (kept ≥3.5 km — tighter
         // than that returns FEWER local hits, per the live calibration).
         val span = (9000.0 / 2.0.pow(zoom - 14.0)).coerceIn(3500.0, 9000.0)
@@ -3232,11 +3237,19 @@ class MapViewModel @Inject constructor(
                 val cur = _state.value
                 return !(cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null)
             }
+            // A cancelled fetch's SLOW straggler must not paint: the fan-out children have no
+            // suspension point between the blocking HTTP call and the merge, so they outlive
+            // cancel() long enough to fire onPartial for the OLD centre - and the moved-gate
+            // would then hold the wrong dots on screen (review 2026-07-11). Gate every paint
+            // on this launch still being the live one.
+            val self = kotlin.coroutines.coroutineContext[Job]
+            fun live() = self?.isActive == true
             val res = runCatching {
                 dataSource.nearbyPlaces(center, span) { partial ->
-                    if (bareMap()) _state.update { it.copy(ambientPois = keepAmbientForView(partial, viewRadiusMeters)) }
+                    if (live() && bareMap()) _state.update { it.copy(ambientPois = keepAmbientForView(partial, viewRadiusMeters)) }
                 }
             }.getOrNull() ?: return@launch
+            if (!live()) return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
             cacheAmbient(center, res)
