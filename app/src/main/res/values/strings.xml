@@ -160,6 +160,7 @@
     <string name="settings_support_button">Support Vela</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string> <!-- format -->
+    <string name="settings_version_copied">Version copied</string>
     <string name="settings_collapse">Collapse</string>
     <string name="settings_expand">Expand</string>
     <string name="settings_voice_lib_empty_hint">★ marks the recommended voices. Every voice runs offline on your phone.</string>

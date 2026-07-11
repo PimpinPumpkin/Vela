@@ -134,6 +134,7 @@
     <string name="settings_support_button">Sostieni Vela</string>
     <string name="settings_version">Versione</string>
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string>
+    <string name="settings_version_copied">Versione copiata</string>
     <string name="settings_collapse">Comprimi</string>
     <string name="settings_expand">Espandi</string>
     <string name="settings_voice_lib_empty_hint">★ indica le voci consigliate. Ogni voce funziona offline sul telefono.</string>
