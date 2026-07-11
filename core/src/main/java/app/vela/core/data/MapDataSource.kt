@@ -60,6 +60,11 @@ interface MapDataSource {
         // Intermediate stops the route must pass through, in order (multi-stop trips). Empty = direct
         // origin→destination. A waypointed route is a single path through the stops (no alternates).
         waypoints: List<LatLng> = emptyList(),
+        // Route preference toggles (drive only). Honoured by the OSRM paths via `exclude=`;
+        // Google-fallback routes and offline graphs baked before the avoid profiles cannot
+        // honour them (the fallback still routes rather than failing).
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
     ): List<Route>
 
     /** Name a PROVISIONAL alternate ([Route.provisional]) — the user picked it to drive, so turn its
@@ -71,6 +76,8 @@ interface MapDataSource {
         origin: LatLng,
         destination: LatLng,
         mode: TravelMode = TravelMode.DRIVE,
+        avoidTolls: Boolean = false,
+        avoidHighways: Boolean = false,
     ): Route = route
 }
 
