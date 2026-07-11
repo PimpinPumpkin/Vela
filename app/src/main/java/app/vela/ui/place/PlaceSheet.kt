@@ -1622,7 +1622,14 @@ fun DirectionsPanel(
                         }
                         onSteps?.let {
                             FilledTonalButton(onClick = it) {
-                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                                // Soft glyph ink: the solid List glyph at the label's own colour
+                                // read darker than the word beside it (user 2026-07-11).
+                                Icon(
+                                    Icons.AutoMirrored.Filled.List,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    tint = dim,
+                                )
                                 Text(stringResource(R.string.place_steps))
                             }
                         }
@@ -1654,11 +1661,13 @@ fun DirectionsPanel(
                                 ),
                                 label = { Text(stringResource(labelRes)) },
                                 leadingIcon = {
+                                    // dim, not ink: solid glyphs at the label colour read darker
+                                    // than the text (user 2026-07-11) - soft ink matches weight.
                                     Icon(
                                         icon,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp),
-                                        tint = ink,
+                                        tint = dim,
                                     )
                                 },
                                 // Stadium pill, matching the map category chips + the mode chips above.
