@@ -15,6 +15,9 @@ data class Place(
     val reviewCount: Int? = null,
     val priceLevel: Int? = null,   // 0..4, Google-style ($ to $$$$)
     val priceText: String? = null, // Google's own label, e.g. "$1–10" / "$$"
+    // The place data carries its accessibility attributes right in the search response (the one
+    // attribute family Google ships per-result keyless), so results can be FILTERED on it.
+    val wheelchairAccessible: Boolean = false,
     // Gas stations only: Google's live fuel price, e.g. "$5.34/Regular" — shown on the result
     // marker, the list row and the place sheet. Null for every other kind of place.
     val fuelPrice: String? = null,

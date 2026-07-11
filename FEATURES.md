@@ -17,6 +17,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Result filters grew up (2026-07-10).** The rating and price chips open real menus (rating
+  tiers 3.5+/4.0+/4.5+ like Google, price levels $ through $$$$) and Sort is a menu of
+  Relevance / Rating / Distance, instead of chips that blindly cycled through hidden states. New
+  "Wheelchair accessible" filter — the one place attribute Google's response carries per result
+  keyless (parsed off the language-neutral attribute id, so it works in all 11 languages);
+  deeper attribute facets (vegetarian, reservations, …) only exist in the per-place About data,
+  so they can't filter a result list keyless. Cuisine facets are deliberately absent: in a
+  search-first app the query is the cuisine filter, and Vela's filters are local to the fetched
+  results rather than server re-queries.
 - ✅ **Privacy comparison matrix in the README (2026-07-11).** A plain-words table under
   Privacy comparing the Google Maps app, Google Maps web, and Vela: account linkage, device
   identifiers, GPS exposure, map-browsing visibility, search anonymity, routing telemetry,
