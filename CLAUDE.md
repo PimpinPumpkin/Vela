@@ -384,12 +384,23 @@ Defaults that make the safe path the easy one:
   `Place.ratingHistogram` ([5-star..1-star] counts) is scraped IN PASSING by the photo walk
   from the place page's aria-label star rows (the same rows the full-screen panel carves),
   bridged via `WebPhotoFetcher.fetch(onHistogram=...)`, cached per feature id beside the photo
-  LRU, and drawn by `RatingHistogram` beside the big rating number; absent = no bars, no cost. **Menu photo DATES are BLOCKED on a dead RPC (2026-07-11):** the hspqX
-  placePhotos RPC returns 0 photos now (logcat tag `VelaPhotoDates`: rpc=0) - it rotted
-  unnoticed after the WebView walk replaced it as the gallery source (June calibration). The
-  date-join plumbing is correct and inert (stamps render only when a date exists). Reviving
-  dates = recapture `photosProto`/`photosEndpoint` from a live gallery RPC and bump
-  calibration.json (remote-fixable, no app release). Don't chase it in-app.
+  LRU, and drawn by `RatingHistogram` beside the big rating number; absent = no bars, no cost. **Menu photo DATES are BLOCKED - and it is NOT a calibration drift (proven 2026-07-11, desktop capture):** the hspqX
+  placePhotos RPC returns 0 photos now (logcat tag `VelaPhotoDates`: rpc=0). The "recapture
+  photosProto from a desktop gallery RPC" route the earlier note left open is now CLOSED. A live
+  desktop `maps.google.com` capture of the on-load `hspqX` (`/MapsPhotoService.ListEntityPhotos`
+  via `batchexecute?rpcids=hspqX`) shows the endpoint AND the field-index matrix
+  (`[[[1,0,3],[2,1,2],[2,0,3],[8,0,3],[10,0,3],[10,1,2],[10,0,4],[9,1,2]],1]`) are BYTE-IDENTICAL
+  to `calibration.json`'s `photosProto` - nothing drifted, so a version bump would be a no-op.
+  The real blocker is **bot-gating on the photos RPC**: replaying the request three ways from an
+  automated browser - Vela's ftid-in-`[2][0]` form, the captured per-page photo-token form
+  (`0qlSas...`, `["<tok>",...,81,...,16698]`), AND the genuine page's OWN fresh-token on-load
+  request - all returned `[null,0,null,"<ei>"]` = zero photos (0 `googleusercontent` in the body).
+  Same TLS/behavioural degradation that gives OkHttp the Street-View-only reply; the live gallery
+  the app DOES show comes from the WebView DOM WALK, which has categories but no per-photo dates.
+  So dates need the RPC to answer inside a trusted (non-automated, non-keyless) session, which the
+  keyless model can't mint. The date-join plumbing stays correct + inert (stamps render only when a
+  date exists). **Don't recalibrate photosProto (it already matches) and don't re-run a desktop
+  capture (proven bot-gated to empty). Don't chase it in-app.**
   **Menu-tab reliability hardening (2026-07-11):** the walk's tab wait
   counts from the GALLERY OPENING (6 ticks after open, hard cap 20) instead of 8 ticks from
   script start - cold-WebView loads ate the old window and real tabs got skipped; a late-tab
