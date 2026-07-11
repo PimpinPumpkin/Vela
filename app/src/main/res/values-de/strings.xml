@@ -134,6 +134,7 @@
     <string name="settings_support_button">Vela unterstützen</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_line">Vela %1$s  (Build %2$d)</string>
+    <string name="settings_version_copied">Version kopiert</string>
     <string name="settings_collapse">Einklappen</string>
     <string name="settings_expand">Ausklappen</string>
     <string name="settings_voice_lib_empty_hint">★ markiert die empfohlenen Stimmen. Jede Stimme läuft offline auf deinem Gerät.</string>
