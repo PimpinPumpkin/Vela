@@ -39,7 +39,8 @@ class NavStringsTest {
     @Test fun `registry defaults to english and switches by language`() {
         assertEquals(EnNavStrings, NavStringsRegistry.current()) // default, locale-independent
         assertEquals(FrNavStrings, NavStringsRegistry.forLanguage("fr"))
-        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("ja")) // untranslated → English fallback
+        assertEquals(JaNavStrings, NavStringsRegistry.forLanguage("ja")) // now translated
+        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("th")) // untranslated → English fallback
         NavStringsRegistry.setLocale(Locale.FRANCE)
         assertEquals(FrNavStrings, NavStringsRegistry.current())
         NavStringsRegistry.setLocale(Locale.US) // reset so other tests see English
