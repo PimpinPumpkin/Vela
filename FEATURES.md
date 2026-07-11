@@ -17,6 +17,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Chinese, Chinese (Taiwan) and Japanese (2026-07-11, issue #55).** Vela speaks 14
+  languages now. All three layers: UI chrome (values-zh Simplified, values-zh-rTW Traditional
+  with Taiwan wording, values-ja), generated turn-by-turn text (three new NavStrings tables;
+  Chinese splits by script so Taiwan gets 迴轉/公尺/圓環), localized place content (hl=zh-CN /
+  zh-TW / ja with open/closed keyword tables for both scripts), Whisper dictation (multilingual
+  model, pinned per language), and a Mandarin neural voice (Huayan) in the voice library that
+  pairs with both Chinese scripts. Japanese has no Piper voice yet, so ja guidance speaks
+  through any installed system Japanese TTS (the standard fallback); see ROADMAP.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is now a white chevron inside
   a filled blue circle with a white ring and a soft shadow, matching Google's current puck; it
   rotates about the exact GPS point. Replaces the bare blue chevron.
