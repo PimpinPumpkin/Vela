@@ -276,7 +276,12 @@ Defaults that make the safe path the easy one:
   with UTC or picks land a day early). The old android.app Holo dialogs are gone. The chooser's single-estimate
   fallback shows the plain time (the "~" prefix read as clutter, user 2026-07-11), and every
   OutlinedButton on the directions family (Steps, the time/date fields, transit Back) is a
-  FilledTonalButton stadium pill - outlined was the last dated control there.
+  FilledTonalButton stadium pill - outlined was the last dated control there. The
+  search-along-route chips are SOLID tonal (they are one-shot actions; a permanently
+  unselected FilterChip read as disabled) while the REAL selection groups (travel mode,
+  leave/depart/arrive) keep the M3 filled-when-selected contrast on purpose - filling those
+  would erase the selection signal. Past picks are impossible: the date picker greys out days
+  before today and a confirmed past time clamps to the next 5-minute mark now.
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
