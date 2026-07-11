@@ -934,12 +934,35 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   roads #b0c1d4 (secondary #aabdd0, trunk #a4b8cd, casings #a2b4c9); light land stays #f2f1ee
   (user prefers it over Google's #f6f6f6). Their eyedrop had macOS colour-shift on - expect a
   fine-tune pass.
-- **Map font CANNOT be Roboto via OpenFreeMap (probed 2026-07-11):** their glyph server 404s
-  every Roboto stack (Noto only). The plan (ROADMAP): host our own Roboto glyph PBFs on the
-  repo's GitHub Pages next to the F-Droid repo, fetch the LIVE style JSON at runtime, patch
-  its `glyphs` URL + fontstack names, and load fromJson - keeps auto-following OpenFreeMap's
-  tile snapshots (the parked asset style failed because it PINNED a dated tile path, not
-  because fromJson is wrong). Touches offline style caching - do it as its own change.
+- **Basemap labels are ROBOTO via self-hosted glyphs (built 2026-07-11, device-verified;
+  dark-launched pending infra).** OpenFreeMap's glyph server is Noto-only (every Roboto stack
+  404s), so Vela hosts its own set on the repo's GitHub Pages at `/Vela/fonts`:
+  `scripts/build-map-fonts.sh` composites Roboto OVER OpenFreeMap's live Noto PER GLYPH
+  (`scripts/composite_glyphs.py`, pure-python protobuf; Roboto wins its 896
+  Latin/Cyrillic/Greek glyphs per stack, Noto keeps every other script - Shinjuku CJK
+  device-verified intact), and the folders KEEP the "Noto Sans Regular/Bold/Italic" names so
+  the ONLY style change is the `glyphs` URL (zero layer edits; the runtime textFont sites
+  stay untouched; the inner PBF name field is decorative - OFM's own files carry a 23-font
+  composite name). `ui/map/MapFonts` (init in VelaApp) fetches the LIVE Liberty JSON at
+  launch - tile paths keep auto-following OFM's snapshot rotation, the property the old
+  bundled asset lost - patches `glyphs`, caches to `filesDir/style/liberty-roboto.json`,
+  and MapScreen swaps it in via `MapFonts.effective` (VelaMapView reads `file://` styles
+  itself and falls back to the plain URL on a bad file). GUARDS, each device-proven: the
+  font host is PROBED (range 0-255) and an unreachable host EVICTS the cache - a style
+  whose glyph URLs fail renders NO labels, and the evicted fallback is byte-identical to
+  the pre-font map (RMS 0.0 vs a Noto reference shot); a style-fetch failure keeps the
+  last-good cache max 7 days (snapshot-rot guard), then the live URL wins. Offline REGION
+  DEFINITIONS keep the plain Liberty URL on purpose (a definition outlives file paths, and
+  its download caches Noto glyphs as the offline floor; the patched style's offline labels
+  ride the ambient cache warmed by browsing). Local test loop: `python3 -m http.server` on
+  the glyph dir + `adb reverse tcp:8099 tcp:8099` + `-PmapFontsUrl=http://127.0.0.1:8099`.
+  NB `InputStream.readNBytes` is API 33+ (minSdk 26) - the probe reads manually.
+  **ROLLOUT GATE (until all three land, every install just stays on Noto):** (1) publish
+  the glyph zip: `gh release create map-fonts <zip> --prerelease` (staged at
+  `build/map-fonts.zip`, or rebuild with the script - and it joins the DO-NOT-DELETE infra
+  releases); (2) merge so `fdroid-repo.yml` carries the unpack-to-Pages step; (3) an
+  fdroid-repo.yml run deploys the site. Then MapFonts' probe starts passing and Roboto
+  lights up on next app launch, no app release needed.
 - **Two-finger tilt: shove detector widened** (maxShoveAngle 55, pixelDeltaThreshold 8) - the
   stock 20-degree parallel requirement made tilt nearly impossible. **Photo viewer:**
   double-tap zooms 2.5x at the tap point / back out (a tap-detector pointerInput layered
