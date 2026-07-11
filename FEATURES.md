@@ -21,6 +21,24 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   apartment complex's number over its whole footprint (OpenAddresses has a row per unit/parcel);
   the overlay build now collapses those to a single point per address, so each number appears
   once. Takes effect per state as the overlays rebuild.
+- ✅ **The full-screen viewers match Google's chrome (2026-07-11).** The photo viewer and the
+  full reviews page render in the app's own full-screen window (not a child dialog), so they
+  truly reach every edge and survive rotation without the image floating on a shrunken
+  background. The status bar stays visible over a gradient at the top, Google-style. The reviews
+  page's back arrow became an X (matching the photo viewer, on the left) and swipes down from the
+  top to close.
+
+- ✅ **The photo viewer and reviews page reach the true screen edges (2026-07-10).** A window
+  dump showed compose dialogs are wrap-content windows measured against inset bounds, so they
+  stopped about a status bar short of the display at each end no matter which window flags were
+  set; their roots now demand the real display size, which pulls the window out to the edges.
+
+- ✅ **The Menu photos stop including things that were never the menu (2026-07-10).** The gallery
+  scrape used to tag whatever was on screen while a category tab was selected, page chrome and
+  the previous grid's leftover tiles included. It now snapshots the screen before each tab click
+  and tags only what appears after the switch, dwells more than twice as long on menu tabs so
+  long menus are walked to the end, and recognizes the menu tab's name in all 11 app languages.
+
 - ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
   disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
   transit lines, 3D buildings), then a new **Place pages** section (Show reviews, the "Read all reviews"
@@ -66,6 +84,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Building footprints + house numbers, Google-style (2026-07-04).** Residential/building outlines read sparse because of a **real bug**: the bundled Liberty `building` FILL layer is `minzoom 13 / maxzoom 14`, and MapLibre `maxzoom` is **exclusive**, so the code's `setMinZoom(14f)` collapsed its range to empty (`14 ≤ z < 14`) - the crisp flat footprints **never painted**, leaving only the faint `building-3d` extrusion (the "sparse vs Google" look). Fixed by re-opening the top with **`setMaxZoom(24f)`** on the `building` layer in both `applyLight`/`applyDark`, so flat grey footprints with a crisp darker outline draw from ~z14 up (overzoomed z14 tiles fill z15+); `building-3d` extrusions are now **gated to z16+** (flat fill carries the browse-zoom look; extrusion is the per-pixel-expensive part on a Pixel 5a). **House numbers**: the `vela-housenumber` layer (OMT `housenumber` source-layer) is **confirmed functional** - OpenFreeMap really does serve that layer (verified against the live TileJSON + z14 tiles), so it renders where OSM has `addr:housenumber`; `minZoom` lowered 17→**16** to surface them a touch earlier. **Device-verified on a Pixel 5a:** downtown the metro renders full building footprints + house numbers (1537, 1529, 1512, 1524…) at z16+. **Coverage caveat (OSM, not the renderer):** footprints are near-complete in US/EU metros but sparse in some newer suburbs, and `addr:housenumber` is patchy - Vela renders whatever OSM has, so a thinly-mapped neighbourhood still looks bare (that's an OSM data gap, not a Vela bug).
 - ✅ **Traffic lights + stop signs on the map (2026-07-05).** OSM `highway=traffic_signals` draw as a small stoplight icon and `highway=stop` as a red **STOP** octagon, beneath the POI dots + pins, at close zoom (z ≥ 16). Zoom-scaled icon size + draw-all (allowOverlap, 2026-07-06) so they’re actually visible on the browse map, not culled by the denser POI layer. Keyless (Overpass), fetched per-viewport but **area-cached** - the fetch box is padded 50% beyond the view and reused while you stay inside it, so panning/driving through a neighbourhood doesn't re-hit the server. Zoom-gated (no setting); shows in both browse and nav.
 - ✅ **Map POIs are Google-ranked by real prominence, not OSM (2026-07-02).** The map's business POIs come from **ambient Google places** (`nearbyPlaces` - an 8-term category fan-out over the viewport), and OSM's `poi_r1/r7/r20` are hidden while those show. The bug: the ambient dots collided at the same building (a Safeway and a tiny sushi counter inside it), and the winner was decided by the fan-out's **category-term order** ("restaurants" queried before "stores"), so the sushi place outranked the Safeway. Fixed by ranking the deduped Google places by **real prominence** - `ambientProminence = ln(reviewCount+1) · (0.6 + rating/10)` (review count dominates, rating nudges) - so the anchor store (Safeway, ~1,300 reviews) beats its in-store tenant (dozens), and the map's top POIs are recognizable landmarks (device-measured: the regional mall, the big grocery anchors, Trader Joe's, Walmart…) instead of the 0-review junk the fan-out drags in (a mobile mechanic, a care home, a road intersection). **A distance-bucketed variant was tried and reverted** - it floated near-centre junk above the landmarks (caught by an on-device log). Pure prominence, exact distance only as a tiebreak. Unit-tested (`AmbientRankingTest`); `rankAmbientPlaces`/`ambientProminence` are pure `:core` functions. **Deeper + broader + zoom-scaled (2026-07-02):** three coordinated levers make the map fill with businesses like Google's. (1) **Broader categories** - the fan-out gained `grocery store / gas station / gym / bar / pharmacy` (13 terms) so the map shows a real MIX, not just food/shops. (2) **Deeper pool** - `!7i40 → !7i60` per term took the candidate pool from ~150 to **~690** (device-measured) so there's rank to descend into. (3) **Hand the map ALL of them, let collision do the zoom-scaling** - an early cut (`take(80)` → a zoom-scaled `take(260)`) turned out to be the "seeing fewer results" bug: over the ~3.5 km fetch span the deep pool's far, more-prominent places filled a small cap, so a low-commercial view's own nearby shops were cut *before the map could try to draw them* (device-caught: a residential viewport handed 260 POIs rendered **zero**, all in the commercial cores off-screen). Now the map is handed the POIs **near the view** (a `viewRadius × 1.25` filter, `AMBIENT_ONSCREEN_CAP = 140` by prominence) instead of the whole 3.5 km pool - because off-screen POIs can't render anyway, and MapLibre re-runs symbol collision over *every* handed feature each drag frame. So nearby businesses (incl. the welcome low-signal ones - care homes, a floral counter, a local LLC) render, **more appear as you zoom in** (dots spread out, fewer collide), and a low-commercial view keeps all its handful of local shops (under the cap → nothing cut, the "fewer results" fix stays). Low-signal can't crowd out a business (prominence order places real ones first; low-signal fills leftover collision gaps). **Perf:** the first cut handed the *whole* pool (~800) and a Pixel 5a lagged dragging - the collider was chewing 800 symbols/frame; view-filter + cap brought it to **1.38 % janky frames, 90th-percentile 15 ms** on the same 5a, with identical on-screen density (device-verified `gfxinfo` + screenshot). *(Keyless ceiling: the viewport query floors at a ~3.5 km span - Google's `tbm=map` returns FEWER hits for a tighter box - so a hyper-dense downtown at max zoom is still bounded by what one span returns; fine for the common case.)* **Prominence sizing + smoother panning (2026-07-03):** four more Google-like touches. (1) **Anchors read bigger + show from farther** - each ambient dot now carries its prominence to the layer (`MapMarker.prominence`), driving a **data-driven `iconSize` (~0.78 for low-signal → ~1.3 for a Safeway/mall) and `textSize` (11→14pt)** via MapLibre `interpolate` expressions (zero per-frame CPU), plus a **prominence-weighted keep-radius** (`viewRadius × (1.25 … 1.6)`) so a high-prominence anchor survives off-centre and appears at the edge like Google does at 500 ft. Doubles as "bigger POI icons". (2) **Smoother drag on the 5a** - `applyData` was re-`setGeoJson`-ing (a full symbol re-tessellation) on *every* recomposition (a nav mySpeed tick, a mute/theme toggle); now it **short-circuits when the marker/ambient lists are unchanged** (structural equality, reset on style reload). With a lighter halo (1.2→0.9) + icon-padding (3→1.5), drag jank on the Pixel 5a went **1.38 % → 0.47 % janky frames (90th-pct 15 → 10 ms)**.
+- ✅ **Reroute buzz (2026-07-10).** Going off-route now vibrates as well as speaking "Rerouting": three
+  quick ticks then a long buzz, a pattern unlike any turn cue, so a cyclist who can't hear the voice
+  (or anyone riding muted) still knows the route changed. Fired beside the spoken announcement and
+  throttled the same way (once per burst, silent retries stay silent); honours the per-mode "Vibrate
+  on turns" setting. Demo drives also pass the real travel mode now, so a simulated bike route
+  buzzes exactly like the real ride would (it used to run haptics as Driving = silent).
 - ✅ **Per-travel-mode "Vibrate on turns" (2026-07-03).** The single haptics toggle became **four** - Driving / Walking / Cycling / Transit - so you can buzz on turns while cycling/walking but stay silent driving. `Haptics.cue(type, approaching, mode)` checks the per-mode pref (`haptics_<mode>`). **Default = on for walk/bike/transit, OFF for driving** (`Haptics.defaultFor`) - in a car you've got the screen + spoken directions, so a buzz every turn is noise; an existing legacy `haptics_on=false` still wins.
 - ✅ **Place-sheet header + actions, Google-style (2026-07-03, settled after a couple of iterations).** **Header:** name + **Save (★) · Share · ⋮ · ✕** as compact 40dp icon buttons; the name is `titleLarge` (22sp) with `maxLines=2`, so even "Starbucks Coffee Company" fits two clean lines beside the icons without ellipsising. **Action pills:** a highlighted **Directions** + short **Call / Website** (`ActionPill`, horizontally-scrollable as a safety) - the *fast path*. **Phone number + website live as their own tappable rows below the address** (showing "(425) 332-6175" and the domain), exactly where Google puts the detail. The collapsed **Hours** row no longer lets a long holiday value ("5 AM–1 AM · 4th of July (Observed)") squeeze the label into "Ho/urs" - fixed-width label, summary stripped to just the hours (`substringBefore("·")`) + ellipsised. Review-loading copy is the calm "Gathering reviews…". *(Iteration history: tried Save/Share in the header + a full-width Directions button, then all-in-scrollable-pills with the number in the Call pill - landed here: Save/Share on top like the previous build the user liked, short action pills, contact detail as rows.)*
 - ✅ **Search targets the panned viewport, not GPS (2026-07-03).** Running a search now biases to the **map centre you're looking at** (`mapCenter ?: myLocation`), Google-style - so panning to another neighbourhood/city then searching returns results *there*, not back at your GPS location. Autocomplete suggestions do the same. (The "Search this area" button after a search is unchanged.)
@@ -212,14 +236,41 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The place card follows your finger (2026-07-10).** Dragging the place sheet moves it with
   your finger and, on release, it coasts on the fling to whichever size is closest - no more
   stepping between sizes in fixed hops.
+- ✅ **Search results are Google-style red markers with real glyphs (2026-07-11).** Searching
+  "restaurants" pins the map with named results instead of anonymous pins: every result keeps
+  its grey teardrop and category glyph with the circle turned red, rated restaurants get a wide
+  speech-bubble marker with the rating beside the circled glyph, and in a dense downtown the lesser results collapse into little red dots that
+  expand back into pins as you zoom, so the view never turns into a pile of overlapping icons.
+  The base map's OSM icons now BLEND with the Google dots instead of hiding wholesale: they
+  yield only while the viewport truly sits inside the area the Google fetch covered, so panning
+  or zooming past it keeps icons everywhere and fresh fetches merge in as they land. Stop signs
+  and traffic lights also hold back on the browse map until true street zoom (they stay at nav
+  zoom during turn-by-turn, where they're an aid rather than clutter).
+  Result labels stay plain ink (only ambient POI labels take the category tint, like Google);
+  every POI label on the map (results, ambient dots, base-map icons) can now sit left, right,
+  below or above its icon, whichever side is clear, instead of vanishing when its usual spot
+  was taken;
+  and while a result set is up the base map's own POI icons, stop signs and traffic lights all
+  step aside so the results are the only things on the map.
 - ✅ **Traffic in words, not just colour (2026-07-10).** Route choices now say "light traffic",
   "moderate traffic" or "heavy traffic" to match the green/amber/red time, so the conditions read
   without relying on colour. And a freshly downloaded voice no longer speaks a sample on its own -
   only picking a voice in the library (or the Test button) plays one.
+- ✅ **The route chooser swipes out of the way (2026-07-11).** Swipe the chooser down, from its
+  body or its handle, to shrink it to a slim bar with a Start button and see the whole route on
+  the map; it follows your finger and rides the throw, like the place card. Swipe or tap to bring
+  it back.
 - ✅ **Arrival time front and center (2026-07-10).** The directions panel's "Arrive at 5:30 PM"
   is bigger and bolder, and the redundant "current traffic" note under it is gone (the route ETAs
   already show traffic). The faster-route offer during navigation joined the tidy notification
   stack too, so it can't sit under the turn card.
+- ✅ **The results list moves like the place card (2026-07-11).** Dragging the search results
+  follows your finger and rides the throw's inertia to the nearest size, minimizing included, and
+  the back gesture exits the search in one press instead of stepping through sizes. Grabbing the
+  map GLIDES the list down to its bar so the map is yours to look at, and does the same to an
+  open place card (down to its small state); the bar or a drag brings them back. The minimized
+  bar now says WHAT it's holding: the search text (or list name) leads in full ink with the
+  result count under it, instead of an easy-to-miss dim "20 results".
 - ✅ **One tidy notification area (2026-07-10).** Heads-up messages, download progress, update
   offers and notices now stack below the search bar and chips (or just below the turn card during
   navigation, whatever its height), each dismissed on its own, instead of painting over each other.
@@ -232,6 +283,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   place has an X on its row to remove just that entry (Clear recents still wipes the lot). A real
   place shows its street address in smaller text under the name, and the Home/Work rows show the
   saved address too. The three-dot menus on Home/Work match the row text color now.
+- ✅ **Route chooser and search stay coherent (2026-07-11).** Opening any new place, from search,
+  a suggestion, a pin, or Home/Work, closes an open route chooser instead of leaving it covering
+  the fresh place with a stale route. The locate and parking buttons also stay hidden under the
+  chooser and step list instead of drawing on top of them.
 - ✅ **Warns when you'd arrive near closing time (2026-07-10).** Starting navigation to a place
   that closes within an hour of your arrival (or before you'd get there) shows a heads-up card
   and speaks it: "closes at 9:00 PM and you arrive around 8:40 PM". Reads the closing time from
