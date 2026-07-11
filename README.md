@@ -68,6 +68,9 @@ Fingerprint and full instructions in [FDROID.md](FDROID.md).
   driving somewhere, with a warning if it would be closed when you arrive.
 - **Traffic you can read.** Route choices say light, moderate or heavy traffic in
   words next to their green/amber/red times, and the fastest route leads the list.
+- **Material You theming, if you want it.** An optional toggle tints Vela's chrome
+  with your wallpaper colors (Android 12+); off by default, and the map itself
+  stays clean either way.
 - **Public transit.** Itineraries with line pills, station-by-station stops, and
   step-by-step guidance to the platform.
 - **No account, no tracking.** No Google account, no GMS, no telemetry. What
@@ -537,4 +540,6 @@ private vulnerability reporting), not a public issue.
 
 ## License
 
-GPLv3 - copyleft, matching the NewPipe ethos.
+[![GNU GPLv3 Image](https://www.gnu.org/graphics/gplv3-127x51.png)](http://www.gnu.org/licenses/gpl-3.0.en.html)
+
+Vela is Free Software: you can use, study, share, and improve it at your will. You may use, modify, and redistribute this project only if your modifications remain open-source under the same license.
