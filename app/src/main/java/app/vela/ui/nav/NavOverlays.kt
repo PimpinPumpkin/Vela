@@ -328,6 +328,25 @@ internal fun SignChip(sign: Sign) {
  *  turn-direction arrows for the lanes you want, plus the hint text. We don't
  *  get a per-lane diagram from Google's response, so this shows the count and
  *  direction rather than faking the full lane layout. */
+/** Single-line text that SHRINKS to fit its width (never wraps, never ellipsises) — for the
+ *  nav card's trip time against the big driving buttons and Interface-size scaling. Steps down
+ *  8% per layout pass while overflowing, floored at 55% of the base size. */
+@Composable
+private fun FitText(text: String, style: androidx.compose.ui.text.TextStyle, color: Color, modifier: Modifier = Modifier) {
+    val scaleState = remember(text) { androidx.compose.runtime.mutableStateOf(1f) }
+    val scale = scaleState.value
+    Text(
+        text,
+        style = style,
+        color = color,
+        maxLines = 1,
+        softWrap = false,
+        fontSize = style.fontSize * scale,
+        onTextLayout = { if (it.hasVisualOverflow && scaleState.value > 0.55f) scaleState.value *= 0.92f },
+        modifier = modifier,
+    )
+}
+
 @Composable
 private fun LaneGuide(hint: String, type: ManeuverType) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -510,20 +529,20 @@ fun NavControls(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text(
+                // Both lines SHRINK to fit rather than wrap or ellipsise: the 54dp buttons (and
+                // any Interface-size scale) squeezed the column and "1 hr 25 min" wrapped rough,
+                // while ellipsis on the second line cut off the arrival TIME (user 2026-07-11).
+                FitText(
                     formatDuration(remainingSeconds),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = etaColor,
                 )
-                Text(
+                FitText(
                     formatDistance(remainingDistanceMeters) +
                         " · " + formatArrivalClock(remainingSeconds) +
                         if (offRoute) " · " + stringResource(R.string.nav_rerouting) else "",
                     style = MaterialTheme.typography.bodyMedium,
                     color = SheetPalette.dim(dark),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
                 )
             }
             Spacer(Modifier.width(8.dp))

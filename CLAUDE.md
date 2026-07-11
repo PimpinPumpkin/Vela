@@ -858,6 +858,14 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
 - **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
   Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
   Compose UI scales, the map AndroidView keeps native size (built for car/vertical screens).
+- **Map colours are Google-verbatim (2026-07-11):** greens/water/land sampled from
+  maps.google.com at the arboretum. LIGHT: park/grass `#d3f8e2`, wood `#c9f2da`, water
+  `#90daee`, land `#f2f1ee` - opaque (the old 0.3-0.7 over land washed them olive). DARK: park
+  green was `#1c3326`, DARKER than the `#242f3e` navy land so it vanished (user 2026-07-11) -
+  now `#2c4a34`/`#274330`, opaque, clearly readable. Re-sample the same way if either drifts.
+  The **Map style Settings row was removed** (only one style ships; MapStyle/setStyle plumbing
+  kept for a future re-add). Nav card trip time is a `FitText` (shrinks to fit, never wraps/
+  ellipsises) so the 54dp buttons + Interface-size scale can't clip the arrival time.
 - **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
   with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
   `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark

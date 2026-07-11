@@ -221,16 +221,6 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 Hint(stringResource(R.string.settings_dynamic_color_hint))
             }
 
-            Spacer(Modifier.height(20.dp))
-            SectionTitle(stringResource(R.string.settings_map_style))
-            MapStyle.values().forEach { style ->
-                SelectableRow(
-                    label = style.label,
-                    selected = state.styleName == style.label,
-                    onClick = { vm.setStyle(style) },
-                )
-            }
-            Hint(stringResource(R.string.settings_map_style_hint))
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_units))
