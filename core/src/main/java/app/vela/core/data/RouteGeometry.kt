@@ -366,6 +366,13 @@ object RouteGeometry {
         return Maneuver(
             type = osrmType(type, mod),
             instruction = osrmPhrase(type, mod, road, dest, exits, man["exit"]?.jsonPrimitive?.intOrNull),
+            side = if (type == "arrive" && mod != null) {
+                when {
+                    mod.contains("left") -> "left"
+                    mod.contains("right") -> "right"
+                    else -> null
+                }
+            } else null,
             location = LatLng(lat, lng),
             distanceMeters = s["distance"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
             durationSeconds = s["duration"]?.jsonPrimitive?.doubleOrNull ?: 0.0,
@@ -426,8 +433,17 @@ object RouteGeometry {
     // The instruction TEXT is localized: it delegates to the active NavStrings (English by default,
     // byte-identical to the original template set). This is the seam that lets nav be spoken/shown in
     // the app's language — the road/dest name passed in stays in its native local form. See core/i18n.
-    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String =
-        app.vela.core.i18n.NavStringsRegistry.current().phrase(type, mod, road, dest, exitNo, rbExit)
+    internal fun osrmPhrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val strings = app.vela.core.i18n.NavStringsRegistry.current()
+        // OSRM's arrive modifier says WHICH SIDE the destination is on — the banner + the
+        // pre-arrival prompt become Google's "Your destination is on the right" instead of the
+        // generic line (user 2026-07-11). A sideless arrive keeps the generic phrase.
+        if (type == "arrive" && mod != null) {
+            if (mod.contains("left")) return strings.destinationSide(left = true)
+            if (mod.contains("right")) return strings.destinationSide(left = false)
+        }
+        return strings.phrase(type, mod, road, dest, exitNo, rbExit)
+    }
 
     // --- traffic-aware routing (option 3) -------------------------------------
 

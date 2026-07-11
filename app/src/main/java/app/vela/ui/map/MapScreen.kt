@@ -1945,20 +1945,24 @@ private fun SearchResults(
                             maxLines = 1,
                         )
                     }
-                    IconButton(onClick = { if (collapsed) onExpand() else onExpandedChange(!expanded) }) {
-                        Icon(
-                            if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
-                            contentDescription = if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
-                            tint = SheetPalette.dim(dark),
-                        )
-                    }
-                    IconButton(onClick = onClose) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = stringResource(R.string.mapscreen_close_results),
-                            tint = SheetPalette.dim(dark),
-                        )
-                    }
+                    // Circled like the place-sheet header (one control language). The chevron
+                    // STAYS: it's the discoverable expand affordance AND the D-pad path (the
+                    // handle's tap detector isn't focusable) — removing it would orphan keypad
+                    // users (user 2026-07-11).
+                    app.vela.ui.place.HeaderCircleButton(
+                        if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
+                        if (!collapsed && expanded) stringResource(R.string.mapscreen_shrink_list) else stringResource(R.string.mapscreen_expand_list),
+                        tint = SheetPalette.ink(dark),
+                        bg = SheetPalette.dim(dark),
+                    ) { if (collapsed) onExpand() else onExpandedChange(!expanded) }
+                    Spacer(Modifier.width(8.dp))
+                    app.vela.ui.place.HeaderCircleButton(
+                        Icons.Default.Close,
+                        stringResource(R.string.mapscreen_close_results),
+                        tint = SheetPalette.ink(dark),
+                        bg = SheetPalette.dim(dark),
+                    ) { onClose() }
+                    Spacer(Modifier.width(8.dp))
                 }
                 // The chips (and the divider under them) FOLD with the sheet height over
                 // its last 140dp of travel (SheetFold, the place sheet's minimize primitive):
@@ -2632,13 +2636,14 @@ private fun SuggestionRow(
         // Per-row remove (the X on recents). Its own focus stop with a visible ring, so a D-pad
         // walk can reach it after the row itself.
         if (onRemove != null) {
-            IconButton(onClick = onRemove, modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape)) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(R.string.mapscreen_menu_remove),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            // Same circle language as the sheet headers, sized down for a list row.
+            app.vela.ui.place.HeaderCircleButton(
+                Icons.Default.Close,
+                stringResource(R.string.mapscreen_menu_remove),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                bg = MaterialTheme.colorScheme.onSurfaceVariant,
+                size = 32.dp,
+            ) { onRemove() }
         }
     }
 }
