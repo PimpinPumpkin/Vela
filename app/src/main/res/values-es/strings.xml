@@ -524,4 +524,6 @@
     <string name="notif_ask_skip">Omitir</string>
     <string name="place_time_past_toast">Esa hora ya pasó. Ajustado a ahora.</string>
     <string name="settings_ui_scale">Tamaño de la interfaz</string>
+    <string name="place_avoid_tolls">Evitar peajes</string>
+    <string name="place_avoid_highways">Evitar autopistas</string>
 </resources>
