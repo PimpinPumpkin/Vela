@@ -956,7 +956,9 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   its download caches Noto glyphs as the offline floor; the patched style's offline labels
   ride the ambient cache warmed by browsing). Local test loop: `python3 -m http.server` on
   the glyph dir + `adb reverse tcp:8099 tcp:8099` + `-PmapFontsUrl=http://127.0.0.1:8099`.
-  NB `InputStream.readNBytes` is API 33+ (minSdk 26) - the probe reads manually.
+  NB `InputStream.readNBytes` is API 33+ (minSdk 26) - the probe reads manually. The
+  ANDROID AUTO snapshotter resolves the same style (CarMapRenderer reads the patched
+  file + `withStyleJson`; a plain `.withStyle(LIBERTY.uri)` kept the car on Noto).
   **ROLLOUT GATE (until all three land, every install just stays on Noto):** (1) publish
   the glyph zip: `gh release create map-fonts <zip> --prerelease` (staged at
   `build/map-fonts.zip`, or rebuild with the script - and it joins the DO-NOT-DELETE infra
