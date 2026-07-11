@@ -2566,10 +2566,12 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
     val reviewsBackFocus = rememberDpadAutoFocus()
     val density = LocalDensity.current
     // Swipe DOWN from the top to close (user 2026-07-10): the panel forwards a top-edge overscroll
-    // as `pull`; past the threshold at finger-up it dismisses, like a sheet.
-    var pull by remember { mutableStateOf(0f) }
+    // as `pull`; past the threshold at finger-up it dismisses, like a sheet. A sub-threshold
+    // release SPRINGS back instead of snapping.
+    val pull = remember { androidx.compose.animation.core.Animatable(0f) }
+    val pullScope = rememberCoroutineScope()
     Surface(
-        Modifier.fillMaxSize().offset { IntOffset(0, pull.roundToInt()) },
+        Modifier.fillMaxSize().offset { IntOffset(0, pull.value.roundToInt()) },
         color = if (dark) SheetDark else SheetLight,
         contentColor = ink,
     ) {
@@ -2598,10 +2600,12 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                     // Top-edge pull-down: move the whole panel with the finger; release past the
                     // threshold closes it (Google's dismiss). Deltas come from the panel's
                     // boundary scroll-sync (reviews at their top + dragging down).
-                    onOverscroll = { dy -> pull = (pull + dy).coerceAtLeast(0f) },
+                    onOverscroll = { dy -> pullScope.launch { pull.snapTo((pull.value + dy).coerceAtLeast(0f)) } },
                     onOverscrollEnd = { vel ->
-                        // Close on a real pull OR a hard downward flick, like the photo viewer.
-                        if (pull > with(density) { 120.dp.toPx() } || vel > 2500f) onClose() else pull = 0f
+                        // Close on a real pull OR a hard downward flick, like the photo viewer;
+                        // anything less springs the page back up.
+                        if (pull.value > with(density) { 120.dp.toPx() } || vel > 2500f) onClose()
+                        else pullScope.launch { pull.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f)) }
                     },
                 )
             }
