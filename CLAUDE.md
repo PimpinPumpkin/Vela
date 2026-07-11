@@ -291,9 +291,14 @@ Defaults that make the safe path the easy one:
   40dp icons in `dim.copy(alpha = 0.12f)` CIRCLES with 5dp gaps (Google's treatment); ActionPill
   and the "All reviews" button are CircleShape stadium pills (the outlined button was the last
   outlined control on the sheet); the reviews summary block is LEFT-ALIGNED (displaySmall number
-  + stars/count stacked beside it), not centered; the MINIMIZED card carries Directions + Call +
-  Website pills in a horizontal scroll row with the same gating as the full action row (website
-  behind HideExternalLinks). Keep new sheet controls on this language. NB `RatingHistogram` in
+  + stars/count stacked beside it), not centered; the MINIMIZED card is NOT a separate surface
+  (2026-07-10 refactor): the body is a SKELETON (name row, rating, the full action-pill row) plus
+  `MinimizeExtras` sections (photos / status+hours / address+tabs) that shrink + fade in place on
+  minimize while the height glides, so the skeleton settles into the small card with no content
+  swap - the old swap-to-a-mini-card popped. A tap anywhere on the minimized body restores peek
+  (a `clickable(enabled = minimized)` on the body Column); parking (singleDetent) keeps its
+  extras. Keep new sheet content inside one of the extras sections unless it genuinely belongs
+  in the minimized card. Keep new sheet controls on this language. NB `RatingHistogram` in
   PlaceSheet is ORPHANED (its per-star counts only exist in the live panel DOM) - wire it or
   delete it, don't duplicate it. **The MENU TAB (2026-07-10)** appears beside Reviews/About when
   `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
@@ -334,11 +339,12 @@ Defaults that make the safe path the easy one:
   bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
   an open place card to its minimized detent — Google's behaviour; programmatic framing (a
   different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
-  the 350f settle) and both GLIDE FIRST, FLIP STATE AFTER — the pan path used to flip
-  `resultsCollapsed`/`minimizedState` immediately, which unmounted/switched the content
-  mid-drop and read as a pop no matter the spring (user 2026-07-10, the "just kinda pops down"
-  report); the tick effects animate to the floor and only then flip, the same order the drag
-  path always used. The minimized results bar leads with the QUERY (or list name) in ink +
+  the 350f settle). Flip order differs BY DESIGN: the RESULTS sheet still GLIDES FIRST and flips
+  `resultsCollapsed` after (its minimized bar is a content swap, so flipping early reads as a
+  pop - user 2026-07-10, the "just kinda pops down" report); the PLACE sheet flips
+  `minimizedState` FIRST so its `MinimizeExtras` shrink-and-fade runs concurrently with the
+  height glide (no swap anymore, see the place-sheet surface-language bullet) - the same order
+  its drag-release path uses. The minimized results bar leads with the QUERY (or list name) in ink +
   SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
   awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
   effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):

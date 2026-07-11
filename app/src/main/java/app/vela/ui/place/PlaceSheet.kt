@@ -7,6 +7,10 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
@@ -319,11 +323,12 @@ fun PlaceSheet(
     LaunchedEffect(minimizeTick) {
         if (minimizeTick == seenTick) return@LaunchedEffect
         seenTick = minimizeTick
-        // Glide FIRST, flip the states after: any content keyed on the minimized state then
-        // changes only once the card is already down (flipping first read as a pop, not a glide).
-        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
+        // Flip the states FIRST so the extras' shrink-and-fade (MinimizeExtras) runs CONCURRENTLY
+        // with the height glide - one continuous motion, same order the drag-release path uses.
+        // (The old glide-then-flip order existed for the swap-based mini card, since removed.)
         expandedState.value = false
         minimizedState.value = true
+        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
     }
     // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
     // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
@@ -550,87 +555,22 @@ fun PlaceSheet(
                 Modifier
                     .nestedScroll(dismissConn)
                     .verticalScroll(bodyScroll)
-                    // GRACEFUL EXIT (user 2026-07-10): while the sheet glides toward the minimized
-                    // floor the full body FADES OUT with the height (render-phase read, no
-                    // recomposition), and the minimized card below fades in at the swap - the
-                    // content no longer vanishes in one frame at the flip.
-                    .graphicsLayer {
-                        if (minimizedState.value || singleDetent) { alpha = 1f; translationY = 0f } else {
-                            val f = ((heightAnim.value - minH) / 110f).coerceIn(0f, 1f)
-                            alpha = f
-                            // The content SLIDES DOWN as it fades (user 2026-07-10) — the exit
-                            // reads as the extras dropping away rather than a plain dissolve.
-                            translationY = (1f - f) * 48.dp.toPx()
-                        }
-                    }
+                    // Minimized: a single tap ANYWHERE on the card pops it back to peek (Google) —
+                    // the action pills keep their own taps since inner clickables win their bounds.
+                    // Inert (enabled=false) whenever the full body is showing.
+                    .clickable(enabled = minimizedState.value && !singleDetent) { minimizedState.value = false }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
-            // Minimized detent: a compact card (name, rating, Directions) instead of the full body,
-            // like Google's collapsed sheet. At this small height leading with the photo hero showed
-            // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
-            if (minimizedState.value && !singleDetent) {
-                val miniIn = remember { androidx.compose.animation.core.Animatable(0f) }
-                LaunchedEffect(Unit) { miniIn.animateTo(1f, tween(220)) }
-                // A single tap ANYWHERE on the minimized card pops it back to peek (Google) —
-                // the Directions pill keeps its own tap since inner clickables win their bounds.
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer { alpha = miniIn.value }
-                        .clickable { minimizedState.value = false },
-                ) {
-                Text(
-                    place.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = ink,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                if (place.rating != null) {
-                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            String.format(Locale.US, "%.1f", place.rating),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = ink,
-                        )
-                        RatingStars(place.rating!!, modifier = Modifier.padding(horizontal = 5.dp))
-                        place.reviewCount?.let { Text("($it)", style = MaterialTheme.typography.bodySmall, color = dim) }
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                // The full sheet's key actions, not just Directions — a minimized card you can
-                // call or open the website from saves a pointless re-expand (user 2026-07-10).
-                // Same gating as the full action row (website behind the external-links toggle).
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
-                    place.phone?.let { ph ->
-                        ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
-                            val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
-                            runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
-                        }
-                    }
-                    if (!app.vela.ui.HideExternalLinks.on.value) {
-                        place.website?.let { site ->
-                            ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
-                            }
-                        }
-                    }
-                }
-                }
-                return@Column
-            }
-            // Photo hero at the top (Google-style) — always visible, even at the
-            // peek height / in landscape; tap one to open the full gallery.
+            // The body is a SKELETON (name row, rating, action pills - the minimized card) plus
+            // MinimizeExtras sections between/around it. On minimize the extras shrink + fade IN
+            // PLACE while the height glides down, so the skeleton settles into the minimized card
+            // with no content swap - the old swap-to-a-mini-card read as a pop (user 2026-07-10).
+            // A parked car (singleDetent) keeps its extras: nothing to minimize into.
+            val extrasVisible = !minimizedState.value || singleDetent
+            // Photo hero at the top (Google-style); tap one to open the full gallery.
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
+            MinimizeExtras(extrasVisible) {
             if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
                 // the menu surface now, and the other categories read as noise; user 2026-07-10.)
@@ -662,6 +602,7 @@ fun PlaceSheet(
                         }
                     }
                 }
+            }
             }
             // spacedBy keeps the circled header buttons from touching now that they carry
             // visible backgrounds (Google's circles have the same small gaps).
@@ -728,6 +669,7 @@ fun PlaceSheet(
                     }
                 }
             }
+            MinimizeExtras(extrasVisible) {
             // Distance (when the place came from a located search) + price +
             // category on their own line so a long category ("Hamburger restaurant")
             // doesn't wrap mid-word next to the stars; ellipsised if huge.
@@ -848,6 +790,7 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+            }
             // Quick-action pills FIRST — a highlighted Directions + short Call / Website, right under
             // the identity block so Directions is reachable WITHOUT scrolling (Google's order). Save/
             // Share live in the header; the actual phone number / website domain are tappable detail
@@ -886,6 +829,7 @@ fun PlaceSheet(
                 }
             }
 
+            MinimizeExtras(extrasVisible) {
             place.address?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
@@ -1095,6 +1039,7 @@ fun PlaceSheet(
 
             PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value)
             }
+            }
         }
     }
 
@@ -1117,6 +1062,24 @@ fun PlaceSheet(
             onSave = { onSetNote(it); showNoteEditor = false },
             onDismiss = { showNoteEditor = false },
         )
+    }
+}
+
+/**
+ * A collapsible section of the sheet body: everything EXCEPT the name / rating / action-pill
+ * skeleton sits in one of these. On minimize it shrinks + fades in place (top-anchored, so the
+ * content below slides up over it) concurrently with the sheet's height glide; on restore it
+ * grows back. Content is removed from composition once fully hidden — same lifecycle the old
+ * mini-card short-circuit gave the hidden body.
+ */
+@Composable
+private fun MinimizeExtras(visible: Boolean, content: @Composable () -> Unit) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = expandVertically(tween(260), expandFrom = Alignment.Top) + fadeIn(tween(260)),
+        exit = shrinkVertically(tween(260), shrinkTowards = Alignment.Top) + fadeOut(tween(160)),
+    ) {
+        Column { content() }
     }
 }
 
