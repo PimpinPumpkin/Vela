@@ -17,6 +17,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Place sheet modernization (2026-07-10).** The header's Save/Share/more/close buttons sit in
+  Google's subtle grey circles, every pill on the sheet shares the app's stadium shape, the
+  reviews summary is Google's block (big number, stars and count stacked beside it, left-aligned)
+  instead of a centered strip, the "All reviews" button drops the dated outlined look for the
+  sheet's tonal pill language, and the minimized card carries Call and Website beside Directions
+  (same gating as the full sheet) so it's useful without re-expanding.
+
 - ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
   disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
   transit lines, 3D buildings), then a new **Place pages** section (Show reviews, the "Read all reviews"
