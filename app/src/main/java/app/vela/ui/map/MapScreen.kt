@@ -2213,7 +2213,9 @@ private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}
             onClick = onOpenLists,
             shape = CircleShape,
             color = if (dark) MaterialTheme.colorScheme.surfaceColorAtElevation(3.dp) else MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = if (dark) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSecondaryContainer,
+            // Soft glyph ink both modes - onSecondaryContainer read near-black next to the
+            // grey chip glyphs (user 2026-07-11).
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             shadowElevation = 2.dp,
             modifier = Modifier.dpadHighlight(CircleShape).size(40.dp),
         ) {
@@ -2229,10 +2231,12 @@ private fun CategoryChips(onPick: (String) -> Unit, onOpenLists: () -> Unit = {}
                 leadingIcon = { Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp)) },
                 // Full pill, Google-style — the M3 default 8dp corners read dated on a map chip row.
                 shape = androidx.compose.foundation.shape.CircleShape,
-                // MONOCHROME glyphs (user 2026-07-06): the M3 default tints the leading icon with the
-                // theme primary (teal), Google's chips are single-ink — icon matches the label colour.
+                // MONOCHROME glyphs (user 2026-07-06), SOFT ink (user 2026-07-11): the M3
+                // default tints the icon primary teal; full onSurface made the solid glyph
+                // read DARKER than the label. onSurfaceVariant matches the glyph weight to
+                // the text, like Google's rows.
                 colors = androidx.compose.material3.AssistChipDefaults.elevatedAssistChipColors(
-                    leadingIconContentColor = MaterialTheme.colorScheme.onSurface,
+                    leadingIconContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
                 ),
             )
         }
@@ -2471,7 +2475,10 @@ private fun ShortcutRow(
         Icon(
             icon,
             contentDescription = null,
-            tint = if (place != null) MaterialTheme.colorScheme.primary else SheetPalette.dim(dark),
+            // Unset rows share the page's glyph ink (onSurfaceVariant) - the old SheetPalette
+            // dim was LIGHTER than the recents pin beside it and the pair read mismatched
+            // (user 2026-07-11). Set rows keep the primary tint (they carry state).
+            tint = if (place != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
