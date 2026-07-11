@@ -855,6 +855,16 @@ pointer line, not a section. The Roadmap section carries a "Not going to happen"
 login/backend features - keep new won't-dos there AND in ROADMAP.md. Remote calibration is a
 HEADLINE feature in What-you-get (the self-healing pitch), not just an architecture note.
 
+- **Interface size (2026-07-11):** `UiScale` holder (pref `ui_scale`, chips 90/100/115/130% in
+  Settings -> Appearance) applied as a LocalDensity override around VelaRoot's whole tree - all
+  Compose UI scales, the map AndroidView keeps native size (built for car/vertical screens).
+- **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
+  with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
+  `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark
+  colour; the OSM poi tiers' filters exclude vegetation classes (park/garden/wood/tree/...) so
+  forests read as flat green like Google, not icon confetti. Nav mute/steps/End are 54dp.
+  The search bar hides while an expanded place sheet covers it (its sliver still took taps).
+
 ## Working on the scraper
 
 - The `pb` request *grammar* (`PbBuilder`) and `PolylineCodec` are correct and

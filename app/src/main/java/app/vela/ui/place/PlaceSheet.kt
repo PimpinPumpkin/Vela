@@ -252,6 +252,7 @@ fun PlaceSheet(
     onRemoveFromList: (listId: String) -> Unit = {},
     onCreateListWith: (name: String) -> Unit = {},
     onSetNote: (String?) -> Unit = {},
+    onExpandedChange: (Boolean) -> Unit = {},
     // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
     // card so the map is unobstructed (Google's behaviour). 0 = never.
     minimizeTick: Int = 0,
@@ -504,6 +505,10 @@ fun PlaceSheet(
     // The user started really scrolling the reviews panel: slide the sheet to full screen around
     // them, Google-style (expand + settle the body so the panel fills the viewport). The second
     // animateScrollTo chases the body's max as the expand animation grows it.
+    // Report the expanded detent up: MapScreen kills the search bar's taps while the sheet
+    // covers it (a tap on the sliver of bar behind an expanded sheet opened search OVER the
+    // place card, user 2026-07-11).
+    LaunchedEffect(expandedState.value) { onExpandedChange(expandedState.value) }
     val onPanelEngaged: () -> Unit = {
         reviewsEngaged.value = true
         scope.launch {

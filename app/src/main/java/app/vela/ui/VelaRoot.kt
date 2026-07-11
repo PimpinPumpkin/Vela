@@ -129,6 +129,16 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
             text = { Text(stringResource(R.string.notif_ask_body)) },
         )
     }
+    // Interface-size override (Settings -> Appearance): scale all Compose UI while the map
+    // AndroidView keeps rendering at native size. Density scales dp AND sp together.
+    val baseDensity = androidx.compose.ui.platform.LocalDensity.current
+    val uiScale = app.vela.ui.UiScale.factor.value
+    androidx.compose.runtime.CompositionLocalProvider(
+        androidx.compose.ui.platform.LocalDensity provides androidx.compose.ui.unit.Density(
+            baseDensity.density * uiScale,
+            baseDensity.fontScale,
+        ),
+    ) {
     Box {
         // MapScreen stays composed even while Settings is open, and Settings draws OVER it as an
         // opaque overlay. Swapping the two out instead disposed the remembered MapLibre MapView, so
@@ -178,6 +188,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
         // window (not a child Dialog) — genuinely full-screen and rotation-safe. Last child = top
         // z-order, above the map + sheet + settings.
         PlaceOverlays()
+    }
     }
 }
 
