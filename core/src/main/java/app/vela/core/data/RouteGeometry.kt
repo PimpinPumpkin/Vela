@@ -211,11 +211,17 @@ object RouteGeometry {
         return emptyList()
     }
 
-    /** OSRM `exclude=` classes for the avoid toggles. The FOSSGIS car profile understands
-     *  `toll` and `motorway`; bike/foot have neither, so only DRIVE sends the param (an
-     *  unknown class makes OSRM 400 the whole request). */
+    /** True when [OSRM_BASE] honours `exclude=` for toll/motorway. The FOSSGIS community
+     *  server does NOT (probed 2026-07-11: InvalidValue - its profiles were built without
+     *  excludable classes), and sending the param 400s the WHOLE request, losing the clean
+     *  named-turn route too. Flip this on a self-hosted OSRM built with the exclude classes. */
+    private const val OSRM_SUPPORTS_EXCLUDE = false
+
+    /** OSRM `exclude=` classes for the avoid toggles (drive only; an unknown class makes
+     *  OSRM 400 the whole request). Empty while [OSRM_SUPPORTS_EXCLUDE] is off - the
+     *  on-device avoid profiles are the real avoid router until then. */
     private fun excludeParam(mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): String {
-        if (mode != TravelMode.DRIVE) return ""
+        if (!OSRM_SUPPORTS_EXCLUDE || mode != TravelMode.DRIVE) return ""
         val classes = buildList {
             if (avoidTolls) add("toll")
             if (avoidHighways) add("motorway")
