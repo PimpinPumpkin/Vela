@@ -109,7 +109,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Streetview
-import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -665,7 +666,7 @@ fun PlaceSheet(
                 var saveMenu by remember { mutableStateOf(false) }
                 Box {
                     HeaderCircleButton(
-                        icon = if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                        icon = if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
                         tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
                         bg = dim,
@@ -1297,27 +1298,33 @@ fun DirectionsPanel(
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
-        Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
+        Column(
+            Modifier
+                .navigationBarsPadding()
+                // The WHOLE panel drags, not just the handle (user 2026-07-11: "I have to have my
+                // finger basically right on the pull bar"). Inner clickables still win their taps
+                // (a drag claims the pointer only past touch slop), and the scrolling body keeps
+                // its own nested-scroll path since verticalScroll consumes there first.
+                .pointerInput(Unit) {
+                    val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
+                    detectVerticalDragGestures(
+                        onDragStart = { tracker.resetTracking() },
+                        onVerticalDrag = { change, dy ->
+                            change.consume()
+                            tracker.addPosition(change.uptimeMillis, change.position)
+                            dragDirBy(dy)
+                        },
+                        onDragEnd = { settleDir(tracker.calculateVelocity().y) },
+                        onDragCancel = { settleDir(0f) },
+                    )
+                }
+                .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
+        ) {
             // Drag handle — swipe down to minimise the chooser (peek the route on the
             // map before you Start), swipe up or tap to bring it back.
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        // Same physics as dragging the body: 1:1 with the finger, release
-                        // rides the fling to whichever end it carries to.
-                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
-                        detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking() },
-                            onVerticalDrag = { change, dy ->
-                                change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
-                                dragDirBy(dy)
-                            },
-                            onDragEnd = { settleDir(tracker.calculateVelocity().y) },
-                            onDragCancel = { settleDir(0f) },
-                        )
-                    }
                     .dpadHighlight(RoundedCornerShape(3.dp)) // D-pad: OK toggles (docs/dpad.md)
                     .clickable { collapsed.value = !collapsed.value }
                     .padding(vertical = 6.dp),
@@ -1453,7 +1460,11 @@ fun DirectionsPanel(
                 IconButton(onClick = onSwap) {
                     Icon(Icons.Default.SwapVert, contentDescription = stringResource(R.string.place_swap_start_destination), tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
+                // Circled like the place-sheet header X (one close language). The SWAP stays a
+                // bare glyph on purpose: it's an inline utility between the from/to rows, and two
+                // circles side by side read heavier than the header needs.
+                Spacer(Modifier.width(4.dp))
+                HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close_directions), tint = ink, bg = dim) { onClose() }
             }
             // The body caps at the ANIMATED height (bodyMax when open = the old ~58% screen cap,
             // still scrollable inside) and fades over its last stretch; composed while any of it
