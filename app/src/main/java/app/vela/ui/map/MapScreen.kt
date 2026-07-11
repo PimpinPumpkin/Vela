@@ -705,6 +705,7 @@ fun MapScreen(
                 if (resultsShown) resultsPanTick++
                 if (state.selected != null && !searchOpen) sheetPanTick++
             },
+            ambientCoversView = state.ambientCoversView,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
@@ -1463,7 +1464,12 @@ fun MapScreen(
             }
         }
 
-        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
+        // The locate + parking buttons yield to EVERY bottom surface, the route chooser and the
+        // step list included - a search from an open chooser could null the selection while
+        // directionsOpen stayed true, and both buttons drew on top of the panel.
+        if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null &&
+            !resultsShown && !state.directionsOpen && !state.showSteps
+        ) {
             // Stock M3 FAB, deliberately: a Google-style flat circle was tried (2026-07-08)
             // and reverted — every surface tone melted into the dark tiles.
             FloatingActionButton(
@@ -1708,7 +1714,7 @@ private fun ambientMarkersOf(state: MapUiState): List<MapMarker> =
     }
 
 private fun markersOf(state: MapUiState): List<MapMarker> =
-    displayedPlaces(state).map { MapMarker(it.name, it.location) }
+    displayedPlaces(state).map { MapMarker(it.name, it.location, it.category, rating = it.rating) }
 
 @Composable
 private fun SearchResults(
