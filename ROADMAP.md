@@ -599,6 +599,9 @@ project's core promise is that neither exists:
   since the WebView walk replaced it; the in-app join is ready and inert) - a capture +
   calibration.json bump. The place page itself was probed 2026-07-11 and carries no photo
   urls/dates keylessly; the RPC is the only route.
+- Ambient POI dot tiers like Google (user 2026-07-11): when zoomed out, lower-rank ambient
+  POIs should degrade to small dots before hiding entirely, tiered by prominence - the
+  search-result collapsed-dot mechanic generalized to the browse map.
 - Map label font trickle-down: map text renders from PBF glyph atlases (currently a bundled
   Roboto-matching pack, so it matches the app font today); true inheritance means a CI step
   that generates the glyph pack from the same font file the app ships, then repointing
