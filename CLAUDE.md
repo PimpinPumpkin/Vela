@@ -335,7 +335,11 @@ Defaults that make the safe path the easy one:
   source, below, allowOverlap+ignorePlacement true), expanding back into pins on zoom - never a
   pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels try UNDER the pin,
   then its right, then its left (variableAnchor TOP/LEFT/RIGHT, radialOffset 0.7 - below-only
-  dropped labels in crowded views, user 2026-07-10) in NEUTRAL ink both themes - Google doesn't category-tint result labels,
+  dropped labels in crowded views, user 2026-07-10) in NEUTRAL ink both themes. The AMBIENT and
+  OSM poi layers got the same treatment (2026-07-10): four anchor slots (RIGHT/LEFT/TOP/BOTTOM,
+  = left of icon / right of it / below / above) instead of the old two - icons still collide by
+  design, but a rendered icon's label now finds a clear side instead of dropping or sitting on a
+  neighbour's dot - Google doesn't category-tint result labels,
   only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
   0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
   keep the two in lockstep. While a result SET is on the map (markers.size > 1) the basemap
