@@ -1987,7 +1987,7 @@ private fun SearchResults(
                             )
                         }
                         Text(
-                            stringResource(R.string.mapscreen_results_count, shown.size),
+                            androidx.compose.ui.res.pluralStringResource(R.plurals.mapscreen_results_count, shown.size, shown.size),
                             style = if (barTitle != null) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
                             color = SheetPalette.dim(dark),
                             maxLines = 1,
