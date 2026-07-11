@@ -1303,7 +1303,12 @@ Defaults that make the safe path the easy one:
   device-verified in the test suburb).** Microsoft footprints have geometry but **no addresses**, so house numbers
   come from a SECOND overlay: **OpenAddresses** address POINTS → per-state `.pmtiles` (`-l address`, keep the
   `number` prop) → `address-overlays` GitHub release + `address-overlay-manifest.json` (`ADDRESS_MANIFEST_URL`,
-  `-PaddressManifestUrl=`). Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
+  `-PaddressManifestUrl=`). **The bake DEDUPES per-unit/parcel repeats (2026-07-10, `scripts/dedup-addresses.py`):**
+  OpenAddresses carries one row per unit/parcel, so a complex repeated its number all over its
+  footprint on the map; the build keeps one point per (number, street, ~150 m cell). Takes
+  effect per region on the next `address-overlays` workflow run (streamed tiles pick it up
+  automatically; a LOCALLY DOWNLOADED overlay keeps the old points until re-downloaded).
+  Data source = OpenAddresses batch API: `/api/data?source=us/<st>/statewide&layer=addresses`
   → its current `job` → `https://v2.openaddresses.io/batch-prod/job/<job>/source.geojson.gz` (GeoJSONL of Points
   with `number`/`street`; **42 US states have a `statewide` source**, the rest are county-only). Render:
   `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
