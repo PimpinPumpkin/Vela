@@ -17,6 +17,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Urgent pushed notices can be a modal (2026-07-10).** A calibration.json notice with
+  level "urgent" renders as a dialog (OK + optional Learn-more link) instead of a map card, for
+  announcements that must be seen — the "servers overloaded, hang tight" class of message. Same
+  signed channel, same one-time dismissal.
 - ✅ **Minimizing the place card fades gracefully (2026-07-10).** The photos and body content
   fade out with the height as the sheet glides down instead of vanishing in one frame at the
   swap, and the compact card (name, stars, action pills) fades in — nothing pops. The header
