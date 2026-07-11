@@ -1806,7 +1806,10 @@ internal fun applyLight(style: Style) {
     style.getLayer("building-3d")?.setMinZoom(16f)
     // Neutralise the tan/yellow landuse fills (residential/commercial/school/…) into
     // the land — Google keeps these flat, not coloured blobs.
-    val greens = setOf("park", "landcover_grass", "landcover_wood")
+    // pitch/track keep their OWN colour (the sports-field accent set beside the vela-pitch
+    // twin below) - the neutralise loop covered them and hid the tint (found at a park with
+    // ball courts, 2026-07-11).
+    val greens = setOf("park", "landcover_grass", "landcover_wood", "landuse_pitch", "landuse_track")
     style.layers.forEach { layer ->
         if (layer is FillLayer && layer.id !in greens &&
             (layer.id.startsWith("landuse") || layer.id.startsWith("landcover"))
@@ -1821,6 +1824,9 @@ internal fun applyLight(style: Style) {
     // Light-mode pitch/trail colours are ESTIMATES (harmonised with the light palette);
     // the sampled truth is dark-mode only so far - resample when a light P9 capture exists.
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#c2ecd4"), PropertyFactory.fillOpacity(1f))
+    listOf("landuse_pitch", "landuse_track").forEach { // Liberty's own pitch layers sit ABOVE the twin and covered it
+        style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#c2ecd4"), PropertyFactory.fillOpacity(1f))
+    }
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#8fbfa0"))
     // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
     // roads. Bridges mirror their road tier so overpasses match.
@@ -1902,7 +1908,10 @@ internal fun applyDark(style: Style) {
     // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
     // retail, industrial, sand, …) must go dark too, or it stays a jarring cream
     // patch in dark mode.
-    val greens = setOf("park", "landcover_grass", "landcover_wood")
+    // pitch/track keep their OWN colour (the sports-field accent set beside the vela-pitch
+    // twin below) - the neutralise loop covered them and hid the tint (found at a park with
+    // ball courts, 2026-07-11).
+    val greens = setOf("park", "landcover_grass", "landcover_wood", "landuse_pitch", "landuse_track")
     style.layers.forEach { layer ->
         when {
             layer is SymbolLayer -> layer.setProperties(
@@ -1922,6 +1931,9 @@ internal fun applyDark(style: Style) {
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#0d4956"), PropertyFactory.fillOpacity(1f)) // sports fields, sampled
+    listOf("landuse_pitch", "landuse_track").forEach { // Liberty's own pitch layers sit ABOVE the twin and covered it
+        style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#0d4956"), PropertyFactory.fillOpacity(1f))
+    }
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055")) // park/bike trails, sampled
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
