@@ -364,11 +364,14 @@ class MapViewModel @Inject constructor(
             )
         }
         refreshNotices() // any cached notices, shown immediately
+        // Fleet default map colour set (a user's own Settings pick always wins - see MapColors).
+        app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
         // Pull the latest scraper calibration from the repo (non-blocking, once),
         // then surface any freshly-pushed notices.
         viewModelScope.launch {
             runCatching { calibration.refresh() }
             refreshNotices()
+            app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
         }
         maybeCheckForUpdate()
 
