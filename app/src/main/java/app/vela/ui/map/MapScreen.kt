@@ -297,6 +297,9 @@ fun MapScreen(
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
     // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
+    // Bumped when the user grabs the map with the place sheet open — PlaceSheet glides down to
+    // its minimized card on each bump (see onUserPan below).
+    var sheetPanTick by remember { mutableStateOf(0) }
     // Expanded detent of the results bottom sheet, hoisted here so the BACK gesture can step it
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
@@ -688,9 +691,13 @@ fun MapScreen(
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
-            // Grabbing the map with the results sheet up drops the sheet to its minimized bar so
-            // the map is yours to look at (Google does the same); the bar brings it back.
-            onUserPan = { if (resultsShown) vm.collapseResults() },
+            // Grabbing the map with a sheet up drops it down out of the way so the map is yours
+            // to look at (Google does the same): the results sheet to its bar, the place sheet to
+            // its minimized card. The bar / a drag brings them back.
+            onUserPan = {
+                if (resultsShown) vm.collapseResults()
+                if (state.selected != null && !searchOpen) sheetPanTick++
+            },
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
             applyKeylessTheme = !hasMapTiler,
@@ -1301,6 +1308,7 @@ fun MapScreen(
                 onRemoveFromList = { listId -> vm.removePlaceFromList(listId, state.selected!!) },
                 onCreateListWith = { name -> val id = vm.createList(name); vm.addPlaceToList(id, state.selected!!) },
                 onSetNote = { note -> vm.setPlaceNote(state.selected!!, note) },
+                minimizeTick = sheetPanTick,
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
@@ -1707,10 +1715,14 @@ private fun SearchResults(
     val expL = screenH * 0.82f
     val listH = remember { Animatable(if (collapsed) 0f else if (expanded) expL else peekL) }
     val resultsSettleSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    // Dropping to the bar GLIDES on a soft spring — at the settle stiffness the pan-triggered
+    // drop read as an abrupt blink (user 2026-07-10). Growing keeps the quicker settle so taps
+    // feel responsive.
+    val resultsGlideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
     val resultsDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
     LaunchedEffect(collapsed, expanded) {
         val target = if (collapsed) 0f else if (expanded) expL else peekL
-        if (listH.targetValue != target) listH.animateTo(target, resultsSettleSpec)
+        if (listH.targetValue != target) listH.animateTo(target, if (target == 0f) resultsGlideSpec else resultsSettleSpec)
     }
     val listState = rememberLazyListState()
     val minimize = rememberUpdatedState(onMinimize)

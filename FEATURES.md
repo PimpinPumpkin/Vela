@@ -219,7 +219,8 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **The results list moves like the place card (2026-07-11).** Dragging the search results
   follows your finger and rides the throw's inertia to the nearest size, minimizing included, and
   the back gesture exits the search in one press instead of stepping through sizes. Grabbing the
-  map drops the list down to its bar so the map is yours to look at; the bar brings it back.
+  map GLIDES the list down to its bar so the map is yours to look at, and does the same to an
+  open place card (down to its small state); the bar or a drag brings them back.
 - ✅ **One tidy notification area (2026-07-10).** Heads-up messages, download progress, update
   offers and notices now stack below the search bar and chips (or just below the turn card during
   navigation, whatever its height), each dismissed on its own, instead of painting over each other.
