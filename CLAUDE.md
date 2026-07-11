@@ -909,7 +909,11 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   definitive - supersedes the eyedrop):** land #162640, other-landuse #1c2638, water #000d2a
   (DARKER than land, the inverted relationship matters), vegetation #0d3847 (teal), buildings
   #1c3b69 w/ outline #2e3d6d (Google's own second shade), minor roads #3d5a77,
-  arterials/trunk/motorway #476789, casings = land. 3D extrusions = the flat colour at
+  arterials/trunk/motorway #476789, casings = land, service/alley tier #2a4056 (Google
+  draws alleys DARKER than streets - second P9 side-by-side 2026-07-11). Known deltas
+  MEASURED but not applied (user call pending): Google draws park/bike TRAILS as green
+  lines (#167055) where Vela hides all paths (the June "weird walking tracks" call), and
+  a tiny lighter-teal accent (#0d4956, sports fields/playgrounds, <1% of park pixels). 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the

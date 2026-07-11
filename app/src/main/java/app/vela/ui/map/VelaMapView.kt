@@ -1810,9 +1810,14 @@ internal fun applyDark(style: Style) {
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(1f)) // Google-app dark vegetation: a TEAL green (matched to the user's Google dark screenshot 2026-07-11), clearly lighter than the land
     style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.95f))
-    listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
-        "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
+    listOf("road_minor", "road_secondary_tertiary", "road_link",
+        "bridge_street", "bridge_secondary_tertiary", "bridge_link").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#3d5a77"))
+    }
+    // Alleys/driveways/service roads are a DARKER tier than residential streets in the
+    // Google app (sampled #2a4056 beside #3d5a77 streets, P9 side-by-side 2026-07-11).
+    listOf("road_service_track", "bridge_service_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#2a4056"))
     }
     listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#476789"))
