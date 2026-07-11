@@ -910,7 +910,10 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   (DARKER than land, the inverted relationship matters), vegetation #0d3847 (teal), buildings
   #1c3b69 w/ outline #2e3d6d (Google's own second shade), minor roads #3d5a77,
   arterials/trunk/motorway #476789, casings = land. 3D extrusions = the flat colour at
-  opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk).
+  opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
+  AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
+  default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
+  side-by-side P9 sample proved Google keeps buildings one colour at every zoom, 2026-07-11).
   Sampling recipe: screencap Google Maps on the Pixel 9 over the target area, Counter the
   band, probe specifics. **Flick velocity, final form:** all manual trackers integrate
   deltas AND take max(tracked, plain travel/time average) at release - a flick can never
