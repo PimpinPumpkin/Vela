@@ -333,8 +333,9 @@ Defaults that make the safe path the easy one:
   COLLIDES by rank (`symbolSortKey` = result order, allowOverlap false): in a dense downtown the
   best results keep pins and the rest draw as the small red dots of `vela-markers-dots` (same
   source, below, allowOverlap+ignorePlacement true), expanding back into pins on zoom - never a
-  pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels sit UNDER the pin
-  (variableAnchor TOP) in NEUTRAL ink both themes - Google doesn't category-tint result labels,
+  pile of overlapping icons. Pins anchor BOTTOM (tip = the place), labels try UNDER the pin,
+  then its right, then its left (variableAnchor TOP/LEFT/RIGHT, radialOffset 0.7 - below-only
+  dropped labels in crowded views, user 2026-07-10) in NEUTRAL ink both themes - Google doesn't category-tint result labels,
   only ambient POI labels take the tint. resultPin's GEOMETRY is marker()'s exact proportions at
   0.86 scale (a taller-tailed variant read as a different species of pin, user 2026-07-10) -
   keep the two in lockstep. While a result SET is on the map (markers.size > 1) the basemap
