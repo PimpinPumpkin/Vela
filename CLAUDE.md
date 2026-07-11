@@ -580,6 +580,16 @@ Defaults that make the safe path the easy one:
   paint-and-trust). Device-measured on the 4a: cold-launch home-area dots at ~3.0 s
   (bounded by app+map startup, proven the disk path - no network paint can land by then)
   vs ~4.0 s fetch-bound before; the streaming win grows on slow links.
+  **Cache-hit fixes (2026-07-11, the P9 "POIs don't stick around / tap-back wipes the map"
+  report):** (a) entries carry their fetch SPAN (`AmbientEntry`; disk `AmbientCachedArea.spanM`,
+  defaulted so old files decode) and `cachedAmbientNear` hits within `span*0.45` - the old FIXED
+  900 m radius missed most legitimate revisits (a z14 fetch covers ~9 km) and forced a full
+  refetch; (b) the pre-fetch cache REPAINT is UNCONDITIONAL - the old `ambientPois.isEmpty()`
+  gate meant panning BACK to a cached area kept the previous area's dots (non-empty, filtered
+  to nothing in view) and never consulted the cache = bare map for the whole refetch; (c) a
+  PARTIAL paint never SHRINKS the painted set (after a cache repaint the early pool is leaner
+  than the cached set and replacing blinked dots off/on; the final ranked pool still replaces
+  outright). Don't re-tighten any of the three.
 - **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
   to compose when mpp moved >1% - an unconditional write recomposed the scale bar every pan frame;
   keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
