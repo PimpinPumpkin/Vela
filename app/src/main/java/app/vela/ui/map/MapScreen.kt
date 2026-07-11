@@ -1737,8 +1737,12 @@ private fun SearchResults(
     }
     // Map grabbed: glide the OPEN list down to zero and only then flip collapsed — the same
     // order the drag path uses. Flipping first unmounts the list mid-drop (the visible "pop").
+    // seenTick consumes the mount-time value so a REMOUNT (returning from a place sheet) can't
+    // replay a stale pan as a fresh minimize (same guard as the place sheet).
+    var seenTick by remember { mutableStateOf(minimizeTick) }
     LaunchedEffect(minimizeTick) {
-        if (minimizeTick == 0 || collapsed) return@LaunchedEffect
+        if (minimizeTick == seenTick || collapsed) return@LaunchedEffect
+        seenTick = minimizeTick
         listH.animateTo(0f, resultsGlideSpec)
         onMinimize()
     }
@@ -1887,28 +1891,28 @@ private fun SearchResults(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     // The bar says WHAT you're looking at, not just how many: the list name or
-                    // the search text leads in full ink, then a dot and the count in dim — the
-                    // bare dim "20 results" was easy to miss (user 2026-07-10).
+                    // the search text leads in full ink with the count on its own line UNDER it —
+                    // the inline "title · count" floated awkwardly against the right-side buttons
+                    // (user 2026-07-10); stacked left-aligned lines read like a proper header.
                     val barTitle = listName ?: query.trim().ifBlank { null }
-                    Text(
-                        buildAnnotatedString {
-                            if (barTitle != null) {
-                                withStyle(
-                                    SpanStyle(color = SheetPalette.ink(dark), fontWeight = FontWeight.SemiBold),
-                                ) { append(barTitle) }
-                                append("  ·  ")
-                            }
-                            append(
-                                if (listName != null) "${shown.size}"
-                                else stringResource(R.string.mapscreen_results_count, shown.size),
+                    Column(Modifier.weight(1f)) {
+                        if (barTitle != null) {
+                            Text(
+                                barTitle,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.SemiBold,
+                                color = SheetPalette.ink(dark),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                        },
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = SheetPalette.dim(dark),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f),
-                    )
+                        }
+                        Text(
+                            stringResource(R.string.mapscreen_results_count, shown.size),
+                            style = if (barTitle != null) MaterialTheme.typography.bodyMedium else MaterialTheme.typography.bodyLarge,
+                            color = SheetPalette.dim(dark),
+                            maxLines = 1,
+                        )
+                    }
                     IconButton(onClick = { if (collapsed) onExpand() else onExpandedChange(!expanded) }) {
                         Icon(
                             if (!collapsed && expanded) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowUp,
