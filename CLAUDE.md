@@ -294,6 +294,22 @@ Defaults that make the safe path the easy one:
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
   default-radius cards, no OutlinedIconButton circles - that was the "dated" look).
+- **Place-sheet surface language (2026-07-10):** header icon buttons (Save/Share/more/close) are
+  40dp icons in `dim.copy(alpha = 0.12f)` CIRCLES with 5dp gaps (Google's treatment); ActionPill
+  and the "All reviews" button are CircleShape stadium pills (the outlined button was the last
+  outlined control on the sheet); the reviews summary block is LEFT-ALIGNED (displaySmall number
+  + stars/count stacked beside it), not centered; the MINIMIZED card carries Directions + Call +
+  Website pills in a horizontal scroll row with the same gating as the full action row (website
+  behind HideExternalLinks). Keep new sheet controls on this language. NB `RatingHistogram` in
+  PlaceSheet is ORPHANED (its per-star counts only exist in the live panel DOM) - wire it or
+  delete it, don't duplicate it. **The MENU TAB (2026-07-10)** appears beside Reviews/About when
+  `photoCategories` carries a menu-named category (`MENU_TAB_WORDS`, lowercase contains-match on
+  Google's LOCALIZED gallery-tab name, which is reused as the tab title); content = the tagged
+  photos as a chunked 2-up grid (`MenuTab`) into the shared PhotoGallery. There is NO keyless
+  menu URL (probed 2026-07-10: search payload [38] empty, zero menu links) - don't chase the
+  link; the quality follow-up is making WebPhotoFetcher scrape the menu TAB exhaustively. The
+  inline review search hides behind a circled magnifier beside the All-reviews pill
+  (`reviewSearchOpen`; toggling closed clears the query so a hidden filter can't keep filtering).
 - **Chip style = stadium pills (2026-07-08):** EVERY chip (map CategoryChips, results-panel filter
   chips Open-now/top-rated/price/sort + the collapsed "N results" pill, PlaceSheet travel-mode chips
   now with a leading `Icons.Default.Directions*` glyph, Settings vibrate-on-turns FilterChips) sets
@@ -889,7 +905,9 @@ Defaults that make the safe path the easy one:
   fails verification is ignored (app keeps the last-good config). An unsigned/older
   cached copy falls back to the compiled `DEFAULT` for one launch.
 - **Notices.** `calibration.json` carries a `notices` array (`id`/`level`/`title`/
-  `body`/`url`) shown as dismissable cards on the bare map (`MapViewModel.refreshNotices`,
+  `body`/`url`) shown as dismissable cards on the bare map; **level "urgent" (2026-07-10)
+  renders as a MODAL VelaDialog instead** (OK dismisses; a `url` adds a Learn-more button) —
+  for pushed announcements that must be seen. Cards for routine notes, urgent sparingly. (`MapViewModel.refreshNotices`,
   dismissed ids in `vela_notices` prefs) - push "search is down, fix coming" with no
   app update. Rides the same signed channel.
 - **Phase 3 (done): remote parse *logic*** via `transformsJs` - a signed JS bundle

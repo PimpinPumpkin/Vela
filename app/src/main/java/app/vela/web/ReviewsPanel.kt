@@ -256,10 +256,12 @@ private fun buildPanelWebView(
             }
         }
     }
-    // FULL-SCREEN: the WebView owns the whole screen, no scrolling parent — skip all the scroll-sync
-    // machinery and let it scroll natively (this is what makes full-screen jitter-free by design).
-    if (!fullScreen) wv.setOnTouchListener { v, ev ->
-        if (ev.actionMasked != MotionEvent.ACTION_UP && ev.actionMasked != MotionEvent.ACTION_CANCEL) {
+    // FULL-SCREEN: the WebView owns the whole screen and scrolls natively (that's what makes it
+    // jitter-free) — but it still forwards TOP-EDGE down-drags, so the page can be pulled down to
+    // close like the photo viewer (user 2026-07-11). The bottom/up forwarding stays inline-only
+    // (full-screen has no sheet to grow), and there's no parent to disallow-intercept against.
+    wv.setOnTouchListener { v, ev ->
+        if (!fullScreen && ev.actionMasked != MotionEvent.ACTION_UP && ev.actionMasked != MotionEvent.ACTION_CANCEL) {
             v.parent?.requestDisallowInterceptTouchEvent(true)
         }
         v.getLocationInWindow(winLoc)
@@ -294,7 +296,7 @@ private fun buildPanelWebView(
                     // Forward only clearly-vertical boundary drags (a horizontal chip swipe with
                     // a slight slope must not jiggle the sheet).
                     if (kotlin.math.abs(dy) > kotlin.math.abs(dx) &&
-                        ((panelAtTop.get() && dy > 0f) || (panelAtBottom.get() && dy < 0f))
+                        ((panelAtTop.get() && dy > 0f) || (!fullScreen && panelAtBottom.get() && dy < 0f))
                     ) {
                         forwarded = true
                         forwardDist += kotlin.math.abs(dy)
