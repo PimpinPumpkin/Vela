@@ -176,6 +176,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -2087,6 +2088,11 @@ private fun PhotoGallery(urls: List<String>, dates: List<String?>, start: Int, o
                 // The one flag that UNCONDITIONALLY lets the window lay out past the bars — the
                 // fitting flags alone still left top/bottom strips on this device (2026-07-10).
                 it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+                // Paint the WINDOW DECOR black: the compose content is measured to the pre-flag
+                // frame, so the extra NO_LIMITS area showed the sheet ghosting through (the
+                // screenshot-verified "not full screen" strips). The decor background covers the
+                // whole window regardless of content size.
+                it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.BLACK))
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
                     it.attributes = it.attributes.apply {
                         layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -2515,6 +2521,7 @@ private fun FullScreenReviews(featureId: String, place: Place, ink: Color, dim: 
                 it.setLayout(android.view.WindowManager.LayoutParams.MATCH_PARENT, android.view.WindowManager.LayoutParams.MATCH_PARENT)
                 androidx.core.view.WindowCompat.setDecorFitsSystemWindows(it, false)
                 it.addFlags(android.view.WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS)
+                it.setBackgroundDrawable(android.graphics.drawable.ColorDrawable((if (dark) SheetDark else SheetLight).toArgb()))
                 if (android.os.Build.VERSION.SDK_INT >= 28) {
                     it.attributes = it.attributes.apply {
                         layoutInDisplayCutoutMode = android.view.WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
