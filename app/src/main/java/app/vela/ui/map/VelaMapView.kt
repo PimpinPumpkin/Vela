@@ -1284,6 +1284,20 @@ private fun ensureLayers(style: Style) {
         pitch.minZoom = 13f
         style.addLayerAbove(pitch, "park")
     }
+    // Commercial/retail blocks: the Google APP tints them cream in light mode (sampled
+    // #fdf9ef on the P9, 2026-07-11) - Liberty ships no layer for those classes at all,
+    // so this twin draws them; dark mode paints it the other-landuse navy (no change).
+    if (style.getLayer("vela-commercial") == null && style.getLayer("park") != null) {
+        val comm = FillLayer("vela-commercial", "openmaptiles").withSourceLayer("landuse")
+            .withFilter(
+                Expression.match(
+                    Expression.get("class"), Expression.literal(false),
+                    Expression.stop("commercial", true), Expression.stop("retail", true),
+                ),
+            )
+        comm.minZoom = 12f
+        style.addLayerAbove(comm, "park")
+    }
     // Park + bike TRAILS, Google-style green lines (dark #167055, sampled 2026-07-11).
     // Liberty's own path layers stay hidden (class path+pedestrian = every sidewalk, the
     // June "weird walking tracks" clutter); this twin keeps ONLY the deliberate trail
@@ -1773,19 +1787,22 @@ internal fun applyLight(style: Style) {
     // made it look un-Google). Soft-yellow motorways, neutralised landuse (no tan
     // residential/commercial blobs), subtle buildings. Tuned live in a MapLibre GL
     // JS harness against Google for reference.
-    val land = "#f2f1ee" // Google Maps light land (sampled 2026-07-11, warmer/lighter than the old #e8eaed)
-    val white = "#ffffff"
+    // PIXEL-SAMPLED from Google Maps (the app) on the P9 in light mode, 2026-07-11:
+    // land #f8f7f7, roads ONE blue-grey fill #aab9c9 (streets AND arterials; no casing),
+    // driveways/service #9bacbc, motorway #8aa4c0, buildings #e8e9ed (outline #d6d9e6),
+    // vegetation #d3f8e1, water #90daee, commercial cream #fdf9ef, trails #7fcdb0.
+    val land = "#f8f7f7"
     style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
     style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#90daee")) // Google Maps light water (verbatim)
-    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#d3f8e1"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#d3f8e1"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#d3f8e1"), PropertyFactory.fillOpacity(1f))
     // Buildings (OSM footprints, already in the Liberty tiles — no key/data needed).
     // The old #e2e3e6 was a hair off the #e8eaed land, so they were ~invisible; give
     // them a touch more grey + a subtle outline so they read like Google's at z15+.
     style.getLayer("building")?.setProperties(
-        PropertyFactory.fillColor("#e2e3e9"),
-        PropertyFactory.fillOutlineColor("#c4c9d1"),
+        PropertyFactory.fillColor("#e8e9ed"),
+        PropertyFactory.fillOutlineColor("#d6d9e6"),
     )
     // Show footprints from neighbourhood zoom (Liberty hid them until ~z16-17, so
     // residential houses only appeared when zoomed way in; Google shows them earlier).
@@ -1797,7 +1814,7 @@ internal fun applyLight(style: Style) {
     style.getLayer("building")?.setMinZoom(14f)
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#e2e3e9"),
+        PropertyFactory.fillExtrusionColor("#e8e9ed"),
         PropertyFactory.fillExtrusionOpacity(1f),
         PropertyFactory.fillExtrusionVerticalGradient(false),
     )
@@ -1819,34 +1836,36 @@ internal fun applyLight(style: Style) {
     }
     // Liberty fills wetlands with a fern-hatch pattern and pedestrian plazas with a
     // dotted one — Google shows both flat. Clear the pattern so the flat fill shows.
-    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#caf8dc"), PropertyFactory.fillOpacity(1f))
-    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#ededed"))
-    // Light-mode pitch/trail colours are ESTIMATES (harmonised with the light palette);
-    // the sampled truth is dark-mode only so far - resample when a light P9 capture exists.
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#d3f8e1"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#dbe0e8")) // pedestrian/parking surface, sampled
+    style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#fdf9ef"), PropertyFactory.fillOpacity(1f)) // cream, sampled
+    // Pitch light colour is the one remaining ESTIMATE (no sports court in the light
+    // captures); everything else in this function is P9-sampled.
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#c2ecd4"), PropertyFactory.fillOpacity(1f))
     listOf("landuse_pitch", "landuse_track").forEach { // Liberty's own pitch layers sit ABOVE the twin and covered it
         style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#c2ecd4"), PropertyFactory.fillOpacity(1f))
     }
-    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#8fbfa0"))
-    // Roads — white fills, soft-yellow motorways; casings fade to nothing on minor
-    // roads. Bridges mirror their road tier so overpasses match.
+    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#7fcdb0")) // sampled
+    // Roads: the app uses ONE blue-grey fill for streets and arterials alike, a deeper
+    // blue for motorways, a darker tier for driveways, and NO visible casings (they
+    // fade into the land, same rule as dark). All sampled.
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f9d27a"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#8aa4c0"))
     }
-    listOf("road_motorway_casing", "road_motorway_link_casing", "bridge_motorway_casing", "bridge_motorway_link_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f0b85a"))
+    listOf("road_trunk_primary", "bridge_trunk_primary",
+        "road_secondary_tertiary", "bridge_secondary_tertiary",
+        "road_minor", "road_link", "bridge_street", "bridge_link").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#aab9c9"))
     }
-    listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#a4b8cd")) }
-    listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#cfd9e3")) }
-    listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#aabdd0")) }
-    listOf("road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#d3dce4")) }
-    // The Google APP fills roads with a solid blue-grey (the web is white-with-grey-frame;
-    // the user matched to the APP screenshots 2026-07-11) — minor roads are one grey ribbon.
-    listOf("road_minor", "road_link", "road_service_track", "bridge_street", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#b0c1d4"))
+    listOf("road_service_track", "bridge_service_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#9bacbc"))
     }
-    listOf("road_minor_casing", "road_link_casing", "road_service_track_casing", "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#a2b4c9"))
+    listOf("road_motorway_casing", "road_motorway_link_casing", "bridge_motorway_casing", "bridge_motorway_link_casing",
+        "road_trunk_primary_casing", "bridge_trunk_primary_casing",
+        "road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing",
+        "road_minor_casing", "road_link_casing", "road_service_track_casing",
+        "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(land))
     }
     // Terrain relief: a soft warm-grey shadow, subtle so hills read as depth, not dirt.
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
@@ -1930,6 +1949,7 @@ internal fun applyDark(style: Style) {
     // Drop the wetland fern-hatch + pedestrian-plaza patterns (flat, like Google dark).
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#0d3847"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
+    style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#1c2638"), PropertyFactory.fillOpacity(1f)) // = other-landuse dark, twin exists for light
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#0d4956"), PropertyFactory.fillOpacity(1f)) // sports fields, sampled
     listOf("landuse_pitch", "landuse_track").forEach { // Liberty's own pitch layers sit ABOVE the twin and covered it
         style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#0d4956"), PropertyFactory.fillOpacity(1f))
