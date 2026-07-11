@@ -918,8 +918,19 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   - AND Liberty's own `landuse_pitch`/`landuse_track` layers (they sit ABOVE the twin) are
   coloured directly + exempted from the landuse-neutralise loops, else the tint never showed
   (found at a park with ball courts).
-  Their LIGHT-mode colours (#8fbfa0 / #c2ecd4) are harmonised ESTIMATES - resample when a
-  light-mode P9 capture exists. 3D extrusions = the flat colour at
+  Trail light = #7fcdb0 (P9-SAMPLED); pitch light #c2ecd4 stays the one estimate (no court
+  in the light captures).
+- **LIGHT palette is PIXEL-SAMPLED from the Google app on the P9 (2026-07-11, definitive,
+  supersedes every earlier light set):** land #f8f7f7 (the app is cooler than the web's
+  #f6f6f6 and the user's kept #f2f1ee - verbatim wins per user "all of it"), roads are ONE
+  blue-grey fill #aab9c9 for streets AND arterials with NO casings (casings = land),
+  driveways/service #9bacbc, motorway #8aa4c0, buildings #e8e9ed w/ outline #d6d9e6
+  (extrusion = fill, light killed), vegetation #d3f8e1 (park/grass/wood/wetland all one
+  mint), water #90daee (unchanged), plaza/parking surface #dbe0e8, trails #7fcdb0,
+  COMMERCIAL/RETAIL blocks cream #fdf9ef via the `vela-commercial` twin (Liberty ships no
+  layer for those classes; dark paints the twin #1c2638 = the other-landuse navy so dark
+  is unchanged). Google light also marks on-street BIKE ROUTES dark teal #007b8b - NOT
+  drawn by Vela (bike lanes are not the trails layer; noted as a possible future accent). 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the
