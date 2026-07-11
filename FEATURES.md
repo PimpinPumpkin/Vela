@@ -1208,3 +1208,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - EU/EEA consent wall: pre-seeds Google's `SOCS`/`CONSENT` cookies in the shared
   jar so a cookieless session isn't bounced to `consent.google.com` (best-effort,
   US-verified only; the full form-POST handshake is the follow-up if it persists).
+
+## Added 2026-07-11 (sheet-polish round)
+
+- Destination side on arrival: the approach banner and the spoken arrival say "Your
+  destination is on the left/right" when the router knows it (OSRM arrive modifier), in
+  all 11 languages.
+- Sticky travel mode: the last-used mode is the default for the next directions session
+  (parked-car routing still forces Walk).
+- Zoomed-out searches cover the visible viewport instead of a fixed ~25 km window.
+- Results-sheet filters drop the matching map pins, not just the list rows.
+- Native rating histogram on the Reviews tab, scraped in passing by the photo walk.
+- Menu photo tiles carry their upload date (RPC dates joined onto the categorised walk).
+- The route chooser drags from anywhere with inertia; travel-time picks are Material 3
+  dialogs that refuse past times; search-along-route chips are filled action chips.
+- Save is a bookmark icon; sheet headers share one circled-button language (place sheet,
+  directions close, results chevron and close, recent-search remove).
