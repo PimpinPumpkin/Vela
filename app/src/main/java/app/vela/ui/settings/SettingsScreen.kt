@@ -189,6 +189,27 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 onClick = { AppTheme.set(context, ThemeMode.DARK) },
             )
             Hint(stringResource(R.string.settings_appearance_hint))
+            Spacer(Modifier.height(10.dp))
+            // Interface size: scales every control and sheet (not the map) - for car/tablet
+            // screens where buttons run small (user 2026-07-11). Numeric labels, no i18n needed.
+            Text(
+                stringResource(R.string.settings_ui_scale),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(0.9f, 1.0f, 1.15f, 1.3f).forEach { f ->
+                    FilterChip(
+                        selected = kotlin.math.abs(app.vela.ui.UiScale.factor.value - f) < 0.01f,
+                        onClick = { app.vela.ui.UiScale.set(context, f) },
+                        label = { Text("${(f * 100).toInt()}%") },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                }
+            }
             // Material You (issue #15): tint the app's buttons, chips and accents from the
             // wallpaper palette. Android 12+ only - below S there is no dynamic palette, so
             // the row is not shown at all rather than shown dead.
