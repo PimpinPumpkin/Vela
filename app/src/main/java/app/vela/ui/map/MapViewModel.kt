@@ -938,7 +938,16 @@ class MapViewModel @Inject constructor(
         val base = Place(id = sp.id, name = sp.name, location = sp.location)
         if (_state.value.pickingStop) { addStop(base); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(base); return }
-        _state.update { it.copy(selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false) }
+        routeJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = base, center = base.location, placesHere = emptyList(), reviews = emptyList(),
+                reviewsLoading = false, reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                // Same cohesion rule as selectPlace: a new destination closes the old chooser.
+                directionsOpen = false, routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false, showSteps = false,
+            )
+        }
         rememberRecentPlace(sp)
         // A saved place has no feature id, so it used to open with no photos/reviews.
         // Enrich it via a search (like a POI tap) to pull them; keep the saved id so
@@ -1195,10 +1204,16 @@ class MapViewModel @Inject constructor(
         if (_state.value.pickingStop) { addStop(p); return }
         if (_state.value.pickingOrigin) { setDirectionsOrigin(p); return }
         suggestJob?.cancel()
+        routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
                 selected = withListNote(p), center = p.location, reviews = emptyList(), suggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
+                // Picking a NEW place while a route chooser is open closes it: the chooser
+                // belonged to the previous destination and kept covering the fresh place
+                // (the along-route / pick-origin / pick-stop flows early-return above).
+                directionsOpen = false, routes = emptyList(), activeRoute = null,
+                transit = emptyList(), transitLoading = false, showSteps = false,
             )
         }
         fetchReviews(p)
