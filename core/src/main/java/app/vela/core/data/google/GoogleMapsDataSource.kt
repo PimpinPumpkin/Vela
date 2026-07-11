@@ -212,7 +212,7 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { ReviewsParser.parse(GoogleResponse.parse(get(url))) }.getOrDefault(emptyList())
     }
 
-    override suspend fun placePhotos(featureId: String): List<String> = io {
+    override suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = io {
         // batchexecute `hspqX` (/MapsPhotoService.ListEntityPhotos) — a keyless POST
         // (no `at` token, just the warmed session cookies). The feature id goes in
         // the proto verbatim ([2][0]); the response carries the full gallery, URL at
@@ -224,7 +224,7 @@ class GoogleMapsDataSource @Inject constructor(
         val inner = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", PHOTO_COUNT.toString())
         // JsonPrimitive(...).toString() = the proto as a properly-escaped JSON string literal.
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
-        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")).map { it.url } }.getOrDefault(emptyList())
+        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
     }
 
     override suspend fun directions(

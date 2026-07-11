@@ -517,17 +517,20 @@ fun PlaceSheet(
             .layout { measurable, constraints ->
                 // Layout-phase read (see the note above): recompose-free height animation.
                 val maxHPx = heightAnim.value.dp.roundToPx().coerceAtLeast(1)
-                val p = measurable.measure(
-                    constraints.copy(maxHeight = minOf(constraints.maxHeight, maxHPx)),
-                )
+                val cap = minOf(constraints.maxHeight, maxHPx)
                 // While the minimize fold is engaged (fraction < 1) the card must not under-run
                 // the minimized detent: the folding content dips just below minH near the floor
                 // (the skeleton is a touch shorter than the detent), and a pure wrap-cap card
                 // then dived that last bit of slack in a blink - the end-of-fold hop (user
-                // 2026-07-11). At rest above the fold (fraction = 1) the card keeps hugging
-                // short content: dropped pins and the parked car stay compact.
-                val floorPx = if (extrasFraction() < 1f) minOf(minH.dp.roundToPx(), maxHPx) else 0
-                layout(p.width, maxOf(p.height, floorPx)) { p.place(0, 0) }
+                // 2026-07-11). The floor goes into the MEASUREMENT (minHeight), never just the
+                // reported size: flooring only the report left the card SURFACE at content
+                // height, top-placed in a taller slot, and the deficit showed through as a
+                // strip of map under the minimized card (user 2026-07-11). At rest above the
+                // fold (fraction = 1) the card keeps hugging short content: dropped pins and
+                // the parked car stay compact.
+                val floorPx = if (extrasFraction() < 1f) minOf(minH.dp.roundToPx(), cap) else 0
+                val p = measurable.measure(constraints.copy(minHeight = floorPx, maxHeight = cap))
+                layout(p.width, p.height) { p.place(0, 0) }
             },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
@@ -1515,6 +1518,8 @@ fun DirectionsPanel(
  *  time — Google's per-departure prediction needs a login/app-only request field
  *  we can't reach keyless, so we surface the range Google itself plans with. Falls
  *  back to a single ~estimate when no range is shipped (short trips, walk/bike). */
+@android.annotation.SuppressLint("NewApi")
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun DepartTimeChooser(
     route: Route?,
@@ -1522,13 +1527,19 @@ private fun DepartTimeChooser(
     isTransit: Boolean = false,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
 ) {
-    val context = LocalContext.current
     val ink = if (isAppInDarkTheme()) InkDark else InkLight
     // Keyed to the destination so switching places resets the picked time. mode: 0 now, 1 depart at,
     // 2 arrive by, 3 last available (transit only). date + time compose the chosen wall-clock.
     var mode by remember(route?.summary) { mutableStateOf(0) }
     var date by remember(route?.summary) { mutableStateOf(java.time.LocalDate.now()) }
-    var time by remember(route?.summary) { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0)) }
+    // Default to the next 5-minute mark: a to-the-second "now" made every chip tap a brand-new
+    // epoch, and the old flow refetched for each one.
+    var time by remember(route?.summary) {
+        val n = java.time.LocalTime.now().withSecond(0).withNano(0)
+        mutableStateOf(n.plusMinutes(((5 - n.minute % 5) % 5).toLong()))
+    }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val nowDur = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
     val range = route?.typicalRangeSeconds
     val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
@@ -1537,32 +1548,27 @@ private fun DepartTimeChooser(
     fun epoch(): Long = date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
     fun emit() = onTimeSelected(mode, if (mode == 0) null else epoch())
 
-    fun openTime() = android.app.TimePickerDialog(
-        context, { _, h, m -> time = java.time.LocalTime.of(h, m); emit() }, time.hour, time.minute, false,
-    ).show()
-    fun openDate() = android.app.DatePickerDialog(
-        context, { _, y, mo, d -> date = java.time.LocalDate.of(y, mo + 1, d); emit() },
-        date.year, date.monthValue - 1, date.dayOfMonth,
-    ).show()
-
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // Mode chips — scroll horizontally so 3–4 chips never clip on a narrow phone.
         Row(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Stadium pills, matching every other Vela chip (CLAUDE.md chip style).
+            // Stadium pills, matching every other Vela chip (CLAUDE.md chip style). Switching
+            // into Depart at / Arrive by opens the time picker DIRECTLY (Google's flow) and
+            // nothing is emitted until a picker confirms — the old flow fired a fetch on the
+            // bare chip tap with an unpicked "now" (user 2026-07-11).
             val pill = androidx.compose.foundation.shape.CircleShape
             FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) }, shape = pill)
-            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) }, shape = pill)
-            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) }, shape = pill)
+            FilterChip(selected = mode == 1, onClick = { mode = 1; showTimePicker = true }, label = { Text(stringResource(R.string.place_depart_at)) }, shape = pill)
+            FilterChip(selected = mode == 2, onClick = { mode = 2; showTimePicker = true }, label = { Text(stringResource(R.string.place_arrive_by)) }, shape = pill)
             if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) }, shape = pill)
         }
-        // Time + date pickers for depart/arrive (Google-style: a time field AND a date field).
+        // Time + date fields for depart/arrive (Google-style: a time field AND a date field).
         if (mode == 1 || mode == 2) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { openTime() }) { Text(time.format(fmt)) }
-                OutlinedButton(onClick = { openDate() }) { Text(date.format(dateFmt)) }
+                OutlinedButton(onClick = { showTimePicker = true }) { Text(time.format(fmt)) }
+                OutlinedButton(onClick = { showDatePicker = true }) { Text(date.format(dateFmt)) }
             }
         }
 
@@ -1591,6 +1597,64 @@ private fun DepartTimeChooser(
             Column {
                 Text(summary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = ink)
                 note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = dim) }
+            }
+        }
+    }
+    // Material 3 pickers in a Vela shell — the old android.app Holo dialogs looked nothing
+    // like the app (part of the "kinda janky", user 2026-07-11). Confirm is the ONLY emit.
+    if (showTimePicker) {
+        val tp = androidx.compose.material3.rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = false)
+        PickerDialog(
+            onConfirm = { time = java.time.LocalTime.of(tp.hour, tp.minute); showTimePicker = false; emit() },
+            onDismiss = { showTimePicker = false },
+        ) { androidx.compose.material3.TimePicker(state = tp) }
+    }
+    if (showDatePicker) {
+        // NB selectedDateMillis is UTC midnight of the picked day — decode with UTC, not the
+        // system zone, or western-hemisphere picks land one day early.
+        val dp = androidx.compose.material3.rememberDatePickerState(
+            initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
+        )
+        PickerDialog(
+            onConfirm = {
+                dp.selectedDateMillis?.let { date = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate() }
+                showDatePicker = false
+                emit()
+            },
+            onDismiss = { showDatePicker = false },
+        ) { androidx.compose.material3.DatePicker(state = dp, showModeToggle = false) }
+    }
+}
+
+/** A Vela shell for the M3 time/date pickers: a raw Dialog (the D-pad house rule — an
+ *  AlertDialog can't be pre-focused), sheet colours, and the VelaDialog button grammar
+ *  (filled confirm pill that auto-focuses, plain dismiss). */
+@Composable
+private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val dark = isAppInDarkTheme()
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(28.dp), color = if (dark) SheetDark else SheetLight) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                content()
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 6.dp, end = 6.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val confirmFocus = rememberDpadAutoFocus()
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    ) { Text(stringResource(android.R.string.cancel)) }
+                    Spacer(Modifier.width(6.dp))
+                    Button(
+                        onClick = onConfirm,
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier
+                            .focusRequester(confirmFocus)
+                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    ) { Text(stringResource(android.R.string.ok)) }
+                }
             }
         }
     }
@@ -2654,6 +2718,12 @@ private fun ReviewsTab(
                             modifier = Modifier.padding(top = 3.dp),
                         )
                     }
+                }
+                // The per-star distribution fills the block's empty right half, Google's layout
+                // (user 2026-07-11). Counts arrive in passing from the photo walk; absent = no bars.
+                place.ratingHistogram?.let { counts ->
+                    Spacer(Modifier.width(18.dp))
+                    RatingHistogram(counts, dim, Modifier.weight(1f))
                 }
             }
         }
