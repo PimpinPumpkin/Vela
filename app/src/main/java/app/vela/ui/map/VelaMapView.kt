@@ -1241,6 +1241,13 @@ fun VelaMapView(
 }
 
 private fun ensureLayers(style: Style) {
+    // Kill the style light: MapLibre lights fill-extrusion faces toward white (default
+    // intensity 0.5), so at z16+ the building-3d tops rendered ~40% brighter than the
+    // palette (#1c3b69 became #2e5590) while Google keeps buildings the SAME colour at
+    // every zoom (pixel-proven side by side, user 2026-07-11). Intensity 0 makes the
+    // extrusion render its set colour verbatim; the vertical-gradient flags on the
+    // building-3d layers (applyLight/applyDark) kill the remaining side shading.
+    runCatching { style.light?.setIntensity(0f) }
     // FLAT vegetation, like Google (user 2026-07-11). Two parts. (1) Liberty's wetland +
     // pedestrian-plaza layers ship with a fill-PATTERN (fern hatch / dots), and setting
     // fill-pattern to an empty literal does NOT clear it on device (both themes tried - the
@@ -1744,6 +1751,7 @@ internal fun applyLight(style: Style) {
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#e2e3e9"),
         PropertyFactory.fillExtrusionOpacity(1f),
+        PropertyFactory.fillExtrusionVerticalGradient(false),
     )
     // Extrusions only once zoomed into a block — the flat fill+outline gives the footprint
     // look at browse zoom, and fill-extrusion is the per-pixel-expensive part on a Pixel 5a.
@@ -1831,6 +1839,7 @@ internal fun applyDark(style: Style) {
     style.getLayer("building-3d")?.setProperties(
         PropertyFactory.fillExtrusionColor("#1c3b69"),
         PropertyFactory.fillExtrusionOpacity(1f),
+        PropertyFactory.fillExtrusionVerticalGradient(false),
     )
     style.getLayer("building-3d")?.setMinZoom(16f) // extrusions only high-zoom (Pixel 5a perf)
     // Greens we keep as-is; every OTHER landuse/landcover fill (commercial, school,
