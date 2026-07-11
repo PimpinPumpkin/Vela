@@ -151,6 +151,25 @@ map area, but **not a Google account or any app key**, much like using
 never leave the device. **[Read the full breakdown of exactly what each service
 receives → `PRIVACY.md`](PRIVACY.md).**
 
+How that compares, honestly:
+
+| What Google gets | Google Maps app | Google Maps web | Vela |
+| --- | --- | --- | --- |
+| Tied to your Google account | Yes, always signed in | Yes unless incognito | Never - there is no login |
+| A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; just an IP like any website visitor |
+| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never sent. Position stays on the phone; searches send the map area you are looking at |
+| Every pan and zoom of the map | Yes - their servers render the map | Yes | No - map tiles come from OpenFreeMap, so Google never sees you browse |
+| Your searches | Yes, saved to your account history | Yes | The query text reaches Google anonymously, only when you search |
+| Place pages you open | Yes | Yes | The place lookup reaches Google anonymously |
+| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM/GraphHopper; Google sees one anonymous ETA check, never your live position |
+| Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
+| Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
+| Works with no Google contact at all | No | No | Yes - downloaded regions search, route, and navigate fully offline |
+
+The short version: Google shrinks from *knowing who you are and everywhere you go* to
+*occasionally answering an anonymous question*. And the parts that matter most while
+driving - your GPS trace, your map browsing - never reach Google at all.
+
 ## Why it's built this way
 
 Two decisions from the planning phase shape everything:

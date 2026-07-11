@@ -17,6 +17,48 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Privacy comparison matrix in the README (2026-07-11).** A plain-words table under
+  Privacy comparing the Google Maps app, Google Maps web, and Vela: account linkage, device
+  identifiers, GPS exposure, map-browsing visibility, search anonymity, routing telemetry,
+  saved-place storage, ad profiling, and offline capability. PRIVACY.md stays the per-endpoint
+  deep dive; the table is the ten-second version.
+
+- ✅ **Urgent pushed notices can be a modal (2026-07-10).** A calibration.json notice with
+  level "urgent" renders as a dialog (OK + optional Learn-more link) instead of a map card, for
+  announcements that must be seen — the "servers overloaded, hang tight" class of message. Same
+  signed channel, same one-time dismissal.
+- ✅ **Minimizing the place card fades gracefully (2026-07-10).** The photos and body content
+  fade out with the height as the sheet glides down instead of vanishing in one frame at the
+  swap, and the compact card (name, stars, action pills) fades in — nothing pops. The header
+  circles also became fixed-size plain buttons: the Material button's minimum-touch-target
+  machinery kept re-inflating their layout past the visible circle, which is why they overlapped
+  through two rounds of shrinking.
+- ✅ **The photo viewer goes truly full screen (2026-07-10).** Google's treatment: system bars
+  hide while viewing (swipe reveals them), the backdrop is the photo itself blurred and dimmed
+  instead of flat black (Android 12+), and the author/date stamp sits bottom-left in every
+  orientation. The full-screen reviews page also draws edge to edge so rotation can't leak the
+  map through the borders. The photo strip's category chips are gone (the Menu tab replaced
+  them), and the header's circled buttons slimmed to 36dp with wider gaps so they never touch.
+- ✅ **Restaurant menus get their own tab (2026-07-10).** A place with menu photos shows a Menu
+  tab beside Reviews and About: a browsable photo grid, titled with Google's own localized
+  gallery-tab name, tapping through to the full-screen viewer. Google's keyless data carries no
+  menu LINK (probed: the search payload has none), so photos are the menu surface; making the
+  gallery scrape menu-exhaustive is the known follow-up for places where the tagged set is
+  partial. The inline review search also folds into a magnifier beside the All-reviews pill —
+  the stacked text field read as clutter, and the full-screen panel's server-side search stays
+  the headline way to dig.
+- ✅ **Gallery survives rotation + the save menu (2026-07-10).** The full-screen photo viewer
+  draws edge to edge, so rotating to landscape no longer lets the map peek through the system-bar
+  strips, and the photo caption's bottom clearance scales with the screen instead of floating to
+  the middle in landscape. The place header's star is now the whole save menu (quick save, save
+  to a list, edit note, set as home/work), replacing the separate overflow button that crowded
+  the circled header.
+- ✅ **Place sheet modernization (2026-07-10).** The header's Save/Share/more/close buttons sit in
+  Google's subtle grey circles, every pill on the sheet shares the app's stadium shape, the
+  reviews summary is Google's block (big number, stars and count stacked beside it, left-aligned)
+  instead of a centered strip, the "All reviews" button drops the dated outlined look for the
+  sheet's tonal pill language, and the minimized card carries Call and Website beside Directions
+  (same gating as the full sheet) so it's useful without re-expanding.
 - ✅ **One house number per address (2026-07-10).** The open-address overlay used to print an
   apartment complex's number over its whole footprint (OpenAddresses has a row per unit/parcel);
   the overlay build now collapses those to a single point per address, so each number appears
