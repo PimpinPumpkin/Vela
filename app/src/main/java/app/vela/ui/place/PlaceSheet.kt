@@ -382,6 +382,15 @@ fun PlaceSheet(
     // scroll handler watches the body — when it's at the top, a downward drag first
     // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
     val bodyScroll = rememberScrollState()
+    // Landing minimized rescrolls the body to its top. The fold clamps most of a scrolled
+    // body away as the content shrinks, but a couple of lines of residue can survive (a
+    // 2-line name + pills slightly overflow the floor height) and left the name's first
+    // line hiding behind the handle after minimizing a scrolled expanded sheet.
+    LaunchedEffect(minimizedState.value) {
+        if (minimizedState.value && !singleDetent && bodyScroll.value > 0) {
+            bodyScroll.animateScrollTo(0, tween(250))
+        }
+    }
     val dismissConn = remember(place.id) {
         object : NestedScrollConnection {
             // True once this gesture actually moved the sheet - its release then settles the sheet
