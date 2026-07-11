@@ -17,6 +17,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **One house number per address (2026-07-10).** The open-address overlay used to print an
+  apartment complex's number over its whole footprint (OpenAddresses has a row per unit/parcel);
+  the overlay build now collapses those to a single point per address, so each number appears
+  once. Takes effect per state as the overlays rebuild.
 - ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
   disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
   transit lines, 3D buildings), then a new **Place pages** section (Show reviews, the "Read all reviews"
