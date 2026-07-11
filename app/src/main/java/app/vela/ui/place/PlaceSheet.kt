@@ -586,14 +586,29 @@ fun PlaceSheet(
                         // The handle drags the sheet 1:1 and the release coasts to the nearest
                         // detent on the fling velocity - same physics as dragging the body.
                         val tracker = VelocityTracker()
+                        var acc = 0f
+                        var t0 = 0L
+                        var tN = 0L
                         detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking() },
+                            onDragStart = { tracker.resetTracking(); acc = 0f; t0 = 0L; tN = 0L },
                             onVerticalDrag = { change, dy ->
                                 change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
+                                // Integrated deltas, not change.position: the position is local
+                                // to a node that MOVES as the sheet resizes, which zeroed the
+                                // measured velocity (user 2026-07-11).
+                                acc += dy
+                                if (t0 == 0L) t0 = change.uptimeMillis
+                                tN = change.uptimeMillis
+                                tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
                                 dragSheetBy(dy)
                             },
-                            onDragEnd = { settleFromVelocity(tracker.calculateVelocity().y) },
+                            onDragEnd = {
+                                // Whichever is stronger: tracked velocity or the gesture's plain
+                                // average - a short flick can no longer measure as ~zero.
+                                val tracked = tracker.calculateVelocity().y
+                                val avg = if (tN > t0) acc / (tN - t0) * 1000f else 0f
+                                settleFromVelocity(if (kotlin.math.abs(avg) > kotlin.math.abs(tracked)) avg else tracked)
+                            },
                             onDragCancel = { settleFromVelocity(0f) },
                         )
                     }
@@ -1118,7 +1133,7 @@ fun PlaceSheet(
 
 /** A release faster than this (dp/s) counts as a FLICK and commits at least one detent in
  *  its direction, however short the drag - the shared sheet-fling grammar. */
-internal const val FLING_COMMIT_DPS = 260f
+internal const val FLING_COMMIT_DPS = 180f
 
 /** "Save to list" — check the lists this place belongs to; create a new one inline. */
 @Composable
@@ -1354,18 +1369,26 @@ fun DirectionsPanel(
                 .pointerInput(Unit) {
                     val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
                     var acc = 0f
+                    var t0 = 0L
+                    var tN = 0L
                     detectVerticalDragGestures(
-                        onDragStart = { tracker.resetTracking(); acc = 0f },
+                        onDragStart = { tracker.resetTracking(); acc = 0f; t0 = 0L; tN = 0L },
                         onVerticalDrag = { change, dy ->
                             change.consume()
                             // Integrated deltas, not change.position: the position is local to
                             // a node that MOVES as the sheet resizes, which zeroed the measured
                             // velocity - flicks read as slow drags (user 2026-07-11).
                             acc += dy
+                            if (t0 == 0L) t0 = change.uptimeMillis
+                            tN = change.uptimeMillis
                             tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
                             dragDirBy(dy)
                         },
-                        onDragEnd = { settleDir(tracker.calculateVelocity().y) },
+                        onDragEnd = {
+                            val tracked = tracker.calculateVelocity().y
+                            val avg = if (tN > t0) acc / (tN - t0) * 1000f else 0f
+                            settleDir(if (kotlin.math.abs(avg) > kotlin.math.abs(tracked)) avg else tracked)
+                        },
                         onDragCancel = { settleDir(0f) },
                     )
                 }
