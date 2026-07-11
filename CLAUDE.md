@@ -1161,8 +1161,10 @@ HEADLINE feature in What-you-get (the self-healing pitch), not just an architect
   chooser (DRIVE only; prefs `avoid_tolls`/`avoid_highways`, seeded in routeToSelected like
   the sticky mode). PLUMBING: `MapDataSource.directions`/`nameRoute` + `RouteEngine.route`
   carry the flags end to end. The public FOSSGIS OSRM REJECTS `exclude=` (probed 2026-07-11:
-  InvalidValue - its profiles lack excludable classes; routeOsrm now bails on any 4xx instead
-  of retrying), so the AUTHORITATIVE avoid router is the ON-DEVICE graph: `GraphBuilder` bakes
+  InvalidValue - its profiles lack excludable classes; routeOsrm bails on any 4xx instead
+  of retrying, AND `OSRM_SUPPORTS_EXCLUDE=false` keeps the param OFF entirely - sending it
+  400'd the whole request and lost the clean named-turn route while a chip was on, a worse
+  route than just not honouring avoid online; flip the const on a self-hosted OSRM), so the AUTHORITATIVE avoid router is the ON-DEVICE graph: `GraphBuilder` bakes
   `car_avoid_toll`/`car_avoid_motorway` CH profiles (EV string grew `toll, road_class` - a
   BREAKING graph change; the engine try-loads the v2 EV string then the old one so existing
   graphs keep working, minus avoid) and `GraphHopperRouteEngine` mirrors the blocking
