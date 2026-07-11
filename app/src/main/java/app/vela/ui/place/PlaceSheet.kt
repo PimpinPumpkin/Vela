@@ -26,6 +26,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import app.vela.ui.theme.isAppInDarkTheme
@@ -42,7 +43,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -110,7 +110,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Streetview
-import androidx.compose.material.icons.filled.StarBorder
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -123,7 +124,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -157,6 +158,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.graphics.Color
@@ -184,7 +186,6 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.layout
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.IntOffset
@@ -252,6 +253,7 @@ fun PlaceSheet(
     onRemoveFromList: (listId: String) -> Unit = {},
     onCreateListWith: (name: String) -> Unit = {},
     onSetNote: (String?) -> Unit = {},
+    onExpandedChange: (Boolean) -> Unit = {},
     // Bumped by MapScreen when the user grabs the map — the sheet glides down to its minimized
     // card so the map is unobstructed (Google's behaviour). 0 = never.
     minimizeTick: Int = 0,
@@ -321,11 +323,12 @@ fun PlaceSheet(
     LaunchedEffect(minimizeTick) {
         if (minimizeTick == seenTick) return@LaunchedEffect
         seenTick = minimizeTick
-        // Glide FIRST, flip the states after: any content keyed on the minimized state then
-        // changes only once the card is already down (flipping first read as a pop, not a glide).
-        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
+        // Flip the states FIRST so the extras' shrink-and-fade (SheetFold) runs CONCURRENTLY
+        // with the height glide - one continuous motion, same order the drag-release path uses.
+        // (The old glide-then-flip order existed for the swap-based mini card, since removed.)
         expandedState.value = false
         minimizedState.value = true
+        if (heightAnim.value > minH + 0.5f) heightAnim.animateTo(minH, glideSpec)
     }
     // NOTE: heightAnim.value is deliberately NOT read here in composition - the height is applied
     // in the layout modifier on the Card below, so an animation frame only re-LAYOUTS the sheet
@@ -333,6 +336,26 @@ fun PlaceSheet(
     // composition was the dropped-frames report on the tap-to-expand animation (user 2026-07-10).
     val density = LocalDensity.current
     val settleScope = rememberCoroutineScope()
+    // The body is a SKELETON (name row, rating, action pills - the minimized card) plus
+    // SheetFold sections between/around it. The extras' fold is LOCKED TO THE SHEET
+    // HEIGHT: their height/alpha scale by how far the sheet sits between the minimized
+    // floor and peek, read in the layout/render phase each frame. Whatever drives the
+    // height (pan glide, a slow drag, the release settle) drives the fold identically -
+    // a separately-clocked exit animation could never stay in step with a spring and
+    // read as staccato (user 2026-07-11). A parked car (singleDetent) keeps its extras:
+    // nothing to minimize into. (Declared up here because the Card's height layout also
+    // reads the fraction: the card floors at the minimized detent while the fold is engaged.)
+    val extrasFraction: () -> Float = {
+        if (singleDetent) 1f else ((heightAnim.value - minH) / (peekH - minH)).coerceIn(0f, 1f)
+    }
+    // Composition gate: extras stay MOUNTED while any part of them shows (so a fold or a
+    // partial drag always has content) and unmount only once the sheet settles at the
+    // floor - the same lifecycle the old mini-card swap gave the hidden body, keeping
+    // zero-height controls out of D-pad focus search. derivedStateOf collapses the
+    // per-frame height reads into one recomposition at the flip points.
+    val extrasComposed by remember(place.id, singleDetent, minH) {
+        derivedStateOf { singleDetent || !minimizedState.value || heightAnim.value > minH + 1f }
+    }
     // Release: project where the fling would coast to, snap the STATES to the nearest detent (so
     // everything keyed on them stays honest), and glide there carrying the finger's velocity. A
     // hard fling projects past the middle detent and lands on MINIMIZED from anywhere; a gentle
@@ -347,7 +370,21 @@ fun PlaceSheet(
         val vDp = with(density) { velocityPxPerSec.toDp().value }
         // Where the throw would naturally coast to, then the nearest detent to THAT point.
         val naturalEnd = flingDecay.calculateTargetValue(heightAnim.value, -vDp)
-        val target = listOf(minH, peekH, expH).minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekH
+        // A real FLICK (>450 dp/s) commits AT LEAST one detent in its direction - the pure
+        // projection needed the coast to cross half the gap, which made short flicks feel
+        // dead (user 2026-07-11). A hard throw still crosses two detents via the projection.
+        val detents = listOf(minH, peekH, expH)
+        val target = when {
+            vDp < -FLING_COMMIT_DPS -> {
+                val up = detents.filter { it > heightAnim.value + 1f }
+                maxOf(up.minOrNull() ?: expH, up.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: expH)
+            }
+            vDp > FLING_COMMIT_DPS -> {
+                val down = detents.filter { it < heightAnim.value - 1f }
+                minOf(down.maxOrNull() ?: minH, down.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: minH)
+            }
+            else -> detents.minByOrNull { kotlin.math.abs(it - naturalEnd) } ?: peekH
+        }
         expandedState.value = target == expH
         minimizedState.value = target == minH
         settleScope.launch {
@@ -382,6 +419,15 @@ fun PlaceSheet(
     // scroll handler watches the body — when it's at the top, a downward drag first
     // collapses an expanded sheet, then dismisses it. Upward / mid-list drags scroll.
     val bodyScroll = rememberScrollState()
+    // Landing minimized rescrolls the body to its top. The fold clamps most of a scrolled
+    // body away as the content shrinks, but a couple of lines of residue can survive (a
+    // 2-line name + pills slightly overflow the floor height) and left the name's first
+    // line hiding behind the handle after minimizing a scrolled expanded sheet.
+    LaunchedEffect(minimizedState.value) {
+        if (minimizedState.value && !singleDetent && bodyScroll.value > 0) {
+            bodyScroll.animateScrollTo(0, tween(250))
+        }
+    }
     val dismissConn = remember(place.id) {
         object : NestedScrollConnection {
             // True once this gesture actually moved the sheet - its release then settles the sheet
@@ -474,6 +520,10 @@ fun PlaceSheet(
     // The user started really scrolling the reviews panel: slide the sheet to full screen around
     // them, Google-style (expand + settle the body so the panel fills the viewport). The second
     // animateScrollTo chases the body's max as the expand animation grows it.
+    // Report the expanded detent up: MapScreen kills the search bar's taps while the sheet
+    // covers it (a tap on the sliver of bar behind an expanded sheet opened search OVER the
+    // place card, user 2026-07-11).
+    LaunchedEffect(expandedState.value) { onExpandedChange(expandedState.value) }
     val onPanelEngaged: () -> Unit = {
         reviewsEngaged.value = true
         scope.launch {
@@ -488,9 +538,19 @@ fun PlaceSheet(
             .layout { measurable, constraints ->
                 // Layout-phase read (see the note above): recompose-free height animation.
                 val maxHPx = heightAnim.value.dp.roundToPx().coerceAtLeast(1)
-                val p = measurable.measure(
-                    constraints.copy(maxHeight = minOf(constraints.maxHeight, maxHPx)),
-                )
+                val cap = minOf(constraints.maxHeight, maxHPx)
+                // While the minimize fold is engaged (fraction < 1) the card must not under-run
+                // the minimized detent: the folding content dips just below minH near the floor
+                // (the skeleton is a touch shorter than the detent), and a pure wrap-cap card
+                // then dived that last bit of slack in a blink - the end-of-fold hop (user
+                // 2026-07-11). The floor goes into the MEASUREMENT (minHeight), never just the
+                // reported size: flooring only the report left the card SURFACE at content
+                // height, top-placed in a taller slot, and the deficit showed through as a
+                // strip of map under the minimized card (user 2026-07-11). At rest above the
+                // fold (fraction = 1) the card keeps hugging short content: dropped pins and
+                // the parked car stay compact.
+                val floorPx = if (extrasFraction() < 1f) minOf(minH.dp.roundToPx(), cap) else 0
+                val p = measurable.measure(constraints.copy(minHeight = floorPx, maxHeight = cap))
                 layout(p.width, p.height) { p.place(0, 0) }
             },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -525,17 +585,7 @@ fun PlaceSheet(
                     .pointerInput(Unit) {
                         // The handle drags the sheet 1:1 and the release coasts to the nearest
                         // detent on the fling velocity - same physics as dragging the body.
-                        val tracker = VelocityTracker()
-                        detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking() },
-                            onVerticalDrag = { change, dy ->
-                                change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
-                                dragSheetBy(dy)
-                            },
-                            onDragEnd = { settleFromVelocity(tracker.calculateVelocity().y) },
-                            onDragCancel = { settleFromVelocity(0f) },
-                        )
+                        sheetDragGestures(dragBy = { dragSheetBy(it) }, settle = { settleFromVelocity(it) })
                     }
                     .heightIn(min = 36.dp)
                     .padding(vertical = 14.dp),
@@ -552,87 +602,26 @@ fun PlaceSheet(
                 Modifier
                     .nestedScroll(dismissConn)
                     .verticalScroll(bodyScroll)
-                    // GRACEFUL EXIT (user 2026-07-10): while the sheet glides toward the minimized
-                    // floor the full body FADES OUT with the height (render-phase read, no
-                    // recomposition), and the minimized card below fades in at the swap - the
-                    // content no longer vanishes in one frame at the flip.
-                    .graphicsLayer {
-                        if (minimizedState.value || singleDetent) { alpha = 1f; translationY = 0f } else {
-                            val f = ((heightAnim.value - minH) / 110f).coerceIn(0f, 1f)
-                            alpha = f
-                            // The content SLIDES DOWN as it fades (user 2026-07-10) — the exit
-                            // reads as the extras dropping away rather than a plain dissolve.
-                            translationY = (1f - f) * 48.dp.toPx()
-                        }
+                    // Minimized, the skeleton fits inside the floor height, so the scrollable
+                    // above has no range and never engages a drag - nothing reached dismissConn
+                    // and a flick on the minimized card read as dead while the same flick on the
+                    // handle worked (user 2026-07-11). Give the minimized body the handle's own
+                    // drag; the key remounts this as a no-op whenever the full body is showing,
+                    // handing drags back to the scrollable's nested-scroll path.
+                    .pointerInput(minimizedState.value, singleDetent) {
+                        if (!minimizedState.value || singleDetent) return@pointerInput
+                        sheetDragGestures(dragBy = { dragSheetBy(it) }, settle = { settleFromVelocity(it) })
                     }
+                    // Minimized: a single tap ANYWHERE on the card pops it back to peek (Google) —
+                    // the action pills keep their own taps since inner clickables win their bounds.
+                    // Inert (enabled=false) whenever the full body is showing.
+                    .clickable(enabled = minimizedState.value && !singleDetent) { minimizedState.value = false }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
-            // Minimized detent: a compact card (name, rating, Directions) instead of the full body,
-            // like Google's collapsed sheet. At this small height leading with the photo hero showed
-            // only photos AND let the horizontal gallery swallow dismiss drags, so short-circuit here.
-            if (minimizedState.value && !singleDetent) {
-                val miniIn = remember { androidx.compose.animation.core.Animatable(0f) }
-                LaunchedEffect(Unit) { miniIn.animateTo(1f, tween(220)) }
-                // A single tap ANYWHERE on the minimized card pops it back to peek (Google) —
-                // the Directions pill keeps its own tap since inner clickables win their bounds.
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        .graphicsLayer { alpha = miniIn.value }
-                        .clickable { minimizedState.value = false },
-                ) {
-                Text(
-                    place.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = ink,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-                if (place.rating != null) {
-                    Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(
-                            String.format(Locale.US, "%.1f", place.rating),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = ink,
-                        )
-                        RatingStars(place.rating!!, modifier = Modifier.padding(horizontal = 5.dp))
-                        place.reviewCount?.let { Text("($it)", style = MaterialTheme.typography.bodySmall, color = dim) }
-                    }
-                }
-                Spacer(Modifier.height(10.dp))
-                // The full sheet's key actions, not just Directions — a minimized card you can
-                // call or open the website from saves a pointless re-expand (user 2026-07-10).
-                // Same gating as the full action row (website behind the external-links toggle).
-                Row(
-                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
-                    place.phone?.let { ph ->
-                        ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
-                            val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
-                            runCatching { context.startActivity(Intent(Intent.ACTION_DIAL, Uri.parse(dialable))) }
-                        }
-                    }
-                    if (!app.vela.ui.HideExternalLinks.on.value) {
-                        place.website?.let { site ->
-                            ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
-                            }
-                        }
-                    }
-                }
-                }
-                return@Column
-            }
-            // Photo hero at the top (Google-style) — always visible, even at the
-            // peek height / in landscape; tap one to open the full gallery.
+            // Photo hero at the top (Google-style); tap one to open the full gallery.
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
+            app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
             if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
                 // the menu surface now, and the other categories read as noise; user 2026-07-10.)
@@ -665,6 +654,7 @@ fun PlaceSheet(
                     }
                 }
             }
+            }
             // spacedBy keeps the circled header buttons from touching now that they carry
             // visible backgrounds (Google's circles have the same small gaps).
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -696,7 +686,7 @@ fun PlaceSheet(
                 var saveMenu by remember { mutableStateOf(false) }
                 Box {
                     HeaderCircleButton(
-                        icon = if (isSaved) Icons.Default.Star else Icons.Default.StarBorder,
+                        icon = if (isSaved) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
                         contentDescription = if (isSaved) stringResource(R.string.place_saved) else stringResource(R.string.place_save),
                         tint = if (isSaved) MaterialTheme.colorScheme.primary else dim,
                         bg = dim,
@@ -730,27 +720,18 @@ fun PlaceSheet(
                     }
                 }
             }
+            app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
             // Distance (when the place came from a located search) + price +
             // category on their own line so a long category ("Hamburger restaurant")
             // doesn't wrap mid-word next to the stars; ellipsised if huge.
             val rest = listOfNotNull(
                 place.distanceMeters?.let { formatDistance(it) },
-                place.fuelPrice, // gas stations: the live price sits with the price/category line
                 place.priceText,
                 place.category,
             )
             if (rest.isNotEmpty()) {
                 Text(
-                    // The fuel price renders BOLD inside the line — it's the number a gas
-                    // search is actually about (user 2026-07-10).
-                    buildAnnotatedString {
-                        rest.forEachIndexed { i, part ->
-                            if (i > 0) append("  ·  ")
-                            if (part == place.fuelPrice) {
-                                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(part) }
-                            } else append(part)
-                        }
-                    },
+                    rest.joinToString("  ·  "),
                     style = MaterialTheme.typography.bodyMedium,
                     color = dim,
                     maxLines = 1,
@@ -860,6 +841,7 @@ fun PlaceSheet(
                     modifier = Modifier.padding(top = 4.dp),
                 )
             }
+            }
             // Quick-action pills FIRST — a highlighted Directions + short Call / Website, right under
             // the identity block so Directions is reachable WITHOUT scrolling (Google's order). Save/
             // Share live in the header; the actual phone number / website domain are tappable detail
@@ -898,6 +880,7 @@ fun PlaceSheet(
                 }
             }
 
+            app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
             place.address?.let { addr ->
                 Row(
                     Modifier.fillMaxWidth().padding(top = 14.dp),
@@ -1107,6 +1090,7 @@ fun PlaceSheet(
 
             PlaceTabs(place, reviews, reviewsLoading, reviewsFound, onRetryReviews, ink, dim, onPanelOverscroll, onPanelOverscrollEnd, onPanelEngaged, reviewsEngaged.value)
             }
+            }
         }
     }
 
@@ -1130,6 +1114,48 @@ fun PlaceSheet(
             onDismiss = { showNoteEditor = false },
         )
     }
+}
+
+/** A release faster than this (dp/s) counts as a FLICK and commits at least one detent in
+ *  its direction, however short the drag - the shared sheet-fling grammar. */
+internal const val FLING_COMMIT_DPS = 180f
+
+/**
+ * The shared sheet drag: moves the sheet 1:1 with the finger via [dragBy] (finger px, +down)
+ * and hands the release velocity (px/s) to [settle]. One implementation for every sheet's
+ * hand-driven drag surface (place handle + minimized body, directions panel, results handle)
+ * because the velocity measurement is subtle twice over: the tracker must feed INTEGRATED
+ * drag deltas - change.position is local to a node that MOVES as the sheet resizes, which
+ * zeroed the measured velocity - and the release takes whichever is stronger of the tracked
+ * velocity and the gesture's plain travel/time average, so a short flick can never read as
+ * ~zero (user 2026-07-11). Inner clickables keep their taps (a drag claims the pointer only
+ * past touch slop) and inner scrollables that CAN scroll consume first.
+ */
+internal suspend fun androidx.compose.ui.input.pointer.PointerInputScope.sheetDragGestures(
+    dragBy: (Float) -> Unit,
+    settle: (Float) -> Unit,
+) {
+    val tracker = VelocityTracker()
+    var acc = 0f
+    var t0 = 0L
+    var tN = 0L
+    detectVerticalDragGestures(
+        onDragStart = { tracker.resetTracking(); acc = 0f; t0 = 0L; tN = 0L },
+        onVerticalDrag = { change, dy ->
+            change.consume()
+            acc += dy
+            if (t0 == 0L) t0 = change.uptimeMillis
+            tN = change.uptimeMillis
+            tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
+            dragBy(dy)
+        },
+        onDragEnd = {
+            val tracked = tracker.calculateVelocity().y
+            val avg = if (tN > t0) acc / (tN - t0) * 1000f else 0f
+            settle(if (kotlin.math.abs(avg) > kotlin.math.abs(tracked)) avg else tracked)
+        },
+        onDragCancel = { settle(0f) },
+    )
 }
 
 /** "Save to list" — check the lists this place belongs to; create a new one inline. */
@@ -1251,6 +1277,10 @@ fun DirectionsPanel(
     transit: List<TransitItinerary>,
     transitLoading: Boolean,
     onModeSelected: (TravelMode) -> Unit,
+    avoidTolls: Boolean = false,
+    avoidHighways: Boolean = false,
+    onAvoidTolls: (Boolean) -> Unit = {},
+    onAvoidHighways: (Boolean) -> Unit = {},
     onSelectRoute: (Int) -> Unit,
     onStartNav: () -> Unit,
     onSteps: (() -> Unit)?,
@@ -1259,6 +1289,7 @@ fun DirectionsPanel(
     onStartTransit: (TransitItinerary) -> Unit = {},
     onClose: () -> Unit,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
+    minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -1267,98 +1298,111 @@ fun DirectionsPanel(
     // Keyed to the destination so opening directions for a different place starts
     // expanded again instead of inheriting the previous session's collapsed state.
     val collapsed = remember(destinationName) { mutableStateOf(false) }
-    // The chooser body collapses CONTINUOUSLY, the place card's physics: `frac` (1 = full body,
-    // 0 = minimized to the header + Start) tracks the finger 1:1 from the handle or a body drag
-    // at its top, and releases ride the fling's own decay to whichever end the momentum points
-    // at - the old handle-only threshold flip read as no gesture at all (user 2026-07-11).
-    val frac = remember(destinationName) { Animatable(1f) }
-    var bodyHPx by remember(destinationName) { mutableStateOf(0) }
-    val panelSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
-    val panelDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
-    val panelScope = rememberCoroutineScope()
-    val panelScroll = rememberScrollState()
-    LaunchedEffect(destinationName, collapsed.value) {
-        val target = if (collapsed.value) 0f else 1f
-        if (frac.targetValue != target) frac.animateTo(target, panelSettle)
+    // The body height is HAND-DRIVEN, the place/results sheets' exact grammar (user 2026-07-11:
+    // the old collapse was a 6px threshold flip - no finger tracking, no inertia): drags move it
+    // 1:1, release projects the throw's decay to the nearest end (0 = minimized, bodyMax = open)
+    // and rides the coast there. The body and the minimized Start bar both fold WITH this height
+    // (SheetFold), so the collapsed flip changes nothing visible.
+    val bodyMax = LocalConfiguration.current.screenHeightDp * 0.58f
+    val dirH = remember(destinationName) { Animatable(if (collapsed.value) 0f else bodyMax) }
+    val dirSettle = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f) }
+    val dirDecay = remember { exponentialDecay<Float>(frictionMultiplier = 1.6f) }
+    val dirScope = rememberCoroutineScope()
+    val dirDensity = LocalDensity.current
+    val dirBodyScroll = rememberScrollState()
+    LaunchedEffect(collapsed.value) {
+        val target = if (collapsed.value) 0f else bodyMax
+        // Skip when a drag-release settle already targets this end - restarting would zero
+        // the coast velocity mid-glide (same guard as the place sheet's detent effect).
+        if (dirH.targetValue != target) dirH.animateTo(target, dirSettle)
     }
-    fun dragPanelBy(dyPx: Float) {
-        if (bodyHPx <= 0) return
-        panelScope.launch { frac.snapTo((frac.value - dyPx / bodyHPx).coerceIn(0f, 1f)) }
+    fun dragDirBy(dyPx: Float) {
+        val dyDp = with(dirDensity) { dyPx.toDp().value }
+        dirScope.launch { dirH.snapTo((dirH.value - dyDp).coerceIn(0f, bodyMax)) }
     }
-    fun settlePanel(velocityPxPerSec: Float) {
-        if (bodyHPx <= 0) return
-        val vFrac = velocityPxPerSec / bodyHPx
-        val naturalEnd = panelDecay.calculateTargetValue(frac.value, -vFrac)
-        val target = if (kotlin.math.abs(naturalEnd - 0f) < kotlin.math.abs(naturalEnd - 1f)) 0f else 1f
-        panelScope.launch {
-            if (target == 1f) collapsed.value = false // body must be composed while it grows
-            val towardTarget = (naturalEnd - frac.value) * (target - frac.value) > 0f
-            if (towardTarget && kotlin.math.abs(naturalEnd - frac.value) >= kotlin.math.abs(target - frac.value)) {
+    fun settleDir(velocityPxPerSec: Float) {
+        val vDp = with(dirDensity) { velocityPxPerSec.toDp().value }
+        val naturalEnd = dirDecay.calculateTargetValue(dirH.value, -vDp)
+        // Flick = commit (see settleFromVelocity): with only two detents 58% of a screen apart,
+        // the coast test needed a huge throw - the "can't quite flick it up" report.
+        val target = when {
+            vDp < -FLING_COMMIT_DPS -> bodyMax
+            vDp > FLING_COMMIT_DPS -> 0f
+            else -> if (kotlin.math.abs(naturalEnd) < kotlin.math.abs(bodyMax - naturalEnd)) 0f else bodyMax
+        }
+        dirScope.launch {
+            val towardTarget = (naturalEnd - dirH.value) * (target - dirH.value) > 0f
+            if (towardTarget && kotlin.math.abs(naturalEnd - dirH.value) >= kotlin.math.abs(target - dirH.value)) {
+                // The throw carries: ride its own inertia and let the end just stop it.
                 try {
-                    frac.updateBounds(lowerBound = minOf(frac.value, target), upperBound = maxOf(frac.value, target))
-                    frac.animateDecay(-vFrac, panelDecay)
+                    dirH.updateBounds(lowerBound = minOf(dirH.value, target), upperBound = maxOf(dirH.value, target))
+                    dirH.animateDecay(-vDp, dirDecay)
                 } finally {
-                    frac.updateBounds(lowerBound = null, upperBound = null)
+                    dirH.updateBounds(lowerBound = null, upperBound = null)
                 }
-                if (kotlin.math.abs(frac.value - target) > 0.005f) frac.animateTo(target, panelSettle)
+                if (kotlin.math.abs(dirH.value - target) > 0.5f) dirH.animateTo(target, dirSettle)
             } else {
-                frac.animateTo(target, panelSettle, initialVelocity = -vFrac)
+                dirH.animateTo(target, dirSettle, initialVelocity = -vDp)
             }
-            if (target == 0f) collapsed.value = true
+            // Flip the state AFTER the glide (glide first, flip after). Flipping BEFORE fired the
+            // LaunchedEffect(collapsed) into a SECOND animateTo racing this decay - the "bounces
+            // off the top" on a swipe-up-to-reopen (user 2026-07-11). dirH is at target now, so
+            // that effect's targetValue guard skips it.
+            collapsed.value = target == 0f
         }
     }
-    // Body drags at the scroll top move the chooser 1:1 (the natural "swipe the sheet down"
-    // lands on the body, not the thin handle); content scrolls once the body is fully open.
-    val panelConn = remember(destinationName) {
+    // Body-at-top drags collapse the panel and upward drags grow it, like the other sheets.
+    val dirConn = remember(destinationName) {
         object : NestedScrollConnection {
             private var dragging = false
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y > 0f && panelScroll.value == 0 && frac.value > 0f) {
-                    dragging = true
-                    dragPanelBy(available.y)
-                    return available
+                if (available.y > 0f && dirBodyScroll.value == 0 && dirH.value > 0f) {
+                    dragging = true; dragDirBy(available.y); return available
                 }
-                if (available.y < 0f && frac.value < 1f) {
-                    dragging = true
-                    dragPanelBy(available.y)
-                    return available
+                if (available.y < 0f && dirH.value < bodyMax) {
+                    dragging = true; dragDirBy(available.y); return available
                 }
                 return Offset.Zero
             }
             override suspend fun onPreFling(available: Velocity): Velocity {
-                if (dragging) {
-                    dragging = false
-                    settlePanel(available.y)
-                    return available
-                }
+                if (dragging) { dragging = false; settleDir(available.y); return available }
                 return Velocity.Zero
             }
         }
+    }
+    // Grab the map: glide the OPEN chooser down to its Start bar, then flip collapsed - the same
+    // pan-minimize the place + results sheets do (user 2026-07-11). Consume-once guard so a
+    // remount can't replay a stale tick.
+    val glideSpec = remember { spring<Float>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 140f) }
+    var seenDirTick by remember { mutableStateOf(minimizeTick) }
+    LaunchedEffect(minimizeTick) {
+        if (minimizeTick == seenDirTick || collapsed.value) return@LaunchedEffect
+        seenDirTick = minimizeTick
+        if (dirH.value > 0.5f) dirH.animateTo(0f, glideSpec)
+        collapsed.value = true
     }
     Card(
         modifier.fillMaxWidth(),
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
         colors = CardDefaults.cardColors(containerColor = if (dark) SheetDark else SheetLight),
     ) {
-        Column(Modifier.navigationBarsPadding().padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp)) {
-            // Drag handle — the chooser follows the finger; tap still toggles.
+        Column(
+            Modifier
+                .navigationBarsPadding()
+                // The WHOLE panel drags, not just the handle (user 2026-07-11: "I have to have my
+                // finger basically right on the pull bar"). Inner clickables still win their taps
+                // (a drag claims the pointer only past touch slop), and the scrolling body keeps
+                // its own nested-scroll path since verticalScroll consumes there first.
+                .pointerInput(Unit) {
+                    sheetDragGestures(dragBy = { dragDirBy(it) }, settle = { settleDir(it) })
+                }
+                .padding(start = 20.dp, end = 8.dp, top = 8.dp, bottom = 16.dp),
+        ) {
+            // Drag handle — swipe down to minimise the chooser (peek the route on the
+            // map before you Start), swipe up or tap to bring it back.
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .pointerInput(Unit) {
-                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
-                        detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking() },
-                            onVerticalDrag = { change, dy ->
-                                change.consume()
-                                tracker.addPosition(change.uptimeMillis, change.position)
-                                if (collapsed.value && dy < 0f) collapsed.value = false
-                                dragPanelBy(dy)
-                            },
-                            onDragEnd = { settlePanel(tracker.calculateVelocity().y) },
-                            onDragCancel = { settlePanel(0f) },
-                        )
-                    }
                     .dpadHighlight(RoundedCornerShape(3.dp)) // D-pad: OK toggles (docs/dpad.md)
                     .clickable { collapsed.value = !collapsed.value }
                     .padding(vertical = 6.dp),
@@ -1494,26 +1538,29 @@ fun DirectionsPanel(
                 IconButton(onClick = onSwap) {
                     Icon(Icons.Default.SwapVert, contentDescription = stringResource(R.string.place_swap_start_destination), tint = MaterialTheme.colorScheme.primary)
                 }
-                IconButton(onClick = onClose) { Icon(Icons.Default.Close, contentDescription = stringResource(R.string.place_close_directions), tint = dim) }
+                // Circled like the place-sheet header X (one close language). The SWAP stays a
+                // bare glyph on purpose: it's an inline utility between the from/to rows, and two
+                // circles side by side read heavier than the header needs.
+                Spacer(Modifier.width(4.dp))
+                HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close_directions), tint = ink, bg = dim) { onClose() }
             }
-            if (!collapsed.value || frac.value > 0.005f) {
-              // Cap the expandable body to ~58% of the screen and let it scroll — on short screens the
-              // mode chips + route/transit list + Start button are taller than the bottom-anchored card,
-              // so without this the Start button (drive) and the lower transit trips fall off the bottom,
-              // unreachable. verticalScroll keeps the whole chooser usable; the map stays visible above.
-              // The frac read lives in the LAYOUT modifier so animation frames never recompose the body.
+            // The body caps at the ANIMATED height (bodyMax when open = the old ~58% screen cap,
+            // still scrollable inside) and fades over its last stretch; composed while any of it
+            // shows, unmounted once settled at zero (the extras-gate pattern).
+            val bodyComposed by remember(destinationName) {
+                derivedStateOf { !collapsed.value || dirH.value > 1f }
+            }
+            if (bodyComposed) {
               Column(
                   Modifier
+                      .graphicsLayer { alpha = (dirH.value / 160f).coerceIn(0f, 1f); clip = true }
                       .layout { measurable, constraints ->
-                          val pl = measurable.measure(constraints)
-                          bodyHPx = maxOf(bodyHPx, pl.height)
-                          val h = (pl.height * frac.value).toInt().coerceAtLeast(0)
-                          layout(pl.width, h) { pl.place(0, 0) }
+                          val capPx = dirH.value.dp.roundToPx().coerceAtLeast(0)
+                          val pl = measurable.measure(constraints.copy(maxHeight = minOf(constraints.maxHeight, capPx)))
+                          layout(pl.width, pl.height) { pl.place(0, 0) }
                       }
-                      .clipToBounds()
-                      .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.58f).dp)
-                      .nestedScroll(panelConn)
-                      .verticalScroll(panelScroll),
+                      .nestedScroll(dirConn)
+                      .verticalScroll(dirBodyScroll),
               ) {
             Spacer(Modifier.height(10.dp))
             // D-pad-first (docs/dpad.md): land focus on the first travel-mode tab when the
@@ -1551,6 +1598,31 @@ fun DirectionsPanel(
                 isTransit = currentMode == TravelMode.TRANSIT,
                 onTimeSelected = onTimeSelected,
             )
+            // Route preferences, drive only (tolls/motorways mean nothing on foot or transit).
+            // Honoured on-device where the region graph carries the avoid profiles; online the
+            // route falls back to normal rather than failing (the public OSRM can't exclude).
+            if (currentMode == TravelMode.DRIVE) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    Modifier.horizontalScroll(rememberScrollState()).padding(end = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    FilterChip(
+                        selected = avoidTolls,
+                        onClick = { onAvoidTolls(!avoidTolls) },
+                        label = { Text(stringResource(R.string.place_avoid_tolls)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                    FilterChip(
+                        selected = avoidHighways,
+                        onClick = { onAvoidHighways(!avoidHighways) },
+                        label = { Text(stringResource(R.string.place_avoid_highways)) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                }
+            }
             if (currentMode == TravelMode.TRANSIT) {
                 TransitBoard(transit, transitLoading, ink, dim, dark, onWalkDirections, onStartTransit)
             } else {
@@ -1578,8 +1650,15 @@ fun DirectionsPanel(
                             Text(stringResource(R.string.place_start))
                         }
                         onSteps?.let {
-                            OutlinedButton(onClick = it) {
-                                Icon(Icons.AutoMirrored.Filled.List, contentDescription = null, modifier = Modifier.padding(end = 8.dp))
+                            FilledTonalButton(onClick = it) {
+                                // Soft glyph ink: the solid List glyph at the label's own colour
+                                // read darker than the word beside it (user 2026-07-11).
+                                Icon(
+                                    Icons.AutoMirrored.Filled.List,
+                                    contentDescription = null,
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    tint = dim,
+                                )
                                 Text(stringResource(R.string.place_steps))
                             }
                         }
@@ -1598,16 +1677,26 @@ fun DirectionsPanel(
                             Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
                             Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
                         ).forEach { (labelRes, query, icon) ->
+                            // One-shot ACTION chips, not selection state - a permanently
+                            // unselected FilterChip read as unfilled/disabled next to the
+                            // filled pills (user 2026-07-11); solid tonal fill, no border.
                             FilterChip(
                                 selected = false,
                                 onClick = { onSearchAlongRoute(query) },
+                                border = null,
+                                colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+                                    containerColor = if (isAppInDarkTheme()) Color(0xFF333539) else Color(0xFFF1F3F4),
+                                    labelColor = ink,
+                                ),
                                 label = { Text(stringResource(labelRes)) },
                                 leadingIcon = {
+                                    // dim, not ink: solid glyphs at the label colour read darker
+                                    // than the text (user 2026-07-11) - soft ink matches weight.
                                     Icon(
                                         icon,
                                         contentDescription = null,
                                         modifier = Modifier.size(18.dp),
-                                        tint = ink,
+                                        tint = dim,
                                     )
                                 },
                                 // Stadium pill, matching the map category chips + the mode chips above.
@@ -1619,8 +1708,14 @@ fun DirectionsPanel(
             }
               }
             }
-            // Minimised: keep a Start button reachable without expanding.
-            if (collapsed.value && frac.value < 0.05f) {
+            // Minimised: keep a Start button reachable without expanding. It FOLDS IN as the
+            // body folds out (inverse fraction of the same height), so neither end pops.
+            val startComposed by remember(destinationName) {
+                derivedStateOf { collapsed.value || dirH.value < 160f }
+            }
+            // Grows in only over the SAME last-160dp window the body fades out in - starting
+            // it at the first pixel of travel had two Start buttons on screen mid-drag.
+            app.vela.ui.SheetFold(startComposed, { ((160f - dirH.value) / 160f).coerceIn(0f, 1f) }) {
                 Button(
                     onClick = onStartNav,
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp, end = 12.dp),
@@ -1640,6 +1735,8 @@ fun DirectionsPanel(
  *  time — Google's per-departure prediction needs a login/app-only request field
  *  we can't reach keyless, so we surface the range Google itself plans with. Falls
  *  back to a single ~estimate when no range is shipped (short trips, walk/bike). */
+@android.annotation.SuppressLint("NewApi")
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun DepartTimeChooser(
     route: Route?,
@@ -1653,22 +1750,35 @@ private fun DepartTimeChooser(
     // 2 arrive by, 3 last available (transit only). date + time compose the chosen wall-clock.
     var mode by remember(route?.summary) { mutableStateOf(0) }
     var date by remember(route?.summary) { mutableStateOf(java.time.LocalDate.now()) }
-    var time by remember(route?.summary) { mutableStateOf(java.time.LocalTime.now().withSecond(0).withNano(0)) }
+    // Default to the next 5-minute mark: a to-the-second "now" made every chip tap a brand-new
+    // epoch, and the old flow refetched for each one.
+    var time by remember(route?.summary) {
+        val n = java.time.LocalTime.now().withSecond(0).withNano(0)
+        mutableStateOf(n.plusMinutes(((5 - n.minute % 5) % 5).toLong()))
+    }
+    var showTimePicker by remember { mutableStateOf(false) }
+    var showDatePicker by remember { mutableStateOf(false) }
     val nowDur = route?.let { it.durationInTrafficSeconds ?: it.durationSeconds } ?: 0.0
     val range = route?.typicalRangeSeconds
     val fmt = java.time.format.DateTimeFormatter.ofLocalizedTime(java.time.format.FormatStyle.SHORT)
     val dateFmt = java.time.format.DateTimeFormatter.ofPattern("EEE, MMM d")
 
     fun epoch(): Long = date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
-    fun emit() = onTimeSelected(mode, if (mode == 0) null else epoch())
-
-    fun openTime() = android.app.TimePickerDialog(
-        context, { _, h, m -> time = java.time.LocalTime.of(h, m); emit() }, time.hour, time.minute, false,
-    ).show()
-    fun openDate() = android.app.DatePickerDialog(
-        context, { _, y, mo, d -> date = java.time.LocalDate.of(y, mo + 1, d); emit() },
-        date.year, date.monthValue - 1, date.dayOfMonth,
-    ).show()
+    fun emit() {
+        if (mode == 1 || mode == 2) {
+            // No scheduling in the past (user 2026-07-11): a confirmed pick behind the clock
+            // silently becomes the next 5-minute mark from now, today - same clamp Google does.
+            if (date.atTime(time).atZone(java.time.ZoneId.systemDefault()).toInstant().isBefore(java.time.Instant.now())) {
+                date = java.time.LocalDate.now()
+                val n = java.time.LocalTime.now().withSecond(0).withNano(0)
+                time = n.plusMinutes(((5 - n.minute % 5) % 5).toLong())
+                // Say so: the pill now shows a different time than the one just picked, and an
+                // unexplained rewrite of explicit input reads as a bug (user 2026-07-11).
+                Toast.makeText(context, context.getString(R.string.place_time_past_toast), Toast.LENGTH_SHORT).show()
+            }
+        }
+        onTimeSelected(mode, if (mode == 0) null else epoch())
+    }
 
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         // Mode chips — scroll horizontally so 3–4 chips never clip on a narrow phone.
@@ -1676,18 +1786,21 @@ private fun DepartTimeChooser(
             Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Stadium pills, matching every other Vela chip (CLAUDE.md chip style).
+            // Stadium pills, matching every other Vela chip (CLAUDE.md chip style). Switching
+            // into Depart at / Arrive by opens the time picker DIRECTLY (Google's flow) and
+            // nothing is emitted until a picker confirms — the old flow fired a fetch on the
+            // bare chip tap with an unpicked "now" (user 2026-07-11).
             val pill = androidx.compose.foundation.shape.CircleShape
             FilterChip(selected = mode == 0, onClick = { mode = 0; emit() }, label = { Text(stringResource(R.string.place_leave_now)) }, shape = pill)
-            FilterChip(selected = mode == 1, onClick = { mode = 1; emit() }, label = { Text(stringResource(R.string.place_depart_at)) }, shape = pill)
-            FilterChip(selected = mode == 2, onClick = { mode = 2; emit() }, label = { Text(stringResource(R.string.place_arrive_by)) }, shape = pill)
+            FilterChip(selected = mode == 1, onClick = { mode = 1; showTimePicker = true }, label = { Text(stringResource(R.string.place_depart_at)) }, shape = pill)
+            FilterChip(selected = mode == 2, onClick = { mode = 2; showTimePicker = true }, label = { Text(stringResource(R.string.place_arrive_by)) }, shape = pill)
             if (isTransit) FilterChip(selected = mode == 3, onClick = { mode = 3; emit() }, label = { Text(stringResource(R.string.place_last_available)) }, shape = pill)
         }
-        // Time + date pickers for depart/arrive (Google-style: a time field AND a date field).
+        // Time + date fields for depart/arrive (Google-style: a time field AND a date field).
         if (mode == 1 || mode == 2) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { openTime() }) { Text(time.format(fmt)) }
-                OutlinedButton(onClick = { openDate() }) { Text(date.format(dateFmt)) }
+                FilledTonalButton(onClick = { showTimePicker = true }) { Text(time.format(fmt)) }
+                FilledTonalButton(onClick = { showDatePicker = true }) { Text(date.format(dateFmt)) }
             }
         }
 
@@ -1698,7 +1811,7 @@ private fun DepartTimeChooser(
             fun window(base: java.time.LocalTime, lo: Double, hi: Double, sign: Int): String =
                 if (range != null)
                     "${base.plusSeconds((sign * lo).toLong()).format(fmt)}–${base.plusSeconds((sign * hi).toLong()).format(fmt)}"
-                else "~${base.plusSeconds((sign * nowDur).toLong()).format(fmt)}"
+                else base.plusSeconds((sign * nowDur).toLong()).format(fmt)
             val lo = range?.first ?: nowDur
             val hi = range?.second ?: nowDur
             val hasLive = route.hasLiveTraffic
@@ -1716,6 +1829,71 @@ private fun DepartTimeChooser(
             Column {
                 Text(summary, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = ink)
                 note?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = dim) }
+            }
+        }
+    }
+    // Material 3 pickers in a Vela shell — the old android.app Holo dialogs looked nothing
+    // like the app (part of the "kinda janky", user 2026-07-11). Confirm is the ONLY emit.
+    if (showTimePicker) {
+        val tp = androidx.compose.material3.rememberTimePickerState(initialHour = time.hour, initialMinute = time.minute, is24Hour = false)
+        PickerDialog(
+            onConfirm = { time = java.time.LocalTime.of(tp.hour, tp.minute); showTimePicker = false; emit() },
+            onDismiss = { showTimePicker = false },
+        ) { androidx.compose.material3.TimePicker(state = tp) }
+    }
+    if (showDatePicker) {
+        // NB selectedDateMillis is UTC midnight of the picked day — decode with UTC, not the
+        // system zone, or western-hemisphere picks land one day early.
+        val dp = androidx.compose.material3.rememberDatePickerState(
+            initialSelectedDateMillis = date.atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli(),
+            selectableDates = object : androidx.compose.material3.SelectableDates {
+                // Days before today are greyed out (the confirm clamp still backstops a stale
+                // dialog left open across midnight).
+                override fun isSelectableDate(utcTimeMillis: Long) =
+                    utcTimeMillis >= java.time.LocalDate.now().atStartOfDay(java.time.ZoneOffset.UTC).toInstant().toEpochMilli()
+                override fun isSelectableYear(year: Int) = year >= java.time.LocalDate.now().year
+            },
+        )
+        PickerDialog(
+            onConfirm = {
+                dp.selectedDateMillis?.let { date = java.time.Instant.ofEpochMilli(it).atZone(java.time.ZoneOffset.UTC).toLocalDate() }
+                showDatePicker = false
+                emit()
+            },
+            onDismiss = { showDatePicker = false },
+        ) { androidx.compose.material3.DatePicker(state = dp, showModeToggle = false) }
+    }
+}
+
+/** A Vela shell for the M3 time/date pickers: a raw Dialog (the D-pad house rule — an
+ *  AlertDialog can't be pre-focused), sheet colours, and the VelaDialog button grammar
+ *  (filled confirm pill that auto-focuses, plain dismiss). */
+@Composable
+private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: @Composable () -> Unit) {
+    val dark = isAppInDarkTheme()
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(28.dp), color = if (dark) SheetDark else SheetLight) {
+            Column(Modifier.padding(horizontal = 14.dp, vertical = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                content()
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 6.dp, end = 6.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    val confirmFocus = rememberDpadAutoFocus()
+                    TextButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    ) { Text(stringResource(android.R.string.cancel)) }
+                    Spacer(Modifier.width(6.dp))
+                    Button(
+                        onClick = onConfirm,
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier
+                            .focusRequester(confirmFocus)
+                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    ) { Text(stringResource(android.R.string.ok)) }
+                }
             }
         }
     }
@@ -1879,7 +2057,7 @@ fun TransitNavSheet(
             }
             Spacer(Modifier.weight(1f))
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
+                FilledTonalButton(onClick = onBack, enabled = nav.stepIndex > 0, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.settings_back))
                 }
                 Button(onClick = onNext, modifier = Modifier.weight(1f)) {
@@ -2250,7 +2428,7 @@ private fun PhotoGalleryContent(urls: List<String>, dates: List<String?>, start:
         LaunchedEffect(Unit) { runCatching { galleryFocus.requestFocus() } }
         Box(
             Modifier
-                .requiredFullScreen()
+                .fillMaxSize()
                 .background(Color.Black)
                 .focusRequester(galleryFocus)
                 .onKeyEvent { ev ->
@@ -2293,6 +2471,19 @@ private fun PhotoGalleryContent(urls: List<String>, dates: List<String?>, start:
                 Box(
                     Modifier
                         .fillMaxSize()
+                        // Double-tap zooms 2.5x at the tap point / back out (user 2026-07-11).
+                        // Coexists with the custom loop below: bare taps are never consumed
+                        // there, so this detector sees the full down-up-down-up.
+                        .pointerInput(Unit) {
+                            detectTapGestures(onDoubleTap = { pos ->
+                                if (scale > 1f) {
+                                    scale = 1f; offset = Offset.Zero
+                                } else {
+                                    scale = 2.5f
+                                    offset = (Offset(size.width / 2f, size.height / 2f) - pos) * (2.5f - 1f)
+                                }
+                            })
+                        }
                         .pointerInput(Unit) {
                             awaitEachGesture {
                                 awaitFirstDown(requireUnconsumed = false)
@@ -2388,25 +2579,45 @@ private val MENU_TAB_WORDS = listOf("menu", "menú", "menù", "speisekarte", "ca
 /** The Menu tab: the menu-tagged gallery photos as a browsable 2-up grid (tap → full-screen).
  *  Only mounted when the place HAS menu photos, so no empty state is needed. Plain Column of
  *  chunked rows, not a lazy grid — the sheet body already scrolls, and menu sets are tens of
- *  photos at most. */
+ *  photos at most. Each tile carries the photo's upload date as a corner stamp when the
+ *  gallery scrape had one — a menu shot's age says whether the prices still hold
+ *  (user 2026-07-11); the full-screen viewer shows the same date in its caption. */
 @Composable
 private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (Int) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         menuIndices.chunked(2).forEach { rowIdx ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
                 rowIdx.forEach { i ->
-                    AsyncImage(
-                        model = place.photoUrls.getOrNull(i),
-                        contentDescription = stringResource(R.string.place_photo_number, i + 1),
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
+                    Box(
+                        Modifier
                             .weight(1f)
                             .height(150.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(dim.copy(alpha = 0.2f))
                             .dpadHighlight(RoundedCornerShape(12.dp))
                             .clickable { onOpen(i) },
-                    )
+                    ) {
+                        AsyncImage(
+                            model = place.photoUrls.getOrNull(i),
+                            contentDescription = stringResource(R.string.place_photo_number, i + 1),
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                        place.photoDates.getOrNull(i)?.let { date ->
+                            Text(
+                                date,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                maxLines = 1,
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(6.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.Black.copy(alpha = 0.55f))
+                                    .padding(horizontal = 7.dp, vertical = 3.dp),
+                            )
+                        }
+                    }
                 }
                 if (rowIdx.size == 1) Spacer(Modifier.weight(1f))
             }
@@ -2419,44 +2630,28 @@ private fun MenuTab(place: Place, menuIndices: List<Int>, dim: Color, onOpen: (I
  *  box past the visible circle, which is why the header circles overlapped through two rounds
  *  of "make them smaller" (user 2026-07-10). Here the layout size IS the circle, full stop. */
 @Composable
-private fun HeaderCircleButton(
+internal fun HeaderCircleButton(
     icon: ImageVector,
     contentDescription: String?,
     tint: Color,
     bg: Color,
+    size: androidx.compose.ui.unit.Dp = 36.dp,
     onClick: () -> Unit,
 ) {
     Box(
         Modifier
-            .size(36.dp)
+            .size(size)
             .clip(androidx.compose.foundation.shape.CircleShape)
             .background(bg.copy(alpha = 0.12f))
             .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(18.dp))
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(size / 2))
     }
-}
-
-/** Size a dialog's ROOT to the real display bounds. Compose dialogs are wrap-content windows
- *  measured against INSET bounds, so plain fillMaxSize stops ~status-bar short of the screen
- *  edges (window-dump-proven: a fixed 1079x2142 request on a 1080x2340 display) — requiredSize
- *  overrides the constraints and the window grows to match. */
-@Composable
-private fun Modifier.requiredFullScreen(): Modifier {
-    val context = LocalContext.current
-    val density = LocalDensity.current
-    val bounds = remember {
-        val wm = context.getSystemService(android.content.Context.WINDOW_SERVICE) as android.view.WindowManager
-        if (android.os.Build.VERSION.SDK_INT >= 30) wm.currentWindowMetrics.bounds
-        else android.graphics.Rect(0, 0, context.resources.displayMetrics.widthPixels, context.resources.displayMetrics.heightPixels)
-    }
-    return with(density) { this@requiredFullScreen.requiredSize(bounds.width().toDp(), bounds.height().toDp()) }
 }
 
 /** Re-size a Google FIFE photo URL (…=w500-h350) to a target width for full view. */
-
 private fun String.atWidth(w: Int): String = replace(Regex("=w\\d+(-h\\d+)?.*$"), "=w$w")
 
 /** Native search / sort / topic chips for the live reviews panel — Vela's own UI driving the
@@ -2680,10 +2875,12 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
     val reviewsBackFocus = rememberDpadAutoFocus()
     val density = LocalDensity.current
     // Swipe DOWN from the top to close (user 2026-07-10): the panel forwards a top-edge overscroll
-    // as `pull`; past the threshold at finger-up it dismisses, like a sheet.
-    var pull by remember { mutableStateOf(0f) }
+    // as `pull`; past the threshold at finger-up it dismisses, like a sheet. A sub-threshold
+    // release SPRINGS back instead of snapping.
+    val pull = remember { androidx.compose.animation.core.Animatable(0f) }
+    val pullScope = rememberCoroutineScope()
     Surface(
-        Modifier.fillMaxSize().offset { IntOffset(0, pull.roundToInt()) },
+        Modifier.fillMaxSize().offset { IntOffset(0, pull.value.roundToInt()) },
         color = if (dark) SheetDark else SheetLight,
         contentColor = ink,
     ) {
@@ -2712,10 +2909,15 @@ private fun FullScreenReviewsContent(featureId: String, place: Place, ink: Color
                     // Top-edge pull-down: move the whole panel with the finger; release past the
                     // threshold closes it (Google's dismiss). Deltas come from the panel's
                     // boundary scroll-sync (reviews at their top + dragging down).
-                    onOverscroll = { dy -> pull = (pull + dy).coerceAtLeast(0f) },
-                    onOverscrollEnd = { vel ->
-                        // Close on a real pull OR a hard downward flick, like the photo viewer.
-                        if (pull > with(density) { 120.dp.toPx() } || vel > 2500f) onClose() else pull = 0f
+                    onOverscroll = { dy -> pullScope.launch { pull.snapTo((pull.value + dy).coerceAtLeast(0f)) } },
+                    onOverscrollEnd = { _ ->
+                        // DISTANCE ONLY, judged at release — the photo viewer's dismiss grammar
+                        // (user 2026-07-11): you have to really drag it; anything less springs
+                        // back up. No velocity escape: the old flick close (vel > 2500 px/s)
+                        // tripped on the release jerk of a medium pull and read as a hair
+                        // trigger next to the photo viewer.
+                        if (pull.value > with(density) { 120.dp.toPx() }) onClose()
+                        else pullScope.launch { pull.animateTo(0f, spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 350f)) }
                     },
                 )
             }
@@ -2769,6 +2971,12 @@ private fun ReviewsTab(
                             modifier = Modifier.padding(top = 3.dp),
                         )
                     }
+                }
+                // The per-star distribution fills the block's empty right half, Google's layout
+                // (user 2026-07-11). Counts arrive in passing from the photo walk; absent = no bars.
+                place.ratingHistogram?.let { counts ->
+                    Spacer(Modifier.width(18.dp))
+                    RatingHistogram(counts, dim, Modifier.weight(1f))
                 }
             }
         }

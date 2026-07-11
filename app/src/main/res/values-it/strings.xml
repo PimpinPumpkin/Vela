@@ -528,4 +528,8 @@
     <string name="notif_ask_body">La navigazione tiene la prossima svolta in una notifica, così le indicazioni ti seguono a schermo spento o in un\'altra app. Senza, le indicazioni restano solo dentro Vela.</string>
     <string name="notif_ask_allow">Consenti</string>
     <string name="notif_ask_skip">Salta</string>
+    <string name="place_time_past_toast">Quell\'ora è passata. Impostato su adesso.</string>
+    <string name="settings_ui_scale">Dimensione dell\'interfaccia</string>
+    <string name="place_avoid_tolls">Evita i pedaggi</string>
+    <string name="place_avoid_highways">Evita le autostrade</string>
 </resources>

@@ -37,6 +37,10 @@ import kotlin.math.log2
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -84,13 +88,13 @@ class GoogleMapsDataSource @Inject constructor(
     private val routeEngine: RouteEngine,
 ) : MapDataSource {
 
-    override suspend fun search(query: String, near: LatLng?): SearchResult = io {
+    override suspend fun search(query: String, near: LatLng?, spanMeters: Double?): SearchResult = io {
         session.ensure()
         // Results are viewport-driven, so a location is required; callers
         // normally pass the user's location, with a fallback for the rare null.
         val viewport = near ?: DEFAULT_VIEWPORT
         val cal = calibration.current()
-        val pb = SearchPb.build(query, viewport, cal.searchPb)
+        val pb = SearchPb.build(query, viewport, cal.searchPb, spanMeters)
         val url = "${cal.searchEndpoint}&q=${query.enc()}&pb=${pb.enc()}".localized()
         val raw = get(url)
         // A remote transforms.js can fully re-parse a reshaped response (searchOverride);
@@ -120,7 +124,7 @@ class GoogleMapsDataSource @Inject constructor(
         SearchResult(query, CategoryFilter.applyIfEnabled(jsTransforms.refineSearch(places)))
     }
 
-    override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double): List<Place> = io {
+    override suspend fun nearbyPlaces(center: LatLng, spanMeters: Double, onPartial: ((List<Place>) -> Unit)?): List<Place> = io {
         session.ensure()
         val cal = calibration.current()
         // The wide default search (!1d≈25229, !4f13.1) returns the ~20 most prominent places over a
@@ -143,26 +147,57 @@ class GoogleMapsDataSource @Inject constructor(
             // their prominence low, so they surface in quiet/residential views without crowding businesses.
             "school", "park",
         )
-        val all = coroutineScope {
-            terms.map { term ->
-                async {
-                    runCatching {
-                        val pb = SearchPb.build(term, center, cal.searchPb)
-                            .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
-                            .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
-                            .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
-                        val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
-                        SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
-                    }.getOrDefault(emptyList())
-                }
-            }.awaitAll().flatten()
-        }
+        suspend fun fetchTerm(term: String): List<Place> = runCatching {
+            val pb = SearchPb.build(term, center, cal.searchPb)
+                .replaceFirst(Regex("!1d[0-9.]+"), "!1d${spanMeters.toInt()}")
+                .replaceFirst(Regex("!4f[0-9.]+"), "!4f${String.format(java.util.Locale.US, "%.1f", zoom)}")
+                .replaceFirst(Regex("!7i\\d+"), "!7i60") // deep pool per term, so zooming in can go down the rank
+            val url = "${cal.searchEndpoint}&q=${term.enc()}&pb=${pb.enc()}".localized()
+            SearchParser.parse(term, GoogleResponse.parse(get(url)), center, cal.paths).places
+        }.getOrDefault(emptyList())
         // Dedup by feature id (same place returned under several terms); fall back to name+coords,
         // then rank for the map (locality + prominence — see rankAmbientPlaces).
-        val deduped = all.distinctBy {
-            it.featureId ?: "${it.name}@${(it.location.lat * 1e4).toInt()},${(it.location.lng * 1e4).toInt()}"
+        fun finish(pool: List<Place>): List<Place> = rankAmbientPlaces(
+            CategoryFilter.applyIfEnabled(
+                pool.distinctBy {
+                    it.featureId ?: "${it.name}@${(it.location.lat * 1e4).toInt()},${(it.location.lng * 1e4).toInt()}"
+                },
+            ),
+        )
+        val all = coroutineScope {
+            if (onPartial == null) {
+                terms.map { term -> async { fetchTerm(term) } }.awaitAll().flatten()
+            } else {
+                // STREAM the fan-out: paint the accumulated pool as terms land (growth- and
+                // time-throttled so the map isn't re-tessellating on every landing) instead of
+                // gating the first dots on the SLOWEST of ~13 requests - the tail was most of
+                // the perceived wait. The final return below still carries the complete pool.
+                val pool = mutableListOf<Place>()
+                val mutex = Mutex()
+                var landed = 0
+                var paintedCount = 0
+                var lastPaintNs = 0L
+                terms.map { term ->
+                    launch {
+                        val places = fetchTerm(term)
+                        mutex.withLock {
+                            pool += places
+                            landed++
+                            val now = System.nanoTime()
+                            val grown = pool.size - paintedCount >= 10
+                            val due = now - lastPaintNs > 500_000_000L
+                            if (landed < terms.size && pool.isNotEmpty() && grown && (paintedCount == 0 || due)) {
+                                paintedCount = pool.size
+                                lastPaintNs = now
+                                onPartial(finish(pool.toList()))
+                            }
+                        }
+                    }
+                }.joinAll()
+                pool
+            }
         }
-        rankAmbientPlaces(CategoryFilter.applyIfEnabled(deduped))
+        finish(all)
     }
 
     override suspend fun placeDetails(id: String): Place = io {
@@ -212,7 +247,7 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { ReviewsParser.parse(GoogleResponse.parse(get(url))) }.getOrDefault(emptyList())
     }
 
-    override suspend fun placePhotos(featureId: String): List<String> = io {
+    override suspend fun placePhotos(featureId: String): List<app.vela.core.model.Photo> = io {
         // batchexecute `hspqX` (/MapsPhotoService.ListEntityPhotos) — a keyless POST
         // (no `at` token, just the warmed session cookies). The feature id goes in
         // the proto verbatim ([2][0]); the response carries the full gallery, URL at
@@ -224,7 +259,7 @@ class GoogleMapsDataSource @Inject constructor(
         val inner = cal.photosProto.replace("{FID}", featureId).replace("{COUNT}", PHOTO_COUNT.toString())
         // JsonPrimitive(...).toString() = the proto as a properly-escaped JSON string literal.
         val freq = "[[[\"hspqX\",${JsonPrimitive(inner)},null,\"generic\"]]]"
-        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")).map { it.url } }.getOrDefault(emptyList())
+        runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
     }
 
     override suspend fun directions(
@@ -232,20 +267,22 @@ class GoogleMapsDataSource @Inject constructor(
         destination: LatLng,
         mode: TravelMode,
         waypoints: List<LatLng>,
+        avoidTolls: Boolean,
+        avoidHighways: Boolean,
     ): List<Route> = io {
         // Multi-stop: route OSRM straight THROUGH the stops (routeVia filters the spurious per-via
         // arrive/depart into one continuous trip), then overlay Google's live in-traffic ETA ratio for the
         // whole origin→dest so the time is traffic-aware. A waypointed trip is a single path — no alternates.
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
-                val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode) }
+                val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) }
                 val gD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
                 val via = viaD.await().firstOrNull()
                 // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
                 // single-destination path's offline fallback; only then fall to Google's DIRECT route
                 // (which reaches the destination but loses the stops).
                 val onDevice = if (via == null && routeEngine.isReady(mode))
-                    chainOnDevice(listOf(origin) + waypoints + destination, mode) else null
+                    chainOnDevice(listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) else null
                 val result = when {
                     via != null -> listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
                     onDevice != null -> listOf(onDevice)
@@ -266,18 +303,28 @@ class GoogleMapsDataSource @Inject constructor(
             // Google's keyless directions endpoint hands back ABBREVIATED steps for longer routes
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
-            val openD = async { RouteGeometry.route(http, origin, destination, mode) }
+            val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways) }
             val googleD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
             val open = openD.await()
             val google = googleD.await()
             val gTop = google.firstOrNull()
+            // AVOID toggles: the public FOSSGIS OSRM rejects `exclude=` outright (probed
+            // 2026-07-11: InvalidValue - its profiles weren't built with excludable classes),
+            // so a DOWNLOADED graph with the avoid CH profiles is the authoritative avoid
+            // router - it goes FIRST. Old-format graphs / no coverage return empty and the
+            // online chain below routes normally (avoid best-effort, never a dead end). No
+            // live-traffic ETA on these: the offline result is free-flow, like any offline route.
+            if ((avoidTolls || avoidHighways) && mode == TravelMode.DRIVE && routeEngine.isReady(mode)) {
+                val avoidRoutes = runCatching { routeEngine.route(origin, destination, mode, avoidTolls, avoidHighways) }.getOrDefault(emptyList())
+                if (avoidRoutes.isNotEmpty()) return@coroutineScope avoidRoutes
+            }
             // TRAFFIC-AWARE routing (option 3): if Google's live-traffic route took a DIFFERENT path
             // than OSRM's free-flow one — i.e. Google rerouted around a jam — re-run OSRM forced
             // through Google's path so we follow the traffic-smart route WITH full street-named steps.
             // (Only on real divergence, so the normal case stays the fast single OSRM call.)
             val trafficRoute = if (open.isNotEmpty() && gTop != null && gTop.polyline.size >= 5 &&
                 RouteGeometry.divergent(open.first(), gTop)) {
-                RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode)
+                RouteGeometry.routeVia(http, listOf(origin) + RouteGeometry.sampleVias(gTop.polyline) + destination, mode, avoidTolls, avoidHighways)
                     .firstOrNull()
             } else null
             // OFFLINE fallback: OSRM (and Google) need the network. When OSRM came back empty — no
@@ -381,9 +428,9 @@ class GoogleMapsDataSource @Inject constructor(
      *  point), each non-final leg's ARRIVE and non-first leg's DEPART dropped (mirroring what routeVia's
      *  parser does for via boundaries), distances/durations summed. Null if any leg can't be routed
      *  (cross-region or off-graph), so the caller can fall through. */
-    private fun chainOnDevice(points: List<LatLng>, mode: TravelMode): Route? {
+    private fun chainOnDevice(points: List<LatLng>, mode: TravelMode, avoidTolls: Boolean = false, avoidHighways: Boolean = false): Route? {
         val legs = points.zipWithNext().map { (a, b) ->
-            runCatching { routeEngine.route(a, b, mode).firstOrNull() }.getOrNull() ?: return null
+            runCatching { routeEngine.route(a, b, mode, avoidTolls, avoidHighways).firstOrNull() }.getOrNull() ?: return null
         }
         val polyline = legs.flatMapIndexed { i, leg -> if (i == 0) leg.polyline else leg.polyline.drop(1) }
         // Boundary DEPART/ARRIVE steps are dropped, but their step distance is FOLDED into the
@@ -429,10 +476,12 @@ class GoogleMapsDataSource @Inject constructor(
      *  through OSRM for real named turn-by-turn, guarded to reach the destination, and re-apply Google's
      *  live-traffic overlay. Failure keeps Google's own (abbreviated) steps so nav still works.
      *  (On-device GraphHopper map-match for downloaded regions plugs in here next.) */
-    override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode): Route = io {
+    override suspend fun nameRoute(route: Route, origin: LatLng, destination: LatLng, mode: TravelMode, avoidTolls: Boolean, avoidHighways: Boolean): Route = io {
         if (!route.provisional || route.polyline.size < 3) return@io route.copy(provisional = false)
         val vias = listOf(origin) + RouteGeometry.sampleVias(route.polyline) + destination
-        val named = RouteGeometry.routeVia(http, vias, mode).firstOrNull()
+        // The avoid flags ride along even on a snap: the vias FORCE Google's chosen path, but
+        // exclude keeps OSRM from bridging between vias over a road class the user opted out of.
+        val named = RouteGeometry.routeVia(http, vias, mode, avoidTolls, avoidHighways).firstOrNull()
             ?.takeIf { it.polyline.lastOrNull()?.let { p -> p.distanceTo(destination) <= SNAP_REACH_M } == true }
         // Keep the route's OWN time figures through the snap. The picker sorted and displayed this
         // route by its Google per-route ETA; applyTraffic here would swap in a recomputed one

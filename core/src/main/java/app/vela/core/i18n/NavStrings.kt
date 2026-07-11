@@ -43,6 +43,10 @@ interface NavStrings {
     /** The at-arrival spoken callout — EN "You have arrived". */
     fun arrived(): String
 
+    /** Which side the destination is on — EN "Your destination is on the left/right". Used as
+     *  the ARRIVE step's banner text and appended to the spoken arrival when OSRM sent a side. */
+    fun destinationSide(left: Boolean): String
+
     /** Spoken when navigation begins — EN "Starting navigation. <first instruction>". */
     fun startNav(firstInstruction: String): String
 
@@ -140,6 +144,8 @@ object EnNavStrings : NavStrings {
     // gives the Piper voice no final prosody contour and the callout ended oddly; the user A/B'd
     // punctuation and the semicolon's contour sounds best (period OK, semicolon better). 2026-07-06.
     override fun arrived(): String = "You have arrived;"
+
+    override fun destinationSide(left: Boolean): String = if (left) "Your destination is on the left" else "Your destination is on the right"
 
     override fun startNav(firstInstruction: String): String = "Starting navigation. $firstInstruction"
 
@@ -273,6 +279,8 @@ object FrNavStrings : NavStrings {
 
     override fun arrived(): String = "Vous êtes arrivé"
 
+    override fun destinationSide(left: Boolean): String = if (left) "Votre destination est à gauche" else "Votre destination est à droite"
+
     override fun startNav(firstInstruction: String): String = "Démarrage de la navigation. $firstInstruction"
 
     override fun reachedStop(label: String): String =
@@ -355,6 +363,8 @@ object DeNavStrings : NavStrings {
     override fun inThen(distancePhrase: String, instruction: String): String = "In $distancePhrase, $instruction"
 
     override fun arrived(): String = "Sie haben Ihr Ziel erreicht"
+
+    override fun destinationSide(left: Boolean): String = if (left) "Ihr Ziel befindet sich links" else "Ihr Ziel befindet sich rechts"
 
     override fun startNav(firstInstruction: String): String = "Navigation wird gestartet. $firstInstruction"
 
@@ -464,6 +474,8 @@ object EsNavStrings : NavStrings {
 
     override fun arrived(): String = "Ha llegado"
 
+    override fun destinationSide(left: Boolean): String = if (left) "Su destino está a la izquierda" else "Su destino está a la derecha"
+
     override fun startNav(firstInstruction: String): String = "Iniciando la navegación. $firstInstruction"
 
     override fun reachedStop(label: String): String =
@@ -555,6 +567,8 @@ object ItNavStrings : NavStrings {
 
     override fun arrived(): String = "Sei arrivato"
 
+    override fun destinationSide(left: Boolean): String = if (left) "La tua destinazione è a sinistra" else "La tua destinazione è a destra"
+
     override fun startNav(firstInstruction: String): String = "Avvio della navigazione. $firstInstruction"
 
     override fun reachedStop(label: String): String =
@@ -641,6 +655,8 @@ object PtNavStrings : NavStrings {
     override fun inThen(distancePhrase: String, instruction: String): String = "Em $distancePhrase, $instruction"
 
     override fun arrived(): String = "Você chegou"
+
+    override fun destinationSide(left: Boolean): String = if (left) "Seu destino está à esquerda" else "Seu destino está à direita"
 
     override fun startNav(firstInstruction: String): String = "Iniciando a navegação. $firstInstruction"
 
@@ -757,6 +773,8 @@ object NlNavStrings : NavStrings {
 
     override fun arrived(): String = "U bent aangekomen"
 
+    override fun destinationSide(left: Boolean): String = if (left) "Uw bestemming is aan de linkerkant" else "Uw bestemming is aan de rechterkant"
+
     override fun startNav(firstInstruction: String): String = "Navigatie wordt gestart. $firstInstruction"
 
     override fun reachedStop(label: String): String =
@@ -838,6 +856,8 @@ object RuNavStrings : NavStrings {
     override fun inThen(distancePhrase: String, instruction: String): String = "Через $distancePhrase $instruction"
 
     override fun arrived(): String = "Вы на месте"
+
+    override fun destinationSide(left: Boolean): String = if (left) "Пункт назначения слева" else "Пункт назначения справа"
 
     override fun startNav(firstInstruction: String): String = "Начинаю навигацию. $firstInstruction"
 
@@ -1001,6 +1021,8 @@ object PlNavStrings : NavStrings {
 
     override fun arrived(): String = "Dotarłeś do celu"
 
+    override fun destinationSide(left: Boolean): String = if (left) "Cel znajduje się po lewej stronie" else "Cel znajduje się po prawej stronie"
+
     override fun startNav(firstInstruction: String): String = "Rozpoczynam nawigację. $firstInstruction"
 
     override fun reachedStop(label: String): String =
@@ -1126,6 +1148,8 @@ object SvNavStrings : NavStrings {
 
     override fun arrived(): String = "Du är framme"
 
+    override fun destinationSide(left: Boolean): String = if (left) "Din destination är till vänster" else "Din destination är till höger"
+
     override fun startNav(firstInstruction: String): String = "Startar navigeringen. $firstInstruction"
 
     override fun reachedStop(label: String): String =
@@ -1215,6 +1239,8 @@ object UkNavStrings : NavStrings {
     override fun inThen(distancePhrase: String, instruction: String): String = "Через $distancePhrase $instruction"
 
     override fun arrived(): String = "Ви прибули"
+
+    override fun destinationSide(left: Boolean): String = if (left) "Пункт призначення ліворуч" else "Пункт призначення праворуч"
 
     override fun startNav(firstInstruction: String): String = "Починаємо навігацію. $firstInstruction"
 
