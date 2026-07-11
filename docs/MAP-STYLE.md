@@ -42,3 +42,25 @@ and falls back to plain Noto if the host is unreachable). Self-hosted PMTiles is
 the no-key, no-quota path for later. Styles are plain URLs, updatable over-the-air
 without an app release.
 
+
+## Archived palette: the pre-pixel-sample "greens fixed" look (commit 071c6c3)
+
+The palette that shipped between the flat-vegetation work and the final
+pixel-sampled match of the Google app (2026-07-11). Kept as a rollback
+reference; to restore it wholesale, take `applyLight`/`applyDark` from commit
+`071c6c3` ("Map greens match Google now and are actually visible in dark
+mode"). The current palette lives in CLAUDE.md and the code.
+
+Light: land `#f2f1ee`, water `#90daee`, park `#cfeccd`, grass `#d3f8e2`,
+wood `#c9f2da`, wetland `#cdeff0`, plaza `#ededed`, buildings `#dde1e7`
+(outline `#c4c9d1`, extrusion same fill), minor/secondary roads white with
+casings `#e4e6ea`, trunk/primary casing `#dadde2`, arterial fills yellow
+`#f9d27a` / motorway `#f0b85a` (the last Google-web-style yellows; the current
+palette fills roads solid blue-grey like the app).
+
+Dark: land `#242f3e`, water `#17263c`, park/grass `#2c4a34`, wood `#274330`,
+wetland `#26403c`, plaza and other-landuse `#2a3546` (landuse at opacity 0.5),
+buildings `#323f54` (outline `#3f4e66`, extrusion same fill), roads
+`#49536a` minor / `#5e6a85` secondary / `#6f7a96` trunk+motorway, casings
+`#242f3e` (= land). Greens here are true greens; the current sampled palette
+uses Google's dark teal vegetation instead.
