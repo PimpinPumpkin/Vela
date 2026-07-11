@@ -296,7 +296,13 @@ private fun buildPanelWebView(
                     // Forward only clearly-vertical boundary drags (a horizontal chip swipe with
                     // a slight slope must not jiggle the sheet).
                     if (kotlin.math.abs(dy) > kotlin.math.abs(dx) &&
-                        ((panelAtTop.get() && dy > 0f) || (!fullScreen && panelAtBottom.get() && dy < 0f))
+                        // Full-screen: once a top-edge pull has STARTED, the whole gesture belongs
+                        // to it — both directions keep forwarding until the finger lifts, so
+                        // dragging back up rubber-bands the page instead of tripping the
+                        // boundary-exit branch below, which fired the end signal mid-drag and
+                        // closed the page under the finger (user 2026-07-11).
+                        ((panelAtTop.get() && dy > 0f) || (fullScreen && forwarded) ||
+                            (!fullScreen && panelAtBottom.get() && dy < 0f))
                     ) {
                         forwarded = true
                         forwardDist += kotlin.math.abs(dy)
