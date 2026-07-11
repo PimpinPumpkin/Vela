@@ -169,6 +169,7 @@ import app.vela.ui.placeStatusColor
 import app.vela.ui.Traffic
 import app.vela.ui.place.DirectionsPanel
 import app.vela.ui.place.PlaceSheet
+import app.vela.ui.place.sheetDragGestures
 import app.vela.ui.search.SearchBar
 import java.util.Locale
 // D-pad-only operation (docs/dpad.md) — kept as one import block so upstream merges stay clean.
@@ -1913,31 +1914,13 @@ private fun SearchResults(
                         })
                     }
                     .pointerInput(Unit) {
-                        // Same physics as the body: the handle drags the list 1:1 and the release
-                        // rides the fling to the nearest size.
-                        val tracker = androidx.compose.ui.input.pointer.util.VelocityTracker()
-                        var acc = 0f
-                        var t0 = 0L
-                        var tN = 0L
-                        detectVerticalDragGestures(
-                            onDragStart = { tracker.resetTracking(); acc = 0f; t0 = 0L; tN = 0L },
-                            onVerticalDrag = { change, dy ->
-                                change.consume()
-                                // Integrated deltas (see the place sheet): position is local to
-                                // a moving node and zeroed the velocity (user 2026-07-11).
-                                acc += dy
-                                if (t0 == 0L) t0 = change.uptimeMillis
-                                tN = change.uptimeMillis
-                                tracker.addPosition(change.uptimeMillis, androidx.compose.ui.geometry.Offset(0f, acc))
+                        // Same physics as the place sheet (the shared sheetDragGestures grammar).
+                        sheetDragGestures(
+                            dragBy = { dy ->
                                 if (isCollapsed.value && dy < 0f) expand.value() // list mounts at 0 and grows with the finger
                                 dragListBy(dy)
                             },
-                            onDragEnd = {
-                                val tracked = tracker.calculateVelocity().y
-                                val avg = if (tN > t0) acc / (tN - t0) * 1000f else 0f
-                                settleList(if (kotlin.math.abs(avg) > kotlin.math.abs(tracked)) avg else tracked)
-                            },
-                            onDragCancel = { settleList(0f) },
+                            settle = { settleList(it) },
                         )
                     },
             ) {
