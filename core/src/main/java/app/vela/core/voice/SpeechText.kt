@@ -101,6 +101,34 @@ object SpeechText {
             }
         }
 
+    /**
+     * Clean a raw speech-to-text transcript into a search QUERY. Whisper (the on-device voice-search
+     * ASR) is a general audio model: on non-speech audio (silence, a tap, background music) it emits
+     * bracketed sound tags - "[music]", "[thud]", "[BLANK_AUDIO]" - instead of words. Those are never a
+     * real search, so strip every "[...]" group, then drop the trailing sentence punctuation/quotes that
+     * prose adds ("Coffee near me.") and collapse whitespace. A transcript that was ONLY sound tags
+     * collapses to "", so the caller's `.ifBlank { null }` reads it as "heard nothing" (no search runs)
+     * rather than searching for the literal "[music]". A real query with a stray tag ("coffee [noise]
+     * shop") keeps just the words. Brackets never appear in a real place search, so this is safe; an
+     * INNER period ("St. Paul") is preserved - only a trailing one is trimmed.
+     *
+     * A long non-speech run gets TRUNCATED at the utterance/15 s boundary, so the LAST tag can arrive
+     * unterminated ("[music] [music] [musi") - device-seen. We strip both complete "[...]" groups AND a
+     * dangling "[..." at the end, so that whole junk collapses to "" too (not the fragment "[musi").
+     */
+    fun cleanSearchTranscript(raw: String): String =
+        raw.replace(BRACKET_TAG, " ")
+            .replace(BRACKET_TAIL, " ")   // an unterminated trailing tag from a truncated capture
+            .replace(WHITESPACE, " ")
+            .trim()
+            .trim('"', '“', '”')
+            .trimEnd('.', '!', '?', ',', ';', ':', '…')
+            .trim()
+
+    private val BRACKET_TAG = Regex("\\[[^\\]]*]")
+    private val BRACKET_TAIL = Regex("\\[[^\\]]*$")
+    private val WHITESPACE = Regex("\\s+")
+
     private fun twoDigitOrdinal(r: Int): String = when {
         r in 10..19 -> TEEN_ORD[r - 10]
         r % 10 == 0 -> TENS_ORD[r / 10]
