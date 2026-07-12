@@ -349,6 +349,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   offers and notices now stack below the search bar and chips (or just below the turn card during
   navigation, whatever its height), each dismissed on its own, instead of painting over each other.
   A missing-voice warning carries a "Get a voice" pill straight into the voice library.
+- ✅ **Right fix for a missing voice, per language (2026-07-11).** The missing-voice pill now forks
+  by cause. A language Vela can train a Piper voice for (French, Russian, …) still gets a "Get a
+  voice" pill into the library. A language Piper **can't** do (Japanese: espeak-ng has no Japanese
+  phonemizer, so there is no Vela ja voice) gets a **"System voices"** pill that opens the phone's
+  own text-to-speech settings instead, because that is where Japanese guidance is spoken from (the
+  system-TTS fallback) and the Vela library would be a dead end. `PiperCatalog.hasVoiceFor(lang)`
+  drives the fork; the pill deep-links `com.android.settings.TTS_SETTINGS` (falling back to the main
+  Settings screen on ROMs that lack it). So Japanese turn-by-turn works today through Google's (or
+  any) system Japanese voice, and the app points you to install one if it's missing, rather than
+  nudging you toward a voice that can't exist. A fully-offline bundled Japanese neural voice (Kokoro)
+  stays a possible follow-up in ROADMAP.
 - ✅ **Spoken directions toggle (2026-07-10).** Settings → Voice has an on/off switch for spoken
   navigation; it remembers your choice, and the mute button during navigation is the same switch.
 - ✅ **Update button is a filled pill (2026-07-10).** The update card's Update action is a filled
