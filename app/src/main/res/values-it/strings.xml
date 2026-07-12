@@ -534,6 +534,10 @@
     <string name="notif_ask_skip">Salta</string>
     <string name="place_time_past_toast">Quell\'ora è passata. Impostato su adesso.</string>
     <string name="settings_ui_scale">Dimensione dell\'interfaccia</string>
+    <string name="settings_map_colors">Colori della mappa</string>
+    <string name="settings_map_colors_modern">Moderno</string>
+    <string name="settings_map_colors_classic">Classico</string>
+    <string name="settings_map_colors_hint">Moderno segue la palette attuale di Google Maps. Classico è il vecchio aspetto di Vela: strade bianche, autostrade gialle, verdi pieni.</string>
     <string name="place_avoid_tolls">Evita i pedaggi</string>
     <string name="place_avoid_highways">Evita le autostrade</string>
 </resources>
