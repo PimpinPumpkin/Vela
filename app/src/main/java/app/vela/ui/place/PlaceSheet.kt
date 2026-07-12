@@ -3008,14 +3008,20 @@ private fun ReviewsTab(
                 }
                 if (!loading && reviews.size >= 5) {
                     Spacer(Modifier.width(8.dp))
-                    IconButton(
-                        onClick = {
-                            reviewSearchOpen = !reviewSearchOpen
-                            if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
-                        },
+                    // A Box, NOT an IconButton: IconButton forces its own (smaller) box size, so a
+                    // 44dp background circle overflowed it and clipped on the right against the sheet
+                    // edge (user 2026-07-12). A clipped, sized Box draws the circle cleanly at 44dp.
+                    Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(dim.copy(alpha = 0.12f))
+                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                            .clickable {
+                                reviewSearchOpen = !reviewSearchOpen
+                                if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             if (reviewSearchOpen) Icons.Default.Close else Icons.Default.Search,
