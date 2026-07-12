@@ -1,0 +1,117 @@
+# Build POSTED-SPEED-LIMIT overlays (OSM `maxspeed` road ways, ODbL) as PMTiles for many regions in
+# parallel and publish them to the `maxspeed-overlays` release - the app can show a speed-limit sign
+# WITHOUT the (much larger) offline routing graph. Sibling of building-overlays.yml; SOURCE is the same
+# Geofabrik OSM PBFs the routing graphs use, so the catalog is tools/routing-regions.json (id/name/pbf_url).
+#
+# Run from Actions → "Build maxspeed overlays" → pick a `group` (us | world | ...) or pass `ids`.
+# ADDITIVE + reversible: its own release + manifest; delete the `maxspeed-overlays` release to revert.
+name: Build maxspeed overlays
+
+on:
+  workflow_dispatch:
+    inputs:
+      group:
+        description: "Build a whole catalog group from routing-regions.json (e.g. us). Blank → use ids/all."
+        type: string
+        default: ""
+      ids:
+        description: "Space/comma-separated region ids (e.g. 'oregon washington'). Blank + all=true builds everything."
+        type: string
+        default: "oregon"
+      all:
+        description: "Build every region in tools/routing-regions.json (ignores 'ids'). Prefer `group` (256-job cap)."
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  prep:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.sel.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: sel
+        env:
+          GRP: ${{ inputs.group }}
+          IDS: ${{ inputs.ids }}
+          ALL: ${{ inputs.all }}
+        run: |
+          ids_json=$(jq -cn --arg s "$IDS" '$s | gsub(",";" ") | split(" ") | map(select(length > 0))')
+          sel=$(jq -c --argjson ids "$ids_json" --argjson all "${ALL:-false}" --arg grp "$GRP" '
+            [ .regions[]
+              | select( if $grp != "" then (.group // "") == $grp
+                        else ($all or (($ids|length) > 0 and ((.id as $rid | $ids | index($rid)) != null))) end )
+              | {id, name, pbf_url} ]
+          ' tools/routing-regions.json)
+          n=$(printf '%s' "$sel" | jq 'length')
+          echo "selected $n region(s):"; printf '%s' "$sel" | jq -r '.[].id' | paste -sd' ' -
+          if [ "$n" -eq 0 ]; then echo "::error::no regions matched group='$GRP' ids='$IDS' all='$ALL'"; exit 1; fi
+          if [ "$n" -gt 256 ]; then echo "::error::$n regions exceeds the 256-job matrix cap - dispatch by group"; exit 1; fi
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+      - name: Ensure the catalog release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view maxspeed-overlays --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create maxspeed-overlays --repo "$GITHUB_REPOSITORY" --prerelease \
+              --title "Posted speed-limit overlays" \
+              --notes "OSM maxspeed road ways as PMTiles for Vela's keyless posted speed-limit source. Data assets, not a code release. Speed limits © OpenStreetMap contributors, ODbL."
+
+  build:
+    needs: prep
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix: ${{ fromJSON(needs.prep.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install osmium + tippecanoe
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y osmium-tool build-essential libsqlite3-dev zlib1g-dev jq
+          git clone --depth 1 https://github.com/felt/tippecanoe.git /tmp/tippecanoe
+          make -C /tmp/tippecanoe -j"$(nproc)"
+          sudo make -C /tmp/tippecanoe install
+      - name: Build ${{ matrix.id }} maxspeed PMTiles + upload + emit entry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+          MANIFEST_MODE: emit
+          ENTRY_OUT: ${{ matrix.id }}.json
+        run: bash scripts/build-maxspeed-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.pbf_url }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: entry-${{ matrix.id }}
+          path: ${{ matrix.id }}.json
+          retention-days: 1
+
+  merge:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    concurrency:
+      group: maxspeed-overlays-manifest-merge
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install jq
+        run: sudo apt-get update && sudo apt-get install -y jq
+      - uses: actions/download-artifact@v4
+        with:
+          path: entries
+          pattern: entry-*
+          merge-multiple: true
+      - name: Merge entries into maxspeed-overlay-manifest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VELA_REPO: ${{ github.repository }}
+        run: |
+          shopt -s nullglob
+          files=(entries/*.json)
+          if [ ${#files[@]} -eq 0 ]; then echo "no region entries were built - nothing to merge"; exit 0; fi
+          echo "merging ${#files[@]} entr(y/ies)"
+          bash scripts/merge-maxspeed-manifest.sh entries
