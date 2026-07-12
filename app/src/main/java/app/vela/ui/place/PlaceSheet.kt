@@ -2395,8 +2395,20 @@ private fun StopDepartureBoard(
     val nowSec by produceState(initialValue = System.currentTimeMillis() / 1000L) {
         while (true) { delay(30_000L); value = System.currentTimeMillis() / 1000L }
     }
-    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        d.lines.take(24).forEach { DepartureLineRow(it, nowSec, ink, dim, onTapRoute) }
+    // Google-style clean list: plain tappable rows separated by hairline dividers (no per-row
+    // chevron - the row itself opens the route, and its Material ripple is the affordance).
+    Column(Modifier.padding(top = 6.dp)) {
+        val lines = d.lines.take(24)
+        lines.forEachIndexed { i, line ->
+            DepartureLineRow(line, nowSec, ink, dim, onTapRoute)
+            if (i < lines.lastIndex) {
+                HorizontalDivider(
+                    color = SheetPalette.row(dark),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(start = 2.dp),
+                )
+            }
+        }
     }
 }
 
@@ -2414,7 +2426,7 @@ private fun DepartureLineRow(
             .clip(RoundedCornerShape(10.dp))
             .dpadHighlight(RoundedCornerShape(10.dp))
             .clickable { onTapRoute(line) }
-            .padding(vertical = 2.dp),
+            .padding(vertical = 10.dp, horizontal = 2.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -2429,8 +2441,6 @@ private fun DepartureLineRow(
             line.headwayText?.let {
                 Text(stringResource(R.string.place_every, it), style = MaterialTheme.typography.labelMedium, color = dim)
             }
-            // Affordance that the row drills into the route's stop timeline (tap-through).
-            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
         }
         if (line.upcoming.isNotEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -2538,7 +2548,8 @@ fun RouteDetailSheet(
 }
 
 /** One stop in the [RouteDetailSheet] timeline: a coloured connector rail with a node, the stop
- *  name (board/alight emphasised), its call time, and a chevron - the whole row taps through. */
+ *  name (board/alight emphasised) and its call time - the whole row taps through (no chevron;
+ *  the connected rail + the Material ripple are the affordance, like Google's route view). */
 @Composable
 private fun RouteStopRow(
     stop: TransitStopTime,
@@ -2555,7 +2566,7 @@ private fun RouteStopRow(
             .clip(RoundedCornerShape(10.dp))
             .dpadHighlight(RoundedCornerShape(10.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp),
+            .padding(start = 6.dp, end = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Vertical rail + node, drawn so the line is continuous between rows. Board/alight get a
@@ -2579,7 +2590,6 @@ private fun RouteStopRow(
         stop.timeText?.let {
             Text(it, style = MaterialTheme.typography.labelMedium, color = dim, modifier = Modifier.padding(start = 8.dp))
         }
-        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp).padding(start = 2.dp))
     }
 }
 
