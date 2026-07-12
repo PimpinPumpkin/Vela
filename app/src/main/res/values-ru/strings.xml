@@ -134,6 +134,7 @@
     <string name="settings_support_button">Поддержать Vela</string>
     <string name="settings_version">Версия</string>
     <string name="settings_version_line">Vela %1$s  (сборка %2$d)</string>
+    <string name="settings_version_copied">Версия скопирована</string>
     <string name="settings_collapse">Свернуть</string>
     <string name="settings_expand">Развернуть</string>
     <string name="settings_voice_lib_empty_hint">★ отмечает рекомендуемые голоса. Все голоса работают офлайн на телефоне.</string>
@@ -535,6 +536,10 @@
     <string name="notif_ask_skip">Пропустить</string>
     <string name="place_time_past_toast">Это время уже прошло. Установлено на сейчас.</string>
     <string name="settings_ui_scale">Размер интерфейса</string>
+    <string name="settings_map_colors">Цвета карты</string>
+    <string name="settings_map_colors_modern">Современные</string>
+    <string name="settings_map_colors_classic">Классические</string>
+    <string name="settings_map_colors_hint">Современные повторяют текущую палитру Google Maps. Классические — прежний вид Vela: белые дороги, жёлтые магистрали, насыщенная зелень.</string>
     <string name="place_avoid_tolls">Избегать платных дорог</string>
     <string name="place_avoid_highways">Избегать шоссе</string>
 </resources>

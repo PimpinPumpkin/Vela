@@ -210,6 +210,32 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     )
                 }
             }
+            Spacer(Modifier.height(10.dp))
+            // Map colour sets: Modern = the Google-app-sampled palette (default), Classic = the
+            // archived pre-sample look (white roads, yellow motorways, true greens). The fleet
+            // default is remote-pushable via calibration.json; an explicit pick here wins.
+            Text(
+                stringResource(R.string.settings_map_colors),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Row(
+                Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                listOf(
+                    app.vela.ui.MapColors.MODERN to stringResource(R.string.settings_map_colors_modern),
+                    app.vela.ui.MapColors.CLASSIC to stringResource(R.string.settings_map_colors_classic),
+                ).forEach { (id, label) ->
+                    FilterChip(
+                        selected = app.vela.ui.MapColors.current() == id,
+                        onClick = { app.vela.ui.MapColors.set(context, id) },
+                        label = { Text(label) },
+                        shape = androidx.compose.foundation.shape.CircleShape,
+                        modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                    )
+                }
+            }
+            Hint(stringResource(R.string.settings_map_colors_hint))
             // Material You (issue #15): tint the app's buttons, chips and accents from the
             // wallpaper palette. Android 12+ only - below S there is no dynamic palette, so
             // the row is not shown at all rather than shown dead.
@@ -1031,10 +1057,21 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_version))
+            // Tap to copy - bug reports need the exact version, and typing it from the screen
+            // is error-prone (issue #58's one keeper suggestion).
+            val versionLine = stringResource(R.string.settings_version_line, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+            val versionCopied = stringResource(R.string.settings_version_copied)
+            val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
             Text(
-                stringResource(R.string.settings_version_line, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                versionLine,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(vertical = 4.dp),
+                modifier = Modifier
+                    .dpadHighlight()
+                    .clickable {
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(versionLine))
+                        android.widget.Toast.makeText(context, versionCopied, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    .padding(vertical = 4.dp),
             )
             // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
             // The system installer does the install either way.
