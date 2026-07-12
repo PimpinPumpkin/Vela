@@ -431,6 +431,7 @@
     <string name="place_transit_stops">%1$d תחנות</string>
     <string name="place_transit_stop_id">תחנה %1$s</string>
     <string name="place_transit_tickets">כרטיסים &amp; מידע</string>
+    <string name="route_detail_unavailable">פרטי הקו אינם זמינים</string>
     <string name="place_transit_now">יוצא כעת</string>
     <string name="place_transit_in_min">בעוד %1$d דק׳</string> <!-- format -->
     <string name="place_transit_live">בשידור חי</string>

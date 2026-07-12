@@ -454,6 +454,7 @@
     <string name="place_transit_stops">%1$d 停留所</string> <!-- format -->
     <string name="place_transit_stop_id">停留所 %1$s</string> <!-- format -->
     <string name="place_transit_tickets">チケット・運行情報</string>
+    <string name="route_detail_unavailable">路線の詳細を取得できません</string>
     <string name="place_transit_now">まもなく発車</string>
     <string name="place_transit_in_min">%1$d 分後</string> <!-- format -->
     <string name="place_transit_live">リアルタイム</string>
