@@ -2929,36 +2929,35 @@ private fun arrowBitmap(): Bitmap {
     return bmp
 }
 
-/** Google-style navigation puck: a WHITE chevron inside a filled BLUE circle with a white
- *  ring and a soft drop shadow (Google Maps' current puck, user 2026-07-11 - replaces the
- *  bare chevron). Points up (north) so `iconRotate(bearing)` aims it down the heading. */
+/** Navigation puck: a WHITE chevron inside a filled BRIGHT-NAVY circle with a soft drop shadow
+ *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
+ *  (north) so `iconRotate(bearing)` aims it down the heading. */
 private fun navPuckBitmap(): Bitmap {
-    val size = 96
+    val size = 112 // bigger than the 96 first cut
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     val cx = size / 2f
     val cy = size / 2f
-    val r = 30f
+    val r = 40f
     // Soft drop shadow, offset slightly down (blur needs a software canvas - this is one).
     canvas.drawCircle(
         cx, cy + 3f, r,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.argb(70, 0, 0, 0)
-            maskFilter = android.graphics.BlurMaskFilter(6f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            maskFilter = android.graphics.BlurMaskFilter(7f, android.graphics.BlurMaskFilter.Blur.NORMAL)
         },
     )
-    // White ring, then the blue disc.
-    canvas.drawCircle(cx, cy, r, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE })
+    // The bright-navy disc - no white ring this time (user call). #1a46e5 = a vivid, deep blue.
     canvas.drawCircle(
-        cx, cy, r - 3f,
-        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#4285F4") },
+        cx, cy, r,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#1a46e5") },
     )
-    // White chevron/arrow, centred, pointing up.
+    // White chevron/arrow, centred, pointing up - scaled up with the bigger disc.
     val arrow = Path().apply {
-        moveTo(cx, cy - 15f)          // tip
-        lineTo(cx + 13f, cy + 12f)    // bottom-right
-        lineTo(cx, cy + 5f)           // notch
-        lineTo(cx - 13f, cy + 12f)    // bottom-left
+        moveTo(cx, cy - 20f)          // tip
+        lineTo(cx + 17f, cy + 16f)    // bottom-right
+        lineTo(cx, cy + 7f)           // notch
+        lineTo(cx - 17f, cy + 16f)    // bottom-left
         close()
     }
     canvas.drawPath(
