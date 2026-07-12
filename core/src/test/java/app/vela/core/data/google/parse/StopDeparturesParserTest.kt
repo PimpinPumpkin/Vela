@@ -56,26 +56,65 @@ class StopDeparturesParserTest {
     }
 
     @Test
-    fun `parses a station departure board`() {
+    fun `parses a station departure board, soonest line first`() {
         val d = StopDeparturesParser.parse(body(transit))!!
         assertEquals("Times Sq-42 St", d.stationName)
         assertEquals(2, d.lines.size)
 
-        val a = d.lines[0]
+        // Lines sort by soonest departure: Flushing (4:19) leads 34 St-Hudson Yards (4:35).
+        val b = d.lines[0]
+        assertEquals("Flushing-Main St", b.headsign)
+        assertEquals("7", b.label)
+        assertEquals("15 min", b.headwayText)
+        assertEquals(listOf("4:19 AM", "4:39 AM"), b.upcoming.map { it.clockText })
+        assertTrue(b.upcoming.none { it.realtime })          // equal epochs -> scheduled
+
+        val a = d.lines[1]
         assertEquals("34 St-Hudson Yards", a.headsign)
         assertEquals(TransitMode.SUBWAY, a.mode)
         assertEquals("7", a.label)
-        assertEquals("20 min", a.headwayText)
         assertEquals(listOf("4:35 AM", "4:52 AM", "5:12 AM"), a.upcoming.map { it.clockText })
         assertEquals(1783845300L, a.upcoming[0].epochSec)   // scheduled epoch [4], not realtime [0]
         assertTrue("live time differs from timetable", a.upcoming[0].realtime)
         assertTrue("on-time departure not flagged live", !a.upcoming[1].realtime)
+    }
 
-        val b = d.lines[1]
-        assertEquals("Flushing-Main St", b.headsign)
-        assertEquals("15 min", b.headwayText)
-        assertEquals(listOf("4:19 AM", "4:39 AM"), b.upcoming.map { it.clockText })
-        assertTrue(b.upcoming.none { it.realtime })          // equal epochs -> scheduled
+    // A busy BUS stop lists each departure FLAT, tagged with its own route pill
+    // ["<label>", <int>, "#fill", "#text"] at entry[5][1]; the parser groups them by route.
+    private fun busEntry(clock: String, rt: Long, sched: Long, label: String, fill: String) =
+        """[null,[[[[$rt,"America/Los_Angeles","$clock",-25200,$sched]]]],null,null,"0xa",[null,["$label",0,"$fill","#ffffff"]]]"""
+
+    private val busTransit = """
+        ["Mission St & 16th St",
+         [
+          [null,"Buses",
+           [
+            ${busEntry("4:02 AM", 1783845720, 1783845720, "14", "#7c82bf")},
+            ${busEntry("4:17 AM", 1783846620, 1783846620, "14", "#7c82bf")},
+            ${busEntry("5:43 AM", 1783851780, 1783851700, "14R", "#bf2b45")}
+           ]
+          ]
+         ]
+        ]
+    """.trimIndent()
+
+    @Test
+    fun `groups a flat bus board by route, with numbers and colours`() {
+        val d = StopDeparturesParser.parse(body(busTransit))!!
+        assertEquals("Mission St & 16th St", d.stationName)
+        assertEquals(2, d.lines.size)                       // 3 departures -> 2 routes
+
+        val r14 = d.lines[0]                                 // soonest (4:02) leads
+        assertEquals("14", r14.label)
+        assertEquals(TransitMode.BUS, r14.mode)
+        assertEquals("#7c82bf", r14.colorHex)
+        assertEquals(listOf("4:02 AM", "4:17 AM"), r14.upcoming.map { it.clockText })
+
+        val r14r = d.lines[1]
+        assertEquals("14R", r14r.label)
+        assertEquals("#bf2b45", r14r.colorHex)
+        assertEquals(listOf("5:43 AM"), r14r.upcoming.map { it.clockText })
+        assertTrue("live time differs from timetable", r14r.upcoming[0].realtime)
     }
 
     @Test
