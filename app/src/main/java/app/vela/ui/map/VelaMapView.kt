@@ -215,6 +215,7 @@ fun VelaMapView(
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
+    topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
@@ -1178,12 +1179,14 @@ fun VelaMapView(
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
+                ensureTopography(style, topographyOn)
             }
         } else {
             styleRef?.let {
                 applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
+                ensureTopography(it, topographyOn)
             }
         }
 
@@ -1861,6 +1864,9 @@ private fun ensureHillshade(style: Style) {
             PropertyFactory.hillshadeShadowColor("#6b7280"),
             PropertyFactory.hillshadeHighlightColor("#ffffff"),
             PropertyFactory.hillshadeAccentColor("#9aa0a6"),
+            // OFF by default (Google doesn't shade terrain unless you ask) - the Topography toggle
+            // flips it via ensureTopography. Added hidden so a fresh style starts flat.
+            PropertyFactory.visibility(Property.NONE),
         )
         hs.setMaxZoom(16f)
         // Below the first road layer → above water/landuse (so terrain shades the
@@ -1868,6 +1874,16 @@ private fun ensureHillshade(style: Style) {
         val firstRoad = style.layers.firstOrNull { it.id.startsWith("road") }?.id
         if (firstRoad != null) style.addLayerBelow(hs, firstRoad) else style.addLayer(hs)
     }
+}
+
+/** Show/hide the terrain-relief hillshade per the Settings > Map "Topography" toggle. Mirrors
+ *  ensureTraffic/ensureTransit: called from applyData on every recomposition, so flipping the pref
+ *  re-applies without a style reload. The DEM raster + layer already exist (ensureHillshade); this
+ *  only flips visibility, so turning it OFF costs nothing and stops the DEM tiles fetching. */
+private fun ensureTopography(style: Style, on: Boolean) {
+    style.getLayer(HILLSHADE_LAYER)?.setProperties(
+        PropertyFactory.visibility(if (on) Property.VISIBLE else Property.NONE),
+    )
 }
 
 /** Toggle Google's live-traffic raster overlay. Inserted below the route line +
