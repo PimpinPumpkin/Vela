@@ -1154,9 +1154,15 @@ fun MapScreen(
             }
         }
 
-        // Posted speed-limit sign — sits just above the speedometer during nav, when the on-device
-        // graph knows the current road's OSM maxspeed (hidden otherwise; sparse OSM coverage = often blank).
-        if (state.navigating && state.speedLimitKmh != null) {
+        // Posted speed-limit sign, from the on-device graph's OSM maxspeed (hidden when the road's
+        // untagged or no covering graph is downloaded - sparse OSM coverage = often blank). Shown
+        // during nav AND during a FREE-DRIVE (moving with no route open, on the clean map) - the same
+        // `updateSpeedLimit` already runs on every live browse fix, it was only ever *rendered* in nav
+        // (user 2026-07-12: show it while just driving too). In free-drive there's no speedometer, so
+        // it drops to the nav-bar line; during nav it stays above the speedo.
+        val freeDriveSpeed = !state.navigating && (state.mySpeed ?: 0f) > 3f &&
+            !searchOpen && state.selected == null && !state.directionsOpen && !state.showSteps && !resultsShown
+        if ((state.navigating || freeDriveSpeed) && state.speedLimitKmh != null) {
             SpeedLimitSign(
                 limitKmh = state.speedLimitKmh!!,
                 speedMps = state.mySpeed,
@@ -1164,7 +1170,12 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = navBarClearance + 68.dp), // above the 60dp speedo + 8dp gap
+                    .padding(
+                        start = 16.dp,
+                        // above the 60dp speedo + 8dp gap during nav; in free-drive lift it above the
+                        // bottom-left scale bar so the two don't overlap.
+                        bottom = navBarClearance + if (state.navigating) 68.dp else 46.dp,
+                    ),
             )
         }
 
