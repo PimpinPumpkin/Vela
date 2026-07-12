@@ -12,7 +12,7 @@
 
 ## Status: FULLY COVERED at SIMULATED 480x854 @ 320dpi (16/16 surfaces; not real hardware)
 
-`bash tests/devices/full_coverage.sh sonim-x320` (Philadelphia mock fix) reports **16 COVERED, 0
+`bash tests/devices/full_coverage.sh sonim-x320` (with a mock GPS fix) reports **16 COVERED, 0
 MISSED / RESULT: FULLY COVERED** - every surface reachable, D-pad-navigable and clip-free at the
 device's geometry. Screenshots in [`screenshots/full/`](screenshots/full/):
 

@@ -62,7 +62,7 @@ The consent card shows on the 2nd launch (by design: `launches >= 2`), so the fr
 Welcome -> voice -> offline -> map, then consent on relaunch.
 
 ### FULL coverage (240x320) - all 16 surfaces, VERIFIED VISUALLY (`screenshots/full/`)
-`full_coverage.sh` (with a Philadelphia mock fix for dense search/routing) + the whole-Settings D-pad
+`full_coverage.sh` (with a mock GPS fix for dense search/routing) + the whole-Settings D-pad
 walk captured a labeled screenshot of EVERY surface at 240x320; each FITS (no clipping) and is
 D-pad-navigable:
 
