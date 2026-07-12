@@ -395,6 +395,7 @@
     <string name="mapvm_search_needs_recalibration">検索の再調整が必要です：%1$s</string> <!-- format -->
     <string name="mapvm_offline_no_data">オフラインです。設定 ▸ オフライン マップ でエリアをダウンロードすると、接続なしで検索できます。</string>
     <string name="mapvm_offline_no_match">保存したエリアに「%1$s」のオフライン検索結果はありません。オフライン検索の対象は、ダウンロードした OpenStreetMap の場所です。</string>
+    <string name="mapvm_no_results">「%1$s」の結果はありません。</string> <!-- format -->
     <string name="mapvm_offline_results">オフラインの検索結果（未接続）</string>
     <string name="mapvm_search_failed_reason">検索に失敗しました：%1$s</string> <!-- format -->
     <string name="mapvm_none_found_along_route">ルート沿いに「%1$s」は見つかりませんでした</string> <!-- format -->
