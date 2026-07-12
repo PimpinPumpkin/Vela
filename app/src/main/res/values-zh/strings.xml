@@ -458,4 +458,19 @@
     <string name="settings_voice_search_engine_default">Android 默认</string>
     <string name="map_asr_offer_title">语音搜索</string>
     <string name="map_asr_offer_body">下载 Vela 语音即可用语音进行搜索。它完全在您的手机上运行，不会上传任何内容。</string>
+    <string name="map_parking_saved">已保存停车位置</string>
+    <string name="map_parking_no_fix">正在等待定位</string>
+    <string name="map_parking_cleared">已清除停车位置</string>
+    <string name="map_parking_save">保存停车位置</string>
+    <string name="map_parking_find">寻找我的车</string>
+    <string name="map_parking_move_here">将停车点移到这里</string>
+    <string name="map_parking_earlier">较早的停车点</string>
+    <string name="map_parking_clear">清除停车点</string>
+    <string name="map_parking_moved">停车点已移到这里</string>
+    <string name="map_parked_car">停车位置</string>
+    <string name="place_clear_parking">清除停车位置</string>
+    <string name="parking_history_title">停车记录</string>
+    <string name="parking_history_clear_all">全部清除</string>
+    <string name="parking_history_current">当前</string>
+    <string name="parking_history_delete">删除</string>
 </resources>

@@ -452,4 +452,19 @@
     <string name="settings_voice_search_engine_default">Типова в Android</string>
     <string name="map_asr_offer_title">Голосовий пошук</string>
     <string name="map_asr_offer_body">Завантажте голос Vela, щоб диктувати запити. Він працює цілком на телефоні й нічого не надсилає.</string>
+    <string name="map_parking_saved">Місце паркування збережено</string>
+    <string name="map_parking_no_fix">Очікування місцезнаходження</string>
+    <string name="map_parking_cleared">Місце паркування видалено</string>
+    <string name="map_parking_save">Зберегти місце паркування</string>
+    <string name="map_parking_find">Знайти моє авто</string>
+    <string name="map_parking_move_here">Перемістити парковку сюди</string>
+    <string name="map_parking_earlier">Попередні місця</string>
+    <string name="map_parking_clear">Прибрати парковку</string>
+    <string name="map_parking_moved">Парковку переміщено сюди</string>
+    <string name="map_parked_car">Припаркована машина</string>
+    <string name="place_clear_parking">Видалити паркування</string>
+    <string name="parking_history_title">Історія паркування</string>
+    <string name="parking_history_clear_all">Очистити все</string>
+    <string name="parking_history_current">Поточне</string>
+    <string name="parking_history_delete">Видалити</string>
 </resources>

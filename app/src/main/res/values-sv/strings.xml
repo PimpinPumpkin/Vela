@@ -450,4 +450,19 @@
     <string name="settings_voice_search_engine_default">Androids standard</string>
     <string name="map_asr_offer_title">Röstsökning</string>
     <string name="map_asr_offer_body">Ladda ner Vela-rösten för att tala in dina sökningar. Den körs helt på telefonen och laddar inte upp något.</string>
+    <string name="map_parking_saved">Parkeringsplats sparad</string>
+    <string name="map_parking_no_fix">Väntar på position</string>
+    <string name="map_parking_cleared">Parkeringsplats rensad</string>
+    <string name="map_parking_save">Spara parkeringsplats</string>
+    <string name="map_parking_find">Hitta min bil</string>
+    <string name="map_parking_move_here">Flytta parkeringen hit</string>
+    <string name="map_parking_earlier">Tidigare parkeringar</string>
+    <string name="map_parking_clear">Rensa parkering</string>
+    <string name="map_parking_moved">Parkeringen flyttad hit</string>
+    <string name="map_parked_car">Parkerad bil</string>
+    <string name="place_clear_parking">Rensa parkering</string>
+    <string name="parking_history_title">Parkeringshistorik</string>
+    <string name="parking_history_clear_all">Rensa alla</string>
+    <string name="parking_history_current">Aktuell</string>
+    <string name="parking_history_delete">Ta bort</string>
 </resources>

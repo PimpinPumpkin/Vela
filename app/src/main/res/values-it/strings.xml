@@ -450,4 +450,19 @@
     <string name="settings_voice_search_engine_default">Predefinita di Android</string>
     <string name="map_asr_offer_title">Ricerca vocale</string>
     <string name="map_asr_offer_body">Scarica la voce Vela per dettare le ricerche. Gira interamente sul telefono e non carica nulla.</string>
+    <string name="map_parking_saved">Parcheggio salvato</string>
+    <string name="map_parking_no_fix">In attesa della posizione</string>
+    <string name="map_parking_cleared">Parcheggio rimosso</string>
+    <string name="map_parking_save">Salva parcheggio</string>
+    <string name="map_parking_find">Trova la mia auto</string>
+    <string name="map_parking_move_here">Sposta il parcheggio qui</string>
+    <string name="map_parking_earlier">Posti precedenti</string>
+    <string name="map_parking_clear">Rimuovi parcheggio</string>
+    <string name="map_parking_moved">Parcheggio spostato qui</string>
+    <string name="map_parked_car">Auto parcheggiata</string>
+    <string name="place_clear_parking">Rimuovi parcheggio</string>
+    <string name="parking_history_title">Cronologia parcheggi</string>
+    <string name="parking_history_clear_all">Cancella tutto</string>
+    <string name="parking_history_current">Attuale</string>
+    <string name="parking_history_delete">Elimina</string>
 </resources>

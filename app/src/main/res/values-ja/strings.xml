@@ -458,4 +458,19 @@
     <string name="settings_voice_search_engine_default">Android のデフォルト</string>
     <string name="map_asr_offer_title">音声検索</string>
     <string name="map_asr_offer_body">Vela 音声をダウンロードすると、話して検索できるようになります。完全に端末上で動作し、何もアップロードしません。</string>
+    <string name="map_parking_saved">駐車位置を保存しました</string>
+    <string name="map_parking_no_fix">位置情報の取得を待っています</string>
+    <string name="map_parking_cleared">駐車位置を消去しました</string>
+    <string name="map_parking_save">駐車位置を保存</string>
+    <string name="map_parking_find">車を探す</string>
+    <string name="map_parking_move_here">駐車位置をここに移動</string>
+    <string name="map_parking_earlier">以前の駐車位置</string>
+    <string name="map_parking_clear">駐車位置を消去</string>
+    <string name="map_parking_moved">駐車位置をここに移動しました</string>
+    <string name="map_parked_car">駐車位置</string>
+    <string name="place_clear_parking">駐車位置を消去</string>
+    <string name="parking_history_title">駐車履歴</string>
+    <string name="parking_history_clear_all">すべて消去</string>
+    <string name="parking_history_current">現在</string>
+    <string name="parking_history_delete">削除</string>
 </resources>

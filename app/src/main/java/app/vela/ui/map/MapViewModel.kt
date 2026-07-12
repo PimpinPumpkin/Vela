@@ -163,6 +163,9 @@ data class MapUiState(
     val asrDownloadPct: Float? = null,      // 0f..1f while the on-device voice-search model downloads; null = idle
     val asrInstalling: Boolean = false,     // ASR download done, unpacking
     val asrInstalled: Boolean = false,      // Whisper voice-search model present on disk (Settings shows Download vs Remove)
+    val parkingSpot: LatLng? = null, // one-tap "parked here" pin - survives restarts (prefs)
+    val parkedAtMillis: Long = 0L,   // when it was saved (for the sheet/history labels)
+    val parkingHistory: List<app.vela.core.model.ParkedSpot> = emptyList(), // recent saves, newest first - accidental-overwrite insurance
     val voiceSpeed: Float = 1.0f, // spoken-directions speed multiplier (1.0 = normal, >1 = faster)
     val showPsdsTip: Boolean = false,
     val showSearchThisArea: Boolean = false,
@@ -211,6 +214,7 @@ class MapViewModel @Inject constructor(
     private val voiceInstaller: VoiceInstaller,
     private val kokoroInstaller: KokoroInstaller,
     private val whisperRecognizer: app.vela.voice.WhisperRecognizer,
+    private val parkingStore: app.vela.core.data.ParkingStore,
     private val piperSynth: PiperSynth,
     private val navSession: NavSession,
     private val recentStore: RecentSearchStore,
@@ -328,6 +332,7 @@ class MapViewModel @Inject constructor(
         }
         neuralSynthFor(savedEngine)?.warmUp()
         refreshAsr() // reflect the on-device voice-search model + warm the recognizer if it's the mic path
+        restoreParkingSpot() // a saved "parked here" pin survives restarts
         val voicePrefs = appContext.getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
         val savedSpeed = voicePrefs.getFloat("voice_speed", calibration.current().defaultVoiceSpeed)
         voice.setRate(savedSpeed) // relay the saved rate to the AOSP TTS engine at startup
@@ -1633,11 +1638,13 @@ class MapViewModel @Inject constructor(
     }
 
     fun routeToSelected() {
-        if (_state.value.selected == null) return
+        val sel = _state.value.selected ?: return
         // Start each directions session clean - don't inherit a custom origin, stops, or
         // pick-mode left over from a previous place's directions.
         _state.update { it.copy(directionsOpen = true, directionsReversed = false, directionsOrigin = null, pickingOrigin = false, directionsWaypoints = emptyList(), pickingStop = false) }
-        route(_state.value.travelMode)
+        // Walking back to the car is the parking spot's whole point - default to WALK there.
+        val mode = if (sel.id.startsWith("parking:")) TravelMode.WALK else _state.value.travelMode
+        if (mode != _state.value.travelMode) setTravelMode(mode) else route(mode)
     }
 
     /** Swap origin and destination - route the other way (you ⇄ the place). The stop list is
@@ -3058,6 +3065,80 @@ class MapViewModel @Inject constructor(
             .callTimeout(java.time.Duration.ZERO)
             .readTimeout(java.time.Duration.ofSeconds(120))
             .build()
+    }
+
+    // ---- Parking spot ----------------------------------------------------------------
+    // The P button on the map: remember where the car is. Persisted so it survives app
+    // restarts; the map shows a parked-car pin while one is set.
+
+    /** Saves the current fix as the parking spot. False when there's no location yet.
+     *  Every save also lands in the HISTORY (newest first, capped), so an accidental
+     *  overwrite is recoverable from the P button's menu. */
+    fun saveParkingSpot(): Boolean {
+        val here = _state.value.myLocation ?: return false
+        val now = System.currentTimeMillis()
+        val history = parkingStore.save(app.vela.core.model.ParkedSpot(here.lat, here.lng, now))
+        _state.update { it.copy(parkingSpot = here, parkedAtMillis = now, parkingHistory = history) }
+        return true
+    }
+
+    fun clearParkingSpot() {
+        // Only the CURRENT spot clears - history stays (it's the safety net).
+        parkingStore.clearCurrent()
+        _state.update { it.copy(parkingSpot = null, parkedAtMillis = 0L) }
+    }
+
+    /** Makes a history entry the current spot again (accidental-overwrite recovery). */
+    fun restoreParkingFromHistory(entry: app.vela.core.model.ParkedSpot) {
+        parkingStore.restore(entry)
+        _state.update { it.copy(parkingSpot = entry.location, parkedAtMillis = entry.savedAtMillis) }
+    }
+
+    fun deleteParkingHistoryEntry(entry: app.vela.core.model.ParkedSpot) {
+        val history = parkingStore.deleteFromHistory(entry)
+        _state.update { it.copy(parkingHistory = history) }
+    }
+
+    fun clearParkingHistory() {
+        parkingStore.clearHistory()
+        _state.update { it.copy(parkingHistory = emptyList()) }
+    }
+
+    /** Opens the parked car as a place sheet (tap the map pin, or the P button while a
+     *  spot is set). Sets `selected` directly - a synthetic place must not trigger the
+     *  Google detail fetches [selectPlace] runs. [label] is the localized "Parked car". */
+    fun showParkedCar(label: String) {
+        val spot = _state.value.parkingSpot ?: return
+        val p = Place(id = "parking:${spot.lat},${spot.lng}", name = label, location = spot)
+        // A parked car never fetches reviews/photos/details - but the PREVIOUS place's in-flight
+        // scrape (and its reviews/shimmer flags) would otherwise bleed onto the parking sheet
+        // ("loading reviews on the parked car" bug). Cancel + clear them, like the pin/POI paths.
+        reviewsJob?.cancel()
+        routeJob?.cancel()
+        // Frame the spot too - opened from the P button while browsing another city, the
+        // sheet alone doesn't tell you WHERE the car is.
+        _state.update {
+            it.copy(
+                selected = p, results = emptyList(), query = "", directionsOpen = false,
+                placesHere = emptyList(), reviews = emptyList(), reviewsLoading = false,
+                reviewsFound = 0, photosLoading = false, loadingDetails = false,
+                routes = emptyList(), activeRoute = null, showSteps = false, previewStepIndex = null,
+                transit = emptyList(), transitLoading = false,
+                center = spot, recenterTick = it.recenterTick + 1,
+            )
+        }
+    }
+
+    private fun restoreParkingSpot() {
+        val history = parkingStore.history()
+        val current = parkingStore.current()
+        _state.update {
+            it.copy(
+                parkingHistory = history,
+                parkingSpot = current?.let { c -> LatLng(c.lat, c.lng) },
+                parkedAtMillis = current?.savedAtMillis ?: 0L,
+            )
+        }
     }
 
     // ---- On-device voice search (tier-1 Whisper ASR) ----

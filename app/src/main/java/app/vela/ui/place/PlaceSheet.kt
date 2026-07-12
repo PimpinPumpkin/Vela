@@ -71,6 +71,7 @@ import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.automirrored.filled.DirectionsBike
 import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.DirectionsSubway
 import androidx.compose.material.icons.filled.Edit
@@ -219,9 +220,12 @@ fun PlaceSheet(
     onOpenSimilar: (app.vela.core.model.SimilarPlace) -> Unit = {},
     onSetShortcut: (ShortcutKind) -> Unit = {},
     onRetryReviews: () -> Unit = {},
+    onClearParking: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    // The saved parking spot's own sheet: car glyph beside the name, a Clear action pill.
+    val isParking = place.id.startsWith("parking:")
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
@@ -513,6 +517,15 @@ fun PlaceSheet(
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (isParking) {
+                    Icon(
+                        Icons.Default.DirectionsCar,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(26.dp).padding(end = 2.dp),
+                    )
+                    Spacer(Modifier.width(6.dp))
+                }
                 Text(
                     place.name,
                     // titleLarge (22sp) not headlineSmall (24sp) so a longer name ("Starbucks Coffee
@@ -699,6 +712,9 @@ fun PlaceSheet(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 ActionPill(Icons.Default.Directions, stringResource(R.string.place_directions), emphasized = true, onClick = onDirections)
+                if (isParking) {
+                    ActionPill(Icons.Default.Delete, stringResource(R.string.place_clear_parking), onClick = onClearParking)
+                }
                 place.phone?.let { ph ->
                     ActionPill(Icons.Default.Call, stringResource(R.string.place_call)) {
                         val dialable = "tel:" + ph.filter { it.isDigit() || it == '+' }
