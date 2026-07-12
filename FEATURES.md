@@ -30,9 +30,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   archived earlier look: white roads, yellow motorways, true greens). The fleet default rides
   the signed calibration channel (`defaultMapPalette`), so it can change without an app
   release; an explicit pick always wins.
-- ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is now a white chevron inside
-  a filled blue circle with a white ring and a soft shadow, matching Google's current puck; it
-  rotates about the exact GPS point. Replaces the bare blue chevron.
+- ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
+  filled bright-navy circle with a soft drop shadow (sized up, no white ring, per user feedback);
+  it rotates about the exact GPS point. Replaces the bare blue chevron.
 - ✅ **Bold street names (2026-07-11).** Road-name labels render in the Bold font stack in both
   themes, like Google; other labels keep regular weight.
 - ✅ **Bike paths in Google's teal (2026-07-11).** Dedicated cycleways (OSM highway=cycleway)
