@@ -1337,7 +1337,13 @@ class MapViewModel @Inject constructor(
         }
     }
 
-    fun closeRouteDetail() = _state.update { it.copy(routeDetail = null, routeDetailLoading = false, routeDetailTitle = null) }
+    fun closeRouteDetail() {
+        // Cancel the in-flight lookup too: without this, dismissing the sheet (Back) mid-load lets the
+        // fetch complete and set routeDetail = step, springing the full-screen sheet back open over
+        // whatever the user moved on to (or flashing "unavailable" after they already left).
+        routeDetailJob?.cancel()
+        _state.update { it.copy(routeDetail = null, routeDetailLoading = false, routeDetailTitle = null) }
+    }
 
     /** Tap a stop in the route timeline -> open THAT stop (its own departure board), so you can keep
      *  tapping through the network. Closes the route detail and selects the stop as a place. */
