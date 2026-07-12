@@ -17,6 +17,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 > | [Resilience](#resilience--maintainability) | Signed remote calibration (pb/paths/JS) + notices - hot-fix drift without an app update |
 
 ## Map & rendering
+- ✅ **Chinese, Chinese (Taiwan) and Japanese (2026-07-11, issue #55).** Vela speaks 14
+  languages now. All three layers: UI chrome (values-zh Simplified, values-zh-rTW Traditional
+  with Taiwan wording, values-ja), generated turn-by-turn text (three new NavStrings tables;
+  Chinese splits by script so Taiwan gets 迴轉/公尺/圓環), localized place content (hl=zh-CN /
+  zh-TW / ja with open/closed keyword tables for both scripts), Whisper dictation (multilingual
+  model, pinned per language), and a Mandarin neural voice (Huayan) in the voice library that
+  pairs with both Chinese scripts. Japanese has no Piper voice yet, so ja guidance speaks
+  through any installed system Japanese TTS (the standard fallback); see ROADMAP.
 - ✅ **Two map colour sets, remote-defaultable (2026-07-11).** Settings → Appearance → Map
   colors: Modern (the Google-app pixel-sampled palette, the default) or Classic (Vela's
   archived earlier look: white roads, yellow motorways, true greens). The fleet default rides

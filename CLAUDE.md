@@ -891,7 +891,27 @@ Defaults that make the safe path the easy one:
   hint) rather than reading, e.g., Russian nav text through the English Piper model (see the voice bullet under
   Degoogled constraints). (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
-  the 10 translated languages (fr de es it pt nl ru pl sv uk), referenced via `stringResource`/`getString`.
+  the 13 translated languages (fr de es it pt nl ru pl sv uk + zh zh-rTW ja, CJK added 2026-07-11),
+  referenced via `stringResource`/`getString`. **CJK notes (2026-07-11):** Chinese ships as
+  `values-zh` (Simplified, also the fallback for any zh region without its own folder) +
+  `values-zh-rTW` (Traditional, Taiwan wording - issue #55); the in-app picker codes are "zh",
+  "zh-TW" and "ja" and hyphenated codes MUST resolve via `Locale.forLanguageTag` (a `Locale("zh-TW")`
+  constructor makes a bogus lowercase LANGUAGE and matches nothing - AppLocale.effective/wrap do this).
+  `NavStringsRegistry.tagOf(locale)` splits Chinese by SCRIPT (Hant script or TW/HK/MO country ->
+  the zh-tw table, else zh); `localized()` mirrors it for the scrape (`hl=zh-TW` vs `hl=zh-CN` -
+  bare hl=zh is Simplified). `parseOpenNow` keys stay the bare "zh" with BOTH scripts' keywords in
+  one table. TTS: ONE Mandarin Piper voice (`zh_CN-huayan-medium`, langCode "zh") pairs with both
+  Chinese tables; **Japanese has NO Piper voice** - ja spoken guidance rides VoiceGuide's
+  system-TTS-in-target-language fallback (silent + hint when none installed); a non-Piper sherpa
+  ja model is the follow-up (needs PiperSynth config work, see ROADMAP). Whisper dictation pins
+  zh/ja automatically (multilingual tiny; whisperLang reads `.language`, so zh-TW dictates as zh).
+  **TWO CJK build traps that a warm Gradle daemon HIDES locally but CI catches (2026-07-11):**
+  (1) in a Kotlin string template, `"$road出发"` parses `road出发` as ONE identifier (CJK chars
+  are valid in Kotlin identifiers) -> "unresolved reference"; ALWAYS brace a `$var` that touches a
+  CJK char: `"${road}出发"`. (2) in strings.xml a raw apostrophe (`app's`, `l'ancien`) is an AAPT
+  error the RELEASE resource merge rejects even though a cached debug build passed; escape as `\'`
+  (the whole file already does). Both slipped a local `:core:test`/`assembleDebug` because the
+  daemon reused stale outputs - trust CI, or `--rerun-tasks` when touching these.
   The runtime switch is `AppLocale.wrap(context)` (overrides the Configuration locale; when FOLLOWING
   the system it also RESTORES `Locale.setDefault` to the captured device locale - the override is
   process-global and survived the recreate, so switching Russian back to English left
