@@ -33,6 +33,7 @@ class VelaApp : Application() {
         AppLocale.init(this) // resolve the app language (system default) → drives the nav-text locale
         Traffic.init(this)
         TransitLayer.init(this)
+        app.vela.ui.Topography.init(this)
         app.vela.ui.SimLocation.init(this)
         app.vela.ui.UiScale.init(this)
         app.vela.ui.MapColors.init(this)
