@@ -111,7 +111,7 @@ Status legend: [x] done · [~] partial / in progress · [ ] planned
   - **In-app language picker** - Settings → Language overrides the app language ("Follow system" or any of 11).
   - **UI chrome speaks 10 languages** - all ~330 strings translated, switched at runtime; format placeholders validated against English; dual-purpose logic-key literals stay inline.
   - **Google POI content comes back localized** - the language is rewritten at request time, with open/closed parsed from the localized status text against a per-language keyword table.
-  - **Voice-language mismatch handled** - a mismatched neural voice routes to Android TTS in the target language, or stays silent with a "get a voice" hint rather than mangling it.
+  - **Voice-language mismatch handled** - a mismatched neural voice routes to Android TTS in the target language, or stays silent with a nudge rather than mangling it. The nudge carries a one-tap fix: a language Vela can voice (fr/ru/zh/...) gets a "Get a voice" pill to the voice library; one it can't (Japanese/Hebrew - no Piper voice, spoken by system TTS) gets a "System voices" pill straight to the phone's text-to-speech settings.
 - [x] **POI hero photos - LRU cache** so re-tapping a place shows its gallery instantly.
 - [x] **Reviews pivot follow-ups** - native review search bolds matched terms, the full-screen panel renders on first paint with tappable photos, a bigger sheet handle, and reliable photo captions (fixed for Android 15/16).
 - [x] **Reviews = native inline list + full-screen "Read all" Google panel** - inline reviews are Vela's own native list; a "Read all reviews" button opens Google's live panel full-screen with its own infinite scroll, search, sort and photo/video viewers.

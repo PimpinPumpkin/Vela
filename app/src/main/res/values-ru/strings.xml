@@ -428,4 +428,7 @@
     </plurals>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="mapvm_voice_lang_system">Указания для языка %1$s используют голос телефона. Добавьте его в системных настройках голоса.</string>
+    <string name="mapscreen_get_voice">Добавить голос</string>
+    <string name="mapscreen_system_voices">Системные голоса</string>
 </resources>

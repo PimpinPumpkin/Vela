@@ -123,6 +123,12 @@ object PiperCatalog {
 
     fun byId(id: String): PiperVoice? = ALL.firstOrNull { it.id == id }
 
+    /** True when the catalog ships a downloadable voice for [langCode]. False for languages Piper
+     *  can't train (Japanese: espeak-ng has no Japanese phonemizer; Hebrew), where spoken guidance
+     *  falls to the phone's own system TTS instead of a Vela voice. Drives the "get a Vela voice" vs
+     *  "add a system voice" fork in the no-voice nudge. */
+    fun hasVoiceFor(langCode: String): Boolean = ALL.any { it.langCode == langCode }
+
     /** All language codes present, English first then by endonym, for grouping the browser. */
     fun languageCodes(): List<String> =
         ALL.map { it.langCode }.distinct().sortedWith(compareByDescending<String> { it == "en" }.thenBy { languageLabel(it) })

@@ -434,4 +434,7 @@
     <!-- Android Auto -->
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="mapvm_voice_lang_system">%1$s 导航使用手机的语音。可在系统语音设置中添加。</string>
+    <string name="mapscreen_get_voice">获取语音</string>
+    <string name="mapscreen_system_voices">系统语音</string>
 </resources>

@@ -410,4 +410,7 @@
     <string name="place_last_available">אחרון זמין</string>
     <string name="shortcut_home">בית</string>
     <string name="shortcut_work">עבודה</string>
+    <string name="mapvm_voice_lang_system">הוראות ב%1$s משתמשות בקול של הטלפון שלך. הוסף אחד בהגדרות הקול של המערכת.</string>
+    <string name="mapscreen_get_voice">השג קול</string>
+    <string name="mapscreen_system_voices">קולות מערכת</string>
 </resources>

@@ -151,6 +151,8 @@ data class MapUiState(
     val arrivedDistanceMeters: Double = 0.0,
     val arrivedSeconds: Double = 0.0,
     val status: String? = null,
+    val statusVoiceAction: Boolean = false, // status is a voice problem -> show the fix pill
+    val statusOpensTtsSettings: Boolean = false, // the pill opens the SYSTEM voice settings, not Vela's library
     val installingEngine: String? = null, // pkg of the voice engine currently downloading
     val kokoroDownloadPct: Float? = null, // 0f..1f while the neural-voice model downloads; null = idle
     val installedVoiceIds: Set<String> = emptySet(), // Piper voices present on disk (the voice browser)
@@ -300,8 +302,17 @@ class MapViewModel @Inject constructor(
             if (lang != lastVoiceLangHinted) {
                 lastVoiceLangHinted = lang
                 val endonym = app.vela.ui.AppLocale.endonym(lang)
+                // Two fixes for two causes. A language Vela CAN train a voice for (fr, ru, zh, …) ->
+                // nudge to the voice library. One it CAN'T (Japanese, Hebrew: no Piper voice) -> the
+                // library is a dead end, so point at the phone's own voice settings to add a system
+                // voice, which is where that guidance is spoken from.
+                val hasVela = app.vela.core.voice.PiperCatalog.hasVoiceFor(lang)
+                val msg = appContext.getString(
+                    if (hasVela) R.string.mapvm_voice_lang_missing else R.string.mapvm_voice_lang_system,
+                    endonym,
+                )
                 viewModelScope.launch(Dispatchers.Main) {
-                    flashStatus(appContext.getString(R.string.mapvm_voice_lang_missing, endonym), 6000L)
+                    flashStatus(msg, 6000L, voiceAction = true, ttsSettings = !hasVela)
                 }
             }
         }
@@ -2558,12 +2569,12 @@ class MapViewModel @Inject constructor(
 
     /** A status banner that **auto-clears** after a few seconds (unlike [showStatus],
      * which stays until dismissed) - for transient feedback like a finished download. */
-    fun flashStatus(msg: String, millis: Long = 4500L) {
+    fun flashStatus(msg: String, millis: Long = 4500L, voiceAction: Boolean = false, ttsSettings: Boolean = false) {
         statusJob?.cancel()
-        _state.update { it.copy(status = msg) }
+        _state.update { it.copy(status = msg, statusVoiceAction = voiceAction, statusOpensTtsSettings = ttsSettings) }
         statusJob = viewModelScope.launch {
             delay(millis)
-            _state.update { if (it.status == msg) it.copy(status = null) else it }
+            _state.update { if (it.status == msg) it.copy(status = null, statusVoiceAction = false, statusOpensTtsSettings = false) else it }
         }
     }
 
@@ -2593,9 +2604,9 @@ class MapViewModel @Inject constructor(
         startLocation() // resume the live collector (no-ops if already running)
     }
 
-    fun clearStatus() = _state.update { it.copy(status = null) }
+    fun clearStatus() = _state.update { it.copy(status = null, statusVoiceAction = false, statusOpensTtsSettings = false) }
 
-    fun showStatus(msg: String) = _state.update { it.copy(status = msg) }
+    fun showStatus(msg: String) = _state.update { it.copy(status = msg, statusVoiceAction = false, statusOpensTtsSettings = false) }
 
     // --- offline download (triggered from Settings, not a map FAB) -------------
 

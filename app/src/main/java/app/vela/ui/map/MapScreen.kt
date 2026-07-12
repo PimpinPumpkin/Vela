@@ -1155,6 +1155,34 @@ fun MapScreen(
                     .align(Alignment.TopCenter)
                     .statusBarsPadding()
                     .padding(top = 96.dp, start = 12.dp, end = 12.dp),
+                // A voice problem carries its fix. Normally a pill straight to Vela's voice library;
+                // for a language with no Vela voice (Japanese, Hebrew) it opens the phone's own voice
+                // settings instead, where the user can add a system voice.
+                pillLabel = when {
+                    state.statusOpensTtsSettings -> stringResource(R.string.mapscreen_system_voices)
+                    state.statusVoiceAction -> stringResource(R.string.mapscreen_get_voice)
+                    else -> null
+                },
+                onPill = when {
+                    state.statusOpensTtsSettings -> {
+                        {
+                            vm.clearStatus()
+                            runCatching {
+                                context.startActivity(
+                                    Intent("com.android.settings.TTS_SETTINGS").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                )
+                            }.onFailure {
+                                runCatching {
+                                    context.startActivity(
+                                        Intent(android.provider.Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    state.statusVoiceAction -> { { vm.clearStatus(); onOpenSettings() } }
+                    else -> null
+                },
             )
         }
         // Pushed notices (signed calibration channel) + the voice-download progress card - on the
@@ -2005,6 +2033,8 @@ private fun InfoCard(
     actionLabel: String,
     onAction: () -> Unit,
     modifier: Modifier = Modifier,
+    pillLabel: String? = null,   // optional PRIMARY action (e.g. "Get a voice" / "System voices")
+    onPill: (() -> Unit)? = null,
 ) {
     // Fixed sheet palette so this banner reads as the same grey as the place sheet
     // and results list, not a wallpaper-tinted Material card.
@@ -2022,7 +2052,12 @@ private fun InfoCard(
                 Text(title, fontWeight = FontWeight.SemiBold, color = SheetPalette.ink(dark))
                 Text(body, style = MaterialTheme.typography.bodySmall, color = SheetPalette.dim(dark))
             }
-            TextButton(onClick = onAction) { Text(actionLabel) }
+            if (pillLabel != null && onPill != null) {
+                TextButton(onClick = onPill, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) {
+                    Text(pillLabel, color = MaterialTheme.colorScheme.primary)
+                }
+            }
+            TextButton(onClick = onAction, modifier = Modifier.dpadHighlight(RoundedCornerShape(20.dp))) { Text(actionLabel) }
         }
     }
 }

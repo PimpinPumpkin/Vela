@@ -426,4 +426,7 @@
     </plurals>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="mapvm_voice_lang_system">Vägbeskrivningar på %1$s använder telefonens röst. Lägg till en i systemets röstinställningar.</string>
+    <string name="mapscreen_get_voice">Hämta en röst</string>
+    <string name="mapscreen_system_voices">Systemröster</string>
 </resources>

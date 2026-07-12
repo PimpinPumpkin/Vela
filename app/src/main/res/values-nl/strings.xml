@@ -426,4 +426,7 @@
     </plurals>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="mapvm_voice_lang_system">Aanwijzingen in het %1$s gebruiken de stem van je telefoon. Voeg er een toe in je systeemstem-instellingen.</string>
+    <string name="mapscreen_get_voice">Stem toevoegen</string>
+    <string name="mapscreen_system_voices">Systeemstemmen</string>
 </resources>
