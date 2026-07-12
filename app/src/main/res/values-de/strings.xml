@@ -558,4 +558,6 @@
     <string name="map_parking_moved">Parkplatz hierher verschoben</string>
     <string name="mapscreen_system_voices">Systemstimmen</string>
     <string name="mapvm_voice_lang_system">Ansagen auf %1$s nutzen die Stimme Ihres Telefons. Fügen Sie eine in den System-Sprachausgabe-Einstellungen hinzu.</string>
+    <string name="settings_topography">Geländeschattierung</string>
+    <string name="settings_topography_hint">Schattiert Hügel und Berge auf der Karte. Standardmäßig aus.</string>
 </resources>
