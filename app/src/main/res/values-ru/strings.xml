@@ -438,6 +438,7 @@
     <string name="place_transit_stops">%1$d остановок</string> <!-- format -->
     <string name="place_transit_stop_id">Остановка %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Билеты и информация</string>
+    <string name="route_detail_unavailable">Сведения о маршруте недоступны</string>
     <string name="place_transit_now">Отправляется</string>
     <string name="place_transit_in_min">через %1$d мин</string> <!-- format -->
     <string name="place_transit_live">Онлайн</string>

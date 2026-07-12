@@ -72,7 +72,8 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
   with your wallpaper colors (Android 12+); off by default, and the map itself
   stays clean either way.
 - **Public transit.** Itineraries with line pills, station-by-station stops, and
-  step-by-step guidance to the platform.
+  step-by-step guidance to the platform. A tapped station shows a live departure
+  board, and tapping a route opens its stop timeline you can keep tapping through.
 - **No account, no tracking.** No Google account, no GMS, no telemetry. What
   Google's servers can and cannot see is documented plainly in [PRIVACY.md](PRIVACY.md).
 - **The rest.** Android Auto, 15 languages (incl. Hebrew, the first RTL locale), in-app light/dark, full D-pad operation
