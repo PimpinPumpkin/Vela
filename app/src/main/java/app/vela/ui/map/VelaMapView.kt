@@ -2271,36 +2271,43 @@ internal fun applyClassicLight(style: Style) {
 
 /** CLASSIC dark: the archived pre-pixel-sample night palette (see applyClassicLight). */
 internal fun applyClassicDark(style: Style) {
-    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
-    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
-    style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
+    // Classic dark = a NEUTRAL charcoal-slate identity, deliberately UNLIKE Modern's Google-navy
+    // dark (Modern pixel-samples #162640 land / #1c3b69 buildings / blue roads). The two used to
+    // differ, but once Modern was re-sampled to Google's blue, classic's old #242f3e blue-grey read
+    // the same (user 2026-07-12: "classic looks bluish like modern, houses too"). So classic goes
+    // warm-neutral: slate land, GREY buildings (no blue houses), muted-amber motorways echoing the
+    // classic-light yellow, its true greens kept - a clearly separate look from Google's night navy.
+    val land = "#2b2f36"     // neutral dark slate, not navy
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#2f4a63"))       // steel blue, still reads as water
+    style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#2f4a63"))
     style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f))
     style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(0.9f))
     style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#274330"), PropertyFactory.fillOpacity(0.95f))
     listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
         "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#49536a"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#565b64"))          // neutral grey, not blue-grey
     }
     listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#5e6a85"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6a707b"))
     }
     listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6f7a96"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#9c7f4f"))          // muted amber = classic yellow, dark-adjusted
     }
     listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
         "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
         "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
         "bridge_street_casing", "bridge_link_casing").forEach {
-        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#242f3e"))
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(land))
     }
     style.getLayer("building")?.setProperties(
-        PropertyFactory.fillColor("#323f54"),
-        PropertyFactory.fillOutlineColor("#3f4e66"),
+        PropertyFactory.fillColor("#383d45"),          // warm neutral grey - kills the "blue houses"
+        PropertyFactory.fillOutlineColor("#464c56"),
     )
     style.getLayer("building")?.setMinZoom(14f)
     style.getLayer("building")?.setMaxZoom(24f)
     style.getLayer("building-3d")?.setProperties(
-        PropertyFactory.fillExtrusionColor("#323f54"),
+        PropertyFactory.fillExtrusionColor("#383d45"),
         PropertyFactory.fillExtrusionOpacity(0.9f),
     )
     style.getLayer("building-3d")?.setMinZoom(16f)
@@ -2308,13 +2315,13 @@ internal fun applyClassicDark(style: Style) {
     style.layers.forEach { layer ->
         when {
             layer is SymbolLayer -> layer.setProperties(
-                PropertyFactory.textColor("#c3cad6"),
-                PropertyFactory.textHaloColor("#1a2230"),
+                PropertyFactory.textColor("#cdd0d6"),
+                PropertyFactory.textHaloColor("#1e2228"),
                 PropertyFactory.textHaloWidth(if (layer.id.startsWith("highway-name")) 1.9f else 1.1f),
             )
             layer is FillLayer && layer.id !in greens &&
                 (layer.id.startsWith("landuse") || layer.id.startsWith("landcover")) ->
-                layer.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
+                layer.setProperties(PropertyFactory.fillColor("#31363f"), PropertyFactory.fillOpacity(0.5f))
         }
     }
     // Street names bold, same rule as every other palette pass.
@@ -2322,9 +2329,9 @@ internal fun applyClassicDark(style: Style) {
         style.getLayer(it)?.setProperties(PropertyFactory.textFont(arrayOf("Noto Sans Bold")))
     }
     style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#26403c"), PropertyFactory.fillOpacity(0.9f))
-    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
+    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#31363f"))
     // Post-archive twins (see applyClassicLight): blend or keep their semantic colour.
-    style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
+    style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#31363f"), PropertyFactory.fillOpacity(0.5f))
     style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f))
     listOf("landuse_pitch", "landuse_track").forEach {
         style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f))
@@ -2332,10 +2339,10 @@ internal fun applyClassicDark(style: Style) {
     style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055"))
     style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#1f8f9c"))
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
-        PropertyFactory.hillshadeExaggeration(0.45f),
-        PropertyFactory.hillshadeShadowColor("#0a1018"),
-        PropertyFactory.hillshadeHighlightColor("#3a4a68"),
-        PropertyFactory.hillshadeAccentColor("#0a1018"),
+        PropertyFactory.hillshadeExaggeration(0.4f),
+        PropertyFactory.hillshadeShadowColor("#0b0d10"),
+        PropertyFactory.hillshadeHighlightColor("#4a4d55"),
+        PropertyFactory.hillshadeAccentColor("#0b0d10"),
     )
 }
 
@@ -2933,18 +2940,18 @@ private fun arrowBitmap(): Bitmap {
  *  and NO white ring (user 2026-07-11: bigger, drop the ring, brighter navy blue). Points up
  *  (north) so `iconRotate(bearing)` aims it down the heading. */
 private fun navPuckBitmap(): Bitmap {
-    val size = 112 // bigger than the 96 first cut
+    val size = 136 // bumped again per user (was 112, was 96)
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     val cx = size / 2f
     val cy = size / 2f
-    val r = 40f
+    val r = 50f
     // Soft drop shadow, offset slightly down (blur needs a software canvas - this is one).
     canvas.drawCircle(
-        cx, cy + 3f, r,
+        cx, cy + 4f, r,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.argb(70, 0, 0, 0)
-            maskFilter = android.graphics.BlurMaskFilter(7f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+            maskFilter = android.graphics.BlurMaskFilter(8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
         },
     )
     // The bright-navy disc - no white ring this time (user call). #1a46e5 = a vivid, deep blue.
@@ -2954,10 +2961,10 @@ private fun navPuckBitmap(): Bitmap {
     )
     // White chevron/arrow, centred, pointing up - scaled up with the bigger disc.
     val arrow = Path().apply {
-        moveTo(cx, cy - 20f)          // tip
-        lineTo(cx + 17f, cy + 16f)    // bottom-right
-        lineTo(cx, cy + 7f)           // notch
-        lineTo(cx - 17f, cy + 16f)    // bottom-left
+        moveTo(cx, cy - 25f)          // tip
+        lineTo(cx + 21f, cy + 20f)    // bottom-right
+        lineTo(cx, cy + 9f)           // notch
+        lineTo(cx - 21f, cy + 20f)    // bottom-left
         close()
     }
     canvas.drawPath(
