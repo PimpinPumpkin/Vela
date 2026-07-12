@@ -1774,6 +1774,21 @@ architecture note.
   so a nav speedo tick doesn't re-tessellate them. No app setting (zoom-gated); no PMTiles/CI (live Overpass, unlike
   the building/address overlays). NB the `TRAFFIC_*` constants in `VelaMapView` are a DIFFERENT thing - Google's
   live-traffic raster overlay; the controls use `CONTROLS_*`. Needs a real-drive glance to confirm density/size feel.
+- **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
+  2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, OFF by default) draws the
+  community DeFlock project's `node["surveillance:type"="ALPR"]` OSM nodes as a purple camera badge, keyless via
+  Overpass, sibling of the traffic-controls layer (per-viewport, area-cached `flockBox`, 350 ms settle, `FLOCK_MIN_ZOOM`
+  13 fetch / layer minZoom 13.5). **TWO bugs found in device verification (both fixed):** (1) the Overpass `out`
+  statement was `out tags`, which for a NODE returns id + tags but **omits lat/lon** - so `OverpassAlprCameras` parsed
+  every element to null (no coords) and the layer was ALWAYS empty (this is why it "never drew"); fixed to `out body`
+  (verified: Atlanta Ponce City Market went 0 -> 5 cameras, purple badges visible). (2) `Flock.init` was NOT called in
+  `VelaApp.onCreate` (unlike `Traffic`/`TransitLayer`), so the persisted toggle read `false` on EVERY launch - the
+  layer silently turned itself off after a restart; fixed by initialising it there. Real DeFlock nodes tag the vendor
+  as `manufacturer` ("Flock Safety"), not `operator`, so the parser falls back to it. Coverage is OSM's - dense in US
+  metros (Atlanta metro ~1571 nodes, greater Everett WA ~211), sparse in a given ~1 km high-zoom box, so cameras show
+  best around arterials at a neighbourhood zoom, not a quiet residential block. NB you can't browse to a far city and
+  see them if free-drive-follow keeps recentering on your GPS - it fetches YOUR viewport (fine for the real use case:
+  you driving through a covered area).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
