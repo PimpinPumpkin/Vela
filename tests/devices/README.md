@@ -57,6 +57,12 @@ physical size but all round to ~160. More models will be added as they are named
   have looked at the frames** (AGENTS.md hard rule). Content surfaces need live search+routing - run
   with the network up and a mock GPS fix over any city that has data (`VELA_LAT=<lat> VELA_LNG=<lng>`,
   defaults to a built-in one).
+  - **Per-feature phases - never run FULL just to test one feature.** The gate is phased:
+    `PHASES="<names>" bash tests/devices/full_coverage.sh <id>` re-captures only those surface
+    groups, writing the same numbered frames and leaving the rest in place. Current phases:
+    `firstrun map search place directions settings voice parking`. **Rule: every new feature adds
+    its surfaces as its OWN phase in the same PR**, so verifying it on any device is one short
+    reproducible run - the FULL tour stays reserved for the fully-supported verdict.
 - **`bash tests/devices/capture.sh <id>`** - lighter AUTO-capture of the first-run flow + core surfaces
   into `<id>/screenshots/auto/` (`--warm` skips the fresh `pm clear`; `capture.sh all` does every
   device). Use `full_coverage.sh` for the support gate; `capture.sh` for a quick visual refresh.

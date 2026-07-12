@@ -215,6 +215,26 @@ nudge_up() {
   $ADB shell input swipe $((w/2)) $((h*62/100)) $((w/2)) $((h*34/100)) 200 >/dev/null 2>&1
   sleep 0.5
 }
+# tap_desc <exact>  - tap the centre of the node with that exact content-desc (one dump). For icon
+# buttons, which carry a contentDescription but no text (the mic, the P button). Returns non-zero
+# if absent.
+tap_desc() {
+  local b cx cy
+  ui_dump
+  b="$($ADB shell cat /sdcard/ui.xml 2>/dev/null | python3 -c '
+import sys, re
+d = sys.stdin.read(); want = sys.argv[1]
+for m in re.finditer(r"<node [^>]*>", d):
+    s = m.group(0); t = re.search(r"content-desc=\"([^\"]*)\"", s); bb = re.search(r"bounds=\"([^\"]*)\"", s)
+    if t and t.group(1) == want:
+        print(bb.group(1) if bb else ""); break
+' "$1")"
+  [ -z "$b" ] && return 1
+  cx="$(echo "$b" | sed -E 's/^\[([0-9]+),[0-9]+\]\[([0-9]+),[0-9]+\]$/\1 \2/' | awk '{print int(($1+$2)/2)}')"
+  cy="$(ycenter "$b")"
+  { [ -z "$cx" ] || [ -z "$cy" ]; } && return 1
+  $ADB shell input tap "$cx" "$cy" >/dev/null 2>&1; sleep 1; return 0
+}
 # tap_center <exact>  - tap the centre of the node with that exact text (one dump to locate it). For
 # expanding a collapsible header in a coverage capture. Returns non-zero if the text isn't on screen.
 tap_center() {
