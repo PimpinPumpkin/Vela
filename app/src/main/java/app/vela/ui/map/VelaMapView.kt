@@ -224,6 +224,9 @@ fun VelaMapView(
     onAmbientTap: (index: Int) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
+    maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
+    onRoadLimitKmh: (Double?) -> Unit = {}, // reports the maxspeed (km/h) read from the overlay under the puck, or null
+    speedOverlayOn: Boolean = false, // only query the overlay while it can matter (driving / navigating)
     trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     onCameraIdle: (center: LatLng) -> Unit,
@@ -414,6 +417,63 @@ fun VelaMapView(
                 }
                 if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
             }
+        }
+    }
+
+    // Posted-speed-limit overlay (OSM maxspeed PMTiles, streamed): an INVISIBLE-but-queryable line layer.
+    // We never draw it (transparent), but a wide-ish line means queryRenderedFeatures under the puck reliably
+    // hits the road segment, and reading its `maxspeed` tag gives the "Speed B" online limit without a
+    // downloaded routing graph. minZoom low so it's present at nav/free-drive zoom (z16 tiles overzoom).
+    LaunchedEffect(maxspeedOverlays, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { style.layers.filter { it.id.startsWith("vela-ms-") }.forEach { style.removeLayer(it) } }
+        runCatching { style.sources.filter { it.id.startsWith("vela-ms-src-") }.forEach { style.removeSource(it) } }
+        maxspeedOverlays.forEachIndexed { i, uri ->
+            runCatching {
+                val srcId = "vela-ms-src-$i"
+                style.addSource(VectorSource(srcId, uri))
+                val layer = LineLayer("vela-ms-$i", srcId).apply {
+                    setSourceLayer("maxspeed") // tippecanoe layer name (build-maxspeed-region.sh: -l maxspeed)
+                    setMinZoom(11f)
+                    setProperties(
+                        PropertyFactory.lineColor("#00000000"), // fully transparent - present for querying, never seen
+                        PropertyFactory.lineWidth(12f),          // wide hit target for the point query
+                    )
+                }
+                style.addLayer(layer)
+            }
+        }
+    }
+
+    // Poll the streamed maxspeed overlay under the puck (~2.5 s) while driving/navigating and report the
+    // posted limit up, so a sign shows online with no routing graph. Uses the RAW fix (maxspeed needs no
+    // sub-metre precision), projected to screen, queried off the invisible line layer. Main-thread (Compose)
+    // so queryRenderedFeatures is legal; runCatching guards a mid-teardown style.
+    val latestFix = rememberUpdatedState(myLocation)
+    val latestMs = rememberUpdatedState(maxspeedOverlays)
+    LaunchedEffect(speedOverlayOn) {
+        if (!speedOverlayOn) { onRoadLimitKmh(null); return@LaunchedEffect }
+        while (true) {
+            val m = mapRef
+            val fix = latestFix.value
+            if (m != null && fix != null && latestMs.value.isNotEmpty()) {
+                val kmh = runCatching {
+                    val p = m.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(fix.lat, fix.lng))
+                    val r = 14f
+                    val layers = latestMs.value.indices.map { "vela-ms-$it" }.toTypedArray()
+                    m.queryRenderedFeatures(android.graphics.RectF(p.x - r, p.y - r, p.x + r, p.y + r), *layers)
+                        .asSequence()
+                        .mapNotNull { f ->
+                            app.vela.core.data.OsmMaxspeed.fromTags(
+                                f.getStringProperty("maxspeed"),
+                                f.getStringProperty("maxspeed:forward"),
+                                f.getStringProperty("maxspeed:backward"),
+                            )
+                        }.firstOrNull()
+                }.getOrNull()
+                onRoadLimitKmh(kmh)
+            }
+            kotlinx.coroutines.delay(2500)
         }
     }
 
