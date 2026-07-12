@@ -268,6 +268,9 @@
     <string name="place_from_the_owner">From the owner</string>
     <string name="place_share_place">Share place</string>
     <string name="place_share">Share</string>
+    <string name="place_open_web">Open on the web</string>
+    <string name="place_copy_link">Copy link</string>
+    <string name="place_link_copied">Link copied</string>
     <string name="place_share_gmaps_link">Google Maps link</string>
     <string name="place_share_map_pin">Map pin (geo:)</string>
     <string name="place_share_coordinates">Coordinates</string>

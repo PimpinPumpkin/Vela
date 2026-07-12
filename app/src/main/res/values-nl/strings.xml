@@ -248,6 +248,9 @@
     <string name="place_from_the_owner">Van de eigenaar</string>
     <string name="place_share_place">Plaats delen</string>
     <string name="place_share">Delen</string>
+    <string name="place_open_web">Openen op internet</string>
+    <string name="place_copy_link">Link kopiëren</string>
+    <string name="place_link_copied">Link gekopieerd</string>
     <string name="place_share_gmaps_link">Google Maps-link</string>
     <string name="place_share_map_pin">Kaartspeld (geo:)</string>
     <string name="place_share_coordinates">Coördinaten</string>
