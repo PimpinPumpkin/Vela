@@ -174,6 +174,11 @@ fun VelaMapView(
     frameMarkers: Boolean,
     navMode: Boolean,
     navFollowing: Boolean = true,
+    // Free-drive follow (no route open): when true the camera tracks the live fix north-up and
+    // the heading beam is smoothed per frame, the way the puck is during nav. The caller drops it
+    // to false on a user pan (onUserPan) and raises it again on the locate tap.
+    driveFollowing: Boolean = false,
+    onUserPan: () -> Unit = {},
     onNavPanned: () -> Unit = {},
     onScaleChanged: (metersPerPixel: Double) -> Unit = {},
     darkTheme: Boolean,
@@ -227,6 +232,13 @@ fun VelaMapView(
     val navModeHolder = rememberUpdatedState(navMode)
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
+    val userPanned = rememberUpdatedState(onUserPan)
+    val myLocationHolder = rememberUpdatedState(myLocation)         // live fix, for the free-drive follow ticker
+    val compassHeadingHolder = rememberUpdatedState(compassHeading) // device facing, for the beam
+    val driveFollowingHolder = rememberUpdatedState(driveFollowing)
+    val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
+    val browseBeam = remember { floatArrayOf(Float.NaN) }              // smoothed browse heading (NaN = idle, use raw)
+    val lastBrowse = remember { doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) } // last applied [lat,lng,bearing] (skip no-op frames)
     val viewport = rememberUpdatedState(onViewport)
     val dpadHolder = rememberUpdatedState(dpadController)
     val gestureMove = remember { booleanArrayOf(false) }
@@ -405,6 +417,68 @@ fun VelaMapView(
             styleRef?.getLayer("building-3d")?.setProperties(
                 PropertyFactory.visibility(if (buildings3d) Property.VISIBLE else Property.NONE),
             )
+        }
+    }
+
+    // Free-drive follow (no route open, driveFollowing on): a per-frame ticker that does for
+    // browsing what the nav ticker below does for navigating - it OWNS the location source so the
+    // heading beam eases smoothly (killing the per-recomposition compass jitter) and glides the
+    // camera onto the live fix north-up (the user's own zoom, no tilt/rotation). Keyed on
+    // driveFollowing so it only spins while the user is actually being followed; a pan drops the
+    // flag and this relaunches into the reset branch, handing the source back to applyData.
+    LaunchedEffect(navMode, driveFollowing) {
+        if (navMode || !driveFollowing) {
+            browseBeam[0] = Float.NaN   // applyData paints the raw fix again once we're not following
+            browseCam[0] = Double.NaN
+            lastBrowse[0] = Double.NaN
+            return@LaunchedEffect
+        }
+        var lastNanos = 0L
+        while (true) {
+            val now = withFrameNanos { it }
+            val dt = (if (lastNanos == 0L) 0.0 else ((now - lastNanos) / 1e9)).toFloat().coerceIn(0f, 0.1f)
+            lastNanos = now
+            val style = styleRef ?: continue
+            val loc = myLocationHolder.value ?: continue
+            // Ease the beam toward the freshest heading (compass when stopped, GPS course when
+            // moving). Hold the last angle when neither is available so the cone doesn't snap to 0.
+            val tgt = compassHeadingHolder.value ?: myBearingHolder.value
+            if (tgt != null) browseBeam[0] = if (browseBeam[0].isNaN()) tgt else smoothBearing(browseBeam[0], tgt, dt, 0.15f)
+            val beam = if (browseBeam[0].isNaN()) 0f else browseBeam[0]
+            // Ease the camera toward the fix (skipped while pinching - the fingers win).
+            val cam = mapRef
+            var camLat = loc.lat
+            var camLng = loc.lng
+            if (cam != null && !scaling[0]) {
+                if (browseCam[0].isNaN()) {
+                    val cp = cam.cameraPosition
+                    browseCam[0] = cp.target?.latitude ?: loc.lat
+                    browseCam[1] = cp.target?.longitude ?: loc.lng
+                }
+                val k = (1f - kotlin.math.exp(-dt / 0.16f)).toDouble()
+                browseCam[0] += (loc.lat - browseCam[0]) * k
+                browseCam[1] += (loc.lng - browseCam[1]) * k
+                camLat = browseCam[0]
+                camLng = browseCam[1]
+            } else {
+                browseCam[0] = Double.NaN // released (pinch) → re-seed from the live camera on re-attach
+            }
+            // Skip the native calls when nothing moved enough to see (a settled follow at a red
+            // light shouldn't re-upload the point + re-drive the camera 60x/s). ~1e-6 deg is well
+            // under a pixel at street zoom; 0.4 deg of heading is invisible on the cone.
+            val moved = lastBrowse[0].isNaN() ||
+                kotlin.math.abs(camLat - lastBrowse[0]) > 1e-6 ||
+                kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
+                kotlin.math.abs(beam - lastBrowse[2]) > 0.4
+            if (moved) {
+                setMeSource(style, loc, beam)
+                if (cam != null && !scaling[0]) {
+                    cam.moveCamera(CameraUpdateFactory.newLatLng(MLLatLng(camLat, camLng)))
+                }
+                lastBrowse[0] = camLat
+                lastBrowse[1] = camLng
+                lastBrowse[2] = beam.toDouble()
+            }
         }
     }
 
@@ -734,6 +808,9 @@ fun VelaMapView(
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
                         }
+                        // Browse: a genuine pan (not a pinch) is "let me look around" - it drops
+                        // the free-drive follow until the locate tap re-arms it. Idempotent.
+                        if (!navModeHolder.value && !scaling[0]) userPanned.value()
                     }
                     override fun onMoveEnd(detector: MoveGestureDetector) {}
                 })
@@ -873,6 +950,9 @@ fun VelaMapView(
         // which hid the arrow and left only the dot. The puck always has a route bearing when engaged.
         val displayBearing = snap?.second ?: (if (!navMode) compassHeading else null) ?: myBearing
             ?: (if (navMode && navPuck.engaged) navPuck.displayBearing.takeIf { !it.isNaN() } else null)
+        // While the free-drive ticker owns the source, hand applyData the SMOOTHED beam so a
+        // compass-driven recomposition can't repaint the raw (jittery) angle between frames.
+        val meBearing = if (!navMode && driveFollowing && !browseBeam[0].isNaN()) browseBeam[0] else displayBearing
         // Feed this fix to the puck motion model (the frame ticker above does the gliding).
         // Gated on the fix being NEW (identity - the ViewModel makes a fresh LatLng per fix and
         // recompositions re-pass the same instance): this block runs in a recomposing scope, and
@@ -995,13 +1075,13 @@ fun VelaMapView(
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(style, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, meBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
             }
         } else {
             styleRef?.let {
-                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, displayBearing, locationStale, previewTarget, routeProgress, navMode)
+                applyData(it, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, meBearing, locationStale, previewTarget, routeProgress, navMode)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
             }
@@ -1133,6 +1213,13 @@ fun VelaMapView(
                         map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160, 160, 160, bottom), 700)
                     }
                 }
+            }
+
+            // Free-drive follow owns the camera from the per-frame ticker above; swallow the
+            // generic recenter-on-fix below so a new GPS fix (which changes myLocation every
+            // second) doesn't fire an animateCamera that fights the smooth glide.
+            !navMode && driveFollowing && myLocation != null -> {
+                lastCameraTarget = myLocation // keep the else-branch baseline current for when follow ends
             }
 
             else -> {

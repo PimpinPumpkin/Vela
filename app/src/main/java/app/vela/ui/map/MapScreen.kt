@@ -265,6 +265,13 @@ fun MapScreen(
     // ANY size, not just full screen. The panel and the chrome are siblings in the same Box and the
     // chrome is declared later, so it stacks above the panel unless gated out (user 2026-07-08).
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
+    // Free-drive follow (Google's "the map tracks you as you drive, no route needed"). On by
+    // default so an open, unobstructed map glides to your fix; a user pan drops it and the locate
+    // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
+    // directions, the results list) so it never fights that framing. Nav has its own follow.
+    var followMe by remember { mutableStateOf(true) }
+    val driveFollowing = followMe && !state.navigating && !resultsShown && state.selected == null &&
+        !state.directionsOpen && !state.showSteps && !searchOpen && state.pickOnMap == null
     // Expanded detent of the results bottom sheet, hoisted here so the BACK gesture can step it
     // one detent (expanded -> peek) before collapsing to the minimized bar (user 2026-07-09).
     var resultsExpanded by remember { mutableStateOf(false) }
@@ -545,6 +552,10 @@ fun MapScreen(
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
+            driveFollowing = driveFollowing,
+            // Grabbing the map is an explicit "let me look around" - stop tracking until the
+            // locate tap re-arms it (Google drops follow the moment you pan).
+            onUserPan = { followMe = false },
             onNavPanned = vm::onNavPanned,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
@@ -1224,7 +1235,7 @@ fun MapScreen(
 
         if (!state.navigating && state.selected == null && !searchOpen && state.resumeNavLabel == null && !resultsShown) {
             FloatingActionButton(
-                onClick = vm::recenter,
+                onClick = { followMe = true; vm.recenter() }, // locate tap = "track me again" (re-arms free-drive follow)
                 modifier = Modifier
                     .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
