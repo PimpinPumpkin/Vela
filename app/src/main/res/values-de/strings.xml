@@ -540,4 +540,11 @@
     <string name="settings_map_colors_hint">Modern entspricht der aktuellen Google-Palette. Klassisch ist der frühere Vela-Look: weiße Straßen, gelbe Autobahnen, kräftige Grüntöne.</string>
     <string name="place_avoid_tolls">Mautstraßen vermeiden</string>
     <string name="place_avoid_highways">Autobahnen vermeiden</string>
+    <string name="map_parking_find">Mein Auto finden</string>
+    <string name="map_parking_move_here">Parkplatz hierher verschieben</string>
+    <string name="map_parking_earlier">Frühere Parkplätze</string>
+    <string name="map_parking_clear">Parkplatz entfernen</string>
+    <string name="map_parking_moved">Parkplatz hierher verschoben</string>
+    <string name="mapscreen_system_voices">Systemstimmen</string>
+    <string name="mapvm_voice_lang_system">Ansagen auf %1$s nutzen die Stimme Ihres Telefons. Fügen Sie eine in den System-Sprachausgabe-Einstellungen hinzu.</string>
 </resources>
