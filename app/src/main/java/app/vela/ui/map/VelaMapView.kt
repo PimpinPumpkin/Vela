@@ -548,6 +548,28 @@ fun VelaMapView(
         }
     }
 
+    // Centre on the user ONCE per session, the moment the map AND the first fix are both ready. A cold
+    // launch gets this for free, but a crash relaunch restores MapLibre's last (wide) camera and the
+    // seeded centre doesn't reliably override it (user 2026-07-12: "came back zoomed to the whole US;
+    // it can take a sec for the location to resolve"). Runs in the VIEW layer, so it fires AFTER the map
+    // is ready and the fix has landed - and waits for that fix however long it takes. Skipped once the
+    // user has taken the wheel (a pan, or a search/route already owns the camera).
+    val didLaunchCentre = remember { booleanArrayOf(false) }
+    LaunchedEffect(mapRef, myLocation, navMode) {
+        if (didLaunchCentre[0]) return@LaunchedEffect
+        val cam = mapRef ?: return@LaunchedEffect
+        val loc = myLocation ?: return@LaunchedEffect
+        // Nav owns the camera, or the user already took control → don't grab it; just retire the one-shot.
+        if (navMode || gestureMove[0] || markers.isNotEmpty() || routePolyline.isNotEmpty()) {
+            didLaunchCentre[0] = true
+            return@LaunchedEffect
+        }
+        didLaunchCentre[0] = true
+        runCatching {
+            cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5), 650)
+        }
+    }
+
     // Nav puck motion model (Google-style): a per-frame ticker glides the displayed
     // position forward along the route. Two pieces, both copied from how Google's puck
     // behaves: (1) **dead reckoning** — between the ~1 Hz GPS fixes, the goal keeps
