@@ -138,6 +138,7 @@ class CalibrationStore @Inject constructor(
             defaultVoiceSpeaker = (o["defaultVoiceSpeaker"] as? JsonPrimitive)?.content?.toIntOrNull() ?: d.defaultVoiceSpeaker,
             defaultVoiceSpeed = (o["defaultVoiceSpeed"] as? JsonPrimitive)?.content?.toFloatOrNull() ?: d.defaultVoiceSpeed,
             defaultVoiceId = (o["defaultVoiceId"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultVoiceId,
+            defaultMapPalette = (o["defaultMapPalette"] as? JsonPrimitive)?.content?.takeIf { it.isNotBlank() } ?: d.defaultMapPalette,
         )
     }.getOrNull()
 
