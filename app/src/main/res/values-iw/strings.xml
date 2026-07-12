@@ -434,6 +434,8 @@
     <string name="place_transit_now">יוצא כעת</string>
     <string name="place_transit_in_min">בעוד %1$d דק׳</string> <!-- format -->
     <string name="place_transit_live">בשידור חי</string>
+    <string name="place_departures">יציאות</string>
+    <string name="place_every">כל %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">הגעת.</string>
     <string name="transit_nav_walk">הלך %1$s</string>
     <string name="transit_nav_take">קח %1$s</string>

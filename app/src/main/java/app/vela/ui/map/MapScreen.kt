@@ -1352,6 +1352,8 @@ fun MapScreen(
                 photosLoading = state.photosLoading,
                 detailsLoading = state.loadingDetails,
                 placesHere = state.placesHere,
+                stopDepartures = state.stopDepartures,
+                stopDeparturesLoading = state.stopDeparturesLoading,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
