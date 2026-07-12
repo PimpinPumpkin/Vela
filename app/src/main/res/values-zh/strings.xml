@@ -557,4 +557,15 @@
     <string name="settings_ui_scale">界面大小</string>
     <string name="place_avoid_tolls">避开收费站</string>
     <string name="place_avoid_highways">避开高速</string>
+    <string name="settings_map_colors">地图颜色</string>
+    <string name="settings_map_colors_modern">现代</string>
+    <string name="settings_map_colors_classic">经典</string>
+    <string name="settings_map_colors_hint">现代与 Google 应用当前的配色一致。经典是 Vela 早期的样式：白色道路、黄色高速公路、纯正的绿色。</string>
+    <string name="map_parking_find">寻找我的车</string>
+    <string name="map_parking_move_here">将停车点移到这里</string>
+    <string name="map_parking_earlier">较早的停车点</string>
+    <string name="map_parking_clear">清除停车点</string>
+    <string name="map_parking_moved">停车点已移到这里</string>
+    <string name="mapscreen_system_voices">系统语音</string>
+    <string name="mapvm_voice_lang_system">%1$s 导航使用手机的语音。可在系统语音设置中添加。</string>
 </resources>

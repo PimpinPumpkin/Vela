@@ -540,4 +540,11 @@
     <string name="settings_map_colors_hint">Moderne reprend la palette actuelle de Google Maps. Classique est l\'ancien style de Vela : routes blanches, autoroutes jaunes, verts francs.</string>
     <string name="place_avoid_tolls">Éviter les péages</string>
     <string name="place_avoid_highways">Éviter les autoroutes</string>
+    <string name="map_parking_find">Trouver ma voiture</string>
+    <string name="map_parking_move_here">Déplacer le parking ici</string>
+    <string name="map_parking_earlier">Emplacements précédents</string>
+    <string name="map_parking_clear">Effacer le parking</string>
+    <string name="map_parking_moved">Place de parking déplacée ici</string>
+    <string name="mapscreen_system_voices">Voix du système</string>
+    <string name="mapvm_voice_lang_system">Les instructions en %1$s utilisent la voix de votre téléphone. Ajoutez-en une dans les paramètres vocaux du système.</string>
 </resources>
