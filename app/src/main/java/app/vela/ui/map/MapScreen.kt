@@ -1705,12 +1705,37 @@ fun MapScreen(
                         body = msg,
                         actionLabel = stringResource(R.string.mapscreen_dismiss),
                         onAction = vm::clearStatus,
-                        // A voice problem carries its fix: a pill straight to the voice library.
-                        pillLabel = if (state.statusVoiceAction) stringResource(R.string.mapscreen_get_voice) else null,
-                        onPill = if (state.statusVoiceAction) {
-                            { vm.clearStatus(); onOpenVoiceSettings() }
-                        } else {
-                            null
+                        // A voice problem carries its fix. Normally a pill straight to Vela's voice
+                        // library; for a language with no Vela voice (Japanese) it opens the phone's
+                        // own voice settings instead, where the user can add a system voice.
+                        pillLabel = when {
+                            state.statusOpensTtsSettings -> stringResource(R.string.mapscreen_system_voices)
+                            state.statusVoiceAction -> stringResource(R.string.mapscreen_get_voice)
+                            else -> null
+                        },
+                        onPill = when {
+                            state.statusOpensTtsSettings -> {
+                                {
+                                    vm.clearStatus()
+                                    runCatching {
+                                        context.startActivity(
+                                            Intent("com.android.settings.TTS_SETTINGS")
+                                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                        )
+                                    }.onFailure {
+                                        runCatching {
+                                            context.startActivity(
+                                                Intent(android.provider.Settings.ACTION_SETTINGS)
+                                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                            state.statusVoiceAction -> {
+                                { vm.clearStatus(); onOpenVoiceSettings() }
+                            }
+                            else -> null
                         },
                     )
                 }
