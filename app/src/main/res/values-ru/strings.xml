@@ -435,6 +435,9 @@
     <string name="place_transit_stops">%1$d остановок</string> <!-- format -->
     <string name="place_transit_stop_id">Остановка %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Билеты и информация</string>
+    <string name="place_transit_now">Отправляется</string>
+    <string name="place_transit_in_min">через %1$d мин</string> <!-- format -->
+    <string name="place_transit_live">Онлайн</string>
     <string name="transit_nav_arrived">Вы прибыли.</string>
     <string name="transit_nav_walk">Идите %1$s</string> <!-- format -->
     <string name="transit_nav_take">Сядьте на %1$s</string> <!-- format -->

@@ -433,6 +433,9 @@
     <string name="place_transit_stops">%1$d arrêts</string> <!-- format -->
     <string name="place_transit_stop_id">Arrêt %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Billets et infos</string>
+    <string name="place_transit_now">Départ imminent</string>
+    <string name="place_transit_in_min">dans %1$d min</string> <!-- format -->
+    <string name="place_transit_live">En direct</string>
     <string name="transit_nav_arrived">Vous êtes arrivé.</string>
     <string name="transit_nav_walk">Marchez %1$s</string> <!-- format -->
     <string name="transit_nav_take">Prenez %1$s</string> <!-- format -->
