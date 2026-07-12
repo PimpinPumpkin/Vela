@@ -402,7 +402,7 @@ handed - no filesystem, network, or device access.
   - `StrictMode` (debug-only) flags main-thread I/O, penaltyLog + deduped breadcrumbs.
 - **Dead-code CI gate** (accuracy-first, three engines):
   - detekt scoped to dead-code rules only (`config/detekt/detekt.yml`: unused imports, unused private members, unreachable code);
-  - `tests/dead_code/audit_deadcode.sh` (host-side python - fails on any public/internal top-level declaration the whole tree never references, skipping DI/Compose/serialization/manifest entry points, advisory-flags whole dead modules like `:ghprobe`);
+  - `tests/dead_code/audit_deadcode.sh` (host-side python - fails on any public/internal top-level declaration the whole tree never references, skipping DI/Compose/serialization/manifest entry points, advisory-flags whole dead modules);
   - Android Lint `UnusedResources` (scoped via `lint{}`) for dead drawables/strings/layouts.
 - **APK signing**: release keystore `~/.vela-signing/vela-release.jks` (alias `vela`, password in `credentials.txt`); CI secrets `VELA_KEYSTORE_BASE64` / `_PASSWORD` / `VELA_KEY_ALIAS`. **`CN=Vela Maps`**. **Keystore lives outside the repo - back it up; losing it = can never update installed builds.**
 - **Calibration signing**: separate EC key `~/.vela-signing/vela-calibration.key` (§5). Also never committed.

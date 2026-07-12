@@ -420,4 +420,8 @@
     <string name="transit_nav_get_off">Scendi a %1$s</string> <!-- format -->
     <string name="transit_nav_next">Avanti</string>
     <string name="place_last_available">Ultimo disponibile</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d risultato</item>
+        <item quantity="other">%1$d risultati</item>
+    </plurals>
 </resources>

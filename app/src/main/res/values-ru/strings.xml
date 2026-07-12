@@ -420,4 +420,10 @@
     <string name="transit_nav_get_off">Выйдите на %1$s</string> <!-- format -->
     <string name="transit_nav_next">Далее</string>
     <string name="place_last_available">Последний рейс</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d результат</item>
+        <item quantity="few">%1$d результата</item>
+        <item quantity="many">%1$d результатов</item>
+        <item quantity="other">%1$d результата</item>
+    </plurals>
 </resources>

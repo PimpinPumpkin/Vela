@@ -184,7 +184,7 @@ non-negotiable rules for any ported commit:
     every reflection/DI/framework ENTRY POINT (`@Composable`/`@Inject`/`@Provides`/`@HiltViewModel`/
     `@AndroidEntryPoint`/`@Module`/`@Serializable`/`@Preview`/`@Test`/`@Keep`/`@JvmStatic`, the
     R8-kept `core/.../model` package, the four manifest entry classes). Also surfaces whole DEAD
-    MODULES (`:ghprobe`) as an advisory CHECK, not a hard fail. Mirrors `audit_static.sh` in shape.
+    MODULES as an advisory CHECK, not a hard fail. Mirrors `audit_static.sh` in shape.
   - Android Lint `UnusedResources` (scoped via the `lint{}` block) for dead drawables/strings/layouts.
 - **Auditing a real drive.**
   - A saved trip stores the navigated route too (`core/replay/TripLog` format, shared by `:app`'s
@@ -870,8 +870,9 @@ non-negotiable rules for any ported commit:
     Option 3 is the public-server stopgap and stays as the online/fallback path. **No backend needed
     for any of this** (the serverless constraint holds).
 - **On-device routing engine = GraphHopper (`core/data/RouteEngine` + `GraphHopperRouteEngine`).**
-  - Pure-JVM, runs on ART - validated end-to-end on a Pixel 5a (`:ghprobe`, a throwaway instrumented
-    probe, safe to delete). Chosen over Valhalla (no maintained Android map-matching binding) / BRouter
+  - Pure-JVM, runs on ART - validated end-to-end on device long ago via the throwaway `:ghprobe`
+    instrumented module (now retired; the routing itself shipped). Chosen over Valhalla (no maintained
+    Android map-matching binding) / BRouter
     (no street names) / Mapbox (token-gated). It's wired as a `:core` dep
     (`libs.graphhopper.mapmatching`, **OSM-import deps excluded** - osmosis/protobuf/woodstox/
     xmlgraphics are Android-hostile + only needed to *build* graphs, which we do off-device).

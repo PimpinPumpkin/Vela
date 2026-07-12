@@ -173,6 +173,14 @@ object EnNavStrings : NavStrings {
         // code (e.g. "CA") makes espeak's G2P mangle the K/C onset - a cause of the "the K/T sounds off
         // sometimes" bug. Runs AFTER I-/US- so those keep their spoken forms (US- is already de-hyphenated).
         s = Regex("\\b[A-Z]{2}-(\\d+)").replace(s) { "State Route ${it.groupValues[1]}" }
+        // Break the maneuver clause off the sign destination with a comma before " toward ":
+        // espeak's G2P is context-sensitive, and on a full "take the ramp toward Woodland" it
+        // mis-voweled "take" to "tyke" - chopping "toward Woodland" made it correct (upstream,
+        // 2026-07-11). The comma is a fragment boundary (see SpeechText.speechFragments), so the
+        // model phonemizes "take the ramp" in isolation, where it's right, and reads the
+        // destination as its own beat (Google pauses there too). "toward" only appears on ramp/
+        // exit/highway-sign steps, so plain turns ("... onto Main St") are untouched.
+        s = Regex(" toward ", RegexOption.IGNORE_CASE).replace(s, ", toward ")
         EN_SPEECH_WORDS.forEach { (re, rep) -> s = re.replace(s, rep) }
         s = SpeechText.spokenNumbers(s) // "128th" → "one twenty eighth" (space, not hyphen - the compound got a mushy -ty), not a mangled "one hundred and 28th"
         return s

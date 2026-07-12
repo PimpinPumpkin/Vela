@@ -29,7 +29,7 @@ import java.util.concurrent.ConcurrentHashMap
  * `<regionId>/` graph folders plus an `index.json` (`[{id, bbox:[S,W,N,E]}]`) that [RoutingGraphStore]
  * writes on install; this engine reads it to pick, per trip, the region whose box covers BOTH endpoints.
  *
- * Pure JVM - runs on ART, **validated end-to-end on a Pixel 5a** (see `:ghprobe` + ROADMAP). Per graph:
+ * Pure JVM - runs on ART, **validated end-to-end on-device** (via the now-retired `:ghprobe` probe; see ROADMAP). Per graph:
  * 1. **MMAP** data access - the default `RAMDataAccess` static-inits `VarHandle.withInvokeExactBehavior()`
  * (JDK-16), absent on ART; `MMapDataAccess` doesn't.
  * 2. **No Janino** - v11 compiles custom-model weightings to JVM bytecode ART can't load. We override

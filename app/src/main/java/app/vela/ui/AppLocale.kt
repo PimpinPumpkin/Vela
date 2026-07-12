@@ -56,12 +56,23 @@ object AppLocale {
     /** The resolved locale - the system default when following the system, else the override. */
     fun effective(): Locale = language.value.takeIf { it.isNotBlank() }?.let { Locale(it) } ?: Locale.getDefault()
 
+    /** The device's own locale, captured on the first [wrap] BEFORE any override touches the JVM
+     *  default - the value to restore when the user goes back to following the system. */
+    private var systemDefault: Locale? = null
+
     /** Wrap a base [Context] with the chosen language so `stringResource`/`getString` resolve to it.
-     * Reads the pref directly (it runs from `attachBaseContext`, before [init]) and is a **no-op when
-     * following the system locale** - so the default path is byte-for-byte untouched. */
+     *  Reads the pref directly (it runs from `attachBaseContext`, before [init]). When FOLLOWING the
+     *  system it also RESTORES `Locale.getDefault()`: `setDefault` is process-global and survived the
+     *  activity re-create, so after switching Russian back to English the parking-history dates kept
+     *  printing Russian months and the place scrape kept fetching hl=ru until the process died
+     *  (upstream 9c2d56f). */
     fun wrap(base: Context): Context {
+        if (systemDefault == null) systemDefault = Locale.getDefault()
         val lang = prefs(base).getString(KEY, "").orEmpty()
-        if (lang.isBlank()) return base
+        if (lang.isBlank()) {
+            systemDefault?.let { if (Locale.getDefault() != it) Locale.setDefault(it) }
+            return base
+        }
         val locale = Locale(lang)
         Locale.setDefault(locale)
         val config = Configuration(base.resources.configuration)
