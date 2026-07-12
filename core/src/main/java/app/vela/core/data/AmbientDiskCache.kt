@@ -42,7 +42,16 @@ data class AmbientCachedPlace(
 }
 
 @Serializable
-data class AmbientCachedArea(val lat: Double, val lng: Double, val atWallMs: Long, val places: List<AmbientCachedPlace>)
+data class AmbientCachedArea(
+    val lat: Double,
+    val lng: Double,
+    val atWallMs: Long,
+    val places: List<AmbientCachedPlace>,
+    // Span (m) of the fetch this area came from - the cache-hit test is span-aware (a z14
+    // fetch covers ~9 km; a fixed hit radius missed most legitimate revisits). Defaulted
+    // so files written before the field existed still decode.
+    val spanM: Double = 9000.0,
+)
 
 object AmbientDiskCache {
     private val json = Json { ignoreUnknownKeys = true }

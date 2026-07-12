@@ -29,6 +29,10 @@ on:
         description: "Skip large (big:true) regions for a quick run"
         type: boolean
         default: false
+      variant:
+        description: "Asset-name suffix for a parallel graph generation (e.g. 'v2' publishes <id>-v2.zip + routing-manifest-v2.json beside the originals; empty = legacy names). Lets a new format coexist with the old for a safe cutover."
+        type: string
+        default: ""
 
 permissions:
   contents: write # create/upload assets on the routing-graphs release
@@ -98,6 +102,7 @@ jobs:
           VELA_REPO: ${{ github.repository }}
           MANIFEST_MODE: emit
           ENTRY_OUT: ${{ matrix.id }}.json
+          VARIANT: ${{ inputs.variant }}
         run: bash scripts/build-routing-region.sh "${{ matrix.id }}" "${{ matrix.name }}" "${{ matrix.pbf_url }}"
       - uses: actions/upload-artifact@v4
         with:
@@ -122,6 +127,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VELA_REPO: ${{ github.repository }}
+          VARIANT: ${{ inputs.variant }}
         run: |
           shopt -s nullglob
           files=(entries/*.json)
