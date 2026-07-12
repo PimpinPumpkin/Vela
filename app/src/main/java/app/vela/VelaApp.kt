@@ -35,6 +35,7 @@ class VelaApp : Application() {
         TransitLayer.init(this)
         app.vela.ui.Topography.init(this)
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
+        app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
         app.vela.ui.SimLocation.init(this)
         app.vela.ui.UiScale.init(this)
         app.vela.ui.MapColors.init(this)

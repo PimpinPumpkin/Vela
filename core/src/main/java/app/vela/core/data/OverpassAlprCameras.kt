@@ -71,4 +71,94 @@ object OverpassAlprCameras {
             null
         }
     }
+
+    /** ALPR cameras within [nearMeters] of the route [polyline] - for the "this route passes N
+     *  cameras" alert on the route picker. Queries the route in LOCAL TILES ([routeTiles]) rather than
+     *  one bbox: a cross-city/state trip's single bbox is enormous, so one `[timeout:25]` Overpass
+     *  query over it times out and silently returns nothing - a route full of cameras then badges "0",
+     *  indistinguishable from a genuinely clean one. Small tiles almost never time out, and a single
+     *  failed tile just drops that stretch instead of zeroing the whole count. Cameras are then kept
+     *  only if they're within [nearMeters] of an actual line SEGMENT (not just a vertex - decoded
+     *  polylines are sparse on freeway straights, so a gantry sitting on the line but far from both
+     *  bracketing shape points used to be missed). Empty when every tile fails or nothing is near. */
+    fun fetchAlong(
+        http: OkHttpClient,
+        polyline: List<LatLng>,
+        nearMeters: Double = 120.0,
+        limit: Int = 4000,
+    ): List<AlprCamera> {
+        if (polyline.size < 2) return emptyList()
+        val seen = HashSet<String>()
+        val all = ArrayList<AlprCamera>()
+        for (t in routeTiles(polyline, padDeg = 0.003, maxSpanDeg = 0.25, maxTiles = 40)) {
+            val cams = fetchInBox(http, t[0], t[1], t[2], t[3], limit) ?: continue // failed tile: skip, keep the rest
+            for (cam in cams) {
+                // Dedupe cameras that fall in the overlap between adjacent (padded) tiles.
+                val key = "${(cam.loc.lat * 1e5).toLong()},${(cam.loc.lng * 1e5).toLong()}"
+                if (seen.add(key)) all.add(cam)
+            }
+        }
+        return all.filter { nearPolyline(it.loc, polyline, nearMeters) }
+    }
+
+    /** Split a route's coverage into local tiles (each at most [maxSpanDeg] on a side, padded by
+     *  [padDeg]) so no single Overpass query spans a huge box. Only tiles the line actually enters are
+     *  returned (a diagonal route touches a diagonal band of the grid, not the whole rectangle), capped
+     *  at [maxTiles]. Each entry is [south, west, north, east]. Pure/side-effect-free (unit-tested). */
+    internal fun routeTiles(
+        polyline: List<LatLng>,
+        padDeg: Double,
+        maxSpanDeg: Double,
+        maxTiles: Int,
+    ): List<DoubleArray> {
+        if (polyline.isEmpty()) return emptyList()
+        val minLat = polyline.minOf { it.lat }; val maxLat = polyline.maxOf { it.lat }
+        val minLng = polyline.minOf { it.lng }; val maxLng = polyline.maxOf { it.lng }
+        val latSpan = maxLat - minLat; val lngSpan = maxLng - minLng
+        if (latSpan <= maxSpanDeg && lngSpan <= maxSpanDeg) {
+            return listOf(doubleArrayOf(minLat - padDeg, minLng - padDeg, maxLat + padDeg, maxLng + padDeg))
+        }
+        var rows = Math.ceil(latSpan / maxSpanDeg).toInt().coerceAtLeast(1)
+        var cols = Math.ceil(lngSpan / maxSpanDeg).toInt().coerceAtLeast(1)
+        // Guard a pathological grid (a very long route): grow the cell until the grid fits maxTiles.
+        while (rows.toLong() * cols.toLong() > maxTiles) { rows = (rows + 1) / 2; cols = (cols + 1) / 2 }
+        val cellH = latSpan / rows; val cellW = lngSpan / cols
+        val touched = LinkedHashSet<Long>()
+        for (p in polyline) {
+            val r = if (cellH <= 0) 0 else ((p.lat - minLat) / cellH).toInt().coerceIn(0, rows - 1)
+            val c = if (cellW <= 0) 0 else ((p.lng - minLng) / cellW).toInt().coerceIn(0, cols - 1)
+            touched.add(r * 1000L + c)
+        }
+        return touched.map { key ->
+            val r = (key / 1000L).toInt(); val c = (key % 1000L).toInt()
+            doubleArrayOf(
+                minLat + r * cellH - padDeg,
+                minLng + c * cellW - padDeg,
+                minLat + (r + 1) * cellH + padDeg,
+                minLng + (c + 1) * cellW + padDeg,
+            )
+        }
+    }
+
+    /** True if [p] is within [meters] of any SEGMENT of [polyline] (point-to-segment, not just to a
+     *  vertex). Pure/unit-tested. */
+    internal fun nearPolyline(p: LatLng, polyline: List<LatLng>, meters: Double): Boolean {
+        for (i in 0 until polyline.size - 1) {
+            if (segDistMeters(p, polyline[i], polyline[i + 1]) <= meters) return true
+        }
+        return polyline.size == 1 && segDistMeters(p, polyline[0], polyline[0]) <= meters
+    }
+
+    /** Distance in metres from point [p] to the segment [a]-[b], via a local equirectangular
+     *  projection (exact enough at the ~100 m scale this gate uses). */
+    internal fun segDistMeters(p: LatLng, a: LatLng, b: LatLng): Double {
+        val mPerLat = 111_320.0
+        val mPerLng = 111_320.0 * Math.cos(Math.toRadians((a.lat + b.lat) / 2.0))
+        val bx = (b.lng - a.lng) * mPerLng; val by = (b.lat - a.lat) * mPerLat
+        val px = (p.lng - a.lng) * mPerLng; val py = (p.lat - a.lat) * mPerLat
+        val len2 = bx * bx + by * by
+        val t = if (len2 <= 0.0) 0.0 else ((px * bx + py * by) / len2).coerceIn(0.0, 1.0)
+        val ex = px - t * bx; val ey = py - t * by
+        return Math.sqrt(ex * ex + ey * ey)
+    }
 }
