@@ -81,6 +81,8 @@
     <string name="settings_live_traffic_hint">Shades roads by congestion while browsing. Navigation already colors your route by traffic.</string>
     <string name="settings_transit_layer">Highlight transit lines</string>
     <string name="settings_transit_layer_hint">Draws train and subway lines on the map.</string>
+    <string name="settings_topography">Terrain shading</string>
+    <string name="settings_topography_hint">Shades hills and mountains on the map. Off by default.</string>
     <string name="settings_read_all_reviews">“Read all reviews” button</string>
     <string name="settings_read_all_reviews_hint">Adds a “Read all reviews” button that opens Google\'s full reviews page inside the app, with every review. Off = Vela\'s own review list only.</string>
     <string name="settings_buildings_3d">3D buildings</string>
