@@ -678,6 +678,9 @@ fun MapScreen(
         )
     }
 
+    // Toggling the Flock layer in Settings refetches for the current view right away (otherwise the
+    // cameras wouldn't appear until the next pan). Clears the layer when turned off.
+    LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
     Box(Modifier.fillMaxSize()) {
         VelaMapView(
             styleUri = mapStyleUri,
@@ -754,6 +757,7 @@ fun MapScreen(
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
             trafficControls = state.trafficControls,
+            flockCameras = state.flockCameras,
             navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
