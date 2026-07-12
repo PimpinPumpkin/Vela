@@ -134,6 +134,7 @@
     <string name="settings_support_button">Soutenir Vela</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string>
+    <string name="settings_version_copied">Version copiée</string>
     <string name="settings_collapse">Réduire</string>
     <string name="settings_expand">Développer</string>
     <string name="settings_voice_lib_empty_hint">★ signale les voix recommandées. Chaque voix fonctionne hors ligne sur votre téléphone.</string>
@@ -533,6 +534,10 @@
     <string name="notif_ask_skip">Ignorer</string>
     <string name="place_time_past_toast">Cette heure est passée. Réglé sur maintenant.</string>
     <string name="settings_ui_scale">Taille de l\'interface</string>
+    <string name="settings_map_colors">Couleurs de la carte</string>
+    <string name="settings_map_colors_modern">Moderne</string>
+    <string name="settings_map_colors_classic">Classique</string>
+    <string name="settings_map_colors_hint">Moderne reprend la palette actuelle de Google Maps. Classique est l\'ancien style de Vela : routes blanches, autoroutes jaunes, verts francs.</string>
     <string name="place_avoid_tolls">Éviter les péages</string>
     <string name="place_avoid_highways">Éviter les autoroutes</string>
 </resources>
