@@ -274,5 +274,5 @@ object StopDeparturesParser {
     }
 
     private const val MAX_TIMES = 4
-    private const val MAX_LINES = 12
+    private const val MAX_LINES = 24
 }
