@@ -1123,6 +1123,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **Device-verified on a simulate-driving run (4a, no WA routing graph downloaded): the streamed overlay read
   72.42 km/h under the puck on the arterial and the sign showed "SPEED LIMIT 45" (`offline=null`).** Parser
   unit-tested; the WA maxspeed PMTiles streamed live (~640 range requests) and kept up with the demo puck.
+- ✅ **Speedometer = a rounded rectangle now, not a circle (2026-07-12).** The traveling-speed readout during
+  nav was a dark circle, which read differently from the rounded-rect SPEED LIMIT sign right above it. It's now
+  a **rounded rectangle the same width + corner radius as the limit sign**, so the two stack as a matched pair
+  (Google's layout) and your speed is trivially comparable to the posted limit at a glance. Dark fill keeps it
+  distinct from the white limit sign. Device-verified paired on a drive: "SPEED LIMIT 45" over "45 mph".
 - ⬜ Speed-camera + hazard alerts (lane guidance ✅ done above)
 - ✅ **Android Auto - first cut shipped 2026-07-08** (see the entry at the top of this section). The old
   "needs GMS, out of scope" call was wrong: the car app library is plain androidx, and a sideload runs fine
