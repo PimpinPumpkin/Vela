@@ -547,4 +547,6 @@
     <string name="map_parking_moved">Parcheggio spostato qui</string>
     <string name="mapscreen_system_voices">Voci di sistema</string>
     <string name="mapvm_voice_lang_system">Le indicazioni in %1$s usano la voce del telefono. Aggiungine una nelle impostazioni voce di sistema.</string>
+    <string name="settings_topography">Ombreggiatura del terreno</string>
+    <string name="settings_topography_hint">Ombreggia colline e montagne sulla mappa. Disattivata per impostazione predefinita.</string>
 </resources>
