@@ -579,4 +579,6 @@
     <string name="map_parking_moved">停车点已移到这里</string>
     <string name="mapscreen_system_voices">系统语音</string>
     <string name="mapvm_voice_lang_system">%1$s 导航使用手机的语音。可在系统语音设置中添加。</string>
+    <string name="settings_topography">地形阴影</string>
+    <string name="settings_topography_hint">在地图上为丘陵和山脉添加阴影。默认关闭。</string>
 </resources>

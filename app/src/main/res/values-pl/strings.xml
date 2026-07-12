@@ -560,4 +560,6 @@
     <string name="map_parking_moved">Przeniesiono parking tutaj</string>
     <string name="mapscreen_system_voices">Głosy systemowe</string>
     <string name="mapvm_voice_lang_system">Wskazówki dla języka %1$s używają głosu telefonu. Dodaj go w systemowych ustawieniach głosu.</string>
+    <string name="settings_topography">Cieniowanie terenu</string>
+    <string name="settings_topography_hint">Cieniuje wzgórza i góry na mapie. Domyślnie wyłączone.</string>
 </resources>
