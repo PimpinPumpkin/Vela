@@ -400,6 +400,7 @@
     <string name="mapvm_none_found_along_route">沿途找不到「%1$s」</string> <!-- format -->
     <string name="mapvm_search_failed">搜尋失敗</string>
     <string name="mapvm_dropped_pin">已標註的地點</string>
+    <string name="mapvm_stop_added">已新增途經點</string>
     <string name="mapvm_no_mode_route_found">找不到%1$s路線</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">路線功能需要重新校準：%1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">路線規劃失敗：%1$s</string> <!-- format -->
