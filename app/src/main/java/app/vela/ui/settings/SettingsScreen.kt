@@ -1031,10 +1031,21 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_version))
+            // Tap to copy - bug reports need the exact version, and typing it from the screen
+            // is error-prone (issue #58's one keeper suggestion).
+            val versionLine = stringResource(R.string.settings_version_line, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE)
+            val versionCopied = stringResource(R.string.settings_version_copied)
+            val clipboard = androidx.compose.ui.platform.LocalClipboardManager.current
             Text(
-                stringResource(R.string.settings_version_line, BuildConfig.VERSION_NAME, BuildConfig.VERSION_CODE),
+                versionLine,
                 style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.padding(vertical = 4.dp),
+                modifier = Modifier
+                    .dpadHighlight()
+                    .clickable {
+                        clipboard.setText(androidx.compose.ui.text.AnnotatedString(versionLine))
+                        android.widget.Toast.makeText(context, versionCopied, android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    .padding(vertical = 4.dp),
             )
             // Self-updater: a launch check (throttled to ~daily) plus a manual check here.
             // The system installer does the install either way.
