@@ -436,6 +436,8 @@
     <string name="place_transit_now">A sair</string>
     <string name="place_transit_in_min">em %1$d min</string> <!-- format -->
     <string name="place_transit_live">Ao vivo</string>
+    <string name="place_departures">Partidas</string>
+    <string name="place_every">A cada %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Chegou.</string>
     <string name="transit_nav_walk">Caminhe %1$s</string> <!-- format -->
     <string name="transit_nav_take">Apanhe %1$s</string> <!-- format -->
