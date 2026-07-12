@@ -134,6 +134,7 @@
     <string name="settings_support_button">Soutenir Vela</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string>
+    <string name="settings_version_copied">Version copiée</string>
     <string name="settings_collapse">Réduire</string>
     <string name="settings_expand">Développer</string>
     <string name="settings_voice_lib_empty_hint">★ signale les voix recommandées. Chaque voix fonctionne hors ligne sur votre téléphone.</string>

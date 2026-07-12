@@ -134,6 +134,7 @@
     <string name="settings_support_button">Підтримати Vela</string>
     <string name="settings_version">Версія</string>
     <string name="settings_version_line">Vela %1$s  (збірка %2$d)</string>
+    <string name="settings_version_copied">Версію скопійовано</string>
     <string name="settings_collapse">Згорнути</string>
     <string name="settings_expand">Розгорнути</string>
     <string name="settings_voice_lib_empty_hint">★ позначає рекомендовані голоси. Усі голоси працюють офлайн на телефоні.</string>
