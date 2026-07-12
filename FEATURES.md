@@ -945,6 +945,21 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   / Antioch / SFO) with their next departures. **Coverage is agency-dependent** - major systems that
   feed Google real-time carry the board (NYC MTA, SF BART confirmed); a place with none shows nothing
   (a small light-rail agency like SacRT was confirmed empty, correctly). Localized in all 11 languages.
+- ✅ **Tap-through route stop timeline (2026-07-12, keyless + device-verified).** Every route on the
+  departure board is tappable (a **`>` chevron** hints it): tapping one opens a full-screen **stop
+  timeline** for that route - the **board stop**, **every intermediate stop with its call time**, and
+  the **alight stop**, drawn down a **vertical rail in the line's own colour** (board + alight bold).
+  Tapping any stop on the timeline opens **that stop's own departure board**, so you keep drilling
+  down the line the way Google's tap-through does. No new endpoint: the stop sequence is a lazy fetch
+  not in the place blob, so it **reuses the proven transit-itinerary parser** - a keyless directions
+  query from the tapped stop toward the route's headsign returns a ride leg whose `intermediateStops`
+  already carry the per-stop times. The headsign geocode is **biased toward transit terminals** (a
+  bare "Richmond" would otherwise resolve to a city district, not the BART terminal), and the leg we
+  actually **board at this stop** is chosen. Best-effort: a headsign that will not geocode falls back
+  to a quiet "Route details unavailable". **Device-verified: BART Powell St -> Yellow-S to SFO showed
+  all 11 stops (Powell -> Civic Center -> 16th/24th St Mission -> Glen/Balboa Park -> Daly City ->
+  Colma -> South SF -> San Bruno -> SFO) with times 12:23-12:54 PM, and tapping 16th St Mission opened
+  that stop's own board.** Localized (`route_detail_unavailable`) in all 11 languages.
 - ✅ Transit **leg drill-down with full stop detail** - tap an itinerary to expand
   its ordered legs. A ride leg shows Google's whole layout: the **line pill + "towards …"
   headsign**, the **board stop** (name + agency **Stop ID** + real-time board time, with
