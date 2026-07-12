@@ -395,6 +395,7 @@
     <string name="mapvm_search_needs_recalibration">搜索需要重新校准：%1$s</string> <!-- format -->
     <string name="mapvm_offline_no_data">您当前离线。请在设置 ▸ 离线地图中下载区域，即可在无网络时搜索。</string>
     <string name="mapvm_offline_no_match">您保存的区域内没有与“%1$s”相关的离线结果。离线搜索涵盖您已下载的 OpenStreetMap 地点。</string>
+    <string name="mapvm_no_results">找不到“%1$s”的结果。</string> <!-- format -->
     <string name="mapvm_offline_results">离线结果（无网络连接）</string>
     <string name="mapvm_search_failed_reason">搜索失败：%1$s</string> <!-- format -->
     <string name="mapvm_none_found_along_route">沿途未找到“%1$s”</string> <!-- format -->
