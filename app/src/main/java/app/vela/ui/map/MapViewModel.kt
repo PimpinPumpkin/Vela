@@ -3135,12 +3135,18 @@ class MapViewModel @Inject constructor(
     // LRU (most-recent last, cap 16) of recent ambient fetches — revisiting ANY of the last ~16 areas
     // repaints POIs INSTANTLY (the ~2 s Google floor only hits genuinely-new areas), with no empty-map
     // gap or OSM-POI "small then pop bigger" flash. Entries expire after 30 min so a closed shop doesn't
-    // linger all session. Triple = (fetch centre, ranked places, capturedAt elapsedRealtime ms).
-    private val ambientCache = ArrayDeque<Triple<LatLng, List<app.vela.core.model.Place>, Long>>()
+    // linger all session. Entries carry the fetch SPAN so the hit test knows how far the data reaches.
+    private data class AmbientEntry(
+        val center: LatLng,
+        val spanM: Double,
+        val places: List<app.vela.core.model.Place>,
+        val atMs: Long,
+    )
+    private val ambientCache = ArrayDeque<AmbientEntry>()
 
-    private fun cacheAmbient(center: LatLng, places: List<app.vela.core.model.Place>) {
-        ambientCache.removeAll { it.first.distanceTo(center) < 400.0 } // replace a near-duplicate area
-        ambientCache.addLast(Triple(center, places, android.os.SystemClock.elapsedRealtime()))
+    private fun cacheAmbient(center: LatLng, spanM: Double, places: List<app.vela.core.model.Place>) {
+        ambientCache.removeAll { it.center.distanceTo(center) < 400.0 } // replace a near-duplicate area
+        ambientCache.addLast(AmbientEntry(center, spanM, places, android.os.SystemClock.elapsedRealtime()))
         while (ambientCache.size > 16) ambientCache.removeFirst()
         persistAmbientCache()
     }
@@ -3161,10 +3167,11 @@ class MapViewModel @Inject constructor(
             delay(2000) // debounce a pan session into one write
             val nowElapsed = android.os.SystemClock.elapsedRealtime()
             val nowWall = System.currentTimeMillis()
-            val entries = snapshot.takeLast(8).map { (c, places, atElapsed) ->
+            val entries = snapshot.takeLast(8).map { e ->
                 app.vela.core.data.AmbientCachedArea(
-                    c.lat, c.lng, nowWall - (nowElapsed - atElapsed),
-                    places.take(200).map { app.vela.core.data.AmbientCachedPlace.of(it) },
+                    e.center.lat, e.center.lng, nowWall - (nowElapsed - e.atMs),
+                    e.places.take(200).map { app.vela.core.data.AmbientCachedPlace.of(it) },
+                    spanM = e.spanM,
                 )
             }
             runCatching {
@@ -3186,7 +3193,7 @@ class MapViewModel @Inject constructor(
             val loaded = fresh.map { e ->
                 // Timestamps read as fresh: the moved-gate refetches the first real view anyway,
                 // so disk entries are paint-then-refine, never paint-and-trust.
-                Triple(LatLng(e.lat, e.lng), e.places.map { it.toPlace() }, nowElapsed)
+                AmbientEntry(LatLng(e.lat, e.lng), e.spanM, e.places.map { it.toPlace() }, nowElapsed)
             }
             // Main-thread hop: the cache deque is only ever touched from the main dispatcher.
             withContext(kotlinx.coroutines.Dispatchers.Main) {
@@ -3198,10 +3205,14 @@ class MapViewModel @Inject constructor(
      *  distances are correct for the new view. Null if nothing recent+near is cached. */
     private fun cachedAmbientNear(center: LatLng): List<app.vela.core.model.Place>? {
         val now = android.os.SystemClock.elapsedRealtime()
+        // SPAN-AWARE hit: a fetch covers spanM around its centre (3.5-9 km), so any view whose
+        // centre sits well inside that area can repaint from it. The old fixed 900 m radius
+        // missed most legitimate revisits (zoom-out-and-back, pan-away-and-return) and forced
+        // a full ~2-4 s Google refetch - the P9 "POIs don't stick around" report (2026-07-11).
         return ambientCache
-            .filter { now - it.third < 30 * 60_000L && it.first.distanceTo(center) < 900.0 }
-            .minByOrNull { it.first.distanceTo(center) }
-            ?.second
+            .filter { now - it.atMs < 30 * 60_000L && it.center.distanceTo(center) < it.spanM * 0.45 }
+            .minByOrNull { it.center.distanceTo(center) }
+            ?.places
             ?.map { it.copy(distanceMeters = center.distanceTo(it.location)) }
     }
 
@@ -3229,7 +3240,7 @@ class MapViewModel @Inject constructor(
                 if (cur.navigating || cur.replaying || cur.results.isNotEmpty() || cur.selected != null) return@launch
                 if (cachedAmbientNear(n) != null) continue
                 val res = runCatching { dataSource.nearbyPlaces(n, span) }.getOrNull() ?: continue
-                if (res.isNotEmpty()) cacheAmbient(n, res)
+                if (res.isNotEmpty()) cacheAmbient(n, span, res)
             }
         }
     }
@@ -3275,11 +3286,13 @@ class MapViewModel @Inject constructor(
         val span = (9000.0 / 2.0.pow(zoom - 14.0)).coerceIn(3500.0, 9000.0)
         // Any recent nearby fetch cached (e.g. an area you already visited this session)? Repaint it
         // INSTANTLY so there's no empty→OSM-POI flash→ambient "small then pop bigger" while the network
-        // fetch below runs; the fetch then refines it.
-        if (s.ambientPois.isEmpty()) {
-            cachedAmbientNear(center)?.let { cached ->
-                _state.update { it.copy(ambientPois = keepAmbientForView(cached, viewRadiusMeters)) }
-            }
+        // fetch below runs; the fetch then refines it. UNCONDITIONAL on purpose (2026-07-11): the old
+        // empty-only gate meant panning BACK to a cached area kept the PREVIOUS area's dots (non-empty,
+        // but filtered to nothing in this view) and never consulted the cache - a bare map for the whole
+        // refetch, the P9 "tap a POI / pan back and everything is gone" report. The hit is by definition
+        // the best-known data for THIS centre; the fetch below still refines it.
+        cachedAmbientNear(center)?.let { cached ->
+            _state.update { it.copy(ambientPois = keepAmbientForView(cached, viewRadiusMeters)) }
         }
         ambientJob = viewModelScope.launch {
             delay(300) // brief settle so a flick doesn't scrape — but snappy
@@ -3300,14 +3313,23 @@ class MapViewModel @Inject constructor(
             fun live() = self?.isActive == true
             val res = runCatching {
                 dataSource.nearbyPlaces(center, span) { partial ->
-                    if (live() && bareMap()) _state.update { it.copy(ambientPois = keepAmbientForView(partial, viewRadiusMeters)) }
+                    if (live() && bareMap()) {
+                        _state.update { cur ->
+                            // A partial never SHRINKS what's painted: after a cache repaint the
+                            // early pool is leaner than the rich cached set, and letting it
+                            // replace blinked most dots off then back (2026-07-11). The final
+                            // ranked pool below always replaces outright.
+                            val kept = keepAmbientForView(partial, viewRadiusMeters)
+                            if (kept.size >= cur.ambientPois.size) cur.copy(ambientPois = kept) else cur
+                        }
+                    }
                 }
             }.getOrNull() ?: return@launch
             if (!live()) return@launch
             lastAmbientCenter = center
             lastAmbientZoom = zoom
             lastAmbientSpan = span
-            cacheAmbient(center, res)
+            cacheAmbient(center, span, res)
             // Re-check we're still on the bare map — the user may have searched/opened a place while we fetched.
             if (!bareMap()) return@launch
             _state.update { it.copy(ambientPois = keepAmbientForView(res, viewRadiusMeters), ambientCoversView = true) }
