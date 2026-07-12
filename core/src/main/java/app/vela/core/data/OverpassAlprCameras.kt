@@ -1,6 +1,7 @@
 package app.vela.core.data
 
 import app.vela.core.model.LatLng
+import app.vela.core.model.distanceTo
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
@@ -70,5 +71,25 @@ object OverpassAlprCameras {
         } catch (e: Exception) {
             null
         }
+    }
+
+    /** ALPR cameras within [nearMeters] of the route [polyline] - for the "this route passes N
+     *  cameras" alert on the route picker. Queries the route's padded bbox (reusing [fetchInBox], so
+     *  it gets the `out body` coordinates fix), then keeps only cameras close to the ACTUAL line (a
+     *  long trip's bbox is huge, so a bbox count would be wildly off). Empty on any failure. */
+    fun fetchAlong(
+        http: OkHttpClient,
+        polyline: List<LatLng>,
+        nearMeters: Double = 120.0,
+        limit: Int = 4000,
+    ): List<AlprCamera> {
+        if (polyline.size < 2) return emptyList()
+        val pad = 0.003 // ~300 m padding so a camera just off the sampled line still lands in the box
+        val s = polyline.minOf { it.lat } - pad
+        val n = polyline.maxOf { it.lat } + pad
+        val w = polyline.minOf { it.lng } - pad
+        val e = polyline.maxOf { it.lng } + pad
+        val all = fetchInBox(http, s, w, n, e, limit) ?: return emptyList()
+        return all.filter { cam -> polyline.any { it.distanceTo(cam.loc) <= nearMeters } }
     }
 }

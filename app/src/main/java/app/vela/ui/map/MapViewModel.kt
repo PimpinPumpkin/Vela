@@ -120,6 +120,9 @@ data class MapUiState(
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
+    // ALPR/Flock cameras counted near each route option (index-aligned with `routes`), for the route
+    // picker's opt-in "passes N cameras" badge. Empty when the alert is off or not yet computed.
+    val flockOnRoute: List<Int> = emptyList(),
     val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
     val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
@@ -2160,10 +2163,12 @@ class MapViewModel @Inject constructor(
                     it.copy(
                         routes = routes,
                         activeRoute = routes.firstOrNull(),
+                        flockOnRoute = emptyList(), // recomputed below when the alert's on
                         transit = emptyList(), transitLoading = false,
                         status = if (routes.isEmpty()) appContext.getString(R.string.mapvm_no_mode_route_found, mode.name.lowercase()) else null,
                     )
                 }
+                if (routes.isNotEmpty()) refreshFlockOnRoute(routes)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
                 // top when it has the fastest live ETA). A provisional route carries Google's
                 // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed
@@ -2177,6 +2182,27 @@ class MapViewModel @Inject constructor(
             } catch (e: Exception) {
                 if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_routing_failed_reason, e.message)) }
             }
+        }
+    }
+
+    private var flockRouteJob: kotlinx.coroutines.Job? = null
+
+    /** When the opt-in "cameras on route" alert is on, count the ALPR cameras near each route option
+     *  (keyless Overpass, index-aligned with [routes]) so the directions panel can badge "passes N
+     *  cameras". Best-effort and off the hot path - a failure just shows no badge. */
+    private fun refreshFlockOnRoute(routes: List<Route>) {
+        flockRouteJob?.cancel()
+        if (!app.vela.ui.FlockRouteAlert.on.value) return
+        flockRouteJob = viewModelScope.launch {
+            val counts = withContext(Dispatchers.IO) {
+                routes.map { r ->
+                    runCatching { app.vela.core.data.OverpassAlprCameras.fetchAlong(http, r.polyline).size }
+                        .getOrDefault(0)
+                }
+            }
+            android.util.Log.i("VelaFlockRoute", "counts=$counts")
+            // Only apply if these are still THE routes on screen (a newer route() may have superseded us).
+            if (_state.value.routes == routes) _state.update { it.copy(flockOnRoute = counts) }
         }
     }
 

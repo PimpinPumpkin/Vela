@@ -1311,6 +1311,7 @@ fun MapScreen(
                 currentMode = state.travelMode,
                 routes = state.routes,
                 activeRoute = state.activeRoute,
+                flockOnRoute = state.flockOnRoute,
                 transit = state.transit,
                 transitLoading = state.transitLoading,
                 onModeSelected = vm::setTravelMode,
