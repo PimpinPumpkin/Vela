@@ -560,4 +560,6 @@
     <string name="map_parking_moved">Парковка перемещена сюда</string>
     <string name="mapscreen_system_voices">Системные голоса</string>
     <string name="mapvm_voice_lang_system">Указания для языка %1$s используют голос телефона. Добавьте его в системных настройках голоса.</string>
+    <string name="settings_topography">Затенение рельефа</string>
+    <string name="settings_topography_hint">Затеняет холмы и горы на карте. По умолчанию выключено.</string>
 </resources>
