@@ -11,6 +11,12 @@
 #   bash tests/devices/full_coverage.sh <device-id>     # e.g. kyocera-e4810
 #   bash tests/devices/full_coverage.sh all
 #
+# Iterating on ONE slow/flaky phase? Re-capture just it (reuses the other frames, same 01..16 names):
+#   PHASES=settings bash tests/devices/full_coverage.sh sonim-x320
+#   PHASES="search place" bash tests/devices/full_coverage.sh kyocera-e4810
+# Phases: firstrun map search place directions settings. A partial run reports PARTIAL, not a verdict -
+# only a full run (no PHASES) can call a device FULLY COVERED.
+#
 # Content surfaces (search/place/directions/nav/transit) need live search+routing; run with network up.
 DEVICES="
 kyocera-e4810|240x320|160
@@ -28,7 +34,14 @@ cover_one() {
   geom="$(printf '%s\n' "$DEVICES" | awk -F'|' -v id="$id" '$1==id{print $2}')"
   dens="$(printf '%s\n' "$DEVICES" | awk -F'|' -v id="$id" '$1==id{print $3}')"
   [ -z "$geom" ] && { echo "unknown device '$id'"; return 1; }
-  out="$HERE/$id/screenshots/full"; mkdir -p "$out"; rm -f "$out"/*.png
+  # PHASES = which surface groups to (re)capture, so a single slow/flaky phase can be re-run WITHOUT
+  # redoing the whole ~13 min tour (e.g. PHASES=settings to iterate just the deep Settings sub-sections).
+  # Each phase pins its own screenshot NUMBER base, so a subset writes the SAME 01..16 filenames a full
+  # run would - a partial run overwrites only its slice and leaves the rest in place. Default = all.
+  local ALLPHASES="firstrun map search place directions settings"
+  local phases="${PHASES:-$ALLPHASES}" full=0; [ "$phases" = "$ALLPHASES" ] && full=1
+  phase() { case " $phases " in *" $1 "*) return 0;; *) return 1;; esac; }
+  out="$HERE/$id/screenshots/full"; mkdir -p "$out"; [ "$full" = 1 ] && rm -f "$out"/*.png
   echo "################ FULL COVERAGE: $id ($geom @ ${dens}dpi) ################"
   $ADB shell wm size "$geom" >/dev/null 2>&1; $ADB shell wm density "$dens" >/dev/null 2>&1
   $ADB shell settings put global vela_force_dpad 1 >/dev/null 2>&1
@@ -43,6 +56,7 @@ cover_one() {
   }
 
   # --- first-run (fresh install) -------------------------------------------------------------
+  if phase firstrun; then i=0
   $ADB shell pm clear "$PKG" >/dev/null 2>&1
   for p in ACCESS_FINE_LOCATION ACCESS_COARSE_LOCATION POST_NOTIFICATIONS; do $ADB shell pm grant "$PKG" "android.permission.$p" >/dev/null 2>&1; done
   launch_fresh 6
@@ -52,23 +66,33 @@ cover_one() {
   key "$K_OK" 2
   launch_fresh 6
   on_screen_contains "Help improve Vela" && { mark "consent-dialog" 1; key "$K_OK" 2; } || mark "consent-dialog" 0
+  fi
 
   # --- bare map -------------------------------------------------------------------------------
+  if phase map; then i=4
   goto_map; key "$K_DOWN"; mark "bare-map" 1
+  fi
 
   # --- search overlay + results ---------------------------------------------------------------
-  goto_map; focus_search_bar; key "$K_OK" 1.5; on_screen "Home" || on_screen_contains "Search"; mark "search-overlay" 1; key "$K_BACK" 1
   local haveResults=0
+  if phase search; then i=5
+  goto_map; focus_search_bar; key "$K_OK" 1.5; on_screen "Home" || on_screen_contains "Search"; mark "search-overlay" 1; key "$K_BACK" 1
   goto_map; if run_coffee; then haveResults=1; mark "search-results" 1; else mark "search-results" 0; fi
+  fi
 
   # --- place sheet (+ expand) -----------------------------------------------------------------
+  if phase place; then i=7
+  # standalone (search phase not run this pass): get a result set first
+  [ "$haveResults" = 0 ] && { goto_map; run_coffee && haveResults=1; }
   if [ "$haveResults" = 1 ]; then
     open_first_place; mark "place-sheet" 1
     key "$K_OK" 1; mark "place-sheet-expanded" 1
     key "$K_BACK" 1
   else mark "place-sheet" 0; mark "place-sheet-expanded" 0; fi
+  fi
 
   # --- directions + steps ---------------------------------------------------------------------
+  if phase directions; then i=9
   goto_map
   if reach_directions; then
     mark "directions" 1
@@ -76,29 +100,38 @@ cover_one() {
     if focus_and_ok "Steps"; then mark "route-steps" 1; key "$K_BACK" 1; else mark "route-steps" 0; fi
     key "$K_BACK" 1
   else mark "directions" 0; mark "route-steps" 0; fi
+  fi
 
   # --- Settings + sub-screens -----------------------------------------------------------------
+  if phase settings; then i=11
   if open_settings; then
     mark "settings-top" 1
-    # walk the whole list (captures the mid + lower sections)
+    # walk down a bit to capture the mid + lower sections
     for _ in 1 2 3 4 5 6; do key "$K_DOWN"; key "$K_DOWN"; key "$K_DOWN"; done; shot "settings-lower"; covered=$((covered+1)); checklist="$checklist\n  COVERED  settings-lower"
     key "$K_BACK" 1
-    # Collapsible sub-sections (CollapsibleSectionTitle): scroll to them FAST (scroll_focus_ok - bulk
-    # scroll, not a uiautomator dump per row, which timed out), OK to EXPAND, capture the open section.
-    for sub in "Voice library" "Offline"; do
-      if open_settings && scroll_focus_ok "$sub"; then mark "settings-$(echo "$sub"|tr ' A-Z' '-a-z')" 1; key "$K_BACK" 1
+    # Deep sub-sections sit near the BOTTOM of a long list: Voice library, Offline (collapsible), and
+    # Saved places (a plain SectionTitle). Per-row DOWN polling is too slow (uiautomator dump ~2.6s each)
+    # and overshoots a non-focusable header; instead reach each from a FRESH Settings by controlled drags
+    # (swipe_up_to - checks on_screen once per short slow drag, which can't fling a thin header past),
+    # then nudge it up so the row is fully framed (not clipped at the fold). We DON'T tap-to-expand the
+    # collapsibles: their expand/collapse state PERSISTS, so a tap is a non-deterministic TOGGLE (it
+    # collapsed as often as it expanded). This captures each sub-section HEADER rendering clip-free at the
+    # geometry - the coverage question here; the expanded pickers (voice catalog, offline region list)
+    # are entered + navigated by audit_dynamic.sh's D-pad tour.
+    for sub in "Voice library" "Offline" "Saved places"; do
+      if open_settings && swipe_up_to "$sub"; then nudge_up; mark "settings-$(echo "$sub"|tr ' A-Z' '-a-z')" 1; key "$K_BACK" 1
       else mark "settings-$(echo "$sub"|tr ' A-Z' '-a-z')" 0; fi
     done
-    # Saved places is a plain SectionTitle header (not collapsible, can't be OK'd): scroll it on-screen
-    # and capture the section + its backup/restore buttons.
-    if open_settings && scroll_to "Saved places"; then mark "settings-saved-places" 1; key "$K_BACK" 1
-    else mark "settings-saved-places" 0; fi
   else mark "settings-top" 0; mark "settings-lower" 0
        mark "settings-voice-library" 0; mark "settings-offline" 0; mark "settings-saved-places" 0; fi
+  fi  # phase settings
 
-  echo "-- coverage: $id --"; printf '%b\n' "$checklist"
+  echo "-- coverage: $id ($phases) --"; printf '%b\n' "$checklist"
   echo "  => $covered COVERED, $missed MISSED"
-  [ "$missed" -eq 0 ] && echo "  RESULT: FULLY COVERED ($id)" || echo "  RESULT: NOT fully covered - $missed surface(s) MISSED ($id)"
+  if [ "$full" != 1 ]; then
+    echo "  RESULT: PARTIAL run (PHASES='$phases') - re-run without PHASES for the full-support verdict ($id)"
+  elif [ "$missed" -eq 0 ]; then echo "  RESULT: FULLY COVERED ($id)"
+  else echo "  RESULT: NOT fully covered - $missed surface(s) MISSED ($id)"; fi
   echo "  screenshots: $out"
   return "$missed"
 }

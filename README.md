@@ -14,16 +14,18 @@ A degoogled maps and navigation client for Android. Runs on GrapheneOS and other
 **nothing has run on the actual phones**. Because the targets collapse to two screen sizes, that is
 what's tested (each phone with that size shares the result):
 
-| Simulated size | Target phones | Coverage so far (screenshots in [`tests/devices/`](tests/devices/)) |
+| Simulated size | Target phones | Coverage (screenshots in [`tests/devices/`](tests/devices/)) |
 |---|---|---|
-| 240x320 | Kyocera e4810, TCL Flip 2, Sonim XP3 (XP3800), Kyocera DuraXV | first-run (Welcome + voice/offline/consent dialogs), bare map, search overlay, place sheet, directions, Settings open + basic navigation |
-| 480x854 | Sonim X320 (XP3 Plus 5G) | bare map, consent dialog, Settings open + navigation |
+| 240x320 | Kyocera e4810, TCL Flip 2, Sonim XP3 (XP3800), Kyocera DuraXV | **FULLY COVERED (16/16)** - first-run (Welcome + voice/offline/consent dialogs), bare map, search overlay, results, place sheet (+ expanded), directions, route steps, and Settings incl. the deep Voice-library / Offline / Saved-places sub-sections ([`kyocera-e4810/screenshots/full/`](tests/devices/kyocera-e4810/screenshots/full/)) |
+| 480x854 | Sonim X320 (XP3 Plus 5G) | **FULLY COVERED (16/16)** - same 16-surface tour at the device's real resolution ([`sonim-x320/screenshots/full/`](tests/devices/sonim-x320/screenshots/full/)) |
 
-**Not full D-pad coverage.** Only the surfaces above were checked. NOT yet exercised at any size: every
-Settings sub-screen, turn-by-turn navigation cards, transit, offline-download UI, saved places, and
-every menu/dialog. **Real-hardware confirmation: none.** So this is "fits and is D-pad-navigable on the
-core surfaces at these simulated sizes," not "fully verified." New models drop straight into the matrix
-- open an issue with the model + screen size and resolution.
+Both sizes pass the full-coverage gate: `bash tests/devices/full_coverage.sh <device-id>` drives every
+surface at the device's geometry and prints **RESULT: FULLY COVERED (0 MISSED)** - the hard requirement
+for calling a device supported (see [`AGENTS.md`](AGENTS.md)). NOT yet in the gate: live turn-by-turn
+navigation cards and transit itineraries. **Real-hardware confirmation: none** - the geometry is
+simulated with `wm size`/`wm density`, so this is "fits and is D-pad-navigable at these simulated
+sizes," not "run on the actual phones." New models drop straight into the matrix - open an issue with
+the model + screen size and resolution.
 
 - **D-pad first.** Fully operable with a 5-key D-pad (arrows + OK) and hardware BACK on a
   device with **no touchscreen**. Touch is a bonus.
