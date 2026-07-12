@@ -558,4 +558,6 @@
     <string name="map_parking_moved">Estacionamento movido para aqui</string>
     <string name="mapscreen_system_voices">Vozes do sistema</string>
     <string name="mapvm_voice_lang_system">As indicações em %1$s usam a voz do telemóvel. Adicione uma nas definições de voz do sistema.</string>
+    <string name="settings_topography">Sombreamento do relevo</string>
+    <string name="settings_topography_hint">Sombreia colinas e montanhas no mapa. Desativado por padrão.</string>
 </resources>
