@@ -539,7 +539,14 @@
     <string name="settings_map_colors">Кольори карти</string>
     <string name="settings_map_colors_modern">Сучасні</string>
     <string name="settings_map_colors_classic">Класичні</string>
-    <string name="settings_map_colors_hint">Сучасні повторюють поточну палітру Google Maps. Класичні — попередній вигляд Vela: білі дороги, жовті магістралі, насичена зелень.</string>
+    <string name="settings_map_colors_hint">Сучасні повторюють поточну палітру Google Maps. Класичні повертають попередній вигляд Vela: білі дороги, жовті магістралі, насичена зелень.</string>
     <string name="place_avoid_tolls">Уникати платних доріг</string>
     <string name="place_avoid_highways">Уникати шосе</string>
+    <string name="map_parking_find">Знайти моє авто</string>
+    <string name="map_parking_move_here">Перемістити парковку сюди</string>
+    <string name="map_parking_earlier">Попередні місця</string>
+    <string name="map_parking_clear">Прибрати парковку</string>
+    <string name="map_parking_moved">Парковку переміщено сюди</string>
+    <string name="mapscreen_system_voices">Системні голоси</string>
+    <string name="mapvm_voice_lang_system">Вказівки для мови %1$s використовують голос телефону. Додайте його в системних налаштуваннях голосу.</string>
 </resources>
