@@ -63,6 +63,10 @@ physical size but all round to ~160. More models will be added as they are named
     `firstrun map search place directions settings voice parking`. **Rule: every new feature adds
     its surfaces as its OWN phase in the same PR**, so verifying it on any device is one short
     reproducible run - the FULL tour stays reserved for the fully-supported verdict.
+  - **HARD RULE - every target geometry, every time.** A phase is verified only when it has run
+    green AND its frames were checked by eye at EVERY geometry in the matrix (both 240x320@160 and
+    480x854@320 today). One size never stands in for the other; a new geometry joins the loop the
+    day it lands in the matrix.
 - **`bash tests/devices/capture.sh <id>`** - lighter AUTO-capture of the first-run flow + core surfaces
   into `<id>/screenshots/auto/` (`--warm` skips the fresh `pm clear`; `capture.sh all` does every
   device). Use `full_coverage.sh` for the support gate; `capture.sh` for a quick visual refresh.
