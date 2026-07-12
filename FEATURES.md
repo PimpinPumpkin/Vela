@@ -1346,13 +1346,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - Save is a bookmark icon; sheet headers share one circled-button language (place sheet,
   directions close, results chevron and close, recent-search remove).
 
-- ✅ **Hebrew (עברית) — the 12th language and first RTL locale (2026-07-09/11).** All three i18n
-  layers cover Hebrew: the ~531 UI strings (`res/values-he/strings.xml`, every format-placeholder
-  validated against English), the generated spoken nav voice (`HeNavStrings` in `:core` — masculine
-  singular Waze/Google-Maps register: "פנה ימינה", "בעוד 300 מטר", feminine roundabout-exit ordinals
-  "ביציאה השלישית", "היעד שלך מצד שמאל/ימין"), and the Google POI scrape (`hl` follows the locale).
-  Registered under **`he`**: on JDK 17+ (`useOldISOCodes=false`) `Locale` canonicalizes `iw`→`he`, so
-  the resolved code, the `values-he` folder and `NavStrings.forLanguage` all agree (`forLanguage` also
-  accepts `iw`). RTL is automatic — the app already declares `android:supportsRtl` and re-creates the
-  Activity with a Hebrew config, so Compose's `LayoutDirection` flips (a whole-app scan found no
-  hardcoded left/right, `Absolute` arrangements or forced `LayoutDirection`). Unit-tested for `he`.
+- ✅ **Hebrew (עברית): the 15th language and first RTL locale (2026-07-09/11, contributed by
+  The-Young-boy; landed 2026-07-12 alongside the Chinese/Japanese work).** All three i18n layers
+  cover Hebrew: the ~531 UI strings (in `res/values-iw/strings.xml` - `iw` is AAPT's legacy Hebrew
+  resource qualifier - every format-placeholder validated against English), the generated spoken nav
+  voice (`HeNavStrings` in `:core`, masculine-singular Waze/Google-Maps register: "פנה ימינה",
+  "בעוד 300 מטר", feminine roundabout-exit ordinals "ביציאה השלישית", "היעד שלך מצד שמאל/ימין"), and
+  the Google POI scrape (`hl` follows the locale; open/closed keyword table keyed under both `iw` and
+  `he`). Registered under **`he`** in the picker/NavStrings: on JDK 17+ (`useOldISOCodes=false`) the
+  resolved code is `he`, the resources live in the legacy `values-iw` folder (the platform maps a
+  `he` locale onto it), and `NavStrings.forLanguage` accepts both `he` and `iw` (Android hands back
+  the old code on-device). RTL is automatic: the app already declares `android:supportsRtl` and
+  re-creates the Activity with a Hebrew config, so Compose's `LayoutDirection` flips (a whole-app scan
+  found no hardcoded left/right, `Absolute` arrangements or forced `LayoutDirection`). Unit-tested.
