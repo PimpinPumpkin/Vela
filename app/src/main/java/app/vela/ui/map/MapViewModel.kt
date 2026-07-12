@@ -87,6 +87,11 @@ data class MapUiState(
                                    // fix carried none. The puck's Kalman measures ONLY from this: feeding
                                    // it the held mySpeed re-injected a stale braking speed at high gain
                                    // every fix, which is what kept the puck "moving" at a red light.
+    // Posted limit read STREAMING from the hosted maxspeed PMTiles overlay (the map queries the invisible
+    // overlay layer under the puck). The "Speed B" online source used when the offline graph can't answer
+    // ([speedLimitKmh] null) - so a limit shows anywhere online without a downloaded region.
+    val maxspeedOverlays: List<String> = emptyList(), // pmtiles://https:// source URIs covering the view
+    val speedLimitOverlayKmh: Double? = null,
     val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via GraphHopper),
                                        // km/h; null = unknown/untagged/no offline graph → badge hidden.
                                        // Converted to the display unit at the badge.
@@ -250,6 +255,7 @@ class MapViewModel @Inject constructor(
     private val routingGraphStore: app.vela.offline.RoutingGraphStore,
     private val poiPackStore: app.vela.offline.PoiPackStore,
     private val overlayStore: app.vela.offline.OverlayTileStore,
+    private val maxspeedStore: app.vela.offline.MaxspeedOverlayStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
     private val selfUpdater: app.vela.update.SelfUpdater,
@@ -3133,6 +3139,7 @@ class MapViewModel @Inject constructor(
         mapCenter = center
         refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
         refreshAddressOverlays(center) // + house-number labels for that region
+        refreshMaxspeedOverlay(center) // + the posted-speed-limit overlay (read under the puck for the sign)
         refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
@@ -3455,6 +3462,23 @@ class MapViewModel @Inject constructor(
             val distinct = uris.distinct()
             if (distinct != _state.value.buildingOverlays) _state.update { it.copy(buildingOverlays = distinct) }
         }
+    }
+
+    /** Stream the posted-speed-limit overlay covering [center] so the map can read a limit under the puck
+     *  ("Speed B"). Streaming-only (no download): MapLibre range-fetches the visible tiles. De-duped so
+     *  panning within one region doesn't churn the source. */
+    private fun refreshMaxspeedOverlay(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        val c = center ?: return
+        viewModelScope.launch {
+            val uris = runCatching { maxspeedStore.sourcesFor(c, app.vela.BuildConfig.MAXSPEED_MANIFEST_URL) }.getOrDefault(emptyList())
+            if (uris != _state.value.maxspeedOverlays) _state.update { it.copy(maxspeedOverlays = uris) }
+        }
+    }
+
+    /** The map reports the posted limit (km/h, or null) it read from the streaming overlay layer under the
+     *  puck. Only the online source; the offline graph fills [speedLimitKmh] directly. */
+    fun onOverlayRoadLimit(kmh: Double?) {
+        if (kmh != _state.value.speedLimitOverlayKmh) _state.update { it.copy(speedLimitOverlayKmh = kmh) }
     }
 
     @Volatile
