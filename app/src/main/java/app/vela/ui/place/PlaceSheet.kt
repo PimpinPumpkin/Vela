@@ -3285,9 +3285,21 @@ private fun ShareIconButton(place: Place, tint: Color) {
         open = false
     }
 
+    // Open this exact place on the Google Maps website (in the browser), not share a link. Prefer the
+    // place's own cid deep-link (opens the real place page); fall back to a name+coords query.
+    fun openWeb() {
+        val cid = place.featureId?.substringAfter(":", "")?.removePrefix("0x")?.takeIf { it.isNotBlank() }
+            ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
+        val url = if (cid != null) "https://www.google.com/maps?cid=$cid"
+            else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        open = false
+    }
+
     Box {
         HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
+            item(stringResource(R.string.place_open_web)) { openWeb() }
             item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
             // degoogled-friendly way to send a pin.
