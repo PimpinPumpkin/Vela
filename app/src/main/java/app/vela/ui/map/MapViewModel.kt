@@ -1121,14 +1121,27 @@ class MapViewModel @Inject constructor(
                 val vp = viewport
                 val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
                 val res = dataSource.search(q, near, spanM)
-                _state.update {
-                    // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
-                    // else typing the origin query wiped the "To" and the panel showed an empty
-                    // "Destination" with stale routes (the from-here edit cleared where you were going).
-                    // A live scrape succeeding is definitive proof we're online — clear a stuck
-                    // offline flag (the network callback can miss an event after doze and leave
-                    // `offline` latched until relaunch; seen on-device 2026-07-09).
-                    it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                if (res.places.isNotEmpty()) {
+                    _state.update {
+                        // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
+                        // else typing the origin query wiped the "To" and the panel showed an empty
+                        // "Destination" with stale routes (the from-here edit cleared where you were going).
+                        // A live scrape succeeding is definitive proof we're online — clear a stuck
+                        // offline flag (the network callback can miss an event after doze and leave
+                        // `offline` latched until relaunch; seen on-device 2026-07-09).
+                        it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                    }
+                } else {
+                    // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
+                    // isn't showing up" report): try the on-device OSM index (it may hold a small local
+                    // place Google misses), and if that's empty too, say "No results" plainly.
+                    val offline = offlineSearch(q, near)
+                    _state.update {
+                        if (offline.isNotEmpty())
+                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                        else
+                            it.copy(results = emptyList(), selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_no_results, q), searching = false, offline = false)
+                    }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // superseded by a newer search — don't run the fallback/error update on a dead job
@@ -1137,12 +1150,7 @@ class MapViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Network/Google failure → fall back to the offline OSM index (POIs + address geocode, same
                 // as the straight-offline branch so an address still resolves when the scrape times out).
-                val offline = withContext(Dispatchers.IO) {
-                    val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
-                    val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
-                        runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
-                    (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
-                }
+                val offline = offlineSearch(q, near)
                 if (offline.isNotEmpty()) {
                     _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false) }
                 } else if (isConnectivityError(e)) {
@@ -1158,6 +1166,17 @@ class MapViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** The on-device OSM fallback for a query: matched POIs plus, when the text looks like an address,
+     *  interpolated address hits (addresses first so a typed street resolves). Used both when the online
+     *  scrape throws AND when it succeeds with zero results, so a small local place Google misses still
+     *  surfaces instead of a blank screen. */
+    private suspend fun offlineSearch(q: String, near: LatLng?): List<Place> = withContext(Dispatchers.IO) {
+        val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+        val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
+            runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
+        (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
     }
 
     /** "Search along route": search [query] biased to the route's midpoint, then
