@@ -205,15 +205,11 @@ class WhisperRecognizer @Inject constructor(
             t
         }.getOrNull().orEmpty()
 
-        cleanTranscript(text).ifBlank { null }
+        // Whisper writes prose ("Coffee shops near me.") and, on non-speech audio, bracketed sound
+        // tags ("[music]", "[thud]"). :core's SpeechText.cleanSearchTranscript strips those into a
+        // clean query (or "" -> null below = heard nothing, no search). Unit-tested there.
+        app.vela.core.voice.SpeechText.cleanSearchTranscript(text).ifBlank { null }
     }
-
-    /** Whisper writes prose: it capitalizes and ends with a period ("Coffee shops near me.").
-     *  A search query wants neither the trailing sentence punctuation nor stray wrapping, so strip
-     *  terminal . ! ? , ; : and quotes from the ends. Periods INSIDE the text are left alone,
-     *  they can be real ("St. Paul"). */
-    private fun cleanTranscript(raw: String): String =
-        raw.trim().trim('"', '“', '”').trimEnd('.', '!', '?', ',', ';', ':', '…').trim()
 
     private fun rms(f: FloatArray): Float {
         if (f.isEmpty()) return 0f
