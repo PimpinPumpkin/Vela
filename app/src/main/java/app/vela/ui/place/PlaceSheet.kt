@@ -3296,11 +3296,22 @@ private fun ShareIconButton(place: Place, tint: Color) {
         open = false
     }
 
+    // Copy the place's Google Maps link straight to the clipboard (a quiet toast confirms).
+    fun copyLink() {
+        val url = "https://www.google.com/maps/search/?api=1&query=$lat%2C$lng"
+        runCatching {
+            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, url))
+            Toast.makeText(context, context.getString(R.string.place_link_copied), Toast.LENGTH_SHORT).show()
+        }
+        open = false
+    }
+
     Box {
         HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
             item(stringResource(R.string.place_open_web)) { openWeb() }
-            item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
+            item(stringResource(R.string.place_copy_link)) { copyLink() }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
             // degoogled-friendly way to send a pin.
             item(stringResource(R.string.place_share_map_pin)) { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") }
