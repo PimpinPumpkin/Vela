@@ -540,4 +540,11 @@
     <string name="settings_map_colors_hint">Modern volgt het huidige palet van Google Maps. Klassiek is de eerdere look van Vela: witte wegen, gele snelwegen, echte groentinten.</string>
     <string name="place_avoid_tolls">Tolwegen vermijden</string>
     <string name="place_avoid_highways">Snelwegen vermijden</string>
+    <string name="map_parking_find">Mijn auto zoeken</string>
+    <string name="map_parking_move_here">Parkeerplek hierheen verplaatsen</string>
+    <string name="map_parking_earlier">Eerdere parkeerplekken</string>
+    <string name="map_parking_clear">Parkeerplek wissen</string>
+    <string name="map_parking_moved">Parkeerplek hierheen verplaatst</string>
+    <string name="mapscreen_system_voices">Systeemstemmen</string>
+    <string name="mapvm_voice_lang_system">Aanwijzingen in het %1$s gebruiken de stem van je telefoon. Voeg er een toe in je systeemstem-instellingen.</string>
 </resources>
