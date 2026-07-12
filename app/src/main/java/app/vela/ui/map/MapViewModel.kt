@@ -124,6 +124,7 @@ data class MapUiState(
     val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
     val trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights+stop signs drawn at high zoom
+    val flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras (DeFlock/OSM), high zoom
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
@@ -3134,6 +3135,8 @@ class MapViewModel @Inject constructor(
         refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
         refreshAddressOverlays(center) // + house-number labels for that region
         refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
+        lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
+        refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -3486,6 +3489,9 @@ class MapViewModel @Inject constructor(
 
     private var controlsJob: Job? = null
     private var controlsBox: DoubleArray? = null // [s,w,n,e] of the last fetched (padded) box
+    private var flockBox: DoubleArray? = null
+    private var lastFlockViewport: DoubleArray? = null
+    private var flockJob: Job? = null
 
     /**
      * Traffic lights + stop signs drawn on the map (OSM `highway=traffic_signals`/`stop` via Overpass),
@@ -3532,6 +3538,47 @@ class MapViewModel @Inject constructor(
                 dLat * dLat + dLng * dLng
             }.take(CONTROLS_ONSCREEN_CAP)
             _state.update { it.copy(trafficControls = kept) }
+        }
+    }
+
+    /** Re-fetch (or clear) the Flock layer for the current viewport - called when the toggle flips,
+     *  so turning it on shows cameras without needing a pan first. */
+    fun refreshFlockNow() {
+        lastFlockViewport?.let { refreshFlock(it[0], it[1], it[2], it[3], it[4]) }
+    }
+
+    /** ALPR/Flock cameras for the viewport, when the layer is on. Mirrors [refreshTrafficControls]:
+     *  high-zoom only, area-cached (cameras are static), 350 ms debounced, failure not cached. */
+    private fun refreshFlock(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        if (!app.vela.ui.Flock.on.value || zoom < CONTROLS_MIN_ZOOM) {
+            flockBox = null
+            flockJob?.cancel()
+            if (_state.value.flockCameras.isNotEmpty()) _state.update { it.copy(flockCameras = emptyList()) }
+            return
+        }
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        flockBox?.let { b ->
+            val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+            if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+        }
+        flockJob?.cancel()
+        flockJob = viewModelScope.launch {
+            delay(350)
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+            val res = runCatching {
+                withContext(Dispatchers.IO) {
+                    app.vela.core.data.OverpassAlprCameras.fetchInBox(http, s, w, n, e)
+                }
+            }.getOrNull() ?: return@launch
+            flockBox = doubleArrayOf(s, w, n, e)
+            val cLat0 = (s + n) / 2; val cLng0 = (w + e) / 2
+            val lngScale = kotlin.math.cos(Math.toRadians(cLat0))
+            val kept = if (res.size <= CONTROLS_ONSCREEN_CAP) res else res.sortedBy {
+                val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
+                dLat * dLat + dLng * dLng
+            }.take(CONTROLS_ONSCREEN_CAP)
+            _state.update { it.copy(flockCameras = kept) }
         }
     }
 
