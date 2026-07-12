@@ -181,6 +181,51 @@ scroll_focus_ok() {
   return 1
 }
 
+# swipe_up_to <exact> [maxswipes]  - fling a scroll view UP (content moves up) until <exact> is on
+# screen. FAST + reliable for sections DEEP in a very long list where per-row DOWN polling is both slow
+# (a uiautomator dump is ~2.6s on a keypad phone) and fragile - a batch of DOWN presses can overshoot a
+# NON-focusable section header (e.g. a plain SectionTitle) that only flashes past between checks, so the
+# poll never sees it and runs to the bottom. A ~half-screen swipe moves less than one header+body block,
+# so the on_screen check after each swipe can't skip it. This is a SCREENSHOT-COVERAGE reach (used by
+# full_coverage.sh to frame a surface); D-pad REACHABILITY of every element is enforced separately by
+# audit_dynamic.sh. Returns non-zero if unreached.
+swipe_up_to() {
+  local want="$1" max="${2:-40}" i sz w h
+  sz="$($ADB shell wm size 2>/dev/null | grep -oE '[0-9]+x[0-9]+' | tail -1)"
+  w="${sz%x*}"; h="${sz#*x}"; : "${w:=480}"; : "${h:=800}"
+  # SHORT + SLOW swipes. Short (~26% of the screen) so a section's header+body block spans SEVERAL
+  # on_screen checks. SLOW (700ms = a controlled drag, NOT a 200ms fling) so it moves ~exactly the swipe
+  # distance with no momentum - a fast fling coasts a whole screen past the finger lift and flings a
+  # single-row section header clean past between checks (device-seen: Voice library / Saved places
+  # consistently overshot with a 220ms fling; a slow drag lands on them every time).
+  local x=$((w/2)) y1=$((h*63/100)) y2=$((h*37/100))
+  for i in $(seq 1 "$max"); do
+    on_screen "$want" && return 0
+    $ADB shell input swipe "$x" "$y1" "$x" "$y2" 700 >/dev/null 2>&1
+    sleep 0.5
+  done
+  on_screen "$want"
+}
+# nudge_up  - one small swipe (~30% of the screen) so a section just brought to the bottom edge by
+# swipe_up_to is framed with its body/buttons instead of clipped at the fold. No dump.
+nudge_up() {
+  local sz w h
+  sz="$($ADB shell wm size 2>/dev/null | grep -oE '[0-9]+x[0-9]+' | tail -1)"
+  w="${sz%x*}"; h="${sz#*x}"; : "${w:=480}"; : "${h:=800}"
+  $ADB shell input swipe $((w/2)) $((h*62/100)) $((w/2)) $((h*34/100)) 200 >/dev/null 2>&1
+  sleep 0.5
+}
+# tap_center <exact>  - tap the centre of the node with that exact text (one dump to locate it). For
+# expanding a collapsible header in a coverage capture. Returns non-zero if the text isn't on screen.
+tap_center() {
+  local b cx cy
+  b="$(find_text "$1")"; [ -z "$b" ] && return 1
+  cx="$(echo "$b" | sed -E 's/^\[([0-9]+),[0-9]+\]\[([0-9]+),[0-9]+\]$/\1 \2/' | awk '{print int(($1+$2)/2)}')"
+  cy="$(ycenter "$b")"
+  { [ -z "$cx" ] || [ -z "$cy" ]; } && return 1
+  $ADB shell input tap "$cx" "$cy" >/dev/null 2>&1; sleep 1; return 0
+}
+
 # ---- assertions -----------------------------------------------------------------------------
 PASS=0; FAIL=0
 pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }
