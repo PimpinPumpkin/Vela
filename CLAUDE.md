@@ -1819,10 +1819,16 @@ architecture note.
   place `root[6]`, transit node `place[62]` = `["<station>", [ <groups> ]]`; group `[null,"<Subway
   services>", [ <lines> ], … "<mode>"]`; line `[null, [ <directions> ], … ftid]`; direction
   `["<headsign>", null,null, [ <departures> ]]`; a departure time tuple `[rtEpoch,"<tz>","4:35
-  AM",offset,schedEpoch]` (realtime when rt≠sched); frequency `[<sec>,"20 min"]`. The container path
-  is positional; the LEAF details (time tuples, frequency, route label) are matched by SHAPE within
-  each direction, and `place[62]` is validated with a shape-search fallback - a moved leaf/field
-  index degrades one line, not the board. `parse` returns **null** for a non-station (routine - most
+  AM",offset,schedEpoch]` (realtime when rt≠sched); frequency `[<sec>,"20 min"]`. **TWO layouts
+  (2026-07-12):** a station/subway groups entries by line -> direction -> departures (above), but a busy
+  BUS stop lists every upcoming departure FLAT, each tagged with its own route pill at `entry[5][1]`
+  shaped `["<label>", <int>, "#fill", "#text"]` (the same badge the itinerary line pills use). So the
+  parser doesn't assume one shape: it reads the badge (route number + colours) + headsign + times off
+  each entry and GROUPS by (route, direction) - the 25 separate "route 14" departures collapse into one
+  "14" row with its next few times, in its line colour, and lines sort soonest-first. The container path
+  is positional; the LEAF details (time tuples, frequency, the route badge) are matched by SHAPE, and
+  `place[62]` is validated with a shape-search fallback - a moved leaf/field index degrades one line, not
+  the board. `parse` returns **null** for a non-station (routine - most
   places have no transit node) and throws `CalibrationNeededException` only when a transit node yields
   0 lines. **Coverage is AGENCY-DEPENDENT** (only agencies that feed Google real-time embed it): NYC
   MTA + SF BART carry it, SacRT (small light rail) does NOT - `MapViewModel.fetchStopDepartures` is

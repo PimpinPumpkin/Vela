@@ -915,9 +915,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   `TransitStep.delayText`), no extra fetch; localized in all 11 languages.
 - ✅ **Live stop departure board (2026-07-12, keyless + device-verified).** Tapping a transit
   station (subway / rail / BART / bus stop) shows Google's **"See departure board"** right in the
-  place sheet: each line and direction with its **destination/headsign**, the **next few departure
-  times** (soonest bold, the rest quiet), a **countdown** on the soonest ("in 6 min", green + a
-  **Live** dot when Google has a real-time fix), and the running **frequency**. It rides the SAME
+  place sheet: each line and direction with its **route number in its real line colour** (the "14"/
+  "38AX" pill), its **destination/headsign**, the **next few departure times** (soonest bold, the rest
+  quiet), a **countdown** on the soonest ("in 6 min", green + a **Live** dot when Google has a real-time
+  fix), and the running **frequency**. Handles both layouts - a station grouped by line/direction, and
+  a busy **bus stop** that lists departures flat (the parser groups those by route so route 14 is one
+  "14" row with its next times, not 25 rows), soonest-first. It rides the SAME
   anonymous WebView + `APP_INITIALIZATION_STATE` channel as transit itineraries and photos - the
   board is embedded in the station's own place page (no separate RPC, no login; unlike popular
   times it survives a logged-out session), parsed keyless by `:core`'s `StopDeparturesParser`
