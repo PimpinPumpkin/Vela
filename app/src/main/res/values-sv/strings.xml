@@ -540,4 +540,11 @@
     <string name="settings_map_colors_hint">Modern följer Google Maps nuvarande palett. Klassisk är Velas tidigare utseende: vita vägar, gula motorvägar, riktiga gröna toner.</string>
     <string name="place_avoid_tolls">Undvik vägtullar</string>
     <string name="place_avoid_highways">Undvik motorvägar</string>
+    <string name="map_parking_find">Hitta min bil</string>
+    <string name="map_parking_move_here">Flytta parkeringen hit</string>
+    <string name="map_parking_earlier">Tidigare parkeringar</string>
+    <string name="map_parking_clear">Rensa parkering</string>
+    <string name="map_parking_moved">Parkeringen flyttad hit</string>
+    <string name="mapscreen_system_voices">Systemröster</string>
+    <string name="mapvm_voice_lang_system">Vägbeskrivningar på %1$s använder telefonens röst. Lägg till en i systemets röstinställningar.</string>
 </resources>

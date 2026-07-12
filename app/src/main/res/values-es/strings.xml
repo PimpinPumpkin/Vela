@@ -540,4 +540,11 @@
     <string name="settings_map_colors_hint">Moderno sigue la paleta actual de Google Maps. Clásico es el aspecto anterior de Vela: carreteras blancas, autopistas amarillas, verdes intensos.</string>
     <string name="place_avoid_tolls">Evitar peajes</string>
     <string name="place_avoid_highways">Evitar autopistas</string>
+    <string name="map_parking_find">Encontrar mi coche</string>
+    <string name="map_parking_move_here">Mover aparcamiento aquí</string>
+    <string name="map_parking_earlier">Sitios anteriores</string>
+    <string name="map_parking_clear">Borrar aparcamiento</string>
+    <string name="map_parking_moved">Aparcamiento movido aquí</string>
+    <string name="mapscreen_system_voices">Voces del sistema</string>
+    <string name="mapvm_voice_lang_system">Las indicaciones en %1$s usan la voz de tu teléfono. Añade una en los ajustes de voz del sistema.</string>
 </resources>
