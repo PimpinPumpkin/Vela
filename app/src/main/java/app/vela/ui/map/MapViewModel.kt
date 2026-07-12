@@ -3478,8 +3478,10 @@ class MapViewModel @Inject constructor(
     /** The map reports the posted limit (km/h, or null) it read from the streaming overlay layer under the
      *  puck. Only the online source; the offline graph fills [speedLimitKmh] directly. */
     fun onOverlayRoadLimit(kmh: Double?) {
-        android.util.Log.i("VelaSpeedB", "overlay maxspeed=$kmh km/h (offline=${_state.value.speedLimitKmh})")
-        if (kmh != _state.value.speedLimitOverlayKmh) _state.update { it.copy(speedLimitOverlayKmh = kmh) }
+        if (kmh != _state.value.speedLimitOverlayKmh) {
+            android.util.Log.i("VelaSpeedB", "overlay maxspeed=$kmh km/h (offline=${_state.value.speedLimitKmh})")
+            _state.update { it.copy(speedLimitOverlayKmh = kmh) }
+        }
     }
 
     @Volatile
