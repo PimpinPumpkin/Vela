@@ -1160,23 +1160,16 @@ fun MapScreen(
             }
         }
 
-<<<<<<< HEAD
-        // Posted speed-limit sign, from the on-device graph's OSM maxspeed (hidden when the road's
-        // untagged or no covering graph is downloaded - sparse OSM coverage = often blank). Shown
-        // during nav AND during a FREE-DRIVE (moving with no route open, on the clean map) - the same
-        // `updateSpeedLimit` already runs on every live browse fix, it was only ever *rendered* in nav
-        // (user 2026-07-12: show it while just driving too). In free-drive there's no speedometer, so
-        // it drops to the nav-bar line; during nav it stays above the speedo.
+        // Posted speed-limit sign. Source (#101): prefer the on-device graph's OSM maxspeed and fall
+        // back to the streamed maxspeed overlay ("Speed B"), so a limit shows even with no routing
+        // region downloaded. Visibility (#85): during nav AND during a FREE-DRIVE (moving with no
+        // route open, on the clean map) - in free-drive the overlay poll (speedOverlayOn keys off
+        // driveFollowing) is what feeds it, so combining the two makes the free-drive sign work
+        // without a graph too. Free-drive drops it to the nav-bar line; during nav it sits above the speedo.
         val freeDriveSpeed = !state.navigating && (state.mySpeed ?: 0f) > 3f &&
             !searchOpen && state.selected == null && !state.directionsOpen && !state.showSteps && !resultsShown
-        if ((state.navigating || freeDriveSpeed) && state.speedLimitKmh != null) {
-=======
-        // Posted speed-limit sign — sits just above the speedometer during nav. Prefers the on-device graph
-        // (instant, exact) and falls back to the streamed maxspeed overlay ("Speed B"), so a limit shows
-        // even with no routing region downloaded (hidden only when neither source knows it).
         val postedLimitKmh = state.speedLimitKmh ?: state.speedLimitOverlayKmh
-        if (state.navigating && postedLimitKmh != null) {
->>>>>>> origin/speed-limit-streamer
+        if ((state.navigating || freeDriveSpeed) && postedLimitKmh != null) {
             SpeedLimitSign(
                 limitKmh = postedLimitKmh,
                 speedMps = state.mySpeed,
@@ -1184,16 +1177,12 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-<<<<<<< HEAD
                     .padding(
                         start = 16.dp,
-                        // above the 60dp speedo + 8dp gap during nav; in free-drive lift it above the
+                        // above the speedo + 8dp gap during nav; in free-drive lift it above the
                         // bottom-left scale bar so the two don't overlap.
                         bottom = navBarClearance + if (state.navigating) 68.dp else 46.dp,
                     ),
-=======
-                    .padding(start = 16.dp, bottom = navBarClearance + 52.dp), // above the ~44dp speedo rect + 8dp gap
->>>>>>> origin/speed-limit-streamer
             )
         }
 
