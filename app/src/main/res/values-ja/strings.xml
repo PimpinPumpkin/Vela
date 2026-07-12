@@ -557,4 +557,15 @@
     <string name="settings_ui_scale">表示サイズ</string>
     <string name="place_avoid_tolls">有料道路を回避</string>
     <string name="place_avoid_highways">高速道路を回避</string>
+    <string name="settings_map_colors">地図の色</string>
+    <string name="settings_map_colors_modern">モダン</string>
+    <string name="settings_map_colors_classic">クラシック</string>
+    <string name="settings_map_colors_hint">モダンは Google アプリの現在の配色に合わせています。クラシックは Vela の以前の見た目です：白い道路、黄色い高速道路、本来の緑。</string>
+    <string name="map_parking_find">車を探す</string>
+    <string name="map_parking_move_here">駐車位置をここに移動</string>
+    <string name="map_parking_earlier">以前の駐車位置</string>
+    <string name="map_parking_clear">駐車位置を消去</string>
+    <string name="map_parking_moved">駐車位置をここに移動しました</string>
+    <string name="mapscreen_system_voices">システムの音声</string>
+    <string name="mapvm_voice_lang_system">%1$s のナビは端末の音声を使用します。システムの音声設定で追加できます。</string>
 </resources>

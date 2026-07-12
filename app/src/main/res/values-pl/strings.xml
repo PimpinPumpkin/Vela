@@ -542,4 +542,11 @@
     <string name="settings_map_colors_hint">Nowoczesne odpowiadają obecnej palecie Google Maps. Klasyczne to wcześniejszy wygląd Vela: białe drogi, żółte autostrady, wyraziste zielenie.</string>
     <string name="place_avoid_tolls">Unikaj opłat drogowych</string>
     <string name="place_avoid_highways">Unikaj autostrad</string>
+    <string name="map_parking_find">Znajdź mój samochód</string>
+    <string name="map_parking_move_here">Przenieś parking tutaj</string>
+    <string name="map_parking_earlier">Wcześniejsze miejsca</string>
+    <string name="map_parking_clear">Usuń parking</string>
+    <string name="map_parking_moved">Przeniesiono parking tutaj</string>
+    <string name="mapscreen_system_voices">Głosy systemowe</string>
+    <string name="mapvm_voice_lang_system">Wskazówki dla języka %1$s używają głosu telefonu. Dodaj go w systemowych ustawieniach głosu.</string>
 </resources>
