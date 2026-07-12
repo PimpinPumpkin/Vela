@@ -23,12 +23,13 @@ object AppLocale {
     /** The languages Vela's generated nav voice is translated into (and, rolling out, the UI chrome).
      *  This is the source of truth for the in-app language picker — keep it in sync with the NavStrings
      *  table in :core. */
-    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk")
+    val SUPPORTED = listOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "zh-TW", "ja")
 
     private val ENDONYMS = mapOf(
         "en" to "English", "fr" to "Français", "de" to "Deutsch", "es" to "Español",
         "it" to "Italiano", "pt" to "Português", "nl" to "Nederlands", "ru" to "Русский",
         "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська",
+        "zh" to "简体中文", "zh-TW" to "繁體中文（台灣）", "ja" to "日本語",
     )
 
     /** The language's own name (endonym) — what a speaker of it expects to see in a language list. */
@@ -37,8 +38,14 @@ object AppLocale {
     /** The supported language closest to the device/system locale. Used when the user turns OFF
      *  "follow system language" so the revealed picker starts on a sensible current choice instead
      *  of nothing; falls back to English when the system language isn't one Vela ships. */
-    fun deviceDefaultSupported(): String =
-        Locale.getDefault().language.takeIf { it in SUPPORTED } ?: "en"
+    fun deviceDefaultSupported(): String {
+        val sys = Locale.getDefault()
+        // Chinese needs the script split: Traditional regions/scripts map to the zh-TW entry.
+        if (sys.language == "zh") {
+            return if (NavStringsRegistry.tagOf(sys) == "zh-tw") "zh-TW" else "zh"
+        }
+        return sys.language.takeIf { it in SUPPORTED } ?: "en"
+    }
 
     fun init(context: Context) {
         language.value = prefs(context).getString(KEY, "") ?: ""
@@ -59,8 +66,11 @@ object AppLocale {
         if (changed) onLocaleChanged?.invoke()
     }
 
-    /** The resolved locale — the system default when following the system, else the override. */
-    fun effective(): Locale = language.value.takeIf { it.isNotBlank() }?.let { Locale(it) } ?: Locale.getDefault()
+    /** The resolved locale — the system default when following the system, else the override.
+     *  Hyphenated codes ("zh-TW") need [Locale.forLanguageTag]; `Locale("zh-TW")` would create a
+     *  bogus lowercase "zh-tw" LANGUAGE and match nothing. */
+    fun effective(): Locale = language.value.takeIf { it.isNotBlank() }
+        ?.let { Locale.forLanguageTag(it) } ?: Locale.getDefault()
 
     /** The device's own locale, captured on the first [wrap] BEFORE any override touches the JVM
      *  default - the value to restore when the user goes back to following the system. */
@@ -79,7 +89,7 @@ object AppLocale {
             systemDefault?.let { if (Locale.getDefault() != it) Locale.setDefault(it) }
             return base
         }
-        val locale = Locale(lang)
+        val locale = Locale.forLanguageTag(lang) // handles hyphenated tags like zh-TW
         Locale.setDefault(locale)
         val config = Configuration(base.resources.configuration)
         config.setLocale(locale)
