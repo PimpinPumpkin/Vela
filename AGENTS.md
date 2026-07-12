@@ -91,6 +91,13 @@ at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-
   frames, so verifying one feature on a device never needs the full ~13-min tour. A partial run
   reports PARTIAL, never the FULLY COVERED verdict. Current phases:
   `firstrun map search place directions settings voice parking`.
+  **HARD RULE - EVERY TARGET GEOMETRY, EVERY TIME, NOTHING LEFT TO CHANCE:** a feature (or phase)
+  counts as verified ONLY when its phase has run green AND its frames have been eyeballed at EVERY
+  target geometry in the device matrix - today that is BOTH `240x320@160` AND `480x854@320`. One
+  size is NOT a proxy for the other. Run
+  `for id in kyocera-e4810 sonim-x320; do PHASES="<phase>" bash tests/devices/full_coverage.sh $id; done`
+  and look at both sets of frames before calling it done. A new geometry added to the matrix joins
+  this loop the same day.
 - **Every screen opens focused AND stays D-pad-navigable at a SMALL display, not just native.**
   Verify at a real target size - `adb shell wm size 240x320; adb shell wm density 160` (Kyocera e4810;
   see `tests/devices/`) - by SCREENSHOT: the screen lands a visible focus ring on open AND arrows move
@@ -125,6 +132,15 @@ at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-
   focus never landed; the robust one re-requests until `onFocusEvent` confirms it truly landed, then
   stops (so it never fights the user). `audit_static.sh` surfaces every weak use for triage - each must
   be screenshot-verified to actually focus on a small screen, or converted.
+
+## The feat/restrictions branch (hard rules)
+
+- **Keep `feat/restrictions` synced with `main` at all times.** After anything merges to main,
+  merge main into `feat/restrictions` (or rebase it) promptly - it must never drift stale.
+- **On conflict, `feat/restrictions` WINS.** If a restrictions-based feature in that branch
+  conflicts with something from main, resolve the conflict in favor of the restrictions branch's
+  behavior - main's version yields inside that branch. Main itself is never changed by this rule;
+  it only governs how conflicts are resolved WITHIN `feat/restrictions`.
 
 ## Porting from upstream (hard rules)
 
