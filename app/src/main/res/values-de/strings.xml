@@ -426,4 +426,7 @@
     </plurals>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="mapvm_voice_lang_system">Ansagen auf %1$s nutzen die Stimme Ihres Telefons. Fügen Sie eine in den System-Sprachausgabe-Einstellungen hinzu.</string>
+    <string name="mapscreen_get_voice">Stimme holen</string>
+    <string name="mapscreen_system_voices">Systemstimmen</string>
 </resources>

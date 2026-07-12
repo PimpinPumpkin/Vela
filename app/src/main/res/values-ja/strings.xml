@@ -434,4 +434,7 @@
     <!-- Android Auto -->
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="mapvm_voice_lang_system">%1$s のナビは端末の音声を使用します。システムの音声設定で追加できます。</string>
+    <string name="mapscreen_get_voice">音声を入手</string>
+    <string name="mapscreen_system_voices">システムの音声</string>
 </resources>

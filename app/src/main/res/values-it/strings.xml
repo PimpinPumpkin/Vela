@@ -426,4 +426,7 @@
     </plurals>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="mapvm_voice_lang_system">Le indicazioni in %1$s usano la voce del telefono. Aggiungine una nelle impostazioni voce di sistema.</string>
+    <string name="mapscreen_get_voice">Aggiungi una voce</string>
+    <string name="mapscreen_system_voices">Voci di sistema</string>
 </resources>
