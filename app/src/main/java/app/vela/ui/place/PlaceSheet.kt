@@ -920,11 +920,17 @@ fun PlaceSheet(
             // schedule story (store week + every department) lives behind one tap. When a place
             // somehow has departments but no main hours, they still show standalone.
             val showDepartments = place.departments.isNotEmpty() && !place.permanentlyClosed && !place.temporarilyClosed
+            // A transit stop has no opening hours by nature - Google shows its departures, not "hours
+            // not listed" (issue #71). Suppress that line whenever a board is loading/present or the
+            // category reads like a stop, so a stop never shows the misleading hours placeholder.
+            val isTransitStop = stopDepartures != null || stopDeparturesLoading || place.category?.lowercase()?.let { c ->
+                listOf("station", "stop", "transit", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
+            } == true
             if (place.hours.isNotEmpty()) {
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed) {
+            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop) {
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
 
