@@ -539,7 +539,14 @@
     <string name="settings_map_colors">Цвета карты</string>
     <string name="settings_map_colors_modern">Современные</string>
     <string name="settings_map_colors_classic">Классические</string>
-    <string name="settings_map_colors_hint">Современные повторяют текущую палитру Google Maps. Классические — прежний вид Vela: белые дороги, жёлтые магистрали, насыщенная зелень.</string>
+    <string name="settings_map_colors_hint">Современные повторяют текущую палитру Google Maps. Классические возвращают прежний вид Vela: белые дороги, жёлтые магистрали, насыщенная зелень.</string>
     <string name="place_avoid_tolls">Избегать платных дорог</string>
     <string name="place_avoid_highways">Избегать шоссе</string>
+    <string name="map_parking_find">Найти мою машину</string>
+    <string name="map_parking_move_here">Переместить парковку сюда</string>
+    <string name="map_parking_earlier">Предыдущие места</string>
+    <string name="map_parking_clear">Убрать парковку</string>
+    <string name="map_parking_moved">Парковка перемещена сюда</string>
+    <string name="mapscreen_system_voices">Системные голоса</string>
+    <string name="mapvm_voice_lang_system">Указания для языка %1$s используют голос телефона. Добавьте его в системных настройках голоса.</string>
 </resources>
