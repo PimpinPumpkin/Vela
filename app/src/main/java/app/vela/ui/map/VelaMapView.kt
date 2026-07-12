@@ -1064,7 +1064,8 @@ fun VelaMapView(
             navPuck.raw = myLocation
             navPuck.rawBearing = myBearing
         }
-        val styleKey = "$styleUri|dark=$darkTheme"
+        // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
+        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             val builder = if (styleUri.startsWith("asset://")) {
@@ -1870,7 +1871,15 @@ private fun ensureTransit(style: Style, on: Boolean) {
  */
 private fun applyMapTheme(style: Style, dark: Boolean) {
     if (style.getSource("openmaptiles") == null) return
-    if (dark) applyDark(style) else applyLight(style)
+    // Two compiled colour sets, picked in Settings -> Appearance (MapColors): "modern" is the
+    // Google-app pixel-sampled palette, "classic" the archived pre-sample look (docs/MAP-STYLE.md).
+    val classic = app.vela.ui.MapColors.classic()
+    when {
+        dark && classic -> applyClassicDark(style)
+        dark -> applyDark(style)
+        classic -> applyClassicLight(style)
+        else -> applyLight(style)
+    }
     PoiIcons.applyToLiberty(style, dark)
     // Ambient Google-POI labels match the ICON's category colour, Google-style — saturated in light,
     // pastel tints in dark (see PoiIcons.labelColor). Search-result pins stay plain (Google does too).
@@ -2097,6 +2106,153 @@ internal fun applyDark(style: Style) {
     style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#1f8f9c")) // bike teal, lightened for the dark land
     // Terrain relief for the night palette: deep shadows + a cool blue-grey
     // highlight so ridges catch a little moonlight (a touch stronger than light).
+    style.getLayer(HILLSHADE_LAYER)?.setProperties(
+        PropertyFactory.hillshadeExaggeration(0.45f),
+        PropertyFactory.hillshadeShadowColor("#0a1018"),
+        PropertyFactory.hillshadeHighlightColor("#3a4a68"),
+        PropertyFactory.hillshadeAccentColor("#0a1018"),
+    )
+}
+
+/**
+ * CLASSIC light: the archived pre-pixel-sample palette (commit 071c6c3, kept in
+ * docs/MAP-STYLE.md) - clean white road fills with faded casings, soft-yellow
+ * motorways, true greens, warm-grey land. Selectable in Settings -> Appearance;
+ * the twin layers that arrived after the archive (trails/bike/pitch/commercial)
+ * get harmonious colours so nothing renders unstyled.
+ */
+internal fun applyClassicLight(style: Style) {
+    listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
+        style.getLayer(it)?.setProperties(
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+            PropertyFactory.textHaloColor("#ffffff"),
+            PropertyFactory.textHaloWidth(1.9f),
+        )
+    }
+    val land = "#f2f1ee"
+    val white = "#ffffff"
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor(land))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#90daee"))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#cfeccd"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#d3f8e2"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#c9f2da"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("building")?.setProperties(
+        PropertyFactory.fillColor("#dde1e7"),
+        PropertyFactory.fillOutlineColor("#c4c9d1"),
+    )
+    style.getLayer("building")?.setMinZoom(14f)
+    style.getLayer("building")?.setMaxZoom(24f)
+    style.getLayer("building-3d")?.setProperties(
+        PropertyFactory.fillExtrusionColor("#dde1e7"),
+        PropertyFactory.fillExtrusionOpacity(0.9f),
+    )
+    style.getLayer("building-3d")?.setMinZoom(16f)
+    // Classic neutralises every non-green landuse into the land (no campus/commercial tints).
+    val greens = setOf("park", "landcover_grass", "landcover_wood")
+    style.layers.forEach { layer ->
+        if (layer is FillLayer && layer.id !in greens &&
+            (layer.id.startsWith("landuse") || layer.id.startsWith("landcover"))
+        ) {
+            layer.setProperties(PropertyFactory.fillColor(land))
+        }
+    }
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#cdeff0"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#ededed"))
+    // Post-archive twins, coloured to sit quietly in the classic look: commercial/pitch blend
+    // into the land (classic had no tint for them), trails keep green, bike paths keep teal.
+    style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor(land), PropertyFactory.fillOpacity(1f))
+    style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#d3f8e2"), PropertyFactory.fillOpacity(1f))
+    listOf("landuse_pitch", "landuse_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#d3f8e2"), PropertyFactory.fillOpacity(1f))
+    }
+    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#7fcdb0"))
+    style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#007b8b"))
+    listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f9d27a"))
+    }
+    listOf("road_motorway_casing", "road_motorway_link_casing", "bridge_motorway_casing", "bridge_motorway_link_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#f0b85a"))
+    }
+    listOf("road_trunk_primary", "bridge_trunk_primary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
+    listOf("road_trunk_primary_casing", "bridge_trunk_primary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#dadde2")) }
+    listOf("road_secondary_tertiary", "bridge_secondary_tertiary").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white)) }
+    listOf("road_secondary_tertiary_casing", "bridge_secondary_tertiary_casing").forEach { style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#e4e6ea")) }
+    listOf("road_minor", "road_link", "road_service_track", "bridge_street", "bridge_link", "bridge_service_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(white))
+    }
+    listOf("road_minor_casing", "road_link_casing", "road_service_track_casing", "bridge_street_casing", "bridge_link_casing", "bridge_service_track_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor(land))
+    }
+    style.getLayer(HILLSHADE_LAYER)?.setProperties(
+        PropertyFactory.hillshadeExaggeration(0.32f),
+        PropertyFactory.hillshadeShadowColor("#6b7280"),
+        PropertyFactory.hillshadeHighlightColor("#ffffff"),
+        PropertyFactory.hillshadeAccentColor("#9aa0a6"),
+    )
+}
+
+/** CLASSIC dark: the archived pre-pixel-sample night palette (see applyClassicLight). */
+internal fun applyClassicDark(style: Style) {
+    style.getLayer("background")?.setProperties(PropertyFactory.backgroundColor("#242f3e"))
+    style.getLayer("water")?.setProperties(PropertyFactory.fillColor("#17263c"))
+    style.getLayer("waterway_river")?.setProperties(PropertyFactory.lineColor("#17263c"))
+    style.getLayer("park")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f))
+    style.getLayer("landcover_grass")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("landcover_wood")?.setProperties(PropertyFactory.fillColor("#274330"), PropertyFactory.fillOpacity(0.95f))
+    listOf("road_minor", "road_secondary_tertiary", "road_link", "road_service_track",
+        "bridge_street", "bridge_secondary_tertiary", "bridge_link", "bridge_service_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#49536a"))
+    }
+    listOf("road_trunk_primary", "bridge_trunk_primary").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#5e6a85"))
+    }
+    listOf("road_motorway", "road_motorway_link", "bridge_motorway", "bridge_motorway_link").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#6f7a96"))
+    }
+    listOf("road_motorway_casing", "road_motorway_link_casing", "road_trunk_primary_casing",
+        "road_secondary_tertiary_casing", "road_minor_casing", "road_link_casing", "road_service_track_casing",
+        "bridge_motorway_casing", "bridge_trunk_primary_casing", "bridge_secondary_tertiary_casing",
+        "bridge_street_casing", "bridge_link_casing").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.lineColor("#242f3e"))
+    }
+    style.getLayer("building")?.setProperties(
+        PropertyFactory.fillColor("#323f54"),
+        PropertyFactory.fillOutlineColor("#3f4e66"),
+    )
+    style.getLayer("building")?.setMinZoom(14f)
+    style.getLayer("building")?.setMaxZoom(24f)
+    style.getLayer("building-3d")?.setProperties(
+        PropertyFactory.fillExtrusionColor("#323f54"),
+        PropertyFactory.fillExtrusionOpacity(0.9f),
+    )
+    style.getLayer("building-3d")?.setMinZoom(16f)
+    val greens = setOf("park", "landcover_grass", "landcover_wood")
+    style.layers.forEach { layer ->
+        when {
+            layer is SymbolLayer -> layer.setProperties(
+                PropertyFactory.textColor("#c3cad6"),
+                PropertyFactory.textHaloColor("#1a2230"),
+                PropertyFactory.textHaloWidth(if (layer.id.startsWith("highway-name")) 1.9f else 1.1f),
+            )
+            layer is FillLayer && layer.id !in greens &&
+                (layer.id.startsWith("landuse") || layer.id.startsWith("landcover")) ->
+                layer.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
+        }
+    }
+    // Street names bold, same rule as every other palette pass.
+    listOf("highway-name-path", "highway-name-minor", "highway-name-major").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.textFont(arrayOf("Noto Sans Bold")))
+    }
+    style.getLayer("vela-wetland")?.setProperties(PropertyFactory.fillColor("#26403c"), PropertyFactory.fillOpacity(0.9f))
+    style.getLayer("vela-plaza")?.setProperties(PropertyFactory.fillColor("#2a3546"))
+    // Post-archive twins (see applyClassicLight): blend or keep their semantic colour.
+    style.getLayer("vela-commercial")?.setProperties(PropertyFactory.fillColor("#2a3546"), PropertyFactory.fillOpacity(0.5f))
+    style.getLayer("vela-pitch")?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f))
+    listOf("landuse_pitch", "landuse_track").forEach {
+        style.getLayer(it)?.setProperties(PropertyFactory.fillColor("#2c4a34"), PropertyFactory.fillOpacity(1f))
+    }
+    style.getLayer("vela-trails")?.setProperties(PropertyFactory.lineColor("#167055"))
+    style.getLayer("vela-bikeroutes")?.setProperties(PropertyFactory.lineColor("#1f8f9c"))
     style.getLayer(HILLSHADE_LAYER)?.setProperties(
         PropertyFactory.hillshadeExaggeration(0.45f),
         PropertyFactory.hillshadeShadowColor("#0a1018"),

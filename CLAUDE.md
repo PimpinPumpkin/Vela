@@ -580,6 +580,16 @@ Defaults that make the safe path the easy one:
   paint-and-trust). Device-measured on the 4a: cold-launch home-area dots at ~3.0 s
   (bounded by app+map startup, proven the disk path - no network paint can land by then)
   vs ~4.0 s fetch-bound before; the streaming win grows on slow links.
+  **Cache-hit fixes (2026-07-11, the P9 "POIs don't stick around / tap-back wipes the map"
+  report):** (a) entries carry their fetch SPAN (`AmbientEntry`; disk `AmbientCachedArea.spanM`,
+  defaulted so old files decode) and `cachedAmbientNear` hits within `span*0.45` - the old FIXED
+  900 m radius missed most legitimate revisits (a z14 fetch covers ~9 km) and forced a full
+  refetch; (b) the pre-fetch cache REPAINT is UNCONDITIONAL - the old `ambientPois.isEmpty()`
+  gate meant panning BACK to a cached area kept the previous area's dots (non-empty, filtered
+  to nothing in view) and never consulted the cache = bare map for the whole refetch; (c) a
+  PARTIAL paint never SHRINKS the painted set (after a cache repaint the early pool is leaner
+  than the cached set and replacing blinked dots off/on; the final ranked pool still replaces
+  outright). Don't re-tighten any of the three.
 - **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
   to compose when mpp moved >1% - an unconditional write recomposed the scale bar every pan frame;
   keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
@@ -993,6 +1003,20 @@ architecture note.
   The **Map style Settings row was removed** (only one style ships; MapStyle/setStyle plumbing
   kept for a future re-add). Nav card trip time is a `FitText` (shrinks to fit, never wraps/
   ellipsises) so the 54dp buttons + Interface-size scale can't clip the arrival time.
+- **Map COLOUR SETS (2026-07-11): Settings -> Appearance -> "Map colors" picks Modern or
+  Classic.** `ui/MapColors` holder (pref `map_palette`; init in VelaApp); `applyMapTheme`
+  dispatches to `applyLight`/`applyDark` (Modern, the pixel-sampled palette) or
+  `applyClassicLight`/`applyClassicDark` (the archived 071c6c3 look from docs/MAP-STYLE.md -
+  white roads, faded casings, yellow motorways, true greens). The styleKey carries
+  `|pal=` so a switch reloads the style like a theme flip. Post-archive twin layers
+  (trails/bikeroutes/pitch/commercial) get harmonious colours in the classic fns - they exist
+  in ensureLayers regardless of palette, and an unstyled LineLayer renders BLACK, so any NEW
+  twin layer must be coloured in ALL FOUR apply fns. The FLEET DEFAULT is remote:
+  `calibration.json` `defaultMapPalette` (v15) -> `Calibration.defaultMapPalette` -> the VM
+  pushes it into `MapColors.remoteDefault` at init + after refresh; a user's explicit pick
+  always wins. Changing everyone's default = edit the field, bump version, re-sign, commit
+  (same channel as defaultVoiceId). Adding a whole NEW named set still needs an app release
+  (palettes are compiled); make the apply fns data-driven if sets ever multiply.
 - **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
   with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
   `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark
@@ -1285,9 +1309,14 @@ architecture note.
   weightings (Toll.ALL / RoadClass.MOTORWAY -> infinite weight; tolls wins when both toggles
   are on). directions() tries the on-device avoid route FIRST when a toggle is on; a graph
   without the profiles returns EMPTY (never silently routes through a toll) and the online
-  chain falls back to a NORMAL route. **The avoid profiles go LIVE per region at the next
-  `routing-graphs.yml` rebake (planned after the polish pass)** - until then the toggles
-  re-route but only change anything where a v2 graph is installed.
+  chain falls back to a NORMAL route. **LIVE since 2026-07-11: all 135 regions are rebaked as the v2 generation**
+  (`<id>-v2.zip` + `routing-manifest-v2.json` beside the untouched v1 assets on the
+  `routing-graphs` release - the workflow's `variant` input publishes parallel generations)
+  and the app's `ROUTING_MANIFEST_URL` default points at the v2 manifest; rollback = revert
+  that one build.gradle.kts line. Graphs installed before the cutover keep working (the
+  engine try-loads the v2 EV string then legacy) but lack the avoid profiles until
+  re-downloaded. Device-verified: Dover-Smyrna with Avoid tolls swung off the DE-1 toll road
+  onto the free route, single on-device route, no live-traffic tag.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
   `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
   the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +

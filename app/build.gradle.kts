@@ -34,13 +34,15 @@ android {
         )
 
         // Offline-routing region manifest (lists the prebuilt per-region CH graphs to download).
-        // Default = the latest GitHub release's asset; override for local testing with
+        // Default = the v2 generation (avoid-toll/avoid-motorway CH profiles baked in, all 135
+        // regions rebaked 2026-07-11); routing-manifest.json (v1) stays hosted beside it, so
+        // rolling back is reverting this one line. Override for local testing with
         // -ProutingManifestUrl=http://127.0.0.1:8099/manifest.json (served via `adb reverse`).
         buildConfigField(
             "String",
             "ROUTING_MANIFEST_URL",
             "\"${(project.findProperty("routingManifestUrl") as String?)
-                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/routing-graphs/routing-manifest.json"}\"",
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/routing-graphs/routing-manifest-v2.json"}\"",
         )
         // Open building-footprint overlay (Microsoft, ODbL) PMTiles catalog — same override pattern
         // (-PoverlayManifestUrl=http://127.0.0.1:8099/... for local testing via `adb reverse`).
