@@ -371,6 +371,7 @@
     <string name="mapvm_none_found_along_route">Nie znaleziono „%1$s” wzdłuż Twojej trasy</string>
     <string name="mapvm_search_failed">Wyszukiwanie nie powiodło się</string>
     <string name="mapvm_dropped_pin">Upuszczona pinezka</string>
+    <string name="mapvm_stop_added">Dodano przystanek</string>
     <string name="mapvm_no_mode_route_found">Nie znaleziono trasy: %1$s</string>
     <string name="mapvm_directions_need_recalibration">Trasa wymaga rekalibracji: %1$s</string>
     <string name="mapvm_routing_failed_reason">Wyznaczanie trasy nie powiodło się: %1$s</string>

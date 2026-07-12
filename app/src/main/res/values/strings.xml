@@ -402,6 +402,7 @@
     <string name="mapvm_none_found_along_route">No \"%1$s\" found along your route</string> <!-- format -->
     <string name="mapvm_search_failed">Search failed</string>
     <string name="mapvm_dropped_pin">Dropped pin</string>
+    <string name="mapvm_stop_added">Stop added</string>
     <string name="mapvm_no_mode_route_found">No %1$s route found</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">Directions need recalibration: %1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">Routing failed: %1$s</string> <!-- format -->
