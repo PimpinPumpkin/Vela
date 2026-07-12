@@ -479,6 +479,11 @@
     <string name="map_parking_cleared">Parking spot cleared</string>
     <string name="map_parked_car">Parked car</string>
     <string name="map_parking_save">Save parking spot</string>
+    <string name="map_parking_find">Find my car</string>
+    <string name="map_parking_move_here">Move parking here</string>
+    <string name="map_parking_earlier">Earlier spots</string>
+    <string name="map_parking_clear">Clear parking</string>
+    <string name="map_parking_moved">Parking moved here</string>
     <string name="map_import_failed">Couldn\'t import that list. Check the link and try again.</string>
     <string name="place_clear_parking">Clear parking</string>
     <string name="parking_history_title">Parking history</string>
