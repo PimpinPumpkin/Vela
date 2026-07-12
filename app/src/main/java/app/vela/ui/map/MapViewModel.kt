@@ -120,6 +120,9 @@ data class MapUiState(
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
+    // ALPR/Flock cameras counted near each route option (index-aligned with `routes`), for the route
+    // picker's opt-in "passes N cameras" badge. Empty when the alert is off or not yet computed.
+    val flockOnRoute: List<Int> = emptyList(),
     val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
     val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
@@ -2337,10 +2340,13 @@ class MapViewModel @Inject constructor(
                     it.copy(
                         routes = routes,
                         activeRoute = routes.firstOrNull(),
+                        flockOnRoute = emptyList(), // recomputed below when the alert's on
                         transit = emptyList(), transitLoading = false,
                         status = if (routes.isEmpty()) appContext.getString(R.string.mapvm_no_mode_route_found, mode.name.lowercase()) else null,
                     )
                 }
+                val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
+                if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
                 // top when it has the fastest live ETA). A provisional route carries Google's
                 // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed
@@ -2353,6 +2359,49 @@ class MapViewModel @Inject constructor(
                 if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_directions_need_recalibration, e.message)) }
             } catch (e: Exception) {
                 if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_routing_failed_reason, e.message)) }
+            }
+        }
+    }
+
+    private var flockRouteJob: kotlinx.coroutines.Job? = null
+    private var routesEpoch = 0 // bumped on each fresh route(); stales an in-flight flock count if a newer route set lands
+
+    /** When "Avoid surveillance cameras" is on, count the ALPR cameras near each route option (keyless
+     *  Overpass, index-aligned with [routes]) so the picker can badge "passes N cameras" AND auto-prefer
+     *  the fewest-camera alternate - but only for a MODEST detour (never send you an hour around a camera
+     *  on a 15-minute trip). Off the hot path; a failure just shows no badge and no reroute. */
+    private fun refreshFlockOnRoute(routes: List<Route>, epoch: Int) {
+        flockRouteJob?.cancel()
+        if (!app.vela.ui.FlockRouteAlert.on.value) return
+        flockRouteJob = viewModelScope.launch {
+            val counts = withContext(Dispatchers.IO) {
+                routes.map { r ->
+                    runCatching { app.vela.core.data.OverpassAlprCameras.fetchAlong(http, r.polyline).size }
+                        .getOrDefault(0)
+                }
+            }
+            android.util.Log.i("VelaFlockRoute", "counts=$counts")
+            // Still THIS route set? Guard on the epoch, not the polyline: naming a provisional route
+            // (selectRoute(0), which fires right after this launches for the common provisional-top case)
+            // RE-SNAPS its geometry, so a polyline compare tripped and silently dropped the badges +
+            // auto-avoid. The epoch only bumps on a fresh route(); naming/user-pick keep the same set
+            // (same size + order), so the counts still line up index-for-index with _state.routes.
+            val cur = _state.value.routes
+            if (routesEpoch != epoch || cur.size != counts.size) return@launch
+            _state.update { it.copy(flockOnRoute = counts) }
+            // Auto-avoid: pick the fewest-camera route (tie → the faster one) IF it beats the fastest on
+            // cameras and costs at most 25% / 10 min more. The cap is where we "draw the line" - a modest
+            // detour to dodge cameras, not a wild one. Long-press "route through here" is the manual override.
+            if (counts.any { it > 0 }) {
+                val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
+                val eta0 = eta(cur[0]) // routes are sorted fastest-first, and cur[0] is the default active
+                val best = counts.indices.minByOrNull { counts[it] * 1_000_000L + eta(cur[it]).toLong() } ?: 0
+                val extra = eta(cur[best]) - eta0
+                val cap = minOf(eta0 * 0.25, 600.0)
+                if (counts[best] < counts[0] && extra <= cap && best != 0) {
+                    selectRoute(best)
+                    flashStatus(appContext.getString(R.string.mapvm_flock_avoided))
+                }
             }
         }
     }
