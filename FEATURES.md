@@ -34,7 +34,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   blue-grey dark reading almost identical (user: "classic looks bluish like modern, houses too").
   Classic dark is now a NEUTRAL charcoal-slate identity - slate land, GREY buildings (no blue
   houses), muted-amber motorways echoing the classic-light yellow, its true greens and steel-blue
-  water kept - so the two dark sets are clearly distinct.
+  water kept - so the two dark sets are clearly distinct. **Follow-up (2026-07-12):** the Microsoft
+  building-footprint OVERLAY (the layer that fills OSM's gaps) had its colour hardcoded to Modern, so
+  in Classic those houses stayed Google-navy while the OSM ones went grey; it now honours the palette
+  too. Also, since the two sets currently diverge mostly in dark mode, the Settings hint says so.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
   filled bright-navy circle with a soft drop shadow (no white ring, per user feedback); it rotates
   about the exact GPS point. Replaces the bare blue chevron. **Enlarged twice from feedback
