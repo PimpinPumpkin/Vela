@@ -2168,7 +2168,8 @@ class MapViewModel @Inject constructor(
                         status = if (routes.isEmpty()) appContext.getString(R.string.mapvm_no_mode_route_found, mode.name.lowercase()) else null,
                     )
                 }
-                if (routes.isNotEmpty()) refreshFlockOnRoute(routes)
+                val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
+                if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
                 // top when it has the fastest live ETA). A provisional route carries Google's
                 // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed
@@ -2186,12 +2187,13 @@ class MapViewModel @Inject constructor(
     }
 
     private var flockRouteJob: kotlinx.coroutines.Job? = null
+    private var routesEpoch = 0 // bumped on each fresh route(); stales an in-flight flock count if a newer route set lands
 
     /** When "Avoid surveillance cameras" is on, count the ALPR cameras near each route option (keyless
      *  Overpass, index-aligned with [routes]) so the picker can badge "passes N cameras" AND auto-prefer
      *  the fewest-camera alternate - but only for a MODEST detour (never send you an hour around a camera
      *  on a 15-minute trip). Off the hot path; a failure just shows no badge and no reroute. */
-    private fun refreshFlockOnRoute(routes: List<Route>) {
+    private fun refreshFlockOnRoute(routes: List<Route>, epoch: Int) {
         flockRouteJob?.cancel()
         if (!app.vela.ui.FlockRouteAlert.on.value) return
         flockRouteJob = viewModelScope.launch {
@@ -2202,10 +2204,13 @@ class MapViewModel @Inject constructor(
                 }
             }
             android.util.Log.i("VelaFlockRoute", "counts=$counts")
-            // Still the routes on screen? A newer route() cancels this job; naming a provisional route
-            // swaps it in place but KEEPS its polyline, so compare polylines (stable) rather than refs.
+            // Still THIS route set? Guard on the epoch, not the polyline: naming a provisional route
+            // (selectRoute(0), which fires right after this launches for the common provisional-top case)
+            // RE-SNAPS its geometry, so a polyline compare tripped and silently dropped the badges +
+            // auto-avoid. The epoch only bumps on a fresh route(); naming/user-pick keep the same set
+            // (same size + order), so the counts still line up index-for-index with _state.routes.
             val cur = _state.value.routes
-            if (cur.size != counts.size || cur.map { it.polyline } != routes.map { it.polyline }) return@launch
+            if (routesEpoch != epoch || cur.size != counts.size) return@launch
             _state.update { it.copy(flockOnRoute = counts) }
             // Auto-avoid: pick the fewest-camera route (tie → the faster one) IF it beats the fastest on
             // cameras and costs at most 25% / 10 min more. The cap is where we "draw the line" - a modest
