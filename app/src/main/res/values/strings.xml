@@ -569,7 +569,7 @@
     <string name="settings_map_colors">Map colors</string>
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Classic</string>
-    <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens.</string>
+    <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens. The two differ most in dark mode right now.</string>
     <string name="place_avoid_tolls">Avoid tolls</string>
     <string name="place_avoid_highways">Avoid highways</string>
     <string name="shortcut_home">Home</string>
