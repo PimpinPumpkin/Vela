@@ -248,6 +248,7 @@
     <string name="place_from_the_owner">Від власника</string>
     <string name="place_share_place">Поділитися місцем</string>
     <string name="place_share">Поділитися</string>
+    <string name="place_open_web">Відкрити в інтернеті</string>
     <string name="place_share_gmaps_link">Посилання Google Maps</string>
     <string name="place_share_map_pin">Мітка на карті (geo:)</string>
     <string name="place_share_coordinates">Координати</string>

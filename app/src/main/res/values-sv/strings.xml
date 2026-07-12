@@ -248,6 +248,7 @@
     <string name="place_from_the_owner">Från ägaren</string>
     <string name="place_share_place">Dela plats</string>
     <string name="place_share">Dela</string>
+    <string name="place_open_web">Öppna på webben</string>
     <string name="place_share_gmaps_link">Google Maps-länk</string>
     <string name="place_share_map_pin">Kartnål (geo:)</string>
     <string name="place_share_coordinates">Koordinater</string>
