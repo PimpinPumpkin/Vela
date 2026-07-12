@@ -983,6 +983,20 @@ architecture note.
   The **Map style Settings row was removed** (only one style ships; MapStyle/setStyle plumbing
   kept for a future re-add). Nav card trip time is a `FitText` (shrinks to fit, never wraps/
   ellipsises) so the 54dp buttons + Interface-size scale can't clip the arrival time.
+- **Map COLOUR SETS (2026-07-11): Settings -> Appearance -> "Map colors" picks Modern or
+  Classic.** `ui/MapColors` holder (pref `map_palette`; init in VelaApp); `applyMapTheme`
+  dispatches to `applyLight`/`applyDark` (Modern, the pixel-sampled palette) or
+  `applyClassicLight`/`applyClassicDark` (the archived 071c6c3 look from docs/MAP-STYLE.md -
+  white roads, faded casings, yellow motorways, true greens). The styleKey carries
+  `|pal=` so a switch reloads the style like a theme flip. Post-archive twin layers
+  (trails/bikeroutes/pitch/commercial) get harmonious colours in the classic fns - they exist
+  in ensureLayers regardless of palette, and an unstyled LineLayer renders BLACK, so any NEW
+  twin layer must be coloured in ALL FOUR apply fns. The FLEET DEFAULT is remote:
+  `calibration.json` `defaultMapPalette` (v15) -> `Calibration.defaultMapPalette` -> the VM
+  pushes it into `MapColors.remoteDefault` at init + after refresh; a user's explicit pick
+  always wins. Changing everyone's default = edit the field, bump version, re-sign, commit
+  (same channel as defaultVoiceId). Adding a whole NEW named set still needs an app release
+  (palettes are compiled); make the apply fns data-driven if sets ever multiply.
 - **Flat vegetation (2026-07-11):** fill-pattern CANNOT be cleared once a style layer ships
   with one (empty-literal unset no-ops on device) - `ensureLayers` hides `landcover_wetland` +
   `road_area_pattern` and adds flat twins `vela-wetland`/`vela-plaza` that applyLight/applyDark
