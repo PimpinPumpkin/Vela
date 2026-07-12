@@ -85,6 +85,12 @@ at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-
   is covered, the status is "core surfaces at the simulated size", NOT "fully supported" - say so.
   **Everything must be reproducible in scripts** so a NEW phone is added by: a matrix row + its geometry
   in `capture.sh`/`full_coverage.sh`/`run_matrix.sh`, then running them - no bespoke manual steps.
+  **The gate is PHASED - and every new feature MUST add its surfaces as its own phase** (in
+  `full_coverage.sh`'s `ALLPHASES` + a `phase <name>` block with its own frame numbers, same PR as the
+  feature): `PHASES="voice parking" bash tests/devices/full_coverage.sh <id>` re-captures just those
+  frames, so verifying one feature on a device never needs the full ~13-min tour. A partial run
+  reports PARTIAL, never the FULLY COVERED verdict. Current phases:
+  `firstrun map search place directions settings voice parking`.
 - **Every screen opens focused AND stays D-pad-navigable at a SMALL display, not just native.**
   Verify at a real target size - `adb shell wm size 240x320; adb shell wm density 160` (Kyocera e4810;
   see `tests/devices/`) - by SCREENSHOT: the screen lands a visible focus ring on open AND arrows move

@@ -14,8 +14,10 @@
 # Iterating on ONE slow/flaky phase? Re-capture just it (reuses the other frames, same 01..16 names):
 #   PHASES=settings bash tests/devices/full_coverage.sh sonim-x320
 #   PHASES="search place" bash tests/devices/full_coverage.sh kyocera-e4810
-# Phases: firstrun map search place directions settings. A partial run reports PARTIAL, not a verdict -
-# only a full run (no PHASES) can call a device FULLY COVERED.
+# Phases: firstrun map search place directions settings voice parking. A partial run reports
+# PARTIAL, not a verdict - only a full run (no PHASES) can call a device FULLY COVERED.
+# RULE: every NEW feature adds its surfaces as its OWN phase here (own numbered frames), so
+# verifying it on a device never needs the full tour.
 #
 # Content surfaces (search/place/directions/nav/transit) need live search+routing; run with network up.
 DEVICES="
@@ -38,7 +40,7 @@ cover_one() {
   # redoing the whole ~13 min tour (e.g. PHASES=settings to iterate just the deep Settings sub-sections).
   # Each phase pins its own screenshot NUMBER base, so a subset writes the SAME 01..16 filenames a full
   # run would - a partial run overwrites only its slice and leaves the rest in place. Default = all.
-  local ALLPHASES="firstrun map search place directions settings"
+  local ALLPHASES="firstrun map search place directions settings voice parking"
   local phases="${PHASES:-$ALLPHASES}" full=0; [ "$phases" = "$ALLPHASES" ] && full=1
   phase() { case " $phases " in *" $1 "*) return 0;; *) return 1;; esac; }
   out="$HERE/$id/screenshots/full"; mkdir -p "$out"; [ "$full" = 1 ] && rm -f "$out"/*.png
@@ -125,6 +127,45 @@ cover_one() {
   else mark "settings-top" 0; mark "settings-lower" 0
        mark "settings-voice-library" 0; mark "settings-offline" 0; mark "settings-saved-places" 0; fi
   fi  # phase settings
+
+  # --- Voice search (mic + capture sheet) ------------------------------------------------------
+  if phase voice; then i=16
+  $ADB shell pm grant "$PKG" android.permission.RECORD_AUDIO >/dev/null 2>&1
+  goto_map
+  # The mic sits in the search bar when the field is empty; find + tap it by its content-desc.
+  if tap_desc "Voice search"; then
+    # With the on-device model absent AND no provider the tap offers the download dialog; with
+    # either present it opens the capture sheet or the provider - all three are the mic working.
+    # POLL up to ~8s: the first listen loads the Whisper model (~4s on a slow phone) before the
+    # sheet appears - a single early check read as MISSED while the feature was fine.
+    ok=0
+    for _ in 1 2 3 4; do
+      if on_screen "Listening…" || on_screen "Getting ready…" || on_screen_contains "Vela Voice"; then ok=1; break; fi
+      sleep 2
+    done
+    if [ "$ok" = 1 ]; then mark "voice-capture-sheet" 1; key "$K_BACK" 1
+    else mark "voice-capture-sheet" 0; fi
+  else mark "voice-capture-sheet" 0; fi
+  fi
+
+  # --- Parking (P button, hub menu, parked-car sheet) -------------------------------------------
+  if phase parking; then i=17
+  goto_map
+  # The P button (desc "Save parking spot" unset / "Parked car" set) sits above the locate FAB.
+  if tap_desc "Save parking spot" || tap_desc "Parked car"; then
+    sleep 1.5; mark "parking-saved" 1              # pin + toast (or the hub if already set)
+    # Tap again: with a spot set this opens the hub menu.
+    tap_desc "Parked car" && sleep 1.5
+    if on_screen "Find my car"; then
+      mark "parking-menu" 1
+      tap_center "Find my car"; sleep 2
+      on_screen "Parked car" && mark "parking-car-sheet" 1 || mark "parking-car-sheet" 0
+      key "$K_BACK" 1
+    else mark "parking-menu" 0; mark "parking-car-sheet" 0; fi
+    # Leave the device clean: clear the spot through the hub.
+    tap_desc "Parked car" && sleep 1.5 && tap_center "Clear parking" && sleep 1
+  else mark "parking-saved" 0; mark "parking-menu" 0; mark "parking-car-sheet" 0; fi
+  fi
 
   echo "-- coverage: $id ($phases) --"; printf '%b\n' "$checklist"
   echo "  => $covered COVERED, $missed MISSED"
