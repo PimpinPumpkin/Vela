@@ -1692,6 +1692,21 @@ class MapViewModel @Inject constructor(
             }
             return
         }
+        // While planning a trip, a long-press means "route THROUGH here": grab an arbitrary point and
+        // add it as a via-stop (then the route reroutes through it). This is the manual way to steer a
+        // route around an area/camera - Google's keyless directions and OSRM can't be told "avoid this
+        // region", but a hand-placed waypoint forces the detour. The point itself is what matters, so
+        // the stop sits at the exact spot pressed; the reverse-geocode only names it.
+        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+            viewModelScope.launch {
+                val geo = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
+                val stop = (geo ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location))
+                    .copy(location = location)
+                addStop(stop)
+                flashStatus(appContext.getString(R.string.mapvm_stop_added))
+            }
+            return
+        }
         reviewsJob?.cancel() // a pin never fetches reviews — free the old scrape's WebView/mutex
         _state.update {
             it.copy(
