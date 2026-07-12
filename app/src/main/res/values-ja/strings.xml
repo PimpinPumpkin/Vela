@@ -457,6 +457,8 @@
     <string name="place_transit_now">まもなく発車</string>
     <string name="place_transit_in_min">%1$d 分後</string> <!-- format -->
     <string name="place_transit_live">リアルタイム</string>
+    <string name="place_departures">発車時刻</string>
+    <string name="place_every">%1$s ごと</string> <!-- format -->
     <string name="transit_nav_arrived">目的地に到着しました。</string>
     <string name="transit_nav_walk">徒歩 %1$s</string> <!-- format -->
     <string name="transit_nav_take">%1$s に乗車</string> <!-- format -->
