@@ -150,6 +150,37 @@ focus_and_ok() {
   return 1
 }
 
+# scroll_to <exact>  - reach a row DEEP in a scroll list FAST: bulk-press DOWN in batches (no dump),
+# checking on_screen only ONCE per batch until the text is visible. ~12 dumps instead of ~50, so a
+# 30-row-deep Settings section takes ~8s not ~60s (focus_and_ok times out on those). Leaves the list
+# scrolled so the row is on screen; does NOT press OK. Returns non-zero if never reached.
+scroll_to() {
+  local want="$1" batch i
+  for batch in $(seq 1 16); do
+    on_screen "$want" && return 0
+    for i in 1 2 3 4; do key "$K_DOWN" 0.22; done   # bulk scroll (slow enough for focus to advance)
+    sleep 0.4                                        # settle the scroll animation before the on_screen check
+  done
+  on_screen "$want"
+}
+# scroll_focus_ok <exact>  - scroll_to the row, then fine-step focus ONTO it (its centre within the
+# focused bounds, same match as focus_and_ok) and OK it. For a clickable/collapsible deep row.
+scroll_focus_ok() {
+  local want="$1" i tb cy fb fy1 fy2
+  scroll_to "$want" || return 1
+  for i in $(seq 1 10); do
+    tb="$(find_text "$want")"
+    if [ -n "$tb" ]; then
+      cy="$(ycenter "$tb")"; fb="$(focused_bounds)"
+      fy1="$(echo "$fb" | sed -E 's/^\[[0-9]+,([0-9]+)\].*/\1/')"
+      fy2="$(echo "$fb" | sed -E 's/.*\]\[[0-9]+,([0-9]+)\]$/\1/')"
+      if [ -n "$fy1" ] && [ "$cy" -ge "$fy1" ] && [ "$cy" -le "$fy2" ] 2>/dev/null; then key "$K_OK" 2; return 0; fi
+    fi
+    key "$K_DOWN"
+  done
+  return 1
+}
+
 # ---- assertions -----------------------------------------------------------------------------
 PASS=0; FAIL=0
 pass() { echo "  PASS: $1"; PASS=$((PASS + 1)); }

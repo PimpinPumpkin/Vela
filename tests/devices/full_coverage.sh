@@ -83,10 +83,16 @@ cover_one() {
     # walk the whole list (captures the mid + lower sections)
     for _ in 1 2 3 4 5 6; do key "$K_DOWN"; key "$K_DOWN"; key "$K_DOWN"; done; shot "settings-lower"; covered=$((covered+1)); checklist="$checklist\n  COVERED  settings-lower"
     key "$K_BACK" 1
-    # sub-screens by name (open_settings again each time is expensive; reuse the open one)
-    for sub in "Voice library" "Offline" "Saved places"; do
-      if open_settings && focus_and_ok "$sub"; then mark "settings-$(echo "$sub"|tr ' A-Z' '-a-z')" 1; key "$K_BACK" 1; else mark "settings-$(echo "$sub"|tr ' A-Z' '-a-z')" 0; fi
+    # Collapsible sub-sections (CollapsibleSectionTitle): scroll to them FAST (scroll_focus_ok - bulk
+    # scroll, not a uiautomator dump per row, which timed out), OK to EXPAND, capture the open section.
+    for sub in "Voice library" "Offline"; do
+      if open_settings && scroll_focus_ok "$sub"; then mark "settings-$(echo "$sub"|tr ' A-Z' '-a-z')" 1; key "$K_BACK" 1
+      else mark "settings-$(echo "$sub"|tr ' A-Z' '-a-z')" 0; fi
     done
+    # Saved places is a plain SectionTitle header (not collapsible, can't be OK'd): scroll it on-screen
+    # and capture the section + its backup/restore buttons.
+    if open_settings && scroll_to "Saved places"; then mark "settings-saved-places" 1; key "$K_BACK" 1
+    else mark "settings-saved-places" 0; fi
   else mark "settings-top" 0; mark "settings-lower" 0
        mark "settings-voice-library" 0; mark "settings-offline" 0; mark "settings-saved-places" 0; fi
 
