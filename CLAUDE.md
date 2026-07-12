@@ -721,6 +721,13 @@ Defaults that make the safe path the easy one:
   inner periods stay (St. Paul). The listening pulse uses tween(90) + 1.4x ring travel + a 7x RMS
   gain - the default spring smoothed the ~32 ms level updates into near-stillness. **The mic always shows when the toggle is on** (2026-07-10): with neither the model nor a provider, tapping it OFFERS the Vela voice download (VelaDialog in MapScreen -> `downloadAsrModel()`, the map shows the same VoiceDownloadCard) - a hidden mic made the feature undiscoverable. **The archive is tar.GZIP on `asr-models`** (58 MB vs 47 bz2): bzip2 unpacked at ~15 MB/s on-device (a ~30 s hang); gzip installs in ~2 s. `KokoroInstaller.extractTar` picks the decompressor by magic bytes (upstream Piper voices are still bz2). Accuracy of
   tiny-int8 is the known tradeoff for size/speed; a larger model could be a future catalog entry.
+  **Pauses playing media while listening (2026-07-12):** `WhisperRecognizer.listen` takes
+  `AUDIOFOCUS_GAIN_TRANSIENT` (an `AudioFocusRequest` with `USAGE_ASSISTANT`/`CONTENT_TYPE_SPEECH`)
+  right before `audio.startRecording()` and abandons it in the `finally` after `audio.stop()`, so
+  music/podcasts PAUSE (not just duck - `_TRANSIENT`, not `_MAY_DUCK`) while dictating and resume the
+  instant the utterance ends. Only the in-process path needs it; tier-2 (SYSTEM) hands off to an
+  external recognizer that manages its own focus. Recording itself (an input `AudioRecord`) is
+  unaffected by the output-focus request.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
   system dialog. The first ask lives in `VelaRoot`: when onboarding reaches the location step
