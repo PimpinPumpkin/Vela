@@ -1306,19 +1306,30 @@ class MapViewModel @Inject constructor(
         routeDetailJob?.cancel()
         routeDetailJob = viewModelScope.launch {
             // Aim at the route's destination (geocode the headsign near the stop), then ride transit there.
-            val destLoc = runCatching {
-                dataSource.search(dest, origin).places.minByOrNull { it.location.distanceTo(origin) }?.location
-            }.getOrNull()
+            // A bare headsign is often ambiguous ("Richmond" resolves to a city district, not the BART
+            // terminal), so prefer a candidate that is itself a transit place (station/airport/terminal)
+            // and, among those, the one nearest the tapped stop - that is the line's actual end point.
+            val cands = runCatching { dataSource.search(dest, origin).places }.getOrDefault(emptyList())
+            val transitish = cands.filter { it.category?.let { c ->
+                listOf("station", "transit", "stop", "airport", "terminal", "bart", "metro", "rail")
+                    .any { k -> c.contains(k, ignoreCase = true) }
+            } == true }
+            val destLoc = (transitish.minByOrNull { it.location.distanceTo(origin) }
+                ?: cands.minByOrNull { it.location.distanceTo(origin) })?.location
             if (destLoc == null) {
                 _state.update { it.copy(routeDetailLoading = false) }
                 flashStatus(appContext.getString(R.string.route_detail_unavailable)); return@launch
             }
             val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
-            // Prefer the ride leg on the SAME line the user tapped; else the first ride leg with stops.
             val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
+            // Prefer the ride leg on the SAME line the user tapped; else the leg we actually BOARD at this
+            // stop (its board stop nearest the origin), which is the direction they tapped; else the first.
             val step = rides.firstOrNull { s ->
                 line.label != null && s.line?.name?.equals(line.label, ignoreCase = true) == true
-            } ?: rides.firstOrNull()
+            } ?: rides.filter { it.boardStop?.location != null }
+                .minByOrNull { it.boardStop!!.location!!.distanceTo(origin) }
+                ?: rides.firstOrNull()
+            android.util.Log.d("VelaRouteDetail", "'$dest' rides=${rides.size} -> ${step?.line?.name} (${step?.intermediateStops?.size} stops)")
             _state.update {
                 if (step == null) { flashStatus(appContext.getString(R.string.route_detail_unavailable)); it.copy(routeDetailLoading = false) }
                 else it.copy(routeDetail = step, routeDetailLoading = false)
