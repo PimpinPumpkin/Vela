@@ -39,8 +39,12 @@ object OverpassAlprCameras {
     ): List<AlprCamera>? {
         return try {
             val box = "($south,$west,$north,$east)"
+            // `out body` (NOT `out tags`): for a node, `out tags` prints only id + tags and OMITS
+            // lat/lon, so the parser below dropped every camera (no coordinates) and the layer drew
+            // nothing. `out body` is the default full print - id, lat, lon, AND tags - which is what
+            // we need to both place the marker and read operator/direction. (device-caught 2026-07-12)
             val query = "[out:json][timeout:25];" +
-                "node[\"surveillance:type\"=\"ALPR\"]$box;out tags $limit;"
+                "node[\"surveillance:type\"=\"ALPR\"]$box;out body $limit;"
             val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
             val req = Request.Builder()
                 .url(url)
@@ -54,7 +58,11 @@ object OverpassAlprCameras {
                     val lat = (o["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
                     val lng = (o["lon"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
                     val tags = o["tags"]?.jsonObject
-                    val op = (tags?.get("operator") as? JsonPrimitive)?.content.orEmpty()
+                    // Real DeFlock nodes tag the vendor as `manufacturer` ("Flock Safety"), not
+                    // `operator` (which is usually the agency and often absent) - fall back to it so
+                    // the camera actually shows who runs it.
+                    val op = ((tags?.get("operator") ?: tags?.get("manufacturer")) as? JsonPrimitive)
+                        ?.content.orEmpty()
                     val dir = (tags?.get("direction") as? JsonPrimitive)?.content.orEmpty()
                     AlprCamera(LatLng(lat, lng), op, dir)
                 }.orEmpty()
