@@ -248,6 +248,7 @@
     <string name="place_from_the_owner">Réponse du propriétaire</string>
     <string name="place_share_place">Partager le lieu</string>
     <string name="place_share">Partager</string>
+    <string name="place_open_web">Ouvrir sur le Web</string>
     <string name="place_share_gmaps_link">Lien Google Maps</string>
     <string name="place_share_map_pin">Repère sur la carte (geo:)</string>
     <string name="place_share_coordinates">Coordonnées</string>
