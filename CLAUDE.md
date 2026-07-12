@@ -1313,6 +1313,18 @@ architecture note.
   node per approach/carriageway at a junction - raw-node counting said "pass 2 lights" for one intersection. Still
   needs a real-drive calibration of the thresholds. The neural voice's occasional attack-clip at sentence starts is
   a model-level Piper limit, separate from the CA-99 fix.
+- **Free-drive follow (2026-07-11, user request).** Browsing without a route, the camera now tracks the fix and the
+  heading beam is smoothed the way nav is. Implemented as a SECOND per-frame ticker in `VelaMapView`
+  (`LaunchedEffect(navMode, driveFollowing)`, sibling of the nav `LaunchedEffect(navMode, routePolyline)`): when
+  `driveFollowing` it eases `browseBeam` toward `compassHeading ?: myBearing` (tau 0.15 s) and eases `browseCam`
+  toward `myLocation` north-up (k = 1-exp(-dt/0.16)), driving the ME source (`setMeSource`) + `moveCamera` each
+  frame, with an idle-skip when neither moved (a settled follow doesn't re-upload 60x/s). It OWNS the location
+  source while running, so `applyData` must NOT repaint the raw compass over it - the call sites pass `meBearing`
+  (= smoothed `browseBeam` when following, else `displayBearing`). The camera `when` block has a guard branch
+  (`!navMode && driveFollowing && myLocation != null`) so a new fix's recomposition can't fire an `animateCamera`
+  that fights the glide. Gate lives in `MapScreen` (`followMe`, default true; a `onUserPan` drops it, the locate FAB
+  re-arms it; suppressed while search/place/directions/results own the camera). Feel constants unverified on a real
+  drive - revertible.
 - Nav fixes (2026-07-05, round 2): (1) **Replay arrow** - the replay puck showed only the DOT, never the
   directional arrow. The arrow's visibility keys on the `displayBearing` passed to `applyData`
   (`VelaMapView` ~730), which prefers snap/compass/`myBearing`; recorded traces often carry no per-fix bearing,
