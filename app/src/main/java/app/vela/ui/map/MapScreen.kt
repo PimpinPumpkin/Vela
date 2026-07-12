@@ -752,6 +752,10 @@ fun MapScreen(
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
+            maxspeedOverlays = state.maxspeedOverlays,
+            onRoadLimitKmh = vm::onOverlayRoadLimit,
+            speedOverlayOn = state.navigating || driveFollowing, // query the overlay only while driving
+
             trafficControls = state.trafficControls,
             navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
@@ -1149,11 +1153,13 @@ fun MapScreen(
             }
         }
 
-        // Posted speed-limit sign — sits just above the speedometer during nav, when the on-device
-        // graph knows the current road's OSM maxspeed (hidden otherwise; sparse OSM coverage = often blank).
-        if (state.navigating && state.speedLimitKmh != null) {
+        // Posted speed-limit sign — sits just above the speedometer during nav. Prefers the on-device graph
+        // (instant, exact) and falls back to the streamed maxspeed overlay ("Speed B"), so a limit shows
+        // even with no routing region downloaded (hidden only when neither source knows it).
+        val postedLimitKmh = state.speedLimitKmh ?: state.speedLimitOverlayKmh
+        if (state.navigating && postedLimitKmh != null) {
             SpeedLimitSign(
-                limitKmh = state.speedLimitKmh!!,
+                limitKmh = postedLimitKmh,
                 speedMps = state.mySpeed,
                 imperial = Units.imperial.value,
                 modifier = Modifier
