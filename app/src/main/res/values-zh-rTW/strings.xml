@@ -263,6 +263,7 @@
     <string name="place_from_the_owner">來自業主</string>
     <string name="place_share_place">分享地點</string>
     <string name="place_share">分享</string>
+    <string name="place_open_web">在網頁中開啟</string>
     <string name="place_share_gmaps_link">Google 地圖連結</string>
     <string name="place_share_map_pin">地圖圖釘（geo:）</string>
     <string name="place_share_coordinates">座標</string>
