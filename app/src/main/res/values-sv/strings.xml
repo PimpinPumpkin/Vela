@@ -433,6 +433,9 @@
     <string name="place_transit_stops">%1$d hållplatser</string> <!-- format -->
     <string name="place_transit_stop_id">Hållplats %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Biljetter &amp; info</string>
+    <string name="place_transit_now">Avgår nu</string>
+    <string name="place_transit_in_min">om %1$d min</string> <!-- format -->
+    <string name="place_transit_live">Live</string>
     <string name="transit_nav_arrived">Du har kommit fram.</string>
     <string name="transit_nav_walk">Gå %1$s</string> <!-- format -->
     <string name="transit_nav_take">Ta %1$s</string> <!-- format -->
