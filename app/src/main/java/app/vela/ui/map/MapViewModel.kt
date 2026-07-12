@@ -148,6 +148,11 @@ data class MapUiState(
     // A transit stop's live departure board (keyless, from the station's own place page).
     val stopDepartures: app.vela.core.model.StopDepartures? = null,
     val stopDeparturesLoading: Boolean = false,
+    // Route detail (tap a route on the board -> its stop timeline with times, tap-through to stops).
+    // Reuses a ride leg from a transit itinerary (its board/intermediate/alight stops carry the times).
+    val routeDetail: TransitStep? = null,
+    val routeDetailTitle: String? = null,
+    val routeDetailLoading: Boolean = false,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
@@ -1286,6 +1291,55 @@ class MapViewModel @Inject constructor(
             }
         }
     }
+
+    /** Tap a route on the departure board -> show its stop timeline with times (issue #71 follow-up).
+     *  Reuses the PROVEN transit-itinerary parser: a directions query from this stop toward the route's
+     *  destination returns a ride leg whose board/intermediate/alight stops already carry per-stop times.
+     *  No new keyless scraping. Needs the line's headsign (its destination) to aim the query. */
+    fun openRouteDetail(line: app.vela.core.model.StopDepartureLine) {
+        val origin = _state.value.selected?.location ?: return
+        val dest = line.headsign?.takeIf { it.isNotBlank() } ?: run {
+            flashStatus(appContext.getString(R.string.route_detail_unavailable)); return
+        }
+        val title = listOfNotNull(line.label, dest).joinToString(" · ")
+        _state.update { it.copy(routeDetailLoading = true, routeDetailTitle = title, routeDetail = null) }
+        routeDetailJob?.cancel()
+        routeDetailJob = viewModelScope.launch {
+            // Aim at the route's destination (geocode the headsign near the stop), then ride transit there.
+            val destLoc = runCatching {
+                dataSource.search(dest, origin).places.minByOrNull { it.location.distanceTo(origin) }?.location
+            }.getOrNull()
+            if (destLoc == null) {
+                _state.update { it.copy(routeDetailLoading = false) }
+                flashStatus(appContext.getString(R.string.route_detail_unavailable)); return@launch
+            }
+            val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
+            // Prefer the ride leg on the SAME line the user tapped; else the first ride leg with stops.
+            val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
+            val step = rides.firstOrNull { s ->
+                line.label != null && s.line?.name?.equals(line.label, ignoreCase = true) == true
+            } ?: rides.firstOrNull()
+            _state.update {
+                if (step == null) { flashStatus(appContext.getString(R.string.route_detail_unavailable)); it.copy(routeDetailLoading = false) }
+                else it.copy(routeDetail = step, routeDetailLoading = false)
+            }
+        }
+    }
+
+    fun closeRouteDetail() = _state.update { it.copy(routeDetail = null, routeDetailLoading = false, routeDetailTitle = null) }
+
+    /** Tap a stop in the route timeline -> open THAT stop (its own departure board), so you can keep
+     *  tapping through the network. Closes the route detail and selects the stop as a place. */
+    fun openRouteStop(stop: app.vela.core.model.TransitStopTime) {
+        val loc = stop.location ?: return
+        closeRouteDetail()
+        // The stop carries a precise coordinate from the itinerary, so onPoiTap's nearest-to-location
+        // resolve lands on the stop itself and its board fetch (fetchStopDepartures) fires - the
+        // tap-through then keeps going from the new stop's own board.
+        onPoiTap(stop.name, loc)
+    }
+
+    private var routeDetailJob: kotlinx.coroutines.Job? = null
 
     /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
      *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
