@@ -1859,6 +1859,26 @@ architecture note.
   render off already-parsed fields, no extra fetch. `delayText` is English-computed in `:core` (as
   in the drill-down); the countdown wrapper strings ARE localized (`place_transit_now`/`_in_min`/
   `_live`, invariable "min" abbreviation per locale like `place_delta_min`).
+- **Tap-through route stop timeline (2026-07-12, keyless + device-verified).** Every `DepartureLineRow`
+  on the board is `clickable` (a trailing `>` chevron hints it) -> `MapViewModel.openRouteDetail(line)`.
+  There is NO new endpoint: the route's stop SEQUENCE is a lazy fetch NOT in the place blob, so this
+  REUSES the proven transit-itinerary parser. `openRouteDetail` geocodes the line's headsign (biased to
+  transit terminals - it prefers a candidate whose `category` matches station/airport/terminal/bart/…
+  nearest the stop, because a bare "Richmond" resolves to a city district not the BART terminal), runs
+  `webDirections.transit(stop, terminal)`, and among the ride legs picks the one on the tapped line
+  (label match) else the leg whose `boardStop` is nearest the stop (the direction tapped) else the
+  first - that `TransitStep` already carries `boardStop`/`intermediateStops`/`alightStop` with per-stop
+  times. Rendered by `PlaceSheet.RouteDetailSheet` (full-screen `Surface`, `MapScreen` draws it over the
+  place sheet when `state.routeDetail != null || routeDetailLoading`): a vertical rail in the line colour,
+  board + alight bold, each `TransitStopTime` row `clickable` -> `openRouteStop(stop)` which
+  `closeRouteDetail()` + `onPoiTap(stop.name, stop.location)` (the stop's precise coord makes the
+  nearest-resolve land on it, and its own `fetchStopDepartures` fires) - so tapping a stop opens ITS
+  board and the tap-through continues. Best-effort: an ungeocodable headsign / no ride leg flashes
+  `route_detail_unavailable` (localized in all 11 langs) and the overlay closes. State on `MapUiState`:
+  `routeDetail: TransitStep?`, `routeDetailTitle`, `routeDetailLoading`, guarded by `routeDetailJob`.
+  The board cap was raised 8 -> 24 lines (`StopDepartureBoard` + parser `MAX_LINES`) so busy stops show
+  more routes. **Device-verified: Powell St -> Yellow-S -> 11 stops (Powell…SFO, 12:23-12:54 PM), then
+  tapping 16th St Mission opened that bus stop's own board.**
 
 ## Name
 
