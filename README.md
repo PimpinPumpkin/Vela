@@ -16,7 +16,7 @@ what's tested (each phone with that size shares the result):
 
 | Simulated size | Target phones | Coverage so far (screenshots in [`tests/devices/`](tests/devices/)) |
 |---|---|---|
-| 240x320 | Kyocera e4810, TCL Flip 2, Sonim XP3 (XP3800) | first-run (Welcome + voice/offline/consent dialogs), bare map, search overlay, place sheet, directions, Settings open + basic navigation |
+| 240x320 | Kyocera e4810, TCL Flip 2, Sonim XP3 (XP3800), Kyocera DuraXV | first-run (Welcome + voice/offline/consent dialogs), bare map, search overlay, place sheet, directions, Settings open + basic navigation |
 | 480x854 | Sonim X320 (XP3 Plus 5G) | bare map, consent dialog, Settings open + navigation |
 
 **Not full D-pad coverage.** Only the surfaces above were checked. NOT yet exercised at any size: every

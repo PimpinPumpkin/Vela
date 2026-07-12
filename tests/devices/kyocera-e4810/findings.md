@@ -61,5 +61,21 @@ Every first-run surface fits (nothing clipped) and auto-focuses its primary cont
 The consent card shows on the 2nd launch (by design: `launches >= 2`), so the fresh chain is
 Welcome -> voice -> offline -> map, then consent on relaunch.
 
+### FULL coverage (240x320) - all 16 surfaces, VERIFIED VISUALLY (`screenshots/full/`)
+`full_coverage.sh` (with a Philadelphia mock fix for dense search/routing) + the whole-Settings D-pad
+walk captured a labeled screenshot of EVERY surface at 240x320; each FITS (no clipping) and is
+D-pad-navigable:
+
+01 welcome, 02 voice dialog, 03 offline dialog, 04 consent dialog, 05 bare map, 06 search overlay,
+07 search results, 08 place sheet, 09 place expanded, 10 directions, 11 route steps, 12 settings top,
+13 settings lower, 14 voice library (expanded voice catalog), 15 offline (expanded picker),
+16 saved places (section + Export/Import buttons).
+
+**Harness note (honest):** the automated gate reliably auto-captures ~14/16; the two DEEPEST Settings
+sub-sections (Offline, Saved places) are flaky in a single scripted run - the `on_screen` check races
+the long-list scroll animation - so they were captured via the full-Settings D-pad walk instead. The
+APP covers all 16 (proven by screenshot); making the gate reliably hit 16/16 in one shot (retries /
+longer settle on `scroll_to`) is a harness follow-up, not an app gap.
+
 ## Screenshots
 See `screenshots/` - all captured at 240x320 via `adb exec-out screencap`.

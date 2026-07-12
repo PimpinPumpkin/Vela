@@ -39,6 +39,7 @@ takes `VELA_SMALL=WxH VELA_SMALL_DPI=<dpi>` to sweep each device.
 | [Kyocera e4810](kyocera-e4810/findings.md) | 2.6" | 240x320 | portrait | ~154 (160) | verified | 6/7 auditor surfaces pass; Settings verified visually; adaptive density fits all chips |
 | [TCL Flip 2](tcl-flip-2/findings.md) | 2.8" | 240x320 | portrait | ~143 (160) | covered (240x320) | same emulated geometry as Kyocera |
 | [Sonim XP3 (XP3800)](sonim-xp3/findings.md) | 2.6" | 240x320 | portrait | ~154 (160) | covered (240x320) | same emulated geometry as Kyocera |
+| [Kyocera DuraXV](kyocera-duraxv/findings.md) | - | 240x320 | portrait | ~160 | covered (240x320) | same emulated geometry as Kyocera e4810 |
 | [Sonim X320 (XP3 Plus 5G)](sonim-x320/findings.md) | 2.95" | 480x854 | portrait | ~332 (320) | verified | driven at 480x854@320; AdaptiveDensity generalizes |
 
 Every target so far is **240x320 portrait** (the "320x240" written on some spec sheets is the same
