@@ -3550,7 +3550,10 @@ class MapViewModel @Inject constructor(
     /** ALPR/Flock cameras for the viewport, when the layer is on. Mirrors [refreshTrafficControls]:
      *  high-zoom only, area-cached (cameras are static), 350 ms debounced, failure not cached. */
     private fun refreshFlock(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
-        if (!app.vela.ui.Flock.on.value || zoom < CONTROLS_MIN_ZOOM) {
+        // ALPR cameras are SPARSE landmarks people want from a neighbourhood view (the way
+        // maps.deflock.org shows them), not dense street furniture like stop signs - fetch from a wider
+        // zoom than the traffic controls. The tag is rare, so the wider Overpass box stays light.
+        if (!app.vela.ui.Flock.on.value || zoom < FLOCK_MIN_ZOOM) {
             flockBox = null
             flockJob?.cancel()
             if (_state.value.flockCameras.isNotEmpty()) _state.update { it.copy(flockCameras = emptyList()) }
@@ -3578,6 +3581,7 @@ class MapViewModel @Inject constructor(
                 val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
                 dLat * dLat + dLng * dLng
             }.take(CONTROLS_ONSCREEN_CAP)
+            android.util.Log.i("VelaFlock", "fetched=${res.size} kept=${kept.size} zoom=$zoom")
             _state.update { it.copy(flockCameras = kept) }
         }
     }
@@ -3751,6 +3755,7 @@ class MapViewModel @Inject constructor(
     companion object {
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
+        const val FLOCK_MIN_ZOOM = 13.0 // ALPR cameras are sparse - show them from a neighbourhood zoom
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
                                               // symbol is re-collided per drag frame (budget-GPU jank)
