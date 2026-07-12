@@ -2166,34 +2166,42 @@ private fun arrowBitmap(): Bitmap {
     return bmp
 }
 
-/** Google-style navigation puck: a solid blue chevron/arrowhead with a white outline,
- * centred on the position and pointing up (north) so `iconRotate(bearing)` aims it down
- * the heading. Replaces the dot during nav (test-drive feedback: "we need an arrow"). */
+/** Navigation puck: a WHITE chevron inside a filled BRIGHT-NAVY circle with a soft drop shadow
+ *  and NO white ring (upstream on-device feedback: bigger, drop the ring, brighter navy - the
+ *  Google-style disc reads better over the route line than the old bare chevron). Points up
+ *  (north) so `iconRotate(bearing)` aims it down the heading. */
 private fun navPuckBitmap(): Bitmap {
-    val size = 96
+    val size = 136
     val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bmp)
     val cx = size / 2f
-    val path = Path().apply {
-        moveTo(cx, 12f)                 // tip (top / north)
-        lineTo(cx + 27f, size - 16f)    // bottom-right
-        lineTo(cx, size - 30f)          // chevron notch
-        lineTo(cx - 27f, size - 16f)    // bottom-left
+    val cy = size / 2f
+    val r = 50f
+    // Soft drop shadow, offset slightly down (blur needs a software canvas - this is one).
+    canvas.drawCircle(
+        cx, cy + 4f, r,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = android.graphics.Color.argb(70, 0, 0, 0)
+            maskFilter = android.graphics.BlurMaskFilter(8f, android.graphics.BlurMaskFilter.Blur.NORMAL)
+        },
+    )
+    // The bright-navy disc - no white ring. #1a46e5 = a vivid, deep blue.
+    canvas.drawCircle(
+        cx, cy, r,
+        Paint(Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.parseColor("#1a46e5") },
+    )
+    // White chevron/arrow, centred, pointing up - scaled with the disc.
+    val arrow = Path().apply {
+        moveTo(cx, cy - 25f)          // tip
+        lineTo(cx + 21f, cy + 20f)    // bottom-right
+        lineTo(cx, cy + 9f)           // notch
+        lineTo(cx - 21f, cy + 20f)    // bottom-left
         close()
     }
     canvas.drawPath(
-        path,
+        arrow,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = android.graphics.Color.WHITE
-            style = Paint.Style.STROKE
-            strokeWidth = 9f
-            strokeJoin = Paint.Join.ROUND
-        },
-    )
-    canvas.drawPath(
-        path,
-        Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = android.graphics.Color.parseColor("#4285F4")
             style = Paint.Style.FILL
         },
     )
