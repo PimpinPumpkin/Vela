@@ -67,6 +67,12 @@ physical size but all round to ~160. More models will be added as they are named
     green AND its frames were checked by eye at EVERY geometry in the matrix (both 240x320@160 and
     480x854@320 today). One size never stands in for the other; a new geometry joins the loop the
     day it lands in the matrix.
+- **`bash tests/devices/self_coverage.sh <id>`** - the IN-PROCESS self-coverage tour: ~10x faster
+  than the external gate for its surfaces and stricter (real focus assertions, exact clip bounds,
+  direct flavor assertions), same sources of truth (accessibility + real framebuffer stills + real
+  key input, R8-minified build), scrcpy recording per run. Augments the external gates - they stay
+  mandatory until a surface is covered here strictly better. `VELA_PKG=app.vela.restricted.debug`
+  runs it against the restricted flavor.
 - **`bash tests/devices/capture.sh <id>`** - lighter AUTO-capture of the first-run flow + core surfaces
   into `<id>/screenshots/auto/` (`--warm` skips the fresh `pm clear`; `capture.sh all` does every
   device). Use `full_coverage.sh` for the support gate; `capture.sh` for a quick visual refresh.

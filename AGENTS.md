@@ -91,7 +91,25 @@ at a FEATURE-PHONE display size, not only on your dev phone's native panel. Non-
   frames, so verifying one feature on a device never needs the full ~13-min tour. A partial run
   reports PARTIAL, never the FULLY COVERED verdict. Current phases:
   `firstrun map search place directions settings voice parking`.
-  **HARD RULE - EVERY TARGET GEOMETRY, EVERY TIME, NOTHING LEFT TO CHANCE:** a feature (or phase)
+  **The IN-PROCESS self-coverage suite (`app/src/androidTest` SelfTourTest + `tests/devices/
+  self_coverage.sh <id>`)** is the fast tour: ~10x quicker than full_coverage.sh for the surfaces
+  it covers (36s vs ~6min at 240x320) and STRICTER - real focus-state assertions per D-pad step
+  (By.focused(true) - actual focus, not pixel inference), exact pixel-bounds clip checks, and
+  direct flavor assertions (restricted rows asserted ABSENT). Accuracy contract, non-negotiable:
+  same sources of truth as the external harness (accessibility tree, REAL framebuffer stills incl.
+  the GL map via androidx.test Screenshot, REAL system-dispatcher key input via
+  UiDevice.pressKeyCode), run against the R8-minified debug build; scrcpy records every run; the
+  eyeball pass on the stills stays mandatory; tree-vs-pixels disagreement = failure. Do NOT use the
+  Compose test runtime (createAndroidComposeRule) here - it needs Compose-internal classes the
+  minified app strips; UiAutomator in-process reads the same accessibility tree without that
+  fight. The kotlin/kotlinx-coroutines wholesale keeps in proguard-rules-debug.pro exist FOR this
+  suite (the test APK resolves those from the app dex).
+  **Migration rule: the existing gates (audit_static, audit_dynamic, small-screen matrix,
+  full_coverage) remain MANDATORY until a surface is covered here strictly better - the suite
+  AUGMENTS, it does not replace yet. Wrapper gotcha: stills are pulled after EACH geometry (a
+  later run's pm clear wipes the app's external files).**
+
+    **HARD RULE - EVERY TARGET GEOMETRY, EVERY TIME, NOTHING LEFT TO CHANCE:** a feature (or phase)
   counts as verified ONLY when its phase has run green AND its frames have been eyeballed at EVERY
   target geometry in the device matrix - today that is BOTH `240x320@160` AND `480x854@320`. One
   size is NOT a proxy for the other. Run

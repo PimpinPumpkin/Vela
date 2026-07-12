@@ -166,6 +166,16 @@ android {
 }
 
 dependencies {
+    // ---- Self-coverage suite (in-process instrumented tour; tests/devices/self_coverage.sh) ----
+    // Drives the real app in-process: Compose semantics for assertions, UiDevice.pressKeyCode for
+    // REAL system-dispatcher D-pad input, androidx.test Screenshot for real-framebuffer stills
+    // (includes the MapLibre GL surface). Faster AND stricter than the external uiautomator tour.
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation("androidx.test:core-ktx:1.6.1")
+    androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+
     implementation(project(":core"))
 
     // sherpa-onnx: in-process neural TTS runtime (runs the downloaded Kokoro model). Vendored AAR
