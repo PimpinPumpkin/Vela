@@ -29,10 +29,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   colors: Modern (the Google-app pixel-sampled palette, the default) or Classic (Vela's
   archived earlier look: white roads, yellow motorways, true greens). The fleet default rides
   the signed calibration channel (`defaultMapPalette`), so it can change without an app
-  release; an explicit pick always wins.
+  release; an explicit pick always wins. **Classic's night palette re-differentiated
+  (2026-07-12):** Modern's dark was re-sampled to Google's deep navy, which left Classic's old
+  blue-grey dark reading almost identical (user: "classic looks bluish like modern, houses too").
+  Classic dark is now a NEUTRAL charcoal-slate identity - slate land, GREY buildings (no blue
+  houses), muted-amber motorways echoing the classic-light yellow, its true greens and steel-blue
+  water kept - so the two dark sets are clearly distinct.
 - ✅ **Google-style nav puck (2026-07-11).** The navigation arrow is a white chevron inside a
-  filled bright-navy circle with a soft drop shadow (sized up, no white ring, per user feedback);
-  it rotates about the exact GPS point. Replaces the bare blue chevron.
+  filled bright-navy circle with a soft drop shadow (no white ring, per user feedback); it rotates
+  about the exact GPS point. Replaces the bare blue chevron. **Enlarged twice from feedback
+  (2026-07-11/12): 96 → 112 → 136 px** so it reads clearly at a glance while driving.
 - ✅ **Bold street names (2026-07-11).** Road-name labels render in the Bold font stack in both
   themes, like Google; other labels keep regular weight.
 - ✅ **Bike paths in Google's teal (2026-07-11).** Dedicated cycleways (OSM highway=cycleway)
