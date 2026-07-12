@@ -83,10 +83,11 @@
     <string name="settings_transit_layer_hint">Draws train and subway lines on the map.</string>
     <string name="settings_flock">Surveillance cameras</string>
     <string name="settings_flock_hint">Shows mapped automated license-plate reader (Flock) cameras, from the community DeFlock project in OpenStreetMap. Off by default.</string>
-    <string name="settings_flock_route_alert">Warn about cameras on route</string>
-    <string name="settings_flock_route_alert_hint">On the route picker, badges each route with how many mapped license-plate reader cameras it passes. Off by default.</string>
+    <string name="settings_flock_route_alert">Avoid surveillance cameras</string>
+    <string name="settings_flock_route_alert_hint">Badges each route with how many mapped license-plate reader cameras it passes, and prefers a lower-camera route when the detour is small. Long-press the map while planning to route through a point yourself. Off by default.</string>
     <string name="dir_cameras_on_route">%1$d cameras on this route</string> <!-- format -->
     <string name="dir_cameras_badge">%1$d</string> <!-- format -->
+    <string name="mapvm_flock_avoided">Rerouted to avoid cameras</string>
 
     <string name="settings_read_all_reviews">“Read all reviews” button</string>
     <string name="settings_read_all_reviews_hint">Adds a “Read all reviews” button that opens Google\'s full reviews page inside the app, with every review. Off = Vela\'s own review list only.</string>
