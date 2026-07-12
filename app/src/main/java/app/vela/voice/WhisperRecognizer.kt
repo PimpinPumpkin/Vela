@@ -3,7 +3,10 @@ package app.vela.voice
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import androidx.core.content.ContextCompat
@@ -41,6 +44,33 @@ class WhisperRecognizer @Inject constructor(
     private val loadLock = Any()
     @Volatile private var recognizer: OfflineRecognizer? = null
     @Volatile private var loadedLang: String? = null
+
+    private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }
+    private var focusRequest: AudioFocusRequest? = null
+
+    /** Take TRANSIENT audio focus so whatever is playing (music, a podcast) pauses while we listen,
+     *  the way a phone assistant does - `AUDIOFOCUS_GAIN_TRANSIENT` (not `_MAY_DUCK`) makes media
+     *  players pause rather than just duck. Abandoned in [abandonAudioFocus] the moment we stop. */
+    private fun requestAudioFocus() {
+        val am = audioManager ?: return
+        val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+            .build()
+        focusRequest = req
+        runCatching { am.requestAudioFocus(req) }
+    }
+
+    /** Give focus back so the paused music resumes right after the utterance. */
+    private fun abandonAudioFocus() {
+        val am = audioManager ?: return
+        focusRequest?.let { req -> runCatching { am.abandonAudioFocusRequest(req) } }
+        focusRequest = null
+    }
 
     private companion object {
         const val SAMPLE_RATE = 16000
@@ -161,6 +191,7 @@ class WhisperRecognizer @Inject constructor(
         var sawSpeech = false
         var segment: FloatArray? = null
         try {
+            requestAudioFocus() // pause any playing music/podcast while we listen
             audio.startRecording()
             onListening()
             while (!cancelled() && segment == null && total < SAMPLE_RATE * MAX_SECONDS) {
@@ -183,6 +214,7 @@ class WhisperRecognizer @Inject constructor(
         } finally {
             runCatching { audio.stop() }
             audio.release()
+            abandonAudioFocus() // let the music resume
         }
 
         // Prefer the VAD-trimmed segment (leading/trailing silence stripped → cleaner transcript);
