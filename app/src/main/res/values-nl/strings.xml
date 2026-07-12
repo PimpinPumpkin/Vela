@@ -547,4 +547,6 @@
     <string name="map_parking_moved">Parkeerplek hierheen verplaatst</string>
     <string name="mapscreen_system_voices">Systeemstemmen</string>
     <string name="mapvm_voice_lang_system">Aanwijzingen in het %1$s gebruiken de stem van je telefoon. Voeg er een toe in je systeemstem-instellingen.</string>
+    <string name="settings_topography">Terreinschaduw</string>
+    <string name="settings_topography_hint">Arceert heuvels en bergen op de kaart. Standaard uit.</string>
 </resources>

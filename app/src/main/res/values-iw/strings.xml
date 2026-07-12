@@ -546,4 +546,6 @@
     <string name="map_parking_moved">מיקום החניה הוזז לכאן</string>
     <string name="mapscreen_system_voices">קולות מערכת</string>
     <string name="mapvm_voice_lang_system">הוראות ב%1$s משתמשות בקול של הטלפון שלך. הוסף אחד בהגדרות הקול של המערכת.</string>
+    <string name="settings_topography">הצללת שטח</string>
+    <string name="settings_topography_hint">מוסיף הצללה לגבעות ולהרים במפה. כבוי כברירת מחדל.</string>
 </resources>
