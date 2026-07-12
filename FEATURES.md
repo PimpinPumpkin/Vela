@@ -1125,7 +1125,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   derestricted road as 150). Verified: a Monaco graph rebuilds cleanly with `max_speed` + CH. **Coverage =
   OSM `maxspeed` (partial)** - strong on highways/EU/urban, sparse on US residential. **Remaining to light it
   up for everyone: re-bake + re-host the region graphs with `max_speed` (CI), then a fresh region download
-  shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up).
+  shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up). **Now shown in FREE-DRIVE too (2026-07-12, user request):** the same `updateSpeedLimit` already ran on every live browse fix, it was only *rendered* during nav; the sign now also appears while you're simply driving with no route open (moving, on the clean map), dropped to the nav-bar line since there's no speedometer there. **Speed A** of the plan; **Speed B** (a keyless maxspeed PMTiles overlay) will remove the download-a-graph requirement so limits show anywhere, and the same badge lookup will fall back to it when no graph covers the road.
 - ⬜ Speed-camera + hazard alerts (lane guidance ✅ done above)
 - ✅ **Android Auto - first cut shipped 2026-07-08** (see the entry at the top of this section). The old
   "needs GMS, out of scope" call was wrong: the car app library is plain androidx, and a sideload runs fine
