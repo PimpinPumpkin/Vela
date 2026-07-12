@@ -1306,9 +1306,10 @@ class MapViewModel @Inject constructor(
         routeDetailJob?.cancel()
         routeDetailJob = viewModelScope.launch {
             // Aim at the route's destination (geocode the headsign near the stop), then ride transit there.
-            // A bare headsign is often ambiguous ("Richmond" resolves to a city district, not the BART
-            // terminal), so prefer a candidate that is itself a transit place (station/airport/terminal)
-            // and, among those, the one nearest the tapped stop - that is the line's actual end point.
+            // A bare headsign is often ambiguous ("Richmond" is a city district AND a far-off city), so
+            // prefer a candidate that is itself a transit place (station/airport/terminal) and, among
+            // those, the one nearest the tapped stop - a sanity filter that rejects a same-named place
+            // across the country. (The RIDE-LEG match below is what actually pins the tapped line.)
             val cands = runCatching { dataSource.search(dest, origin).places }.getOrDefault(emptyList())
             val transitish = cands.filter { it.category?.let { c ->
                 listOf("station", "transit", "stop", "airport", "terminal", "bart", "metro", "rail")
@@ -1322,12 +1323,13 @@ class MapViewModel @Inject constructor(
             }
             val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
             val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
-            // Prefer the ride leg on the SAME line the user tapped; else the leg we actually BOARD at this
-            // stop (its board stop nearest the origin), which is the direction they tapped; else the first.
-            val step = rides.firstOrNull { s ->
-                line.label != null && s.line?.name?.equals(line.label, ignoreCase = true) == true
-            } ?: rides.filter { it.boardStop?.location != null }
-                .minByOrNull { it.boardStop!!.location!!.distanceTo(origin) }
+            // Pick the leg the user actually tapped. Rank by the tapped LINE first (a short board label
+            // like "N" matches a longer itinerary name "N-Judah"), then by how close its board stop is to
+            // the tapped stop - so a same-line leg heading the OTHER way (boarding far off) loses to the
+            // one boarding here. Falls back to whatever leg boards at this stop, then the first ride.
+            val boardDist = { s: TransitStep -> s.boardStop?.location?.distanceTo(origin) ?: Double.MAX_VALUE }
+            val step = rides.filter { lineLabelMatches(line.label, it.line?.name) }.minByOrNull { boardDist(it) }
+                ?: rides.filter { boardDist(it) <= 500.0 }.minByOrNull { boardDist(it) }
                 ?: rides.firstOrNull()
             android.util.Log.d("VelaRouteDetail", "'$dest' rides=${rides.size} -> ${step?.line?.name} (${step?.intermediateStops?.size} stops)")
             _state.update {
@@ -1335,6 +1337,15 @@ class MapViewModel @Inject constructor(
                 else it.copy(routeDetail = step, routeDetailLoading = false)
             }
         }
+    }
+
+    /** Does a departure-board line label (a short route code, "N" / "42") match an itinerary line name
+     *  (which may be longer, "N-Judah")? Exact, or the label is the FIRST token of the name, so a "1"
+     *  label doesn't spuriously match a "10" line. */
+    private fun lineLabelMatches(label: String?, name: String?): Boolean {
+        if (label.isNullOrBlank() || name.isNullOrBlank()) return false
+        if (name.equals(label, ignoreCase = true)) return true
+        return name.trim().split(Regex("[\\s\\-/]")).firstOrNull()?.equals(label, ignoreCase = true) == true
     }
 
     fun closeRouteDetail() {
