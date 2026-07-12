@@ -928,6 +928,23 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   boarding leg's **"N min late/early"** is surfaced right in the header (it was only in the
   drill-down before). Pure render off already-parsed fields (`TransitItinerary.departureEpochSec`,
   `TransitStep.delayText`), no extra fetch; localized in all 11 languages.
+- ✅ **Live stop departure board (2026-07-12, keyless + device-verified).** Tapping a transit
+  station (subway / rail / BART / bus stop) shows Google's **"See departure board"** right in the
+  place sheet: each line and direction with its **route number in its real line colour** (the "14"/
+  "38AX" pill), its **destination/headsign**, the **next few departure times** (soonest bold, the rest
+  quiet), a **countdown** on the soonest ("in 6 min", green + a **Live** dot when Google has a real-time
+  fix), and the running **frequency**. Handles both layouts - a station grouped by line/direction, and
+  a busy **bus stop** that lists departures flat (the parser groups those by route so route 14 is one
+  "14" row with its next times, not 25 rows), soonest-first. It rides the SAME
+  anonymous WebView + `APP_INITIALIZATION_STATE` channel as transit itineraries and photos - the
+  board is embedded in the station's own place page (no separate RPC, no login; unlike popular
+  times it survives a logged-out session), parsed keyless by `:core`'s `StopDeparturesParser`
+  (`place[62]`, shape-tolerant leaf matching, unit-tested against a live NYC capture) via
+  `WebStopDeparturesFetcher`. Gated to transit-category places so it never fires on an ordinary
+  business. **Device-verified: BART Powell St rendered 8 lines** (Daly City / Richmond / SFO-Millbrae
+  / Antioch / SFO) with their next departures. **Coverage is agency-dependent** - major systems that
+  feed Google real-time carry the board (NYC MTA, SF BART confirmed); a place with none shows nothing
+  (a small light-rail agency like SacRT was confirmed empty, correctly). Localized in all 11 languages.
 - ✅ Transit **leg drill-down with full stop detail** - tap an itinerary to expand
   its ordered legs. A ride leg shows Google's whole layout: the **line pill + "towards …"
   headsign**, the **board stop** (name + agency **Stop ID** + real-time board time, with

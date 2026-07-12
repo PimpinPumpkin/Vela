@@ -457,6 +457,8 @@
     <string name="place_transit_now">即将出发</string>
     <string name="place_transit_in_min">%1$d 分钟后</string> <!-- format -->
     <string name="place_transit_live">实时</string>
+    <string name="place_departures">发车时刻</string>
+    <string name="place_every">每 %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">您已到达。</string>
     <string name="transit_nav_walk">步行 %1$s</string> <!-- format -->
     <string name="transit_nav_take">乘坐 %1$s</string> <!-- format -->
