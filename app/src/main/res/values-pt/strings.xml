@@ -134,6 +134,7 @@
     <string name="settings_support_button">Apoiar o Vela</string>
     <string name="settings_version">Versão</string>
     <string name="settings_version_line">Vela %1$s  (compilação %2$d)</string>
+    <string name="settings_version_copied">Versão copiada</string>
     <string name="settings_collapse">Recolher</string>
     <string name="settings_expand">Expandir</string>
     <string name="settings_voice_lib_empty_hint">★ assinala as vozes recomendadas. Todas funcionam offline no telemóvel.</string>
@@ -533,6 +534,10 @@
     <string name="notif_ask_skip">Pular</string>
     <string name="place_time_past_toast">Esse horário já passou. Definido para agora.</string>
     <string name="settings_ui_scale">Tamanho da interface</string>
+    <string name="settings_map_colors">Cores do mapa</string>
+    <string name="settings_map_colors_modern">Moderno</string>
+    <string name="settings_map_colors_classic">Clássico</string>
+    <string name="settings_map_colors_hint">Moderno segue a paleta atual do Google Maps. Clássico é o visual anterior do Vela: estradas brancas, autoestradas amarelas, verdes fortes.</string>
     <string name="place_avoid_tolls">Evitar pedágios</string>
     <string name="place_avoid_highways">Evitar rodovias</string>
 </resources>

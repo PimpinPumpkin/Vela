@@ -342,7 +342,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
     the `/maps/preview/directions?pb=` GET). Hand me the `pb`; I diff it against
     `DirectionsPb.DEFAULT_TEMPLATE`, find the field, plumb `departureTime` through
     `MapDataSource.directions` + a re-fetch.
-- **Avoid tolls/highways** - same family (a directions `pb` options field); deferred.
+- ~~Avoid tolls/highways~~ - SHIPPED 2026-07-11 as on-device graph profiles (v2 rebake), not a pb field; see FEATURES.
 - **Per-review uploaded photos** - the `listentitiesreviews` RPC (our reviews source)
   returns **only the reviewer's avatar**, never their uploaded photos (verified 2026-06-20
   against Tartine + Bottega Louie: 60 image URLs, all `/a/…ACg8oc` / `/a-/…ALV-`, zero
@@ -601,10 +601,11 @@ project's core promise is that neither exists:
 
 ## Queued near-term
 
-- Avoid tolls / avoid highways: FOSSGIS OSRM accepts per-request exclusions; two persisted
-  toggles in the route chooser. Caveats to surface in the UI: the Google fallback router
-  ignores them, and offline GraphHopper needs a graph re-bake with toll flags before it can
-  honour them (CI rebuild of the region graphs).
+- ~~Avoid tolls / avoid highways~~ - LIVE 2026-07-11: sticky chooser chips, honoured by the
+  on-device graphs (all 135 regions rebaked with avoid CH profiles; the app reads the v2
+  manifest). The public OSRM rejects exclude, so an online-only trip falls back to a normal
+  route; a possible follow-up is nudging "download this region to use avoid offline" when a
+  toggle is on with no covering graph.
 - On-street bike lanes: dedicated cycleways (OSM highway=cycleway) now render in Google's teal
   via `vela-bikeroutes` (2026-07-11). On-street painted lanes (`cycleway=lane` on a road way) are
   not in the keyless OMT tile schema, so a full "bike lanes everywhere" accent would need an

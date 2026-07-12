@@ -134,6 +134,7 @@
     <string name="settings_support_button">Vela unterstützen</string>
     <string name="settings_version">Version</string>
     <string name="settings_version_line">Vela %1$s  (Build %2$d)</string>
+    <string name="settings_version_copied">Version kopiert</string>
     <string name="settings_collapse">Einklappen</string>
     <string name="settings_expand">Ausklappen</string>
     <string name="settings_voice_lib_empty_hint">★ markiert die empfohlenen Stimmen. Jede Stimme läuft offline auf deinem Gerät.</string>
@@ -533,6 +534,10 @@
     <string name="notif_ask_skip">Überspringen</string>
     <string name="place_time_past_toast">Diese Zeit ist vorbei. Auf jetzt gesetzt.</string>
     <string name="settings_ui_scale">Größe der Oberfläche</string>
+    <string name="settings_map_colors">Kartenfarben</string>
+    <string name="settings_map_colors_modern">Modern</string>
+    <string name="settings_map_colors_classic">Klassisch</string>
+    <string name="settings_map_colors_hint">Modern entspricht der aktuellen Google-Palette. Klassisch ist der frühere Vela-Look: weiße Straßen, gelbe Autobahnen, kräftige Grüntöne.</string>
     <string name="place_avoid_tolls">Mautstraßen vermeiden</string>
     <string name="place_avoid_highways">Autobahnen vermeiden</string>
 </resources>
