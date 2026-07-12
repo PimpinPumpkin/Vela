@@ -436,6 +436,7 @@
     <string name="place_transit_stops">%1$d haltes</string> <!-- format -->
     <string name="place_transit_stop_id">Halte %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Tickets &amp; info</string>
+    <string name="route_detail_unavailable">Lijndetails niet beschikbaar</string>
     <string name="place_transit_now">Vertrekt nu</string>
     <string name="place_transit_in_min">over %1$d min</string> <!-- format -->
     <string name="place_transit_live">Live</string>
