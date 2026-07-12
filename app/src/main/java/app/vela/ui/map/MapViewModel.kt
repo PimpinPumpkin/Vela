@@ -1260,7 +1260,7 @@ class MapViewModel @Inject constructor(
      *  these to avoid a WebView load on every ordinary place; the parser returns null anyway for a
      *  place with no board, so a miss here just means no board, never a wrong one. */
     private val TRANSIT_CAT = Regex(
-        """station|stop|subway|metro|transit|\bbus\b|train|\brail\b|tram|light rail|terminal|ferry|""" +
+        """station|stop|subway|metro|transit|transport|\bhub\b|\bbus\b|train|\brail\b|tram|light rail|terminal|ferry|""" +
             """bahnhof|haltestelle|gare|estaci|estaç|stazione|fermata|estação|estação|halte|stanice|""" +
             """지하철|driehoek|û|вокзал|станц|остановка|停|駅|车站|車站""",
         RegexOption.IGNORE_CASE,
@@ -1607,7 +1607,7 @@ class MapViewModel @Inject constructor(
 
     /** Tapped a POI on the map: show it immediately, then enrich with full
      *  details (hours, rating, …) from a search for that name nearby. */
-    fun onPoiTap(name: String, location: LatLng) {
+    fun onPoiTap(name: String, location: LatLng, poiKind: String? = null) {
         if (consumeAssign(SavedPlace(id = "poi:" + name.hashCode(), name = name, lat = location.lat, lng = location.lng))) return
         // Picking the route origin (or a stop) by tapping the map → adopt this POI, don't open it.
         if (_state.value.pickingStop) {
@@ -1625,6 +1625,24 @@ class MapViewModel @Inject constructor(
         // same-named POIs tapped in quick succession (a chain's two branches) otherwise let the slower
         // resolve for the first hijack the second's sheet, since the old gate matched name only (audit 2026-07-06).
         val placeholder = Place(id = "poi:" + name.hashCode(), name = name, location = location)
+        // A transit STOP is usually named by its intersection ("Main St & 1st Ave"), and Google resolves
+        // that bare string to the road JUNCTION, not the stop - so a tapped stop opened as an "Intersection"
+        // with no board (issue #71 follow-up; verified in a live capture: "<x> & <y>" -> Intersection,
+        // "<x> & <y> bus stop" -> the Stop). When the TAPPED POI's kind says transit (its class/subclass,
+        // not its name, so a business called "Salt & Straw" is untouched), append a mode word to the lookup
+        // so the search returns the stop. Non-transit POIs search by name exactly as before.
+        val transitHint = poiKind?.lowercase()?.let { k ->
+            when {
+                "bus" in k -> "bus stop"
+                "tram" in k || "light_rail" in k -> "tram stop"
+                "subway" in k || "metro" in k -> "station"
+                "railway" in k || "train" in k || "rail" in k -> "station"
+                "ferry" in k -> "ferry terminal"
+                "station" in k || "halt" in k || "platform" in k || "stop" in k || "transit" in k -> "transit stop"
+                else -> null
+            }
+        }
+        val searchQuery = if (transitHint != null && !name.lowercase().contains(transitHint)) "$name $transitHint" else name
         _state.update {
             it.copy(
                 selected = placeholder,
@@ -1649,7 +1667,7 @@ class MapViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val resolved = runCatching {
-                val results = dataSource.search(name, location).places
+                val results = dataSource.search(searchQuery, location).places
                 val nearest = results.minByOrNull { p -> p.location.distanceTo(location) }
                 // A tapped POI can map to several Google listings at the same spot —
                 // e.g. a co-branded "SpeeDee Midas" has a rich "SpeeDee" profile (543
