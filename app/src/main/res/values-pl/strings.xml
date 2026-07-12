@@ -134,6 +134,7 @@
     <string name="settings_support_button">Wesprzyj Vela</string>
     <string name="settings_version">Wersja</string>
     <string name="settings_version_line">Vela %1$s  (kompilacja %2$d)</string>
+    <string name="settings_version_copied">Skopiowano wersję</string>
     <string name="settings_collapse">Zwiń</string>
     <string name="settings_expand">Rozwiń</string>
     <string name="settings_voice_lib_empty_hint">★ oznacza polecane głosy. Każdy głos działa offline na telefonie.</string>
