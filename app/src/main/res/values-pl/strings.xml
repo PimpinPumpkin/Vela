@@ -435,6 +435,7 @@
     <string name="place_transit_stops">%1$d przystanków</string> <!-- format -->
     <string name="place_transit_stop_id">Przystanek %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Bilety i informacje</string>
+    <string name="route_detail_unavailable">Szczegóły linii niedostępne</string>
     <string name="place_transit_now">Odjeżdża</string>
     <string name="place_transit_in_min">za %1$d min</string> <!-- format -->
     <string name="place_transit_live">Na żywo</string>

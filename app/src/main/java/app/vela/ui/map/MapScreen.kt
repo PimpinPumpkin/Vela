@@ -1338,6 +1338,7 @@ fun MapScreen(
                 placesHere = state.placesHere,
                 stopDepartures = state.stopDepartures,
                 stopDeparturesLoading = state.stopDeparturesLoading,
+                onTapRoute = vm::openRouteDetail,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
@@ -1445,6 +1446,19 @@ fun MapScreen(
                 onBack = vm::backTransitNav,
                 onEnd = vm::endTransitNav,
                 onWalkDirections = vm::walkDirections,
+            )
+        }
+
+        // Tap-through: the stop timeline for a route tapped on the departure board. Drawn over the
+        // place sheet; tapping a stop opens that stop's own board, so the user keeps drilling down
+        // the line the way Google's tap-through does. Also shown (with a spinner) while it loads.
+        if (state.routeDetail != null || state.routeDetailLoading) {
+            app.vela.ui.place.RouteDetailSheet(
+                step = state.routeDetail,
+                title = state.routeDetailTitle,
+                loading = state.routeDetailLoading,
+                onClose = vm::closeRouteDetail,
+                onStopTap = vm::openRouteStop,
             )
         }
 
