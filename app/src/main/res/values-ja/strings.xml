@@ -404,6 +404,7 @@
     <string name="mapvm_none_found_along_route">ルート沿いに「%1$s」は見つかりませんでした</string> <!-- format -->
     <string name="mapvm_search_failed">検索に失敗しました</string>
     <string name="mapvm_dropped_pin">指定した地点</string>
+    <string name="mapvm_stop_added">経由地を追加しました</string>
     <string name="mapvm_no_mode_route_found">%1$sのルートが見つかりません</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">経路の再調整が必要です：%1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">ルート検索に失敗しました：%1$s</string> <!-- format -->
