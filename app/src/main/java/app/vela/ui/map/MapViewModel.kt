@@ -145,6 +145,9 @@ data class MapUiState(
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val transitNav: TransitNavState? = null,
+    // A transit stop's live departure board (keyless, from the station's own place page).
+    val stopDepartures: app.vela.core.model.StopDepartures? = null,
+    val stopDeparturesLoading: Boolean = false,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
@@ -243,6 +246,7 @@ class MapViewModel @Inject constructor(
     private val webPhotos: WebPhotoFetcher,
     private val webReviews: WebReviewsFetcher,
     private val webDirections: WebDirectionsFetcher,
+    private val webStopDepartures: app.vela.web.WebStopDeparturesFetcher,
     private val diag: app.vela.core.diag.DiagLog,
     private val diagExporter: app.vela.diag.DiagExporter,
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
@@ -1239,13 +1243,47 @@ class MapViewModel @Inject constructor(
                 // (the along-route / pick-origin / pick-stop flows early-return above).
                 directionsOpen = false, routes = emptyList(), activeRoute = null,
                 transit = emptyList(), transitLoading = false, showSteps = false,
+                stopDepartures = null, stopDeparturesLoading = false,
             )
         }
         fetchReviews(p)
         fetchPhotos(p)
         fetchPlaceDetails(p)
+        fetchStopDepartures(p)
         backfillOfflineAddress(p)
         rememberRecentPlace(SavedPlace.of(p))
+    }
+
+    /** Transit-station category words (English + a few common ones). The board fetch is gated on
+     *  these to avoid a WebView load on every ordinary place; the parser returns null anyway for a
+     *  place with no board, so a miss here just means no board, never a wrong one. */
+    private val TRANSIT_CAT = Regex(
+        """station|stop|subway|metro|transit|\bbus\b|train|\brail\b|tram|light rail|terminal|ferry|""" +
+            """bahnhof|haltestelle|gare|estaci|estaç|stazione|fermata|estação|estação|halte|stanice|""" +
+            """지하철|driehoek|û|вокзал|станц|остановка|停|駅|车站|車站""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** A transit stop's live departure board, from the station's own place page (keyless, anonymous).
+     *  Only fired for places whose category reads like a transit stop AND that carry a feature id
+     *  (needed for the `?cid=` deep-link); guarded to the still-selected place when it returns. */
+    private fun fetchStopDepartures(p: Place) {
+        val fid = p.featureId
+        if (fid.isNullOrBlank() || !fid.contains(":")) return
+        val cat = p.category ?: ""
+        if (!TRANSIT_CAT.containsMatchIn(cat)) return
+        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true) else it }
+        viewModelScope.launch {
+            val board = runCatching { webStopDepartures.fetch(fid) }
+                .onFailure { android.util.Log.i("VelaDepartures", "fetch failed: ${it.message}") }
+                .getOrNull()
+            // Line count only (no place name in logs) so a shape drift is visible without leaking where.
+            android.util.Log.i("VelaDepartures", "board lines=${board?.lines?.size ?: -1}")
+            _state.update { st ->
+                if (st.selected?.featureId != fid) st
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+            }
+        }
     }
 
     /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
