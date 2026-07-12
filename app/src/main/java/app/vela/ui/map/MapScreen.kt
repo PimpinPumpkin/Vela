@@ -85,6 +85,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ElevatedAssistChip
 import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExtendedFloatingActionButton
@@ -1519,16 +1521,21 @@ fun MapScreen(
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
             }
-            // Parking button, its OWN control above the locate FAB. TAP: no spot → save here;
-            // spot set (teal) → open the parked-car sheet (Clear lives there). LONG-PRESS opens
-            // the history menu — accidental-overwrite insurance. A Surface, not SmallFAB: the
-            // FAB's clickable eats the down so an outer long-press never fires; the inner Box
-            // detector owns both gestures (same seam the locate FAB needed, 2026-07-08).
+            // Parking button, its OWN control above the locate FAB. TAP with NO spot → save here
+            // (the one-tap "I parked" path). TAP with a spot set (teal) → a small hub menu (Find my
+            // car / Move parking here / Earlier spots / Clear) so re-parking is one obvious choice
+            // instead of the old clear-then-tap-again dance (user 2026-07-11: "setting parking again
+            // when you already have a spot is clunky"). LONG-PRESS still jumps straight to history.
+            // A Surface, not SmallFAB: the FAB's clickable eats the down so an outer long-press never
+            // fires; the inner Box detector owns both gestures (same seam the locate FAB needed).
             val parkingSavedMsg = stringResource(R.string.map_parking_saved)
             val parkingNoFixMsg = stringResource(R.string.map_parking_no_fix)
+            val parkingMovedMsg = stringResource(R.string.map_parking_moved)
+            val parkingClearedMsg = stringResource(R.string.map_parking_cleared)
             val parkedCarLabel = stringResource(R.string.map_parked_car)
             val parkingSet = state.parkingSpot != null
             var showParkingHistory by remember { mutableStateOf(false) }
+            var showParkingMenu by remember { mutableStateOf(false) }
             Surface(
                 shape = RoundedCornerShape(12.dp),
                 color = if (parkingSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
@@ -1550,7 +1557,7 @@ fun MapScreen(
                             detectTapGestures(
                                 onTap = {
                                     if (parkingSet) {
-                                        vm.showParkedCar(parkedCarLabel)
+                                        showParkingMenu = true
                                     } else {
                                         val msg = if (vm.saveParkingSpot()) parkingSavedMsg else parkingNoFixMsg
                                         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
@@ -1569,6 +1576,44 @@ fun MapScreen(
                             if (parkingSet) R.string.map_parked_car else R.string.map_parking_save,
                         ),
                     )
+                    // The parking hub, anchored to the button. Only reachable when a spot is set.
+                    DropdownMenu(expanded = showParkingMenu, onDismissRequest = { showParkingMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.map_parking_find)) },
+                            leadingIcon = { Icon(Icons.Default.DirectionsCar, contentDescription = null) },
+                            onClick = { showParkingMenu = false; vm.showParkedCar(parkedCarLabel) },
+                        )
+                        // "Move parking here" overwrites the current spot with your live fix; the old
+                        // one is not lost - saveParkingSpot archives it to history. Hidden with no fix.
+                        if (state.myLocation != null) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.map_parking_move_here)) },
+                                leadingIcon = { Icon(Icons.Default.MyLocation, contentDescription = null) },
+                                onClick = {
+                                    showParkingMenu = false
+                                    val msg = if (vm.saveParkingSpot()) parkingMovedMsg else parkingNoFixMsg
+                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                },
+                            )
+                        }
+                        if (state.parkingHistory.size > 1) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.map_parking_earlier)) },
+                                leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
+                                onClick = { showParkingMenu = false; showParkingHistory = true },
+                            )
+                        }
+                        Divider()
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.map_parking_clear)) },
+                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
+                            onClick = {
+                                showParkingMenu = false
+                                vm.clearParkingSpot()
+                                Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
+                            },
+                        )
+                    }
                 }
             }
             if (showParkingHistory) {

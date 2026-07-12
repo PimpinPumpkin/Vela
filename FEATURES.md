@@ -265,6 +265,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking pill. The camera frames the spot when opened from afar. All strings in 11 locales.
   *(v1 was a long-press on the locate FAB + a chip - reverted: undiscoverable, and Compose's
   FloatingActionButton consumes the down so outer long-press detectors never fire.)*
+  **Re-parking hub (2026-07-11, user - "setting parking again when you already have a spot is a
+  little clunky").** With no spot set, a tap still saves where you stand in one go. With a spot
+  already set, a tap now opens a small **menu on the P button** instead of jumping straight to the
+  parked-car sheet: **Find my car**, **Move parking here** (overwrites the spot with your current
+  fix; the old one is not lost - it drops into history), **Earlier spots** (shown only when history
+  holds a prior one), and **Clear parking**. So re-parking is one obvious choice rather than the old
+  clear-then-tap-again dance. Long-press still jumps straight to the history sheet. New menu strings
+  are English-first (localization backfill tracked with the other i18n leftovers).
 - ✅ **Local place lists (issue #1, 2026-07-08, device-verified).** Google-Maps-style saved lists:
   a **Your lists** section on the search page, each list a coloured icon + name + count that opens as
   results. Create/edit via a dialog with a **name, a 10-icon picker and an 8-colour picker** (the
