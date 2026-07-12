@@ -989,6 +989,7 @@ class MapViewModel @Inject constructor(
                 // do its specific name+address query — without this, popular times +
                 // editorial/owner never loaded for saved/recent places (only via search).
                 fetchPlaceDetails(enriched)
+                fetchStopDepartures(enriched) // a saved/recent transit stop shows its board too
             }
         }
     }
@@ -1630,6 +1631,9 @@ class MapViewModel @Inject constructor(
                 center = location,
                 placesHere = emptyList(),
                 reviews = emptyList(),
+                // Clear any previous stop's departure board so it never lingers under a new POI.
+                stopDepartures = null,
+                stopDeparturesLoading = false,
                 // Also clear the loading flag + live counter: a still-in-flight scrape for the
                 // PREVIOUS place would otherwise leave its count showing under THIS one (its
                 // completion update is feature-id-gated, so the stale flag never self-heals).
@@ -1673,6 +1677,7 @@ class MapViewModel @Inject constructor(
                 fetchReviews(full)
                 fetchPhotos(full)
                 fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
+                fetchStopDepartures(full) // issue #71: a bus stop / station tapped on the MAP gets its board too
                 rememberRecentPlace(SavedPlace.of(full))
             }
         }
