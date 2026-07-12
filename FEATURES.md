@@ -1111,6 +1111,17 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   OSM `maxspeed` (partial)** - strong on highways/EU/urban, sparse on US residential. **Remaining to light it
   up for everyone: re-bake + re-host the region graphs with `max_speed` (CI), then a fresh region download
   shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up).
+- 🟡 **Speed-limit STREAMER - online maxspeed everywhere (2026-07-12, app-side built; needs an on-road/demo-drive check).**
+  The "Speed B" source so a posted limit shows **without a downloaded routing graph**. The data half already
+  ships: `scripts/build-maxspeed-region.sh` + CI bake each region's OSM `maxspeed` ways into a small PMTiles
+  overlay on the `maxspeed-overlays` release (all 50 US states hosted, e.g. Washington 31 MB). The app half now
+  **streams** the covering region's PMTiles (`MaxspeedOverlayStore`, no download - MapLibre range-fetches the
+  visible tiles), adds it as an **invisible-but-queryable** line layer, and every ~2.5 s while driving
+  `queryRenderedFeatures` under the puck reads the `maxspeed` tag (`OsmMaxspeed.parseKmh`, unit-tested: bare
+  km/h, `mph`, `none`/country-codes → null). The sign now prefers the offline graph and **falls back to this
+  overlay** (`speedLimitKmh ?: speedLimitOverlayKmh`), so it lights up anywhere online. Keyless, ODbL. Compiles
+  + the parser is unit-tested; the on-device query (rect size / z16-overzoom / cadence) wants a real or demo
+  drive to confirm the sign reads the right number.
 - ⬜ Speed-camera + hazard alerts (lane guidance ✅ done above)
 - ✅ **Android Auto - first cut shipped 2026-07-08** (see the entry at the top of this section). The old
   "needs GMS, out of scope" call was wrong: the car app library is plain androidx, and a sideload runs fine

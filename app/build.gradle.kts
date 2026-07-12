@@ -52,6 +52,14 @@ android {
             "\"${(project.findProperty("overlayManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/building-overlays/building-overlay-manifest.json"}\"",
         )
+        // Posted speed-limit overlay (OSM maxspeed, ODbL) PMTiles catalog — the "Speed B" online source that
+        // shows a limit WITHOUT the offline routing graph. Same override pattern (-PmaxspeedManifestUrl=…).
+        buildConfigField(
+            "String",
+            "MAXSPEED_MANIFEST_URL",
+            "\"${(project.findProperty("maxspeedManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/maxspeed-overlays/maxspeed-overlay-manifest.json"}\"",
+        )
         // Open house-number (address-point) overlay (OpenAddresses) PMTiles catalog — same override pattern
         // (-PaddressManifestUrl=…). Rendered as a SymbolLayer of house numbers where OSM lacks addr:housenumber.
         buildConfigField(
