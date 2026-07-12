@@ -1172,6 +1172,24 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   OSM `maxspeed` (partial)** - strong on highways/EU/urban, sparse on US residential. **Remaining to light it
   up for everyone: re-bake + re-host the region graphs with `max_speed` (CI), then a fresh region download
   shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up). **Now shown in FREE-DRIVE too (2026-07-12, user request):** the same `updateSpeedLimit` already ran on every live browse fix, it was only *rendered* during nav; the sign now also appears while you're simply driving with no route open (moving, on the clean map), dropped to the nav-bar line since there's no speedometer there. **Speed A** of the plan; **Speed B** (a keyless maxspeed PMTiles overlay) will remove the download-a-graph requirement so limits show anywhere, and the same badge lookup will fall back to it when no graph covers the road.
+  shows it** (a version-discriminator so *existing* offline graphs auto-re-download is a small follow-up).
+- ✅ **Speed-limit STREAMER - online maxspeed everywhere (2026-07-12, device-verified on a simulated drive).**
+  The "Speed B" source so a posted limit shows **without a downloaded routing graph**. The data half already
+  ships: `scripts/build-maxspeed-region.sh` + CI bake each region's OSM `maxspeed` ways into a small PMTiles
+  overlay on the `maxspeed-overlays` release (all 50 US states hosted, e.g. Washington 31 MB). The app half now
+  **streams** the covering region's PMTiles (`MaxspeedOverlayStore`, no download - MapLibre range-fetches the
+  visible tiles), adds it as an **invisible-but-queryable** line layer, and every ~2.5 s while driving
+  `queryRenderedFeatures` under the puck reads the `maxspeed` tag (`OsmMaxspeed.parseKmh`, unit-tested: bare
+  km/h, `mph`, `none`/country-codes → null). The sign now prefers the offline graph and **falls back to this
+  overlay** (`speedLimitKmh ?: speedLimitOverlayKmh`), so it lights up anywhere online. Keyless, ODbL.
+  **Device-verified on a simulate-driving run (4a, no WA routing graph downloaded): the streamed overlay read
+  72.42 km/h under the puck on the arterial and the sign showed "SPEED LIMIT 45" (`offline=null`).** Parser
+  unit-tested; the WA maxspeed PMTiles streamed live (~640 range requests) and kept up with the demo puck.
+- ✅ **Speedometer = a rounded rectangle now, not a circle (2026-07-12).** The traveling-speed readout during
+  nav was a dark circle, which read differently from the rounded-rect SPEED LIMIT sign right above it. It's now
+  a **rounded rectangle the same width + corner radius as the limit sign**, so the two stack as a matched pair
+  (Google's layout) and your speed is trivially comparable to the posted limit at a glance. Dark fill keeps it
+  distinct from the white limit sign. Device-verified paired on a drive: "SPEED LIMIT 45" over "45 mph".
 - ⬜ Speed-camera + hazard alerts (lane guidance ✅ done above)
 - ✅ **Android Auto - first cut shipped 2026-07-08** (see the entry at the top of this section). The old
   "needs GMS, out of scope" call was wrong: the car app library is plain androidx, and a sideload runs fine
