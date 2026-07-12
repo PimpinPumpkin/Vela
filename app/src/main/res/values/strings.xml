@@ -443,4 +443,8 @@
     <string name="transit_nav_get_off">Get off at %1$s</string> <!-- format -->
     <string name="transit_nav_next">Next</string>
     <string name="place_last_available">Last available</string>
+    <plurals name="mapscreen_results_count"> <!-- format -->
+        <item quantity="one">%1$d result</item>
+        <item quantity="other">%1$d results</item>
+    </plurals>
 </resources>

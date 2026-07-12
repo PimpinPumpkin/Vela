@@ -40,7 +40,7 @@ def is_build(p):
 
 def collect(exts, roots=None):
     out = []
-    walk_roots = [os.path.join(root, r) for r in (roots or ["app", "core", "tools", "ghprobe"])]
+    walk_roots = [os.path.join(root, r) for r in (roots or ["app", "core", "tools"])]
     for wr in walk_roots:
         for dp, _, fs in os.walk(wr):
             if is_build(dp):
@@ -156,9 +156,9 @@ for p, i, name in sorted(decls):
         print(f"OK  {name}  ({rel}:{i+1}) - {n}+ live refs")
 
 # --- whole-module deadness (advisory) --------------------------------------------------------
-# A module referenced only by its own build script + settings + comments is dead weight. :ghprobe
-# is the documented throwaway GraphHopper probe; surface it for triage rather than hard-fail (a
-# module deletion is a human decision).
+# A module referenced only by its own build script + settings + comments is dead weight. Add any
+# suspect module id to MODULES below; a live one is skipped, a dead one is surfaced for triage (a
+# module deletion is a human decision). Empty now that the throwaway :ghprobe probe was retired.
 def module_live(modname):
     rx = re.compile(r'\b' + re.escape(modname) + r'\b')
     for p, lines in ref_files.items():
@@ -172,10 +172,10 @@ def module_live(modname):
                 return p
     return None
 
-for mod in ("ghprobe",):
+for mod in ():   # no known throwaway modules; :ghprobe was retired
     if os.path.isdir(os.path.join(root, mod)) and module_live(mod) is None:
         check.append(f"DEAD MODULE  :{mod}  - nothing outside its own build/settings depends on it "
-                     f"(documented throwaway; consider removing from settings.gradle.kts)")
+                     f"(consider removing from settings.gradle.kts)")
 
 if viol:
     print("DEAD CODE VIOLATIONS (fail):")
