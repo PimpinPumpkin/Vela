@@ -263,6 +263,9 @@
     <string name="place_from_the_owner">オーナーからの返信</string>
     <string name="place_share_place">場所を共有</string>
     <string name="place_share">共有</string>
+    <string name="place_open_web">ウェブで開く</string>
+    <string name="place_copy_link">リンクをコピー</string>
+    <string name="place_link_copied">リンクをコピーしました</string>
     <string name="place_share_gmaps_link">Google マップのリンク</string>
     <string name="place_share_map_pin">地図のピン（geo:）</string>
     <string name="place_share_coordinates">座標</string>
