@@ -1131,8 +1131,11 @@ fun MapScreen(
             )
             val (value, unit) = formatSpeed(shownSpeed)
             val dark = isAppInDarkTheme()
+            // A ROUNDED-RECTANGLE readout (not a circle), same width + corner radius as the SPEED LIMIT
+            // sign above it, so the two stack as a matched pair and the speed is easy to compare against
+            // the limit at a glance (Google's layout). Dark fill keeps it distinct from the white limit sign.
             Surface(
-                shape = CircleShape,
+                shape = RoundedCornerShape(8.dp),
                 color = SheetPalette.bg(dark),
                 contentColor = SheetPalette.ink(dark),
                 shadowElevation = 4.dp,
@@ -1140,15 +1143,14 @@ fun MapScreen(
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
                     .padding(start = 16.dp, bottom = navBarClearance)
-                    .size(60.dp),
+                    .width(54.dp),
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
                 ) {
-                    Text("$value", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(unit, style = MaterialTheme.typography.labelSmall, color = SheetPalette.dim(dark))
+                    Text("$value", fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
+                    Text(unit, fontSize = 9.sp, color = SheetPalette.dim(dark), lineHeight = 10.sp)
                 }
             }
         }
@@ -1165,7 +1167,7 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = navBarClearance + 68.dp), // above the 60dp speedo + 8dp gap
+                    .padding(start = 16.dp, bottom = navBarClearance + 52.dp), // above the ~44dp speedo rect + 8dp gap
             )
         }
 
