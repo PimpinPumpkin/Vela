@@ -55,7 +55,8 @@ physical size but all round to ~160. More models will be added as they are named
   captures a labeled screenshot of each into `<id>/screenshots/full/`, and prints a COVERED/MISSED
   checklist. **A device is "fully supported" only when this reports FULLY COVERED (0 MISSED) and you
   have looked at the frames** (AGENTS.md hard rule). Content surfaces need live search+routing - run
-  with the network up and a location that has data (e.g. `VELA_LAT=39.9526 VELA_LNG=-75.1652`).
+  with the network up and a mock GPS fix over any city that has data (`VELA_LAT=<lat> VELA_LNG=<lng>`,
+  defaults to a built-in one).
 - **`bash tests/devices/capture.sh <id>`** - lighter AUTO-capture of the first-run flow + core surfaces
   into `<id>/screenshots/auto/` (`--warm` skips the fresh `pm clear`; `capture.sh all` does every
   device). Use `full_coverage.sh` for the support gate; `capture.sh` for a quick visual refresh.
