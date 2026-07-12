@@ -1824,6 +1824,33 @@ architecture note.
   end. The auto-advance is **latched** (`maybeAdvanceTransitNav`, `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`):
   a leg only advances once it's been ARMED by being >ARM_M from its end, so a transfer hub can't cascade
   through legs and a short final walk can't fire a premature arrival.
+- **Live stop departure board (`WebStopDeparturesFetcher` + `core/.../StopDeparturesParser`,
+  2026-07-12, keyless + device-verified).** Tapping a transit STATION shows Google's "See departure
+  board" in the place sheet. The board is embedded in the station's OWN place page's
+  `APP_INITIALIZATION_STATE` (opening the button fires NO data RPC - only a gen_204 beacon) and
+  SURVIVES a logged-out session (proven anonymous in Chrome + on-device; NOT login-gated like popular
+  times), so it rides the SAME hidden-WebView `?cid=` channel as photos/reviews (desktop UA, anonymous)
+  and reuses the longest-`)]}'`-string extract. **Schema (calibrated NYC subway hub 2026-07-12):**
+  place `root[6]`, transit node `place[62]` = `["<station>", [ <groups> ]]`; group `[null,"<Subway
+  services>", [ <lines> ], … "<mode>"]`; line `[null, [ <directions> ], … ftid]`; direction
+  `["<headsign>", null,null, [ <departures> ]]`; a departure time tuple `[rtEpoch,"<tz>","4:35
+  AM",offset,schedEpoch]` (realtime when rt≠sched); frequency `[<sec>,"20 min"]`. **TWO layouts
+  (2026-07-12):** a station/subway groups entries by line -> direction -> departures (above), but a busy
+  BUS stop lists every upcoming departure FLAT, each tagged with its own route pill at `entry[5][1]`
+  shaped `["<label>", <int>, "#fill", "#text"]` (the same badge the itinerary line pills use). So the
+  parser doesn't assume one shape: it reads the badge (route number + colours) + headsign + times off
+  each entry and GROUPS by (route, direction) - the 25 separate "route 14" departures collapse into one
+  "14" row with its next few times, in its line colour, and lines sort soonest-first. The container path
+  is positional; the LEAF details (time tuples, frequency, the route badge) are matched by SHAPE, and
+  `place[62]` is validated with a shape-search fallback - a moved leaf/field index degrades one line, not
+  the board. `parse` returns **null** for a non-station (routine - most
+  places have no transit node) and throws `CalibrationNeededException` only when a transit node yields
+  0 lines. **Coverage is AGENCY-DEPENDENT** (only agencies that feed Google real-time embed it): NYC
+  MTA + SF BART carry it, SacRT (small light rail) does NOT - `MapViewModel.fetchStopDepartures` is
+  gated to transit-category places (`TRANSIT_CAT` regex) so it never fires on a business, and an empty
+  result just shows no board. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
+  the TIME regex reads). UI: `PlaceSheet.StopDepartureBoard` (one shared 30 s countdown clock, reuses
+  `departsInLabel` + the `place_transit_*` strings + `place_departures`/`place_every`).
   **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
   tick) and each `TransitRow` shows a leading "Departing"/"in N min" from `departureEpochSec`
   (`departsInLabel`, hidden when >90 min out or already gone); the countdown reads GREEN with a

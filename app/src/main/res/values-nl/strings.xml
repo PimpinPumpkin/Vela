@@ -436,6 +436,8 @@
     <string name="place_transit_now">Vertrekt nu</string>
     <string name="place_transit_in_min">over %1$d min</string> <!-- format -->
     <string name="place_transit_live">Live</string>
+    <string name="place_departures">Vertrektijden</string>
+    <string name="place_every">Elke %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Je bent aangekomen.</string>
     <string name="transit_nav_walk">Loop %1$s</string> <!-- format -->
     <string name="transit_nav_take">Neem %1$s</string> <!-- format -->
