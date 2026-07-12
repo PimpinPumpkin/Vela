@@ -431,6 +431,9 @@
     <string name="place_transit_stops">%1$d תחנות</string>
     <string name="place_transit_stop_id">תחנה %1$s</string>
     <string name="place_transit_tickets">כרטיסים &amp; מידע</string>
+    <string name="place_transit_now">יוצא כעת</string>
+    <string name="place_transit_in_min">בעוד %1$d דק׳</string> <!-- format -->
+    <string name="place_transit_live">בשידור חי</string>
     <string name="transit_nav_arrived">הגעת.</string>
     <string name="transit_nav_walk">הלך %1$s</string>
     <string name="transit_nav_take">קח %1$s</string>
