@@ -363,6 +363,7 @@
     <string name="mapvm_search_needs_recalibration">החיפוש דורש כיול מחדש: %1$s</string>
     <string name="mapvm_offline_no_data">אתה לא מקוון. הורד אזור בהגדרות ▸ לא מקוון כדי לחפש ללא חיבור.</string>
     <string name="mapvm_offline_no_match">אין תוצאות לא מקוונות עבור \"%1$s\" באזור השמור שלך. חיפוש לא מקוון מכסה מקומות של OpenStreetMap שהורדת.</string>
+    <string name="mapvm_no_results">אין תוצאות עבור \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">תוצאות לא מקוונות (ללא חיבור)</string>
     <string name="mapvm_search_failed_reason">החיפוש נכשל: %1$s</string>
     <string name="mapvm_none_found_along_route">לא נמצא \"%1$s\" לאורך המסלול שלך</string>
