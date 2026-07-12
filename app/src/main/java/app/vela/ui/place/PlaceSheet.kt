@@ -69,6 +69,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -1288,6 +1289,7 @@ fun DirectionsPanel(
     currentMode: TravelMode,
     routes: List<Route>,
     activeRoute: Route?,
+    flockOnRoute: List<Int> = emptyList(),
     transit: List<TransitItinerary>,
     transitLoading: Boolean,
     onModeSelected: (TravelMode) -> Unit,
@@ -1654,7 +1656,7 @@ fun DirectionsPanel(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         routes.forEachIndexed { i, r ->
                             val selected = r === activeRoute || (activeRoute == null && i == 0)
-                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == 0, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
+                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == 0, dark = dark, ink = ink, dim = dim, flockCount = flockOnRoute.getOrElse(i) { 0 }) { onSelectRoute(i) }
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -1917,7 +1919,7 @@ private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: 
  *  via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
  *  alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
 @Composable
-private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
+private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, flockCount: Int = 0, onClick: () -> Unit) {
     val etaSeconds = r.durationInTrafficSeconds ?: r.durationSeconds
     val eta = formatDuration(etaSeconds)
     val etaColor = trafficEtaColor(r) ?: ink
@@ -1980,6 +1982,18 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                 trafficWord,
             ).joinToString("  ·  ")
             Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+            // Opt-in surveillance-camera warning: how many ALPR/Flock cameras this route passes.
+            if (flockCount > 0) {
+                Spacer(Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.Videocam, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.size(14.dp))
+                    Text(
+                        stringResource(R.string.dir_cameras_on_route, flockCount),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SheetPalette.TrafficAmber,
+                    )
+                }
+            }
         }
         if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
     }
