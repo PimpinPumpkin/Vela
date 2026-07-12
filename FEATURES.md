@@ -311,7 +311,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   sheet shows the mic pulsing with your voice; it stops on its own after a beat of silence (or tap
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
-  the listening sheet, and the model transcribing back into the search box.
+  the listening sheet, and the model transcribing back into the search box. **Pauses your music
+  while it listens (2026-07-12):** starting dictation takes transient audio focus
+  (`AUDIOFOCUS_GAIN_TRANSIENT`, assistant usage) so whatever is playing pauses like a phone
+  assistant does, and gives it back the moment the utterance ends so playback resumes.
 - ✅ **Transit lines are opt-in now (2026-07-10).** The purple rail highlight is off by default;
   it reads as mystery lines if you don't know what it is. Settings → Map → "Highlight transit
   lines" brings it back, and an earlier choice is kept either way.
