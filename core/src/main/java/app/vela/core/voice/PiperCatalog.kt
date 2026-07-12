@@ -54,6 +54,7 @@ object PiperCatalog {
         "en" to "English", "fr" to "Français", "de" to "Deutsch", "es" to "Español",
         "it" to "Italiano", "pt" to "Português", "nl" to "Nederlands", "ru" to "Русский",
         "pl" to "Polski", "sv" to "Svenska", "uk" to "Українська",
+        "zh" to "中文", "ja" to "日本語",
     )
 
     /** The recommended default voice for a language code (used to auto-suggest a voice for the app
@@ -114,6 +115,10 @@ object PiperCatalog {
         PiperVoice("pl_PL-mc_speech-medium", "MC Speech", VoiceGender.NEUTRAL, VoiceQuality.MEDIUM, 67, 1, "Wyraźny polski głos", recommended = true),
         PiperVoice("sv_SE-nst-medium", "NST", VoiceGender.NEUTRAL, VoiceQuality.MEDIUM, 67, 1, "Tydlig svensk röst", recommended = true),
         PiperVoice("uk_UA-ukrainian_tts-medium", "Ukrainian TTS", VoiceGender.MULTI, VoiceQuality.MEDIUM, 80, 3, "Три українські голоси", recommended = true),
+        // 中文: one Mandarin voice serves Simplified and Traditional (a Piper voice is per-LANGUAGE,
+        // and langCode "zh" pairs it with both zh and zh-TW nav text). No Japanese Piper voice exists;
+        // ja spoken guidance uses the system-TTS fallback.
+        PiperVoice("zh_CN-huayan-medium", "Huayan", VoiceGender.FEMALE, VoiceQuality.MEDIUM, 64, 1, "清晰自然的普通话女声", recommended = true),
     )
 
     fun byId(id: String): PiperVoice? = ALL.firstOrNull { it.id == id }

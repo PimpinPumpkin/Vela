@@ -424,4 +424,6 @@
         <item quantity="one">%1$d risultato</item>
         <item quantity="other">%1$d risultati</item>
     </plurals>
+    <string name="shortcut_home">Home</string>
+    <string name="shortcut_work">Work</string>
 </resources>

@@ -516,7 +516,7 @@ non-negotiable rules for any ported commit:
       language (or stays silent + fires a "get a matching voice" hint) rather than reading Russian nav
       text through the English Piper model.
   - (2) **UI chrome** - all ~330 user-facing `:app` strings live in `res/values/strings.xml`
-    (English) + `res/values-<lang>/` for the 10 translated languages (fr de es it pt nl ru pl sv uk),
+    (English) + `res/values-<lang>/` for the 14 translated languages (fr de es it pt nl ru pl sv uk zh zh-rTW ja iw),
     referenced via `stringResource`/`getString`. The runtime switch is `AppLocale.wrap(context)`
     (overrides the Configuration locale, **no-op when following the system** so the default path is
     untouched) applied in **both** `MainActivity.attachBaseContext` (Compose UI) and

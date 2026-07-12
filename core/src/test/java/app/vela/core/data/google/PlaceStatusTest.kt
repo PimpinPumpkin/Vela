@@ -94,15 +94,37 @@ class PlaceStatusTest {
     }
 
     @Test fun `unknown language falls back to the english table, never to open`() {
-        assertEquals(true, SearchParser.parseOpenNow("Open ⋅ Closes 7 PM", "ja"))
-        assertEquals(null, SearchParser.parseOpenNow("営業中", "ja")) // untranslated language → null, not a guess
+        // "th" (Thai) ships no status table, so it exercises the fallback: an English phrase still
+        // reads via the English table, but non-Latin status text that table can't match returns null
+        // rather than a guess. (zh/ja now HAVE tables, so they are no longer the untranslated case.)
+        assertEquals(true, SearchParser.parseOpenNow("Open ⋅ Closes 7 PM", "th"))
+        assertEquals(null, SearchParser.parseOpenNow("เปิด", "th"))
+    }
+
+    @Test fun `chinese - both scripts parse, closed words win first`() {
+        assertEquals(false, SearchParser.parseOpenNow("已打烊 ⋅ 明天09:00开始营业", "zh"))
+        assertEquals(false, SearchParser.parseOpenNow("已打烊 ⋅ 明天09:00開始營業", "zh"))
+        assertEquals(false, SearchParser.parseOpenNow("暂停营业", "zh"))
+        assertEquals(true, SearchParser.parseOpenNow("营业中 ⋅ 22:00打烊", "zh"))
+        assertEquals(true, SearchParser.parseOpenNow("營業中 ⋅ 營業至22:00", "zh"))
+    }
+
+    @Test fun `japanese - closed words win first`() {
+        assertEquals(false, SearchParser.parseOpenNow("営業時間外 ⋅ 営業開始: 9:00", "ja"))
+        assertEquals(false, SearchParser.parseOpenNow("臨時休業", "ja"))
+        assertEquals(true, SearchParser.parseOpenNow("営業中 ⋅ 営業終了: 22:00", "ja"))
+    }
+
+    @Test fun `hebrew - closed words win first`() {
+        assertEquals(true, SearchParser.parseOpenNow("פתוח ⋅ נסגר ב-19:00", "iw"))
+        assertEquals(false, SearchParser.parseOpenNow("סגור ⋅ נפתח ב-09:00", "iw"))
     }
 
     /** STATUS_LANGS gates GoogleMapsDataSource.localized()'s hl= rewrite: the scrape may only ask
      * Google for status text in a language parseOpenNow can read, else openNow is always null and
      * the UI can't colour open/closed. It MUST equal the shipped keyword-table languages (11). */
     @Test fun `STATUS_LANGS covers exactly the shipped status-table languages`() {
-        val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk")
+        val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "iw", "he")
         assertEquals(expected, SearchParser.STATUS_LANGS)
     }
 }

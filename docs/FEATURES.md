@@ -60,7 +60,7 @@ Status legend: [x] done · [~] partial / in progress · [ ] planned
 
 ## Search & POIs (live Google data)
 - [x] **Toggles to hide reviews and skip photo loading** (Settings → Map, both default on) that gate both the scrape and the render, so off means no traffic (localized).
-- [x] **"Hide adult categories" toggle** (default off) dropping adult/nightlife/alcohol/gambling/smoking places from search and the map by category only, precisely, across all 11 languages (localized).
+- [x] **"Hide adult categories" toggle** (default off) dropping adult/nightlife/alcohol/gambling/smoking places from search and the map by category only, precisely, across all 15 languages (localized).
 - [x] **"Hide website & external links" toggle** (default off) hiding the Website, Street View and Book/Reserve/Order on place pages (localized).
 - [x] Place search - name, category, full address, rating, review count, coordinates.
 - [x] Searching a specific/far address resolves to that single geocoded location; empty searches show "no results".
@@ -105,7 +105,8 @@ Status legend: [x] done · [~] partial / in progress · [ ] planned
   - **Default voice = HFC Female @ 0.8x, remote-settable** - the default voice id, speaker and speed ride the signed calibration bundle; a user's own pick still wins. Settings → Voice has a playground, a speed stepper and a variant picker for multi-speaker voices.
   - **Clearer pauses at periods** - splits each utterance on sentence boundaries and splices silence, name-aware so road abbreviations aren't split.
   - **Street numbers read the human way + no clipped start** - 3-digit street ordinals spoken as people say them, and the DEPART maneuver spoken once at start then skipped.
-  - **Spoken navigation speaks 10 languages** via per-language templates auto-following the phone's language; road names never translated.
+  - **Spoken navigation speaks 14 languages** (fr de es it pt nl ru pl sv uk zh zh-TW ja he, plus English) via per-language templates auto-following the phone's language; road names never translated. Chinese/Japanese/Hebrew have no Piper voice, so their guidance uses the phone's system TTS.
+  - **15 UI languages incl. Chinese (Simplified + Traditional), Japanese and Hebrew (RTL).** Full UI chrome + POI open/closed status parsing (localized `hl=`); RTL is automatic via `supportsRtl`.
   - **Voice-language pairing** - onboarding grabs the voice matching the app language, the library floats it to the top, and a missing match shows a download nudge.
   - **In-app language picker** - Settings → Language overrides the app language ("Follow system" or any of 11).
   - **UI chrome speaks 10 languages** - all ~330 strings translated, switched at runtime; format placeholders validated against English; dual-purpose logic-key literals stay inline.
