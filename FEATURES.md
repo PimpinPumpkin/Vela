@@ -904,6 +904,15 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   and reads the itinerary set out of `APP_INITIALIZATION_STATE` (the longest
   `)]}'` payload at slot [3]); `TransitParser` (keyless) parses it. **Verified
   on-device** Davis→Sacramento (6 options: Amtrak Thruway, Yolobus 42B/43/44, …).
+- ✅ Transit **"departs in X min" countdown + live badge (2026-07-12).** Each board option
+  leads with a Google-style countdown ("Departing" / "in 7 min") computed from the parsed
+  departure epoch against a shared clock that ticks every 30 s; options departing more than
+  90 minutes out (where the printed time carries it) or already gone are left unmarked. When
+  the itinerary carries **real-time** data (a leg with a live delay, or a real-time time that
+  differs from the timetable) the countdown reads **green** with a **Live** dot, and the
+  boarding leg's **"N min late/early"** is surfaced right in the header (it was only in the
+  drill-down before). Pure render off already-parsed fields (`TransitItinerary.departureEpochSec`,
+  `TransitStep.delayText`), no extra fetch; localized in all 11 languages.
 - ✅ Transit **leg drill-down with full stop detail** - tap an itinerary to expand
   its ordered legs. A ride leg shows Google's whole layout: the **line pill + "towards …"
   headsign**, the **board stop** (name + agency **Stop ID** + real-time board time, with
