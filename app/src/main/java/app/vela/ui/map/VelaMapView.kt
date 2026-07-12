@@ -521,8 +521,18 @@ fun VelaMapView(
             if (cam != null && !scaling[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
-                    browseCam[0] = cp.target?.latitude ?: loc.lat
-                    browseCam[1] = cp.target?.longitude ?: loc.lng
+                    // First follow-engagement. If the camera is zoomed OUT past street level - a cold
+                    // launch, or a crash relaunch where MapLibre restored the whole-region view - snap
+                    // onto the fix at street zoom. Otherwise the follow only eases the TARGET (moveCamera
+                    // below preserves zoom), so it would centre on you but leave you zoomed out (the
+                    // "came back zoomed to the whole US" report). A normal street camera is preserved.
+                    if (cp.zoom < 14.0) {
+                        cam.moveCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5))
+                        browseCam[0] = loc.lat; browseCam[1] = loc.lng
+                    } else {
+                        browseCam[0] = cp.target?.latitude ?: loc.lat
+                        browseCam[1] = cp.target?.longitude ?: loc.lng
+                    }
                 }
                 val k = (1f - kotlin.math.exp(-dt / 0.16f)).toDouble()
                 browseCam[0] += (loc.lat - browseCam[0]) * k
