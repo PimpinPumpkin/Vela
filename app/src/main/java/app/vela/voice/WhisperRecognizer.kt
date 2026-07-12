@@ -58,8 +58,13 @@ class WhisperRecognizer @Inject constructor(
      *  auto-detect. Pinning matters - with auto-detect, a noisy capture can be misread as a whole
      *  other language and come back in the wrong script (a garbled far-field test transcribed to
      *  Cyrillic). The app language is what the user speaks to a maps app in practice. */
-    private fun whisperLang(): String =
-        app.vela.ui.AppLocale.effective().language.takeIf { it in app.vela.ui.AppLocale.SUPPORTED } ?: ""
+    private fun whisperLang(): String {
+        // Android hands back the LEGACY code for Hebrew ("iw"), which isn't in SUPPORTED ("he"), so
+        // without this normalize Hebrew dictation fell through to Whisper auto-detect instead of
+        // being pinned. Whisper's own code for Hebrew is "he". (Ports upstream PR #87.)
+        val l = app.vela.ui.AppLocale.effective().language.let { if (it == "iw") "he" else it }
+        return l.takeIf { it in app.vela.ui.AppLocale.SUPPORTED } ?: ""
+    }
 
     /** Build the recognizer ahead of the first mic tap, off the main thread. The ONNX load takes a
      *  second or two on a phone, which used to show as a "Getting ready" beat on the FIRST dictation
