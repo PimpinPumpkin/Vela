@@ -249,6 +249,8 @@
     <string name="place_share_place">Поделиться местом</string>
     <string name="place_share">Поделиться</string>
     <string name="place_open_web">Открыть в интернете</string>
+    <string name="place_copy_link">Копировать ссылку</string>
+    <string name="place_link_copied">Ссылка скопирована</string>
     <string name="place_share_gmaps_link">Ссылка Google Maps</string>
     <string name="place_share_map_pin">Метка на карте (geo:)</string>
     <string name="place_share_coordinates">Координаты</string>
