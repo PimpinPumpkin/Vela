@@ -548,6 +548,9 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             ToggleRow(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) { app.vela.ui.TransitLayer.set(context, it) }
             Hint(stringResource(R.string.settings_transit_layer_hint))
+
+            ToggleRow(stringResource(R.string.settings_flock), app.vela.ui.Flock.on.value) { app.vela.ui.Flock.set(context, it) }
+            Hint(stringResource(R.string.settings_flock_hint))
             // 3D buildings moved to Advanced (niche + a documented z16+ perf cost).
 
             Spacer(Modifier.height(20.dp))
