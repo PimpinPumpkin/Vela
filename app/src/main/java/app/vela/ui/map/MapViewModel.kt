@@ -262,10 +262,6 @@ class MapViewModel @Inject constructor(
     private var destination: LatLng? = null
     private var mapCenter: LatLng? = null
     private var locationJob: Job? = null
-    // The map snaps to you on the FIRST fix of a session (like a cold launch), even after a crash
-    // relaunch where MapLibre restored a stale wide camera (user 2026-07-12: "came back zoomed to the
-    // whole US"). One-shot per process; only fires when nothing else already owns the camera.
-    private var didInitialRecenter = false
     private var staleTimerJob: Job? = null
     private var replayJob: Job? = null
     private var replayOwnsNav = false // a replay auto-started the nav session → tear it down on end/supersede
@@ -607,13 +603,6 @@ class MapViewModel @Inject constructor(
                 }
                 lastFixRtNanos = fixRtNanos
                 prevWasGps = isGps
-                // Snap to the user on the first fix of the session, but ONLY if nothing else already
-                // claimed the camera (a search/place/deep-link set `center`). This re-asserts the
-                // "centre on me at launch" that a cold start gives for free but a crash relaunch loses
-                // to MapLibre's restored camera. recenterTick is the forced-move branch, so it wins
-                // over any stale restored viewport.
-                val doInitialRecenter = !didInitialRecenter && !_state.value.navigating &&
-                    _state.value.center == null && _state.value.myLocation == null
                 _state.update {
                     it.copy(
                         myLocation = here, myBearing = bearing, mySpeed = speed,
@@ -625,10 +614,8 @@ class MapViewModel @Inject constructor(
                         // hundreds-to-thousands of meters and gets an honest circle; GPS won't.
                         myAccuracyM = if (loc.hasAccuracy()) loc.accuracy else null,
                         showPsdsTip = false, center = it.center ?: here, myLocationStale = false,
-                        recenterTick = if (doInitialRecenter) it.recenterTick + 1 else it.recenterTick,
                     )
                 }
-                if (doInitialRecenter) didInitialRecenter = true
                 restartStaleTimer()
                 // Advance transit step-by-step guidance when we reach the current leg's end (no-op off transit).
                 maybeAdvanceTransitNav(here)
