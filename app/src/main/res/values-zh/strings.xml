@@ -437,4 +437,25 @@
     <string name="mapvm_voice_lang_system">%1$s 导航使用手机的语音。可在系统语音设置中添加。</string>
     <string name="mapscreen_get_voice">获取语音</string>
     <string name="mapscreen_system_voices">系统语音</string>
+    <string name="settings_search">搜索</string>
+    <string name="settings_voice_search_toggle">语音搜索麦克风</string>
+    <string name="settings_voice_search_hint">在搜索栏显示麦克风，说话即可搜索。</string>
+    <string name="search_voice_cd">语音搜索</string>
+    <string name="search_voice_prompt">请说出要搜索的内容</string>
+    <string name="voice_capture_listening">正在聆听…</string>
+    <string name="voice_capture_starting">正在准备…</string>
+    <string name="voice_capture_done">完成</string>
+    <string name="mapvm_asr_ready">Vela 语音已就绪</string>
+    <string name="mapvm_asr_download_failed">无法下载语音模型。请检查网络连接后重试。</string>
+    <string name="settings_voice_search_model">Vela 语音</string>
+    <string name="settings_voice_search_model_hint">Vela 语音直接在您的手机上将语音转为搜索：无需其他应用，也不会上传任何内容。一次性下载 %1$d MB。</string>  <!-- format -->
+    <string name="settings_voice_search_download">下载（%1$d MB）</string>  <!-- format -->
+    <string name="settings_voice_search_remove">移除</string>
+    <string name="settings_voice_search_downloading">正在下载… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">正在安装…</string>
+    <string name="settings_voice_search_engine_title">点按麦克风时</string>
+    <string name="settings_voice_search_engine_auto">Vela 语音</string>
+    <string name="settings_voice_search_engine_default">Android 默认</string>
+    <string name="map_asr_offer_title">语音搜索</string>
+    <string name="map_asr_offer_body">下载 Vela 语音即可用语音进行搜索。它完全在您的手机上运行，不会上传任何内容。</string>
 </resources>

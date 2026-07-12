@@ -454,4 +454,25 @@
     </plurals>
     <string name="shortcut_home">Home</string>
     <string name="shortcut_work">Work</string>
+    <string name="settings_search">Search</string>
+    <string name="settings_voice_search_toggle">Voice search mic</string>
+    <string name="settings_voice_search_hint">Shows a mic in the search bar to speak your search.</string>
+    <string name="search_voice_cd">Voice search</string>
+    <string name="search_voice_prompt">Speak to search</string>
+    <string name="voice_capture_listening">Listening…</string>
+    <string name="voice_capture_starting">Getting ready…</string>
+    <string name="voice_capture_done">Done</string>
+    <string name="mapvm_asr_ready">Vela Voice is ready</string>
+    <string name="mapvm_asr_download_failed">Couldn\'t download the voice model. Check your connection and try again.</string>
+    <string name="settings_voice_search_model">Vela Voice</string>
+    <string name="settings_voice_search_model_hint">Vela Voice turns speech into a search right on your phone: no other app needed and nothing is uploaded. One-time %1$d MB download.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Download (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Remove</string>
+    <string name="settings_voice_search_downloading">Downloading… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installing…</string>
+    <string name="settings_voice_search_engine_title">When you tap the mic</string>
+    <string name="settings_voice_search_engine_auto">Vela Voice</string>
+    <string name="settings_voice_search_engine_default">Android default</string>
+    <string name="map_asr_offer_title">Voice search</string>
+    <string name="map_asr_offer_body">Download Vela Voice to speak your searches. It runs entirely on your phone and uploads nothing.</string>
 </resources>

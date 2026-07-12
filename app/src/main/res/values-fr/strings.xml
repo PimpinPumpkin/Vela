@@ -429,4 +429,25 @@
     <string name="mapvm_voice_lang_system">Les instructions en %1$s utilisent la voix de votre téléphone. Ajoutez-en une dans les paramètres vocaux du système.</string>
     <string name="mapscreen_get_voice">Ajouter une voix</string>
     <string name="mapscreen_system_voices">Voix du système</string>
+    <string name="settings_search">Recherche</string>
+    <string name="settings_voice_search_toggle">Micro de recherche vocale</string>
+    <string name="settings_voice_search_hint">Affiche un micro dans la barre de recherche pour dicter votre recherche.</string>
+    <string name="search_voice_cd">Recherche vocale</string>
+    <string name="search_voice_prompt">Parlez pour rechercher</string>
+    <string name="voice_capture_listening">Écoute…</string>
+    <string name="voice_capture_starting">Préparation…</string>
+    <string name="voice_capture_done">Terminé</string>
+    <string name="mapvm_asr_ready">La voix Vela est prête</string>
+    <string name="mapvm_asr_download_failed">Impossible de télécharger le modèle vocal. Vérifiez votre connexion et réessayez.</string>
+    <string name="settings_voice_search_model">Voix Vela</string>
+    <string name="settings_voice_search_model_hint">La voix Vela transforme la parole en recherche directement sur votre téléphone : aucune autre appli et rien n\'est envoyé. Téléchargement unique d\'environ %1$d Mo.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Télécharger (%1$d Mo)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Supprimer</string>
+    <string name="settings_voice_search_downloading">Téléchargement… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installation…</string>
+    <string name="settings_voice_search_engine_title">Quand vous touchez le micro</string>
+    <string name="settings_voice_search_engine_auto">Voix Vela</string>
+    <string name="settings_voice_search_engine_default">Défaut Android</string>
+    <string name="map_asr_offer_title">Recherche vocale</string>
+    <string name="map_asr_offer_body">Téléchargez la voix Vela pour dicter vos recherches. Elle tourne entièrement sur votre téléphone et n\'envoie rien.</string>
 </resources>

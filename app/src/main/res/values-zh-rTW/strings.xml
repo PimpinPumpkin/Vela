@@ -437,4 +437,25 @@
     <string name="mapvm_voice_lang_system">%1$s 導航使用手機的語音。可在系統語音設定中新增。</string>
     <string name="mapscreen_get_voice">取得語音</string>
     <string name="mapscreen_system_voices">系統語音</string>
+    <string name="settings_search">搜尋</string>
+    <string name="settings_voice_search_toggle">語音搜尋麥克風</string>
+    <string name="settings_voice_search_hint">在搜尋列顯示麥克風，用說的就能搜尋。</string>
+    <string name="search_voice_cd">語音搜尋</string>
+    <string name="search_voice_prompt">請說出要搜尋的內容</string>
+    <string name="voice_capture_listening">聆聽中…</string>
+    <string name="voice_capture_starting">準備中…</string>
+    <string name="voice_capture_done">完成</string>
+    <string name="mapvm_asr_ready">Vela 語音已就緒</string>
+    <string name="mapvm_asr_download_failed">無法下載語音模型。請檢查網路連線後再試一次。</string>
+    <string name="settings_voice_search_model">Vela 語音</string>
+    <string name="settings_voice_search_model_hint">Vela 語音直接在你的手機上把語音轉成搜尋：不需要其他應用程式，也不會上傳任何內容。只需一次性下載 %1$d MB。</string>  <!-- format -->
+    <string name="settings_voice_search_download">下載（%1$d MB）</string>  <!-- format -->
+    <string name="settings_voice_search_remove">移除</string>
+    <string name="settings_voice_search_downloading">下載中… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">安裝中…</string>
+    <string name="settings_voice_search_engine_title">點按麥克風時</string>
+    <string name="settings_voice_search_engine_auto">Vela 語音</string>
+    <string name="settings_voice_search_engine_default">Android 預設</string>
+    <string name="map_asr_offer_title">語音搜尋</string>
+    <string name="map_asr_offer_body">下載 Vela 語音，用說的就能搜尋。它完全在你的手機上執行，不會上傳任何內容。</string>
 </resources>

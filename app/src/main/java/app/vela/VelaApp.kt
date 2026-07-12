@@ -53,6 +53,7 @@ class VelaApp : Application() {
         Traffic.init(this)
         TransitLayer.init(this)
         app.vela.ui.SimLocation.init(this)
+        app.vela.ui.VoiceSearch.init(this) // voice-search toggle + engine/provider prefs (mic in the search bar)
         app.vela.ui.LiveReviews.init(this)
         app.vela.ui.ShowReviews.init(this)
         app.vela.ui.LoadPhotos.init(this)

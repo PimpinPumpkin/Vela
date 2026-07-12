@@ -429,4 +429,25 @@
     <string name="mapvm_voice_lang_system">Le indicazioni in %1$s usano la voce del telefono. Aggiungine una nelle impostazioni voce di sistema.</string>
     <string name="mapscreen_get_voice">Aggiungi una voce</string>
     <string name="mapscreen_system_voices">Voci di sistema</string>
+    <string name="settings_search">Ricerca</string>
+    <string name="settings_voice_search_toggle">Microfono ricerca vocale</string>
+    <string name="settings_voice_search_hint">Mostra un microfono nella barra di ricerca per dettare la ricerca.</string>
+    <string name="search_voice_cd">Ricerca vocale</string>
+    <string name="search_voice_prompt">Parla per cercare</string>
+    <string name="voice_capture_listening">In ascolto…</string>
+    <string name="voice_capture_starting">Preparazione…</string>
+    <string name="voice_capture_done">Fatto</string>
+    <string name="mapvm_asr_ready">La voce Vela è pronta</string>
+    <string name="mapvm_asr_download_failed">Impossibile scaricare il modello vocale. Controlla la connessione e riprova.</string>
+    <string name="settings_voice_search_model">Voce Vela</string>
+    <string name="settings_voice_search_model_hint">La voce Vela trasforma il parlato in una ricerca direttamente sul telefono: nessun\'altra app e nulla viene caricato. Download una tantum di %1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Scarica (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Rimuovi</string>
+    <string name="settings_voice_search_downloading">Download… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installazione…</string>
+    <string name="settings_voice_search_engine_title">Quando tocchi il microfono</string>
+    <string name="settings_voice_search_engine_auto">Voce Vela</string>
+    <string name="settings_voice_search_engine_default">Predefinita di Android</string>
+    <string name="map_asr_offer_title">Ricerca vocale</string>
+    <string name="map_asr_offer_body">Scarica la voce Vela per dettare le ricerche. Gira interamente sul telefono e non carica nulla.</string>
 </resources>

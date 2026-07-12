@@ -431,4 +431,25 @@
     <string name="mapvm_voice_lang_system">Wskazówki dla języka %1$s używają głosu telefonu. Dodaj go w systemowych ustawieniach głosu.</string>
     <string name="mapscreen_get_voice">Dodaj głos</string>
     <string name="mapscreen_system_voices">Głosy systemowe</string>
+    <string name="settings_search">Wyszukiwanie</string>
+    <string name="settings_voice_search_toggle">Mikrofon wyszukiwania głosowego</string>
+    <string name="settings_voice_search_hint">Pokazuje mikrofon w pasku wyszukiwania do dyktowania.</string>
+    <string name="search_voice_cd">Wyszukiwanie głosowe</string>
+    <string name="search_voice_prompt">Mów, aby wyszukać</string>
+    <string name="voice_capture_listening">Słucham…</string>
+    <string name="voice_capture_starting">Przygotowywanie…</string>
+    <string name="voice_capture_done">Gotowe</string>
+    <string name="mapvm_asr_ready">Głos Vela jest gotowy</string>
+    <string name="mapvm_asr_download_failed">Nie udało się pobrać modelu głosu. Sprawdź połączenie i spróbuj ponownie.</string>
+    <string name="settings_voice_search_model">Głos Vela</string>
+    <string name="settings_voice_search_model_hint">Głos Vela zamienia mowę w wyszukiwanie bezpośrednio na telefonie: bez innej aplikacji i bez wysyłania czegokolwiek. Jednorazowe pobranie %1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Pobierz (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Usuń</string>
+    <string name="settings_voice_search_downloading">Pobieranie… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Instalowanie…</string>
+    <string name="settings_voice_search_engine_title">Po dotknięciu mikrofonu</string>
+    <string name="settings_voice_search_engine_auto">Głos Vela</string>
+    <string name="settings_voice_search_engine_default">Domyślna w Androidzie</string>
+    <string name="map_asr_offer_title">Wyszukiwanie głosowe</string>
+    <string name="map_asr_offer_body">Pobierz głos Vela, aby dyktować wyszukiwania. Działa w całości na telefonie i niczego nie wysyła.</string>
 </resources>

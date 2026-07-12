@@ -429,4 +429,25 @@
     <string name="mapvm_voice_lang_system">Aanwijzingen in het %1$s gebruiken de stem van je telefoon. Voeg er een toe in je systeemstem-instellingen.</string>
     <string name="mapscreen_get_voice">Stem toevoegen</string>
     <string name="mapscreen_system_voices">Systeemstemmen</string>
+    <string name="settings_search">Zoeken</string>
+    <string name="settings_voice_search_toggle">Microfoon voor spraakzoeken</string>
+    <string name="settings_voice_search_hint">Toont een microfoon in de zoekbalk om je zoekopdracht in te spreken.</string>
+    <string name="search_voice_cd">Zoeken met stem</string>
+    <string name="search_voice_prompt">Spreek om te zoeken</string>
+    <string name="voice_capture_listening">Luisteren…</string>
+    <string name="voice_capture_starting">Voorbereiden…</string>
+    <string name="voice_capture_done">Klaar</string>
+    <string name="mapvm_asr_ready">De Vela-stem is klaar</string>
+    <string name="mapvm_asr_download_failed">Kan het spraakmodel niet downloaden. Controleer je verbinding en probeer opnieuw.</string>
+    <string name="settings_voice_search_model">Vela-stem</string>
+    <string name="settings_voice_search_model_hint">De Vela-stem zet spraak direct op je telefoon om in een zoekopdracht: geen andere app nodig en er wordt niets geüpload. Eenmalige download van %1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Downloaden (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Verwijderen</string>
+    <string name="settings_voice_search_downloading">Downloaden… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installeren…</string>
+    <string name="settings_voice_search_engine_title">Als je op de microfoon tikt</string>
+    <string name="settings_voice_search_engine_auto">Vela-stem</string>
+    <string name="settings_voice_search_engine_default">Android-standaard</string>
+    <string name="map_asr_offer_title">Spraakzoeken</string>
+    <string name="map_asr_offer_body">Download de Vela-stem om je zoekopdrachten in te spreken. Hij draait volledig op je telefoon en uploadt niets.</string>
 </resources>

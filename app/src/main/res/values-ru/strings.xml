@@ -431,4 +431,25 @@
     <string name="mapvm_voice_lang_system">Указания для языка %1$s используют голос телефона. Добавьте его в системных настройках голоса.</string>
     <string name="mapscreen_get_voice">Добавить голос</string>
     <string name="mapscreen_system_voices">Системные голоса</string>
+    <string name="settings_search">Поиск</string>
+    <string name="settings_voice_search_toggle">Микрофон голосового поиска</string>
+    <string name="settings_voice_search_hint">Показывает микрофон в строке поиска, чтобы диктовать запрос.</string>
+    <string name="search_voice_cd">Голосовой поиск</string>
+    <string name="search_voice_prompt">Говорите для поиска</string>
+    <string name="voice_capture_listening">Слушаю…</string>
+    <string name="voice_capture_starting">Подготовка…</string>
+    <string name="voice_capture_done">Готово</string>
+    <string name="mapvm_asr_ready">Голос Vela готов</string>
+    <string name="mapvm_asr_download_failed">Не удалось загрузить голосовую модель. Проверьте подключение и повторите попытку.</string>
+    <string name="settings_voice_search_model">Голос Vela</string>
+    <string name="settings_voice_search_model_hint">Голос Vela превращает речь в поиск прямо на телефоне: без других приложений и без выгрузки данных. Разовая загрузка %1$d МБ.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Загрузить (%1$d МБ)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Удалить</string>
+    <string name="settings_voice_search_downloading">Загрузка… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Установка…</string>
+    <string name="settings_voice_search_engine_title">При нажатии на микрофон</string>
+    <string name="settings_voice_search_engine_auto">Голос Vela</string>
+    <string name="settings_voice_search_engine_default">По умолчанию в Android</string>
+    <string name="map_asr_offer_title">Голосовой поиск</string>
+    <string name="map_asr_offer_body">Загрузите голос Vela, чтобы диктовать запросы. Он работает целиком на телефоне и ничего не выгружает.</string>
 </resources>

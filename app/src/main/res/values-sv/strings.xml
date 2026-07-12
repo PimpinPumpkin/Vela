@@ -429,4 +429,25 @@
     <string name="mapvm_voice_lang_system">Vägbeskrivningar på %1$s använder telefonens röst. Lägg till en i systemets röstinställningar.</string>
     <string name="mapscreen_get_voice">Hämta en röst</string>
     <string name="mapscreen_system_voices">Systemröster</string>
+    <string name="settings_search">Sök</string>
+    <string name="settings_voice_search_toggle">Mikrofon för röstsökning</string>
+    <string name="settings_voice_search_hint">Visar en mikrofon i sökfältet för att tala in sökningen.</string>
+    <string name="search_voice_cd">Röstsökning</string>
+    <string name="search_voice_prompt">Tala för att söka</string>
+    <string name="voice_capture_listening">Lyssnar…</string>
+    <string name="voice_capture_starting">Förbereder…</string>
+    <string name="voice_capture_done">Klar</string>
+    <string name="mapvm_asr_ready">Vela-rösten är klar</string>
+    <string name="mapvm_asr_download_failed">Det gick inte att ladda ner röstmodellen. Kontrollera anslutningen och försök igen.</string>
+    <string name="settings_voice_search_model">Vela-röst</string>
+    <string name="settings_voice_search_model_hint">Vela-rösten gör tal till en sökning direkt på telefonen: ingen annan app behövs och inget laddas upp. Engångsnedladdning på %1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Ladda ner (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Ta bort</string>
+    <string name="settings_voice_search_downloading">Laddar ner… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Installerar…</string>
+    <string name="settings_voice_search_engine_title">När du trycker på mikrofonen</string>
+    <string name="settings_voice_search_engine_auto">Vela-röst</string>
+    <string name="settings_voice_search_engine_default">Androids standard</string>
+    <string name="map_asr_offer_title">Röstsökning</string>
+    <string name="map_asr_offer_body">Ladda ner Vela-rösten för att tala in dina sökningar. Den körs helt på telefonen och laddar inte upp något.</string>
 </resources>

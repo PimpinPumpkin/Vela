@@ -600,6 +600,24 @@ non-negotiable rules for any ported commit:
     worker, so `tts` is never freed mid-`generate()`. `MapViewModel.migrateFlatLayoutIfNeeded` (first
     thing in `init`) relocates the old flat single-voice install in place (rename, copy-fallback,
     verify-gated, re-runnable) - never re-downloads.
+  - **Voice search (speak a query into the search bar), two tiers.** `ui/VoiceSearch` (process-wide
+    reactive holder, `init` in `VelaApp`) resolves the mic mode. **tier-1 on-device** =
+    `voice/WhisperRecognizer` (Whisper tiny int8 + Silero VAD via the SAME bundled sherpa-onnx AAR as
+    Piper - `OfflineRecognizer`/`Vad`; the wholesale `com.k2fsa.sherpa.onnx.**` R8 keep already covers
+    it) recording through `AudioRecord`; the model is `voice/AsrModel` (~58 MB, files in
+    `filesDir/asr/whisper-tiny/`). **tier-2** = a `RECOGNIZE_SPEECH` intent hand-off to an installed
+    voice-input app. The mic lives in `ui/search/SearchBar` (`onMic`, shown only when the mode isn't
+    NONE); the listening sheet is `ui/VoiceCaptureDialog` (raw D-pad-focusable `Dialog`, Done
+    auto-focuses); wiring + the RECORD_AUDIO launcher + the download-offer are in `MapScreen`; the
+    Settings -> Search section (toggle, model download/remove, engine picker) is in `SettingsScreen`.
+    Needs `RECORD_AUDIO` (manifest; asked at the mic tap).
+    - **Model hosting: the `asr-models` GitHub release on THIS repo** (fixed-tag prerelease, like
+      `routing-graphs`/`building-overlays`; `AsrModel.URL`). **The archive MUST be a `.tar.bz2` whose
+      single top-level folder holds the 4 files** (`tiny-encoder.int8.onnx`, `tiny-decoder.int8.onnx`,
+      `tiny-tokens.txt`, `silero_vad.onnx`) - `KokoroInstaller.download` (reused for the ASR download)
+      unpacks bzip2 and RENAMES that inner folder to `AsrModel.dir`, so a `.tar.gz` or a flat/no-folder
+      archive would fail to install. (The mirror was re-packed from upstream's `.tar.gz`; drop the macOS
+      `._*` resource forks when re-packing.)
   - **Any large download (voice model, routing graph, building overlay) MUST NOT use the shared OkHttp
     client** - its `callTimeout(12s)` (scrape-bounding) aborts the body read mid-stream, `runCatching`
     eats it, and the asset SILENTLY never installs (no crash, no log). `KokoroInstaller`,

@@ -413,4 +413,25 @@
     <string name="mapvm_voice_lang_system">הוראות ב%1$s משתמשות בקול של הטלפון שלך. הוסף אחד בהגדרות הקול של המערכת.</string>
     <string name="mapscreen_get_voice">השג קול</string>
     <string name="mapscreen_system_voices">קולות מערכת</string>
+    <string name="settings_search">חיפוש</string>
+    <string name="settings_voice_search_toggle">מיקרופון חיפוש קולי</string>
+    <string name="settings_voice_search_hint">מציג מיקרופון בשורת החיפוש כדי לחפש בדיבור.</string>
+    <string name="search_voice_cd">חיפוש קולי</string>
+    <string name="search_voice_prompt">דבר כדי לחפש</string>
+    <string name="voice_capture_listening">מקשיב…</string>
+    <string name="voice_capture_starting">מתכונן…</string>
+    <string name="voice_capture_done">סיום</string>
+    <string name="mapvm_asr_ready">Vela Voice מוכן</string>
+    <string name="mapvm_asr_download_failed">לא ניתן להוריד את מודל הקול. בדוק את החיבור ונסה שוב.</string>
+    <string name="settings_voice_search_model">Vela Voice</string>
+    <string name="settings_voice_search_model_hint">Vela Voice הופך דיבור לחיפוש ישירות בטלפון שלך: לא צריך אפליקציה אחרת ושום דבר לא מועלה. הורדה חד-פעמית של %1$d מ\"ב.</string>
+    <string name="settings_voice_search_download">הורד (%1$d מ\"ב)</string>
+    <string name="settings_voice_search_remove">הסר</string>
+    <string name="settings_voice_search_downloading">מוריד… %1$d%%</string>
+    <string name="settings_voice_search_installing">מתקין…</string>
+    <string name="settings_voice_search_engine_title">כשאתה מקיש על המיקרופון</string>
+    <string name="settings_voice_search_engine_auto">Vela Voice</string>
+    <string name="settings_voice_search_engine_default">ברירת המחדל של Android</string>
+    <string name="map_asr_offer_title">חיפוש קולי</string>
+    <string name="map_asr_offer_body">הורד את Vela Voice כדי לחפש בדיבור. הוא פועל כולו בטלפון שלך ולא מעלה דבר.</string>
 </resources>

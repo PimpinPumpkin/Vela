@@ -13,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
@@ -69,6 +70,9 @@ fun SearchBar(
     onBack: (() -> Unit)? = null,
     dpadMode: Boolean = false,
     offline: Boolean = false,
+    // Voice search: tap to dictate a query (tier-1 on-device Whisper, or tier-2 a system voice-input
+    // app). Null = no mic. Sits at the right when the field is EMPTY, Google-style.
+    onMic: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     // D-pad (docs/dpad.md): mere focus traversal must NOT fall into the text field (its
@@ -237,6 +241,18 @@ fun SearchBar(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     modifier = Modifier.padding(end = 4.dp),
                 )
+            }
+            // Voice search mic: only with the field empty (the clear "X" owns the typing state,
+            // Google-style) and only when something can service it (onMic != null). Sits just before
+            // the settings gear. A Material IconButton, so its built-in focus indication is enough.
+            if (onMic != null && query.isEmpty()) {
+                IconButton(onClick = onMic, modifier = Modifier.size(40.dp)) {
+                    Icon(
+                        Icons.Default.Mic,
+                        contentDescription = stringResource(R.string.search_voice_cd),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             }
             if (searching) {
                 // padding BEFORE size: sizing the indicator itself to 22dp keeps it a true circle.

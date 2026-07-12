@@ -600,6 +600,86 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 } // end "Advanced voice options"
             }
 
+            // --- Search (voice search) ------------------------------------------------------------
+            Spacer(Modifier.height(20.dp))
+            SectionTitle(stringResource(R.string.settings_search))
+            Row(
+                Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(stringResource(R.string.settings_voice_search_toggle), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                Switch(
+                    checked = app.vela.ui.VoiceSearch.enabled.value,
+                    onCheckedChange = { app.vela.ui.VoiceSearch.set(context, it) },
+                )
+            }
+            Hint(stringResource(R.string.settings_voice_search_hint))
+
+            // On-device voice search (tier-1): download Vela Voice (Whisper) or remove it. Works with
+            // no other app and uploads nothing; Auto uses it over a provider when it's installed.
+            LaunchedEffect(Unit) { vm.refreshAsr() }
+            Spacer(Modifier.height(8.dp))
+            Hint(stringResource(R.string.settings_voice_search_model_hint, app.vela.voice.AsrModel.SIZE_MB))
+            when {
+                state.asrDownloadPct != null -> {
+                    val pct = state.asrDownloadPct ?: 0f
+                    Text(
+                        if (state.asrInstalling) stringResource(R.string.settings_voice_search_installing)
+                        else stringResource(R.string.settings_voice_search_downloading, (pct * 100).toInt()),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    LinearProgressIndicator(progress = { pct }, modifier = Modifier.fillMaxWidth())
+                }
+                state.asrInstalled -> {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(stringResource(R.string.settings_voice_search_model), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                        TextButton(onClick = { vm.deleteAsrModel() }) { Text(stringResource(R.string.settings_voice_search_remove)) }
+                    }
+                }
+                else -> OutlinedButton(onClick = { vm.downloadAsrModel() }) {
+                    Text(stringResource(R.string.settings_voice_search_download, app.vela.voice.AsrModel.SIZE_MB))
+                }
+            }
+            // The engine picker only matters when there's actually a choice (the model AND a voice app,
+            // or two voice apps): "Vela Voice" = AUTO (the model wins, provider as graceful fallback),
+            // "Android default" = the implicit intent Android routes, or each installed app pinned by name
+            // so Android never interjects its own chooser. Enumerated off the main thread (a binder query
+            // + per-app label load, the same class of call as the TTS engine list).
+            val voiceProviders by produceState(initialValue = emptyList<app.vela.ui.VoiceSearch.Provider>()) {
+                value = withContext(Dispatchers.IO) { app.vela.ui.VoiceSearch.providers(context) }
+            }
+            if ((state.asrInstalled && voiceProviders.isNotEmpty()) || voiceProviders.size > 1) {
+                Spacer(Modifier.height(12.dp))
+                SubHead(stringResource(R.string.settings_voice_search_engine_title))
+                val eng = app.vela.ui.VoiceSearch.engine.value
+                val savedPick = app.vela.ui.VoiceSearch.provider.value
+                val savedValid = voiceProviders.any { it.component.flattenToString() == savedPick }
+                if (state.asrInstalled) {
+                    SelectableRow(stringResource(R.string.settings_voice_search_engine_auto), eng != app.vela.ui.VoiceSearch.Engine.SYSTEM, onClick = { app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.AUTO) })
+                }
+                if (voiceProviders.isNotEmpty()) {
+                    SelectableRow(
+                        stringResource(R.string.settings_voice_search_engine_default),
+                        eng == app.vela.ui.VoiceSearch.Engine.SYSTEM && !savedValid,
+                        onClick = {
+                            app.vela.ui.VoiceSearch.clearProvider(context)
+                            app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM)
+                        },
+                    )
+                }
+                voiceProviders.forEach { p ->
+                    SelectableRow(
+                        p.label,
+                        eng == app.vela.ui.VoiceSearch.Engine.SYSTEM && savedValid && p.component.flattenToString() == savedPick,
+                        onClick = {
+                            app.vela.ui.VoiceSearch.setProvider(context, p.component)
+                            app.vela.ui.VoiceSearch.setEngine(context, app.vela.ui.VoiceSearch.Engine.SYSTEM)
+                        },
+                    )
+                }
+            }
+
             Spacer(Modifier.height(20.dp).onGloballyPositioned { offlineSectionY = it.positionInRoot().y })
             // Collapsed by default - the routing-region list can be long, so don't make the user
             // scroll past all of it to reach the sections below. Opens expanded when the onboarding
