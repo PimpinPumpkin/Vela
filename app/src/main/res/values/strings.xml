@@ -467,6 +467,8 @@
     <string name="place_transit_now">Departing</string>
     <string name="place_transit_in_min">in %1$d min</string> <!-- format -->
     <string name="place_transit_live">Live</string>
+    <string name="place_departures">Departures</string>
+    <string name="place_every">Every %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">You have arrived.</string>
     <string name="transit_nav_walk">Walk %1$s</string> <!-- format -->
     <string name="transit_nav_take">Take %1$s</string> <!-- format -->
