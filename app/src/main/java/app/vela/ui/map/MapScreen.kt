@@ -744,6 +744,7 @@ fun MapScreen(
             // the user explicitly enables it in Settings → Map.
             trafficOn = Traffic.on.value,
             transitOn = app.vela.ui.TransitLayer.on.value,
+            topographyOn = app.vela.ui.Topography.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
