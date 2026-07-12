@@ -221,7 +221,7 @@ fun VelaMapView(
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
     topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
-    onPoiTap: (name: String, location: LatLng) -> Unit,
+    onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
     onParkingTap: () -> Unit = {},
@@ -863,7 +863,11 @@ fun VelaMapView(
                     val hit = feats.firstOrNull { it.geometry() is Point && nameOf(it) != null }
                     if (hit != null) {
                         val pt = hit.geometry() as Point
-                        poiTap.value(nameOf(hit)!!, LatLng(pt.latitude(), pt.longitude()))
+                        // The POI's kind (OMT subclass, e.g. "bus_stop"/"station", else class) tells
+                        // onPoiTap whether it's a transit stop, so it can resolve to the STOP rather than
+                        // the road junction its intersection-name would otherwise search to (issue #71).
+                        val kind = hit.getStringProperty("subclass") ?: hit.getStringProperty("class")
+                        poiTap.value(nameOf(hit)!!, LatLng(pt.latitude(), pt.longitude()), kind)
                         return@handleTap true
                     }
                     val box = RectF(p.x - r, p.y - r, p.x + r, p.y + r)
