@@ -22,6 +22,17 @@ on:
     branches: [ main ]
     paths-ignore: *docs-only
 
+# Coalesce back-to-back pushes: when several merges land in a row (a PR batch), each push
+# used to run a full build and cut its own release. The concurrency group cancels the
+# in-flight build for an OLDER commit the moment a newer push arrives on the same ref, so
+# only the newest commit finishes and publishes - one release for the batch, not four.
+# Keyed per ref: main coalesces to its latest push; each PR coalesces to its latest commit.
+# (Note: only overlapping builds coalesce. Merges spaced further apart than a build still
+# release individually - that is the per-push release scheme working as designed.)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 # `contents: write` is needed to publish releases. The publish step is gated to
 # push-to-main, so PRs (and fork PRs, whose token is read-only) never touch them.
 permissions:
