@@ -1295,6 +1295,291 @@ object UkNavStrings : NavStrings {
     }
 }
 
+
+/**
+ * Simplified Chinese (Mandarin) — phrasing follows Google Maps' zh-CN guidance style
+ * ("500 米后，向左转，进入中山路"). Road/dest names pass through untranslated.
+ */
+object ZhNavStrings : NavStrings {
+    override val locale: Locale = Locale.SIMPLIFIED_CHINESE
+
+    private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "向左转"
+        "right" -> "向右转"
+        "slight left" -> "稍向左转"
+        "slight right" -> "稍向右转"
+        "sharp left" -> "向左急转"
+        "sharp right" -> "向右急转"
+        "straight" -> "直行"
+        "uturn" -> "掉头"
+        else -> ""
+    }
+
+    private fun sideWord(mod: String?): String = when {
+        (mod ?: "").contains("left") -> "靠左"
+        (mod ?: "").contains("right") -> "靠右"
+        else -> ""
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) "，进入$road" else ""
+        val toward = when {
+            dest != null -> "，前往$dest"
+            road != null -> "，进入$road"
+            else -> ""
+        }
+        val m = modWord(mod)
+        val side = sideWord(mod)
+        return when (type) {
+            "depart" -> if (road != null) "沿${road}出发" else "开始行程"
+            "arrive" -> "到达目的地"
+            "turn", "end of road" -> (m.ifBlank { "转弯" }) + onto
+            "continue", "new name" -> if (side.isNotBlank() && m != "直行") "${side}行驶$onto" else "继续直行$onto"
+            "merge" -> "并入道路$toward"
+            "on ramp", "ramp" -> "走匝道$toward"
+            "off ramp" -> if (exitNo != null) "从 $exitNo 号出口驶出$toward" else "从出口驶出$toward"
+            "fork" -> "在岔路口${side.ifBlank { "直行" }}$toward"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" ->
+                if (rbExit != null) "进入环岛，从第 $rbExit 个出口驶出$onto" else "进入环岛$onto"
+            "roundabout turn" -> "在环岛${m.ifBlank { "转弯" }}$onto"
+            "uturn" -> "掉头$onto"
+            else -> if (m.isNotBlank()) m + onto else "继续直行$onto"
+        }
+    }
+
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} 英尺"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 英里" else "$miles 英里"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} 米"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 公里" else "$km 公里"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "${distancePhrase}后，$instruction"
+
+    override fun arrived(): String = "您已到达目的地"
+
+    override fun destinationSide(left: Boolean): String = if (left) "目的地在左侧" else "目的地在右侧"
+
+    override fun startNav(firstInstruction: String): String = "开始导航。$firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "已到达$label" else "已到达途经点"
+
+    override fun fasterRoute(firstInstruction: String): String = "已切换到更快的路线。$firstInstruction"
+    override fun rerouting(): String = "正在重新规划路线"
+    override fun fasterRouteAvailable(minutes: Int): String = "发现更快的路线，约可节省 $minutes 分钟"
+    override fun stopsNotIncluded(): String = "无法在此路线中包含您的途经点，将继续尝试。"
+    override fun destinationAhead(): String = "目的地就在前方"
+
+    override fun voiceTest(): String = "语音导航已开启。400 米后，向右转。"
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "左侧"; LaneSide.RIGHT -> "右侧"; LaneSide.CENTER -> "中间" }
+        return if (count > 1) "请走$sideWord $count 条车道" else "请走${sideWord}车道"
+    }
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + "，" + instruction
+
+    // expandForSpeech stays the interface default (identity) — road names are read natively.
+}
+
+/**
+ * Traditional Chinese, Taiwan wording (issue #55) — 迴轉 not 掉頭-北方 mixes, 公尺 not 米,
+ * 圓環 not 环岛. Shares the "zh" spoken-voice pairing with [ZhNavStrings] (a Mandarin voice
+ * reads both scripts). Road/dest names pass through untranslated.
+ */
+object ZhTwNavStrings : NavStrings {
+    override val locale: Locale = Locale.TAIWAN
+
+    private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "向左轉"
+        "right" -> "向右轉"
+        "slight left" -> "稍向左轉"
+        "slight right" -> "稍向右轉"
+        "sharp left" -> "向左急轉"
+        "sharp right" -> "向右急轉"
+        "straight" -> "直行"
+        "uturn" -> "迴轉"
+        else -> ""
+    }
+
+    private fun sideWord(mod: String?): String = when {
+        (mod ?: "").contains("left") -> "靠左"
+        (mod ?: "").contains("right") -> "靠右"
+        else -> ""
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) "，進入$road" else ""
+        val toward = when {
+            dest != null -> "，前往$dest"
+            road != null -> "，進入$road"
+            else -> ""
+        }
+        val m = modWord(mod)
+        val side = sideWord(mod)
+        return when (type) {
+            "depart" -> if (road != null) "沿${road}出發" else "開始行程"
+            "arrive" -> "到達目的地"
+            "turn", "end of road" -> (m.ifBlank { "轉彎" }) + onto
+            "continue", "new name" -> if (side.isNotBlank() && m != "直行") "${side}行駛$onto" else "繼續直行$onto"
+            "merge" -> "匯入道路$toward"
+            "on ramp", "ramp" -> "走匝道$toward"
+            "off ramp" -> if (exitNo != null) "從 $exitNo 號出口駛出$toward" else "從出口駛出$toward"
+            "fork" -> "在岔路口${side.ifBlank { "直行" }}$toward"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" ->
+                if (rbExit != null) "進入圓環，從第 $rbExit 個出口駛出$onto" else "進入圓環$onto"
+            "roundabout turn" -> "在圓環${m.ifBlank { "轉彎" }}$onto"
+            "uturn" -> "迴轉$onto"
+            else -> if (m.isNotBlank()) m + onto else "繼續直行$onto"
+        }
+    }
+
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} 英尺"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 英里" else "$miles 英里"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} 公尺"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 公里" else "$km 公里"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "${distancePhrase}後，$instruction"
+
+    override fun arrived(): String = "您已到達目的地"
+
+    override fun destinationSide(left: Boolean): String = if (left) "目的地在左側" else "目的地在右側"
+
+    override fun startNav(firstInstruction: String): String = "開始導航。$firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "已到達$label" else "已到達途經點"
+
+    override fun fasterRoute(firstInstruction: String): String = "已切換到更快的路線。$firstInstruction"
+    override fun rerouting(): String = "正在重新規劃路線"
+    override fun fasterRouteAvailable(minutes: Int): String = "找到更快的路線，約可節省 $minutes 分鐘"
+    override fun stopsNotIncluded(): String = "無法在此路線中包含您的途經點，將繼續嘗試。"
+    override fun destinationAhead(): String = "目的地就在前方"
+
+    override fun voiceTest(): String = "語音導航已開啟。400 公尺後，向右轉。"
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "左側"; LaneSide.RIGHT -> "右側"; LaneSide.CENTER -> "中間" }
+        return if (count > 1) "請走$sideWord $count 條車道" else "請走${sideWord}車道"
+    }
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + "，" + instruction
+
+    // expandForSpeech stays the interface default (identity) — road names are read natively.
+}
+
+/**
+ * Japanese — Google-Maps-style guidance ("500 メートル先、左方向です" register, imperative-neutral
+ * です/ます). No Piper voice exists for Japanese yet, so spoken guidance routes through the
+ * system TTS fallback in VoiceGuide; these strings also feed the banner. Road/dest names pass
+ * through untranslated.
+ */
+object JaNavStrings : NavStrings {
+    override val locale: Locale = Locale.JAPAN
+
+    private fun modWord(mod: String?): String = when ((mod ?: "").trim().lowercase()) {
+        "left" -> "左"
+        "right" -> "右"
+        "slight left" -> "斜め左"
+        "slight right" -> "斜め右"
+        "sharp left" -> "大きく左"
+        "sharp right" -> "大きく右"
+        "straight" -> "直進"
+        "uturn" -> "Uターン"
+        else -> ""
+    }
+
+    override fun phrase(type: String, mod: String?, road: String?, dest: String?, exitNo: String?, rbExit: Int?): String {
+        val onto = if (road != null) "、$road に入ります" else ""
+        val toward = when {
+            dest != null -> "、$dest 方面へ進みます"
+            road != null -> "、$road に入ります"
+            else -> ""
+        }
+        val m = modWord(mod)
+        return when (type) {
+            "depart" -> if (road != null) "$road から出発します" else "ルートを開始します"
+            "arrive" -> "目的地に到着"
+            "turn", "end of road" -> if (m.isNotBlank() && m != "直進") "${m}に曲がります$onto" else "直進します$onto"
+            "continue", "new name" -> if (m.isNotBlank() && m != "直進") "${m}方向に進みます$onto" else if (road != null) "$road を直進します" else "直進します"
+            "merge" -> "合流します$toward"
+            "on ramp", "ramp" -> "ランプに入ります$toward"
+            "off ramp" -> if (exitNo != null) "出口 $exitNo を出ます$toward" else "出口を出ます$toward"
+            "fork" -> if (m.isNotBlank()) "分岐を${m}方向へ進みます$toward" else "分岐を直進します$toward"
+            "roundabout", "rotary", "exit roundabout", "exit rotary" ->
+                if (rbExit != null) "ラウンドアバウトで $rbExit 番目の出口を出ます$onto" else "ラウンドアバウトに入ります$onto"
+            "roundabout turn" -> if (m.isNotBlank()) "ラウンドアバウトで${m}に曲がります$onto" else "ラウンドアバウトを直進します$onto"
+            "uturn" -> "Uターンします$onto"
+            else -> if (m.isNotBlank()) "${m}に曲がります$onto" else "直進します$onto"
+        }
+    }
+
+    override fun spokenDistance(meters: Double, imperial: Boolean): String = if (imperial) {
+        val feet = meters * 3.28084
+        if (feet < 800) "${(if (feet < 100) maxOf(10, (feet / 10).roundToInt() * 10) else (feet / 50).roundToInt() * 50)} フィート"
+        else {
+            val miles = (meters / 1609.34 * 10).roundToInt() / 10.0
+            if (miles == 1.0) "1 マイル" else "$miles マイル"
+        }
+    } else {
+        if (meters < 950) "${(meters / 10).roundToInt() * 10} メートル"
+        else {
+            val km = (meters / 100).roundToInt() / 10.0
+            if (km == 1.0) "1 キロメートル" else "$km キロメートル"
+        }
+    }
+
+    override fun inThen(distancePhrase: String, instruction: String): String = "${distancePhrase}先、$instruction"
+
+    override fun arrived(): String = "目的地に到着しました"
+
+    override fun destinationSide(left: Boolean): String = if (left) "目的地は左側です" else "目的地は右側です"
+
+    override fun startNav(firstInstruction: String): String = "ナビを開始します。$firstInstruction"
+
+    override fun reachedStop(label: String): String =
+        if (label.isNotBlank()) "$label に到着しました" else "経由地に到着しました"
+
+    override fun fasterRoute(firstInstruction: String): String = "より速いルートに切り替えます。$firstInstruction"
+    override fun rerouting(): String = "ルートを再検索しています"
+    override fun fasterRouteAvailable(minutes: Int): String = "より速いルートが見つかりました。約 $minutes 分短縮できます"
+    override fun stopsNotIncluded(): String = "このルートに経由地を含められませんでした。引き続き試します。"
+    override fun destinationAhead(): String = "この先に目的地があります"
+
+    override fun voiceTest(): String = "音声案内が有効です。400 メートル先、右方向です。"
+
+    override fun useLanes(side: LaneSide, count: Int): String {
+        val sideWord = when (side) { LaneSide.LEFT -> "左側"; LaneSide.RIGHT -> "右側"; LaneSide.CENTER -> "中央" }
+        return if (count > 1) "${sideWord}の $count 車線を進んでください" else "${sideWord}の車線を進んでください"
+    }
+
+    override fun useLanesToDo(side: LaneSide, count: Int, instruction: String): String =
+        useLanes(side, count) + "。" + instruction
+
+    // expandForSpeech stays the interface default (identity) — road names are read natively.
+}
+
 /**
  * Holds the active [NavStrings] for the process. Set explicitly from the resolved app locale on startup
  * and on every language change — do NOT read `Locale.getDefault()` at the leaf, because nav/TTS text is
@@ -1307,7 +1592,17 @@ object NavStringsRegistry {
 
     fun current(): NavStrings = active
 
-    fun setLocale(locale: Locale) { active = forLanguage(locale.language) }
+    fun setLocale(locale: Locale) { active = forLanguage(tagOf(locale)) }
+
+    /** Language key for a locale — plain language code, except Chinese where the SCRIPT matters:
+     *  Traditional-script regions (TW/HK/MO, or an explicit Hant script) map to "zh-tw". */
+    fun tagOf(locale: Locale): String {
+        val lang = locale.language.lowercase()
+        if (lang != "zh") return lang
+        val hant = locale.script.equals("Hant", ignoreCase = true) ||
+            locale.country.uppercase() in setOf("TW", "HK", "MO")
+        return if (hant) "zh-tw" else "zh"
+    }
 
     /** The NavStrings for a language code ("fr", "en", …); English for anything not yet translated. */
     fun forLanguage(language: String): NavStrings = when (language.lowercase()) {
@@ -1321,6 +1616,9 @@ object NavStringsRegistry {
         "pl" -> PlNavStrings
         "sv" -> SvNavStrings
         "uk" -> UkNavStrings
+        "zh" -> ZhNavStrings
+        "zh-tw" -> ZhTwNavStrings
+        "ja" -> JaNavStrings
         else -> EnNavStrings
     }
 }
