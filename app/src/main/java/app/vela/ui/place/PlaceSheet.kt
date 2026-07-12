@@ -2487,6 +2487,9 @@ fun RouteDetailSheet(
     onStopTap: (TransitStopTime) -> Unit,
 ) {
     BackHandler(onBack = onClose)
+    // D-pad: place focus on the back arrow when the sheet opens (same convention as the reviews page),
+    // so a D-pad-only user can immediately scroll the timeline / step onto a stop with no wake-up press.
+    val backFocus = rememberDpadAutoFocus()
     val dark = isAppInDarkTheme()
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
@@ -2509,7 +2512,7 @@ fun RouteDetailSheet(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                IconButton(onClick = onClose) {
+                IconButton(onClick = onClose, modifier = Modifier.focusRequester(backFocus).dpadHighlight()) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_close), tint = ink)
                 }
                 step?.line?.let { LinePill(it) }
