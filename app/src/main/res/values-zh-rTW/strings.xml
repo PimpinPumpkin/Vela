@@ -454,6 +454,7 @@
     <string name="place_transit_stops">%1$d 站</string> <!-- format -->
     <string name="place_transit_stop_id">站牌 %1$s</string> <!-- format -->
     <string name="place_transit_tickets">票券與資訊</string>
+    <string name="route_detail_unavailable">無法取得路線詳情</string>
     <string name="place_transit_now">即將出發</string>
     <string name="place_transit_in_min">%1$d 分鐘後</string> <!-- format -->
     <string name="place_transit_live">即時</string>
