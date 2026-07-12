@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -243,6 +244,7 @@ fun PlaceSheet(
     placesHere: List<Place> = emptyList(),
     stopDepartures: app.vela.core.model.StopDepartures? = null,
     stopDeparturesLoading: Boolean = false,
+    onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
@@ -935,7 +937,7 @@ fun PlaceSheet(
             }
 
             // Live departure board for a transit stop (keyless, from the station's own place page).
-            StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark)
+            StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute)
 
             // Phone + website as their own tappable rows showing the actual number / domain — placed
             // BELOW the hours (Google's order), well clear of the Directions button up top. The pills
@@ -2371,6 +2373,7 @@ private fun StopDepartureBoard(
     ink: Color,
     dim: Color,
     dark: Boolean,
+    onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
 ) {
     if (d == null && !loading) return
     Spacer(Modifier.height(14.dp))
@@ -2392,14 +2395,40 @@ private fun StopDepartureBoard(
     val nowSec by produceState(initialValue = System.currentTimeMillis() / 1000L) {
         while (true) { delay(30_000L); value = System.currentTimeMillis() / 1000L }
     }
-    Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        d.lines.take(8).forEach { DepartureLineRow(it, nowSec, ink, dim) }
+    // Google-style clean list: plain tappable rows separated by hairline dividers (no per-row
+    // chevron - the row itself opens the route, and its Material ripple is the affordance).
+    Column(Modifier.padding(top = 6.dp)) {
+        val lines = d.lines.take(24)
+        lines.forEachIndexed { i, line ->
+            DepartureLineRow(line, nowSec, ink, dim, onTapRoute)
+            if (i < lines.lastIndex) {
+                HorizontalDivider(
+                    color = SheetPalette.row(dark),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(start = 2.dp),
+                )
+            }
+        }
     }
 }
 
 @Composable
-private fun DepartureLineRow(line: app.vela.core.model.StopDepartureLine, nowSec: Long, ink: Color, dim: Color) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun DepartureLineRow(
+    line: app.vela.core.model.StopDepartureLine,
+    nowSec: Long,
+    ink: Color,
+    dim: Color,
+    onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .dpadHighlight(RoundedCornerShape(10.dp))
+            .clickable { onTapRoute(line) }
+            .padding(vertical = 10.dp, horizontal = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (line.label != null) {
                 LinePill(TransitLine(name = line.label!!, mode = line.mode, colorHex = line.colorHex))
@@ -2408,7 +2437,7 @@ private fun DepartureLineRow(line: app.vela.core.model.StopDepartureLine, nowSec
             }
             line.headsign?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
-            }
+            } ?: Spacer(Modifier.weight(1f))
             line.headwayText?.let {
                 Text(stringResource(R.string.place_every, it), style = MaterialTheme.typography.labelMedium, color = dim)
             }
@@ -2437,6 +2466,132 @@ private fun DepartureLineRow(line: app.vela.core.model.StopDepartureLine, nowSec
                     Text(it.clockText.orEmpty(), style = MaterialTheme.typography.bodySmall, color = dim)
                 }
             }
+        }
+    }
+}
+
+/**
+ * The tap-through stop timeline for one route off the departure board. Reuses the proven
+ * transit-itinerary parser: [MapViewModel.openRouteDetail] runs a keyless directions query
+ * from the tapped stop toward the route's headsign, and the returned ride leg carries the
+ * board / intermediate / alight stops with per-stop times. We render them as a vertical
+ * timeline; tapping any stop opens that stop's own board (via [onStopTap]) so the user can
+ * keep tapping down the line, mirroring Google's tap-through.
+ */
+@Composable
+fun RouteDetailSheet(
+    step: TransitStep?,
+    title: String?,
+    loading: Boolean,
+    onClose: () -> Unit,
+    onStopTap: (TransitStopTime) -> Unit,
+) {
+    BackHandler(onBack = onClose)
+    // D-pad: place focus on the back arrow when the sheet opens (same convention as the reviews page),
+    // so a D-pad-only user can immediately scroll the timeline / step onto a stop with no wake-up press.
+    val backFocus = rememberDpadAutoFocus()
+    val dark = isAppInDarkTheme()
+    val ink = if (dark) InkDark else InkLight
+    val dim = if (dark) DimDark else DimLight
+    val lineColor = parseHexColor(step?.line?.colorHex) ?: MaterialTheme.colorScheme.primary
+    // The full ordered call list: board first, then the in-betweens, then alight. Board/alight
+    // are often absent from intermediateStops, so stitch them on the ends and de-dupe by name.
+    val stops = remember(step) {
+        val mid = step?.intermediateStops ?: emptyList()
+        buildList {
+            step?.boardStop?.let { add(it) }
+            addAll(mid)
+            step?.alightStop?.let { a -> if (mid.none { it.name == a.name } && step.boardStop?.name != a.name) add(a) }
+        }
+    }
+    Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            // Header: back + the route pill + headsign.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                IconButton(onClick = onClose, modifier = Modifier.focusRequester(backFocus).dpadHighlight()) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_close), tint = ink)
+                }
+                step?.line?.let { LinePill(it) }
+                Text(
+                    title ?: step?.headsign ?: step?.line?.name.orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ink,
+                    maxLines = 2,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            step?.numStops?.let { n ->
+                Text(
+                    stringResource(R.string.place_transit_stops, n),
+                    style = MaterialTheme.typography.labelMedium, color = dim,
+                    modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+                )
+            }
+            HorizontalDivider(color = SheetPalette.row(dark))
+            if (stops.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (loading || step == null) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    else Text(stringResource(R.string.route_detail_unavailable), style = MaterialTheme.typography.bodyMedium, color = dim)
+                }
+                return@Column
+            }
+            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
+                itemsIndexed(stops) { i, stop ->
+                    val isFirst = i == 0
+                    val isLast = i == stops.lastIndex
+                    RouteStopRow(stop, lineColor, ink, dim, isFirst, isLast, onClick = { onStopTap(stop) })
+                }
+            }
+        }
+    }
+}
+
+/** One stop in the [RouteDetailSheet] timeline: a coloured connector rail with a node, the stop
+ *  name (board/alight emphasised) and its call time - the whole row taps through (no chevron;
+ *  the connected rail + the Material ripple are the affordance, like Google's route view). */
+@Composable
+private fun RouteStopRow(
+    stop: TransitStopTime,
+    lineColor: Color,
+    ink: Color,
+    dim: Color,
+    isFirst: Boolean,
+    isLast: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .dpadHighlight(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(start = 6.dp, end = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Vertical rail + node, drawn so the line is continuous between rows. Board/alight get a
+        // bigger node; intermediate stops a smaller one - all solid in the line colour so they read
+        // on any sheet background.
+        val big = isFirst || isLast
+        Box(Modifier.width(24.dp).height(48.dp), contentAlignment = Alignment.Center) {
+            if (!isFirst) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.TopCenter).background(lineColor))
+            if (!isLast) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.BottomCenter).background(lineColor))
+            Box(Modifier.size(if (big) 14.dp else 9.dp).clip(CircleShape).background(lineColor))
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(
+            stop.name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isFirst || isLast) FontWeight.SemiBold else FontWeight.Normal,
+            color = ink,
+            maxLines = 2,
+            modifier = Modifier.weight(1f).padding(vertical = 10.dp),
+        )
+        stop.timeText?.let {
+            Text(it, style = MaterialTheme.typography.labelMedium, color = dim, modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
