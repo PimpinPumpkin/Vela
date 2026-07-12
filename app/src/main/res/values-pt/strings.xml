@@ -450,4 +450,19 @@
     <string name="settings_voice_search_engine_default">Padrão do Android</string>
     <string name="map_asr_offer_title">Pesquisa por voz</string>
     <string name="map_asr_offer_body">Transfere a voz Vela para ditar as tuas pesquisas. Corre inteiramente no telemóvel e não envia nada.</string>
+    <string name="map_parking_saved">Estacionamento guardado</string>
+    <string name="map_parking_no_fix">A aguardar a localização</string>
+    <string name="map_parking_cleared">Estacionamento removido</string>
+    <string name="map_parking_save">Guardar estacionamento</string>
+    <string name="map_parking_find">Encontrar o meu carro</string>
+    <string name="map_parking_move_here">Mover estacionamento para aqui</string>
+    <string name="map_parking_earlier">Locais anteriores</string>
+    <string name="map_parking_clear">Remover estacionamento</string>
+    <string name="map_parking_moved">Estacionamento movido para aqui</string>
+    <string name="map_parked_car">Carro estacionado</string>
+    <string name="place_clear_parking">Remover estacionamento</string>
+    <string name="parking_history_title">Histórico de estacionamento</string>
+    <string name="parking_history_clear_all">Limpar tudo</string>
+    <string name="parking_history_current">Atual</string>
+    <string name="parking_history_delete">Eliminar</string>
 </resources>

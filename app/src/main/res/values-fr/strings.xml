@@ -450,4 +450,19 @@
     <string name="settings_voice_search_engine_default">Défaut Android</string>
     <string name="map_asr_offer_title">Recherche vocale</string>
     <string name="map_asr_offer_body">Téléchargez la voix Vela pour dicter vos recherches. Elle tourne entièrement sur votre téléphone et n\'envoie rien.</string>
+    <string name="map_parking_saved">Place de parking enregistrée</string>
+    <string name="map_parking_no_fix">En attente de la position</string>
+    <string name="map_parking_cleared">Place de parking effacée</string>
+    <string name="map_parking_save">Enregistrer la place de parking</string>
+    <string name="map_parking_find">Trouver ma voiture</string>
+    <string name="map_parking_move_here">Déplacer le parking ici</string>
+    <string name="map_parking_earlier">Emplacements précédents</string>
+    <string name="map_parking_clear">Effacer le parking</string>
+    <string name="map_parking_moved">Place de parking déplacée ici</string>
+    <string name="map_parked_car">Voiture garée</string>
+    <string name="place_clear_parking">Effacer le parking</string>
+    <string name="parking_history_title">Historique de stationnement</string>
+    <string name="parking_history_clear_all">Tout effacer</string>
+    <string name="parking_history_current">Actuel</string>
+    <string name="parking_history_delete">Supprimer</string>
 </resources>

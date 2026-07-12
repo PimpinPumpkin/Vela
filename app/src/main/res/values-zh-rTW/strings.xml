@@ -458,4 +458,19 @@
     <string name="settings_voice_search_engine_default">Android 預設</string>
     <string name="map_asr_offer_title">語音搜尋</string>
     <string name="map_asr_offer_body">下載 Vela 語音，用說的就能搜尋。它完全在你的手機上執行，不會上傳任何內容。</string>
+    <string name="map_parking_saved">已儲存停車位置</string>
+    <string name="map_parking_no_fix">正在等待定位</string>
+    <string name="map_parking_cleared">已清除停車位置</string>
+    <string name="map_parking_save">儲存停車位置</string>
+    <string name="map_parking_find">尋找我的車</string>
+    <string name="map_parking_move_here">將停車位移到這裡</string>
+    <string name="map_parking_earlier">較早的停車位</string>
+    <string name="map_parking_clear">清除停車位</string>
+    <string name="map_parking_moved">停車位已移到這裡</string>
+    <string name="map_parked_car">停車位置</string>
+    <string name="place_clear_parking">清除停車位置</string>
+    <string name="parking_history_title">停車記錄</string>
+    <string name="parking_history_clear_all">全部清除</string>
+    <string name="parking_history_current">目前</string>
+    <string name="parking_history_delete">刪除</string>
 </resources>

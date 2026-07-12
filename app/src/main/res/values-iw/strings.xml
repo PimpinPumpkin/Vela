@@ -434,4 +434,19 @@
     <string name="settings_voice_search_engine_default">ברירת המחדל של Android</string>
     <string name="map_asr_offer_title">חיפוש קולי</string>
     <string name="map_asr_offer_body">הורד את Vela Voice כדי לחפש בדיבור. הוא פועל כולו בטלפון שלך ולא מעלה דבר.</string>
+    <string name="map_parking_saved">מיקום החניה נשמר</string>
+    <string name="map_parking_no_fix">ממתין לאיכון מיקום</string>
+    <string name="map_parking_cleared">מיקום החניה נמחק</string>
+    <string name="map_parking_save">שמור מיקום חניה</string>
+    <string name="map_parking_find">מצא את הרכב שלי</string>
+    <string name="map_parking_move_here">הזז חניה לכאן</string>
+    <string name="map_parking_earlier">מקומות קודמים</string>
+    <string name="map_parking_clear">נקה חניה</string>
+    <string name="map_parking_moved">מיקום החניה הוזז לכאן</string>
+    <string name="map_parked_car">רכב חונה</string>
+    <string name="place_clear_parking">נקה חניה</string>
+    <string name="parking_history_title">היסטוריית חניות</string>
+    <string name="parking_history_clear_all">נקה הכל</string>
+    <string name="parking_history_current">נוכחי</string>
+    <string name="parking_history_delete">מחק</string>
 </resources>

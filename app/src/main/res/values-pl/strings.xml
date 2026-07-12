@@ -452,4 +452,19 @@
     <string name="settings_voice_search_engine_default">Domyślna w Androidzie</string>
     <string name="map_asr_offer_title">Wyszukiwanie głosowe</string>
     <string name="map_asr_offer_body">Pobierz głos Vela, aby dyktować wyszukiwania. Działa w całości na telefonie i niczego nie wysyła.</string>
+    <string name="map_parking_saved">Zapisano miejsce parkowania</string>
+    <string name="map_parking_no_fix">Oczekiwanie na lokalizację</string>
+    <string name="map_parking_cleared">Usunięto miejsce parkowania</string>
+    <string name="map_parking_save">Zapisz miejsce parkowania</string>
+    <string name="map_parking_find">Znajdź mój samochód</string>
+    <string name="map_parking_move_here">Przenieś parking tutaj</string>
+    <string name="map_parking_earlier">Wcześniejsze miejsca</string>
+    <string name="map_parking_clear">Usuń parking</string>
+    <string name="map_parking_moved">Przeniesiono parking tutaj</string>
+    <string name="map_parked_car">Zaparkowany samochód</string>
+    <string name="place_clear_parking">Usuń parkowanie</string>
+    <string name="parking_history_title">Historia parkowania</string>
+    <string name="parking_history_clear_all">Wyczyść wszystko</string>
+    <string name="parking_history_current">Bieżące</string>
+    <string name="parking_history_delete">Usuń</string>
 </resources>

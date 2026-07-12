@@ -450,4 +450,19 @@
     <string name="settings_voice_search_engine_default">Android-standaard</string>
     <string name="map_asr_offer_title">Spraakzoeken</string>
     <string name="map_asr_offer_body">Download de Vela-stem om je zoekopdrachten in te spreken. Hij draait volledig op je telefoon en uploadt niets.</string>
+    <string name="map_parking_saved">Parkeerplek opgeslagen</string>
+    <string name="map_parking_no_fix">Wachten op locatie</string>
+    <string name="map_parking_cleared">Parkeerplek gewist</string>
+    <string name="map_parking_save">Parkeerplek opslaan</string>
+    <string name="map_parking_find">Mijn auto zoeken</string>
+    <string name="map_parking_move_here">Parkeerplek hierheen verplaatsen</string>
+    <string name="map_parking_earlier">Eerdere parkeerplekken</string>
+    <string name="map_parking_clear">Parkeerplek wissen</string>
+    <string name="map_parking_moved">Parkeerplek hierheen verplaatst</string>
+    <string name="map_parked_car">Geparkeerde auto</string>
+    <string name="place_clear_parking">Parkeerplek wissen</string>
+    <string name="parking_history_title">Parkeergeschiedenis</string>
+    <string name="parking_history_clear_all">Alles wissen</string>
+    <string name="parking_history_current">Huidig</string>
+    <string name="parking_history_delete">Verwijderen</string>
 </resources>

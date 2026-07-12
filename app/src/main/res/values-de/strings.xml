@@ -450,4 +450,19 @@
     <string name="settings_voice_search_engine_default">Android-Standard</string>
     <string name="map_asr_offer_title">Sprachsuche</string>
     <string name="map_asr_offer_body">Lade die Vela-Stimme herunter, um Suchen zu sprechen. Sie läuft komplett auf deinem Gerät und lädt nichts hoch.</string>
+    <string name="map_parking_saved">Parkplatz gespeichert</string>
+    <string name="map_parking_no_fix">Warte auf Standortbestimmung</string>
+    <string name="map_parking_cleared">Parkplatz entfernt</string>
+    <string name="map_parking_save">Parkplatz speichern</string>
+    <string name="map_parking_find">Mein Auto finden</string>
+    <string name="map_parking_move_here">Parkplatz hierher verschieben</string>
+    <string name="map_parking_earlier">Frühere Parkplätze</string>
+    <string name="map_parking_clear">Parkplatz entfernen</string>
+    <string name="map_parking_moved">Parkplatz hierher verschoben</string>
+    <string name="map_parked_car">Geparktes Auto</string>
+    <string name="place_clear_parking">Parkplatz entfernen</string>
+    <string name="parking_history_title">Parkverlauf</string>
+    <string name="parking_history_clear_all">Alle löschen</string>
+    <string name="parking_history_current">Aktuell</string>
+    <string name="parking_history_delete">Löschen</string>
 </resources>

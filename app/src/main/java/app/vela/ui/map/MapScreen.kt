@@ -16,6 +16,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import android.widget.Toast
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
@@ -36,6 +37,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -43,7 +45,9 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.LocalParking
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PublicOff
 import androidx.compose.material.icons.filled.Home
@@ -157,6 +161,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import app.vela.ui.dpadHighlight
+import app.vela.ui.rememberDpadAutoFocus // D-pad-first initial focus (docs/dpad.md)
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.rememberDpadFirstDevice
 import app.vela.ui.VelaMenu // D-pad-first menu (docs/dpad.md)
@@ -556,6 +561,8 @@ fun MapScreen(
             // Grabbing the map is an explicit "let me look around" - stop tracking until the
             // locate tap re-arms it (Google drops follow the moment you pan).
             onUserPan = { followMe = false },
+            parkingSpot = state.parkingSpot,
+            onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
             onNavPanned = vm::onNavPanned,
             onScaleChanged = { metersPerPixel = it },
             darkTheme = darkTheme,
@@ -1141,6 +1148,11 @@ fun MapScreen(
                 onOpenSimilar = vm::openSimilar,
                 onSetShortcut = vm::setSelectedAsShortcut,
                 onRetryReviews = vm::retryReviews,
+                onClearParking = {
+                    vm.clearParkingSpot()
+                    vm.clearSelection()
+                    Toast.makeText(context, context.getString(R.string.map_parking_cleared), Toast.LENGTH_SHORT).show()
+                },
                 // No navigationBarsPadding here: the sheet's background should reach
                 // the screen bottom (no map peeking through under the nav bar); the
                 // sheet pads its own content for the nav bar instead.
@@ -1244,6 +1256,99 @@ fun MapScreen(
                     .padding(bottom = chromeLift),
             ) {
                 Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_center_on_my_location))
+            }
+            // Parking button, its OWN control above the locate FAB. TAP with NO spot -> save here
+            // (the one-tap "I parked" path). TAP with a spot set (teal) -> a small hub menu (Find my
+            // car / Move parking here / Earlier spots / Clear) so re-parking is one obvious choice
+            // instead of a clear-then-tap-again dance. LONG-PRESS jumps straight to history. D-pad:
+            // the box is focusable with a ring; OK does what a tap does; the hub is a VelaMenu
+            // (auto-focusing under D-pad - a bare DropdownMenu cannot be, docs/dpad.md).
+            val parkingSavedMsg = stringResource(R.string.map_parking_saved)
+            val parkingNoFixMsg = stringResource(R.string.map_parking_no_fix)
+            val parkingMovedMsg = stringResource(R.string.map_parking_moved)
+            val parkingClearedMsg = stringResource(R.string.map_parking_cleared)
+            val parkedCarLabel = stringResource(R.string.map_parked_car)
+            val parkingSet = state.parkingSpot != null
+            var showParkingHistory by remember { mutableStateOf(false) }
+            var showParkingMenu by remember { mutableStateOf(false) }
+            val parkingTapAction = {
+                if (parkingSet) {
+                    showParkingMenu = true
+                } else {
+                    val msg = if (vm.saveParkingSpot()) parkingSavedMsg else parkingNoFixMsg
+                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                }
+            }
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = if (parkingSet) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = if (parkingSet) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                shadowElevation = 6.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(end = 24.dp, bottom = chromeLift + 92.dp)
+                    .dpadHighlight(RoundedCornerShape(12.dp)),
+            ) {
+                Box(
+                    Modifier
+                        .size(40.dp)
+                        .onKeyEvent { ev ->
+                            if ((ev.key == Key.DirectionCenter || ev.key == Key.Enter) && ev.type == KeyEventType.KeyUp) {
+                                parkingTapAction(); true
+                            } else {
+                                false
+                            }
+                        }
+                        .focusable()
+                        .pointerInput(parkingSet, state.parkingHistory.size) {
+                            detectTapGestures(
+                                onTap = { parkingTapAction() },
+                                onLongPress = {
+                                    if (state.parkingHistory.isNotEmpty()) showParkingHistory = true
+                                },
+                            )
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.LocalParking,
+                        contentDescription = stringResource(
+                            if (parkingSet) R.string.map_parked_car else R.string.map_parking_save,
+                        ),
+                    )
+                    // The parking hub, anchored to the button. Only reachable when a spot is set.
+                    app.vela.ui.VelaMenu(expanded = showParkingMenu, onDismissRequest = { showParkingMenu = false }) {
+                        item(stringResource(R.string.map_parking_find)) { showParkingMenu = false; vm.showParkedCar(parkedCarLabel) }
+                        // "Move parking here" overwrites the current spot with your live fix; the old
+                        // one is not lost - saveParkingSpot archives it to history. Hidden with no fix.
+                        if (state.myLocation != null) {
+                            item(stringResource(R.string.map_parking_move_here)) {
+                                showParkingMenu = false
+                                val msg = if (vm.saveParkingSpot()) parkingMovedMsg else parkingNoFixMsg
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        if (state.parkingHistory.size > 1) {
+                            item(stringResource(R.string.map_parking_earlier)) { showParkingMenu = false; showParkingHistory = true }
+                        }
+                        item(stringResource(R.string.map_parking_clear)) {
+                            showParkingMenu = false
+                            vm.clearParkingSpot()
+                            Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+            if (showParkingHistory) {
+                ParkingHistorySheet(
+                    history = state.parkingHistory,
+                    currentAtMillis = state.parkedAtMillis,
+                    onRestore = { vm.restoreParkingFromHistory(it); showParkingHistory = false },
+                    onDelete = { vm.deleteParkingHistoryEntry(it) },
+                    onClearAll = { vm.clearParkingHistory(); showParkingHistory = false },
+                    onDismiss = { showParkingHistory = false },
+                )
             }
             // (The live-traffic overlay toggle lives in Settings → Map - it's a
             // niche browse-only layer, and nav shows per-segment route traffic,
@@ -2402,6 +2507,93 @@ private fun SpeedLimitSign(
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Text("$limit", color = numberColor, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+
+/** The parking history: every recent save (newest first), so an accidental overwrite is one tap
+ *  from recovery. A raw Dialog (BACK exits); rows restore, the trash deletes, Clear all wipes.
+ *  D-pad: opens focused on Clear all (rule: no surface opens unfocused), rows wear the ring. */
+@Composable
+private fun ParkingHistorySheet(
+    history: List<app.vela.core.model.ParkedSpot>,
+    currentAtMillis: Long,
+    onRestore: (app.vela.core.model.ParkedSpot) -> Unit,
+    onDelete: (app.vela.core.model.ParkedSpot) -> Unit,
+    onClearAll: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface) {
+            Column(Modifier.padding(vertical = 16.dp).widthIn(max = 420.dp)) {
+                Row(
+                    Modifier.fillMaxWidth().padding(start = 20.dp, end = 12.dp, bottom = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.parking_history_title),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    val autoFocus = rememberDpadAutoFocus(history.size)
+                    TextButton(
+                        onClick = onClearAll,
+                        modifier = Modifier.focusRequester(autoFocus).dpadHighlight(RoundedCornerShape(20.dp)),
+                    ) { Text(stringResource(R.string.parking_history_clear_all)) }
+                }
+                LazyColumn(Modifier.heightIn(max = 360.dp)) {
+                    items(history, key = { it.savedAtMillis }) { entry ->
+                        val isCurrent = entry.savedAtMillis == currentAtMillis
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .dpadHighlight(RoundedCornerShape(8.dp))
+                                .clickable { onRestore(entry) }
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Default.LocalParking,
+                                contentDescription = null,
+                                tint = if (isCurrent) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(20.dp),
+                            )
+                            Spacer(Modifier.width(14.dp))
+                            Column(Modifier.weight(1f)) {
+                                // DateUtils = localized relative age ("5 min ago" / "2 hours ago"),
+                                // no hand-rolled English.
+                                Text(
+                                    android.text.format.DateUtils.getRelativeTimeSpanString(
+                                        entry.savedAtMillis, System.currentTimeMillis(),
+                                        android.text.format.DateUtils.MINUTE_IN_MILLIS,
+                                    ).toString(),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                                )
+                                Text(
+                                    java.text.SimpleDateFormat("MMM d, h:mm a", java.util.Locale.getDefault())
+                                        .format(java.util.Date(entry.savedAtMillis)),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            if (isCurrent) {
+                                Text(
+                                    stringResource(R.string.parking_history_current),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            } else {
+                                IconButton(onClick = { onDelete(entry) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.parking_history_delete), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
