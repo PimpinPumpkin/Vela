@@ -404,6 +404,7 @@
     <string name="mapvm_none_found_along_route">沿途未找到“%1$s”</string> <!-- format -->
     <string name="mapvm_search_failed">搜索失败</string>
     <string name="mapvm_dropped_pin">已放置的图钉</string>
+    <string name="mapvm_stop_added">已添加途经点</string>
     <string name="mapvm_no_mode_route_found">未找到%1$s路线</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">路线需要重新校准：%1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">路线规划失败：%1$s</string> <!-- format -->
