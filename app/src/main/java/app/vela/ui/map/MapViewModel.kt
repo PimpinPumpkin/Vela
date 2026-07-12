@@ -149,6 +149,11 @@ data class MapUiState(
     // A transit stop's live departure board (keyless, from the station's own place page).
     val stopDepartures: app.vela.core.model.StopDepartures? = null,
     val stopDeparturesLoading: Boolean = false,
+    // Route detail (tap a route on the board -> its stop timeline with times, tap-through to stops).
+    // Reuses a ride leg from a transit itinerary (its board/intermediate/alight stops carry the times).
+    val routeDetail: TransitStep? = null,
+    val routeDetailTitle: String? = null,
+    val routeDetailLoading: Boolean = false,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
@@ -1287,6 +1292,83 @@ class MapViewModel @Inject constructor(
             }
         }
     }
+
+    /** Tap a route on the departure board -> show its stop timeline with times (issue #71 follow-up).
+     *  Reuses the PROVEN transit-itinerary parser: a directions query from this stop toward the route's
+     *  destination returns a ride leg whose board/intermediate/alight stops already carry per-stop times.
+     *  No new keyless scraping. Needs the line's headsign (its destination) to aim the query. */
+    fun openRouteDetail(line: app.vela.core.model.StopDepartureLine) {
+        val origin = _state.value.selected?.location ?: return
+        val dest = line.headsign?.takeIf { it.isNotBlank() } ?: run {
+            flashStatus(appContext.getString(R.string.route_detail_unavailable)); return
+        }
+        val title = listOfNotNull(line.label, dest).joinToString(" · ")
+        _state.update { it.copy(routeDetailLoading = true, routeDetailTitle = title, routeDetail = null) }
+        routeDetailJob?.cancel()
+        routeDetailJob = viewModelScope.launch {
+            // Aim at the route's destination (geocode the headsign near the stop), then ride transit there.
+            // A bare headsign is often ambiguous ("Richmond" is a city district AND a far-off city), so
+            // prefer a candidate that is itself a transit place (station/airport/terminal) and, among
+            // those, the one nearest the tapped stop - a sanity filter that rejects a same-named place
+            // across the country. (The RIDE-LEG match below is what actually pins the tapped line.)
+            val cands = runCatching { dataSource.search(dest, origin).places }.getOrDefault(emptyList())
+            val transitish = cands.filter { it.category?.let { c ->
+                listOf("station", "transit", "stop", "airport", "terminal", "bart", "metro", "rail")
+                    .any { k -> c.contains(k, ignoreCase = true) }
+            } == true }
+            val destLoc = (transitish.minByOrNull { it.location.distanceTo(origin) }
+                ?: cands.minByOrNull { it.location.distanceTo(origin) })?.location
+            if (destLoc == null) {
+                _state.update { it.copy(routeDetailLoading = false) }
+                flashStatus(appContext.getString(R.string.route_detail_unavailable)); return@launch
+            }
+            val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
+            val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
+            // Pick the leg the user actually tapped. Rank by the tapped LINE first (a short board label
+            // like "N" matches a longer itinerary name "N-Judah"), then by how close its board stop is to
+            // the tapped stop - so a same-line leg heading the OTHER way (boarding far off) loses to the
+            // one boarding here. Falls back to whatever leg boards at this stop, then the first ride.
+            val boardDist = { s: TransitStep -> s.boardStop?.location?.distanceTo(origin) ?: Double.MAX_VALUE }
+            val step = rides.filter { lineLabelMatches(line.label, it.line?.name) }.minByOrNull { boardDist(it) }
+                ?: rides.filter { boardDist(it) <= 500.0 }.minByOrNull { boardDist(it) }
+                ?: rides.firstOrNull()
+            android.util.Log.d("VelaRouteDetail", "'$dest' rides=${rides.size} -> ${step?.line?.name} (${step?.intermediateStops?.size} stops)")
+            _state.update {
+                if (step == null) { flashStatus(appContext.getString(R.string.route_detail_unavailable)); it.copy(routeDetailLoading = false) }
+                else it.copy(routeDetail = step, routeDetailLoading = false)
+            }
+        }
+    }
+
+    /** Does a departure-board line label (a short route code, "N" / "42") match an itinerary line name
+     *  (which may be longer, "N-Judah")? Exact, or the label is the FIRST token of the name, so a "1"
+     *  label doesn't spuriously match a "10" line. */
+    private fun lineLabelMatches(label: String?, name: String?): Boolean {
+        if (label.isNullOrBlank() || name.isNullOrBlank()) return false
+        if (name.equals(label, ignoreCase = true)) return true
+        return name.trim().split(Regex("[\\s\\-/]")).firstOrNull()?.equals(label, ignoreCase = true) == true
+    }
+
+    fun closeRouteDetail() {
+        // Cancel the in-flight lookup too: without this, dismissing the sheet (Back) mid-load lets the
+        // fetch complete and set routeDetail = step, springing the full-screen sheet back open over
+        // whatever the user moved on to (or flashing "unavailable" after they already left).
+        routeDetailJob?.cancel()
+        _state.update { it.copy(routeDetail = null, routeDetailLoading = false, routeDetailTitle = null) }
+    }
+
+    /** Tap a stop in the route timeline -> open THAT stop (its own departure board), so you can keep
+     *  tapping through the network. Closes the route detail and selects the stop as a place. */
+    fun openRouteStop(stop: app.vela.core.model.TransitStopTime) {
+        val loc = stop.location ?: return
+        closeRouteDetail()
+        // The stop carries a precise coordinate from the itinerary, so onPoiTap's nearest-to-location
+        // resolve lands on the stop itself and its board fetch (fetchStopDepartures) fires - the
+        // tap-through then keeps going from the new stop's own board.
+        onPoiTap(stop.name, loc)
+    }
+
+    private var routeDetailJob: kotlinx.coroutines.Job? = null
 
     /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
      *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
