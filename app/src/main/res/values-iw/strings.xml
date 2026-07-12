@@ -247,6 +247,9 @@
     <string name="place_from_the_owner">מהבעלים</string>
     <string name="place_share_place">שתף מקום</string>
     <string name="place_share">שתף</string>
+    <string name="place_open_web">פתיחה באינטרנט</string>
+    <string name="place_copy_link">העתקת קישור</string>
+    <string name="place_link_copied">הקישור הועתק</string>
     <string name="place_share_gmaps_link">קישור Google Maps</string>
     <string name="place_share_map_pin">סימון מפה (geo:)</string>
     <string name="place_share_coordinates">קואורדינטות</string>
