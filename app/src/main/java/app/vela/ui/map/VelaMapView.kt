@@ -396,12 +396,25 @@ fun VelaMapView(
         // (theme flip mid-effect), and a dead style throws on ANY access, not just mutation.
         runCatching { style.layers.filter { it.id.startsWith("vela-ovl-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-ovl-src-") }.forEach { style.removeSource(it) } }
-        // MUST equal the OSM `building` fill/outline in applyDark/applyLight, or the
-        // Microsoft-only footprints read as a second building colour beside the OSM
-        // ones (the "some buildings are still grey" report after the pixel-sampled
-        // palette landed - this pair was left on the old greys, user 2026-07-11).
-        val fill = if (darkTheme) "#1c3b69" else "#e2e3e9"
-        val line = if (darkTheme) "#2e3d6d" else "#c4c9d1"
+        // MUST equal the OSM `building` fill/outline in applyDark/applyLight AND
+        // applyClassicDark/applyClassicLight, or the Microsoft-only footprints read as a second
+        // building colour beside the OSM ones. This pair is keyed on darkTheme but ALSO has to honour
+        // the Modern/Classic palette: it was hardcoded to Modern, so switching to Classic left the
+        // overlay houses Google-navy while the OSM ones went grey ("houses still bluish in classic",
+        // user 2026-07-12). MapColors.current() feeds the styleKey, so a palette switch reloads the
+        // style and re-runs this effect; reading classic() here picks up the new palette.
+        val classic = app.vela.ui.MapColors.classic()
+        val fill = when {
+            classic && darkTheme -> "#383d45" // == applyClassicDark building
+            classic -> "#dde1e7"              // == applyClassicLight building
+            darkTheme -> "#1c3b69"            // == applyDark building
+            else -> "#e2e3e9"                 // == applyLight building
+        }
+        val line = when {
+            classic && darkTheme -> "#464c56"
+            darkTheme -> "#2e3d6d"
+            else -> "#c4c9d1" // classic-light + modern-light share this outline
+        }
         val below = runCatching { style.getLayer("building")?.id }.getOrNull() // beneath OSM buildings so they win wherever OSM has them
         buildingOverlays.forEachIndexed { i, uri ->
             runCatching {
