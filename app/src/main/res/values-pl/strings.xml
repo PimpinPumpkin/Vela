@@ -248,6 +248,7 @@
     <string name="place_from_the_owner">Od właściciela</string>
     <string name="place_share_place">Udostępnij miejsce</string>
     <string name="place_share">Udostępnij</string>
+    <string name="place_open_web">Otwórz w internecie</string>
     <string name="place_share_gmaps_link">Link Google Maps</string>
     <string name="place_share_map_pin">Pinezka mapy (geo:)</string>
     <string name="place_share_coordinates">Współrzędne</string>
