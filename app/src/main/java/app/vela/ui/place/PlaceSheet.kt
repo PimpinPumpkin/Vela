@@ -924,7 +924,7 @@ fun PlaceSheet(
             // not listed" (issue #71). Suppress that line whenever a board is loading/present or the
             // category reads like a stop, so a stop never shows the misleading hours placeholder.
             val isTransitStop = stopDepartures != null || stopDeparturesLoading || place.category?.lowercase()?.let { c ->
-                listOf("station", "stop", "transit", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
+                listOf("station", "stop", "transit", "transport", "hub", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
             } == true
             if (place.hours.isNotEmpty()) {
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
