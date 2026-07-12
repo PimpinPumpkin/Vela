@@ -46,7 +46,7 @@ class WhisperRecognizer @Inject constructor(
     @Volatile private var loadedLang: String? = null
 
     private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }
-    private var focusRequest: AudioFocusRequest? = null
+    @Volatile private var focusRequest: AudioFocusRequest? = null
 
     /** Take TRANSIENT audio focus so whatever is playing (music, a podcast) pauses while we listen,
      *  the way a phone assistant does - `AUDIOFOCUS_GAIN_TRANSIENT` (not `_MAY_DUCK`) makes media
@@ -212,9 +212,11 @@ class WhisperRecognizer @Inject constructor(
         } catch (t: Throwable) {
             return@withContext null
         } finally {
-            runCatching { audio.stop() }
-            audio.release()
+            // Abandon focus FIRST so the music resumes even if a later call throws; every step is
+            // guarded so one failure can't skip the rest and leave playback paused forever.
             abandonAudioFocus() // let the music resume
+            runCatching { audio.stop() }
+            runCatching { audio.release() }
         }
 
         // Prefer the VAD-trimmed segment (leading/trailing silence stripped → cleaner transcript);
