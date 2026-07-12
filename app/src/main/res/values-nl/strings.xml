@@ -134,6 +134,7 @@
     <string name="settings_support_button">Vela steunen</string>
     <string name="settings_version">Versie</string>
     <string name="settings_version_line">Vela %1$s  (build %2$d)</string>
+    <string name="settings_version_copied">Versie gekopieerd</string>
     <string name="settings_collapse">Inklappen</string>
     <string name="settings_expand">Uitklappen</string>
     <string name="settings_voice_lib_empty_hint">★ markeert de aanbevolen stemmen. Elke stem werkt offline op je telefoon.</string>
@@ -533,6 +534,10 @@
     <string name="notif_ask_skip">Overslaan</string>
     <string name="place_time_past_toast">Die tijd is al geweest. Ingesteld op nu.</string>
     <string name="settings_ui_scale">Interfacegrootte</string>
+    <string name="settings_map_colors">Kaartkleuren</string>
+    <string name="settings_map_colors_modern">Modern</string>
+    <string name="settings_map_colors_classic">Klassiek</string>
+    <string name="settings_map_colors_hint">Modern volgt het huidige palet van Google Maps. Klassiek is de eerdere look van Vela: witte wegen, gele snelwegen, echte groentinten.</string>
     <string name="place_avoid_tolls">Tolwegen vermijden</string>
     <string name="place_avoid_highways">Snelwegen vermijden</string>
 </resources>
