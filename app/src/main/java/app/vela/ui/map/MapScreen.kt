@@ -311,6 +311,13 @@ fun MapScreen(
     LaunchedEffect(state.selected?.id) { if (state.selected == null) placeSheetExpanded = false }
     LaunchedEffect(state.results) { filteredResultIds = null }
     val resultsShown = state.results.isNotEmpty() && state.selected == null && !searchOpen && !state.resultsCollapsed
+    // Free-drive follow (Google's "the map tracks you as you drive, no route needed"). On by
+    // default so an open, unobstructed map glides to your fix; a user pan drops it and the locate
+    // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
+    // directions, the results list) so it never fights that framing. Nav has its own follow.
+    var followMe by remember { mutableStateOf(true) }
+    val driveFollowing = followMe && !state.navigating && !resultsShown && state.selected == null &&
+        !state.directionsOpen && !state.showSteps && !searchOpen && state.pickOnMap == null
     // Bumped when the user grabs the map with a sheet open — each sheet glides down to its
     // minimized form on its bump (see onUserPan below).
     var sheetPanTick by remember { mutableStateOf(0) }
@@ -565,6 +572,7 @@ fun MapScreen(
     // it (no rationale screen needed, the tap IS the intent). Granted → normal recenter.
     val onRecenter: () -> Unit = {
         if (hasLocation()) {
+            followMe = true // re-arm free-drive follow: the locate tap means "track me again"
             vm.recenter()
         } else {
             permLauncher.launch(
@@ -711,7 +719,11 @@ fun MapScreen(
             // Grabbing the map with a sheet up drops it down out of the way so the map is yours
             // to look at (Google does the same): the results sheet to its bar, the place sheet to
             // its minimized card. The bar / a drag brings them back.
+            driveFollowing = driveFollowing,
             onUserPan = {
+                // Grabbing the map is an explicit "let me look around" - stop tracking until the
+                // locate tap re-arms it (Google drops follow the moment you pan).
+                followMe = false
                 // Bump ticks, don't flip state here: each sheet GLIDES down first and only then
                 // flips its collapsed state, so the bar/card swap happens invisibly (flipping
                 // straight away unmounted the content mid-drop — the "pops down" report).
