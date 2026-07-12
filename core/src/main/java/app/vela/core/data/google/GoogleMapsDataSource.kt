@@ -526,12 +526,22 @@ class GoogleMapsDataSource @Inject constructor(
      * (AppLocale sets it) or the system locale. **No-op for English → English users are
      * byte-for-byte unchanged.** */
     private fun String.localized(): String {
-        val lang = java.util.Locale.getDefault().language.lowercase()
+        val locale = java.util.Locale.getDefault()
+        val lang = locale.language.lowercase()
         // Only rewrite to a language the STATUS parser can read (SearchParser.STATUS_LANGS). For any
         // other locale, keep hl=en: an unparseable status string leaves openNow null forever and the
         // UI can't colour open/closed - English status text the English table handles is the safer
         // fallback than localized-but-unparseable (audit 2026-07-06).
-        return if (lang == "en" || lang !in SearchParser.STATUS_LANGS) this else replace("hl=en", "hl=$lang")
+        if (lang == "en" || lang !in SearchParser.STATUS_LANGS) return this
+        // Chinese needs the SCRIPT in the hl tag: hl=zh-TW answers Traditional, hl=zh-CN Simplified
+        // (bare hl=zh is treated as Simplified). parseOpenNow keys on the bare "zh" either way -
+        // its keyword table carries both scripts.
+        val hl = if (lang == "zh") {
+            val hant = locale.script.equals("Hant", ignoreCase = true) ||
+                locale.country.uppercase() in setOf("TW", "HK", "MO")
+            if (hant) "zh-TW" else "zh-CN"
+        } else lang
+        return replace("hl=en", "hl=$hl")
     }
 
     private companion object {

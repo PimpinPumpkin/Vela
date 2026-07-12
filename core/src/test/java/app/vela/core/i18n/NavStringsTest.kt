@@ -39,7 +39,7 @@ class NavStringsTest {
     @Test fun `registry defaults to english and switches by language`() {
         assertEquals(EnNavStrings, NavStringsRegistry.current()) // default, locale-independent
         assertEquals(FrNavStrings, NavStringsRegistry.forLanguage("fr"))
-        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("ja")) // untranslated → English fallback
+        assertEquals(EnNavStrings, NavStringsRegistry.forLanguage("th")) // untranslated → English fallback
         NavStringsRegistry.setLocale(Locale.FRANCE)
         assertEquals(FrNavStrings, NavStringsRegistry.current())
         NavStringsRegistry.setLocale(Locale.US) // reset so other tests see English
@@ -120,8 +120,25 @@ class NavStringsTest {
         assertEquals("Turn right onto Main Street", EnNavStrings.expandForSpeech("Turn right onto Main St"))
     }
 
+    @Test fun `chinese and japanese phrases plus the zh script split in the registry`() {
+        assertEquals(ZhNavStrings, NavStringsRegistry.forLanguage("zh"))
+        assertEquals(ZhTwNavStrings, NavStringsRegistry.forLanguage("zh-TW"))
+        assertEquals(JaNavStrings, NavStringsRegistry.forLanguage("ja"))
+        assertEquals("zh", NavStringsRegistry.tagOf(Locale.SIMPLIFIED_CHINESE))
+        assertEquals("zh-tw", NavStringsRegistry.tagOf(Locale.TAIWAN))
+        assertEquals("zh-tw", NavStringsRegistry.tagOf(Locale.forLanguageTag("zh-Hant")))
+        assertEquals("向左转，进入中山路", ZhNavStrings.phrase("turn", "left", "中山路", null, null, null))
+        assertEquals("迴轉，進入中山路", ZhTwNavStrings.phrase("uturn", null, "中山路", null, null, null))
+        assertEquals("左に曲がります、本町通り に入ります", JaNavStrings.phrase("turn", "left", "本町通り", null, null, null))
+        assertEquals("150 米", ZhNavStrings.spokenDistance(150.0, false))
+        assertEquals("150 公尺", ZhTwNavStrings.spokenDistance(150.0, false))
+        assertEquals("150 メートル", JaNavStrings.spokenDistance(150.0, false))
+        assertEquals("500 米后，向右转", ZhNavStrings.inThen("500 米", "向右转"))
+        assertEquals("500 メートル先、右に曲がります", JaNavStrings.inThen("500 メートル", "右に曲がります"))
+    }
+
     @Test fun `every registered language produces non-blank nav strings and keeps road names`() {
-        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk")
+        val langs = listOf("fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "he")
         for (code in langs) {
             val ns = NavStringsRegistry.forLanguage(code)
             assertEquals("$code should map to its own NavStrings", code, ns.locale.language)
@@ -156,7 +173,9 @@ class NavStringsTest {
             "en" to ("left" to "right"), "fr" to ("gauche" to "droite"), "de" to ("links" to "rechts"),
             "es" to ("izquierda" to "derecha"), "it" to ("sinistra" to "destra"), "pt" to ("esquerda" to "direita"),
             "nl" to ("links" to "rechts"), "ru" to ("лев" to "прав"), "pl" to ("lew" to "praw"),
-            "sv" to ("vänster" to "höger"), "uk" to ("лів" to "прав"),
+            // Hebrew directional adverbs; the noun "ימין" ends in a FINAL nun (ן), which is NOT a
+            // substring of the emitted "ימינה" (medial נ) - so match the emitted forms themselves.
+            "sv" to ("vänster" to "höger"), "uk" to ("лів" to "прав"), "he" to ("שמאלה" to "ימינה"),
         )
         for ((code, words) in sideWords) {
             val ns = NavStringsRegistry.forLanguage(code)
