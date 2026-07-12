@@ -35,6 +35,15 @@ Last updated: 2026-07-08.
   validate the arm64 `.so` load on a 16 KB-page GrapheneOS device; revisit on-demand delivery (dynamic
   feature) to shrink the base APK. *(Nav-string localization + per-language voice pairing SHIPPED - see
   the localization entry / `FEATURES.md`.)*
+- **Japanese spoken voice - system-TTS today, Kokoro maybe later.** Piper/espeak-ng has no Japanese
+  phonemizer, so there is no bundled Vela Japanese voice (unlike Chinese, which got the Huayan Piper
+  voice). Japanese turn-by-turn is spoken by the phone's own system TTS (Google's Japanese voice is
+  good), and the missing-voice pill now deep-links system voice settings so users can add one. A
+  fully-**offline** Japanese neural voice would mean bundling **Kokoro** int8 multi-lang (~126 MB, also
+  covers Chinese), which needs the multi-file sherpa Kokoro plumbing restored (it was deleted when
+  Kokoro/Matcha were removed) and an on-device speed re-check first - Kokoro was ~0.4× realtime on a
+  Pixel 9, though short nav lines may be acceptable. Deferred pending appetite for the size + a device
+  speed test.
 - **Voice browser - DONE 2026-07-03, device-verified.** Settings → Voice → **Voice library** downloads and
   switches between ~40 curated Piper voices (Lessac, HFC Female/Male, Ryan, LibriTTS-R, GB voices, a GLaDOS
   novelty…), each in its own `filesDir/piper/<id>/`; per-voice speaker prefs; race-free switch; in-place
