@@ -1809,6 +1809,14 @@ architecture note.
   end. The auto-advance is **latched** (`maybeAdvanceTransitNav`, `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`):
   a leg only advances once it's been ARMED by being >ARM_M from its end, so a transfer hub can't cascade
   through legs and a short final walk can't fire a premature arrival.
+  **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
+  tick) and each `TransitRow` shows a leading "Departing"/"in N min" from `departureEpochSec`
+  (`departsInLabel`, hidden when >90 min out or already gone); the countdown reads GREEN with a
+  "Live" dot when any leg carries real-time (`delayText` or a `boardStop.scheduledText` differing
+  from the timetable), and the boarding leg's "N min late/early" is surfaced in the header. Pure
+  render off already-parsed fields, no extra fetch. `delayText` is English-computed in `:core` (as
+  in the drill-down); the countdown wrapper strings ARE localized (`place_transit_now`/`_in_min`/
+  `_live`, invariable "min" abbreviation per locale like `place_delta_min`).
 
 ## Name
 
