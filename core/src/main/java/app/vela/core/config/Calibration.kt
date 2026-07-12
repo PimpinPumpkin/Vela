@@ -54,6 +54,10 @@ data class Calibration(
     // and a fresh install activates. Remote-pushable via the signed bundle so a favourite voice can be
     // made everyone's default without an app release; a user's own pick (voice_model) always wins.
     val defaultVoiceId: String = DEFAULT_VOICE_ID,
+    // The fleet default map colour set ("modern" = the Google-sampled palette, "classic" = the
+    // archived pre-sample look; the app ships both compiled). Remote-pushable so the default can
+    // flip without an app release; a user's explicit pick (map_palette pref) always wins.
+    val defaultMapPalette: String = "modern",
 ) {
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
