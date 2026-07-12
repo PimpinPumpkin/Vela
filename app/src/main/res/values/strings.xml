@@ -409,8 +409,12 @@
     <string name="mapvm_trip_default_name">Trip</string>
     <string name="mapvm_no_voice_engine">No voice installed for spoken directions</string>
     <string name="mapscreen_get_voice">Get a voice</string>
+    <string name="mapscreen_system_voices">System voices</string>
     <string name="settings_spoken_directions">Spoken directions</string>
     <string name="mapvm_voice_lang_missing">Spoken directions need a %1$s voice. Get one in Settings → Voice</string>
+    <!-- Shown when the language has no bundled Vela voice (e.g. Japanese) AND the phone has no
+         system voice for it either, so we point at the phone's own voice settings instead. -->
+    <string name="mapvm_voice_lang_system">%1$s directions use your phone\'s voice. Add one in your system voice settings.</string>
     <string name="mapvm_resume_waiting_gps">Waiting for GPS to resume navigation…</string>
     <string name="mapvm_resume_failed">Couldn\'t resume navigation</string>
     <string name="mapvm_no_track_to_replay">That trip has no track to replay</string>
