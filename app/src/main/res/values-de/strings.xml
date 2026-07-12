@@ -429,4 +429,25 @@
     <string name="mapvm_voice_lang_system">Ansagen auf %1$s nutzen die Stimme Ihres Telefons. Fügen Sie eine in den System-Sprachausgabe-Einstellungen hinzu.</string>
     <string name="mapscreen_get_voice">Stimme holen</string>
     <string name="mapscreen_system_voices">Systemstimmen</string>
+    <string name="settings_search">Suche</string>
+    <string name="settings_voice_search_toggle">Mikrofon für Sprachsuche</string>
+    <string name="settings_voice_search_hint">Zeigt ein Mikrofon in der Suchleiste, um die Suche zu sprechen.</string>
+    <string name="search_voice_cd">Sprachsuche</string>
+    <string name="search_voice_prompt">Zum Suchen sprechen</string>
+    <string name="voice_capture_listening">Höre zu…</string>
+    <string name="voice_capture_starting">Wird vorbereitet…</string>
+    <string name="voice_capture_done">Fertig</string>
+    <string name="mapvm_asr_ready">Die Vela-Stimme ist bereit</string>
+    <string name="mapvm_asr_download_failed">Sprachmodell konnte nicht geladen werden. Prüfe deine Verbindung und versuche es erneut.</string>
+    <string name="settings_voice_search_model">Vela-Stimme</string>
+    <string name="settings_voice_search_model_hint">Die Vela-Stimme macht aus Sprache direkt auf deinem Gerät eine Suche: keine andere App nötig, nichts wird hochgeladen. Einmaliger Download von %1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Herunterladen (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Entfernen</string>
+    <string name="settings_voice_search_downloading">Wird geladen… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Wird installiert…</string>
+    <string name="settings_voice_search_engine_title">Beim Tippen auf das Mikrofon</string>
+    <string name="settings_voice_search_engine_auto">Vela-Stimme</string>
+    <string name="settings_voice_search_engine_default">Android-Standard</string>
+    <string name="map_asr_offer_title">Sprachsuche</string>
+    <string name="map_asr_offer_body">Lade die Vela-Stimme herunter, um Suchen zu sprechen. Sie läuft komplett auf deinem Gerät und lädt nichts hoch.</string>
 </resources>

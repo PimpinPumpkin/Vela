@@ -431,4 +431,25 @@
     <string name="mapvm_voice_lang_system">Вказівки для мови %1$s використовують голос телефону. Додайте його в системних налаштуваннях голосу.</string>
     <string name="mapscreen_get_voice">Додати голос</string>
     <string name="mapscreen_system_voices">Системні голоси</string>
+    <string name="settings_search">Пошук</string>
+    <string name="settings_voice_search_toggle">Мікрофон голосового пошуку</string>
+    <string name="settings_voice_search_hint">Показує мікрофон у рядку пошуку, щоб диктувати запит.</string>
+    <string name="search_voice_cd">Голосовий пошук</string>
+    <string name="search_voice_prompt">Говоріть, щоб шукати</string>
+    <string name="voice_capture_listening">Слухаю…</string>
+    <string name="voice_capture_starting">Підготовка…</string>
+    <string name="voice_capture_done">Готово</string>
+    <string name="mapvm_asr_ready">Голос Vela готовий</string>
+    <string name="mapvm_asr_download_failed">Не вдалося завантажити голосову модель. Перевірте з\'єднання та повторіть спробу.</string>
+    <string name="settings_voice_search_model">Голос Vela</string>
+    <string name="settings_voice_search_model_hint">Голос Vela перетворює мовлення на пошук просто на телефоні: без інших застосунків і без надсилання даних. Одноразове завантаження %1$d МБ.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Завантажити (%1$d МБ)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Видалити</string>
+    <string name="settings_voice_search_downloading">Завантаження… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Встановлення…</string>
+    <string name="settings_voice_search_engine_title">Коли торкаєтеся мікрофона</string>
+    <string name="settings_voice_search_engine_auto">Голос Vela</string>
+    <string name="settings_voice_search_engine_default">Типова в Android</string>
+    <string name="map_asr_offer_title">Голосовий пошук</string>
+    <string name="map_asr_offer_body">Завантажте голос Vela, щоб диктувати запити. Він працює цілком на телефоні й нічого не надсилає.</string>
 </resources>

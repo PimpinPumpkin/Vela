@@ -429,4 +429,25 @@
     <string name="mapvm_voice_lang_system">Las indicaciones en %1$s usan la voz de tu teléfono. Añade una en los ajustes de voz del sistema.</string>
     <string name="mapscreen_get_voice">Añadir una voz</string>
     <string name="mapscreen_system_voices">Voces del sistema</string>
+    <string name="settings_search">Búsqueda</string>
+    <string name="settings_voice_search_toggle">Micrófono de búsqueda por voz</string>
+    <string name="settings_voice_search_hint">Muestra un micrófono en la barra de búsqueda para dictar la búsqueda.</string>
+    <string name="search_voice_cd">Búsqueda por voz</string>
+    <string name="search_voice_prompt">Habla para buscar</string>
+    <string name="voice_capture_listening">Escuchando…</string>
+    <string name="voice_capture_starting">Preparando…</string>
+    <string name="voice_capture_done">Listo</string>
+    <string name="mapvm_asr_ready">La voz de Vela está lista</string>
+    <string name="mapvm_asr_download_failed">No se pudo descargar el modelo de voz. Revisa tu conexión e inténtalo de nuevo.</string>
+    <string name="settings_voice_search_model">Voz de Vela</string>
+    <string name="settings_voice_search_model_hint">La voz de Vela convierte tu voz en una búsqueda directamente en el teléfono: sin otra app y sin subir nada. Descarga única de %1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Descargar (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Quitar</string>
+    <string name="settings_voice_search_downloading">Descargando… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">Instalando…</string>
+    <string name="settings_voice_search_engine_title">Al tocar el micrófono</string>
+    <string name="settings_voice_search_engine_auto">Voz de Vela</string>
+    <string name="settings_voice_search_engine_default">Predeterminada de Android</string>
+    <string name="map_asr_offer_title">Búsqueda por voz</string>
+    <string name="map_asr_offer_body">Descarga la voz de Vela para dictar tus búsquedas. Funciona por completo en tu teléfono y no sube nada.</string>
 </resources>

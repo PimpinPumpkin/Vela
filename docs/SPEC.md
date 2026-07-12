@@ -368,6 +368,10 @@ handed - no filesystem, network, or device access.
   - Plus a bundled **in-process neural voice** (sherpa-onnx runtime + a downloaded Piper model, `PiperSynth` behind the `:core` `NeuralSynth` seam), default once a model is downloaded; system engines stay selectable.
   - Users browse/download/switch **multiple** Piper voices (`PiperCatalog` in `:core`; one per `filesDir/piper/<id>/`; selection in `voice_model`, per-voice speaker in `voice_speaker_<id>`; race-free `PiperSynth.reloadVoice`).
   - Model downloads use a no-`callTimeout` OkHttp client (the shared 12 s cap would abort a ~67–115 MB body).
+- **Voice search** (speak a query into the search bar). AOSP only, engine-selectable, degrades gracefully - the same posture as TTS. Two tiers (`ui/VoiceSearch` resolves which):
+  - **tier-1 on-device** (`voice/WhisperRecognizer` + `voice/AsrModel`): Whisper tiny int8 + Silero VAD run in-process through the bundled sherpa-onnx; records via `AudioRecord`, VAD trims the utterance, transcript pinned to the app language. Optional ~58 MB download (`asr-models` release; reuses `KokoroInstaller.download` + the no-timeout client). Nothing uploaded; needs `RECORD_AUDIO`, asked at the mic tap.
+  - **tier-2 provider**: a `RecognizerIntent.ACTION_RECOGNIZE_SPEECH` hand-off to an installed voice-input app (Vela records nothing). The Settings picker pins which app; else Android's default routes it.
+  - The mic (`ui/search/SearchBar`) shows only when the resolved mode isn't NONE (never a dead button); with nothing installed it offers the Vela Voice download. The listening sheet (`ui/VoiceCaptureDialog`) is a raw D-pad-focusable `Dialog`.
 - **Large downloads (voice models, routing graphs, building overlays) MUST use a derived `callTimeout(0)` OkHttp client, never the shared one.**
   - The shared client caps a *scrape* at 12 s; a big body read blows through that and the call aborts mid-stream - `runCatching` swallows it and the asset silently never installs.
   - `KokoroInstaller`, `RoutingGraphStore` and `OverlayTileStore` each derive `http.newBuilder().callTimeout(0).readTimeout(60s)` for the body; manifest fetches stay on the short client.

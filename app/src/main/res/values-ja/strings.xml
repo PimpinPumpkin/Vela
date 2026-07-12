@@ -437,4 +437,25 @@
     <string name="mapvm_voice_lang_system">%1$s のナビは端末の音声を使用します。システムの音声設定で追加できます。</string>
     <string name="mapscreen_get_voice">音声を入手</string>
     <string name="mapscreen_system_voices">システムの音声</string>
+    <string name="settings_search">検索</string>
+    <string name="settings_voice_search_toggle">音声検索マイク</string>
+    <string name="settings_voice_search_hint">検索バーにマイクを表示し、話して検索できるようにします。</string>
+    <string name="search_voice_cd">音声検索</string>
+    <string name="search_voice_prompt">話しかけて検索</string>
+    <string name="voice_capture_listening">聞き取っています…</string>
+    <string name="voice_capture_starting">準備しています…</string>
+    <string name="voice_capture_done">完了</string>
+    <string name="mapvm_asr_ready">Vela 音声の準備ができました</string>
+    <string name="mapvm_asr_download_failed">音声モデルをダウンロードできませんでした。接続を確認してもう一度お試しください。</string>
+    <string name="settings_voice_search_model">Vela 音声</string>
+    <string name="settings_voice_search_model_hint">Vela 音声は、話した言葉を端末上でそのまま検索に変えます。ほかのアプリは不要で、何もアップロードされません。初回のみ %1$d MB のダウンロードです。</string>  <!-- format -->
+    <string name="settings_voice_search_download">ダウンロード（%1$d MB）</string>  <!-- format -->
+    <string name="settings_voice_search_remove">削除</string>
+    <string name="settings_voice_search_downloading">ダウンロード中… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">インストールしています…</string>
+    <string name="settings_voice_search_engine_title">マイクをタップしたとき</string>
+    <string name="settings_voice_search_engine_auto">Vela 音声</string>
+    <string name="settings_voice_search_engine_default">Android のデフォルト</string>
+    <string name="map_asr_offer_title">音声検索</string>
+    <string name="map_asr_offer_body">Vela 音声をダウンロードすると、話して検索できるようになります。完全に端末上で動作し、何もアップロードしません。</string>
 </resources>

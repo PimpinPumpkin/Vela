@@ -85,11 +85,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -399,6 +401,119 @@ fun MapScreen(
         }
     }
 
+    // Voice search has TWO paths (see VoiceSearch): tier-1 records + transcribes on-device with Vela's
+    // own Whisper model (needs RECORD_AUDIO, asked at point of use); tier-2 hands off to an installed
+    // voice-input app via the RECOGNIZE_SPEECH intent (that app records, so no mic permission). Which
+    // runs is the engine pref, resolved against what's actually available; NONE hides the mic.
+    val voiceLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val heard = result.data
+                ?.getStringArrayListExtra(android.speech.RecognizerIntent.EXTRA_RESULTS)
+                ?.firstOrNull()
+                // Providers write prose too ("Okay."): strip the trailing sentence punctuation the
+                // same way the on-device path does, so no voice query searches with a period.
+                ?.trim()?.trimEnd('.', '!', '?', ',', ';', ':')?.trim()
+            if (!heard.isNullOrEmpty()) {
+                focusManager.clearFocus()
+                vm.onQueryChange(heard)
+                vm.search()
+            }
+        }
+    }
+    // Tier-1 capture state: the listening dialog, live loudness, an early-stop flag (Done) and an
+    // abort flag (Back/cancel -> don't apply the partial transcript).
+    val voiceScope = rememberCoroutineScope()
+    var voiceListening by remember { mutableStateOf(false) }
+    var voiceStarted by remember { mutableStateOf(false) }
+    var voiceLevel by remember { mutableStateOf(0f) }
+    var voiceStop by remember { mutableStateOf(false) }
+    var voiceAbort by remember { mutableStateOf(false) }
+    fun startLocalVoice() {
+        voiceStop = false; voiceAbort = false; voiceStarted = false; voiceLevel = 0f; voiceListening = true
+        voiceScope.launch {
+            val text = vm.voiceListen(
+                onLevel = { voiceLevel = it },
+                onListening = { voiceStarted = true },
+                cancelled = { voiceStop },
+            )
+            voiceListening = false
+            if (!voiceAbort && !text.isNullOrBlank()) {
+                focusManager.clearFocus()
+                vm.applyVoiceQuery(text)
+            }
+        }
+    }
+    val recordAudioLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted -> if (granted) startLocalVoice() }
+
+    val voiceProviderAvailable = remember { app.vela.ui.VoiceSearch.hasProvider(context) }
+    val voicePrompt = stringResource(R.string.search_voice_prompt)
+    // Reactive resolve (mirrors VoiceSearch.resolvedMode but keyed on vm state so the mic reflects a
+    // just-downloaded model without a relaunch): enabled/engine are mutableState, local rides state.
+    val micMode = when {
+        !app.vela.ui.VoiceSearch.enabled.value -> app.vela.ui.VoiceSearch.Mode.NONE
+        app.vela.ui.VoiceSearch.engine.value == app.vela.ui.VoiceSearch.Engine.LOCAL ->
+            if (state.asrInstalled) app.vela.ui.VoiceSearch.Mode.LOCAL else app.vela.ui.VoiceSearch.Mode.NONE
+        app.vela.ui.VoiceSearch.engine.value == app.vela.ui.VoiceSearch.Engine.SYSTEM ->
+            if (voiceProviderAvailable) app.vela.ui.VoiceSearch.Mode.SYSTEM else app.vela.ui.VoiceSearch.Mode.NONE
+        state.asrInstalled -> app.vela.ui.VoiceSearch.Mode.LOCAL       // Auto: on-device wins
+        voiceProviderAvailable -> app.vela.ui.VoiceSearch.Mode.SYSTEM
+        else -> app.vela.ui.VoiceSearch.Mode.NONE
+    }
+    // With nothing installed the mic still shows (when the toggle is on) and tapping it OFFERS the
+    // Vela voice download - a hidden mic made the whole feature undiscoverable on a fresh install.
+    var showAsrOffer by remember { mutableStateOf(false) }
+    val onMic: (() -> Unit)? = if (app.vela.ui.VoiceSearch.enabled.value) {
+        {
+            when (micMode) {
+                app.vela.ui.VoiceSearch.Mode.NONE -> showAsrOffer = true
+                app.vela.ui.VoiceSearch.Mode.SYSTEM -> {
+                    val intent = Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                        // Pin the voice app the user picked in Settings; with no pick, defer to
+                        // Android's own default app, and only pin the first installed one when
+                        // Android has no default either (else its chooser interrupts dictation).
+                        app.vela.ui.VoiceSearch.launchComponent(context)?.let { component = it }
+                        putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                        putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, app.vela.ui.AppLocale.effective().toLanguageTag())
+                        putExtra(android.speech.RecognizerIntent.EXTRA_PROMPT, voicePrompt)
+                    }
+                    // The resolver check can go stale (provider uninstalled since launch); catch so a
+                    // tap can never crash - it just does nothing.
+                    runCatching { voiceLauncher.launch(intent) }
+                }
+                app.vela.ui.VoiceSearch.Mode.LOCAL ->
+                    if (vm.voiceMicGranted()) startLocalVoice()
+                    else recordAudioLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+            }
+        }
+    } else {
+        null
+    }
+    if (showAsrOffer) {
+        app.vela.ui.VelaDialog(
+            onDismissRequest = { showAsrOffer = false },
+            title = stringResource(R.string.map_asr_offer_title),
+            confirmText = stringResource(R.string.settings_voice_search_download, app.vela.voice.AsrModel.SIZE_MB),
+            onConfirm = { showAsrOffer = false; vm.downloadAsrModel() },
+            dismissText = stringResource(R.string.root_not_now),
+            onDismiss = { showAsrOffer = false },
+            text = { Text(stringResource(R.string.map_asr_offer_body)) },
+        )
+    }
+    // Reflect whether the on-device model is present, so the mic + Settings update without a relaunch.
+    LaunchedEffect(Unit) { vm.refreshAsr() }
+    if (voiceListening) {
+        app.vela.ui.VoiceCaptureDialog(
+            level = voiceLevel,
+            listening = voiceStarted,
+            onDone = { voiceStop = true },                    // stop early, keep + search what was heard
+            onCancel = { voiceAbort = true; voiceStop = true }, // Back/outside: abort, don't apply
+        )
+    }
+
     Box(Modifier.fillMaxSize()) {
         VelaMapView(
             styleUri = mapStyleUri,
@@ -670,6 +785,7 @@ fun MapScreen(
                         onBack = if (searchOpen) ({ searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }) else null,
                         dpadMode = dpadMode,
                         offline = state.offline,
+                        onMic = onMic,
                     )
                     when {
                         // Show the entry page (Your location, Choose on map, Home/Work, saved, recents)

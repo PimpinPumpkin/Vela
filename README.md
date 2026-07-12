@@ -31,6 +31,9 @@ the model + screen size and resolution.
   device with **no touchscreen**. Touch is a bonus.
 - **Tiny screens.** Fits real feature-phone displays (240x320-class): the app checks its screen and
   scales its own density so nothing clips. Verified per-device with screenshots in [`tests/devices/`](tests/devices/).
+- **Voice search, on-device.** A mic in the search bar dictates a query. Vela Voice (Whisper, ~58 MB,
+  optional download) transcribes right on the phone - no account, no Google, nothing uploaded; or it
+  hands off to an installed voice-input app. The mic only shows when something can service it.
 - **Degoogled.** No Google Play Services, no account, no API key, no backend.
 - **NewPipe's model, for Google Maps.** Open vector tiles for the basemap; the phone scrapes
   Google's public web endpoints per-user for POIs, routing, and traffic-aware ETAs.

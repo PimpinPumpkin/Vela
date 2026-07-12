@@ -429,4 +429,25 @@
     <string name="mapvm_voice_lang_system">As indicações em %1$s usam a voz do telemóvel. Adicione uma nas definições de voz do sistema.</string>
     <string name="mapscreen_get_voice">Adicionar uma voz</string>
     <string name="mapscreen_system_voices">Vozes do sistema</string>
+    <string name="settings_search">Pesquisa</string>
+    <string name="settings_voice_search_toggle">Microfone de pesquisa por voz</string>
+    <string name="settings_voice_search_hint">Mostra um microfone na barra de pesquisa para ditar a pesquisa.</string>
+    <string name="search_voice_cd">Pesquisa por voz</string>
+    <string name="search_voice_prompt">Fale para pesquisar</string>
+    <string name="voice_capture_listening">A ouvir…</string>
+    <string name="voice_capture_starting">A preparar…</string>
+    <string name="voice_capture_done">Concluído</string>
+    <string name="mapvm_asr_ready">A voz Vela está pronta</string>
+    <string name="mapvm_asr_download_failed">Não foi possível transferir o modelo de voz. Verifica a ligação e tenta novamente.</string>
+    <string name="settings_voice_search_model">Voz Vela</string>
+    <string name="settings_voice_search_model_hint">A voz Vela transforma a fala numa pesquisa diretamente no telemóvel: sem outra app e sem enviar nada. Transferência única de %1$d MB.</string>  <!-- format -->
+    <string name="settings_voice_search_download">Transferir (%1$d MB)</string>  <!-- format -->
+    <string name="settings_voice_search_remove">Remover</string>
+    <string name="settings_voice_search_downloading">A transferir… %1$d%%</string>  <!-- format -->
+    <string name="settings_voice_search_installing">A instalar…</string>
+    <string name="settings_voice_search_engine_title">Ao tocar no microfone</string>
+    <string name="settings_voice_search_engine_auto">Voz Vela</string>
+    <string name="settings_voice_search_engine_default">Padrão do Android</string>
+    <string name="map_asr_offer_title">Pesquisa por voz</string>
+    <string name="map_asr_offer_body">Transfere a voz Vela para ditar as tuas pesquisas. Corre inteiramente no telemóvel e não envia nada.</string>
 </resources>
