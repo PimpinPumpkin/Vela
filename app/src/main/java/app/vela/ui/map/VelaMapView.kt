@@ -535,8 +535,18 @@ fun VelaMapView(
             if (cam != null && !scaling[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
-                    browseCam[0] = cp.target?.latitude ?: loc.lat
-                    browseCam[1] = cp.target?.longitude ?: loc.lng
+                    // First follow-engagement. If the camera is zoomed OUT past street level - a cold
+                    // launch, or a crash relaunch where MapLibre restored the whole-region view - snap
+                    // onto the fix at street zoom. Otherwise the follow only eases the TARGET (moveCamera
+                    // below preserves zoom), so it would centre on you but leave you zoomed out (the
+                    // "came back zoomed to the whole US" report). A normal street camera is preserved.
+                    if (cp.zoom < 14.0) {
+                        cam.moveCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5))
+                        browseCam[0] = loc.lat; browseCam[1] = loc.lng
+                    } else {
+                        browseCam[0] = cp.target?.latitude ?: loc.lat
+                        browseCam[1] = cp.target?.longitude ?: loc.lng
+                    }
                 }
                 val k = (1f - kotlin.math.exp(-dt / 0.16f)).toDouble()
                 browseCam[0] += (loc.lat - browseCam[0]) * k
@@ -559,6 +569,28 @@ fun VelaMapView(
                 }
                 lastBrowse[0] = camLat; lastBrowse[1] = camLng; lastBrowse[2] = beam.toDouble()
             }
+        }
+    }
+
+    // Centre on the user ONCE per session, the moment the map AND the first fix are both ready. A cold
+    // launch gets this for free, but a crash relaunch restores MapLibre's last (wide) camera and the
+    // seeded centre doesn't reliably override it (user 2026-07-12: "came back zoomed to the whole US;
+    // it can take a sec for the location to resolve"). Runs in the VIEW layer, so it fires AFTER the map
+    // is ready and the fix has landed - and waits for that fix however long it takes. Skipped once the
+    // user has taken the wheel (a pan, or a search/route already owns the camera).
+    val didLaunchCentre = remember { booleanArrayOf(false) }
+    LaunchedEffect(mapRef, myLocation, navMode) {
+        if (didLaunchCentre[0]) return@LaunchedEffect
+        val cam = mapRef ?: return@LaunchedEffect
+        val loc = myLocation ?: return@LaunchedEffect
+        // Nav owns the camera, or the user already took control → don't grab it; just retire the one-shot.
+        if (navMode || gestureMove[0] || markers.isNotEmpty() || routePolyline.isNotEmpty()) {
+            didLaunchCentre[0] = true
+            return@LaunchedEffect
+        }
+        didLaunchCentre[0] = true
+        runCatching {
+            cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5), 650)
         }
     }
 
