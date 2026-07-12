@@ -49,33 +49,109 @@ object StopDeparturesParser {
         val place = root.at(6) ?: return null
         val transit = findTransitNode(place) ?: return null
         val groups = transit.at(1).arr() ?: return null
-        val lines = ArrayList<StopDepartureLine>()
+        // Two layouts show up: a station/subway groups entries by LINE -> DIRECTION -> departures,
+        // while a busy bus stop lists each upcoming departure FLAT, every one tagged with its own
+        // route badge (the "14R" pill). Rather than assume one shape, walk each group's entries,
+        // read the route badge + headsign + times off each, then GROUP by (route, direction) so the
+        // 25 separate "route 14" departures collapse into one "14" row with its next few times.
+        val merged = LinkedHashMap<String, MutableLine>()
         for (group in groups) {
             val mode = modeFor(group.at(1).str(), group)
-            val routes = group.at(2).arr() ?: continue
-            for (route in routes) {
-                val dirs = route.at(1).arr() ?: continue
-                for (dir in dirs) {
-                    val line = runCatching { parseDirection(dir, mode) }.getOrNull()
-                    if (line != null) lines.add(line)
+            val entries = group.at(2).arr() ?: continue
+            for (entry in entries) {
+                for ((headsign, node) in directionsOf(entry)) {
+                    val deps = collectDepartures(node)
+                    if (deps.isEmpty()) continue
+                    val badge = findBadge(entry) ?: findBadge(node)
+                    val label = badge?.first ?: routeLabel(node, headsign)
+                    val key = (label ?: "?") + "|" + (headsign ?: "")
+                    val line = merged.getOrPut(key) {
+                        MutableLine(label, mode, headsign, badge?.second, headwayOf(node))
+                    }
+                    line.add(deps)
                 }
             }
         }
-        if (lines.isEmpty()) throw CalibrationNeededException("stop departures: transit node found, 0 lines parsed")
+        if (merged.isEmpty()) throw CalibrationNeededException("stop departures: transit node found, 0 lines parsed")
+        // Soonest-departing lines first, like Google's board.
+        val lines = merged.values
+            .map { it.build() }
+            .filter { it.upcoming.isNotEmpty() || it.headsign != null }
+            .sortedBy { it.upcoming.firstOrNull()?.epochSec ?: Long.MAX_VALUE }
+            .take(MAX_LINES)
+        if (lines.isEmpty()) throw CalibrationNeededException("stop departures: 0 lines after grouping")
         return StopDepartures(stationName = transit.at(0).str()?.takeIf { it.isNotBlank() }, lines = lines)
     }
 
-    private fun parseDirection(dir: JsonElement, mode: TransitMode): StopDepartureLine? {
-        val headsign = dir.at(0).str()?.takeIf { it.length in 1..80 }
-        val upcoming = collectDepartures(dir)
-        if (upcoming.isEmpty() && headsign == null) return null
-        return StopDepartureLine(
-            label = routeLabel(dir, headsign),
+    /** Accumulates all departures seen for one (route, direction) across the flat entry list. */
+    private class MutableLine(
+        val label: String?,
+        val mode: TransitMode,
+        val headsign: String?,
+        val colorHex: String?,
+        val headway: String?,
+    ) {
+        private val deps = ArrayList<StopDeparture>()
+        private val seen = HashSet<String>()
+        fun add(more: List<StopDeparture>) {
+            for (d in more) if (d.clockText != null && seen.add(d.clockText)) deps.add(d)
+        }
+        fun build() = StopDepartureLine(
+            label = label,
             mode = mode,
             headsign = headsign,
-            headwayText = headwayOf(dir),
-            upcoming = upcoming.take(MAX_TIMES),
+            colorHex = colorHex,
+            headwayText = headway,
+            upcoming = deps.sortedBy { it.epochSec ?: Long.MAX_VALUE }.take(MAX_TIMES),
         )
+    }
+
+    /** The direction sub-nodes of an entry. A station line nests them (each has a headsign [0] and its
+     *  own departures); a flat bus departure has none, so the whole entry is one implicit direction. */
+    private fun directionsOf(entry: JsonElement): List<Pair<String?, JsonElement>> {
+        val d1 = entry.at(1).arr()
+        if (d1 != null && d1.isNotEmpty() && d1.all { (it.at(0).str()?.length ?: 0) in 2..80 && hasTimeTuple(it, 0) }) {
+            return d1.map { it.at(0).str() to it }
+        }
+        return listOf(firstHeadsign(entry) to entry)
+    }
+
+    /** The route badge Google draws as a coloured pill: `["<label>", <int>, "#fill", "#text"]` — the
+     *  same shape as the itinerary line pills. First one found in the entry wins (its route). */
+    private fun findBadge(node: JsonElement?, depth: Int = 0): Triple<String, String?, String?>? {
+        if (node == null || depth > 10) return null
+        val a = node as? JsonArray ?: return null
+        val label = a.at(0).str()?.trim()
+        val fill = a.at(2).str()
+        // A route short name is short and alphanumeric-ish ("14", "14R", "38AX", "N", "M15-SBS"),
+        // paired with a "#" fill; that combination is the pill and can't collide with a time/id node.
+        if (label != null && label.length in 1..7 && label.any { it.isLetterOrDigit() } &&
+            label.all { it.isLetterOrDigit() || it in "-/ " } && fill != null && fill.startsWith("#")
+        ) {
+            return Triple(label, fill, a.at(3).str()?.takeIf { it.startsWith("#") })
+        }
+        for (c in a) findBadge(c, depth + 1)?.let { return it }
+        return null
+    }
+
+    /** Best-effort destination string for a flat bus departure (letters, not a tz/label/time). */
+    private fun firstHeadsign(entry: JsonElement): String? {
+        var found: String? = null
+        fun walk(n: JsonElement?, depth: Int) {
+            if (n == null || found != null || depth > 6) return
+            val a = n as? JsonArray ?: return
+            for (el in a) {
+                (el as? JsonArray)?.let { walk(it, depth + 1) }
+                val s = el.str()?.trim() ?: continue
+                // A real destination reads like words ("Daly City", "Ferry Plaza") - require a space and
+                // rule out ids/tokens/timezones/colors so a feature id can't masquerade as a headsign.
+                if (found == null && s.length in 3..60 && ' ' in s && "/" !in s && ":" !in s &&
+                    !s.startsWith("#") && !s.startsWith("0x") && s.any { it.isLetter() } && !TIME.matches(s)
+                ) found = s
+            }
+        }
+        walk(entry, 0)
+        return found
     }
 
     /** The transit-services node hangs off the place at [TRANSIT_NODE_INDEX]; if that field
@@ -197,5 +273,6 @@ object StopDeparturesParser {
         }
     }
 
-    private const val MAX_TIMES = 6
+    private const val MAX_TIMES = 4
+    private const val MAX_LINES = 12
 }
