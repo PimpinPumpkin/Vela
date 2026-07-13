@@ -219,6 +219,17 @@ Defaults that make the safe path the easy one:
   Pixel, a >5 s ANR on a slow keypad phone (found by ys770's fork, fix taken 2026-07-08).
   Load such data with `produceState { withContext(Dispatchers.IO) { … } }`;
   `VoiceGuide.availableEngines()` also caches the system-engine enumeration per process.
+- **Memory: the browse map runs near the heap ceiling, so keep allocation LOW (2026-07-13).**
+  Panning already churns ~180 MB/12 s at baseline (ambient POI scrape + parse per pan) - this is
+  pre-existing (0.4.542 hit ~260 MB too), close enough to the default ~256 MB heap that any EXTRA
+  churn triggers a blocking GC per frame (staccato pan/zoom) and OOM-crashes on a burst. Two rules:
+  (1) `android:largeHeap="true"` is set (raises the ceiling ~2x -> GC headroom); don't remove it.
+  (2) **Any Overpass / large-HTTP-body reader MUST stream-parse** - `Json.decodeFromStream(body.byteStream())`
+  into a tiny `@Serializable` DTO, NEVER `resp.body.string()` + `parseToJsonElement` (that held ~5-10x
+  the wire size in transient heap and OOM'd mid-read; it's what a Flock `out body 4000` fetch per pan
+  did - fixed in `OverpassAlprCameras`; `OverpassTrafficSignals` (limit 6000) is the same pattern and a
+  pending follow-up). And **NEVER lower a per-viewport Overpass fetch's min-zoom** without shrinking the
+  box - dropping `FLOCK_MIN_ZOOM` 13->11 made the box ~16x bigger and was the tipping point.
 
 ## Layout
 
