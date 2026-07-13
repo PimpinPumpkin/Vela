@@ -2117,6 +2117,17 @@ fun TransitNavSheet(
 /** "Departing" / "in 7 min" from a departure epoch, or null when there's nothing useful to
  *  show - no epoch, already gone (>1 min past), or too far out (>90 min, where the printed
  *  departure time carries it). Mirrors Google's leading countdown on the transit board. */
+/** Short localized weekday ("Mon") when the departure falls on a DIFFERENT local calendar day than
+ *  now - a night board's after-midnight tail ("11:48 PM" then "5:48 AM") otherwise reads as if the
+ *  morning runs were still today (user 2026-07-13, matching Google's day marking). Null = today.
+ *  SimpleDateFormat("EEE") localizes the weekday for free - no strings.xml entries needed. */
+private fun departureDayLabel(depEpochSec: Long?, nowSec: Long): String? {
+    val dep = depEpochSec ?: return null
+    val dayKey = java.text.SimpleDateFormat("yyyyDDD", java.util.Locale.US)
+    if (dayKey.format(java.util.Date(dep * 1000)) == dayKey.format(java.util.Date(nowSec * 1000))) return null
+    return java.text.SimpleDateFormat("EEE", java.util.Locale.getDefault()).format(java.util.Date(dep * 1000))
+}
+
 @Composable
 private fun departsInLabel(depEpochSec: Long?, nowSec: Long): String? {
     val dep = depEpochSec ?: return null
@@ -2482,6 +2493,9 @@ private fun DepartureLineRow(
                         color = if (live) SheetPalette.TrafficGreen else dim,
                     )
                 }
+                departureDayLabel(next.epochSec, nowSec)?.let {
+                    Text("· $it", style = MaterialTheme.typography.bodyMedium, color = dim)
+                }
                 if (live) Box(Modifier.size(6.dp).clip(CircleShape).background(SheetPalette.TrafficGreen))
             }
             // The rest of the upcoming departures as a VERTICAL LIST — one per line, each with its own
@@ -2494,6 +2508,9 @@ private fun DepartureLineRow(
                         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(dep.clockText.orEmpty(), style = MaterialTheme.typography.bodySmall, color = dim)
                             departsInLabel(dep.epochSec, nowSec)?.let {
+                                Text("· $it", style = MaterialTheme.typography.bodySmall, color = dim)
+                            }
+                            departureDayLabel(dep.epochSec, nowSec)?.let {
                                 Text("· $it", style = MaterialTheme.typography.bodySmall, color = dim)
                             }
                         }

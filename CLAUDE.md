@@ -1931,7 +1931,19 @@ architecture note.
   measured **89 m** from its junction point (device 2026-07-13) - just past the OLD 80 m cut, which is exactly
   why boards never showed at these corners; another junction's stops sit ~575 m out, so 250 m catches the
   right one only) and pulls ITS board onto the intersection sheet. No co-located Google
-  listing (a rare OSM-only stop) -> no board, correctly. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
+  listing (a rare OSM-only stop) -> no board, correctly. **BOTH paths are name-first with a bare
+  PROXIMITY fallback (2026-07-13):** OSM and Google often NAME the same stop differently ("A & B" vs
+  "B & A", Hwy vs road name), so when the "<name> bus stop" search yields no live transit hit within
+  250 m, a second location-biased query for just the mode word ("bus stop") runs and the nearest live
+  listing wins (`nearestLiveStop` is the one shared predicate). **After-midnight departures carry a
+  localized short-weekday marker** ("5:48 AM · Mon") via `departureDayLabel` in PlaceSheet - epoch vs
+  now compared on the LOCAL calendar day, SimpleDateFormat("EEE") localizes free, no strings.xml.
+  **TRANSIT HUBS are a keyless DATA LIMIT, not a parser bug (proven 2026-07-13 with a saved blob):**
+  a major transit center's anonymous place page embedded exactly ONE route's departures (25 times,
+  one headsign) - none of the other routes serving the hub appear ANYWHERE in the 156 KB payload
+  (Google's app board comes from its first-party transit backend). The parser + grouping are correct.
+  The follow-up design (task): a hub's BAYS each have their own Google listing ("<Hub> Bay A1"...)
+  with their own boards - fetch the nearest few bay boards and MERGE them into the hub sheet. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
   the TIME regex reads). UI: `PlaceSheet.StopDepartureBoard` (one shared 30 s countdown clock, reuses
   `departsInLabel` + the `place_transit_*` strings + `place_departures`/`place_every`).
   **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
