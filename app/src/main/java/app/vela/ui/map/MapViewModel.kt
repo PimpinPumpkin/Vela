@@ -1295,7 +1295,11 @@ class MapViewModel @Inject constructor(
     private val TRANSIT_CAT = Regex(
         """station|stop|subway|metro|transit|transport|\bhub\b|\bbus\b|train|\brail\b|tram|light rail|terminal|ferry|""" +
             """bahnhof|haltestelle|gare|estaci|estaç|stazione|fermata|estação|estação|halte|stanice|""" +
-            """지하철|driehoek|û|вокзал|станц|остановка|停|駅|车站|車站""",
+            """지하철|driehoek|û|вокзал|станц|остановка|停|駅|车站|車站|""" +
+            // The gaps issue #71 exposed (a Hebrew-locale stop's category is "תחנת אוטובוס" and
+            // nothing here matched): Hebrew stems + the app languages that were missing entirely.
+            """תחנ|אוטובוס|רכבת|מסוף|רציף|""" + // he: stop/station stem, bus, rail, terminal, platform
+            """arrêt|parada|paragem|hållplats|przystanek|dworzec|зупинка|станція""",
         RegexOption.IGNORE_CASE,
     )
 
@@ -1899,6 +1903,28 @@ class MapViewModel @Inject constructor(
                 fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
                 fetchStopDepartures(full) // issue #71: a bus stop / station tapped on the MAP gets its board too
                 rememberRecentPlace(SavedPlace.of(full))
+            } else if (transitHint != null && _state.value.selected == placeholder) {
+                // Issue #71 (Jerusalem): a tapped stop with NO resolvable Google stop listing used to
+                // dead-end as a name-only sheet - no category, no board, nothing to swipe to. The TAP
+                // ITSELF says this is a transit stop (the basemap class, language-independent), and
+                // Transitous needs only the coordinate - so fetch the board by proximity regardless
+                // of what Google resolution did. The Google-page fallback is impossible here anyway
+                // (no feature id), so this is Transitous-or-nothing, which is correct.
+                _state.update { if (it.selected == placeholder) it.copy(stopDeparturesLoading = true) else it }
+                val board = withContext(Dispatchers.IO) {
+                    runCatching {
+                        app.vela.core.data.transit.Transitous.board(http, location.lat, location.lng)
+                    }.getOrNull()
+                }
+                android.util.Log.i("VelaDepartures", "hinted-tap fallback lines=${board?.lines?.size ?: -1}")
+                _state.update {
+                    if (it.selected == placeholder) {
+                        it.copy(
+                            stopDepartures = board?.takeIf { b -> b.lines.isNotEmpty() },
+                            stopDeparturesLoading = false,
+                        )
+                    } else it
+                }
             }
         }
     }

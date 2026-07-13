@@ -1951,7 +1951,15 @@ architecture note.
   measured **89 m** from its junction point (device 2026-07-13) - just past the OLD 80 m cut, which is exactly
   why boards never showed at these corners; another junction's stops sit ~575 m out, so 250 m catches the
   right one only) and pulls ITS board onto the intersection sheet. No co-located Google
-  listing (a rare OSM-only stop) -> no board, correctly. **BOTH paths are name-first with a bare
+  listing (a rare OSM-only stop) -> no board, correctly. **The transit gates are MULTILINGUAL (issue #71, 2026-07-13):** categories arrive in the
+  device language (hl=), so TRANSIT_CAT carries keyword stems for all 15 app languages - Hebrew was
+  missing entirely, which made every stop tap in a Hebrew-locale install dead-end as a name-only
+  sheet (the reporter's Jerusalem screenshot: no category match -> no live-stop pick -> no board,
+  and a bare placeholder hugs its content so there's nothing to swipe to). And a HINTED tap (the
+  basemap class says transit, language-independent) that resolves to NO Google stop listing now
+  falls back to `Transitous.board` at the tapped coordinate directly - proximity only, no category,
+  no feature id (the Google-page fallback is impossible without one anyway). Verified against live
+  Transitous data at the reporter's exact stop (Israel MOT GTFS is in Transitous). **BOTH paths are name-first with a bare
   PROXIMITY fallback (2026-07-13):** OSM and Google often NAME the same stop differently ("A & B" vs
   "B & A", Hwy vs road name), so when the "<name> bus stop" search yields no live transit hit within
   250 m, a second location-biased query for just the mode word ("bus stop") runs and the nearest live
