@@ -1299,6 +1299,14 @@ class MapViewModel @Inject constructor(
         RegexOption.IGNORE_CASE,
     )
 
+    /** The nearest LIVE transit-category listing to [at] among [results], within [radiusM]. Shared by the
+     *  stop-icon tap and the intersection board re-resolve - the one predicate for "the operating stop". */
+    private fun nearestLiveStop(results: List<Place>, at: LatLng, radiusM: Double = 250.0): Place? =
+        results.asSequence()
+            .filter { !it.permanentlyClosed && it.location.distanceTo(at) < radiusM }
+            .filter { p -> p.category?.let { TRANSIT_CAT.containsMatchIn(it) } == true }
+            .minByOrNull { it.location.distanceTo(at) }
+
     /** A transit stop's live departure board, from the station's own place page (keyless, anonymous).
      *  Only fired for places whose category reads like a transit stop AND that carry a feature id
      *  (needed for the `?cid=` deep-link); guarded to the still-selected place when it returns. */
@@ -1344,12 +1352,12 @@ class MapViewModel @Inject constructor(
                 // (~250 m): a REAL co-located stop measured 89 m from its junction point (device 2026-07-13,
                 // just past the old 80 m cut - exactly why boards never showed), while another junction's
                 // stops sit ~575 m out. 250 m catches the right one without grabbing a neighbour's.
-                dataSource.search("${p.name} bus stop", p.location).places.asSequence()
-                    .filter { !it.permanentlyClosed && it.location.distanceTo(p.location) < 250.0 }
-                    .filter { s -> s.category?.let { TRANSIT_CAT.containsMatchIn(it) } == true }
-                    .filter { it.featureId?.contains(":") == true }
-                    .minByOrNull { it.location.distanceTo(p.location) }
-                    ?.featureId
+                // Name-first, then a bare proximity query: OSM and Google often NAME the same stop
+                // differently ("A & B" vs "B & A", Hwy vs the road's name), and a name-keyed search
+                // can miss even when the listing is right there.
+                val byName = nearestLiveStop(dataSource.search("${p.name} bus stop", p.location).places, p.location)
+                val stop = byName ?: nearestLiveStop(dataSource.search("bus stop", p.location).places, p.location)
+                stop?.featureId?.takeIf { it.contains(":") }
             }.getOrNull()
             if (stopFid == null) {
                 _state.update { st -> if (st.selected?.featureId == selectedFid) st.copy(stopDeparturesLoading = false) else st }
@@ -1839,13 +1847,14 @@ class MapViewModel @Inject constructor(
                     // defunct-but-reviewed shelter must not beat the live stop). No such listing -> null,
                     // so the lightweight name+location placeholder set above stays (a stop name beats a
                     // corner; there's no board without a real stop listing anyway).
-                    results.asSequence()
-                        // 250 m, not 80: the OSM icon and Google's stop listing routinely sit on different
-                        // corners of the junction (a real pair measured 89 m apart, past the old 80 m cut -
-                        // device 2026-07-13). Nearest-wins keeps a wide radius safe.
-                        .filter { !it.permanentlyClosed && it.location.distanceTo(location) < 250.0 }
-                        .filter { p -> p.category?.let { c -> TRANSIT_CAT.containsMatchIn(c) } == true }
-                        .minByOrNull { it.location.distanceTo(location) }
+                    // 250 m, not 80: the OSM icon and Google's stop listing routinely sit on different
+                    // corners of the junction (a real pair measured 89 m apart, past the old 80 m cut -
+                    // device 2026-07-13). Nearest-wins keeps the wide radius safe. Name-first, then a bare
+                    // proximity query - OSM and Google often name the same stop differently, so the
+                    // name-keyed search can miss a listing that's right at the icon.
+                    nearestLiveStop(results, location)
+                        ?: runCatching { dataSource.search(transitHint, location).places }.getOrNull()
+                            ?.let { nearestLiveStop(it, location) }
                 } else {
                     // A tapped POI can map to several Google listings at one spot - e.g. a co-branded
                     // "SpeeDee Midas" has a rich "SpeeDee" profile (543 reviews) AND a sparse "Midas" one,
