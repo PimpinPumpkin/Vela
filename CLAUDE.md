@@ -130,11 +130,12 @@ Defaults that make the safe path the easy one:
   for real navigation.**
 - **GitHub releases are TWO different things - check the tag before touching one (2026-07-09).**
   `v0.*` tags are app releases (nightly prereleases, weekly stables). Every OTHER tag is
-  **infrastructure file hosting** (8 as of 2026-07-13): `tts-runtime` (the sherpa-onnx AAR CI
+  **infrastructure file hosting** (9 as of 2026-07-13): `tts-runtime` (the sherpa-onnx AAR CI
   fetches at build time), `asr-models` (the Whisper dictation model), `routing-graphs` (region
   graph zips + manifest), `poi-packs` (state place packs + manifest), `address-overlays`,
   `building-overlays` and `maxspeed-overlays` (PMTiles + manifests), `map-fonts` (Roboto glyph
-  zip). Those assets exist NOWHERE
+  zip), `flock-cameras` (the ALPR/DeFlock camera dataset `.bin` + manifest, weekly-refreshed).
+  Those assets exist NOWHERE
   else - not in git, not on any server - the release IS the download backend the app's manifest
   URLs point at. Deleting one takes the corresponding offline feature down globally until its
   workflow rebuilds everything (hours). This is not hypothetical: the first nightly-prune run
@@ -1837,6 +1838,27 @@ architecture note.
   one overloaded instance no longer blanks flock cameras, stop signs/lights, or the offline OSM POI/address index.
   Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same Davis box.
   **Any NEW keyless Overpass fetch MUST go through `OverpassEndpoints.run`, never a bare hardcoded endpoint.**
+  **BUNDLED + HOSTED on-device dataset (2026-07-13, supersedes the live Overpass path for cameras):** the
+  whole global DeFlock set is tiny (~124k points), so it's baked into a gzipped TSV `lat<TAB>lon<TAB>operator`
+  (~1.3 MB) by `scripts/build-flock-cameras.py` and queried on-device by **`app/data/FlockCameras`** (flat
+  lat/lng arrays + a 0.1 deg grid index, parsed once off the main thread in `VelaApp`). Map layer draws
+  INSTANTLY (no per-viewport network - the "why an API not a tile" report); route "passes N cameras" count
+  is instant + RELIABLE (the live Overpass fan-out per tile was slow and often returned 0, so the avoid
+  re-rank had no data). `refreshFlock`/`refreshFlockOnRoute` use `FlockCameras.inBox`/`.along` when
+  `isLoaded`, falling back to `OverpassAlprCameras` only in the ~seconds before load (or if unreadable).
+  **TWO tiers, newest wins:** a **bundled floor** (`assets/flock_cameras.bin` + `assets/flock_cameras_version.txt`)
+  so a fresh install has cameras instantly + offline; and a **hosted copy** on the `flock-cameras` INFRA
+  release that `FlockCameras.refresh` downloads to `filesDir/flock/cameras.bin` when the manifest version
+  beats what's on disk (`FLOCK_MANIFEST_URL`, `-PflockManifestUrl=` override) - so **camera data updates
+  WITHOUT an app release** (the user's ask). CI **`.github/workflows/flock-cameras.yml`** (weekly Monday
+  cron + dispatch) re-bakes + re-hosts the `.bin` + `flock-manifest.json`; version is a `YYYYMMDD` int
+  (bundled floor = 20260713). **`.bin` NOT `.gz` on purpose:** aapt special-cases a `.gz` asset and silently
+  un-gzips + renames it at build time (broke `open("...tsv.gz")`); a neutral extension is left intact and we
+  gunzip it ourselves. Device-verified 2026-07-13: 124,406 loaded, purple badge drew with no network wait,
+  route counts `[10,10,11]`, AND the hosted refresh downloaded a newer version (20260714) + hot-swapped +
+  is idempotent on relaunch. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
+  within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
+  Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
