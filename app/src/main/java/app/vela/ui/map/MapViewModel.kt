@@ -1068,6 +1068,16 @@ class MapViewModel @Inject constructor(
 
     private fun runSearch(q: String, near: LatLng?) {
         if (q.isEmpty()) return
+        // Pasted coordinates ("47.61, -122.33" or a geo: string) drop a reverse-geocoded pin
+        // there instead of going to the search endpoint as text - same handling a bare external
+        // geo: link gets. Strict whole-string match, so addresses with numbers still search.
+        MapLinkParser.parseBareCoordinate(q)?.let { link ->
+            val at = LatLng(link.lat!!, link.lng!!)
+            recentStore.add(q)
+            _state.update { it.copy(recents = recentStore.recent(), suggestions = emptyList(), searching = false, center = at) }
+            onMapLongPress(at)
+            return
+        }
         // Re-poll connectivity per search: the registered callback alone proved able to
         // wedge `offline` on (missed onAvailable after doze) until an app relaunch.
         _state.update { val off = !isOnline(); if (it.offline != off) it.copy(offline = off) else it }
