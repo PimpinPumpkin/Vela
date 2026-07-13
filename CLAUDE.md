@@ -1927,15 +1927,11 @@ architecture note.
   ("Main St & 1st Ave" style) often resolves to Google's "Intersection" entity, whose OWN page has NO
   board (device-confirmed: the "some stops on a state-route corridor show no buses" report). `fetchStopDepartures` now, for an
   "Intersection" category, RE-RESOLVES to the co-located stop (`resolveIntersectionStopBoard`: search
-  "<name> bus stop", take the nearest LIVE `TRANSIT_CAT` listing within **250 m** - the junction point sits
-  ~100-200 m back from the stops, past the 80 m the icon-tap path uses; a NEIGHBOUR's stop sits ~575 m out,
-  so 250 m catches the right one only) and pulls ITS board onto the intersection sheet. No co-located Google
-  listing (e.g. an OSM-only stop Google never listed) -> no board, correctly. **And OSM bus-stop ICONS are
-  hidden from the basemap entirely (2026-07-13, user call: "I trust google more"):** the OSM stop icons
-  routinely mark stops Google has no listing for, so tapping one opened a dead card with no board.
-  `ensureLayers` rebuilds Liberty's `poi_transit` filter as `class in [airport, rail]` (was
-  `[airport, bus, rail]`) and excludes class `bus` from the `poi_r*` tiers - rail stations + airports
-  stay; Google-listed stops surface via search/transit directions. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
+  "<name> bus stop", take the nearest LIVE `TRANSIT_CAT` listing within **250 m**: a REAL co-located stop
+  measured **89 m** from its junction point (device 2026-07-13) - just past the OLD 80 m cut, which is exactly
+  why boards never showed at these corners; another junction's stops sit ~575 m out, so 250 m catches the
+  right one only) and pulls ITS board onto the intersection sheet. No co-located Google
+  listing (a rare OSM-only stop) -> no board, correctly. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
   the TIME regex reads). UI: `PlaceSheet.StopDepartureBoard` (one shared 30 s countdown clock, reuses
   `departsInLabel` + the `place_transit_*` strings + `place_departures`/`place_every`).
   **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
@@ -1963,7 +1959,9 @@ architecture note.
   without it `onPoiTap` searched the bare name, which Google resolves to the road JUNCTION, so
   tap-through threw you to a corner. `onPoiTap`'s pick is now TRANSIT-AWARE when a transit hint is set
   (map tap on a stop icon OR this tap-through): it takes the nearest LIVE `TRANSIT_CAT` listing within
-  80 m, EXCLUDES `permanentlyClosed`, and SKIPS the most-reviewed-canonical override (a defunct-but-
+  **250 m** (widened from 80 m 2026-07-13: the OSM icon and Google's stop listing routinely sit on different
+  corners of the junction - a real pair measured 89 m apart; nearest-wins keeps the wide radius safe),
+  EXCLUDES `permanentlyClosed`, and SKIPS the most-reviewed-canonical override (a defunct-but-
   reviewed old shelter was beating the live stop - the "tapped stop shows Permanently
   closed" device report). No live stop listing at the coordinate -> the lightweight name+location
   placeholder stays (a stop name beats an Intersection card; no board without a real stop listing, which
