@@ -1937,8 +1937,7 @@ architecture note.
   (2026-07-13, user report "only shows the next 4 or so arrivals"):** parser `MAX_TIMES` was 4, AND
   `DepartureLineRow` only rendered `upcoming.first()` + `drop(1).take(3)` = 4 total; both were the cap.
   Now `MAX_TIMES` = 8 and the trailing times render in a **`FlowRow`** so a busy stop's extra departures
-  WRAP to more rows instead of overflowing the single Row (which is why they were capped at 3). If Google
-  embeds fewer than 8 in the anonymous place blob, the board just shows what's there.
+  WRAP to more rows instead of overflowing the single Row (which is why they were capped at 3). **Superseded 2026-07-13: per-line depth is now a VERTICAL LIST of every embedded time** (parser `MAX_TIMES` = 30 ceiling; `DepartureLineRow` stacks the trailing departures one-per-row, each with its own "in N min" countdown, instead of the wrapping FlowRow). The board blob only carries the next several, so the list length is data-driven, not the cap.
 
 ## Name
 
