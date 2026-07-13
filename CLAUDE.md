@@ -1837,6 +1837,21 @@ architecture note.
   one overloaded instance no longer blanks flock cameras, stop signs/lights, or the offline OSM POI/address index.
   Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same Mill Creek box.
   **Any NEW keyless Overpass fetch MUST go through `OverpassEndpoints.run`, never a bare hardcoded endpoint.**
+  **BUNDLED on-device dataset (2026-07-13, supersedes the live Overpass path for cameras):** the whole
+  global DeFlock set is tiny (~124k points), so it's baked into `app/src/main/assets/flock_cameras.bin`
+  (gzipped TSV `lat<TAB>lon<TAB>operator`, ~1.3 MB) by `scripts/build-flock-cameras.py` and queried
+  on-device by **`app/data/FlockCameras`** (flat lat/lng arrays + a 0.1 deg grid index, parsed once off the
+  main thread in `VelaApp`). This makes the map layer draw INSTANTLY (no per-viewport network round-trip -
+  the user's "why an API not a tile" report) and the route "passes N cameras" count instant + RELIABLE (the
+  live Overpass fan-out per route tile was slow and often returned 0 = the avoid re-rank had nothing to work
+  with). `refreshFlock` (map) and `refreshFlockOnRoute` (counts) use `FlockCameras.inBox`/`.along` when
+  `isLoaded`, and fall back to `OverpassAlprCameras` only in the ~seconds before the asset finishes loading
+  (or if the asset is unreadable). **`.bin` NOT `.gz` on purpose:** aapt special-cases a `.gz` asset and
+  silently un-gzips + renames it at build time, which broke `open("...tsv.gz")`; a neutral extension is left
+  intact and we gunzip it ourselves. Refresh = re-run the script + commit the regenerated asset (bundle
+  freshness rides app releases). Device-verified 2026-07-13: 124,406 cameras loaded, purple badge drew at
+  Mill Creek & Hwy 527 with no network wait. NB "avoid" still only RE-RANKS the alternates Google/OSRM
+  offer (picks the fewest-camera one within a small detour); it does NOT graph-route around cameras.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
