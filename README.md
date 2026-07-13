@@ -68,6 +68,11 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
   words next to their green/amber/red times, and the fastest route leads the list.
 - **Live gas prices.** Search for gas and every station's current price is right
   on its map marker, in the result list, and on the place page.
+- **See the plate readers.** Mapped ALPR surveillance cameras (the community
+  DeFlock project's OpenStreetMap data) show on the map out of the box, and an
+  optional routing setting counts the cameras on each route and quietly picks a
+  lower-camera option when the detour is small. The dataset lives on your phone
+  and refreshes itself weekly, no account and nothing sent anywhere.
 - **Material You theming, if you want it.** An optional toggle tints Vela's chrome
   with your wallpaper colors (Android 12+); off by default, and the map itself
   stays clean either way.

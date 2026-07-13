@@ -404,7 +404,6 @@
     <string name="mapvm_none_found_along_route">沿途未找到“%1$s”</string> <!-- format -->
     <string name="mapvm_search_failed">搜索失败</string>
     <string name="mapvm_dropped_pin">已放置的图钉</string>
-    <string name="mapvm_stop_added">已添加途经点</string>
     <string name="mapvm_no_mode_route_found">未找到%1$s路线</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">路线需要重新校准：%1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">路线规划失败：%1$s</string> <!-- format -->
@@ -462,6 +461,9 @@
     <string name="route_detail_unavailable">无法获取线路详情</string>
     <string name="place_transit_now">即将出发</string>
     <string name="place_transit_in_min">%1$d 分钟后</string> <!-- format -->
+    <string name="place_transit_in_duration">%1$s后</string> <!-- format -->
+    <string name="place_transit_more_times">还有 %1$d 个</string> <!-- format -->
+    <string name="place_transit_view_stops">站点</string>
     <string name="place_transit_live">实时</string>
     <string name="place_departures">发车时刻</string>
     <string name="place_every">每 %1$s</string> <!-- format -->

@@ -536,7 +536,10 @@ Defaults that make the safe path the easy one:
   labelPoint)`; (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
   **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay fill,
   queried by layer id) → reverse-geocode at the tap; else nothing (only a long-press drops a raw
-  coordinate pin on empty land, as before). **The house-number case must SNAP to the tapped number:**
+  coordinate pin on empty land, as before). NB the long-press-while-planning "route through here"
+  add-stop no longer flashes a heads-up banner (2026-07-13): the route refetch reset `status` a beat
+  later so it blinked unreadably, and the stop appearing in the chooser + the route redrawing IS the
+  feedback (`mapvm_stop_added` string removed from all locales). **The house-number case must SNAP to the tapped number:**
   `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
   geocode only for the street/city, replacing whatever house number the geocode led with (a regex
   strips `^\s*\d+\S*\s+` then prepends the tapped number). Reason: Google's reverse-geocode snaps to
@@ -1815,7 +1818,9 @@ architecture note.
   the building/address overlays). NB the `TRAFFIC_*` constants in `VelaMapView` are a DIFFERENT thing - Google's
   live-traffic raster overlay; the controls use `CONTROLS_*`. Needs a real-drive glance to confirm density/size feel.
 - **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
-  2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, OFF by default) draws the
+  2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, **ON by default since 2026-07-13** -
+  it's a headline feature and the bundled dataset makes it free to draw; `FlockRouteAlert` route-avoid stays
+  OFF by default since it changes route choice) draws the
   community DeFlock project's `node["surveillance:type"="ALPR"]` OSM nodes as a purple camera badge, keyless via
   Overpass, sibling of the traffic-controls layer (per-viewport, area-cached `flockBox`, 350 ms settle, `FLOCK_MIN_ZOOM`
   13 fetch / layer minZoom 13.5). **TWO bugs found in device verification (both fixed):** (1) the Overpass `out`
@@ -1825,7 +1830,7 @@ architecture note.
   `VelaApp.onCreate` (unlike `Traffic`/`TransitLayer`), so the persisted toggle read `false` on EVERY launch - the
   layer silently turned itself off after a restart; fixed by initialising it there. Real DeFlock nodes tag the vendor
   as `manufacturer` ("Flock Safety"), not `operator`, so the parser falls back to it. Coverage is OSM's - dense in US
-  metros (Atlanta metro ~1571 nodes, greater Sacramento WA ~211), sparse in a given ~1 km high-zoom box, so cameras show
+  metros (Atlanta metro ~1571 nodes, a mid-size suburban metro ~200), sparse in a given ~1 km high-zoom box, so cameras show
   best around arterials at a neighbourhood zoom, not a quiet residential block. NB you can't browse to a far city and
   see them if free-drive-follow keeps recentering on your GPS - it fetches YOUR viewport (fine for the real use case:
   you driving through a covered area). **THIRD bug found 2026-07-13 (device): the fetch used a SINGLE hardcoded
@@ -1836,7 +1841,7 @@ architecture note.
   that tries each endpoint in turn, uses the FIRST 2xx, and returns null only when EVERY endpoint fails. **All three
   keyless Overpass callers route through it** (`OverpassAlprCameras`, `OverpassTrafficSignals`, `OverpassPois`), so
   one overloaded instance no longer blanks flock cameras, stop signs/lights, or the offline OSM POI/address index.
-  Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same Davis box.
+  Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same box.
   **Any NEW keyless Overpass fetch MUST go through `OverpassEndpoints.run`, never a bare hardcoded endpoint.**
   **BUNDLED + HOSTED on-device dataset (2026-07-13, supersedes the live Overpass path for cameras):** the
   whole global DeFlock set is tiny (~124k points), so it's baked into a gzipped TSV `lat<TAB>lon<TAB>operator`
@@ -1859,6 +1864,12 @@ architecture note.
   is idempotent on relaunch. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
+- **Share diagnostics is functional now (2026-07-13):** `DiagLog` (opt-in breadcrumb ring, :core)
+  PERSISTS to a bounded `filesDir/diag_log.jsonl` (appended per event, reloaded at init, deleted on
+  opt-out) - it was in-memory only, and since the bug being reported usually killed or preceded a
+  process restart, the export was empty essentially every time. `DiagExporter` SCRUBS the export:
+  coordinate-looking decimals (3+ places) round to 2 (~1 km) so the JSON is safe to post publicly,
+  with a header note saying so. Still no backend, still user-routed via the share sheet.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
@@ -1918,7 +1929,27 @@ architecture note.
   0 lines. **Coverage is AGENCY-DEPENDENT** (only agencies that feed Google real-time embed it): NYC
   MTA + SF BART carry it, SacRT (small light rail) does NOT - `MapViewModel.fetchStopDepartures` is
   gated to transit-category places (`TRANSIT_CAT` regex) so it never fires on a business, and an empty
-  result just shows no board. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
+  result just shows no board. **INTERSECTION-named stops (2026-07-13):** a bus stop named by its corner
+  ("Main St & 1st Ave" style) often resolves to Google's "Intersection" entity, whose OWN page has NO
+  board (device-confirmed: the "some stops on a state-route corridor show no buses" report). `fetchStopDepartures` now, for an
+  "Intersection" category, RE-RESOLVES to the co-located stop (`resolveIntersectionStopBoard`: search
+  "<name> bus stop", take the nearest LIVE `TRANSIT_CAT` listing within **250 m**: a REAL co-located stop
+  measured **89 m** from its junction point (device 2026-07-13) - just past the OLD 80 m cut, which is exactly
+  why boards never showed at these corners; another junction's stops sit ~575 m out, so 250 m catches the
+  right one only) and pulls ITS board onto the intersection sheet. No co-located Google
+  listing (a rare OSM-only stop) -> no board, correctly. **BOTH paths are name-first with a bare
+  PROXIMITY fallback (2026-07-13):** OSM and Google often NAME the same stop differently ("A & B" vs
+  "B & A", Hwy vs road name), so when the "<name> bus stop" search yields no live transit hit within
+  250 m, a second location-biased query for just the mode word ("bus stop") runs and the nearest live
+  listing wins (`nearestLiveStop` is the one shared predicate). **After-midnight departures carry a
+  localized short-weekday marker** ("5:48 AM · Mon") via `departureDayLabel` in PlaceSheet - epoch vs
+  now compared on the LOCAL calendar day, SimpleDateFormat("EEE") localizes free, no strings.xml.
+  **TRANSIT HUBS are a keyless DATA LIMIT, not a parser bug (proven 2026-07-13 with a saved blob):**
+  a major transit center's anonymous place page embedded exactly ONE route's departures (25 times,
+  one headsign) - none of the other routes serving the hub appear ANYWHERE in the 156 KB payload
+  (Google's app board comes from its first-party transit backend). The parser + grouping are correct.
+  The follow-up design (task): a hub's BAYS each have their own Google listing ("<Hub> Bay A1"...)
+  with their own boards - fetch the nearest few bay boards and MERGE them into the hub sheet. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
   the TIME regex reads). UI: `PlaceSheet.StopDepartureBoard` (one shared 30 s countdown clock, reuses
   `departsInLabel` + the `place_transit_*` strings + `place_departures`/`place_every`).
   **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
@@ -1946,8 +1977,10 @@ architecture note.
   without it `onPoiTap` searched the bare name, which Google resolves to the road JUNCTION, so
   tap-through threw you to a corner. `onPoiTap`'s pick is now TRANSIT-AWARE when a transit hint is set
   (map tap on a stop icon OR this tap-through): it takes the nearest LIVE `TRANSIT_CAT` listing within
-  80 m, EXCLUDES `permanentlyClosed`, and SKIPS the most-reviewed-canonical override (a defunct-but-
-  reviewed old shelter was beating the live stop - the "Hwy 527 & Davis Blvd shows Permanently
+  **250 m** (widened from 80 m 2026-07-13: the OSM icon and Google's stop listing routinely sit on different
+  corners of the junction - a real pair measured 89 m apart; nearest-wins keeps the wide radius safe),
+  EXCLUDES `permanentlyClosed`, and SKIPS the most-reviewed-canonical override (a defunct-but-
+  reviewed old shelter was beating the live stop - the "tapped stop shows Permanently
   closed" device report). No live stop listing at the coordinate -> the lightweight name+location
   placeholder stays (a stop name beats an Intersection card; no board without a real stop listing, which
   is correct). Best-effort: an ungeocodable headsign / no ride leg flashes
@@ -1959,7 +1992,21 @@ architecture note.
   (2026-07-13, user report "only shows the next 4 or so arrivals"):** parser `MAX_TIMES` was 4, AND
   `DepartureLineRow` only rendered `upcoming.first()` + `drop(1).take(3)` = 4 total; both were the cap.
   Now `MAX_TIMES` = 8 and the trailing times render in a **`FlowRow`** so a busy stop's extra departures
-  WRAP to more rows instead of overflowing the single Row (which is why they were capped at 3). **Superseded 2026-07-13: per-line depth is now a VERTICAL LIST of every embedded time** (parser `MAX_TIMES` = 30 ceiling; `DepartureLineRow` stacks the trailing departures one-per-row, each with its own "in N min" countdown, instead of the wrapping FlowRow). The board blob only carries the next several, so the list length is data-driven, not the cap.
+  WRAP to more rows instead of overflowing the single Row (which is why they were capped at 3). **Superseded 2026-07-13: per-line depth is now a VERTICAL LIST of every embedded time** (parser `MAX_TIMES` = 30 ceiling; `DepartureLineRow` stacks the trailing departures one-per-row, each with its own "in N min" countdown, instead of the wrapping FlowRow). The board blob only carries the next several, so the list length is data-driven, not the cap. **Refined same day:** an agency can embed 25+ times and the
+  full wall scrolled the route pill + headsign out of view (read as "the bus number is missing") - the
+  list shows 5 + an "N more" expander (`place_transit_more_times`, all locales). Countdown past the hour
+  reads hours+minutes via `formatDuration` ("in 1 h 6 min", `place_transit_in_duration`); after-midnight
+  rows carry a localized short-weekday marker. **The TIME regex matches Unicode spaces explicitly**
+  (`[\s\u00A0\u202F]`): some agencies put a NARROW NO-BREAK SPACE before AM/PM, which Android's ICU
+  regex counts as `\s` but the JVM does NOT - unit tests silently diverged from device behaviour until
+  a dumped blob exposed it. **Debug builds keep the last raw board payload** at `filesDir/depdump.txt`
+  (WebStopDeparturesFetcher, BuildConfig.DEBUG only) - the schema is agency-shaped, so wrong-parse
+  reports are only diagnosable from the actual blob. **The board renders FIRST in the sheet body**
+  (above the address; renders nothing for non-transit places). **Badge matcher admits NAMED lines** (8-24
+  chars when BOTH colours are hex - branded BRT lines carry a name, not a number; verified against
+  a device blob). **Each row carries an explicit "Stops ›" action** (`place_transit_view_stops`, all
+  locales) - the bare ripple wasn't discoverable as "tap to see the route's stops" (user 2026-07-13,
+  overruling the earlier chevron removal in #168).
 
 ## Name
 
