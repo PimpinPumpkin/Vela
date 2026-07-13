@@ -1390,10 +1390,11 @@ class MapViewModel @Inject constructor(
     fun openRouteStop(stop: app.vela.core.model.TransitStopTime) {
         val loc = stop.location ?: return
         closeRouteDetail()
-        // The stop carries a precise coordinate from the itinerary, so onPoiTap's nearest-to-location
-        // resolve lands on the stop itself and its board fetch (fetchStopDepartures) fires - the
-        // tap-through then keeps going from the new stop's own board.
-        onPoiTap(stop.name, loc)
+        // Pass a transit KIND (not just name+coord): without it, onPoiTap searched the bare stop name,
+        // which Google resolves to the road JUNCTION - so tap-through kept throwing you to a corner
+        // (device 2026-07-13). The hint makes it search "<name> transit stop" and prefer the live
+        // stop listing, same as a map tap on the stop; its board then fires and the tap-through continues.
+        onPoiTap(stop.name, loc, "transit stop")
     }
 
     private var routeDetailJob: kotlinx.coroutines.Job? = null
@@ -1779,24 +1780,33 @@ class MapViewModel @Inject constructor(
             val resolved = runCatching {
                 val results = dataSource.search(searchQuery, location).places
                 val nearest = results.minByOrNull { p -> p.location.distanceTo(location) }
-                // A tapped POI can map to several Google listings at the same spot —
-                // e.g. a co-branded "SpeeDee Midas" has a rich "SpeeDee" profile (543
-                // reviews) AND a sparse "Midas" one (2 reviews), both at 2000 F St.
-                // Among listings essentially AT the tap (~35 m) the most-reviewed is
-                // the maintained, canonical one. But two *genuinely distinct* shops
-                // can also share a spot (a strip mall), so only override the nearest
-                // result when the canonical listing CLEARLY dominates by review count
-                // (a true duplicate, not a close call). Results are already filtered
-                // by the POI's own name, which keeps this from wandering off-place.
-                val canonical = results
-                    .filter { it.location.distanceTo(location) < 35.0 }
-                    .maxByOrNull { it.reviewCount ?: 0 }
-                val pick = if (canonical != null && nearest != null &&
-                    (canonical.reviewCount ?: 0) >= 2 * (nearest.reviewCount ?: 0) + 5
-                ) {
-                    canonical
+                val pick = if (transitHint != null) {
+                    // Transit tap: pick the OPERATING stop, not the nearest/most-reviewed thing at the
+                    // coordinate. A stop's spot usually ALSO has a road junction (Google's "Intersection")
+                    // and can carry a stale PERMANENTLY-CLOSED old shelter; nearest/most-reviewed lands on
+                    // those (device 2026-07-13: "a suburban junction" opened a Permanently-closed old
+                    // stop; the route tap-through threw you to a corner). Take the nearest LIVE
+                    // transit-category listing near the tap, and SKIP the most-reviewed override (a
+                    // defunct-but-reviewed shelter must not beat the live stop). No such listing -> null,
+                    // so the lightweight name+location placeholder set above stays (a stop name beats a
+                    // corner; there's no board without a real stop listing anyway).
+                    results.asSequence()
+                        .filter { !it.permanentlyClosed && it.location.distanceTo(location) < 80.0 }
+                        .filter { p -> p.category?.let { c -> TRANSIT_CAT.containsMatchIn(c) } == true }
+                        .minByOrNull { it.location.distanceTo(location) }
                 } else {
-                    nearest
+                    // A tapped POI can map to several Google listings at one spot - e.g. a co-branded
+                    // "SpeeDee Midas" has a rich "SpeeDee" profile (543 reviews) AND a sparse "Midas" one,
+                    // both at 2000 F St. Among listings ~AT the tap (35 m) the most-reviewed is the
+                    // maintained, canonical one, but two genuinely distinct shops can also share a spot
+                    // (a strip mall), so only override nearest when the canonical listing CLEARLY dominates
+                    // by review count (a true duplicate, not a close call).
+                    val canonical = results
+                        .filter { it.location.distanceTo(location) < 35.0 }
+                        .maxByOrNull { it.reviewCount ?: 0 }
+                    if (canonical != null && nearest != null &&
+                        (canonical.reviewCount ?: 0) >= 2 * (nearest.reviewCount ?: 0) + 5
+                    ) canonical else nearest
                 }
                 pick to results
             }.getOrNull()

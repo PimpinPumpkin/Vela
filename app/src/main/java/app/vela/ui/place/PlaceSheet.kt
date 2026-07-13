@@ -301,9 +301,15 @@ fun PlaceSheet(
     // detents equal that height, so every detent computation resolves to it and the drag can't
     // resize the sheet.
     val singleDetent = isParking
+    // A transit stop's departure board is a scrollable half-sheet (Google's UX): cap its expanded
+    // detent at PEEK so the chevron/drag can't grow it into empty space above a short board and, in
+    // doing so, cover + hide the search bar for no gain (device report 2026-07-13: "tapping the
+    // chevron on a stop with nothing more to show still hides the search bar"). Long boards scroll
+    // within the half-sheet. Paired with the onExpandedChange gate below so it never reports "covered".
+    val isTransitBoard = stopDepartures != null || stopDeparturesLoading
     val minH = if (singleDetent) screenH * 0.30f else screenH * 0.26f
     val peekH = if (singleDetent) screenH * 0.30f else screenH * 0.56f
-    val expH = if (singleDetent) screenH * 0.30f else screenH * 0.92f
+    val expH = if (singleDetent) screenH * 0.30f else if (isTransitBoard) peekH else screenH * 0.92f
     fun detentFor(expanded: Boolean, minimized: Boolean) = when {
         expanded -> expH
         minimized -> minH
@@ -529,7 +535,9 @@ fun PlaceSheet(
     // Report the expanded detent up: MapScreen kills the search bar's taps while the sheet
     // covers it (a tap on the sliver of bar behind an expanded sheet opened search OVER the
     // place card, user 2026-07-11).
-    LaunchedEffect(expandedState.value) { onExpandedChange(expandedState.value) }
+    // A transit board is capped at peek (see above), so it never actually covers the search bar -
+    // never report it as expanded, or the bar would hide with the sheet nowhere near it.
+    LaunchedEffect(expandedState.value, isTransitBoard) { onExpandedChange(expandedState.value && !isTransitBoard) }
     val onPanelEngaged: () -> Unit = {
         reviewsEngaged.value = true
         scope.launch {
