@@ -1969,11 +1969,13 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
     if (style.getSource(TRANSIT_STOPS_SRC) == null) {
         style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC))
+        // Deliberately a touch smaller than the POI markers (stops are dense), but not tiny -
+        // the first cut (0.62-1.2) read too small on device (user 2026-07-13).
         val stopSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
-            Expression.stop(15f, 0.62f),
-            Expression.stop(17f, 0.92f),
-            Expression.stop(19f, 1.2f),
+            Expression.stop(15f, 0.78f),
+            Expression.stop(17f, 1.1f),
+            Expression.stop(19f, 1.4f),
         )
         style.addLayer(
             SymbolLayer(TRANSIT_STOPS_LAYER, TRANSIT_STOPS_SRC).apply {
