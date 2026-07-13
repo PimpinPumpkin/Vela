@@ -125,4 +125,22 @@ class PlaceStatusTest {
         val expected = setOf("en", "fr", "de", "es", "it", "pt", "nl", "ru", "pl", "sv", "uk", "zh", "ja", "iw", "he")
         assertEquals(expected, SearchParser.STATUS_LANGS)
     }
+
+    @Test fun remoteWordTableOverrides() {
+        // A pushed calibration table replaces the compiled one; absent languages fall back to
+        // the pushed table's English, then the compiled English.
+        try {
+            SearchParser.remoteClosedWords = mapOf("en" to listOf("Shuttered"))
+            SearchParser.remoteOpenWords = mapOf("en" to listOf("Trading"))
+            assertEquals(false, SearchParser.parseOpenNow("Shuttered until further notice", "en"))
+            assertEquals(true, SearchParser.parseOpenNow("Trading now", "en"))
+            // the compiled word no longer matches once the table is replaced
+            assertEquals(null, SearchParser.parseOpenNow("Closed", "en"))
+        } finally {
+            SearchParser.remoteClosedWords = null
+            SearchParser.remoteOpenWords = null
+        }
+        // back to compiled behaviour after clearing
+        assertEquals(false, SearchParser.parseOpenNow("Closed", "en"))
+    }
 }
