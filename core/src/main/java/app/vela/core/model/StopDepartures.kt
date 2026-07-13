@@ -32,4 +32,5 @@ data class StopDeparture(
     val clockText: String? = null,    // "4:35 AM" (already localized by Google)
     val epochSec: Long? = null,       // scheduled/real-time departure epoch (seconds)
     val realtime: Boolean = false,
+    val tripId: String? = null,       // GTFS trip id (Transitous boards) - keys the stop-timeline fetch
 )
