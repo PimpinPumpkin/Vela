@@ -7,8 +7,6 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.net.URLEncoder
 
 /**
  * Fetches TRAFFIC-SIGNAL locations (OSM `highway=traffic_signals` nodes) near a route from **Overpass**
@@ -22,7 +20,6 @@ import java.net.URLEncoder
 data class TrafficControl(val loc: LatLng, val stop: Boolean)
 
 object OverpassTrafficSignals {
-    private const val ENDPOINT = "https://overpass-api.de/api/interpreter"
     private val json = Json { ignoreUnknownKeys = true }
 
     /**
@@ -39,58 +36,40 @@ object OverpassTrafficSignals {
         south: Double, west: Double, north: Double, east: Double,
         limit: Int = 6000,
     ): List<TrafficControl>? {
-        return try {
-            val box = "($south,$west,$north,$east)"
-            val query = "[out:json][timeout:25];" +
-                "(node[\"highway\"=\"traffic_signals\"]$box;node[\"highway\"=\"stop\"]$box;);out $limit;"
-            val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
-            val req = Request.Builder()
-                .url(url)
-                .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
-                .build()
-            http.newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@use null // a failure, NOT a genuine empty area — don't cache it
-                val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
-                root["elements"]?.jsonArray?.mapNotNull { el ->
-                    val o = el.jsonObject
-                    val lat = (o["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
-                    val lng = (o["lon"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
-                    val kind = (o["tags"]?.jsonObject?.get("highway") as? JsonPrimitive)?.content
-                    TrafficControl(LatLng(lat, lng), stop = kind == "stop")
-                }.orEmpty()
-            }
-        } catch (e: Exception) {
-            null
+        val box = "($south,$west,$north,$east)"
+        val query = "[out:json][timeout:25];" +
+            "(node[\"highway\"=\"traffic_signals\"]$box;node[\"highway\"=\"stop\"]$box;);out $limit;"
+        // Failover across mirrors (see OverpassEndpoints): a 504 from the primary no longer blanks the layer.
+        // run() returns null only when EVERY endpoint fails — a real failure, not a genuine empty area.
+        return OverpassEndpoints.run(http, query) { body ->
+            val root = json.parseToJsonElement(body.string()).jsonObject
+            root["elements"]?.jsonArray?.mapNotNull { el ->
+                val o = el.jsonObject
+                val lat = (o["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
+                val lng = (o["lon"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
+                val kind = (o["tags"]?.jsonObject?.get("highway") as? JsonPrimitive)?.content
+                TrafficControl(LatLng(lat, lng), stop = kind == "stop")
+            }.orEmpty()
         }
     }
 
     /** Traffic-signal node coordinates within the route's bounding box (padded a little). */
     fun fetchAlong(http: OkHttpClient, polyline: List<LatLng>, limit: Int = 4000): List<LatLng> {
         if (polyline.size < 2) return emptyList()
-        return try {
         val pad = 0.003 // ~300 m, so a signal just off the sampled line still lands in the box
         val s = polyline.minOf { it.lat } - pad
         val n = polyline.maxOf { it.lat } + pad
         val w = polyline.minOf { it.lng } - pad
         val e = polyline.maxOf { it.lng } + pad
         val query = "[out:json][timeout:25];node[\"highway\"=\"traffic_signals\"]($s,$w,$n,$e);out $limit;"
-        val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
-        val req = Request.Builder()
-            .url(url)
-            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
-            .build()
-        http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return@use emptyList()
-            val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
+        return OverpassEndpoints.run(http, query) { body ->
+            val root = json.parseToJsonElement(body.string()).jsonObject
             root["elements"]?.jsonArray?.mapNotNull { el ->
                 val o = el.jsonObject
                 val lat = (o["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
                 val lng = (o["lon"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
                 LatLng(lat, lng)
             }.orEmpty()
-        }
-        } catch (e: Exception) {
-            emptyList()
-        }
+        } ?: emptyList()
     }
 }

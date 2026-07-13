@@ -6,8 +6,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromStream
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 
 /** An automated licence-plate reader (ALPR / "Flock") camera at [loc]. [operator] is the agency/company
@@ -35,17 +33,19 @@ private data class OverpassNode(
  * area-cached, viewport-fetched contract. Coverage is OSM's/DeFlock's - strong in the US, growing elsewhere.
  */
 object OverpassAlprCameras {
-    private const val ENDPOINT = "https://overpass-api.de/api/interpreter"
     private val json = Json { ignoreUnknownKeys = true }
 
-    // Overpass can be slow; the shared scrape client's 12 s callTimeout aborts mid-response and the
-    // failure reads as "no cameras" (a reliability complaint). Derive a longer-timeout sibling ONCE.
-    // Memory is bounded regardless now (streaming parse), so a longer read is safe.
+    // Per-endpoint client for the failover runner. The ALPR query is TINY (one tag over a viewport box,
+    // <1 s from a healthy server), so a modest 15 s cap is ample - and it BOUNDS the failover: with four
+    // endpoints, a dead/overloaded mirror that hangs would otherwise cost 25 s each (~90 s all-in, observed
+    // on-device when the primary 504'd and mirrors were slow). 15 s call + 8 s connect abandons a bad
+    // endpoint fast enough to reach a working one, while still tolerating a briefly-slow-but-alive server.
     @Volatile private var slowHttp: OkHttpClient? = null
     private fun slow(base: OkHttpClient): OkHttpClient =
         slowHttp ?: base.newBuilder()
-            .callTimeout(25, TimeUnit.SECONDS)
-            .readTimeout(25, TimeUnit.SECONDS)
+            .callTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
             .build()
             .also { slowHttp = it }
 
@@ -62,38 +62,29 @@ object OverpassAlprCameras {
         south: Double, west: Double, north: Double, east: Double,
         limit: Int = 4000,
     ): List<AlprCamera>? {
-        return try {
-            val box = "($south,$west,$north,$east)"
-            // `out body` (NOT `out tags`): for a node, `out tags` prints only id + tags and OMITS
-            // lat/lon, so the parser dropped every camera (no coordinates) and the layer drew nothing.
-            // `out body` prints id, lat, lon AND tags - what we need to place the marker + read operator.
-            val query = "[out:json][timeout:25];" +
-                "node[\"surveillance:type\"=\"ALPR\"]$box;out body $limit;"
-            val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
-            val req = Request.Builder()
-                .url(url)
-                .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
-                .build()
-            slow(http).newCall(req).execute().use { resp ->
-                if (!resp.isSuccessful) return@use null // a failure, NOT a genuine empty area - don't cache it
-                val body = resp.body ?: return@use null
-                // STREAM the body straight off the socket into the tiny DTO - never materialize the whole
-                // response String or a full JsonElement DOM. The old `.string()` + parseToJsonElement over
-                // an `out body 4000` response held ~5-10x the wire size in transient heap, which filled the
-                // heap and OOM'd mid-read (device 2026-07-13). decodeFromStream reads incrementally.
-                val parsed = json.decodeFromStream<OverpassResp>(body.byteStream())
-                parsed.elements.mapNotNull { n ->
-                    val lat = n.lat ?: return@mapNotNull null
-                    val lng = n.lon ?: return@mapNotNull null
-                    // Real DeFlock nodes tag the vendor as `manufacturer` ("Flock Safety"), not `operator`
-                    // (usually the agency, often absent) - fall back to it so the camera shows who runs it.
-                    val op = (n.tags?.get("operator") ?: n.tags?.get("manufacturer")).orEmpty()
-                    val dir = n.tags?.get("direction").orEmpty()
-                    AlprCamera(LatLng(lat, lng), op, dir)
-                }
+        val box = "($south,$west,$north,$east)"
+        // `out body` (NOT `out tags`): for a node, `out tags` prints only id + tags and OMITS
+        // lat/lon, so the parser dropped every camera (no coordinates) and the layer drew nothing.
+        // `out body` prints id, lat, lon AND tags - what we need to place the marker + read operator.
+        val query = "[out:json][timeout:25];" +
+            "node[\"surveillance:type\"=\"ALPR\"]$box;out body $limit;"
+        // Failover across mirrors: a 504 from the primary overpass-api.de (common under load) used to fail
+        // the whole fetch and silently blank the layer. run() returns null only when EVERY endpoint fails.
+        return OverpassEndpoints.run(slow(http), query) { body ->
+            // STREAM the body straight off the socket into the tiny DTO - never materialize the whole
+            // response String or a full JsonElement DOM. The old `.string()` + parseToJsonElement over
+            // an `out body 4000` response held ~5-10x the wire size in transient heap, which filled the
+            // heap and OOM'd mid-read (device 2026-07-13). decodeFromStream reads incrementally.
+            val parsed = json.decodeFromStream<OverpassResp>(body.byteStream())
+            parsed.elements.mapNotNull { n ->
+                val lat = n.lat ?: return@mapNotNull null
+                val lng = n.lon ?: return@mapNotNull null
+                // Real DeFlock nodes tag the vendor as `manufacturer` ("Flock Safety"), not `operator`
+                // (usually the agency, often absent) - fall back to it so the camera shows who runs it.
+                val op = (n.tags?.get("operator") ?: n.tags?.get("manufacturer")).orEmpty()
+                val dir = n.tags?.get("direction").orEmpty()
+                AlprCamera(LatLng(lat, lng), op, dir)
             }
-        } catch (e: Exception) {
-            null
         }
     }
 
