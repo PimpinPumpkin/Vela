@@ -25,7 +25,7 @@ class VelaApp : Application() {
      *  system), so `getString` from the ViewModel/nav-notification also localizes — resolved at launch
      *  from the saved pref (an in-session change re-reads it on next launch). */
     override fun attachBaseContext(base: Context) {
-        super.attachBaseContext(AppLocale.wrap(base))
+        super.attachBaseContext(AppLocale.wrap(app.vela.ui.AdaptiveDensity.wrap(base)))
     }
 
     override fun onCreate() {
