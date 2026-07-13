@@ -1611,26 +1611,14 @@ private fun ensureLayers(style: Style) {
             Expression.stop("forest", true), Expression.stop("tree", true),
             Expression.stop("grass", true), Expression.stop("wetland", true),
         )
-        // Bus stops are excluded EVERYWHERE (user 2026-07-13): the OSM stop icons routinely mark stops
-        // Google has no listing for, so tapping one opens a dead card with no departure board - worse
-        // than no icon. Google-listed stops still surface via search and transit directions. Rail
-        // stations + airports stay (essentially always Google-listed, and useful landmarks).
-        val bus = Expression.eq(Expression.get("class"), Expression.literal("bus"))
         fun tier(id: String, lo: Int, hi: Int?) {
-            val parts = mutableListOf(isPoint, Expression.gte(Expression.get("rank"), Expression.literal(lo)), Expression.not(veg), Expression.not(bus))
+            val parts = mutableListOf(isPoint, Expression.gte(Expression.get("rank"), Expression.literal(lo)), Expression.not(veg))
             if (hi != null) parts += Expression.lt(Expression.get("rank"), Expression.literal(hi))
             (style.getLayer(id) as? SymbolLayer)?.setFilter(Expression.all(*parts.toTypedArray()))
         }
         tier("poi_r1", 1, 7)
         tier("poi_r7", 7, 20)
         tier("poi_r20", 20, null)
-        // Liberty's poi_transit ships `class in [airport, bus, rail]` - rebuild it as [airport, rail].
-        (style.getLayer("poi_transit") as? SymbolLayer)?.setFilter(
-            Expression.match(
-                Expression.get("class"), Expression.literal(false),
-                Expression.stop("airport", true), Expression.stop("rail", true),
-            ),
-        )
     }
 
     if (style.getImage(ME_ARROW_IMG) == null) style.addImage(ME_ARROW_IMG, arrowBitmap())
