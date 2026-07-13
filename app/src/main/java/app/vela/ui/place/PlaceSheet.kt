@@ -33,6 +33,7 @@ import app.vela.ui.theme.isAppInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -2435,6 +2436,7 @@ private fun StopDepartureBoard(
 }
 
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun DepartureLineRow(
     line: app.vela.core.model.StopDepartureLine,
     nowSec: Long,
@@ -2483,9 +2485,15 @@ private fun DepartureLineRow(
                     )
                 }
                 if (live) Box(Modifier.size(6.dp).clip(CircleShape).background(SheetPalette.TrafficGreen))
-                // the following departures, quiet
-                line.upcoming.drop(1).take(3).forEach {
-                    Text(it.clockText.orEmpty(), style = MaterialTheme.typography.bodySmall, color = dim)
+            }
+            // The rest of the upcoming departures, quiet — a FlowRow so a busy stop's many times WRAP to
+            // more rows instead of overflowing a single line (they used to be capped at 3 to fit one Row).
+            val rest = line.upcoming.drop(1)
+            if (rest.isNotEmpty()) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    rest.forEach {
+                        Text(it.clockText.orEmpty(), style = MaterialTheme.typography.bodySmall, color = dim)
+                    }
                 }
             }
         }
