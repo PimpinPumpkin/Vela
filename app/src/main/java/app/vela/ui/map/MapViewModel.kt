@@ -1934,7 +1934,9 @@ class MapViewModel @Inject constructor(
                 val stop = (geo ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location))
                     .copy(location = location)
                 addStop(stop)
-                flashStatus(appContext.getString(R.string.mapvm_stop_added))
+                // No flash banner: the route refetch that addStop triggers resets `status` a beat later
+                // anyway (the banner blinked for a few frames, user 2026-07-13), and the stop appearing in
+                // the chooser + the route redrawing through it IS the feedback.
             }
             return
         }
