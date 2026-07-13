@@ -415,7 +415,6 @@
     <string name="mapvm_none_found_along_route">No \"%1$s\" found along your route</string> <!-- format -->
     <string name="mapvm_search_failed">Search failed</string>
     <string name="mapvm_dropped_pin">Dropped pin</string>
-    <string name="mapvm_stop_added">Stop added</string>
     <string name="mapvm_no_mode_route_found">No %1$s route found</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">Directions need recalibration: %1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">Routing failed: %1$s</string> <!-- format -->
@@ -477,6 +476,9 @@
     <string name="route_detail_unavailable">Route details unavailable</string>
     <string name="place_transit_now">Departing</string>
     <string name="place_transit_in_min">in %1$d min</string> <!-- format -->
+    <string name="place_transit_in_duration">in %1$s</string> <!-- format -->
+    <string name="place_transit_more_times">%1$d more</string> <!-- format -->
+    <string name="place_transit_view_stops">Stops</string>
     <string name="place_transit_live">Live</string>
     <string name="place_departures">Departures</string>
     <string name="place_every">Every %1$s</string> <!-- format -->

@@ -375,7 +375,6 @@
     <string name="mapvm_none_found_along_route">«%1$s» не найдено вдоль вашего маршрута</string>
     <string name="mapvm_search_failed">Не удалось выполнить поиск</string>
     <string name="mapvm_dropped_pin">Установленная метка</string>
-    <string name="mapvm_stop_added">Остановка добавлена</string>
     <string name="mapvm_no_mode_route_found">Маршрут (%1$s) не найден</string>
     <string name="mapvm_directions_need_recalibration">Маршрутам нужна перекалибровка: %1$s</string>
     <string name="mapvm_routing_failed_reason">Не удалось построить маршрут: %1$s</string>
@@ -443,6 +442,9 @@
     <string name="route_detail_unavailable">Сведения о маршруте недоступны</string>
     <string name="place_transit_now">Отправляется</string>
     <string name="place_transit_in_min">через %1$d мин</string> <!-- format -->
+    <string name="place_transit_in_duration">через %1$s</string> <!-- format -->
+    <string name="place_transit_more_times">ещё %1$d</string> <!-- format -->
+    <string name="place_transit_view_stops">Остановки</string>
     <string name="place_transit_live">Онлайн</string>
     <string name="place_departures">Отправления</string>
     <string name="place_every">Каждые %1$s</string> <!-- format -->

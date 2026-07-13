@@ -375,7 +375,6 @@
     <string name="mapvm_none_found_along_route">Не знайдено «%1$s» уздовж вашого маршруту</string>
     <string name="mapvm_search_failed">Помилка пошуку</string>
     <string name="mapvm_dropped_pin">Встановлена мітка</string>
-    <string name="mapvm_stop_added">Зупинку додано</string>
     <string name="mapvm_no_mode_route_found">Маршрут (%1$s) не знайдено</string>
     <string name="mapvm_directions_need_recalibration">Маршрут потребує перекалібрування: %1$s</string>
     <string name="mapvm_routing_failed_reason">Помилка маршрутизації: %1$s</string>
@@ -443,6 +442,9 @@
     <string name="route_detail_unavailable">Деталі маршруту недоступні</string>
     <string name="place_transit_now">Відправляється</string>
     <string name="place_transit_in_min">через %1$d хв</string> <!-- format -->
+    <string name="place_transit_in_duration">через %1$s</string> <!-- format -->
+    <string name="place_transit_more_times">ще %1$d</string> <!-- format -->
+    <string name="place_transit_view_stops">Зупинки</string>
     <string name="place_transit_live">Наживо</string>
     <string name="place_departures">Відправлення</string>
     <string name="place_every">Кожні %1$s</string> <!-- format -->
