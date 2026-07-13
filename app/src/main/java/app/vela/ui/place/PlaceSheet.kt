@@ -3103,20 +3103,22 @@ private fun PlaceTabs(
     onPanelEngaged: () -> Unit = {},
     panelEngaged: Boolean = false,
 ) {
-    // A transit stop shows its departure board + stop timeline, nothing else - Reviews and About
-    // are noise on a bus stop (and the review scrape is skipped for them too). Kill both tabs
-    // entirely (user 2026-07-13); with no Menu photos either, the whole tab bar then vanishes.
-    val isTransitStop = place.category?.lowercase()?.let { c ->
+    // A BARE bus stop (transit-category AND no rating, i.e. no real review content) shows only its
+    // departure board + stop timeline - Reviews/About are noise there. But a RATED transit CENTER
+    // (a real building people review) keeps both tabs: gate on the bare-stop signal, NOT category
+    // alone, or real buildings lose their reviews (user 2026-07-13 regression). Real buildings carry
+    // a Google rating / reviews / a featured review; bare stops carry none.
+    val isTransitCategory = place.category?.lowercase()?.let { c ->
         listOf("station", "stop", "transit", "transport", "hub", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
     } == true
-    // With the live panel on, the scrape never runs, so reviewsLoading can't summon the tab —
-    // any Google-listed place (valid feature id) gets the tab; the panel shows Google's own
-    // zero-reviews state if there are none.
-    val hasReviews = !isTransitStop && app.vela.ui.ShowReviews.on.value && (
+    val isBareStop = isTransitCategory && place.rating == null && reviews.isEmpty() && place.featuredReview == null
+    // The LiveReviews clause summons a review tab for ANY Google place (valid feature id) even with
+    // zero reviews - that's the ONLY clause suppressed for a bare stop; real review content still shows.
+    val hasReviews = app.vela.ui.ShowReviews.on.value && (
         place.rating != null || reviews.isNotEmpty() || reviewsLoading || place.featuredReview != null ||
-            (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true)
+            (app.vela.ui.LiveReviews.on.value && place.featureId?.contains(":") == true && !isBareStop)
         )
-    val hasAbout = !isTransitStop && (place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null)
+    val hasAbout = !isBareStop && (place.about.isNotEmpty() || place.editorialSummary != null || place.ownerDescription != null)
     // Menu photos get their OWN TAB beside Reviews/About (user 2026-07-10) — the gallery's
     // category chip buried them. Detection is by Google's own gallery-tab name (it arrives
     // localized, so match a per-language keyword set; the matched name is reused as the tab
