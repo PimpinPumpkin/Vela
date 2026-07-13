@@ -28,10 +28,24 @@ class DiagLog @Inject constructor(
 ) {
     private val lock = Any()
     private val ring = ArrayDeque<DiagEvent>(CAP)
+    // The bug being reported usually KILLED or preceded a restart of the process, so an in-memory-only
+    // ring exported as "(nothing recorded)" almost every time - the reason the share feature read as
+    // non-functional (user 2026-07-13). Persist the ring to a bounded JSONL file: appended per event,
+    // reloaded at init, deleted the moment the user opts out. Still local-only, still opt-in.
+    private val file = java.io.File(context.filesDir, "diag_log.jsonl")
+    private var appendedSinceTrim = 0
 
     @Volatile
     private var enabled: Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY, false)
+
+    init {
+        if (enabled) runCatching {
+            if (file.exists()) file.readLines().takeLast(CAP).forEach { line ->
+                decode(line)?.let { ring.addLast(it) }
+            }
+        }
+    }
 
     fun isEnabled(): Boolean = enabled
 
@@ -49,13 +63,39 @@ class DiagLog @Inject constructor(
         synchronized(lock) {
             if (ring.size >= CAP) ring.removeFirst()
             ring.addLast(ev)
+            runCatching {
+                file.appendText(encode(ev) + "\n")
+                // Bound the file: once it holds twice the ring, rewrite it as just the current ring.
+                if (++appendedSinceTrim >= CAP) {
+                    appendedSinceTrim = 0
+                    file.writeText(ring.joinToString("\n", postfix = "\n") { encode(it) })
+                }
+            }
         }
     }
 
     /** A copy of the current breadcrumbs, oldest first. */
     fun snapshot(): List<DiagEvent> = synchronized(lock) { ring.toList() }
 
-    fun clear() = synchronized(lock) { ring.clear() }
+    fun clear() = synchronized(lock) {
+        ring.clear()
+        runCatching { file.delete() }
+    }
+
+    // One event per line, tab-separated with escaped newlines/tabs - trivially greppable and no
+    // serialization dependency (the :app module reads these back through snapshot(), never the file).
+    private fun encode(e: DiagEvent): String =
+        listOf(e.epochMs.toString(), e.kind, esc(e.summary), e.detail?.let { esc(it) } ?: "").joinToString("\t")
+
+    private fun decode(line: String): DiagEvent? {
+        val parts = line.split('\t')
+        if (parts.size < 3) return null
+        val t = parts[0].toLongOrNull() ?: return null
+        return DiagEvent(t, parts[1], unesc(parts[2]), parts.getOrNull(3)?.takeIf { it.isNotEmpty() }?.let { unesc(it) })
+    }
+
+    private fun esc(s: String) = s.replace("\\", "\\\\").replace("\t", "\\t").replace("\n", "\\n").replace("\r", "")
+    private fun unesc(s: String) = s.replace("\\n", "\n").replace("\\t", "\t").replace("\\\\", "\\")
 
     private companion object {
         const val PREFS = "vela_settings"

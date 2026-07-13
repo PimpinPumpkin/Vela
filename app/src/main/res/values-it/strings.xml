@@ -440,6 +440,8 @@
     <string name="route_detail_unavailable">Dettagli linea non disponibili</string>
     <string name="place_transit_now">In partenza</string>
     <string name="place_transit_in_min">tra %1$d min</string> <!-- format -->
+    <string name="place_transit_in_duration">tra %1$s</string> <!-- format -->
+    <string name="place_transit_more_times">altri %1$d</string> <!-- format -->
     <string name="place_transit_live">In diretta</string>
     <string name="place_departures">Partenze</string>
     <string name="place_every">Ogni %1$s</string> <!-- format -->
