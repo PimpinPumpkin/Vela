@@ -528,6 +528,11 @@ Defaults that make the safe path the easy one:
   address in the result row (glyph + text in title ink, theme-responsive) and bold inline on the
   place sheet's price/category line (user 2026-07-10). EV chargers carry NO detail in the
   keyless response (probed 2026-07-10 - type marker only, no price/kW/availability); see ROADMAP.
+- **Typed coordinates drop a pin (2026-07-13):** pasting "37.77, -122.42" (or a geo: string) into
+  the search box goes through `MapLinkParser.parseBareCoordinate` (strict whole-string match, both
+  halves need a decimal point, range-checked, unit-tested) -> the same reverse-geocoded pin a
+  long-press drops, instead of hitting the search endpoint as text. Addresses with numbers still
+  search normally. External geo:/Maps links were already handled (`openDeepLink`).
 - **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
   resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
   `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI

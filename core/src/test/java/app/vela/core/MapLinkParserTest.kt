@@ -73,4 +73,21 @@ class MapLinkParserTest {
     @Test fun hasTargetGate() {
         assertTrue(MapLinkParser.parse("geo:38.5,-121.7")!!.hasTarget)
     }
+
+    @Test fun bareTypedCoordinates() {
+        val ok = MapLinkParser.parseBareCoordinate("37.7749, -122.4194")!!
+        assertEquals(37.7749, ok.lat!!, 1e-9)
+        assertEquals(-122.4194, ok.lng!!, 1e-9)
+        // geo: prefix works too
+        assertEquals(31.7767, MapLinkParser.parseBareCoordinate("geo:31.7767,35.2274")!!.lat!!, 1e-9)
+        // an address with numbers is NOT a coordinate
+        assertNull(MapLinkParser.parseBareCoordinate("1451 W Covell Blvd, Davis"))
+        // trailing text disqualifies (must be the whole string)
+        assertNull(MapLinkParser.parseBareCoordinate("37.7, -122.4 area"))
+        // out-of-range values are rejected
+        assertNull(MapLinkParser.parseBareCoordinate("91.0, 10.0"))
+        assertNull(MapLinkParser.parseBareCoordinate("47.0, 181.0"))
+        // integers without a decimal point stay a search
+        assertNull(MapLinkParser.parseBareCoordinate("5, 7"))
+    }
 }
