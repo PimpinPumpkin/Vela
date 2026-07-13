@@ -76,6 +76,15 @@ android {
             "\"${(project.findProperty("poiPackManifestUrl") as String?)
                 ?: "https://github.com/PimpinPumpkin/Vela/releases/download/poi-packs/poi-pack-manifest.json"}\"",
         )
+        // ALPR/Flock surveillance-camera dataset (DeFlock/OSM). A bundled floor ships in assets/, and the
+        // app refreshes from this hosted manifest so camera data updates WITHOUT an app release (weekly CI
+        // cron re-bakes + re-hosts). Same override pattern (-PflockManifestUrl=… via `adb reverse`).
+        buildConfigField(
+            "String",
+            "FLOCK_MANIFEST_URL",
+            "\"${(project.findProperty("flockManifestUrl") as String?)
+                ?: "https://github.com/PimpinPumpkin/Vela/releases/download/flock-cameras/flock-manifest.json"}\"",
+        )
         // Self-hosted map-font glyphs (Roboto composited over Noto; see ui/map/MapFonts) served
         // from the repo's GitHub Pages — same override pattern (-PmapFontsUrl=http://127.0.0.1:8099
         // via `adb reverse` against a local `python3 -m http.server` on the glyph directory).
