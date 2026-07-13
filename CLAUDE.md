@@ -1827,7 +1827,16 @@ architecture note.
   metros (Atlanta metro ~1571 nodes, greater Sacramento WA ~211), sparse in a given ~1 km high-zoom box, so cameras show
   best around arterials at a neighbourhood zoom, not a quiet residential block. NB you can't browse to a far city and
   see them if free-drive-follow keeps recentering on your GPS - it fetches YOUR viewport (fine for the real use case:
-  you driving through a covered area).
+  you driving through a covered area). **THIRD bug found 2026-07-13 (device): the fetch used a SINGLE hardcoded
+  endpoint `overpass-api.de`, which regularly answers HTTP 504 "dispatcher" under load - so a fetch over a box that
+  genuinely HAS cameras failed and the layer silently stayed empty, on BOTH the map AND the route-count path (both
+  call `fetchInBox`).** Fixed with **`OverpassEndpoints`** (`core/data`): a shared endpoint list (primary +
+  `kumi.systems` / `maps.mail.ru` / `private.coffee` mirrors) and a `run(http, query){ onBody }` failover runner
+  that tries each endpoint in turn, uses the FIRST 2xx, and returns null only when EVERY endpoint fails. **All three
+  keyless Overpass callers route through it** (`OverpassAlprCameras`, `OverpassTrafficSignals`, `OverpassPois`), so
+  one overloaded instance no longer blanks flock cameras, stop signs/lights, or the offline OSM POI/address index.
+  Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same Davis box.
+  **Any NEW keyless Overpass fetch MUST go through `OverpassEndpoints.run`, never a bare hardcoded endpoint.**
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
