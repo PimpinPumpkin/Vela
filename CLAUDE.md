@@ -1435,7 +1435,11 @@ architecture note.
   (= smoothed `browseBeam` when following, else `displayBearing`). The camera `when` block has a guard branch
   (`!navMode && driveFollowing && myLocation != null`) so a new fix's recomposition can't fire an `animateCamera`
   that fights the glide. Gate lives in `MapScreen` (`followMe`, default true; a `onUserPan` drops it, the locate FAB
-  re-arms it; suppressed while search/place/directions/results own the camera). Feel constants unverified on a real
+  re-arms it; suppressed while search/place/directions/results own the camera). **A programmatic
+  jump > 1 km from the fix ALSO drops it (2026-07-13):** a recents pick / search hit / pasted
+  coordinate only SUSPENDED follow while the sheet owned the camera, so closing the sheet resumed
+  it and glided the map all the way home (device report). A LaunchedEffect on `state.center`
+  disarms follow when the new center lands far from `myLocation`; a nearby POI tap keeps it. Feel constants unverified on a real
   drive - revertible.
 - Nav fixes (2026-07-05, round 2): (1) **Replay arrow** - the replay puck showed only the DOT, never the
   directional arrow. The arrow's visibility keys on the `displayBearing` passed to `applyData`
