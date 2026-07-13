@@ -440,6 +440,8 @@
     <string name="route_detail_unavailable">Lijndetails niet beschikbaar</string>
     <string name="place_transit_now">Vertrekt nu</string>
     <string name="place_transit_in_min">over %1$d min</string> <!-- format -->
+    <string name="place_transit_in_duration">over %1$s</string> <!-- format -->
+    <string name="place_transit_more_times">nog %1$d</string> <!-- format -->
     <string name="place_transit_live">Live</string>
     <string name="place_departures">Vertrektijden</string>
     <string name="place_every">Elke %1$s</string> <!-- format -->
