@@ -1881,10 +1881,28 @@ architecture note.
   route via the Google blob shows 6 lines with official pill colours + live countdowns). The result maps
   into the SAME StopDepartures model, so the whole board UI renders unchanged. The Google blob paths
   (fetchBoardFrom / resolveIntersectionStopBoard) remain the FALLBACK where Transitous lacks coverage.
-  `buildBoard` is pure + unit-tested (TransitousTest). PHASE 2 candidates: transit directions via
-  `/api/v1/plan` (replacing WebDirectionsFetcher), stops drawn on the map from `map/stops` (replacing
-  the OSM basemap stop icons + all tap correlation - the endpoint is verified to return canonical
-  GTFS stop positions per bbox).
+  `buildBoard` is pure + unit-tested (TransitousTest). Remaining phase-2 candidate: transit
+  directions via `/api/v1/plan` as a FALLBACK only - Google stays the primary transit router on
+  purpose (its ETAs are traffic/history-aware; GTFS-RT only knows current lateness).
+- **Canonical GTFS stops drawn on the map (2026-07-13, phase 2 of the Transitous adoption,
+  device-verified).** At z >= 15 (`TRANSIT_STOPS_MIN_ZOOM`) the viewport's transit stops come from
+  `Transitous.stopsInBox` (`map/stops`) and draw as a blue bus badge + stop-name label
+  (`TRANSIT_STOPS_LAYER` in VelaMapView, sibling of the flock layer: area-cached box in the VM,
+  350 ms settle, identity-gated source upload). One icon per STATION - bays dedupe onto their
+  `parentId` in the VM, matching how the board queries the parent. **Tapping an icon opens the
+  board DIRECTLY by stop id** (`onTransitStopTap` -> a lightweight `gtfs:<stopId>` place +
+  `Transitous.boardFor` - zero Google resolution, zero name correlation; device-verified: tap ->
+  named stop sheet + live board in one hop). **Wherever this layer has coverage the basemap's OSM
+  bus icons hide** (applyData flips `poi_transit`'s filter to exclude class "bus", restoring the
+  captured original filter when coverage goes - rail/airport stay basemap) so a stop can't draw
+  twice at slightly different corners. **Offline floor = `app/data/TransitStopCache`**: every
+  successful viewport fetch overwrites its area in a 24-area LRU JSON on disk, so the places a
+  user actually visits keep fresh canonical stops with no extra machinery (the flock-dataset
+  freshness property; global GTFS is too big to bundle, the visited-area cache is the
+  equivalent). Offline/fetch-failure reads the covering cached area; a never-visited area falls
+  back to the OSM basemap icons (filter restored). A fetch blip never blanks drawn stops.
+  Regional GTFS stop packs (whole-state stops baked into the poi-pack pipeline) are the future
+  hard-offline version - see task/ROADMAP.
 - **Share diagnostics is functional now (2026-07-13):** `DiagLog` (opt-in breadcrumb ring, :core)
   PERSISTS to a bounded `filesDir/diag_log.jsonl` (appended per event, reloaded at init, deleted on
   opt-out) - it was in-memory only, and since the bug being reported usually killed or preceded a

@@ -68,14 +68,26 @@ object Transitous {
 
     // --- API --------------------------------------------------------------------------------------
 
+    /** All transit stops inside the bbox. Null on FAILURE (network/decode) vs empty on a clean
+     *  "no stops here" - callers area-cache success only, like the traffic-controls layer. */
+    fun stopsInBox(http: OkHttpClient, south: Double, west: Double, north: Double, east: Double): List<MapStop>? {
+        val body = get(http, "$BASE/api/v1/map/stops?min=$south,$west&max=$north,$east") ?: return null
+        return runCatching { json.decodeFromString<List<MapStop>>(body) }.getOrNull()
+    }
+
     /** Transit stops within roughly [radiusM] of the point, nearest first. Empty on any failure. */
     fun stopsNear(http: OkHttpClient, lat: Double, lng: Double, radiusM: Double = 200.0): List<MapStop> {
         val dLat = radiusM / 111_320.0
         val dLng = radiusM / (111_320.0 * Math.cos(Math.toRadians(lat)))
-        val url = "$BASE/api/v1/map/stops?min=${lat - dLat},${lng - dLng}&max=${lat + dLat},${lng + dLng}"
-        val body = get(http, url) ?: return emptyList()
-        return runCatching { json.decodeFromString<List<MapStop>>(body) }.getOrDefault(emptyList())
+        return stopsInBox(http, lat - dLat, lng - dLng, lat + dLat, lng + dLng).orEmpty()
             .sortedBy { distM(lat, lng, it.lat, it.lon) }
+    }
+
+    /** The board for a KNOWN stop (a tapped map icon) - no proximity lookup needed. Queries the
+     *  parent station when the stop has one, so a hub icon shows the whole merged board. */
+    fun boardFor(http: OkHttpClient, stop: MapStop): StopDepartures? {
+        val times = stopTimes(http, stop.parentId ?: stop.stopId).ifEmpty { return null }
+        return buildBoard(times, stationName = stop.name)
     }
 
     /** The next [n] departures at [stopId] (a parent-station id aggregates all its child stops). */
