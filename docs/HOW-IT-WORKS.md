@@ -36,7 +36,7 @@ This split matters for debugging and for knowing what breaks when one side has a
 |---|---|---|
 | **Departure board** on a stop | **Transitous first** (open GTFS + GTFS-Realtime via the community MOTIS server, keyless). Google's anonymous place page is the fallback. | The open feeds return **every** route at a stop with realtime lateness and the agency's own route colours, and a multi-bay transit center merges through its parent station. Google's anonymous page embeds as little as one route at big hubs. |
 | **Transit directions** (picking a bus route A to B) | **Google** (hidden WebView reading the directions page). | Google's itinerary ETAs can reflect live road traffic on the bus's route; GTFS-Realtime only knows a bus is *currently* late, not that it *will be* slowed. Riders comparing route options benefit from the prediction, so Google keeps this job. A Transitous fallback for outages is planned. |
-| **Stop icons on the map** | OSM basemap tiles today; moving to Transitous stop positions (canonical GTFS) with OSM as the offline floor. | OSM stop data is community-maintained and sometimes marks stops agencies do not serve; GTFS positions come from the agencies themselves. |
+| **Stop icons on the map** | **Transitous stop positions** (canonical GTFS) at street zoom; the OSM basemap icons stay wherever Transitous has no coverage. Tapping an icon opens the board directly by stop id. | GTFS positions come from the agencies themselves; OSM stop data is community-maintained and sometimes marks stops agencies do not serve. The direct stop-id tap also skips the fragile name matching between map data and Google listings. |
 | **Route stop list** (tap a route on the board) | Google itinerary reuse today; moving to the GTFS trip's own stop sequence. | The trip data is exact - the actual run you tapped, every stop it makes - where the itinerary reuse guesses at a matching leg. |
 | **Realtime lateness** | GTFS-Realtime through Transitous (the green live dot and adjusted times on boards). | Straight from the agency feed; no scraping involved. |
 
@@ -45,5 +45,7 @@ Google's page and show whatever it embeds. When Google's scrape breaks (the stan
 keyless path), boards keep working because they no longer depend on it. Directions currently have no
 fallback beyond Google's own OSRM-assisted paths; that is the next reliability gap to close.
 
-Offline: stop icons render from downloaded map tiles, and region place packs carry stop names for
-offline search. Boards and directions are online by nature - schedules are realtime data.
+Offline: every area browsed online keeps its canonical stops in a small on-disk cache, so the
+places you frequent redraw their stops with no signal; never-visited areas fall back to the OSM
+icons in downloaded map tiles, and region place packs carry stop names for offline search. Boards
+and directions are online by nature - schedules are realtime data.
