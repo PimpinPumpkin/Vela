@@ -31,7 +31,9 @@ ENDPOINTS = [
 ]
 # Named `.bin` (not `.gz`) on purpose: aapt special-cases `.gz` assets and un-gzips them at build time,
 # which stops the app opening the file by its `.gz` name. A neutral extension is left untouched.
-OUT = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "assets", "flock_cameras.bin")
+ASSETS = os.path.join(os.path.dirname(__file__), "..", "app", "src", "main", "assets")
+OUT = os.path.join(ASSETS, "flock_cameras.bin")
+VER_OUT = os.path.join(ASSETS, "flock_cameras_version.txt")
 
 
 def fetch() -> dict:
@@ -67,7 +69,13 @@ def main() -> None:
     with gzip.open(OUT, "wt", encoding="utf-8", compresslevel=9) as f:
         for lat, lon, op in rows:
             f.write(f"{lat:.6f}\t{lon:.6f}\t{op}\n")
-    print(f"wrote {len(rows)} cameras -> {OUT} ({os.path.getsize(OUT)} bytes)")
+    # Version stamp (int, newest wins): CI passes FLOCK_VERSION (a run number); locally default to today's
+    # date. Written beside the data as the bundled floor's version and read back by the app / CI manifest.
+    import datetime
+    version = os.environ.get("FLOCK_VERSION") or datetime.date.today().strftime("%Y%m%d")
+    with open(VER_OUT, "w", encoding="utf-8") as f:
+        f.write(str(int(version)))
+    print(f"wrote {len(rows)} cameras -> {OUT} ({os.path.getsize(OUT)} bytes), version {version}")
 
 
 if __name__ == "__main__":

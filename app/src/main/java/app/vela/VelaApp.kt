@@ -39,9 +39,13 @@ class VelaApp : Application() {
         app.vela.ui.Topography.init(this)
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
-        // Parse the bundled on-device ALPR/Flock camera dataset off the main thread: the map layer then
-        // draws instantly (no live Overpass round-trip) and route camera-counts are instant + reliable.
-        CoroutineScope(Dispatchers.IO).launch { app.vela.data.FlockCameras.ensureLoaded(this@VelaApp) }
+        // Parse the bundled on-device ALPR/Flock camera dataset off the main thread (map layer draws
+        // instantly, route counts are reliable), then refresh from the hosted manifest so the data updates
+        // without an app release (weekly CI cron re-hosts a newer version; a bump swaps it in on next launch).
+        CoroutineScope(Dispatchers.IO).launch {
+            app.vela.data.FlockCameras.ensureLoaded(this@VelaApp)
+            app.vela.data.FlockCameras.refresh(this@VelaApp, app.vela.BuildConfig.FLOCK_MANIFEST_URL)
+        }
         app.vela.ui.SimLocation.init(this)
         app.vela.ui.UiScale.init(this)
         app.vela.ui.MapColors.init(this)
