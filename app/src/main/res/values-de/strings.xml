@@ -444,6 +444,8 @@
     <string name="place_transit_more_times">%1$d weitere</string> <!-- format -->
     <string name="place_transit_view_stops">Haltestellen</string>
     <string name="place_transit_live">Live</string>
+    <string name="place_transit_scheduled">Planmäßig</string>
+    <string name="place_transit_cancelled">Fällt aus</string>
     <string name="place_departures">Abfahrten</string>
     <string name="place_every">Alle %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Sie sind angekommen.</string>

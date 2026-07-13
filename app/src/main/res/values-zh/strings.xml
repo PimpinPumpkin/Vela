@@ -465,6 +465,8 @@
     <string name="place_transit_more_times">还有 %1$d 个</string> <!-- format -->
     <string name="place_transit_view_stops">站点</string>
     <string name="place_transit_live">实时</string>
+    <string name="place_transit_scheduled">已排定</string>
+    <string name="place_transit_cancelled">已取消</string>
     <string name="place_departures">发车时刻</string>
     <string name="place_every">每 %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">您已到达。</string>

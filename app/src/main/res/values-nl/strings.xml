@@ -444,6 +444,8 @@
     <string name="place_transit_more_times">nog %1$d</string> <!-- format -->
     <string name="place_transit_view_stops">Haltes</string>
     <string name="place_transit_live">Live</string>
+    <string name="place_transit_scheduled">Gepland</string>
+    <string name="place_transit_cancelled">Geannuleerd</string>
     <string name="place_departures">Vertrektijden</string>
     <string name="place_every">Elke %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Je bent aangekomen.</string>

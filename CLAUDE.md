@@ -2026,7 +2026,23 @@ architecture note.
   `route_detail_unavailable` (localized in all 11 langs) and the overlay closes. State on `MapUiState`:
   `routeDetail: TransitStep?`, `routeDetailTitle`, `routeDetailLoading`, guarded by `routeDetailJob`.
   The board cap was raised 8 -> 24 lines (`StopDepartureBoard` + parser `MAX_LINES`) so busy stops show
-  more routes. **Device-verified: Powell St -> Yellow-S -> 11 stops (Powell…SFO, 12:23-12:54 PM), then
+  more routes. **Timeline rows are Google's treatment (2026-07-13):** taller rows with a hairline
+  between stops (drawn INSIDE the row's bottom edge, inset 40dp past the rail - an item-level divider
+  opens a visible gap in the connector line), call times in normal ink with the BOARDING stop's time
+  a step bigger (titleMedium SemiBold), and a small status word under every time: dim "Scheduled"
+  (`place_transit_scheduled`, all 15 locales) or green "Live" when the stop's realtime differs from
+  its timetable (`scheduledText != timeText`). **The timeline's PRIMARY source is the GTFS trip itself
+  (2026-07-13, device-verified):** Transitous boards stamp every departure with its `tripId`
+  (`StopDeparture.tripId`), and `Transitous.tripStops` (`/api/v1/trip`) returns that run's REAL stop
+  sequence - per-stop realtime vs timetable times AND per-stop/-run CANCELLED flags straight from the
+  agency feed (`TransitStopTime.cancelled` renders a red "Cancelled" + struck-through time,
+  `place_transit_cancelled` in all 15 locales). `buildTripStep` (pure, unit-tested) trims the run to
+  start at the tapped stop (nearest stop to the tapped coordinate; a terminus tap keeps the whole
+  run). The headsign-geocode + itinerary-reuse path (`itineraryStep`) remains the FALLBACK for
+  Google-fallback boards (their departures carry no tripId) and trip-fetch failures. NB transit
+  DIRECTIONS still ride Google on purpose (traffic-aware ETAs) - this moved only the stops list.
+  Boards still DROP fully-cancelled runs (`cancelled`/`tripCancelled`/`place.cancelled`); showing
+  them struck-through on the board is an open option. **Device-verified: Powell St -> Yellow-S -> 11 stops (Powell…SFO, 12:23-12:54 PM), then
   tapping 16th St Mission opened that bus stop's own board.** **Per-line arrival depth raised 4 -> 8
   (2026-07-13, user report "only shows the next 4 or so arrivals"):** parser `MAX_TIMES` was 4, AND
   `DepartureLineRow` only rendered `upcoming.first()` + `drop(1).take(3)` = 4 total; both were the cap.
