@@ -177,7 +177,10 @@ object StopDeparturesParser {
         return "/" in tz && TIME.matches(clock)
     }
 
-    private val TIME = Regex("""^\d{1,2}:\d{2}\s?[AP]M$""", RegexOption.IGNORE_CASE)
+    // NB the clock strings arrive with a NARROW NO-BREAK SPACE (U+202F) before AM/PM in some agency
+    // payloads ("12:48\u202FPM"). Android's ICU regex counts U+202F as \s but the JVM does NOT - match
+    // the Unicode space variants explicitly so the parser behaves identically in unit tests and on device.
+    private val TIME = Regex("""^\d{1,2}:\d{2}[\s\u00A0\u202F]?[AP]M$""", RegexOption.IGNORE_CASE)
 
     /** All upcoming departures in a direction, in document order, de-duplicated by clock text.
      *  Real-time when Google's live epoch [0] differs from the timetable epoch [4]. */

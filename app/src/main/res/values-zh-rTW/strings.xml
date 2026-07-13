@@ -461,6 +461,8 @@
     <string name="route_detail_unavailable">無法取得路線詳情</string>
     <string name="place_transit_now">即將出發</string>
     <string name="place_transit_in_min">%1$d 分鐘後</string> <!-- format -->
+    <string name="place_transit_in_duration">%1$s後</string> <!-- format -->
+    <string name="place_transit_more_times">還有 %1$d 個</string> <!-- format -->
     <string name="place_transit_live">即時</string>
     <string name="place_departures">發車時刻</string>
     <string name="place_every">每 %1$s</string> <!-- format -->
