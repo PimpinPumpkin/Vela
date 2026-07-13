@@ -1864,6 +1864,20 @@ architecture note.
   is idempotent on relaunch. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
+- **Transitous is the PRIMARY departure-board source (2026-07-13, phase 1 of the GTFS adoption).**
+  `core/data/transit/Transitous` talks to the community MOTIS instance at `api.transitous.org` - the
+  open-GTFS + GTFS-Realtime aggregator (transit's FOSSGIS-OSRM: keyless, fair-use, identifying UA sent).
+  `fetchStopDepartures` now calls `Transitous.board(lat,lng)` FIRST for any transit-category or
+  Intersection place: `map/stops` finds the stop by PROXIMITY (no Google/OSM name correlation at all),
+  and `stoptimes` on the nearest stop's PARENT station id returns EVERY route with realtime flags and
+  the agency's own route colours - a hub's bays merge for free (device-verified: a corner that gave 1
+  route via the Google blob shows 6 lines with official pill colours + live countdowns). The result maps
+  into the SAME StopDepartures model, so the whole board UI renders unchanged. The Google blob paths
+  (fetchBoardFrom / resolveIntersectionStopBoard) remain the FALLBACK where Transitous lacks coverage.
+  `buildBoard` is pure + unit-tested (TransitousTest). PHASE 2 candidates: transit directions via
+  `/api/v1/plan` (replacing WebDirectionsFetcher), stops drawn on the map from `map/stops` (replacing
+  the OSM basemap stop icons + all tap correlation - the endpoint is verified to return canonical
+  GTFS stop positions per bbox).
 - **Share diagnostics is functional now (2026-07-13):** `DiagLog` (opt-in breadcrumb ring, :core)
   PERSISTS to a bounded `filesDir/diag_log.jsonl` (appended per event, reloaded at init, deleted on
   opt-out) - it was in-memory only, and since the bug being reported usually killed or preceded a
