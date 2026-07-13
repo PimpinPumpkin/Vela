@@ -82,6 +82,13 @@ jobs:
       - name: Unit tests
         run: ./gradlew :core:test --no-daemon
 
+      - name: Check translations
+        # Android lint's MissingTranslation doesn't run on assemble/test, so a missed locale
+        # backfill ships silently (English shown for that key). Fail fast if any translatable
+        # string is absent from a locale or its placeholders drifted. Intentionally-English-only
+        # strings are marked translatable="false" in res/values/strings.xml and skipped.
+        run: python3 tools/check-translations.py
+
       - name: Derive build version
         id: ver
         # versionName is plain semver (0.4.<run>) so Obtainium can compare it;
