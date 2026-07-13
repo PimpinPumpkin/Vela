@@ -444,6 +444,8 @@
     <string name="place_transit_more_times">%1$d till</string> <!-- format -->
     <string name="place_transit_view_stops">Hållplatser</string>
     <string name="place_transit_live">Live</string>
+    <string name="place_transit_scheduled">Planerad</string>
+    <string name="place_transit_cancelled">Inställd</string>
     <string name="place_departures">Avgångar</string>
     <string name="place_every">Var %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Du har kommit fram.</string>
