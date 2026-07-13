@@ -5,25 +5,33 @@ import app.vela.core.data.AlprCamera
 import app.vela.core.model.LatLng
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.InputStream
+import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 
 /**
- * The bundled ALPR / Flock surveillance-camera dataset, queried ON-DEVICE.
+ * The ALPR / Flock surveillance-camera dataset, queried ON-DEVICE.
  *
  * The cameras are the community DeFlock project's OpenStreetMap nodes (`surveillance:type=ALPR`). The whole
  * global set is tiny (~124k points), so instead of a live Overpass query per viewport (slow, and it 504s
- * under load) it's baked into `assets/flock_cameras.tsv.gz` by `scripts/build-flock-cameras.py` and read
- * here. That makes the map layer draw instantly (like the basemap) and the route "passes N cameras" count
- * instant + reliable (so the avoid-cameras re-rank actually has data to work with). `OverpassAlprCameras`
- * stays as the fallback for the brief window before this finishes loading, or if the asset is unreadable.
+ * under load) the map layer + route "passes N cameras" count read a compact baked file: gzipped TSV
+ * `lat<TAB>lon<TAB>operator`, parsed once off the main thread into flat arrays + a 0.1 deg grid index.
  *
- * Loaded once off the main thread into flat lat/lng arrays + a coarse grid index (0.1 deg cells).
+ * TWO tiers of that file, newest wins:
+ *  - a **bundled** floor in `assets/flock_cameras.bin` (+ its version in `assets/flock_cameras_version.txt`),
+ *    so a fresh install has cameras immediately and offline;
+ *  - a **hosted** copy on the `flock-cameras` GitHub release, refreshed by CI (weekly cron), which
+ *    [refresh] downloads to `filesDir/flock/cameras.bin` when the manifest version beats what's installed -
+ *    so camera data updates WITHOUT shipping an app release (the user's ask 2026-07-13).
+ *
+ * `OverpassAlprCameras` stays as the fallback for the brief window before the file finishes loading.
  */
 object FlockCameras {
-    // NB the asset is gzipped but named `.bin`, NOT `.gz`: aapt SPECIAL-CASES `.gz` assets and silently
-    // un-gzips them at build time (renaming to strip the suffix), which broke `open("...tsv.gz")`. A neutral
-    // extension is left untouched, so we gunzip it ourselves here.
-    private const val ASSET = "flock_cameras.bin"
+    private const val BUNDLED = "flock_cameras.bin"
+    private const val BUNDLED_VER = "flock_cameras_version.txt"
     private const val CELL = 0.1 // grid cell size in degrees (~11 km) for the bucket index
 
     @Volatile private var loaded = false
@@ -38,38 +46,88 @@ object FlockCameras {
     private fun key(row: Long, col: Long): Long = (row shl 32) xor (col and 0xffffffffL)
     private fun rowOf(v: Double): Long = Math.floor(v / CELL).toLong()
 
-    /** Parse the bundled asset once, off the main thread. Safe to call repeatedly (a loaded call no-ops). */
+    private fun dir(context: Context) = File(context.filesDir, "flock").apply { mkdirs() }
+    private fun downloadedBin(context: Context) = File(dir(context), "cameras.bin")
+    private fun downloadedVer(context: Context) = File(dir(context), "version.txt")
+
+    /** The version currently on disk: the downloaded copy's if present, else the bundled floor's. */
+    private fun installedVersion(context: Context): Int {
+        val d = downloadedVer(context)
+        if (downloadedBin(context).exists() && d.exists()) d.readText().trim().toIntOrNull()?.let { return it }
+        return runCatching { context.assets.open(BUNDLED_VER).bufferedReader().use { it.readText() }.trim().toInt() }
+            .getOrDefault(0)
+    }
+
+    /** Parse the newest available file once, off the main thread. Safe to call repeatedly (a loaded call no-ops). */
     suspend fun ensureLoaded(context: Context) {
         if (loaded) return
         withContext(Dispatchers.IO) {
             if (loaded) return@withContext
-            try {
-                val las = ArrayList<Double>(130_000)
-                val los = ArrayList<Double>(130_000)
-                val ops = ArrayList<String>(130_000)
-                val intern = HashMap<String, String>() // operator column is highly repetitive - intern it
-                context.assets.open(ASSET).use { raw ->
-                    GZIPInputStream(raw).bufferedReader().useLines { lines ->
-                        for (line in lines) {
-                            val t1 = line.indexOf('\t'); if (t1 <= 0) continue
-                            val t2 = line.indexOf('\t', t1 + 1); if (t2 < 0) continue
-                            val la = line.substring(0, t1).toDoubleOrNull() ?: continue
-                            val lo = line.substring(t1 + 1, t2).toDoubleOrNull() ?: continue
-                            val o = line.substring(t2 + 1)
-                            las.add(la); los.add(lo); ops.add(intern.getOrPut(o) { o })
-                        }
-                    }
+            val dl = downloadedBin(context)
+            val stream = if (dl.exists()) runCatching { dl.inputStream() }.getOrNull()
+                else runCatching { context.assets.open(BUNDLED) }.getOrNull()
+            if (stream != null) runCatching { loadFrom(stream) }
+        }
+    }
+
+    /** Build the arrays + index from a gzipped-TSV stream and publish them (never leaves `loaded` false once set). */
+    private fun loadFrom(raw: InputStream) {
+        val las = ArrayList<Double>(130_000)
+        val los = ArrayList<Double>(130_000)
+        val ops = ArrayList<String>(130_000)
+        val intern = HashMap<String, String>() // operator column is highly repetitive - intern it
+        raw.use { r ->
+            GZIPInputStream(r).bufferedReader().useLines { lines ->
+                for (line in lines) {
+                    val t1 = line.indexOf('\t'); if (t1 <= 0) continue
+                    val t2 = line.indexOf('\t', t1 + 1); if (t2 < 0) continue
+                    val la = line.substring(0, t1).toDoubleOrNull() ?: continue
+                    val lo = line.substring(t1 + 1, t2).toDoubleOrNull() ?: continue
+                    val o = line.substring(t2 + 1)
+                    las.add(la); los.add(lo); ops.add(intern.getOrPut(o) { o })
                 }
-                lat = las.toDoubleArray()
-                lng = los.toDoubleArray()
-                op = ops.toTypedArray()
-                grid.clear()
-                for (i in lat.indices) grid.getOrPut(key(rowOf(lat[i]), rowOf(lng[i]))) { ArrayList() }.add(i)
-                loaded = true
-            } catch (e: Exception) {
-                // asset missing/corrupt: stay unloaded so callers fall back to live Overpass
             }
         }
+        val g = HashMap<Long, MutableList<Int>>()
+        for (i in las.indices) g.getOrPut(key(rowOf(las[i]), rowOf(los[i]))) { ArrayList() }.add(i)
+        // Publish (a bad/partial parse threw before here, so we never swap in a half-built set).
+        lat = las.toDoubleArray(); lng = los.toDoubleArray(); op = ops.toTypedArray()
+        grid.clear(); grid.putAll(g)
+        loaded = true
+    }
+
+    private val downloadHttp: OkHttpClient by lazy {
+        OkHttpClient.Builder().callTimeout(0, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).build()
+    }
+
+    /**
+     * Check the hosted manifest and, if it carries a newer version than what's on disk, download the fresh
+     * dataset and reload from it. Best-effort: any network/parse failure keeps the current data. Called once
+     * per launch after [ensureLoaded], so camera data can update without an app release.
+     */
+    suspend fun refresh(context: Context, manifestUrl: String) = withContext(Dispatchers.IO) {
+        runCatching {
+            val body = downloadHttp.newCall(Request.Builder().url(manifestUrl).build()).execute()
+                .use { if (!it.isSuccessful) return@withContext; it.body?.string().orEmpty() }
+            // org.json, not kotlinx.serialization: the :app module stays off kotlinx (a deliberate boundary).
+            val obj = org.json.JSONObject(body)
+            val version = obj.optInt("version", -1); if (version < 0) return@withContext
+            val url = obj.optString("url", ""); if (url.isBlank()) return@withContext
+            if (version <= installedVersion(context)) return@withContext
+            // Download to a temp file, validate the gzip magic, then atomically swap into place.
+            val tmp = File(dir(context), "cameras.bin.tmp")
+            downloadHttp.newCall(Request.Builder().url(url).build()).execute().use { resp ->
+                if (!resp.isSuccessful) return@withContext
+                val bytes = resp.body?.bytes() ?: return@withContext
+                if (bytes.size < 2 || bytes[0] != 0x1f.toByte() || bytes[1] != 0x8b.toByte()) return@withContext // not gzip
+                tmp.writeBytes(bytes)
+            }
+            val target = downloadedBin(context)
+            if (!tmp.renameTo(target)) { tmp.copyTo(target, overwrite = true); tmp.delete() }
+            downloadedVer(context).writeText(version.toString())
+            loadFrom(target.inputStream()) // hot-swap the in-memory set to the fresh data
+        }
+        Unit
     }
 
     /** Cameras inside the bbox, for DRAWING. Empty if not loaded yet (caller falls back to Overpass). */
