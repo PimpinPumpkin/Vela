@@ -442,6 +442,7 @@
     <string name="place_transit_in_min">tra %1$d min</string> <!-- format -->
     <string name="place_transit_in_duration">tra %1$s</string> <!-- format -->
     <string name="place_transit_more_times">altri %1$d</string> <!-- format -->
+    <string name="place_transit_view_stops">Fermate</string>
     <string name="place_transit_live">In diretta</string>
     <string name="place_departures">Partenze</string>
     <string name="place_every">Ogni %1$s</string> <!-- format -->

@@ -2479,6 +2479,21 @@ private fun DepartureLineRow(
             line.headwayText?.let {
                 Text(stringResource(R.string.place_every, it), style = MaterialTheme.typography.labelMedium, color = dim)
             }
+            // Explicit "Stops ›" action: the bare row ripple wasn't discoverable enough as "tap to see
+            // where this route goes" (user 2026-07-13, overruling the earlier chevron removal).
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.place_transit_view_stops),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                )
+                Icon(
+                    Icons.Default.ChevronRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
         }
         if (line.upcoming.isNotEmpty()) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
