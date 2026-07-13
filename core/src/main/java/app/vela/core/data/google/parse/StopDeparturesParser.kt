@@ -273,6 +273,6 @@ object StopDeparturesParser {
         }
     }
 
-    private const val MAX_TIMES = 4
+    private const val MAX_TIMES = 8 // upcoming departures kept per line — Google shows a similar depth on a busy stop
     private const val MAX_LINES = 24
 }
