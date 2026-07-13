@@ -1,0 +1,63 @@
+name: Flock cameras
+
+# Re-bake the DeFlock/OSM ALPR surveillance-camera dataset and re-host it on the `flock-cameras` release so
+# the app refreshes it WITHOUT an app update (FlockCameras.refresh reads the manifest and downloads a newer
+# version). Weekly is plenty - DeFlock grows steadily, not by the hour. The `flock-cameras` release is an
+# INFRA release (fixed tag, prerelease): never delete it (the app's manifest URL points at its assets, and
+# the nightly prune only ever touches `v0.*`).
+
+on:
+  schedule:
+    - cron: '17 8 * * 1'   # Mondays 08:17 UTC
+  workflow_dispatch:
+
+concurrency: flock-cameras
+permissions:
+  contents: write
+
+jobs:
+  bake:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Bake dataset
+        id: bake
+        run: |
+          set -euo pipefail
+          VERSION=$(date -u +%Y%m%d)
+          FLOCK_VERSION="$VERSION" python3 scripts/build-flock-cameras.py
+          BIN=app/src/main/assets/flock_cameras.bin
+          COUNT=$(gzip -dc "$BIN" | wc -l | tr -d ' ')
+          SIZE=$(wc -c < "$BIN" | tr -d ' ')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "count=$COUNT" >> "$GITHUB_OUTPUT"
+          echo "size=$SIZE" >> "$GITHUB_OUTPUT"
+
+      - name: Write manifest
+        run: |
+          cat > flock-manifest.json <<JSON
+          {
+            "version": ${{ steps.bake.outputs.version }},
+            "count": ${{ steps.bake.outputs.count }},
+            "sizeBytes": ${{ steps.bake.outputs.size }},
+            "url": "https://github.com/${{ github.repository }}/releases/download/flock-cameras/flock_cameras.bin",
+            "updatedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          JSON
+          cat flock-manifest.json
+
+      - name: Publish to flock-cameras release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! gh release view flock-cameras >/dev/null 2>&1; then
+            gh release create flock-cameras --prerelease --title "Flock camera dataset" \
+              --notes "Baked DeFlock / OSM ALPR camera dataset for on-device use (map layer + route camera counts). Auto-refreshed weekly by the Flock cameras workflow. INFRA release - do not delete."
+          fi
+          gh release upload flock-cameras app/src/main/assets/flock_cameras.bin --clobber
+          gh release upload flock-cameras flock-manifest.json --clobber
