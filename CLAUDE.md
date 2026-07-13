@@ -1036,8 +1036,15 @@ architecture note.
   MapLibre's colour parser and fell back to the default OPAQUE BLACK - a 12dp black stripe over
   every road on the browse map (device report). For an invisible-but-queryable layer use the
   `@ColorInt` `Color.TRANSPARENT` overload (no string parse) + `lineOpacity(0f)`, and only ADD it
-  while it's needed (the maxspeed layer is now gated to `speedOverlayOn` = driving/nav, never on the
-  browse map). Never trust an 8-hex colour STRING for transparency. The FLEET DEFAULT is remote:
+  while it's needed. **`speedOverlayOn` is MOTION-ARMED (`speedOverlayArmed` in MapScreen, 2026-07-13):**
+  armed the moment `navigating || mySpeed > 3 m/s`, disarmed after 2 min of stillness - NEVER keyed on
+  `driveFollowing` alone. driveFollowing is true on the bare browse map (followMe defaults on), and
+  keying the overlay off it mounted the PMTiles sources while browsing AND removed them from the style
+  MID-GESTURE when the first pan dropped followMe - that native style churn was the post-0.4.542
+  "atrocious panning" regression (user device A/B: 542 smooth, wave janky). The hysteresis also stops
+  stoplight churn. The scale bar hides only while `driveFollowing && speedOverlayArmed` (actually
+  free-driving) - `!driveFollowing` alone had it hidden on the whole browse map.
+  Never trust an 8-hex colour STRING for transparency. The FLEET DEFAULT is remote:
   `calibration.json` `defaultMapPalette` (v15) -> `Calibration.defaultMapPalette` -> the VM
   pushes it into `MapColors.remoteDefault` at init + after refresh; a user's explicit pick
   always wins. Changing everyone's default = edit the field, bump version, re-sign, commit
