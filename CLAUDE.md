@@ -1815,7 +1815,9 @@ architecture note.
   the building/address overlays). NB the `TRAFFIC_*` constants in `VelaMapView` are a DIFFERENT thing - Google's
   live-traffic raster overlay; the controls use `CONTROLS_*`. Needs a real-drive glance to confirm density/size feel.
 - **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
-  2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, OFF by default) draws the
+  2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, **ON by default since 2026-07-13** -
+  it's a headline feature and the bundled dataset makes it free to draw; `FlockRouteAlert` route-avoid stays
+  OFF by default since it changes route choice) draws the
   community DeFlock project's `node["surveillance:type"="ALPR"]` OSM nodes as a purple camera badge, keyless via
   Overpass, sibling of the traffic-controls layer (per-viewport, area-cached `flockBox`, 350 ms settle, `FLOCK_MIN_ZOOM`
   13 fetch / layer minZoom 13.5). **TWO bugs found in device verification (both fixed):** (1) the Overpass `out`
@@ -1825,7 +1827,7 @@ architecture note.
   `VelaApp.onCreate` (unlike `Traffic`/`TransitLayer`), so the persisted toggle read `false` on EVERY launch - the
   layer silently turned itself off after a restart; fixed by initialising it there. Real DeFlock nodes tag the vendor
   as `manufacturer` ("Flock Safety"), not `operator`, so the parser falls back to it. Coverage is OSM's - dense in US
-  metros (Atlanta metro ~1571 nodes, greater Everett WA ~211), sparse in a given ~1 km high-zoom box, so cameras show
+  metros (Atlanta metro ~1571 nodes, a mid-size suburban metro ~200), sparse in a given ~1 km high-zoom box, so cameras show
   best around arterials at a neighbourhood zoom, not a quiet residential block. NB you can't browse to a far city and
   see them if free-drive-follow keeps recentering on your GPS - it fetches YOUR viewport (fine for the real use case:
   you driving through a covered area). **THIRD bug found 2026-07-13 (device): the fetch used a SINGLE hardcoded
@@ -1836,7 +1838,7 @@ architecture note.
   that tries each endpoint in turn, uses the FIRST 2xx, and returns null only when EVERY endpoint fails. **All three
   keyless Overpass callers route through it** (`OverpassAlprCameras`, `OverpassTrafficSignals`, `OverpassPois`), so
   one overloaded instance no longer blanks flock cameras, stop signs/lights, or the offline OSM POI/address index.
-  Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same Mill Creek box.
+  Proven: `overpass-api.de` was 504-ing while `maps.mail.ru` returned 16 Flock nodes over the same box.
   **Any NEW keyless Overpass fetch MUST go through `OverpassEndpoints.run`, never a bare hardcoded endpoint.**
   **BUNDLED + HOSTED on-device dataset (2026-07-13, supersedes the live Overpass path for cameras):** the
   whole global DeFlock set is tiny (~124k points), so it's baked into a gzipped TSV `lat<TAB>lon<TAB>operator`
@@ -1918,7 +1920,14 @@ architecture note.
   0 lines. **Coverage is AGENCY-DEPENDENT** (only agencies that feed Google real-time embed it): NYC
   MTA + SF BART carry it, SacRT (small light rail) does NOT - `MapViewModel.fetchStopDepartures` is
   gated to transit-category places (`TRANSIT_CAT` regex) so it never fires on a business, and an empty
-  result just shows no board. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
+  result just shows no board. **INTERSECTION-named stops (2026-07-13):** a bus stop named by its corner
+  ("Main St & 1st Ave" style) often resolves to Google's "Intersection" entity, whose OWN page has NO
+  board (device-confirmed: the "some stops on a state-route corridor show no buses" report). `fetchStopDepartures` now, for an
+  "Intersection" category, RE-RESOLVES to the co-located stop (`resolveIntersectionStopBoard`: search
+  "<name> bus stop", take the nearest LIVE `TRANSIT_CAT` listing within **250 m** - the junction point sits
+  ~100-200 m back from the stops, past the 80 m the icon-tap path uses; a NEIGHBOUR's stop sits ~575 m out,
+  so 250 m catches the right one only) and pulls ITS board onto the intersection sheet. No co-located Google
+  listing (e.g. an OSM-only stop Google never listed) -> no board, correctly. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
   the TIME regex reads). UI: `PlaceSheet.StopDepartureBoard` (one shared 30 s countdown clock, reuses
   `departsInLabel` + the `place_transit_*` strings + `place_departures`/`place_every`).
   **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
@@ -1947,7 +1956,7 @@ architecture note.
   tap-through threw you to a corner. `onPoiTap`'s pick is now TRANSIT-AWARE when a transit hint is set
   (map tap on a stop icon OR this tap-through): it takes the nearest LIVE `TRANSIT_CAT` listing within
   80 m, EXCLUDES `permanentlyClosed`, and SKIPS the most-reviewed-canonical override (a defunct-but-
-  reviewed old shelter was beating the live stop - the "Hwy 527 & Mill Creek Blvd shows Permanently
+  reviewed old shelter was beating the live stop - the "tapped stop shows Permanently
   closed" device report). No live stop listing at the coordinate -> the lightweight name+location
   placeholder stays (a stop name beats an Intersection card; no board without a real stop listing, which
   is correct). Best-effort: an ungeocodable headsign / no ride leg flashes
