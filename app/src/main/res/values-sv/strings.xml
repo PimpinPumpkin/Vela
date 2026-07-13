@@ -442,6 +442,7 @@
     <string name="place_transit_in_min">om %1$d min</string> <!-- format -->
     <string name="place_transit_in_duration">om %1$s</string> <!-- format -->
     <string name="place_transit_more_times">%1$d till</string> <!-- format -->
+    <string name="place_transit_view_stops">Hållplatser</string>
     <string name="place_transit_live">Live</string>
     <string name="place_departures">Avgångar</string>
     <string name="place_every">Var %1$s</string> <!-- format -->

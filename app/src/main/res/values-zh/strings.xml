@@ -463,6 +463,7 @@
     <string name="place_transit_in_min">%1$d 分钟后</string> <!-- format -->
     <string name="place_transit_in_duration">%1$s后</string> <!-- format -->
     <string name="place_transit_more_times">还有 %1$d 个</string> <!-- format -->
+    <string name="place_transit_view_stops">站点</string>
     <string name="place_transit_live">实时</string>
     <string name="place_departures">发车时刻</string>
     <string name="place_every">每 %1$s</string> <!-- format -->
