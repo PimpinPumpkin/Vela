@@ -125,10 +125,15 @@ object StopDeparturesParser {
         val fill = a.at(2).str()
         // A route short name is short and alphanumeric-ish ("14", "14R", "38AX", "N", "M15-SBS"),
         // paired with a "#" fill; that combination is the pill and can't collide with a time/id node.
-        if (label != null && label.length in 1..7 && label.any { it.isLetterOrDigit() } &&
-            label.all { it.isLetterOrDigit() || it in "-/ " } && fill != null && fill.startsWith("#")
+        // NAMED lines (BRT-style "<Brand> Green" / "<Brand> Orange" branding) run longer than 7 chars -
+        // admit up to 24 when BOTH colours are hex: the [label, x, "#fill", "#text"] double-hex shape is
+        // unambiguous (verified against a live device blob, 2026-07-13).
+        val text = a.at(3).str()?.takeIf { it.startsWith("#") }
+        if (label != null && label.any { it.isLetterOrDigit() } &&
+            label.all { it.isLetterOrDigit() || it in "-/ " } && fill != null && fill.startsWith("#") &&
+            (label.length in 1..7 || (label.length in 8..24 && text != null))
         ) {
-            return Triple(label, fill, a.at(3).str()?.takeIf { it.startsWith("#") })
+            return Triple(label, fill, text)
         }
         for (c in a) findBadge(c, depth + 1)?.let { return it }
         return null
