@@ -33,7 +33,6 @@ import app.vela.ui.theme.isAppInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -2436,7 +2435,6 @@ private fun StopDepartureBoard(
 }
 
 @Composable
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 private fun DepartureLineRow(
     line: app.vela.core.model.StopDepartureLine,
     nowSec: Long,
@@ -2486,13 +2484,19 @@ private fun DepartureLineRow(
                 }
                 if (live) Box(Modifier.size(6.dp).clip(CircleShape).background(SheetPalette.TrafficGreen))
             }
-            // The rest of the upcoming departures, quiet — a FlowRow so a busy stop's many times WRAP to
-            // more rows instead of overflowing a single line (they used to be capped at 3 to fit one Row).
+            // The rest of the upcoming departures as a VERTICAL LIST — one per line, each with its own
+            // "in N min" countdown, so a busy stop shows every embedded time cleanly instead of a wrapped
+            // wall of clock times (user 2026-07-13). The board data itself sets how many there are.
             val rest = line.upcoming.drop(1)
             if (rest.isNotEmpty()) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    rest.forEach {
-                        Text(it.clockText.orEmpty(), style = MaterialTheme.typography.bodySmall, color = dim)
+                Column(Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    rest.forEach { dep ->
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(dep.clockText.orEmpty(), style = MaterialTheme.typography.bodySmall, color = dim)
+                            departsInLabel(dep.epochSec, nowSec)?.let {
+                                Text("· $it", style = MaterialTheme.typography.bodySmall, color = dim)
+                            }
+                        }
                     }
                 }
             }
