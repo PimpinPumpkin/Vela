@@ -2002,7 +2002,11 @@ architecture note.
   a dumped blob exposed it. **Debug builds keep the last raw board payload** at `filesDir/depdump.txt`
   (WebStopDeparturesFetcher, BuildConfig.DEBUG only) - the schema is agency-shaped, so wrong-parse
   reports are only diagnosable from the actual blob. **The board renders FIRST in the sheet body**
-  (above the address; renders nothing for non-transit places).
+  (above the address; renders nothing for non-transit places). **Badge matcher admits NAMED lines** (8-24
+  chars when BOTH colours are hex - branded BRT lines carry a name, not a number; verified against
+  a device blob). **Each row carries an explicit "Stops ›" action** (`place_transit_view_stops`, all
+  locales) - the bare ripple wasn't discoverable as "tap to see the route's stops" (user 2026-07-13,
+  overruling the earlier chevron removal in #168).
 
 ## Name
 
