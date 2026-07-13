@@ -619,7 +619,10 @@ fun VelaMapView(
                         browseCam[1] = cp.target?.longitude ?: loc.lng
                     }
                 }
-                val k = (1f - kotlin.math.exp(-dt / 0.16f)).toDouble()
+                // tau 0.22 s (was 0.16): a slightly longer time-constant keeps the camera CHASING
+                // between the ~1 Hz fixes instead of coasting to each one and stopping, so the follow
+                // reads as a continuous glide (closer to the nav feel) rather than a per-second ease.
+                val k = (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
                 browseCam[0] += (loc.lat - browseCam[0]) * k
                 browseCam[1] += (loc.lng - browseCam[1]) * k
                 camLat = browseCam[0]; camLng = browseCam[1]
@@ -634,7 +637,13 @@ fun VelaMapView(
                 kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
                 kotlin.math.abs(beam - lastBrowse[2]) > 0.4
             if (moved) {
-                setMeSource(style, loc, beam)
+                // Draw the puck at the EASED follow position (camLat/camLng), not the raw fix: at the
+                // raw fix the dot teleported forward on the map each 1 Hz fix while the camera eased to
+                // catch up (the visible hop). At the eased position the dot stays centred and glides with
+                // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
+                // while pinching, when the camera isn't easing.)
+                val puckAt = if (cam != null && !scaling[0]) LatLng(camLat, camLng) else loc
+                setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0]) {
                     cam.moveCamera(CameraUpdateFactory.newLatLng(MLLatLng(camLat, camLng)))
                 }
