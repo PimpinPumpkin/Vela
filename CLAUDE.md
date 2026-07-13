@@ -721,6 +721,13 @@ Defaults that make the safe path the easy one:
   inner periods stay (St. Paul). The listening pulse uses tween(90) + 1.4x ring travel + a 7x RMS
   gain - the default spring smoothed the ~32 ms level updates into near-stillness. **The mic always shows when the toggle is on** (2026-07-10): with neither the model nor a provider, tapping it OFFERS the Vela voice download (VelaDialog in MapScreen -> `downloadAsrModel()`, the map shows the same VoiceDownloadCard) - a hidden mic made the feature undiscoverable. **The archive is tar.GZIP on `asr-models`** (58 MB vs 47 bz2): bzip2 unpacked at ~15 MB/s on-device (a ~30 s hang); gzip installs in ~2 s. `KokoroInstaller.extractTar` picks the decompressor by magic bytes (upstream Piper voices are still bz2). Accuracy of
   tiny-int8 is the known tradeoff for size/speed; a larger model could be a future catalog entry.
+  **Pauses playing media while listening (2026-07-12):** `WhisperRecognizer.listen` takes
+  `AUDIOFOCUS_GAIN_TRANSIENT` (an `AudioFocusRequest` with `USAGE_ASSISTANT`/`CONTENT_TYPE_SPEECH`)
+  right before `audio.startRecording()` and abandons it in the `finally` after `audio.stop()`, so
+  music/podcasts PAUSE (not just duck - `_TRANSIENT`, not `_MAY_DUCK`) while dictating and resume the
+  instant the utterance ends. Only the in-process path needs it; tier-2 (SYSTEM) hands off to an
+  external recognizer that manages its own focus. Recording itself (an input `AudioRecord`) is
+  unaffected by the output-focus request.
 - **Location is requested in onboarding, NOT on map load (2026-07-10).** `MapScreen`'s
   `LaunchedEffect` only STARTS location when it's already granted; it no longer fires the raw
   system dialog. The first ask lives in `VelaRoot`: when onboarding reaches the location step
@@ -1774,6 +1781,21 @@ architecture note.
   so a nav speedo tick doesn't re-tessellate them. No app setting (zoom-gated); no PMTiles/CI (live Overpass, unlike
   the building/address overlays). NB the `TRAFFIC_*` constants in `VelaMapView` are a DIFFERENT thing - Google's
   live-traffic raster overlay; the controls use `CONTROLS_*`. Needs a real-drive glance to confirm density/size feel.
+- **Surveillance-camera (Flock / ALPR) layer (`OverpassAlprCameras` + `refreshFlock` + `FLOCK_LAYER`, device-verified
+  2026-07-12).** Settings > Map > "Surveillance cameras" (`app.vela.ui.Flock` holder, OFF by default) draws the
+  community DeFlock project's `node["surveillance:type"="ALPR"]` OSM nodes as a purple camera badge, keyless via
+  Overpass, sibling of the traffic-controls layer (per-viewport, area-cached `flockBox`, 350 ms settle, `FLOCK_MIN_ZOOM`
+  13 fetch / layer minZoom 13.5). **TWO bugs found in device verification (both fixed):** (1) the Overpass `out`
+  statement was `out tags`, which for a NODE returns id + tags but **omits lat/lon** - so `OverpassAlprCameras` parsed
+  every element to null (no coords) and the layer was ALWAYS empty (this is why it "never drew"); fixed to `out body`
+  (verified: Atlanta Ponce City Market went 0 -> 5 cameras, purple badges visible). (2) `Flock.init` was NOT called in
+  `VelaApp.onCreate` (unlike `Traffic`/`TransitLayer`), so the persisted toggle read `false` on EVERY launch - the
+  layer silently turned itself off after a restart; fixed by initialising it there. Real DeFlock nodes tag the vendor
+  as `manufacturer` ("Flock Safety"), not `operator`, so the parser falls back to it. Coverage is OSM's - dense in US
+  metros (Atlanta metro ~1571 nodes, a mid-size suburban metro ~211), sparse in a given ~1 km high-zoom box, so cameras show
+  best around arterials at a neighbourhood zoom, not a quiet residential block. NB you can't browse to a far city and
+  see them if free-drive-follow keeps recentering on your GPS - it fetches YOUR viewport (fine for the real use case:
+  you driving through a covered area).
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
@@ -1809,6 +1831,61 @@ architecture note.
   end. The auto-advance is **latched** (`maybeAdvanceTransitNav`, `TRANSIT_ARM_M=90`/`TRANSIT_ARRIVE_M=40`):
   a leg only advances once it's been ARMED by being >ARM_M from its end, so a transfer hub can't cascade
   through legs and a short final walk can't fire a premature arrival.
+- **Live stop departure board (`WebStopDeparturesFetcher` + `core/.../StopDeparturesParser`,
+  2026-07-12, keyless + device-verified).** Tapping a transit STATION shows Google's "See departure
+  board" in the place sheet. The board is embedded in the station's OWN place page's
+  `APP_INITIALIZATION_STATE` (opening the button fires NO data RPC - only a gen_204 beacon) and
+  SURVIVES a logged-out session (proven anonymous in Chrome + on-device; NOT login-gated like popular
+  times), so it rides the SAME hidden-WebView `?cid=` channel as photos/reviews (desktop UA, anonymous)
+  and reuses the longest-`)]}'`-string extract. **Schema (calibrated NYC subway hub 2026-07-12):**
+  place `root[6]`, transit node `place[62]` = `["<station>", [ <groups> ]]`; group `[null,"<Subway
+  services>", [ <lines> ], … "<mode>"]`; line `[null, [ <directions> ], … ftid]`; direction
+  `["<headsign>", null,null, [ <departures> ]]`; a departure time tuple `[rtEpoch,"<tz>","4:35
+  AM",offset,schedEpoch]` (realtime when rt≠sched); frequency `[<sec>,"20 min"]`. **TWO layouts
+  (2026-07-12):** a station/subway groups entries by line -> direction -> departures (above), but a busy
+  BUS stop lists every upcoming departure FLAT, each tagged with its own route pill at `entry[5][1]`
+  shaped `["<label>", <int>, "#fill", "#text"]` (the same badge the itinerary line pills use). So the
+  parser doesn't assume one shape: it reads the badge (route number + colours) + headsign + times off
+  each entry and GROUPS by (route, direction) - the 25 separate "route 14" departures collapse into one
+  "14" row with its next few times, in its line colour, and lines sort soonest-first. The container path
+  is positional; the LEAF details (time tuples, frequency, the route badge) are matched by SHAPE, and
+  `place[62]` is validated with a shape-search fallback - a moved leaf/field index degrades one line, not
+  the board. `parse` returns **null** for a non-station (routine - most
+  places have no transit node) and throws `CalibrationNeededException` only when a transit node yields
+  0 lines. **Coverage is AGENCY-DEPENDENT** (only agencies that feed Google real-time embed it): NYC
+  MTA + SF BART carry it, SacRT (small light rail) does NOT - `MapViewModel.fetchStopDepartures` is
+  gated to transit-category places (`TRANSIT_CAT` regex) so it never fires on a business, and an empty
+  result just shows no board. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
+  the TIME regex reads). UI: `PlaceSheet.StopDepartureBoard` (one shared 30 s countdown clock, reuses
+  `departsInLabel` + the `place_transit_*` strings + `place_departures`/`place_every`).
+  **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
+  tick) and each `TransitRow` shows a leading "Departing"/"in N min" from `departureEpochSec`
+  (`departsInLabel`, hidden when >90 min out or already gone); the countdown reads GREEN with a
+  "Live" dot when any leg carries real-time (`delayText` or a `boardStop.scheduledText` differing
+  from the timetable), and the boarding leg's "N min late/early" is surfaced in the header. Pure
+  render off already-parsed fields, no extra fetch. `delayText` is English-computed in `:core` (as
+  in the drill-down); the countdown wrapper strings ARE localized (`place_transit_now`/`_in_min`/
+  `_live`, invariable "min" abbreviation per locale like `place_delta_min`).
+- **Tap-through route stop timeline (2026-07-12, keyless + device-verified).** Every `DepartureLineRow`
+  on the board is `clickable` (a trailing `>` chevron hints it) -> `MapViewModel.openRouteDetail(line)`.
+  There is NO new endpoint: the route's stop SEQUENCE is a lazy fetch NOT in the place blob, so this
+  REUSES the proven transit-itinerary parser. `openRouteDetail` geocodes the line's headsign (biased to
+  transit terminals - it prefers a candidate whose `category` matches station/airport/terminal/bart/…
+  nearest the stop, because a bare "Richmond" resolves to a city district not the BART terminal), runs
+  `webDirections.transit(stop, terminal)`, and among the ride legs picks the one on the tapped line
+  (label match) else the leg whose `boardStop` is nearest the stop (the direction tapped) else the
+  first - that `TransitStep` already carries `boardStop`/`intermediateStops`/`alightStop` with per-stop
+  times. Rendered by `PlaceSheet.RouteDetailSheet` (full-screen `Surface`, `MapScreen` draws it over the
+  place sheet when `state.routeDetail != null || routeDetailLoading`): a vertical rail in the line colour,
+  board + alight bold, each `TransitStopTime` row `clickable` -> `openRouteStop(stop)` which
+  `closeRouteDetail()` + `onPoiTap(stop.name, stop.location)` (the stop's precise coord makes the
+  nearest-resolve land on it, and its own `fetchStopDepartures` fires) - so tapping a stop opens ITS
+  board and the tap-through continues. Best-effort: an ungeocodable headsign / no ride leg flashes
+  `route_detail_unavailable` (localized in all 11 langs) and the overlay closes. State on `MapUiState`:
+  `routeDetail: TransitStep?`, `routeDetailTitle`, `routeDetailLoading`, guarded by `routeDetailJob`.
+  The board cap was raised 8 -> 24 lines (`StopDepartureBoard` + parser `MAX_LINES`) so busy stops show
+  more routes. **Device-verified: Powell St -> Yellow-S -> 11 stops (Powell…SFO, 12:23-12:54 PM), then
+  tapping 16th St Mission opened that bus stop's own board.**
 
 ## Name
 

@@ -263,6 +263,9 @@
     <string name="place_from_the_owner">來自業主</string>
     <string name="place_share_place">分享地點</string>
     <string name="place_share">分享</string>
+    <string name="place_open_web">在網頁中開啟</string>
+    <string name="place_copy_link">複製連結</string>
+    <string name="place_link_copied">已複製連結</string>
     <string name="place_share_gmaps_link">Google 地圖連結</string>
     <string name="place_share_map_pin">地圖圖釘（geo:）</string>
     <string name="place_share_coordinates">座標</string>
@@ -395,11 +398,13 @@
     <string name="mapvm_search_needs_recalibration">搜尋功能需要重新校準：%1$s</string> <!-- format -->
     <string name="mapvm_offline_no_data">目前離線。請在「設定 ▸ 離線地圖」下載區域，即可在沒有連線時搜尋。</string>
     <string name="mapvm_offline_no_match">已儲存的區域中找不到「%1$s」的離線結果。離線搜尋涵蓋你下載的 OpenStreetMap 地點。</string>
+    <string name="mapvm_no_results">找不到「%1$s」的結果。</string> <!-- format -->
     <string name="mapvm_offline_results">離線結果（無連線）</string>
     <string name="mapvm_search_failed_reason">搜尋失敗：%1$s</string> <!-- format -->
     <string name="mapvm_none_found_along_route">沿途找不到「%1$s」</string> <!-- format -->
     <string name="mapvm_search_failed">搜尋失敗</string>
     <string name="mapvm_dropped_pin">已標註的地點</string>
+    <string name="mapvm_stop_added">已新增途經點</string>
     <string name="mapvm_no_mode_route_found">找不到%1$s路線</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">路線功能需要重新校準：%1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">路線規劃失敗：%1$s</string> <!-- format -->
@@ -454,6 +459,12 @@
     <string name="place_transit_stops">%1$d 站</string> <!-- format -->
     <string name="place_transit_stop_id">站牌 %1$s</string> <!-- format -->
     <string name="place_transit_tickets">票券與資訊</string>
+    <string name="route_detail_unavailable">無法取得路線詳情</string>
+    <string name="place_transit_now">即將出發</string>
+    <string name="place_transit_in_min">%1$d 分鐘後</string> <!-- format -->
+    <string name="place_transit_live">即時</string>
+    <string name="place_departures">發車時刻</string>
+    <string name="place_every">每 %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">你已抵達目的地。</string>
     <string name="transit_nav_walk">步行 %1$s</string> <!-- format -->
     <string name="transit_nav_take">搭乘%1$s</string> <!-- format -->
@@ -568,4 +579,7 @@
     <string name="map_parking_moved">停車位已移到這裡</string>
     <string name="mapscreen_system_voices">系統語音</string>
     <string name="mapvm_voice_lang_system">%1$s 導航使用手機的語音。可在系統語音設定中新增。</string>
+    <string name="settings_topography">地形陰影</string>
+    <string name="settings_topography_hint">在地圖上為丘陵和山脈加上陰影。預設關閉。</string>
+    <string name="settings_version_copied">已複製版本號</string>
 </resources>

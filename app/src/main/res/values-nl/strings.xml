@@ -248,6 +248,9 @@
     <string name="place_from_the_owner">Van de eigenaar</string>
     <string name="place_share_place">Plaats delen</string>
     <string name="place_share">Delen</string>
+    <string name="place_open_web">Openen op internet</string>
+    <string name="place_copy_link">Link kopiëren</string>
+    <string name="place_link_copied">Link gekopieerd</string>
     <string name="place_share_gmaps_link">Google Maps-link</string>
     <string name="place_share_map_pin">Kaartspeld (geo:)</string>
     <string name="place_share_coordinates">Coördinaten</string>
@@ -364,11 +367,13 @@
     <string name="mapvm_search_needs_recalibration">Zoeken vereist herkalibratie: %1$s</string>
     <string name="mapvm_offline_no_data">Je bent offline. Download een gebied in Instellingen ▸ Offline om zonder verbinding te zoeken.</string>
     <string name="mapvm_offline_no_match">Geen offlineresultaten voor \"%1$s\" in je opgeslagen gebied. Offline zoeken omvat de OpenStreetMap-plaatsen die je hebt gedownload.</string>
+    <string name="mapvm_no_results">Geen resultaten voor \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">Offline resultaten (geen verbinding)</string>
     <string name="mapvm_search_failed_reason">Zoeken mislukt: %1$s</string>
     <string name="mapvm_none_found_along_route">Geen \"%1$s\" gevonden langs uw route</string>
     <string name="mapvm_search_failed">Zoeken mislukt</string>
     <string name="mapvm_dropped_pin">Speld geplaatst</string>
+    <string name="mapvm_stop_added">Tussenstop toegevoegd</string>
     <string name="mapvm_no_mode_route_found">Geen %1$s-route gevonden</string>
     <string name="mapvm_directions_need_recalibration">Route vereist herkalibratie: %1$s</string>
     <string name="mapvm_routing_failed_reason">Routering mislukt: %1$s</string>
@@ -433,6 +438,12 @@
     <string name="place_transit_stops">%1$d haltes</string> <!-- format -->
     <string name="place_transit_stop_id">Halte %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Tickets &amp; info</string>
+    <string name="route_detail_unavailable">Lijndetails niet beschikbaar</string>
+    <string name="place_transit_now">Vertrekt nu</string>
+    <string name="place_transit_in_min">over %1$d min</string> <!-- format -->
+    <string name="place_transit_live">Live</string>
+    <string name="place_departures">Vertrektijden</string>
+    <string name="place_every">Elke %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Je bent aangekomen.</string>
     <string name="transit_nav_walk">Loop %1$s</string> <!-- format -->
     <string name="transit_nav_take">Neem %1$s</string> <!-- format -->
@@ -547,4 +558,6 @@
     <string name="map_parking_moved">Parkeerplek hierheen verplaatst</string>
     <string name="mapscreen_system_voices">Systeemstemmen</string>
     <string name="mapvm_voice_lang_system">Aanwijzingen in het %1$s gebruiken de stem van je telefoon. Voeg er een toe in je systeemstem-instellingen.</string>
+    <string name="settings_topography">Terreinschaduw</string>
+    <string name="settings_topography_hint">Arceert heuvels en bergen op de kaart. Standaard uit.</string>
 </resources>

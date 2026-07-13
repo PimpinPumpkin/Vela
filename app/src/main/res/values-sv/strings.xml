@@ -248,6 +248,9 @@
     <string name="place_from_the_owner">Från ägaren</string>
     <string name="place_share_place">Dela plats</string>
     <string name="place_share">Dela</string>
+    <string name="place_open_web">Öppna på webben</string>
+    <string name="place_copy_link">Kopiera länk</string>
+    <string name="place_link_copied">Länk kopierad</string>
     <string name="place_share_gmaps_link">Google Maps-länk</string>
     <string name="place_share_map_pin">Kartnål (geo:)</string>
     <string name="place_share_coordinates">Koordinater</string>
@@ -364,11 +367,13 @@
     <string name="mapvm_search_needs_recalibration">Sökning behöver omkalibrering: %1$s</string>
     <string name="mapvm_offline_no_data">Du är offline. Ladda ner ett område under Inställningar ▸ Offline för att söka utan anslutning.</string>
     <string name="mapvm_offline_no_match">Inga offlineresultat för \"%1$s\" i ditt sparade område. Offlinesökning omfattar de OpenStreetMap-platser du laddat ner.</string>
+    <string name="mapvm_no_results">Inga resultat för \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">Offlineresultat (ingen anslutning)</string>
     <string name="mapvm_search_failed_reason">Sökning misslyckades: %1$s</string>
     <string name="mapvm_none_found_along_route">Inga \"%1$s\" hittades längs din rutt</string>
     <string name="mapvm_search_failed">Sökning misslyckades</string>
     <string name="mapvm_dropped_pin">Utplacerad nål</string>
+    <string name="mapvm_stop_added">Stopp tillagt</string>
     <string name="mapvm_no_mode_route_found">Ingen %1$s-rutt hittades</string>
     <string name="mapvm_directions_need_recalibration">Vägbeskrivning behöver omkalibrering: %1$s</string>
     <string name="mapvm_routing_failed_reason">Ruttberäkning misslyckades: %1$s</string>
@@ -433,6 +438,12 @@
     <string name="place_transit_stops">%1$d hållplatser</string> <!-- format -->
     <string name="place_transit_stop_id">Hållplats %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Biljetter &amp; info</string>
+    <string name="route_detail_unavailable">Linjedetaljer ej tillgängliga</string>
+    <string name="place_transit_now">Avgår nu</string>
+    <string name="place_transit_in_min">om %1$d min</string> <!-- format -->
+    <string name="place_transit_live">Live</string>
+    <string name="place_departures">Avgångar</string>
+    <string name="place_every">Var %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Du har kommit fram.</string>
     <string name="transit_nav_walk">Gå %1$s</string> <!-- format -->
     <string name="transit_nav_take">Ta %1$s</string> <!-- format -->
@@ -547,4 +558,6 @@
     <string name="map_parking_moved">Parkeringen flyttad hit</string>
     <string name="mapscreen_system_voices">Systemröster</string>
     <string name="mapvm_voice_lang_system">Vägbeskrivningar på %1$s använder telefonens röst. Lägg till en i systemets röstinställningar.</string>
+    <string name="settings_topography">Terrängskuggning</string>
+    <string name="settings_topography_hint">Skuggar kullar och berg på kartan. Av som standard.</string>
 </resources>

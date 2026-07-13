@@ -3,7 +3,10 @@ package app.vela.voice
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
+import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import androidx.core.content.ContextCompat
@@ -42,6 +45,33 @@ class WhisperRecognizer @Inject constructor(
     @Volatile private var recognizer: OfflineRecognizer? = null
     @Volatile private var loadedLang: String? = null
 
+    private val audioManager by lazy { context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager }
+    @Volatile private var focusRequest: AudioFocusRequest? = null
+
+    /** Take TRANSIENT audio focus so whatever is playing (music, a podcast) pauses while we listen,
+     *  the way a phone assistant does - `AUDIOFOCUS_GAIN_TRANSIENT` (not `_MAY_DUCK`) makes media
+     *  players pause rather than just duck. Abandoned in [abandonAudioFocus] the moment we stop. */
+    private fun requestAudioFocus() {
+        val am = audioManager ?: return
+        val req = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            .setAudioAttributes(
+                AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_ASSISTANT)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build(),
+            )
+            .build()
+        focusRequest = req
+        runCatching { am.requestAudioFocus(req) }
+    }
+
+    /** Give focus back so the paused music resumes right after the utterance. */
+    private fun abandonAudioFocus() {
+        val am = audioManager ?: return
+        focusRequest?.let { req -> runCatching { am.abandonAudioFocusRequest(req) } }
+        focusRequest = null
+    }
+
     private companion object {
         const val SAMPLE_RATE = 16000
         const val VAD_WINDOW = 512            // Silero v4/v5 window at 16 kHz
@@ -58,8 +88,13 @@ class WhisperRecognizer @Inject constructor(
      *  auto-detect. Pinning matters - with auto-detect, a noisy capture can be misread as a whole
      *  other language and come back in the wrong script (a garbled far-field test transcribed to
      *  Cyrillic). The app language is what the user speaks to a maps app in practice. */
-    private fun whisperLang(): String =
-        app.vela.ui.AppLocale.effective().language.takeIf { it in app.vela.ui.AppLocale.SUPPORTED } ?: ""
+    private fun whisperLang(): String {
+        // Android hands back the LEGACY code for Hebrew ("iw"), which isn't in SUPPORTED ("he"), so
+        // without this normalize Hebrew dictation fell through to Whisper auto-detect instead of being
+        // pinned. Whisper's own code for Hebrew is "he" (2026-07-12).
+        val l = app.vela.ui.AppLocale.effective().language.let { if (it == "iw") "he" else it }
+        return l.takeIf { it in app.vela.ui.AppLocale.SUPPORTED } ?: ""
+    }
 
     /** Build the recognizer ahead of the first mic tap, off the main thread. The ONNX load takes a
      *  second or two on a phone, which used to show as a "Getting ready" beat on the FIRST dictation
@@ -161,6 +196,7 @@ class WhisperRecognizer @Inject constructor(
         var sawSpeech = false
         var segment: FloatArray? = null
         try {
+            requestAudioFocus() // pause any playing music/podcast while we listen
             audio.startRecording()
             onListening()
             while (!cancelled() && segment == null && total < SAMPLE_RATE * MAX_SECONDS) {
@@ -181,8 +217,11 @@ class WhisperRecognizer @Inject constructor(
         } catch (t: Throwable) {
             return@withContext null
         } finally {
+            // Abandon focus FIRST so the music resumes even if a later call throws; every step is
+            // guarded so one failure can't skip the rest and leave playback paused forever.
+            abandonAudioFocus() // let the music resume
             runCatching { audio.stop() }
-            audio.release()
+            runCatching { audio.release() }
         }
 
         // Prefer the VAD-trimmed segment (leading/trailing silence stripped → cleaner transcript);

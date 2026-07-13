@@ -248,6 +248,9 @@
     <string name="place_from_the_owner">Vom Inhaber</string>
     <string name="place_share_place">Ort teilen</string>
     <string name="place_share">Teilen</string>
+    <string name="place_open_web">Im Web öffnen</string>
+    <string name="place_copy_link">Link kopieren</string>
+    <string name="place_link_copied">Link kopiert</string>
     <string name="place_share_gmaps_link">Google Maps-Link</string>
     <string name="place_share_map_pin">Kartenmarkierung (geo:)</string>
     <string name="place_share_coordinates">Koordinaten</string>
@@ -364,11 +367,13 @@
     <string name="mapvm_search_needs_recalibration">Suche muss neu kalibriert werden: %1$s</string>
     <string name="mapvm_offline_no_data">Du bist offline. Lade unter Einstellungen ▸ Offline einen Bereich herunter, um ohne Verbindung zu suchen.</string>
     <string name="mapvm_offline_no_match">Keine Offline-Ergebnisse für \"%1$s\" in deinem gespeicherten Bereich. Die Offline-Suche umfasst die heruntergeladenen OpenStreetMap-Orte.</string>
+    <string name="mapvm_no_results">Keine Ergebnisse für \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">Offline-Ergebnisse (keine Verbindung)</string>
     <string name="mapvm_search_failed_reason">Suche fehlgeschlagen: %1$s</string>
     <string name="mapvm_none_found_along_route">Kein \"%1$s\" entlang Ihrer Route gefunden</string>
     <string name="mapvm_search_failed">Suche fehlgeschlagen</string>
     <string name="mapvm_dropped_pin">Gesetzte Markierung</string>
+    <string name="mapvm_stop_added">Zwischenstopp hinzugefügt</string>
     <string name="mapvm_no_mode_route_found">Keine %1$s-Route gefunden</string>
     <string name="mapvm_directions_need_recalibration">Route muss neu kalibriert werden: %1$s</string>
     <string name="mapvm_routing_failed_reason">Routenberechnung fehlgeschlagen: %1$s</string>
@@ -433,6 +438,12 @@
     <string name="place_transit_stops">%1$d Haltestellen</string> <!-- format -->
     <string name="place_transit_stop_id">Haltestelle %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Tickets &amp; Infos</string>
+    <string name="route_detail_unavailable">Liniendetails nicht verfügbar</string>
+    <string name="place_transit_now">Fährt ab</string>
+    <string name="place_transit_in_min">in %1$d Min.</string> <!-- format -->
+    <string name="place_transit_live">Live</string>
+    <string name="place_departures">Abfahrten</string>
+    <string name="place_every">Alle %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Sie sind angekommen.</string>
     <string name="transit_nav_walk">%1$s laufen</string> <!-- format -->
     <string name="transit_nav_take">Nimm %1$s</string> <!-- format -->
@@ -547,4 +558,6 @@
     <string name="map_parking_moved">Parkplatz hierher verschoben</string>
     <string name="mapscreen_system_voices">Systemstimmen</string>
     <string name="mapvm_voice_lang_system">Ansagen auf %1$s nutzen die Stimme Ihres Telefons. Fügen Sie eine in den System-Sprachausgabe-Einstellungen hinzu.</string>
+    <string name="settings_topography">Geländeschattierung</string>
+    <string name="settings_topography_hint">Schattiert Hügel und Berge auf der Karte. Standardmäßig aus.</string>
 </resources>

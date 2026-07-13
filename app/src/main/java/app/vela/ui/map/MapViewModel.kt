@@ -87,6 +87,11 @@ data class MapUiState(
                                    // fix carried none. The puck's Kalman measures ONLY from this: feeding
                                    // it the held mySpeed re-injected a stale braking speed at high gain
                                    // every fix, which is what kept the puck "moving" at a red light.
+    // Posted limit read STREAMING from the hosted maxspeed PMTiles overlay (the map queries the invisible
+    // overlay layer under the puck). The "Speed B" online source used when the offline graph can't answer
+    // ([speedLimitKmh] null) - so a limit shows anywhere online without a downloaded region.
+    val maxspeedOverlays: List<String> = emptyList(), // pmtiles://https:// source URIs covering the view
+    val speedLimitOverlayKmh: Double? = null,
     val speedLimitKmh: Double? = null, // posted limit of the current road (OSM maxspeed via GraphHopper),
                                        // km/h; null = unknown/untagged/no offline graph → badge hidden.
                                        // Converted to the display unit at the badge.
@@ -120,10 +125,14 @@ data class MapUiState(
     val loadingDetails: Boolean = false, // the lazy WebView detail fetch (popular times etc.) is in flight
     val routes: List<Route> = emptyList(),
     val activeRoute: Route? = null,
+    // ALPR/Flock cameras counted near each route option (index-aligned with `routes`), for the route
+    // picker's opt-in "passes N cameras" badge. Empty when the alert is off or not yet computed.
+    val flockOnRoute: List<Int> = emptyList(),
     val buildingOverlays: List<String> = emptyList(), // full pmtiles:// URIs (file:// downloaded / https:// streamed for the view)
     val addressOverlays: List<String> = emptyList(), // pmtiles:// URIs streamed for house-number labels (OpenAddresses)
                                                       // .pmtiles — rendered beneath OSM to fill gaps
     val trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights+stop signs drawn at high zoom
+    val flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras (DeFlock/OSM), high zoom
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
@@ -145,6 +154,14 @@ data class MapUiState(
     val transit: List<TransitItinerary> = emptyList(),
     val transitLoading: Boolean = false,
     val transitNav: TransitNavState? = null,
+    // A transit stop's live departure board (keyless, from the station's own place page).
+    val stopDepartures: app.vela.core.model.StopDepartures? = null,
+    val stopDeparturesLoading: Boolean = false,
+    // Route detail (tap a route on the board -> its stop timeline with times, tap-through to stops).
+    // Reuses a ride leg from a transit itinerary (its board/intermediate/alight stops carry the times).
+    val routeDetail: TransitStep? = null,
+    val routeDetailTitle: String? = null,
+    val routeDetailLoading: Boolean = false,
     val navigating: Boolean = false,
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
@@ -243,6 +260,7 @@ class MapViewModel @Inject constructor(
     private val webPhotos: WebPhotoFetcher,
     private val webReviews: WebReviewsFetcher,
     private val webDirections: WebDirectionsFetcher,
+    private val webStopDepartures: app.vela.web.WebStopDeparturesFetcher,
     private val diag: app.vela.core.diag.DiagLog,
     private val diagExporter: app.vela.diag.DiagExporter,
     private val webPopularTimes: app.vela.web.WebPopularTimesFetcher,
@@ -250,6 +268,7 @@ class MapViewModel @Inject constructor(
     private val routingGraphStore: app.vela.offline.RoutingGraphStore,
     private val poiPackStore: app.vela.offline.PoiPackStore,
     private val overlayStore: app.vela.offline.OverlayTileStore,
+    private val maxspeedStore: app.vela.offline.MaxspeedOverlayStore,
     private val routeEngine: app.vela.core.data.RouteEngine,
     private val http: okhttp3.OkHttpClient,
     private val selfUpdater: app.vela.update.SelfUpdater,
@@ -985,6 +1004,7 @@ class MapViewModel @Inject constructor(
                 // do its specific name+address query — without this, popular times +
                 // editorial/owner never loaded for saved/recent places (only via search).
                 fetchPlaceDetails(enriched)
+                fetchStopDepartures(enriched) // a saved/recent transit stop shows its board too
             }
         }
     }
@@ -1121,14 +1141,27 @@ class MapViewModel @Inject constructor(
                 val vp = viewport
                 val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
                 val res = dataSource.search(q, near, spanM)
-                _state.update {
-                    // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
-                    // else typing the origin query wiped the "To" and the panel showed an empty
-                    // "Destination" with stale routes (the from-here edit cleared where you were going).
-                    // A live scrape succeeding is definitive proof we're online — clear a stuck
-                    // offline flag (the network callback can miss an event after doze and leave
-                    // `offline` latched until relaunch; seen on-device 2026-07-09).
-                    it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                if (res.places.isNotEmpty()) {
+                    _state.update {
+                        // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
+                        // else typing the origin query wiped the "To" and the panel showed an empty
+                        // "Destination" with stale routes (the from-here edit cleared where you were going).
+                        // A live scrape succeeding is definitive proof we're online — clear a stuck
+                        // offline flag (the network callback can miss an event after doze and leave
+                        // `offline` latched until relaunch; seen on-device 2026-07-09).
+                        it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                    }
+                } else {
+                    // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
+                    // isn't showing up" report): try the on-device OSM index (it may hold a small local
+                    // place Google misses), and if that's empty too, say "No results" plainly.
+                    val offline = offlineSearch(q, near)
+                    _state.update {
+                        if (offline.isNotEmpty())
+                            it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                        else
+                            it.copy(results = emptyList(), selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = appContext.getString(R.string.mapvm_no_results, q), searching = false, offline = false)
+                    }
                 }
             } catch (e: kotlinx.coroutines.CancellationException) {
                 throw e // superseded by a newer search — don't run the fallback/error update on a dead job
@@ -1137,12 +1170,7 @@ class MapViewModel @Inject constructor(
             } catch (e: Exception) {
                 // Network/Google failure → fall back to the offline OSM index (POIs + address geocode, same
                 // as the straight-offline branch so an address still resolves when the scrape times out).
-                val offline = withContext(Dispatchers.IO) {
-                    val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
-                    val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
-                        runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
-                    (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
-                }
+                val offline = offlineSearch(q, near)
                 if (offline.isNotEmpty()) {
                     _state.update { it.copy(results = offline, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false) }
                 } else if (isConnectivityError(e)) {
@@ -1158,6 +1186,17 @@ class MapViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** The on-device OSM fallback for a query: matched POIs plus, when the text looks like an address,
+     *  interpolated address hits (addresses first so a typed street resolves). Used both when the online
+     *  scrape throws AND when it succeeds with zero results, so a small local place Google misses still
+     *  surfaces instead of a blank screen. */
+    private suspend fun offlineSearch(q: String, near: LatLng?): List<Place> = withContext(Dispatchers.IO) {
+        val pois = runCatching { offlinePoiStore.search(q, near) }.getOrDefault(emptyList())
+        val addrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q))
+            runCatching { addressStore.geocode(q, near) }.getOrDefault(emptyList()) else emptyList()
+        (if (addrs.isNotEmpty()) addrs + pois else pois + addrs).distinctBy { it.id }
     }
 
     /** "Search along route": search [query] biased to the route's midpoint, then
@@ -1239,14 +1278,125 @@ class MapViewModel @Inject constructor(
                 // (the along-route / pick-origin / pick-stop flows early-return above).
                 directionsOpen = false, routes = emptyList(), activeRoute = null,
                 transit = emptyList(), transitLoading = false, showSteps = false,
+                stopDepartures = null, stopDeparturesLoading = false,
             )
         }
         fetchReviews(p)
         fetchPhotos(p)
         fetchPlaceDetails(p)
+        fetchStopDepartures(p)
         backfillOfflineAddress(p)
         rememberRecentPlace(SavedPlace.of(p))
     }
+
+    /** Transit-station category words (English + a few common ones). The board fetch is gated on
+     *  these to avoid a WebView load on every ordinary place; the parser returns null anyway for a
+     *  place with no board, so a miss here just means no board, never a wrong one. */
+    private val TRANSIT_CAT = Regex(
+        """station|stop|subway|metro|transit|transport|\bhub\b|\bbus\b|train|\brail\b|tram|light rail|terminal|ferry|""" +
+            """bahnhof|haltestelle|gare|estaci|estaç|stazione|fermata|estação|estação|halte|stanice|""" +
+            """지하철|driehoek|û|вокзал|станц|остановка|停|駅|车站|車站""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    /** A transit stop's live departure board, from the station's own place page (keyless, anonymous).
+     *  Only fired for places whose category reads like a transit stop AND that carry a feature id
+     *  (needed for the `?cid=` deep-link); guarded to the still-selected place when it returns. */
+    private fun fetchStopDepartures(p: Place) {
+        val fid = p.featureId
+        if (fid.isNullOrBlank() || !fid.contains(":")) return
+        val cat = p.category ?: ""
+        if (!TRANSIT_CAT.containsMatchIn(cat)) return
+        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true) else it }
+        viewModelScope.launch {
+            val board = runCatching { webStopDepartures.fetch(fid) }
+                .onFailure { android.util.Log.i("VelaDepartures", "fetch failed: ${it.message}") }
+                .getOrNull()
+            // Line count only (no place name in logs) so a shape drift is visible without leaking where.
+            android.util.Log.i("VelaDepartures", "board lines=${board?.lines?.size ?: -1}")
+            _state.update { st ->
+                if (st.selected?.featureId != fid) st
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+            }
+        }
+    }
+
+    /** Tap a route on the departure board -> show its stop timeline with times (issue #71 follow-up).
+     *  Reuses the PROVEN transit-itinerary parser: a directions query from this stop toward the route's
+     *  destination returns a ride leg whose board/intermediate/alight stops already carry per-stop times.
+     *  No new keyless scraping. Needs the line's headsign (its destination) to aim the query. */
+    fun openRouteDetail(line: app.vela.core.model.StopDepartureLine) {
+        val origin = _state.value.selected?.location ?: return
+        val dest = line.headsign?.takeIf { it.isNotBlank() } ?: run {
+            flashStatus(appContext.getString(R.string.route_detail_unavailable)); return
+        }
+        val title = listOfNotNull(line.label, dest).joinToString(" · ")
+        _state.update { it.copy(routeDetailLoading = true, routeDetailTitle = title, routeDetail = null) }
+        routeDetailJob?.cancel()
+        routeDetailJob = viewModelScope.launch {
+            // Aim at the route's destination (geocode the headsign near the stop), then ride transit there.
+            // A bare headsign is often ambiguous ("Richmond" is a city district AND a far-off city), so
+            // prefer a candidate that is itself a transit place (station/airport/terminal) and, among
+            // those, the one nearest the tapped stop - a sanity filter that rejects a same-named place
+            // across the country. (The RIDE-LEG match below is what actually pins the tapped line.)
+            val cands = runCatching { dataSource.search(dest, origin).places }.getOrDefault(emptyList())
+            val transitish = cands.filter { it.category?.let { c ->
+                listOf("station", "transit", "stop", "airport", "terminal", "bart", "metro", "rail")
+                    .any { k -> c.contains(k, ignoreCase = true) }
+            } == true }
+            val destLoc = (transitish.minByOrNull { it.location.distanceTo(origin) }
+                ?: cands.minByOrNull { it.location.distanceTo(origin) })?.location
+            if (destLoc == null) {
+                _state.update { it.copy(routeDetailLoading = false) }
+                flashStatus(appContext.getString(R.string.route_detail_unavailable)); return@launch
+            }
+            val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
+            val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
+            // Pick the leg the user actually tapped. Rank by the tapped LINE first (a short board label
+            // like "N" matches a longer itinerary name "N-Judah"), then by how close its board stop is to
+            // the tapped stop - so a same-line leg heading the OTHER way (boarding far off) loses to the
+            // one boarding here. Falls back to whatever leg boards at this stop, then the first ride.
+            val boardDist = { s: TransitStep -> s.boardStop?.location?.distanceTo(origin) ?: Double.MAX_VALUE }
+            val step = rides.filter { lineLabelMatches(line.label, it.line?.name) }.minByOrNull { boardDist(it) }
+                ?: rides.filter { boardDist(it) <= 500.0 }.minByOrNull { boardDist(it) }
+                ?: rides.firstOrNull()
+            android.util.Log.d("VelaRouteDetail", "'$dest' rides=${rides.size} -> ${step?.line?.name} (${step?.intermediateStops?.size} stops)")
+            _state.update {
+                if (step == null) { flashStatus(appContext.getString(R.string.route_detail_unavailable)); it.copy(routeDetailLoading = false) }
+                else it.copy(routeDetail = step, routeDetailLoading = false)
+            }
+        }
+    }
+
+    /** Does a departure-board line label (a short route code, "N" / "42") match an itinerary line name
+     *  (which may be longer, "N-Judah")? Exact, or the label is the FIRST token of the name, so a "1"
+     *  label doesn't spuriously match a "10" line. */
+    private fun lineLabelMatches(label: String?, name: String?): Boolean {
+        if (label.isNullOrBlank() || name.isNullOrBlank()) return false
+        if (name.equals(label, ignoreCase = true)) return true
+        return name.trim().split(Regex("[\\s\\-/]")).firstOrNull()?.equals(label, ignoreCase = true) == true
+    }
+
+    fun closeRouteDetail() {
+        // Cancel the in-flight lookup too: without this, dismissing the sheet (Back) mid-load lets the
+        // fetch complete and set routeDetail = step, springing the full-screen sheet back open over
+        // whatever the user moved on to (or flashing "unavailable" after they already left).
+        routeDetailJob?.cancel()
+        _state.update { it.copy(routeDetail = null, routeDetailLoading = false, routeDetailTitle = null) }
+    }
+
+    /** Tap a stop in the route timeline -> open THAT stop (its own departure board), so you can keep
+     *  tapping through the network. Closes the route detail and selects the stop as a place. */
+    fun openRouteStop(stop: app.vela.core.model.TransitStopTime) {
+        val loc = stop.location ?: return
+        closeRouteDetail()
+        // The stop carries a precise coordinate from the itinerary, so onPoiTap's nearest-to-location
+        // resolve lands on the stop itself and its board fetch (fetchStopDepartures) fires - the
+        // tap-through then keeps going from the new stop's own board.
+        onPoiTap(stop.name, loc)
+    }
+
+    private var routeDetailJob: kotlinx.coroutines.Job? = null
 
     /** Offline, a POI that OSM never tagged with an address (most US chains) shows a bare place sheet —
      *  no online detail fetch can fill it. Reverse-geocode its location against the on-device address
@@ -1567,7 +1717,7 @@ class MapViewModel @Inject constructor(
 
     /** Tapped a POI on the map: show it immediately, then enrich with full
      *  details (hours, rating, …) from a search for that name nearby. */
-    fun onPoiTap(name: String, location: LatLng) {
+    fun onPoiTap(name: String, location: LatLng, poiKind: String? = null) {
         if (consumeAssign(SavedPlace(id = "poi:" + name.hashCode(), name = name, lat = location.lat, lng = location.lng))) return
         // Picking the route origin (or a stop) by tapping the map → adopt this POI, don't open it.
         if (_state.value.pickingStop) {
@@ -1585,6 +1735,24 @@ class MapViewModel @Inject constructor(
         // same-named POIs tapped in quick succession (a chain's two branches) otherwise let the slower
         // resolve for the first hijack the second's sheet, since the old gate matched name only (audit 2026-07-06).
         val placeholder = Place(id = "poi:" + name.hashCode(), name = name, location = location)
+        // A transit STOP is usually named by its intersection ("Main St & 1st Ave"), and Google resolves
+        // that bare string to the road JUNCTION, not the stop - so a tapped stop opened as an "Intersection"
+        // with no board (issue #71 follow-up; verified in a live capture: "<x> & <y>" -> Intersection,
+        // "<x> & <y> bus stop" -> the Stop). When the TAPPED POI's kind says transit (its class/subclass,
+        // not its name, so a business called "Salt & Straw" is untouched), append a mode word to the lookup
+        // so the search returns the stop. Non-transit POIs search by name exactly as before.
+        val transitHint = poiKind?.lowercase()?.let { k ->
+            when {
+                "bus" in k -> "bus stop"
+                "tram" in k || "light_rail" in k -> "tram stop"
+                "subway" in k || "metro" in k -> "station"
+                "railway" in k || "train" in k || "rail" in k -> "station"
+                "ferry" in k -> "ferry terminal"
+                "station" in k || "halt" in k || "platform" in k || "stop" in k || "transit" in k -> "transit stop"
+                else -> null
+            }
+        }
+        val searchQuery = if (transitHint != null && !name.lowercase().contains(transitHint)) "$name $transitHint" else name
         _state.update {
             it.copy(
                 selected = placeholder,
@@ -1592,6 +1760,9 @@ class MapViewModel @Inject constructor(
                 center = location,
                 placesHere = emptyList(),
                 reviews = emptyList(),
+                // Clear any previous stop's departure board so it never lingers under a new POI.
+                stopDepartures = null,
+                stopDeparturesLoading = false,
                 // Also clear the loading flag + live counter: a still-in-flight scrape for the
                 // PREVIOUS place would otherwise leave its count showing under THIS one (its
                 // completion update is feature-id-gated, so the stale flag never self-heals).
@@ -1606,7 +1777,7 @@ class MapViewModel @Inject constructor(
         }
         viewModelScope.launch {
             val resolved = runCatching {
-                val results = dataSource.search(name, location).places
+                val results = dataSource.search(searchQuery, location).places
                 val nearest = results.minByOrNull { p -> p.location.distanceTo(location) }
                 // A tapped POI can map to several Google listings at the same spot —
                 // e.g. a co-branded "SpeeDee Midas" has a rich "SpeeDee" profile (543
@@ -1635,6 +1806,7 @@ class MapViewModel @Inject constructor(
                 fetchReviews(full)
                 fetchPhotos(full)
                 fetchPlaceDetails(full) // popular times + editorial/owner, like a search-result tap
+                fetchStopDepartures(full) // issue #71: a bus stop / station tapped on the MAP gets its board too
                 rememberRecentPlace(SavedPlace.of(full))
             }
         }
@@ -1689,6 +1861,21 @@ class MapViewModel @Inject constructor(
                     MapPick.ORIGIN -> setDirectionsOrigin(place)
                     MapPick.STOP -> addStop(place)
                 }
+            }
+            return
+        }
+        // While planning a trip, a long-press means "route THROUGH here": grab an arbitrary point and
+        // add it as a via-stop (then the route reroutes through it). This is the manual way to steer a
+        // route around an area/camera - Google's keyless directions and OSRM can't be told "avoid this
+        // region", but a hand-placed waypoint forces the detour. The point itself is what matters, so
+        // the stop sits at the exact spot pressed; the reverse-geocode only names it.
+        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+            viewModelScope.launch {
+                val geo = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
+                val stop = (geo ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location))
+                    .copy(location = location)
+                addStop(stop)
+                flashStatus(appContext.getString(R.string.mapvm_stop_added))
             }
             return
         }
@@ -2159,10 +2346,13 @@ class MapViewModel @Inject constructor(
                     it.copy(
                         routes = routes,
                         activeRoute = routes.firstOrNull(),
+                        flockOnRoute = emptyList(), // recomputed below when the alert's on
                         transit = emptyList(), transitLoading = false,
                         status = if (routes.isEmpty()) appContext.getString(R.string.mapvm_no_mode_route_found, mode.name.lowercase()) else null,
                     )
                 }
+                val flockEpoch = ++routesEpoch // stamp THIS route set; a newer route() bumps it and stales the flock job
+                if (routes.isNotEmpty()) refreshFlockOnRoute(routes, flockEpoch)
                 // The default active route can be a PROVISIONAL Google alternate (it sorts to the
                 // top when it has the fastest live ETA). A provisional route carries Google's
                 // ABBREVIATED steps + an ETA over un-snapped geometry — so the pre-nav preview showed
@@ -2175,6 +2365,49 @@ class MapViewModel @Inject constructor(
                 if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_directions_need_recalibration, e.message)) }
             } catch (e: Exception) {
                 if (stillWanted()) _state.update { it.copy(status = appContext.getString(R.string.mapvm_routing_failed_reason, e.message)) }
+            }
+        }
+    }
+
+    private var flockRouteJob: kotlinx.coroutines.Job? = null
+    private var routesEpoch = 0 // bumped on each fresh route(); stales an in-flight flock count if a newer route set lands
+
+    /** When "Avoid surveillance cameras" is on, count the ALPR cameras near each route option (keyless
+     *  Overpass, index-aligned with [routes]) so the picker can badge "passes N cameras" AND auto-prefer
+     *  the fewest-camera alternate - but only for a MODEST detour (never send you an hour around a camera
+     *  on a 15-minute trip). Off the hot path; a failure just shows no badge and no reroute. */
+    private fun refreshFlockOnRoute(routes: List<Route>, epoch: Int) {
+        flockRouteJob?.cancel()
+        if (!app.vela.ui.FlockRouteAlert.on.value) return
+        flockRouteJob = viewModelScope.launch {
+            val counts = withContext(Dispatchers.IO) {
+                routes.map { r ->
+                    runCatching { app.vela.core.data.OverpassAlprCameras.fetchAlong(http, r.polyline).size }
+                        .getOrDefault(0)
+                }
+            }
+            android.util.Log.i("VelaFlockRoute", "counts=$counts")
+            // Still THIS route set? Guard on the epoch, not the polyline: naming a provisional route
+            // (selectRoute(0), which fires right after this launches for the common provisional-top case)
+            // RE-SNAPS its geometry, so a polyline compare tripped and silently dropped the badges +
+            // auto-avoid. The epoch only bumps on a fresh route(); naming/user-pick keep the same set
+            // (same size + order), so the counts still line up index-for-index with _state.routes.
+            val cur = _state.value.routes
+            if (routesEpoch != epoch || cur.size != counts.size) return@launch
+            _state.update { it.copy(flockOnRoute = counts) }
+            // Auto-avoid: pick the fewest-camera route (tie → the faster one) IF it beats the fastest on
+            // cameras and costs at most 25% / 10 min more. The cap is where we "draw the line" - a modest
+            // detour to dodge cameras, not a wild one. Long-press "route through here" is the manual override.
+            if (counts.any { it > 0 }) {
+                val eta = { r: Route -> r.durationInTrafficSeconds ?: r.durationSeconds }
+                val eta0 = eta(cur[0]) // routes are sorted fastest-first, and cur[0] is the default active
+                val best = counts.indices.minByOrNull { counts[it] * 1_000_000L + eta(cur[it]).toLong() } ?: 0
+                val extra = eta(cur[best]) - eta0
+                val cap = minOf(eta0 * 0.25, 600.0)
+                if (counts[best] < counts[0] && extra <= cap && best != 0) {
+                    selectRoute(best)
+                    flashStatus(appContext.getString(R.string.mapvm_flock_avoided))
+                }
             }
         }
     }
@@ -3133,7 +3366,10 @@ class MapViewModel @Inject constructor(
         mapCenter = center
         refreshBuildingOverlays(center) // stream the building overlay for whatever region is now in view
         refreshAddressOverlays(center) // + house-number labels for that region
+        refreshMaxspeedOverlay(center) // + the posted-speed-limit overlay (read under the puck for the sign)
         refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
+        lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
+        refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -3457,6 +3693,26 @@ class MapViewModel @Inject constructor(
         }
     }
 
+    /** Stream the posted-speed-limit overlay covering [center] so the map can read a limit under the puck
+     *  ("Speed B"). Streaming-only (no download): MapLibre range-fetches the visible tiles. De-duped so
+     *  panning within one region doesn't churn the source. */
+    private fun refreshMaxspeedOverlay(center: LatLng? = mapCenter ?: _state.value.myLocation) {
+        val c = center ?: return
+        viewModelScope.launch {
+            val uris = runCatching { maxspeedStore.sourcesFor(c, app.vela.BuildConfig.MAXSPEED_MANIFEST_URL) }.getOrDefault(emptyList())
+            if (uris != _state.value.maxspeedOverlays) _state.update { it.copy(maxspeedOverlays = uris) }
+        }
+    }
+
+    /** The map reports the posted limit (km/h, or null) it read from the streaming overlay layer under the
+     *  puck. Only the online source; the offline graph fills [speedLimitKmh] directly. */
+    fun onOverlayRoadLimit(kmh: Double?) {
+        if (kmh != _state.value.speedLimitOverlayKmh) {
+            android.util.Log.i("VelaSpeedB", "overlay maxspeed=$kmh km/h (offline=${_state.value.speedLimitKmh})")
+            _state.update { it.copy(speedLimitOverlayKmh = kmh) }
+        }
+    }
+
     @Volatile
     private var addressManifestCache: List<app.vela.offline.RoutingRegion>? = null
 
@@ -3486,6 +3742,9 @@ class MapViewModel @Inject constructor(
 
     private var controlsJob: Job? = null
     private var controlsBox: DoubleArray? = null // [s,w,n,e] of the last fetched (padded) box
+    private var flockBox: DoubleArray? = null
+    private var lastFlockViewport: DoubleArray? = null
+    private var flockJob: Job? = null
 
     /**
      * Traffic lights + stop signs drawn on the map (OSM `highway=traffic_signals`/`stop` via Overpass),
@@ -3532,6 +3791,51 @@ class MapViewModel @Inject constructor(
                 dLat * dLat + dLng * dLng
             }.take(CONTROLS_ONSCREEN_CAP)
             _state.update { it.copy(trafficControls = kept) }
+        }
+    }
+
+    /** Re-fetch (or clear) the Flock layer for the current viewport - called when the toggle flips,
+     *  so turning it on shows cameras without needing a pan first. */
+    fun refreshFlockNow() {
+        lastFlockViewport?.let { refreshFlock(it[0], it[1], it[2], it[3], it[4]) }
+    }
+
+    /** ALPR/Flock cameras for the viewport, when the layer is on. Mirrors [refreshTrafficControls]:
+     *  high-zoom only, area-cached (cameras are static), 350 ms debounced, failure not cached. */
+    private fun refreshFlock(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        // ALPR cameras are SPARSE landmarks people want from a neighbourhood view (the way
+        // maps.deflock.org shows them), not dense street furniture like stop signs - fetch from a wider
+        // zoom than the traffic controls. The tag is rare, so the wider Overpass box stays light.
+        if (!app.vela.ui.Flock.on.value || zoom < FLOCK_MIN_ZOOM) {
+            flockBox = null
+            flockJob?.cancel()
+            if (_state.value.flockCameras.isNotEmpty()) _state.update { it.copy(flockCameras = emptyList()) }
+            return
+        }
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        flockBox?.let { b ->
+            val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+            if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+        }
+        flockJob?.cancel()
+        flockJob = viewModelScope.launch {
+            delay(350)
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+            val res = runCatching {
+                withContext(Dispatchers.IO) {
+                    app.vela.core.data.OverpassAlprCameras.fetchInBox(http, s, w, n, e)
+                }
+            }.getOrNull() ?: return@launch
+            flockBox = doubleArrayOf(s, w, n, e)
+            val cLat0 = (s + n) / 2; val cLng0 = (w + e) / 2
+            val lngScale = kotlin.math.cos(Math.toRadians(cLat0))
+            val kept = if (res.size <= CONTROLS_ONSCREEN_CAP) res else res.sortedBy {
+                val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
+                dLat * dLat + dLng * dLng
+            }.take(CONTROLS_ONSCREEN_CAP)
+            android.util.Log.i("VelaFlock", "fetched=${res.size} kept=${kept.size} zoom=$zoom")
+            _state.update { it.copy(flockCameras = kept) }
         }
     }
 
@@ -3704,6 +4008,7 @@ class MapViewModel @Inject constructor(
     companion object {
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
+        const val FLOCK_MIN_ZOOM = 13.0 // ALPR cameras are sparse - show them from a neighbourhood zoom
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
                                               // symbol is re-collided per drag frame (budget-GPU jank)
