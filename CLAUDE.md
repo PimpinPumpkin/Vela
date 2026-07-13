@@ -1381,8 +1381,14 @@ architecture note.
   heading beam is smoothed the way nav is. Implemented as a SECOND per-frame ticker in `VelaMapView`
   (`LaunchedEffect(navMode, driveFollowing)`, sibling of the nav `LaunchedEffect(navMode, routePolyline)`): when
   `driveFollowing` it eases `browseBeam` toward `compassHeading ?: myBearing` (tau 0.15 s) and eases `browseCam`
-  toward `myLocation` north-up (k = 1-exp(-dt/0.16)), driving the ME source (`setMeSource`) + `moveCamera` each
-  frame, with an idle-skip when neither moved (a settled follow doesn't re-upload 60x/s). It OWNS the location
+  toward `myLocation` north-up (k = 1-exp(-dt/**0.22** s), loosened from 0.16 2026-07-13 so the camera keeps
+  CHASING between the ~1 Hz fixes instead of coasting to each and stopping = a continuous glide, nearer the nav
+  feel), driving the ME source (`setMeSource`) + `moveCamera` each frame, with an idle-skip when neither moved
+  (a settled follow doesn't re-upload 60x/s). **The PUCK draws at the EASED position (`browseCam`), not the raw
+  fix (2026-07-13):** at the raw fix the dot teleported forward on the map each fix while the camera eased to
+  catch up (the visible hop); at the eased position it stays centred and glides with the map, the locked
+  puck+camera the nav follow has. (A fuller constant-velocity dead-reckon between fixes is the next step if it
+  still isn't smooth enough - needs a real drive to tune.) It OWNS the location
   source while running, so `applyData` must NOT repaint the raw compass over it - the call sites pass `meBearing`
   (= smoothed `browseBeam` when following, else `displayBearing`). The camera `when` block has a guard branch
   (`!navMode && driveFollowing && myLocation != null`) so a new fix's recomposition can't fire an `animateCamera`
