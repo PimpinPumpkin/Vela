@@ -263,6 +263,9 @@
     <string name="place_from_the_owner">オーナーからの返信</string>
     <string name="place_share_place">場所を共有</string>
     <string name="place_share">共有</string>
+    <string name="place_open_web">ウェブで開く</string>
+    <string name="place_copy_link">リンクをコピー</string>
+    <string name="place_link_copied">リンクをコピーしました</string>
     <string name="place_share_gmaps_link">Google マップのリンク</string>
     <string name="place_share_map_pin">地図のピン（geo:）</string>
     <string name="place_share_coordinates">座標</string>
@@ -395,11 +398,13 @@
     <string name="mapvm_search_needs_recalibration">検索の再調整が必要です：%1$s</string> <!-- format -->
     <string name="mapvm_offline_no_data">オフラインです。設定 ▸ オフライン マップ でエリアをダウンロードすると、接続なしで検索できます。</string>
     <string name="mapvm_offline_no_match">保存したエリアに「%1$s」のオフライン検索結果はありません。オフライン検索の対象は、ダウンロードした OpenStreetMap の場所です。</string>
+    <string name="mapvm_no_results">「%1$s」の結果はありません。</string> <!-- format -->
     <string name="mapvm_offline_results">オフラインの検索結果（未接続）</string>
     <string name="mapvm_search_failed_reason">検索に失敗しました：%1$s</string> <!-- format -->
     <string name="mapvm_none_found_along_route">ルート沿いに「%1$s」は見つかりませんでした</string> <!-- format -->
     <string name="mapvm_search_failed">検索に失敗しました</string>
     <string name="mapvm_dropped_pin">指定した地点</string>
+    <string name="mapvm_stop_added">経由地を追加しました</string>
     <string name="mapvm_no_mode_route_found">%1$sのルートが見つかりません</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">経路の再調整が必要です：%1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">ルート検索に失敗しました：%1$s</string> <!-- format -->
@@ -454,6 +459,12 @@
     <string name="place_transit_stops">%1$d 停留所</string> <!-- format -->
     <string name="place_transit_stop_id">停留所 %1$s</string> <!-- format -->
     <string name="place_transit_tickets">チケット・運行情報</string>
+    <string name="route_detail_unavailable">路線の詳細を取得できません</string>
+    <string name="place_transit_now">まもなく発車</string>
+    <string name="place_transit_in_min">%1$d 分後</string> <!-- format -->
+    <string name="place_transit_live">リアルタイム</string>
+    <string name="place_departures">発車時刻</string>
+    <string name="place_every">%1$s ごと</string> <!-- format -->
     <string name="transit_nav_arrived">目的地に到着しました。</string>
     <string name="transit_nav_walk">徒歩 %1$s</string> <!-- format -->
     <string name="transit_nav_take">%1$s に乗車</string> <!-- format -->
@@ -568,4 +579,7 @@
     <string name="map_parking_moved">駐車位置をここに移動しました</string>
     <string name="mapscreen_system_voices">システムの音声</string>
     <string name="mapvm_voice_lang_system">%1$s のナビは端末の音声を使用します。システムの音声設定で追加できます。</string>
+    <string name="settings_topography">地形の陰影</string>
+    <string name="settings_topography_hint">地図上の丘や山に陰影を付けます。既定ではオフです。</string>
+    <string name="settings_version_copied">バージョンをコピーしました</string>
 </resources>
