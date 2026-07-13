@@ -636,7 +636,14 @@ fun PlaceSheet(
             // Hidden entirely when "Load photos" is off (the fetch is skipped too, but the
             // search response can seed a preview photo — don't show it either).
             app.vela.ui.SheetFold(extrasComposed, extrasFraction) {
-            if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || photosLoading)) {
+            // Most transit stops have NO photos, so the pulsing placeholder tiles read as a perpetual
+            // loading animation for nothing (user 2026-07-13) - suppress the shimmer for transit places
+            // entirely; if the fetch does land photos, the row simply appears with them.
+            val transitNoShimmer = stopDepartures != null || stopDeparturesLoading ||
+                place.category?.lowercase()?.let { c ->
+                    listOf("station", "stop", "transit", "transport", "hub", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
+                } == true
+            if (app.vela.ui.LoadPhotos.on.value && (place.photoUrls.isNotEmpty() || (photosLoading && !transitNoShimmer))) {
                 // (The All/Menu category chips that used to sit here are gone — the Menu TAB is
                 // the menu surface now, and the other categories read as noise; user 2026-07-10.)
                 val shown = remember(place.photoUrls) { place.photoUrls.indices.toList() }
@@ -659,7 +666,7 @@ fun PlaceSheet(
                     }
                     // The full gallery scrapes in the background a beat after the sheet opens —
                     // pulse placeholder tiles so it reads as "more photos loading", not "done".
-                    if (photosLoading) {
+                    if (photosLoading && !transitNoShimmer) {
                         item { PhotoShimmerTile(dim) }
                         if (place.photoUrls.isEmpty()) {
                             item { PhotoShimmerTile(dim) }
