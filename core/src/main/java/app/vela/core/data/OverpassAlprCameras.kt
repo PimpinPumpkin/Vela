@@ -1,19 +1,32 @@
 package app.vela.core.data
 
 import app.vela.core.model.LatLng
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.decodeFromStream
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 
 /** An automated licence-plate reader (ALPR / "Flock") camera at [loc]. [operator] is the agency/company
  *  that runs it when tagged (e.g. "Flock Safety"), [direction] the way it points (OSM `direction`, degrees
  *  or a compass string) when known - both may be blank. */
 data class AlprCamera(val loc: LatLng, val operator: String = "", val direction: String = "")
+
+/** Minimal Overpass response shape for STREAM parsing (only the fields we read). Keeping this tiny +
+ *  decoding straight off the socket avoids ever holding the whole response String or a full JsonElement
+ *  DOM in memory - the `out body 4000` full-DOM parse was the OOM / GC-thrash source (device 2026-07-13). */
+@Serializable
+private data class OverpassResp(val elements: List<OverpassNode> = emptyList())
+
+@Serializable
+private data class OverpassNode(
+    val lat: Double? = null,
+    val lon: Double? = null,
+    val tags: Map<String, String>? = null,
+)
 
 /**
  * Fetches ALPR surveillance-camera locations from **Overpass** (OpenStreetMap's keyless query API). These are
@@ -25,6 +38,17 @@ object OverpassAlprCameras {
     private const val ENDPOINT = "https://overpass-api.de/api/interpreter"
     private val json = Json { ignoreUnknownKeys = true }
 
+    // Overpass can be slow; the shared scrape client's 12 s callTimeout aborts mid-response and the
+    // failure reads as "no cameras" (a reliability complaint). Derive a longer-timeout sibling ONCE.
+    // Memory is bounded regardless now (streaming parse), so a longer read is safe.
+    @Volatile private var slowHttp: OkHttpClient? = null
+    private fun slow(base: OkHttpClient): OkHttpClient =
+        slowHttp ?: base.newBuilder()
+            .callTimeout(25, TimeUnit.SECONDS)
+            .readTimeout(25, TimeUnit.SECONDS)
+            .build()
+            .also { slowHttp = it }
+
     /**
      * ALPR camera nodes inside a bounding box, for DRAWING on the map. Matches the canonical DeFlock tag
      * `surveillance:type=ALPR` AND the older `man_made=surveillance` + `camera:type` plate-reader form some
@@ -32,6 +56,7 @@ object OverpassAlprCameras {
      * SUCCESSFUL parse - the caller area-caches success only, so a failure retries instead of stamping a
      * false "no cameras here". Queried per padded viewport (area-cached; cameras are static), NOT per fix.
      */
+    @OptIn(ExperimentalSerializationApi::class)
     fun fetchInBox(
         http: OkHttpClient,
         south: Double, west: Double, north: Double, east: Double,
@@ -40,9 +65,8 @@ object OverpassAlprCameras {
         return try {
             val box = "($south,$west,$north,$east)"
             // `out body` (NOT `out tags`): for a node, `out tags` prints only id + tags and OMITS
-            // lat/lon, so the parser below dropped every camera (no coordinates) and the layer drew
-            // nothing. `out body` is the default full print - id, lat, lon, AND tags - which is what
-            // we need to both place the marker and read operator/direction. (device-caught 2026-07-12)
+            // lat/lon, so the parser dropped every camera (no coordinates) and the layer drew nothing.
+            // `out body` prints id, lat, lon AND tags - what we need to place the marker + read operator.
             val query = "[out:json][timeout:25];" +
                 "node[\"surveillance:type\"=\"ALPR\"]$box;out body $limit;"
             val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
@@ -50,22 +74,23 @@ object OverpassAlprCameras {
                 .url(url)
                 .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
                 .build()
-            http.newCall(req).execute().use { resp ->
+            slow(http).newCall(req).execute().use { resp ->
                 if (!resp.isSuccessful) return@use null // a failure, NOT a genuine empty area - don't cache it
-                val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
-                root["elements"]?.jsonArray?.mapNotNull { el ->
-                    val o = el.jsonObject
-                    val lat = (o["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
-                    val lng = (o["lon"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
-                    val tags = o["tags"]?.jsonObject
-                    // Real DeFlock nodes tag the vendor as `manufacturer` ("Flock Safety"), not
-                    // `operator` (which is usually the agency and often absent) - fall back to it so
-                    // the camera actually shows who runs it.
-                    val op = ((tags?.get("operator") ?: tags?.get("manufacturer")) as? JsonPrimitive)
-                        ?.content.orEmpty()
-                    val dir = (tags?.get("direction") as? JsonPrimitive)?.content.orEmpty()
+                val body = resp.body ?: return@use null
+                // STREAM the body straight off the socket into the tiny DTO - never materialize the whole
+                // response String or a full JsonElement DOM. The old `.string()` + parseToJsonElement over
+                // an `out body 4000` response held ~5-10x the wire size in transient heap, which filled the
+                // heap and OOM'd mid-read (device 2026-07-13). decodeFromStream reads incrementally.
+                val parsed = json.decodeFromStream<OverpassResp>(body.byteStream())
+                parsed.elements.mapNotNull { n ->
+                    val lat = n.lat ?: return@mapNotNull null
+                    val lng = n.lon ?: return@mapNotNull null
+                    // Real DeFlock nodes tag the vendor as `manufacturer` ("Flock Safety"), not `operator`
+                    // (usually the agency, often absent) - fall back to it so the camera shows who runs it.
+                    val op = (n.tags?.get("operator") ?: n.tags?.get("manufacturer")).orEmpty()
+                    val dir = n.tags?.get("direction").orEmpty()
                     AlprCamera(LatLng(lat, lng), op, dir)
-                }.orEmpty()
+                }
             }
         } catch (e: Exception) {
             null
