@@ -12,6 +12,9 @@ import app.vela.ui.Units
 import app.vela.ui.theme.AppTheme
 import app.vela.ui.theme.DynamicColor
 import dagger.hilt.android.HiltAndroidApp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
@@ -36,6 +39,9 @@ class VelaApp : Application() {
         app.vela.ui.Topography.init(this)
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
+        // Parse the bundled on-device ALPR/Flock camera dataset off the main thread: the map layer then
+        // draws instantly (no live Overpass round-trip) and route camera-counts are instant + reliable.
+        CoroutineScope(Dispatchers.IO).launch { app.vela.data.FlockCameras.ensureLoaded(this@VelaApp) }
         app.vela.ui.SimLocation.init(this)
         app.vela.ui.UiScale.init(this)
         app.vela.ui.MapColors.init(this)
