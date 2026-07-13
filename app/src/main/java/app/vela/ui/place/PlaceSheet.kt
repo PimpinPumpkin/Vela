@@ -44,6 +44,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -2631,7 +2632,7 @@ fun RouteDetailSheet(
                 itemsIndexed(stops) { i, stop ->
                     val isFirst = i == 0
                     val isLast = i == stops.lastIndex
-                    RouteStopRow(stop, lineColor, ink, dim, isFirst, isLast, onClick = { onStopTap(stop) })
+                    RouteStopRow(stop, lineColor, ink, dim, isFirst, isLast, dark, onClick = { onStopTap(stop) })
                 }
             }
         }
@@ -2639,8 +2640,11 @@ fun RouteDetailSheet(
 }
 
 /** One stop in the [RouteDetailSheet] timeline: a coloured connector rail with a node, the stop
- *  name (board/alight emphasised) and its call time - the whole row taps through (no chevron;
- *  the connected rail + the Material ripple are the affordance, like Google's route view). */
+ *  name (board/alight emphasised), its call time in normal ink (the boarding stop's - the next
+ *  departure - a step bigger) and a small status word under the time: a green "Live" when the
+ *  agency feed adjusted this stop's time, else "Scheduled" (Google's treatment). The whole row
+ *  taps through; a hairline between rows (inset past the rail, so the line stays continuous)
+ *  separates the stops. */
 @Composable
 private fun RouteStopRow(
     stop: TransitStopTime,
@@ -2649,37 +2653,63 @@ private fun RouteStopRow(
     dim: Color,
     isFirst: Boolean,
     isLast: Boolean,
+    dark: Boolean,
     onClick: () -> Unit,
 ) {
-    Row(
+    Box(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
             .dpadHighlight(RoundedCornerShape(10.dp))
-            .clickable(onClick = onClick)
-            .padding(start = 6.dp, end = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .clickable(onClick = onClick),
     ) {
-        // Vertical rail + node, drawn so the line is continuous between rows. Board/alight get a
-        // bigger node; intermediate stops a smaller one - all solid in the line colour so they read
-        // on any sheet background.
-        val big = isFirst || isLast
-        Box(Modifier.width(24.dp).height(48.dp), contentAlignment = Alignment.Center) {
-            if (!isFirst) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.TopCenter).background(lineColor))
-            if (!isLast) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.BottomCenter).background(lineColor))
-            Box(Modifier.size(if (big) 14.dp else 9.dp).clip(CircleShape).background(lineColor))
+        Row(
+            Modifier.fillMaxWidth().height(IntrinsicSize.Min).padding(start = 6.dp, end = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Vertical rail + node, drawn so the line is continuous between rows. Board/alight get a
+            // bigger node; intermediate stops a smaller one - all solid in the line colour so they read
+            // on any sheet background.
+            val big = isFirst || isLast
+            Box(Modifier.width(24.dp).fillMaxHeight().heightIn(min = 64.dp), contentAlignment = Alignment.Center) {
+                if (!isFirst) Box(Modifier.width(3.dp).fillMaxHeight(0.5f).align(Alignment.TopCenter).background(lineColor))
+                if (!isLast) Box(Modifier.width(3.dp).fillMaxHeight(0.5f).align(Alignment.BottomCenter).background(lineColor))
+                Box(Modifier.size(if (big) 14.dp else 9.dp).clip(CircleShape).background(lineColor))
+            }
+            Spacer(Modifier.width(10.dp))
+            Text(
+                stop.name,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = if (isFirst || isLast) FontWeight.SemiBold else FontWeight.Normal,
+                color = ink,
+                maxLines = 2,
+                modifier = Modifier.weight(1f).padding(vertical = 14.dp),
+            )
+            stop.timeText?.let { time ->
+                // Realtime = the feed gave this stop an adjusted time distinct from the timetable.
+                val live = stop.scheduledText != null && stop.scheduledText != stop.timeText
+                Column(Modifier.padding(start = 8.dp), horizontalAlignment = Alignment.End) {
+                    Text(
+                        time,
+                        style = if (isFirst) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (isFirst) FontWeight.SemiBold else FontWeight.Normal,
+                        color = ink,
+                    )
+                    Text(
+                        stringResource(if (live) R.string.place_transit_live else R.string.place_transit_scheduled),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (live) SheetPalette.TrafficGreen else dim,
+                    )
+                }
+            }
         }
-        Spacer(Modifier.width(10.dp))
-        Text(
-            stop.name,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = if (isFirst || isLast) FontWeight.SemiBold else FontWeight.Normal,
-            color = ink,
-            maxLines = 2,
-            modifier = Modifier.weight(1f).padding(vertical = 10.dp),
-        )
-        stop.timeText?.let {
-            Text(it, style = MaterialTheme.typography.labelMedium, color = dim, modifier = Modifier.padding(start = 8.dp))
+        // Separator between stops, drawn INSIDE the row's bottom edge and inset past the rail:
+        // an item-level divider would open a visible gap in the connector line.
+        if (!isLast) {
+            HorizontalDivider(
+                Modifier.align(Alignment.BottomCenter).padding(start = 40.dp),
+                color = SheetPalette.row(dark),
+            )
         }
     }
 }

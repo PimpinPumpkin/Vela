@@ -2001,7 +2001,15 @@ architecture note.
   `route_detail_unavailable` (localized in all 11 langs) and the overlay closes. State on `MapUiState`:
   `routeDetail: TransitStep?`, `routeDetailTitle`, `routeDetailLoading`, guarded by `routeDetailJob`.
   The board cap was raised 8 -> 24 lines (`StopDepartureBoard` + parser `MAX_LINES`) so busy stops show
-  more routes. **Device-verified: Powell St -> Yellow-S -> 11 stops (Powell…SFO, 12:23-12:54 PM), then
+  more routes. **Timeline rows are Google's treatment (2026-07-13):** taller rows with a hairline
+  between stops (drawn INSIDE the row's bottom edge, inset 40dp past the rail - an item-level divider
+  opens a visible gap in the connector line), call times in normal ink with the BOARDING stop's time
+  a step bigger (titleMedium SemiBold), and a small status word under every time: dim "Scheduled"
+  (`place_transit_scheduled`, all 15 locales) or green "Live" when the stop's realtime differs from
+  its timetable (`scheduledText != timeText`). Cancellations: the timeline's source (the Google
+  itinerary reuse) carries no cancelled flag; Transitous stoptimes DOES (`place.cancelled` - boards
+  currently DROP cancelled runs), so a cancelled-run marker becomes possible once the timeline moves
+  to the GTFS trip endpoint. **Device-verified: Powell St -> Yellow-S -> 11 stops (Powell…SFO, 12:23-12:54 PM), then
   tapping 16th St Mission opened that bus stop's own board.** **Per-line arrival depth raised 4 -> 8
   (2026-07-13, user report "only shows the next 4 or so arrivals"):** parser `MAX_TIMES` was 4, AND
   `DepartureLineRow` only rendered `upcoming.first()` + `drop(1).take(3)` = 4 total; both were the cap.
