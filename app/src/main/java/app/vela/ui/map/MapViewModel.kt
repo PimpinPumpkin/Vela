@@ -1314,14 +1314,34 @@ class MapViewModel @Inject constructor(
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         val cat = p.category ?: ""
-        when {
-            // A real transit listing: its own place page carries the board.
-            TRANSIT_CAT.containsMatchIn(cat) -> fetchBoardFrom(fid, selectedFid = fid)
-            // A bus stop named by its intersection ("Main St & 1st Ave") that Google resolved to
-            // the ROAD JUNCTION ("Intersection") rather than the co-located Stop - so its own page has NO
-            // board (device 2026-07-13). Re-resolve to the stop and pull ITS board, the same
-            // way onPoiTap does for a tapped stop icon. The board attaches to the intersection sheet.
-            cat.contains("intersection", ignoreCase = true) -> resolveIntersectionStopBoard(p)
+        val isTransit = TRANSIT_CAT.containsMatchIn(cat)
+        val isIntersection = cat.contains("intersection", ignoreCase = true)
+        if (!isTransit && !isIntersection) return
+        // PRIMARY: Transitous (open GTFS + realtime, keyless). One proximity lookup at the place's own
+        // coordinate - no name correlation against Google/OSM at all - and unlike Google's anonymous
+        // page it returns EVERY route at the stop (a hub's parent station merges all its bays). The
+        // Google blob paths below stay as the fallback where Transitous has no coverage.
+        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true) else it }
+        viewModelScope.launch {
+            val board = withContext(Dispatchers.IO) {
+                runCatching { app.vela.core.data.transit.Transitous.board(http, p.location.lat, p.location.lng) }.getOrNull()
+            }
+            android.util.Log.i("VelaDepartures", "transitous lines=${board?.lines?.size ?: -1}")
+            if (board != null && board.lines.isNotEmpty()) {
+                _state.update { st ->
+                    if (st.selected?.featureId != fid) st
+                    else st.copy(stopDepartures = board, stopDeparturesLoading = false)
+                }
+                return@launch
+            }
+            // FALLBACK: the Google place-page blob (agency-dependent, one route at hubs - but better
+            // than nothing where the open feeds lack the agency).
+            when {
+                isTransit -> fetchBoardFrom(fid, selectedFid = fid)
+                // A stop named by its corner resolves to Google's "Intersection" entity, whose own page
+                // has no board - re-resolve to the co-located stop listing (device 2026-07-13).
+                else -> resolveIntersectionStopBoard(p)
+            }
         }
     }
 
