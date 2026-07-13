@@ -444,6 +444,7 @@
     <string name="place_transit_in_min">через %1$d мин</string> <!-- format -->
     <string name="place_transit_in_duration">через %1$s</string> <!-- format -->
     <string name="place_transit_more_times">ещё %1$d</string> <!-- format -->
+    <string name="place_transit_view_stops">Остановки</string>
     <string name="place_transit_live">Онлайн</string>
     <string name="place_departures">Отправления</string>
     <string name="place_every">Каждые %1$s</string> <!-- format -->
