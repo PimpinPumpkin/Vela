@@ -110,6 +110,10 @@ private const val STOP_IMG = "vela-stop"
 private const val FLOCK_SRC = "vela-flock-src" // ALPR/Flock cameras (DeFlock/OSM) drawn at high zoom
 private const val FLOCK_LAYER = "vela-flock"
 private const val FLOCK_IMG = "vela-flock-cam"
+private const val TRANSIT_STOPS_SRC = "vela-transit-stops-src" // canonical GTFS stops (Transitous)
+private const val TRANSIT_STOPS_LAYER = "vela-transit-stops"
+private const val TRANSIT_STOP_IMG = "vela-transit-stop"
+private const val TRANSIT_STOP_INDEX_PROP = "vela_transit_stop_index"
 private const val AMBIENT_INDEX_PROP = "vela-ambient-index"
 private const val ACCURACY_SRC = "vela-me-accuracy-src"
 private const val ACCURACY_LAYER = "vela-me-accuracy"
@@ -159,6 +163,9 @@ private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
 private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
+private var lastAppliedTransitStops: List<app.vela.core.data.transit.Transitous.MapStop>? = null
+private var lastTransitBusHidden: Boolean? = null // gate the poi_transit filter flip
+private var origPoiTransitFilter: Expression? = null // basemap filter to restore when coverage goes
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
 private var lastControlsVis: String? = null // identity-gate the traffic-control visibility flips
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
@@ -227,6 +234,7 @@ fun VelaMapView(
     onParkingTap: () -> Unit = {},
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
+    onTransitStopTap: (app.vela.core.data.transit.Transitous.MapStop) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
     maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
@@ -234,6 +242,7 @@ fun VelaMapView(
     speedOverlayOn: Boolean = false, // only query the overlay while it can matter (driving / navigating)
     trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
     flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras drawn at high zoom
+    transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops at street zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
@@ -264,6 +273,8 @@ fun VelaMapView(
     val poiTap = rememberUpdatedState(onPoiTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
     val ambientTap = rememberUpdatedState(onAmbientTap)
+    val transitStopTap = rememberUpdatedState(onTransitStopTap)
+    val transitStopsNow = rememberUpdatedState(transitStops)
     val parkingTap = rememberUpdatedState(onParkingTap)
     val cameraIdle = rememberUpdatedState(onCameraIdle)
     val longPress = rememberUpdatedState(onMapLongPress)
@@ -922,6 +933,13 @@ fun VelaMapView(
                         ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
                         return@handleTap true
                     }
+                    // A canonical GTFS stop icon (Transitous layer): open the stop's board directly
+                    // by stop id - no name resolution at all.
+                    val gtfsStop = feats.firstOrNull { it.hasProperty(TRANSIT_STOP_INDEX_PROP) }
+                    if (gtfsStop != null) {
+                        transitStopsNow.value.getOrNull(gtfsStop.getNumberProperty(TRANSIT_STOP_INDEX_PROP).toInt())
+                            ?.let { st -> transitStopTap.value(st); return@handleTap true }
+                    }
                     // Tap a greyed alternate route line to switch to it (Google-style).
                     val altHit = map.queryRenderedFeatures(
                         RectF(p.x - r, p.y - r, p.x + r, p.y + r), ALT_ROUTE_LAYER,
@@ -1302,18 +1320,21 @@ fun VelaMapView(
                 lastAppliedAmbient = null
                 lastAppliedControls = null
                 lastAppliedFlock = null
+                lastAppliedTransitStops = null
+                lastTransitBusHidden = null
+                origPoiTransitFilter = null
                 lastAppliedRouteLine = null
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
                 ensureTopography(style, topographyOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
                 ensureTopography(it, topographyOn)
@@ -1938,6 +1959,40 @@ private fun ensureLayers(style: Style) {
                     PropertyFactory.iconAllowOverlap(true),
                     PropertyFactory.iconIgnorePlacement(true),
                     PropertyFactory.iconPadding(2f),
+                )
+            },
+        )
+    }
+    // Canonical GTFS transit stops (Transitous). One icon per station (bays dedupe in the VM);
+    // replaces the OSM basemap bus icons wherever this layer has coverage (poi_transit filter flips
+    // in applyData). Drawn beneath the flock layer, above the ambient POIs.
+    if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
+    if (style.getSource(TRANSIT_STOPS_SRC) == null) {
+        style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC))
+        val stopSize = Expression.interpolate(
+            Expression.linear(), Expression.zoom(),
+            Expression.stop(15f, 0.62f),
+            Expression.stop(17f, 0.92f),
+            Expression.stop(19f, 1.2f),
+        )
+        style.addLayer(
+            SymbolLayer(TRANSIT_STOPS_LAYER, TRANSIT_STOPS_SRC).apply {
+                setMinZoom(15f)
+                setProperties(
+                    PropertyFactory.iconImage(TRANSIT_STOP_IMG),
+                    PropertyFactory.iconSize(stopSize),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconPadding(2f),
+                    PropertyFactory.textField(Expression.get("name")),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textSize(10.5f),
+                    PropertyFactory.textOptional(true),
+                    PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+                    PropertyFactory.textOffset(arrayOf(0f, 1.1f)),
+                    PropertyFactory.textColor("#7f8ba0"),
+                    PropertyFactory.textHaloColor("#0e1626"),
+                    PropertyFactory.textHaloWidth(1.1f),
                 )
             },
         )
@@ -2835,6 +2890,7 @@ private fun applyData(
     ambientPois: List<MapMarker>,
     trafficControls: List<app.vela.core.data.TrafficControl>,
     flockCameras: List<app.vela.core.data.AlprCamera>,
+    transitStops: List<app.vela.core.data.transit.Transitous.MapStop>,
     me: LatLng?,
     bearing: Float?,
     meAccuracyM: Float?,
@@ -3051,6 +3107,42 @@ private fun applyData(
         )
         style.getSourceAs<GeoJsonSource>(FLOCK_SRC)?.setGeoJson(flockFc)
         lastAppliedFlock = flockCameras
+    }
+
+    // Canonical GTFS stops (Transitous). Feature index -> the VM's stop list for the tap handler.
+    if (transitStops != lastAppliedTransitStops) {
+        val stopsFc = FeatureCollection.fromFeatures(
+            transitStops.mapIndexed { i, st ->
+                Feature.fromGeometry(Point.fromLngLat(st.lon, st.lat)).apply {
+                    addNumberProperty(TRANSIT_STOP_INDEX_PROP, i)
+                    addStringProperty("name", st.name)
+                }
+            },
+        )
+        style.getSourceAs<GeoJsonSource>(TRANSIT_STOPS_SRC)?.setGeoJson(stopsFc)
+        lastAppliedTransitStops = transitStops
+    }
+    // While the canonical layer has coverage here, hide the basemap's own OSM bus icons (class
+    // "bus" in poi_transit) so the same stop can't draw twice at slightly different corners;
+    // rail/airport stay basemap. Original filter captured once per style load and restored when
+    // coverage goes (offline in an uncached area).
+    val hideOsmBus = transitStops.isNotEmpty()
+    if (hideOsmBus != lastTransitBusHidden) {
+        runCatching {
+            (style.getLayer("poi_transit") as? SymbolLayer)?.let { poi ->
+                if (origPoiTransitFilter == null) origPoiTransitFilter = poi.filter
+                val orig = origPoiTransitFilter
+                val noBus = Expression.neq(Expression.get("class"), Expression.literal("bus"))
+                poi.setFilter(
+                    when {
+                        hideOsmBus && orig != null -> Expression.all(orig, noBus)
+                        hideOsmBus -> noBus
+                        else -> orig ?: Expression.literal(true)
+                    },
+                )
+            }
+        }
+        lastTransitBusHidden = hideOsmBus
     }
 
     // The location source: in browse mode applyData owns it (set it from the fix here);
@@ -3294,5 +3386,26 @@ private fun alprCameraBitmap(): Bitmap {
     val arm = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); strokeWidth = 2.4f; style = Paint.Style.STROKE }
     c.drawLine(17f, 18f, 17f, 12f, arm)
     c.drawLine(12f, 12f, 24f, 12f, arm)
+    return bmp
+}
+
+/** Canonical GTFS stop badge: a small blue circle with a white bus glyph, the same marker
+ *  language as the ALPR badge but round + transit-blue so it reads as a stop, not a POI. */
+private fun transitStopBitmap(): Bitmap {
+    val s = 40
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    val blue = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A73E8.toInt() } // transit blue
+    val cx = s / 2f
+    c.drawCircle(cx, cx, cx - 1.5f, white) // rim
+    c.drawCircle(cx, cx, cx - 3.5f, blue)
+    // Bus glyph in white: body, windshield band, wheels.
+    val body = android.graphics.RectF(12f, 11f, 28f, 26f)
+    c.drawRoundRect(body, 3.5f, 3.5f, white)
+    val band = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = blue.color }
+    c.drawRect(14f, 15f, 26f, 20.5f, band) // window band
+    c.drawCircle(15.5f, 27.5f, 2.2f, white) // wheels
+    c.drawCircle(24.5f, 27.5f, 2.2f, white)
     return bmp
 }

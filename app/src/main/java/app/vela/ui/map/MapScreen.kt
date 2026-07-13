@@ -778,6 +778,8 @@ fun MapScreen(
 
             trafficControls = state.trafficControls,
             flockCameras = state.flockCameras,
+            transitStops = state.transitStops,
+            onTransitStopTap = vm::onTransitStopTap,
             navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
