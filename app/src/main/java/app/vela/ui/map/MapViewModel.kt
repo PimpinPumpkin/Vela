@@ -2396,10 +2396,14 @@ class MapViewModel @Inject constructor(
         flockRouteJob?.cancel()
         if (!app.vela.ui.FlockRouteAlert.on.value) return
         flockRouteJob = viewModelScope.launch {
-            val counts = withContext(Dispatchers.IO) {
+            val counts = withContext(Dispatchers.Default) {
+                val local = app.vela.data.FlockCameras.isLoaded
                 routes.map { r ->
-                    runCatching { app.vela.core.data.OverpassAlprCameras.fetchAlong(http, r.polyline).size }
-                        .getOrDefault(0)
+                    // Bundled dataset: instant + reliable, so the auto-avoid re-rank always has real counts to
+                    // work with (the live Overpass fan-out per tile was slow and often returned 0 = nothing to
+                    // avoid). Fall back to Overpass only until the bundled set finishes loading.
+                    if (local) app.vela.data.FlockCameras.along(r.polyline).size
+                    else runCatching { app.vela.core.data.OverpassAlprCameras.fetchAlong(http, r.polyline).size }.getOrDefault(0)
                 }
             }
             android.util.Log.i("VelaFlockRoute", "counts=$counts")
@@ -3833,11 +3837,24 @@ class MapViewModel @Inject constructor(
             val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
             if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
         }
+        val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+        val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
+        // FAST PATH: the bundled on-device dataset - instant, no Overpass round-trip. This is what makes
+        // the layer draw like a tile instead of waiting on a network fetch per viewport (user 2026-07-13).
+        if (app.vela.data.FlockCameras.isLoaded) {
+            flockJob?.cancel()
+            flockJob = viewModelScope.launch {
+                val res = withContext(Dispatchers.Default) { app.vela.data.FlockCameras.inBox(s, w, n, e) }
+                flockBox = doubleArrayOf(s, w, n, e)
+                val kept = capFlock(res, s, n, w, e)
+                diag.record("flock", "showing ${kept.size} camera(s) at z${"%.1f".format(zoom)}", "bundled dataset")
+                _state.update { it.copy(flockCameras = kept) }
+            }
+            return
+        }
         flockJob?.cancel()
         flockJob = viewModelScope.launch {
             delay(350)
-            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
-            val s = south - padLat; val n = north + padLat; val w = west - padLng; val e = east + padLng
             // fetchInBox returns NULL on failure (network/timeout/non-2xx), an empty list on a clean
             // "no cameras here". Record both to the shareable diagnostic (Settings -> Diagnostics): on
             // GrapheneOS adb logcat can't see app logs, so this is how a "cameras don't show" report is
@@ -3851,16 +3868,24 @@ class MapViewModel @Inject constructor(
                 return@launch
             }
             flockBox = doubleArrayOf(s, w, n, e)
-            val cLat0 = (s + n) / 2; val cLng0 = (w + e) / 2
-            val lngScale = kotlin.math.cos(Math.toRadians(cLat0))
-            val kept = if (res.size <= CONTROLS_ONSCREEN_CAP) res else res.sortedBy {
-                val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
-                dLat * dLat + dLng * dLng
-            }.take(CONTROLS_ONSCREEN_CAP)
+            val kept = capFlock(res, s, n, w, e)
             diag.record("flock", "showing ${kept.size} camera(s) at z${"%.1f".format(zoom)}", if (res.size != kept.size) "fetched ${res.size}, capped" else null)
             android.util.Log.i("VelaFlock", "fetched=${res.size} kept=${kept.size} zoom=$zoom")
             _state.update { it.copy(flockCameras = kept) }
         }
+    }
+
+    /** Cap the drawn cameras to the [CONTROLS_ONSCREEN_CAP] NEAREST the box centre (a dense metro cell can
+     *  hold hundreds; drawing them all clutters the map and costs tessellation). Shared by both the bundled
+     *  and the Overpass paths. */
+    private fun capFlock(res: List<app.vela.core.data.AlprCamera>, s: Double, n: Double, w: Double, e: Double): List<app.vela.core.data.AlprCamera> {
+        if (res.size <= CONTROLS_ONSCREEN_CAP) return res
+        val cLat0 = (s + n) / 2; val cLng0 = (w + e) / 2
+        val lngScale = kotlin.math.cos(Math.toRadians(cLat0))
+        return res.sortedBy {
+            val dLat = it.loc.lat - cLat0; val dLng = (it.loc.lng - cLng0) * lngScale
+            dLat * dLat + dLng * dLng
+        }.take(CONTROLS_ONSCREEN_CAP)
     }
 
     // --- Offline ROUTING graphs (Settings → Offline routing) ---------------------------------
