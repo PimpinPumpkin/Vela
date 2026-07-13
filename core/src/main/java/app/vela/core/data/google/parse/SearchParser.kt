@@ -375,13 +375,21 @@ object SearchParser {
      *  call site.) CLOSED words are matched before OPEN words — order is load-bearing, see
      *  [CLOSED_WORDS]. Unknown language → the English table; no match → null (callers stay
      *  conservative — placeStatusColor only ever greens an affirmative signal). */
+    // Remote overrides from the signed calibration bundle (Calibration.statusClosedWords/-OpenWords),
+    // pushed by the app at adopt time. Null = compiled tables. Lets a wrong or missing keyword in
+    // some language be fixed by a config edit instead of an app release.
+    @Volatile var remoteClosedWords: Map<String, List<String>>? = null
+    @Volatile var remoteOpenWords: Map<String, List<String>>? = null
+
     internal fun parseOpenNow(
         status: String?,
         lang: String = java.util.Locale.getDefault().language.lowercase(),
     ): Boolean? {
         val s = status?.trim()?.ifBlank { null } ?: return null
-        val closed = CLOSED_WORDS[lang] ?: CLOSED_WORDS.getValue("en")
-        val open = OPEN_WORDS[lang] ?: OPEN_WORDS.getValue("en")
+        val closedTable = remoteClosedWords ?: CLOSED_WORDS
+        val openTable = remoteOpenWords ?: OPEN_WORDS
+        val closed = closedTable[lang] ?: closedTable["en"] ?: CLOSED_WORDS.getValue("en")
+        val open = openTable[lang] ?: openTable["en"] ?: OPEN_WORDS.getValue("en")
         return when {
             closed.any { s.startsWith(it) } -> false
             open.any { s.startsWith(it) } -> true

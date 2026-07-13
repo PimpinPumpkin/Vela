@@ -1230,7 +1230,15 @@ architecture note.
   `config/`) fetches `calibration.json` from the repo's raw URL at launch and
   adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
   provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).
-  The bundle also carries **`defaultVoiceId`** (String - the Piper voice a fresh install
+  The bundle also carries the **language-keyword tables (v16, 2026-07-13)**: `transitCategoryWords`
+  (the transit-category gate's regex terms - joined into one case-insensitive alternation, adopted
+  by `MapViewModel.adoptKeywordTables` at init + after refresh, compiled regex as fallback) and
+  `statusClosedWords`/`statusOpenWords` (per-language maps that REPLACE SearchParser's compiled
+  open/closed tables when present - absent in the shipped json on purpose, the field support is
+  the hot-fix path). These are the one part of the localized scrape that reads localized TEXT to
+  decide something, so a wrong or missing word in a language nobody on the project speaks is a
+  config edit + version bump + re-sign, not an app release (issue #71 was exactly this class of
+  bug). The bundle also carries **`defaultVoiceId`** (String - the Piper voice a fresh install
   downloads + activates), **`defaultVoiceSpeaker`** (int - only tunes libritts_r's 904
   variants) and **`defaultVoiceSpeed`** (float - spoken-directions speed), so a favourite
   voice/speaker/pace can be pushed as everyone's default with a version bump + re-sign, no
@@ -1976,7 +1984,15 @@ architecture note.
   measured **89 m** from its junction point (device 2026-07-13) - just past the OLD 80 m cut, which is exactly
   why boards never showed at these corners; another junction's stops sit ~575 m out, so 250 m catches the
   right one only) and pulls ITS board onto the intersection sheet. No co-located Google
-  listing (a rare OSM-only stop) -> no board, correctly. **BOTH paths are name-first with a bare
+  listing (a rare OSM-only stop) -> no board, correctly. **The transit gates are MULTILINGUAL (issue #71, 2026-07-13):** categories arrive in the
+  device language (hl=), so TRANSIT_CAT carries keyword stems for all 15 app languages - Hebrew was
+  missing entirely, which made every stop tap in a Hebrew-locale install dead-end as a name-only
+  sheet (the reporter's Jerusalem screenshot: no category match -> no live-stop pick -> no board,
+  and a bare placeholder hugs its content so there's nothing to swipe to). And a HINTED tap (the
+  basemap class says transit, language-independent) that resolves to NO Google stop listing now
+  falls back to `Transitous.board` at the tapped coordinate directly - proximity only, no category,
+  no feature id (the Google-page fallback is impossible without one anyway). Verified against live
+  Transitous data at the reporter's exact stop (Israel MOT GTFS is in Transitous). **BOTH paths are name-first with a bare
   PROXIMITY fallback (2026-07-13):** OSM and Google often NAME the same stop differently ("A & B" vs
   "B & A", Hwy vs road name), so when the "<name> bus stop" search yields no live transit hit within
   250 m, a second location-biased query for just the mode word ("bus stop") runs and the nearest live
