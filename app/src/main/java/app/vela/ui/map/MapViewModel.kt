@@ -1341,9 +1341,9 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val stopFid = runCatching {
                 // A junction's own point sits back from the stops on each approach, so use a generous radius
-                // (~250 m) - the co-located stops came back as "Bus stop" but landed past a tight 80 m cut
-                // (device 2026-07-13). Far-away stops for OTHER junctions sit well past this (~575 m observed),
-                // so 250 m catches the real one without grabbing a neighbour's.
+                // (~250 m): a REAL co-located stop measured 89 m from its junction point (device 2026-07-13,
+                // just past the old 80 m cut - exactly why boards never showed), while another junction's
+                // stops sit ~575 m out. 250 m catches the right one without grabbing a neighbour's.
                 dataSource.search("${p.name} bus stop", p.location).places.asSequence()
                     .filter { !it.permanentlyClosed && it.location.distanceTo(p.location) < 250.0 }
                     .filter { s -> s.category?.let { TRANSIT_CAT.containsMatchIn(it) } == true }
@@ -1840,7 +1840,10 @@ class MapViewModel @Inject constructor(
                     // so the lightweight name+location placeholder set above stays (a stop name beats a
                     // corner; there's no board without a real stop listing anyway).
                     results.asSequence()
-                        .filter { !it.permanentlyClosed && it.location.distanceTo(location) < 80.0 }
+                        // 250 m, not 80: the OSM icon and Google's stop listing routinely sit on different
+                        // corners of the junction (a real pair measured 89 m apart, past the old 80 m cut -
+                        // device 2026-07-13). Nearest-wins keeps a wide radius safe.
+                        .filter { !it.permanentlyClosed && it.location.distanceTo(location) < 250.0 }
                         .filter { p -> p.category?.let { c -> TRANSIT_CAT.containsMatchIn(c) } == true }
                         .minByOrNull { it.location.distanceTo(location) }
                 } else {
