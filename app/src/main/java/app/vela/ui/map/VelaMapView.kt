@@ -440,13 +440,18 @@ fun VelaMapView(
     }
 
     // Posted-speed-limit overlay (OSM maxspeed PMTiles, streamed): an INVISIBLE-but-queryable line layer.
-    // We never draw it (transparent), but a wide-ish line means queryRenderedFeatures under the puck reliably
-    // hits the road segment, and reading its `maxspeed` tag gives the "Speed B" online limit without a
-    // downloaded routing graph. minZoom low so it's present at nav/free-drive zoom (z16 tiles overzoom).
-    LaunchedEffect(maxspeedOverlays, styleRef) {
+    // We never draw it, but a wide-ish line means queryRenderedFeatures under the puck reliably hits the
+    // road segment, and reading its `maxspeed` tag gives the "Speed B" online limit without a downloaded
+    // routing graph. minZoom low so it's present at nav/free-drive zoom (z16 tiles overzoom).
+    // ONLY added while speedOverlayOn (driving/nav) - the poll reads it only then, and adding it during a
+    // plain browse was pure overhead AND rendered a BLACK stripe over every road: MapLibre's colour parser
+    // rejected the 8-digit "#00000000" and fell back to its default OPAQUE BLACK. Fixed by the transparent
+    // @ColorInt overload (no string parsing) and by not carrying the layer on the browse map at all.
+    LaunchedEffect(maxspeedOverlays, styleRef, speedOverlayOn) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-ms-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-ms-src-") }.forEach { style.removeSource(it) } }
+        if (!speedOverlayOn) return@LaunchedEffect // no query layer on the browse map
         maxspeedOverlays.forEachIndexed { i, uri ->
             runCatching {
                 val srcId = "vela-ms-src-$i"
@@ -455,7 +460,8 @@ fun VelaMapView(
                     setSourceLayer("maxspeed") // tippecanoe layer name (build-maxspeed-region.sh: -l maxspeed)
                     setMinZoom(11f)
                     setProperties(
-                        PropertyFactory.lineColor("#00000000"), // fully transparent - present for querying, never seen
+                        PropertyFactory.lineColor(android.graphics.Color.TRANSPARENT), // @ColorInt, unambiguously transparent
+                        PropertyFactory.lineOpacity(0f),         // belt-and-suspenders: never drawn
                         PropertyFactory.lineWidth(12f),          // wide hit target for the point query
                     )
                 }
@@ -613,7 +619,10 @@ fun VelaMapView(
                         browseCam[1] = cp.target?.longitude ?: loc.lng
                     }
                 }
-                val k = (1f - kotlin.math.exp(-dt / 0.16f)).toDouble()
+                // tau 0.22 s (was 0.16): a slightly longer time-constant keeps the camera CHASING
+                // between the ~1 Hz fixes instead of coasting to each one and stopping, so the follow
+                // reads as a continuous glide (closer to the nav feel) rather than a per-second ease.
+                val k = (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
                 browseCam[0] += (loc.lat - browseCam[0]) * k
                 browseCam[1] += (loc.lng - browseCam[1]) * k
                 camLat = browseCam[0]; camLng = browseCam[1]
@@ -628,7 +637,13 @@ fun VelaMapView(
                 kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
                 kotlin.math.abs(beam - lastBrowse[2]) > 0.4
             if (moved) {
-                setMeSource(style, loc, beam)
+                // Draw the puck at the EASED follow position (camLat/camLng), not the raw fix: at the
+                // raw fix the dot teleported forward on the map each 1 Hz fix while the camera eased to
+                // catch up (the visible hop). At the eased position the dot stays centred and glides with
+                // the map - the same locked puck+camera the nav follow shows. (Falls back to the raw fix
+                // while pinching, when the camera isn't easing.)
+                val puckAt = if (cam != null && !scaling[0]) LatLng(camLat, camLng) else loc
+                setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0]) {
                     cam.moveCamera(CameraUpdateFactory.newLatLng(MLLatLng(camLat, camLng)))
                 }
