@@ -1299,6 +1299,14 @@ class MapViewModel @Inject constructor(
         RegexOption.IGNORE_CASE,
     )
 
+    /** The nearest LIVE transit-category listing to [at] among [results], within [radiusM]. Shared by the
+     *  stop-icon tap and the intersection board re-resolve - the one predicate for "the operating stop". */
+    private fun nearestLiveStop(results: List<Place>, at: LatLng, radiusM: Double = 250.0): Place? =
+        results.asSequence()
+            .filter { !it.permanentlyClosed && it.location.distanceTo(at) < radiusM }
+            .filter { p -> p.category?.let { TRANSIT_CAT.containsMatchIn(it) } == true }
+            .minByOrNull { it.location.distanceTo(at) }
+
     /** A transit stop's live departure board, from the station's own place page (keyless, anonymous).
      *  Only fired for places whose category reads like a transit stop AND that carry a feature id
      *  (needed for the `?cid=` deep-link); guarded to the still-selected place when it returns. */
@@ -1306,16 +1314,59 @@ class MapViewModel @Inject constructor(
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         val cat = p.category ?: ""
-        if (!TRANSIT_CAT.containsMatchIn(cat)) return
-        _state.update { if (it.selected?.featureId == fid) it.copy(stopDeparturesLoading = true) else it }
+        when {
+            // A real transit listing: its own place page carries the board.
+            TRANSIT_CAT.containsMatchIn(cat) -> fetchBoardFrom(fid, selectedFid = fid)
+            // A bus stop named by its intersection ("Main St & 1st Ave") that Google resolved to
+            // the ROAD JUNCTION ("Intersection") rather than the co-located Stop - so its own page has NO
+            // board (device 2026-07-13). Re-resolve to the stop and pull ITS board, the same
+            // way onPoiTap does for a tapped stop icon. The board attaches to the intersection sheet.
+            cat.contains("intersection", ignoreCase = true) -> resolveIntersectionStopBoard(p)
+        }
+    }
+
+    /** Fetch a transit stop's board from its own [boardFid] and attach it to the still-selected place
+     *  ([selectedFid]). Feature-id-gated so a slow fetch can't land on a place the user has moved off. */
+    private fun fetchBoardFrom(boardFid: String, selectedFid: String?) {
+        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true) else it }
         viewModelScope.launch {
-            val board = runCatching { webStopDepartures.fetch(fid) }
-                .onFailure { android.util.Log.i("VelaDepartures", "fetch failed: ${it.message}") }
-                .getOrNull()
-            // Line count only (no place name in logs) so a shape drift is visible without leaking where.
+            val board = runCatching { webStopDepartures.fetch(boardFid) }.getOrNull()
             android.util.Log.i("VelaDepartures", "board lines=${board?.lines?.size ?: -1}")
             _state.update { st ->
-                if (st.selected?.featureId != fid) st
+                if (st.selected?.featureId != selectedFid) st
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+            }
+        }
+    }
+
+    /** [p] resolved to an "Intersection", but a bus stop usually sits at the same corner as its own Google
+     *  listing. Search "<name> bus stop" near the corner (the transit-hint trick onPoiTap uses), take the
+     *  nearest LIVE transit-category listing within 80 m, and pull its board onto [p]'s sheet. No stop -> no
+     *  board (a plain intersection just shows nothing, as before). */
+    private fun resolveIntersectionStopBoard(p: Place) {
+        val selectedFid = p.featureId
+        _state.update { if (it.selected?.featureId == selectedFid) it.copy(stopDeparturesLoading = true) else it }
+        viewModelScope.launch {
+            val stopFid = runCatching {
+                // A junction's own point sits back from the stops on each approach, so use a generous radius
+                // (~250 m): a REAL co-located stop measured 89 m from its junction point (device 2026-07-13,
+                // just past the old 80 m cut - exactly why boards never showed), while another junction's
+                // stops sit ~575 m out. 250 m catches the right one without grabbing a neighbour's.
+                // Name-first, then a bare proximity query: OSM and Google often NAME the same stop
+                // differently ("A & B" vs "B & A", Hwy vs the road's name), and a name-keyed search
+                // can miss even when the listing is right there.
+                val byName = nearestLiveStop(dataSource.search("${p.name} bus stop", p.location).places, p.location)
+                val stop = byName ?: nearestLiveStop(dataSource.search("bus stop", p.location).places, p.location)
+                stop?.featureId?.takeIf { it.contains(":") }
+            }.getOrNull()
+            if (stopFid == null) {
+                _state.update { st -> if (st.selected?.featureId == selectedFid) st.copy(stopDeparturesLoading = false) else st }
+                return@launch
+            }
+            val board = runCatching { webStopDepartures.fetch(stopFid) }.getOrNull()
+            android.util.Log.i("VelaDepartures", "intersection stop board lines=${board?.lines?.size ?: -1}")
+            _state.update { st ->
+                if (st.selected?.featureId != selectedFid) st
                 else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
             }
         }
@@ -1796,10 +1847,14 @@ class MapViewModel @Inject constructor(
                     // defunct-but-reviewed shelter must not beat the live stop). No such listing -> null,
                     // so the lightweight name+location placeholder set above stays (a stop name beats a
                     // corner; there's no board without a real stop listing anyway).
-                    results.asSequence()
-                        .filter { !it.permanentlyClosed && it.location.distanceTo(location) < 80.0 }
-                        .filter { p -> p.category?.let { c -> TRANSIT_CAT.containsMatchIn(c) } == true }
-                        .minByOrNull { it.location.distanceTo(location) }
+                    // 250 m, not 80: the OSM icon and Google's stop listing routinely sit on different
+                    // corners of the junction (a real pair measured 89 m apart, past the old 80 m cut -
+                    // device 2026-07-13). Nearest-wins keeps the wide radius safe. Name-first, then a bare
+                    // proximity query - OSM and Google often name the same stop differently, so the
+                    // name-keyed search can miss a listing that's right at the icon.
+                    nearestLiveStop(results, location)
+                        ?: runCatching { dataSource.search(transitHint, location).places }.getOrNull()
+                            ?.let { nearestLiveStop(it, location) }
                 } else {
                     // A tapped POI can map to several Google listings at one spot - e.g. a co-branded
                     // "SpeeDee Midas" has a rich "SpeeDee" profile (543 reviews) AND a sparse "Midas" one,
@@ -1891,7 +1946,9 @@ class MapViewModel @Inject constructor(
                 val stop = (geo ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location))
                     .copy(location = location)
                 addStop(stop)
-                flashStatus(appContext.getString(R.string.mapvm_stop_added))
+                // No flash banner: the route refetch that addStop triggers resets `status` a beat later
+                // anyway (the banner blinked for a few frames, user 2026-07-13), and the stop appearing in
+                // the chooser + the route redrawing through it IS the feedback.
             }
             return
         }
