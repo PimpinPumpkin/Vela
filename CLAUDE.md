@@ -130,9 +130,11 @@ Defaults that make the safe path the easy one:
   for real navigation.**
 - **GitHub releases are TWO different things - check the tag before touching one (2026-07-09).**
   `v0.*` tags are app releases (nightly prereleases, weekly stables). Every OTHER tag is
-  **infrastructure file hosting**: `tts-runtime` (the sherpa-onnx AAR CI fetches at build time),
-  `routing-graphs` (137 region graph zips + manifest), `poi-packs` (state place packs + manifest),
-  `address-overlays` and `building-overlays` (PMTiles + manifests). Those assets exist NOWHERE
+  **infrastructure file hosting** (8 as of 2026-07-13): `tts-runtime` (the sherpa-onnx AAR CI
+  fetches at build time), `asr-models` (the Whisper dictation model), `routing-graphs` (region
+  graph zips + manifest), `poi-packs` (state place packs + manifest), `address-overlays`,
+  `building-overlays` and `maxspeed-overlays` (PMTiles + manifests), `map-fonts` (Roboto glyph
+  zip). Those assets exist NOWHERE
   else - not in git, not on any server - the release IS the download backend the app's manifest
   URLs point at. Deleting one takes the corresponding offline feature down globally until its
   workflow rebuilds everything (hours). This is not hypothetical: the first nightly-prune run
@@ -1018,7 +1020,13 @@ architecture note.
   `|pal=` so a switch reloads the style like a theme flip. Post-archive twin layers
   (trails/bikeroutes/pitch/commercial) get harmonious colours in the classic fns - they exist
   in ensureLayers regardless of palette, and an unstyled LineLayer renders BLACK, so any NEW
-  twin layer must be coloured in ALL FOUR apply fns. The FLEET DEFAULT is remote:
+  twin layer must be coloured in ALL FOUR apply fns. **Same trap bit the maxspeed "Speed B" query
+  layer (fixed 2026-07-13):** its `lineColor("#00000000")` 8-digit-hex string was REJECTED by
+  MapLibre's colour parser and fell back to the default OPAQUE BLACK - a 12dp black stripe over
+  every road on the browse map (device report). For an invisible-but-queryable layer use the
+  `@ColorInt` `Color.TRANSPARENT` overload (no string parse) + `lineOpacity(0f)`, and only ADD it
+  while it's needed (the maxspeed layer is now gated to `speedOverlayOn` = driving/nav, never on the
+  browse map). Never trust an 8-hex colour STRING for transparency. The FLEET DEFAULT is remote:
   `calibration.json` `defaultMapPalette` (v15) -> `Calibration.defaultMapPalette` -> the VM
   pushes it into `MapColors.remoteDefault` at init + after refresh; a user's explicit pick
   always wins. Changing everyone's default = edit the field, bump version, re-sign, commit
@@ -1373,8 +1381,14 @@ architecture note.
   heading beam is smoothed the way nav is. Implemented as a SECOND per-frame ticker in `VelaMapView`
   (`LaunchedEffect(navMode, driveFollowing)`, sibling of the nav `LaunchedEffect(navMode, routePolyline)`): when
   `driveFollowing` it eases `browseBeam` toward `compassHeading ?: myBearing` (tau 0.15 s) and eases `browseCam`
-  toward `myLocation` north-up (k = 1-exp(-dt/0.16)), driving the ME source (`setMeSource`) + `moveCamera` each
-  frame, with an idle-skip when neither moved (a settled follow doesn't re-upload 60x/s). It OWNS the location
+  toward `myLocation` north-up (k = 1-exp(-dt/**0.22** s), loosened from 0.16 2026-07-13 so the camera keeps
+  CHASING between the ~1 Hz fixes instead of coasting to each and stopping = a continuous glide, nearer the nav
+  feel), driving the ME source (`setMeSource`) + `moveCamera` each frame, with an idle-skip when neither moved
+  (a settled follow doesn't re-upload 60x/s). **The PUCK draws at the EASED position (`browseCam`), not the raw
+  fix (2026-07-13):** at the raw fix the dot teleported forward on the map each fix while the camera eased to
+  catch up (the visible hop); at the eased position it stays centred and glides with the map, the locked
+  puck+camera the nav follow has. (A fuller constant-velocity dead-reckon between fixes is the next step if it
+  still isn't smooth enough - needs a real drive to tune.) It OWNS the location
   source while running, so `applyData` must NOT repaint the raw compass over it - the call sites pass `meBearing`
   (= smoothed `browseBeam` when following, else `displayBearing`). The camera `when` block has a guard branch
   (`!navMode && driveFollowing && myLocation != null`) so a new fix's recomposition can't fire an `animateCamera`
@@ -1878,9 +1892,16 @@ architecture note.
   times. Rendered by `PlaceSheet.RouteDetailSheet` (full-screen `Surface`, `MapScreen` draws it over the
   place sheet when `state.routeDetail != null || routeDetailLoading`): a vertical rail in the line colour,
   board + alight bold, each `TransitStopTime` row `clickable` -> `openRouteStop(stop)` which
-  `closeRouteDetail()` + `onPoiTap(stop.name, stop.location)` (the stop's precise coord makes the
-  nearest-resolve land on it, and its own `fetchStopDepartures` fires) - so tapping a stop opens ITS
-  board and the tap-through continues. Best-effort: an ungeocodable headsign / no ride leg flashes
+  `closeRouteDetail()` + `onPoiTap(stop.name, stop.location, "transit stop")` - so tapping a stop opens
+  ITS board and the tap-through continues. **The transit KIND is load-bearing (fixed 2026-07-13):**
+  without it `onPoiTap` searched the bare name, which Google resolves to the road JUNCTION, so
+  tap-through threw you to a corner. `onPoiTap`'s pick is now TRANSIT-AWARE when a transit hint is set
+  (map tap on a stop icon OR this tap-through): it takes the nearest LIVE `TRANSIT_CAT` listing within
+  80 m, EXCLUDES `permanentlyClosed`, and SKIPS the most-reviewed-canonical override (a defunct-but-
+  reviewed old shelter was beating the live stop - the "Hwy 527 & Mill Creek Blvd shows Permanently
+  closed" device report). No live stop listing at the coordinate -> the lightweight name+location
+  placeholder stays (a stop name beats an Intersection card; no board without a real stop listing, which
+  is correct). Best-effort: an ungeocodable headsign / no ride leg flashes
   `route_detail_unavailable` (localized in all 11 langs) and the overlay closes. State on `MapUiState`:
   `routeDetail: TransitStep?`, `routeDetailTitle`, `routeDetailLoading`, guarded by `routeDetailJob`.
   The board cap was raised 8 -> 24 lines (`StopDepartureBoard` + parser `MAX_LINES`) so busy stops show
