@@ -404,7 +404,6 @@
     <string name="mapvm_none_found_along_route">沿途找不到「%1$s」</string> <!-- format -->
     <string name="mapvm_search_failed">搜尋失敗</string>
     <string name="mapvm_dropped_pin">已標註的地點</string>
-    <string name="mapvm_stop_added">已新增途經點</string>
     <string name="mapvm_no_mode_route_found">找不到%1$s路線</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">路線功能需要重新校準：%1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">路線規劃失敗：%1$s</string> <!-- format -->
@@ -462,6 +461,9 @@
     <string name="route_detail_unavailable">無法取得路線詳情</string>
     <string name="place_transit_now">即將出發</string>
     <string name="place_transit_in_min">%1$d 分鐘後</string> <!-- format -->
+    <string name="place_transit_in_duration">%1$s後</string> <!-- format -->
+    <string name="place_transit_more_times">還有 %1$d 個</string> <!-- format -->
+    <string name="place_transit_view_stops">站點</string>
     <string name="place_transit_live">即時</string>
     <string name="place_departures">發車時刻</string>
     <string name="place_every">每 %1$s</string> <!-- format -->
