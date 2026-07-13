@@ -248,6 +248,9 @@
     <string name="place_from_the_owner">Dal proprietario</string>
     <string name="place_share_place">Condividi luogo</string>
     <string name="place_share">Condividi</string>
+    <string name="place_open_web">Apri sul web</string>
+    <string name="place_copy_link">Copia link</string>
+    <string name="place_link_copied">Link copiato</string>
     <string name="place_share_gmaps_link">Link Google Maps</string>
     <string name="place_share_map_pin">Segnaposto mappa (geo:)</string>
     <string name="place_share_coordinates">Coordinate</string>
@@ -364,11 +367,13 @@
     <string name="mapvm_search_needs_recalibration">La ricerca necessita di ricalibrazione: %1$s</string>
     <string name="mapvm_offline_no_data">Sei offline. Scarica un\'area in Impostazioni ▸ Offline per cercare senza connessione.</string>
     <string name="mapvm_offline_no_match">Nessun risultato offline per \"%1$s\" nell\'area salvata. La ricerca offline copre i luoghi OpenStreetMap che hai scaricato.</string>
+    <string name="mapvm_no_results">Nessun risultato per \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">Risultati offline (nessuna connessione)</string>
     <string name="mapvm_search_failed_reason">Ricerca non riuscita: %1$s</string>
     <string name="mapvm_none_found_along_route">Nessun \"%1$s\" trovato lungo il percorso</string>
     <string name="mapvm_search_failed">Ricerca non riuscita</string>
     <string name="mapvm_dropped_pin">Segnaposto</string>
+    <string name="mapvm_stop_added">Tappa aggiunta</string>
     <string name="mapvm_no_mode_route_found">Nessun percorso %1$s trovato</string>
     <string name="mapvm_directions_need_recalibration">Le indicazioni necessitano di ricalibrazione: %1$s</string>
     <string name="mapvm_routing_failed_reason">Calcolo del percorso non riuscito: %1$s</string>
@@ -433,6 +438,12 @@
     <string name="place_transit_stops">%1$d fermate</string> <!-- format -->
     <string name="place_transit_stop_id">Fermata %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Biglietti e info</string>
+    <string name="route_detail_unavailable">Dettagli linea non disponibili</string>
+    <string name="place_transit_now">In partenza</string>
+    <string name="place_transit_in_min">tra %1$d min</string> <!-- format -->
+    <string name="place_transit_live">In diretta</string>
+    <string name="place_departures">Partenze</string>
+    <string name="place_every">Ogni %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Sei arrivato.</string>
     <string name="transit_nav_walk">Cammina %1$s</string> <!-- format -->
     <string name="transit_nav_take">Prendi %1$s</string> <!-- format -->
@@ -547,4 +558,6 @@
     <string name="map_parking_moved">Parcheggio spostato qui</string>
     <string name="mapscreen_system_voices">Voci di sistema</string>
     <string name="mapvm_voice_lang_system">Le indicazioni in %1$s usano la voce del telefono. Aggiungine una nelle impostazioni voce di sistema.</string>
+    <string name="settings_topography">Ombreggiatura del terreno</string>
+    <string name="settings_topography_hint">Ombreggia colline e montagne sulla mappa. Disattivata per impostazione predefinita.</string>
 </resources>

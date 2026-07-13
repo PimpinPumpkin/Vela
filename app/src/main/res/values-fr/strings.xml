@@ -248,6 +248,9 @@
     <string name="place_from_the_owner">Réponse du propriétaire</string>
     <string name="place_share_place">Partager le lieu</string>
     <string name="place_share">Partager</string>
+    <string name="place_open_web">Ouvrir sur le Web</string>
+    <string name="place_copy_link">Copier le lien</string>
+    <string name="place_link_copied">Lien copié</string>
     <string name="place_share_gmaps_link">Lien Google Maps</string>
     <string name="place_share_map_pin">Repère sur la carte (geo:)</string>
     <string name="place_share_coordinates">Coordonnées</string>
@@ -364,11 +367,13 @@
     <string name="mapvm_search_needs_recalibration">La recherche nécessite un recalibrage : %1$s</string>
     <string name="mapvm_offline_no_data">Vous êtes hors ligne. Téléchargez une zone dans Réglages ▸ Hors ligne pour rechercher sans connexion.</string>
     <string name="mapvm_offline_no_match">Aucun résultat hors ligne pour \"%1$s\" dans votre zone enregistrée. La recherche hors ligne couvre les lieux OpenStreetMap que vous avez téléchargés.</string>
+    <string name="mapvm_no_results">Aucun résultat pour \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">Résultats hors ligne (aucune connexion)</string>
     <string name="mapvm_search_failed_reason">Échec de la recherche : %1$s</string>
     <string name="mapvm_none_found_along_route">Aucun « %1$s » trouvé le long de votre itinéraire</string>
     <string name="mapvm_search_failed">Échec de la recherche</string>
     <string name="mapvm_dropped_pin">Repère placé</string>
+    <string name="mapvm_stop_added">Arrêt ajouté</string>
     <string name="mapvm_no_mode_route_found">Aucun itinéraire %1$s trouvé</string>
     <string name="mapvm_directions_need_recalibration">L\'itinéraire nécessite un recalibrage : %1$s</string>
     <string name="mapvm_routing_failed_reason">Échec du calcul d\'itinéraire : %1$s</string>
@@ -433,6 +438,12 @@
     <string name="place_transit_stops">%1$d arrêts</string> <!-- format -->
     <string name="place_transit_stop_id">Arrêt %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Billets et infos</string>
+    <string name="route_detail_unavailable">Détails de la ligne indisponibles</string>
+    <string name="place_transit_now">Départ imminent</string>
+    <string name="place_transit_in_min">dans %1$d min</string> <!-- format -->
+    <string name="place_transit_live">En direct</string>
+    <string name="place_departures">Départs</string>
+    <string name="place_every">Toutes les %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Vous êtes arrivé.</string>
     <string name="transit_nav_walk">Marchez %1$s</string> <!-- format -->
     <string name="transit_nav_take">Prenez %1$s</string> <!-- format -->
@@ -547,4 +558,6 @@
     <string name="map_parking_moved">Place de parking déplacée ici</string>
     <string name="mapscreen_system_voices">Voix du système</string>
     <string name="mapvm_voice_lang_system">Les instructions en %1$s utilisent la voix de votre téléphone. Ajoutez-en une dans les paramètres vocaux du système.</string>
+    <string name="settings_topography">Ombrage du relief</string>
+    <string name="settings_topography_hint">Ombre les collines et les montagnes sur la carte. Désactivé par défaut.</string>
 </resources>
