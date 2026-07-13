@@ -11,8 +11,6 @@ import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import okhttp3.OkHttpClient
-import okhttp3.Request
-import java.net.URLEncoder
 
 /**
  * Fetches named POIs in a bounding box from **Overpass** (OpenStreetMap's keyless
@@ -20,7 +18,6 @@ import java.net.URLEncoder
  * no-backend source behind offline search. Best-effort: any failure → empty.
  */
 object OverpassPois {
-    private const val ENDPOINT = "https://overpass-api.de/api/interpreter"
     private val json = Json { ignoreUnknownKeys = true }
 
     /** Named amenities/shops/tourism POIs in [south,west]..[north,east], capped. */
@@ -44,16 +41,10 @@ object OverpassPois {
             "(nwr[amenity][name]($bbox);node[shop][name]($bbox);nwr[tourism][name]($bbox);" +
             "node[\"public_transport\"][name]($bbox);nwr[leisure][name]($bbox);" +
             "nwr[boundary=national_park][name]($bbox););out center $limit;"
-        val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
-        val req = Request.Builder()
-            .url(url)
-            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
-            .build()
-        http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return emptyList()
-            val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
+        OverpassEndpoints.run(http, query) { body ->
+            val root = json.parseToJsonElement(body.string()).jsonObject
             root["elements"]?.jsonArray?.mapNotNull { el -> toPlace(el.jsonObject) }.orEmpty()
-        }
+        } ?: emptyList()
     } catch (e: Exception) {
         emptyList()
     }
@@ -72,16 +63,10 @@ object OverpassPois {
         val bbox = "$south,$west,$north,$east"
         val query = "[out:json][timeout:120];" +
             "(node[\"addr:housenumber\"]($bbox);way[\"addr:housenumber\"]($bbox););out center $limit;"
-        val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
-        val req = Request.Builder()
-            .url(url)
-            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
-            .build()
-        http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return emptyList()
-            val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
+        OverpassEndpoints.run(http, query) { body ->
+            val root = json.parseToJsonElement(body.string()).jsonObject
             root["elements"]?.jsonArray?.mapNotNull { el -> toAddr(el.jsonObject) }.orEmpty()
-        }
+        } ?: emptyList()
     } catch (e: Exception) {
         emptyList()
     }
@@ -105,16 +90,10 @@ object OverpassPois {
         val query = "[out:json][timeout:120];" +
             "way[\"highway\"~\"^(motorway|trunk|primary|secondary|tertiary|unclassified|" +
             "residential|living_street|service|road)(_link)?$\"][\"name\"]($bbox);out geom $limit;"
-        val url = "$ENDPOINT?data=" + URLEncoder.encode(query, "UTF-8")
-        val req = Request.Builder()
-            .url(url)
-            .header("User-Agent", "VelaMaps/0.1 (+https://github.com/PimpinPumpkin/Vela)")
-            .build()
-        http.newCall(req).execute().use { resp ->
-            if (!resp.isSuccessful) return emptyList()
-            val root = json.parseToJsonElement(resp.body?.string().orEmpty()).jsonObject
+        OverpassEndpoints.run(http, query) { body ->
+            val root = json.parseToJsonElement(body.string()).jsonObject
             root["elements"]?.jsonArray?.flatMap { el -> toStreetPts(el.jsonObject) }.orEmpty()
-        }
+        } ?: emptyList()
     } catch (e: Exception) {
         emptyList()
     }
