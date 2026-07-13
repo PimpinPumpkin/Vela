@@ -1582,6 +1582,10 @@ class MapViewModel @Inject constructor(
     private fun fetchReviews(p: Place, force: Boolean = false) {
         // "Show reviews" off: no review section is rendered, so don't scrape either.
         if (!app.vela.ui.ShowReviews.on.value) return
+        // Transit stops: never scrape reviews. Nobody reads bus-stop reviews, the WebView grind
+        // slows the departure board (the thing you actually opened the stop for), and the section
+        // rendered awkwardly (user 2026-07-13). The board + stop timeline are the content here.
+        if (p.category?.let { TRANSIT_CAT.containsMatchIn(it) } == true) return
         // Supersede any in-flight scrape: the fetcher serializes on a Mutex, so an abandoned
         // 40 s Taco Bell grind would otherwise make the NEXT place's reviews queue behind it
         // (~90 s worst case to first review). Cancelling frees the mutex immediately, and this
