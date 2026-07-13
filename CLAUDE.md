@@ -536,7 +536,10 @@ Defaults that make the safe path the easy one:
   labelPoint)`; (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
   **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay fill,
   queried by layer id) → reverse-geocode at the tap; else nothing (only a long-press drops a raw
-  coordinate pin on empty land, as before). **The house-number case must SNAP to the tapped number:**
+  coordinate pin on empty land, as before). NB the long-press-while-planning "route through here"
+  add-stop no longer flashes a heads-up banner (2026-07-13): the route refetch reset `status` a beat
+  later so it blinked unreadably, and the stop appearing in the chooser + the route redrawing IS the
+  feedback (`mapvm_stop_added` string removed from all locales). **The house-number case must SNAP to the tapped number:**
   `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
   geocode only for the street/city, replacing whatever house number the geocode led with (a regex
   strips `^\s*\d+\S*\s+` then prepends the tapped number). Reason: Google's reverse-geocode snaps to
@@ -1927,7 +1930,12 @@ architecture note.
   "<name> bus stop", take the nearest LIVE `TRANSIT_CAT` listing within **250 m** - the junction point sits
   ~100-200 m back from the stops, past the 80 m the icon-tap path uses; a NEIGHBOUR's stop sits ~575 m out,
   so 250 m catches the right one only) and pulls ITS board onto the intersection sheet. No co-located Google
-  listing (e.g. an OSM-only stop Google never listed) -> no board, correctly. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
+  listing (e.g. an OSM-only stop Google never listed) -> no board, correctly. **And OSM bus-stop ICONS are
+  hidden from the basemap entirely (2026-07-13, user call: "I trust google more"):** the OSM stop icons
+  routinely mark stops Google has no listing for, so tapping one opened a dead card with no board.
+  `ensureLayers` rebuilds Liberty's `poi_transit` filter as `class in [airport, rail]` (was
+  `[airport, bus, rail]`) and excludes class `bus` from the `poi_r*` tiers - rail stations + airports
+  stay; Google-listed stops surface via search/transit directions. Fetch pinned `hl=en&gl=us` like `WebDirectionsFetcher` (12-hour clock
   the TIME regex reads). UI: `PlaceSheet.StopDepartureBoard` (one shared 30 s countdown clock, reuses
   `departsInLabel` + the `place_transit_*` strings + `place_departures`/`place_every`).
   **Departs-in countdown (2026-07-12):** `TransitBoard` runs ONE shared `produceState` clock (30 s
