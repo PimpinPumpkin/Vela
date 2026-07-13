@@ -247,6 +247,9 @@
     <string name="place_from_the_owner">מהבעלים</string>
     <string name="place_share_place">שתף מקום</string>
     <string name="place_share">שתף</string>
+    <string name="place_open_web">פתיחה באינטרנט</string>
+    <string name="place_copy_link">העתקת קישור</string>
+    <string name="place_link_copied">הקישור הועתק</string>
     <string name="place_share_gmaps_link">קישור Google Maps</string>
     <string name="place_share_map_pin">סימון מפה (geo:)</string>
     <string name="place_share_coordinates">קואורדינטות</string>
@@ -363,11 +366,13 @@
     <string name="mapvm_search_needs_recalibration">החיפוש דורש כיול מחדש: %1$s</string>
     <string name="mapvm_offline_no_data">אתה לא מקוון. הורד אזור בהגדרות ▸ לא מקוון כדי לחפש ללא חיבור.</string>
     <string name="mapvm_offline_no_match">אין תוצאות לא מקוונות עבור \"%1$s\" באזור השמור שלך. חיפוש לא מקוון מכסה מקומות של OpenStreetMap שהורדת.</string>
+    <string name="mapvm_no_results">אין תוצאות עבור \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">תוצאות לא מקוונות (ללא חיבור)</string>
     <string name="mapvm_search_failed_reason">החיפוש נכשל: %1$s</string>
     <string name="mapvm_none_found_along_route">לא נמצא \"%1$s\" לאורך המסלול שלך</string>
     <string name="mapvm_search_failed">החיפוש נכשל</string>
     <string name="mapvm_dropped_pin">סיכה נשמטה</string>
+    <string name="mapvm_stop_added">תחנה נוספה</string>
     <string name="mapvm_no_mode_route_found">לא נמצא מסלול %1$s</string>
     <string name="mapvm_directions_need_recalibration">המסלול דורש כיול מחדש: %1$s</string>
     <string name="mapvm_routing_failed_reason">הניתוב נכשל: %1$s</string>
@@ -431,6 +436,12 @@
     <string name="place_transit_stops">%1$d תחנות</string>
     <string name="place_transit_stop_id">תחנה %1$s</string>
     <string name="place_transit_tickets">כרטיסים &amp; מידע</string>
+    <string name="route_detail_unavailable">פרטי הקו אינם זמינים</string>
+    <string name="place_transit_now">יוצא כעת</string>
+    <string name="place_transit_in_min">בעוד %1$d דק׳</string> <!-- format -->
+    <string name="place_transit_live">בשידור חי</string>
+    <string name="place_departures">יציאות</string>
+    <string name="place_every">כל %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">הגעת.</string>
     <string name="transit_nav_walk">הלך %1$s</string>
     <string name="transit_nav_take">קח %1$s</string>
@@ -546,4 +557,7 @@
     <string name="map_parking_moved">מיקום החניה הוזז לכאן</string>
     <string name="mapscreen_system_voices">קולות מערכת</string>
     <string name="mapvm_voice_lang_system">הוראות ב%1$s משתמשות בקול של הטלפון שלך. הוסף אחד בהגדרות הקול של המערכת.</string>
+    <string name="settings_topography">הצללת שטח</string>
+    <string name="settings_topography_hint">מוסיף הצללה לגבעות ולהרים במפה. כבוי כברירת מחדל.</string>
+    <string name="settings_version_copied">הגרסה הועתקה</string>
 </resources>
