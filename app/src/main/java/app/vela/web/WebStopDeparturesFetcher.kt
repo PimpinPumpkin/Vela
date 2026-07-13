@@ -71,6 +71,12 @@ class WebStopDeparturesFetcher @Inject constructor(
         } finally {
             pending.remove(id)
         }
+        // Debug builds keep the last raw payload on disk (filesDir/depdump.txt): the board schema is
+        // positional and agency-shaped, so a "this stop parses wrong" report is only diagnosable from the
+        // actual blob. Release builds never write it.
+        if (app.vela.BuildConfig.DEBUG && !raw.isNullOrEmpty()) {
+            runCatching { java.io.File(context.filesDir, "depdump.txt").writeText(raw) }
+        }
         if (raw.isNullOrEmpty()) null
         else runCatching { StopDeparturesParser.parse(raw) }.getOrNull()
     }

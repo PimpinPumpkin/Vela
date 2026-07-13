@@ -373,7 +373,6 @@
     <string name="mapvm_none_found_along_route">Nenhum \"%1$s\" encontrado ao longo do seu percurso</string>
     <string name="mapvm_search_failed">Falha na pesquisa</string>
     <string name="mapvm_dropped_pin">Marcador colocado</string>
-    <string name="mapvm_stop_added">Parada adicionada</string>
     <string name="mapvm_no_mode_route_found">Nenhum percurso de %1$s encontrado</string>
     <string name="mapvm_directions_need_recalibration">As direções precisam de recalibração: %1$s</string>
     <string name="mapvm_routing_failed_reason">Falha ao traçar o percurso: %1$s</string>
@@ -441,6 +440,9 @@
     <string name="route_detail_unavailable">Detalhes da linha indisponíveis</string>
     <string name="place_transit_now">A sair</string>
     <string name="place_transit_in_min">em %1$d min</string> <!-- format -->
+    <string name="place_transit_in_duration">em %1$s</string> <!-- format -->
+    <string name="place_transit_more_times">mais %1$d</string> <!-- format -->
+    <string name="place_transit_view_stops">Paradas</string>
     <string name="place_transit_live">Ao vivo</string>
     <string name="place_departures">Partidas</string>
     <string name="place_every">A cada %1$s</string> <!-- format -->
