@@ -4026,12 +4026,12 @@ class MapViewModel @Inject constructor(
     companion object {
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
-        // ALPR cameras are sparse, so show them from a WIDE zoom - lowered 13 -> 11 (2026-07-13) so
-        // they're visible on a whole-ROUTE overview, not just after you zoom into a neighbourhood. The
-        // "I know this route has cameras but don't see any" report was almost certainly this: a route
-        // overview sits at ~z11-12, under the old z13 gate. The tag is rare, so the wider Overpass box
-        // stays light (and the on-screen count is capped).
-        const val FLOCK_MIN_ZOOM = 11.0
+        // Show ALPR cameras from a NEIGHBOURHOOD zoom. Briefly lowered to 11 (2026-07-13) to catch a
+        // whole-route overview, but that made the padded Overpass box ~16x bigger, and with an `out
+        // body 4000` full-body read + full-DOM parse per pan it filled the heap and OOM'd (device
+        // 2026-07-13). Back to 13: the box is bounded, and the fetch is now streamed (OverpassAlprCameras)
+        // so it can't blow the heap. Route-overview visibility is a separate follow-up.
+        const val FLOCK_MIN_ZOOM = 13.0
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
                                               // symbol is re-collided per drag frame (budget-GPU jank)
