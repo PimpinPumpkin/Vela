@@ -476,6 +476,8 @@
     <string name="route_detail_unavailable">Route details unavailable</string>
     <string name="place_transit_now">Departing</string>
     <string name="place_transit_in_min">in %1$d min</string> <!-- format -->
+    <string name="place_transit_in_duration">in %1$s</string> <!-- format -->
+    <string name="place_transit_more_times">%1$d more</string> <!-- format -->
     <string name="place_transit_live">Live</string>
     <string name="place_departures">Departures</string>
     <string name="place_every">Every %1$s</string> <!-- format -->

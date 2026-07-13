@@ -1864,6 +1864,12 @@ architecture note.
   is idempotent on relaunch. NB "avoid" still only RE-RANKS the alternates Google/OSRM offer (fewest-camera
   within a small detour); it does NOT graph-route around cameras. **To publish the first hosted copy, dispatch
   Actions -> "Flock cameras" once** (until then every install just uses the bundled floor).
+- **Share diagnostics is functional now (2026-07-13):** `DiagLog` (opt-in breadcrumb ring, :core)
+  PERSISTS to a bounded `filesDir/diag_log.jsonl` (appended per event, reloaded at init, deleted on
+  opt-out) - it was in-memory only, and since the bug being reported usually killed or preceded a
+  process restart, the export was empty essentially every time. `DiagExporter` SCRUBS the export:
+  coordinate-looking decimals (3+ places) round to 2 (~1 km) so the JSON is safe to post publicly,
+  with a header note saying so. Still no backend, still user-routed via the share sheet.
 - **Public transit uses the same hidden WebView** (`app/web/WebDirectionsFetcher`).
   A plain `/maps/preview/directions` GET with the transit flag (`!3e3`) is silently
   downgraded to a *driving* reply (same TLS-fingerprint bot-detection as photos), so
@@ -1986,7 +1992,17 @@ architecture note.
   (2026-07-13, user report "only shows the next 4 or so arrivals"):** parser `MAX_TIMES` was 4, AND
   `DepartureLineRow` only rendered `upcoming.first()` + `drop(1).take(3)` = 4 total; both were the cap.
   Now `MAX_TIMES` = 8 and the trailing times render in a **`FlowRow`** so a busy stop's extra departures
-  WRAP to more rows instead of overflowing the single Row (which is why they were capped at 3). **Superseded 2026-07-13: per-line depth is now a VERTICAL LIST of every embedded time** (parser `MAX_TIMES` = 30 ceiling; `DepartureLineRow` stacks the trailing departures one-per-row, each with its own "in N min" countdown, instead of the wrapping FlowRow). The board blob only carries the next several, so the list length is data-driven, not the cap.
+  WRAP to more rows instead of overflowing the single Row (which is why they were capped at 3). **Superseded 2026-07-13: per-line depth is now a VERTICAL LIST of every embedded time** (parser `MAX_TIMES` = 30 ceiling; `DepartureLineRow` stacks the trailing departures one-per-row, each with its own "in N min" countdown, instead of the wrapping FlowRow). The board blob only carries the next several, so the list length is data-driven, not the cap. **Refined same day:** an agency can embed 25+ times and the
+  full wall scrolled the route pill + headsign out of view (read as "the bus number is missing") - the
+  list shows 5 + an "N more" expander (`place_transit_more_times`, all locales). Countdown past the hour
+  reads hours+minutes via `formatDuration` ("in 1 h 6 min", `place_transit_in_duration`); after-midnight
+  rows carry a localized short-weekday marker. **The TIME regex matches Unicode spaces explicitly**
+  (`[\s\u00A0\u202F]`): some agencies put a NARROW NO-BREAK SPACE before AM/PM, which Android's ICU
+  regex counts as `\s` but the JVM does NOT - unit tests silently diverged from device behaviour until
+  a dumped blob exposed it. **Debug builds keep the last raw board payload** at `filesDir/depdump.txt`
+  (WebStopDeparturesFetcher, BuildConfig.DEBUG only) - the schema is agency-shaped, so wrong-parse
+  reports are only diagnosable from the actual blob. **The board renders FIRST in the sheet body**
+  (above the address; renders nothing for non-transit places).
 
 ## Name
 
