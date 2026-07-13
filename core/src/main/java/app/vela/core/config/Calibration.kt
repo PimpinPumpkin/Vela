@@ -58,6 +58,16 @@ data class Calibration(
     // archived pre-sample look; the app ships both compiled). Remote-pushable so the default can
     // flip without an app release; a user's explicit pick (map_palette pref) always wins.
     val defaultMapPalette: String = "modern",
+    // Remote overrides for the LANGUAGE-KEYWORD tables - the one part of the localized scrape that
+    // reads localized TEXT to make a decision, so a bad or missing word in some language is exactly
+    // the kind of thing that should be a config edit, not an app release (the transit gate had no
+    // Hebrew at all until issue #71). Null = the compiled tables; a present map/list REPLACES the
+    // compiled one wholesale (per language for the status maps).
+    val statusClosedWords: Map<String, List<String>>? = null,
+    val statusOpenWords: Map<String, List<String>>? = null,
+    // Alternation terms for the transit-category gate (each becomes part of one case-insensitive
+    // regex; plain words or small regex fragments both work).
+    val transitCategoryWords: List<String>? = null,
 ) {
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).
