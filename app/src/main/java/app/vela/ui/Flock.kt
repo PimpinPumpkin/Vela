@@ -5,16 +5,19 @@ import androidx.compose.runtime.mutableStateOf
 
 /**
  * Whether ALPR ("Flock") surveillance cameras are drawn on the map. Process-wide reactive holder like
- * [Traffic] / [TransitLayer] / [Topography], flipped from Settings > Map and persisted. **OFF by default**
- * (it's a niche privacy-awareness layer, and querying Overpass has a cost) - the people who want to know
- * where the plate readers are can turn it on. Data is the community DeFlock mapping in OpenStreetMap
- * (`surveillance:type=ALPR`), fetched keyless per viewport, no account, no Flock/Google involved.
+ * [Traffic] / [TransitLayer] / [Topography], flipped from Settings > Map and persisted. **ON by default**
+ * (2026-07-13, user call): it's a headline privacy feature for Vela's audience, and now that the data is a
+ * bundled on-device dataset ([app.vela.data.FlockCameras]) rather than a per-viewport Overpass query, it's
+ * basically free to draw and only shows at neighbourhood zoom, so leaving it on costs nothing. Anyone who
+ * doesn't want it flips it off in Settings (an explicit off is persisted and honoured). Data is the
+ * community DeFlock mapping in OpenStreetMap (`surveillance:type=ALPR`), no account, no Flock/Google.
+ * NB the ROUTE-avoid re-rank ([FlockRouteAlert]) stays OFF by default - that one changes route choice.
  */
 object Flock {
-    val on = mutableStateOf(false)
+    val on = mutableStateOf(true)
 
     fun init(context: Context) {
-        on.value = prefs(context).getBoolean(KEY, false)
+        on.value = prefs(context).getBoolean(KEY, true)
     }
 
     fun set(context: Context, value: Boolean) {
