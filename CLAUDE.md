@@ -1223,7 +1223,15 @@ architecture note.
   `config/`) fetches `calibration.json` from the repo's raw URL at launch and
   adopts it when its `version` is higher than the bundled `Calibration.DEFAULT`,
   provided every endpoint host is on the allowlist (`www.google.com`/`google.com`).
-  The bundle also carries **`defaultVoiceId`** (String - the Piper voice a fresh install
+  The bundle also carries the **language-keyword tables (v16, 2026-07-13)**: `transitCategoryWords`
+  (the transit-category gate's regex terms - joined into one case-insensitive alternation, adopted
+  by `MapViewModel.adoptKeywordTables` at init + after refresh, compiled regex as fallback) and
+  `statusClosedWords`/`statusOpenWords` (per-language maps that REPLACE SearchParser's compiled
+  open/closed tables when present - absent in the shipped json on purpose, the field support is
+  the hot-fix path). These are the one part of the localized scrape that reads localized TEXT to
+  decide something, so a wrong or missing word in a language nobody on the project speaks is a
+  config edit + version bump + re-sign, not an app release (issue #71 was exactly this class of
+  bug). The bundle also carries **`defaultVoiceId`** (String - the Piper voice a fresh install
   downloads + activates), **`defaultVoiceSpeaker`** (int - only tunes libritts_r's 904
   variants) and **`defaultVoiceSpeed`** (float - spoken-directions speed), so a favourite
   voice/speaker/pace can be pushed as everyone's default with a version bump + re-sign, no

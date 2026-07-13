@@ -395,12 +395,14 @@ class MapViewModel @Inject constructor(
         refreshNotices() // any cached notices, shown immediately
         // Fleet default map colour set (a user's own Settings pick always wins - see MapColors).
         app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
+        adoptKeywordTables()
         // Pull the latest scraper calibration from the repo (non-blocking, once),
         // then surface any freshly-pushed notices.
         viewModelScope.launch {
             runCatching { calibration.refresh() }
             refreshNotices()
             app.vela.ui.MapColors.remoteDefault.value = calibration.current().defaultMapPalette
+            adoptKeywordTables()
         }
         maybeCheckForUpdate()
 
@@ -1292,7 +1294,7 @@ class MapViewModel @Inject constructor(
     /** Transit-station category words (English + a few common ones). The board fetch is gated on
      *  these to avoid a WebView load on every ordinary place; the parser returns null anyway for a
      *  place with no board, so a miss here just means no board, never a wrong one. */
-    private val TRANSIT_CAT = Regex(
+    private val TRANSIT_CAT_COMPILED = Regex(
         """station|stop|subway|metro|transit|transport|\bhub\b|\bbus\b|train|\brail\b|tram|light rail|terminal|ferry|""" +
             """bahnhof|haltestelle|gare|estaci|estaç|stazione|fermata|estação|estação|halte|stanice|""" +
             """지하철|driehoek|û|вокзал|станц|остановка|停|駅|车站|車站|""" +
@@ -1302,6 +1304,22 @@ class MapViewModel @Inject constructor(
             """arrêt|parada|paragem|hållplats|przystanek|dworzec|зупинка|станція""",
         RegexOption.IGNORE_CASE,
     )
+
+    // Remote-overridable via the signed calibration bundle (transitCategoryWords - each term joins
+    // one case-insensitive alternation): a missing word in some language becomes a config edit, not
+    // an app release. Falls back to the compiled regex when absent or unbuildable.
+    @Volatile private var TRANSIT_CAT = TRANSIT_CAT_COMPILED
+
+    /** Push the calibration bundle's keyword-table overrides into their consumers (called at init
+     *  and again after the remote refresh). Absent fields leave the compiled tables in place. */
+    private fun adoptKeywordTables() {
+        val cal = calibration.current()
+        app.vela.core.data.google.parse.SearchParser.remoteClosedWords = cal.statusClosedWords
+        app.vela.core.data.google.parse.SearchParser.remoteOpenWords = cal.statusOpenWords
+        TRANSIT_CAT = cal.transitCategoryWords?.takeIf { it.isNotEmpty() }?.let { words ->
+            runCatching { Regex(words.joinToString("|"), RegexOption.IGNORE_CASE) }.getOrNull()
+        } ?: TRANSIT_CAT_COMPILED
+    }
 
     /** The nearest LIVE transit-category listing to [at] among [results], within [radiusM]. Shared by the
      *  stop-icon tap and the intersection board re-resolve - the one predicate for "the operating stop". */
