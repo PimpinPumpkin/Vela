@@ -147,6 +147,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.vela.BuildConfig
 import app.vela.core.config.Notice
 import app.vela.core.model.LatLng
+import app.vela.core.model.distanceTo
 import app.vela.core.model.ManeuverType
 import app.vela.core.model.Place
 import app.vela.core.data.RecentPlace
@@ -318,6 +319,16 @@ fun MapScreen(
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
     var followMe by remember { mutableStateOf(true) }
+    // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
+    // coordinate, a deep link) means the user went to look somewhere else - drop follow exactly
+    // like a pan would. Without this, follow was only SUSPENDED while the place sheet owned the
+    // camera, so closing the sheet resumed it and the map glided all the way home (device report
+    // 2026-07-13). A POI tapped near the fix keeps follow; 1 km is the "somewhere else" line.
+    LaunchedEffect(state.center) {
+        val c = state.center ?: return@LaunchedEffect
+        val me = state.myLocation ?: return@LaunchedEffect
+        if (followMe && c.distanceTo(me) > 1_000.0) followMe = false
+    }
     val driveFollowing = followMe && !state.navigating && !resultsShown && state.selected == null &&
         !state.directionsOpen && !state.showSteps && !searchOpen && state.pickOnMap == null
     // The posted-limit ("Speed B") overlay is armed by ACTUAL MOTION, never by the bare browse map.
