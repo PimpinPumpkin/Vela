@@ -373,7 +373,6 @@
     <string name="mapvm_none_found_along_route">No se encontró \"%1$s\" a lo largo de tu ruta</string>
     <string name="mapvm_search_failed">Error en la búsqueda</string>
     <string name="mapvm_dropped_pin">Marcador colocado</string>
-    <string name="mapvm_stop_added">Parada añadida</string>
     <string name="mapvm_no_mode_route_found">No se encontró ninguna ruta en %1$s</string>
     <string name="mapvm_directions_need_recalibration">Las indicaciones necesitan recalibración: %1$s</string>
     <string name="mapvm_routing_failed_reason">Error al calcular la ruta: %1$s</string>
