@@ -25,7 +25,8 @@ class MainActivity : ComponentActivity() {
     /** Apply the in-app language override to this Activity's resources (no-op when following the
      *  system locale) so `stringResource` resolves in the chosen language. */
     override fun attachBaseContext(newBase: Context) {
-        super.attachBaseContext(AppLocale.wrap(newBase))
+        // Adaptive small-screen density first (a no-op on normal screens), then the language override.
+        super.attachBaseContext(AppLocale.wrap(app.vela.ui.AdaptiveDensity.wrap(newBase)))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
