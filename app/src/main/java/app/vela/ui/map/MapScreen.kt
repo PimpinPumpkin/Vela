@@ -678,6 +678,9 @@ fun MapScreen(
         )
     }
 
+    // Toggling the Flock layer in Settings refetches for the current view right away (otherwise the
+    // cameras wouldn't appear until the next pan). Clears the layer when turned off.
+    LaunchedEffect(app.vela.ui.Flock.on.value) { vm.refreshFlockNow() }
     Box(Modifier.fillMaxSize()) {
         VelaMapView(
             styleUri = mapStyleUri,
@@ -744,6 +747,7 @@ fun MapScreen(
             // the user explicitly enables it in Settings → Map.
             trafficOn = Traffic.on.value,
             transitOn = app.vela.ui.TransitLayer.on.value,
+            topographyOn = app.vela.ui.Topography.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
@@ -752,7 +756,12 @@ fun MapScreen(
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
+            maxspeedOverlays = state.maxspeedOverlays,
+            onRoadLimitKmh = vm::onOverlayRoadLimit,
+            speedOverlayOn = state.navigating || driveFollowing, // query the overlay only while driving
+
             trafficControls = state.trafficControls,
+            flockCameras = state.flockCameras,
             navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
@@ -1127,8 +1136,11 @@ fun MapScreen(
             )
             val (value, unit) = formatSpeed(shownSpeed)
             val dark = isAppInDarkTheme()
+            // A ROUNDED-RECTANGLE readout (not a circle), same width + corner radius as the SPEED LIMIT
+            // sign above it, so the two stack as a matched pair and the speed is easy to compare against
+            // the limit at a glance (Google's layout). Dark fill keeps it distinct from the white limit sign.
             Surface(
-                shape = CircleShape,
+                shape = RoundedCornerShape(8.dp),
                 color = SheetPalette.bg(dark),
                 contentColor = SheetPalette.ink(dark),
                 shadowElevation = 4.dp,
@@ -1136,30 +1148,41 @@ fun MapScreen(
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
                     .padding(start = 16.dp, bottom = navBarClearance)
-                    .size(60.dp),
+                    .width(54.dp),
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.padding(vertical = 6.dp, horizontal = 4.dp),
                 ) {
-                    Text("$value", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text(unit, style = MaterialTheme.typography.labelSmall, color = SheetPalette.dim(dark))
+                    Text("$value", fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 24.sp)
+                    Text(unit, fontSize = 9.sp, color = SheetPalette.dim(dark), lineHeight = 10.sp)
                 }
             }
         }
 
-        // Posted speed-limit sign — sits just above the speedometer during nav, when the on-device
-        // graph knows the current road's OSM maxspeed (hidden otherwise; sparse OSM coverage = often blank).
-        if (state.navigating && state.speedLimitKmh != null) {
+        // Posted speed-limit sign. Source (#101): prefer the on-device graph's OSM maxspeed and fall
+        // back to the streamed maxspeed overlay ("Speed B"), so a limit shows even with no routing
+        // region downloaded. Visibility (#85): during nav AND during a FREE-DRIVE (moving with no
+        // route open, on the clean map) - in free-drive the overlay poll (speedOverlayOn keys off
+        // driveFollowing) is what feeds it, so combining the two makes the free-drive sign work
+        // without a graph too. Free-drive drops it to the nav-bar line; during nav it sits above the speedo.
+        val freeDriveSpeed = !state.navigating && (state.mySpeed ?: 0f) > 3f &&
+            !searchOpen && state.selected == null && !state.directionsOpen && !state.showSteps && !resultsShown
+        val postedLimitKmh = state.speedLimitKmh ?: state.speedLimitOverlayKmh
+        if ((state.navigating || freeDriveSpeed) && postedLimitKmh != null) {
             SpeedLimitSign(
-                limitKmh = state.speedLimitKmh!!,
+                limitKmh = postedLimitKmh,
                 speedMps = state.mySpeed,
                 imperial = Units.imperial.value,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = navBarClearance + 68.dp), // above the 60dp speedo + 8dp gap
+                    .padding(
+                        start = 16.dp,
+                        // above the speedo + 8dp gap during nav; in free-drive lift it above the
+                        // bottom-left scale bar so the two don't overlap.
+                        bottom = navBarClearance + if (state.navigating) 68.dp else 46.dp,
+                    ),
             )
         }
 
@@ -1307,6 +1330,7 @@ fun MapScreen(
                 currentMode = state.travelMode,
                 routes = state.routes,
                 activeRoute = state.activeRoute,
+                flockOnRoute = state.flockOnRoute,
                 transit = state.transit,
                 transitLoading = state.transitLoading,
                 onModeSelected = vm::setTravelMode,
@@ -1336,6 +1360,9 @@ fun MapScreen(
                 photosLoading = state.photosLoading,
                 detailsLoading = state.loadingDetails,
                 placesHere = state.placesHere,
+                stopDepartures = state.stopDepartures,
+                stopDeparturesLoading = state.stopDeparturesLoading,
+                onTapRoute = vm::openRouteDetail,
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
@@ -1443,6 +1470,19 @@ fun MapScreen(
                 onBack = vm::backTransitNav,
                 onEnd = vm::endTransitNav,
                 onWalkDirections = vm::walkDirections,
+            )
+        }
+
+        // Tap-through: the stop timeline for a route tapped on the departure board. Drawn over the
+        // place sheet; tapping a stop opens that stop's own board, so the user keeps drilling down
+        // the line the way Google's tap-through does. Also shown (with a spinner) while it loads.
+        if (state.routeDetail != null || state.routeDetailLoading) {
+            app.vela.ui.place.RouteDetailSheet(
+                step = state.routeDetail,
+                title = state.routeDetailTitle,
+                loading = state.routeDetailLoading,
+                onClose = vm::closeRouteDetail,
+                onStopTap = vm::openRouteStop,
             )
         }
 

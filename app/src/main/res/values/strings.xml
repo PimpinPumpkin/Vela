@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Vela Maps</string>
+    <string name="app_name" translatable="false">Vela Maps</string>
 
     <!-- shared search-category chip labels (map + along-route); the search QUERY stays English in code -->
     <string name="cat_restaurants">Restaurants</string>
@@ -81,6 +81,15 @@
     <string name="settings_live_traffic_hint">Shades roads by congestion while browsing. Navigation already colors your route by traffic.</string>
     <string name="settings_transit_layer">Highlight transit lines</string>
     <string name="settings_transit_layer_hint">Draws train and subway lines on the map.</string>
+    <string name="settings_topography">Terrain shading</string>
+    <string name="settings_topography_hint">Shades hills and mountains on the map. Off by default.</string>
+    <string name="settings_flock" translatable="false">Surveillance cameras</string>
+    <string name="settings_flock_hint" translatable="false">Shows mapped automated license-plate reader (Flock) cameras, from the community DeFlock project in OpenStreetMap. Off by default.</string>
+    <string name="settings_flock_route_alert" translatable="false">Avoid surveillance cameras</string>
+    <string name="settings_flock_route_alert_hint" translatable="false">Counts the license-plate reader (Flock) cameras on each route and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
+    <string name="dir_cameras_on_route" translatable="false">%1$d cameras on this route</string> <!-- format -->
+    <string name="mapvm_flock_avoided" translatable="false">Rerouted to avoid cameras</string>
+
     <string name="settings_read_all_reviews">“Read all reviews” button</string>
     <string name="settings_read_all_reviews_hint">Adds a “Read all reviews” button that opens Google\'s full reviews page inside the app, with every review. Off = Vela\'s own review list only.</string>
     <string name="settings_buildings_3d">3D buildings</string>
@@ -264,6 +273,9 @@
     <string name="place_from_the_owner">From the owner</string>
     <string name="place_share_place">Share place</string>
     <string name="place_share">Share</string>
+    <string name="place_open_web">Open on the web</string>
+    <string name="place_copy_link">Copy link</string>
+    <string name="place_link_copied">Link copied</string>
     <string name="place_share_gmaps_link">Google Maps link</string>
     <string name="place_share_map_pin">Map pin (geo:)</string>
     <string name="place_share_coordinates">Coordinates</string>
@@ -397,11 +409,13 @@
     <string name="mapvm_search_needs_recalibration">Search needs recalibration: %1$s</string> <!-- format -->
     <string name="mapvm_offline_no_data">You\'re offline. Download an area in Settings ▸ Offline to search without a connection.</string>
     <string name="mapvm_offline_no_match">No offline results for \"%1$s\" in your saved area. Offline search covers OpenStreetMap places you downloaded.</string>
+    <string name="mapvm_no_results">No results for \"%1$s\".</string> <!-- format -->
     <string name="mapvm_offline_results">Offline results (no connection)</string>
     <string name="mapvm_search_failed_reason">Search failed: %1$s</string> <!-- format -->
     <string name="mapvm_none_found_along_route">No \"%1$s\" found along your route</string> <!-- format -->
     <string name="mapvm_search_failed">Search failed</string>
     <string name="mapvm_dropped_pin">Dropped pin</string>
+    <string name="mapvm_stop_added">Stop added</string>
     <string name="mapvm_no_mode_route_found">No %1$s route found</string> <!-- format -->
     <string name="mapvm_directions_need_recalibration">Directions need recalibration: %1$s</string> <!-- format -->
     <string name="mapvm_routing_failed_reason">Routing failed: %1$s</string> <!-- format -->
@@ -460,6 +474,12 @@
     <string name="place_transit_stops">%1$d stops</string> <!-- format -->
     <string name="place_transit_stop_id">Stop %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Tickets &amp; info</string>
+    <string name="route_detail_unavailable">Route details unavailable</string>
+    <string name="place_transit_now">Departing</string>
+    <string name="place_transit_in_min">in %1$d min</string> <!-- format -->
+    <string name="place_transit_live">Live</string>
+    <string name="place_departures">Departures</string>
+    <string name="place_every">Every %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">You have arrived.</string>
     <string name="transit_nav_walk">Walk %1$s</string> <!-- format -->
     <string name="transit_nav_take">Take %1$s</string> <!-- format -->
@@ -569,9 +589,9 @@
     <string name="settings_map_colors">Map colors</string>
     <string name="settings_map_colors_modern">Modern</string>
     <string name="settings_map_colors_classic">Classic</string>
-    <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens.</string>
+    <string name="settings_map_colors_hint">Modern matches the Google app\'s current palette. Classic is Vela\'s earlier look: white roads, yellow motorways, true greens. The two differ most in dark mode right now.</string>
     <string name="place_avoid_tolls">Avoid tolls</string>
     <string name="place_avoid_highways">Avoid highways</string>
-    <string name="shortcut_home">Home</string>
-    <string name="shortcut_work">Work</string>
+    <string name="shortcut_home" translatable="false">Home</string>
+    <string name="shortcut_work" translatable="false">Work</string>
 </resources>
