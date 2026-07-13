@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -68,6 +69,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
@@ -135,6 +137,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import kotlinx.coroutines.delay
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -240,6 +243,9 @@ fun PlaceSheet(
     photosLoading: Boolean = false,
     detailsLoading: Boolean = false,
     placesHere: List<Place> = emptyList(),
+    stopDepartures: app.vela.core.model.StopDepartures? = null,
+    stopDeparturesLoading: Boolean = false,
+    onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
     onClose: () -> Unit,
     onToggleSave: () -> Unit,
     onDirections: () -> Unit,
@@ -917,13 +923,22 @@ fun PlaceSheet(
             // schedule story (store week + every department) lives behind one tap. When a place
             // somehow has departments but no main hours, they still show standalone.
             val showDepartments = place.departments.isNotEmpty() && !place.permanentlyClosed && !place.temporarilyClosed
+            // A transit stop has no opening hours by nature - Google shows its departures, not "hours
+            // not listed" (issue #71). Suppress that line whenever a board is loading/present or the
+            // category reads like a stop, so a stop never shows the misleading hours placeholder.
+            val isTransitStop = stopDepartures != null || stopDeparturesLoading || place.category?.lowercase()?.let { c ->
+                listOf("station", "stop", "transit", "transport", "hub", "bus", "subway", "metro", "tram", "rail", "ferry", "terminal", "platform").any { it in c }
+            } == true
             if (place.hours.isNotEmpty()) {
                 HoursSection(place.hours, ink, dim, departments = if (showDepartments) place.departments else emptyList())
             } else if (showDepartments) {
                 DepartmentsSection(place.departments, ink, dim)
-            } else if (place.category != null && !place.permanentlyClosed) {
+            } else if (place.category != null && !place.permanentlyClosed && !isTransitStop) {
                 Text(stringResource(R.string.place_hours_not_listed), style = MaterialTheme.typography.bodySmall, color = dim, modifier = Modifier.padding(top = 10.dp))
             }
+
+            // Live departure board for a transit stop (keyless, from the station's own place page).
+            StopDepartureBoard(stopDepartures, stopDeparturesLoading, ink, dim, dark, onTapRoute)
 
             // Phone + website as their own tappable rows showing the actual number / domain — placed
             // BELOW the hours (Google's order), well clear of the Directions button up top. The pills
@@ -1274,6 +1289,7 @@ fun DirectionsPanel(
     currentMode: TravelMode,
     routes: List<Route>,
     activeRoute: Route?,
+    flockOnRoute: List<Int> = emptyList(),
     transit: List<TransitItinerary>,
     transitLoading: Boolean,
     onModeSelected: (TravelMode) -> Unit,
@@ -1640,7 +1656,7 @@ fun DirectionsPanel(
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         routes.forEachIndexed { i, r ->
                             val selected = r === activeRoute || (activeRoute == null && i == 0)
-                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == 0, dark = dark, ink = ink, dim = dim) { onSelectRoute(i) }
+                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == 0, dark = dark, ink = ink, dim = dim, flockCount = flockOnRoute.getOrElse(i) { 0 }) { onSelectRoute(i) }
                         }
                     }
                     Spacer(Modifier.height(14.dp))
@@ -1903,7 +1919,7 @@ private fun PickerDialog(onConfirm: () -> Unit, onDismiss: () -> Unit, content: 
  *  via, highlighted when it's the active one. The fastest carries a "Fastest" tag; each slower
  *  alternate shows how much longer it is ("+5 min") so the choice is legible at a glance. */
 @Composable
-private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, onClick: () -> Unit) {
+private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, isFastest: Boolean, dark: Boolean, ink: Color, dim: Color, flockCount: Int = 0, onClick: () -> Unit) {
     val etaSeconds = r.durationInTrafficSeconds ?: r.durationSeconds
     val eta = formatDuration(etaSeconds)
     val etaColor = trafficEtaColor(r) ?: ink
@@ -1966,6 +1982,18 @@ private fun RouteOption(r: Route, selected: Boolean, fastestEtaSeconds: Double, 
                 trafficWord,
             ).joinToString("  ·  ")
             Text(sub, style = MaterialTheme.typography.bodySmall, color = dim)
+            // Opt-in surveillance-camera warning: how many ALPR/Flock cameras this route passes.
+            if (flockCount > 0) {
+                Spacer(Modifier.height(3.dp))
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Icon(Icons.Default.Videocam, contentDescription = null, tint = SheetPalette.TrafficAmber, modifier = Modifier.size(14.dp))
+                    Text(
+                        stringResource(R.string.dir_cameras_on_route, flockCount),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = SheetPalette.TrafficAmber,
+                    )
+                }
+            }
         }
         if (selected) Icon(Icons.Default.Check, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
     }
@@ -2004,8 +2032,18 @@ private fun TransitBoard(
             Text(stringResource(R.string.place_finding_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
         }
         trips.isEmpty() -> Text(stringResource(R.string.place_no_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
-        else -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            trips.take(6).forEach { TransitRow(it, ink, dim, dark, onWalkDirections, onStartTransit) }
+        else -> {
+            // One shared clock so every row's "departs in X min" countdown ticks together
+            // (recomputed each minute against the parsed departure epochs).
+            val nowSec by produceState(initialValue = System.currentTimeMillis() / 1000L) {
+                while (true) {
+                    delay(30_000L)
+                    value = System.currentTimeMillis() / 1000L
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                trips.take(6).forEach { TransitRow(it, nowSec, ink, dim, dark, onWalkDirections, onStartTransit) }
+            }
         }
     }
 }
@@ -2068,10 +2106,27 @@ fun TransitNavSheet(
     }
 }
 
+/** "Departing" / "in 7 min" from a departure epoch, or null when there's nothing useful to
+ *  show - no epoch, already gone (>1 min past), or too far out (>90 min, where the printed
+ *  departure time carries it). Mirrors Google's leading countdown on the transit board. */
 @Composable
-private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}) {
+private fun departsInLabel(depEpochSec: Long?, nowSec: Long): String? {
+    val dep = depEpochSec ?: return null
+    val diff = dep - nowSec
+    if (diff < -60L || diff > 90L * 60L) return null
+    if (diff <= 60L) return stringResource(R.string.place_transit_now)
+    return stringResource(R.string.place_transit_in_min, ((diff + 30L) / 60L).toInt())
+}
+
+@Composable
+private fun TransitRow(t: TransitItinerary, nowSec: Long, ink: Color, dim: Color, dark: Boolean, onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() }, onStartTransit: (TransitItinerary) -> Unit = {}) {
     var expanded by remember { mutableStateOf(false) }
     val canExpand = t.steps.isNotEmpty()
+    // "Departs in X min" from the parsed departure epoch, and the real-time signal (a leg
+    // carrying a live delay or a real-time-vs-timetable time) so the countdown can read green.
+    val countdown = departsInLabel(t.departureEpochSec, nowSec)
+    val live = t.steps.any { it.delayText != null || it.boardStop?.scheduledText != null }
+    val boardDelay = t.steps.firstOrNull { it.mode != TransitMode.WALK && it.delayText != null }?.delayText
     Column(
         Modifier
             .fillMaxWidth()
@@ -2081,6 +2136,37 @@ private fun TransitRow(t: TransitItinerary, ink: Color, dim: Color, dark: Boolea
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        if (countdown != null || boardDelay != null) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                countdown?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (live) SheetPalette.TrafficGreen else ink,
+                    )
+                }
+                if (live) {
+                    Box(Modifier.size(6.dp).clip(CircleShape).background(SheetPalette.TrafficGreen))
+                    Text(
+                        stringResource(R.string.place_transit_live),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = SheetPalette.TrafficGreen,
+                    )
+                }
+                boardDelay?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = SheetPalette.TrafficRed,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                }
+            }
+        }
         Row(verticalAlignment = Alignment.CenterVertically) {
             val range = listOfNotNull(t.departureText, t.arrivalText).joinToString(" – ")
             Text(
@@ -2289,6 +2375,248 @@ private fun StopLine(stop: TransitStopTime, ink: Color, dim: Color, emphasize: B
             }
         }
     }
+}
+
+/** A transit stop's live departure board - Google's "See departure board" for the station,
+ *  keyless from the place page. Each line/direction shows its next departures with a countdown
+ *  on the soonest (green + a Live dot when Google has a real-time fix) and the running frequency. */
+@Composable
+private fun StopDepartureBoard(
+    d: app.vela.core.model.StopDepartures?,
+    loading: Boolean,
+    ink: Color,
+    dim: Color,
+    dark: Boolean,
+    onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
+) {
+    if (d == null && !loading) return
+    Spacer(Modifier.height(14.dp))
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Icon(Icons.Default.DirectionsTransit, contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+        Text(stringResource(R.string.place_departures), style = MaterialTheme.typography.titleSmall, color = ink)
+    }
+    if (d == null) {
+        Row(
+            Modifier.padding(top = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
+            Text(stringResource(R.string.place_finding_transit), style = MaterialTheme.typography.bodyMedium, color = dim)
+        }
+        return
+    }
+    val nowSec by produceState(initialValue = System.currentTimeMillis() / 1000L) {
+        while (true) { delay(30_000L); value = System.currentTimeMillis() / 1000L }
+    }
+    // Google-style clean list: plain tappable rows separated by hairline dividers (no per-row
+    // chevron - the row itself opens the route, and its Material ripple is the affordance).
+    Column(Modifier.padding(top = 6.dp)) {
+        val lines = d.lines.take(24)
+        lines.forEachIndexed { i, line ->
+            DepartureLineRow(line, nowSec, ink, dim, onTapRoute)
+            if (i < lines.lastIndex) {
+                HorizontalDivider(
+                    color = SheetPalette.row(dark),
+                    thickness = 0.5.dp,
+                    modifier = Modifier.padding(start = 2.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DepartureLineRow(
+    line: app.vela.core.model.StopDepartureLine,
+    nowSec: Long,
+    ink: Color,
+    dim: Color,
+    onTapRoute: (app.vela.core.model.StopDepartureLine) -> Unit = {},
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .dpadHighlight(RoundedCornerShape(10.dp))
+            .clickable { onTapRoute(line) }
+            .padding(vertical = 10.dp, horizontal = 2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (line.label != null) {
+                LinePill(TransitLine(name = line.label!!, mode = line.mode, colorHex = line.colorHex))
+            } else {
+                Icon(modeIcon(line.mode), contentDescription = null, tint = dim, modifier = Modifier.size(18.dp))
+            }
+            line.headsign?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium, color = ink, modifier = Modifier.weight(1f))
+            } ?: Spacer(Modifier.weight(1f))
+            line.headwayText?.let {
+                Text(stringResource(R.string.place_every, it), style = MaterialTheme.typography.labelMedium, color = dim)
+            }
+        }
+        if (line.upcoming.isNotEmpty()) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                val next = line.upcoming.first()
+                val live = next.realtime
+                val countdown = departsInLabel(next.epochSec, nowSec)
+                Text(
+                    next.clockText.orEmpty(),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = if (live) SheetPalette.TrafficGreen else ink,
+                )
+                countdown?.let {
+                    Text(
+                        "· $it",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = if (live) SheetPalette.TrafficGreen else dim,
+                    )
+                }
+                if (live) Box(Modifier.size(6.dp).clip(CircleShape).background(SheetPalette.TrafficGreen))
+                // the following departures, quiet
+                line.upcoming.drop(1).take(3).forEach {
+                    Text(it.clockText.orEmpty(), style = MaterialTheme.typography.bodySmall, color = dim)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The tap-through stop timeline for one route off the departure board. Reuses the proven
+ * transit-itinerary parser: [MapViewModel.openRouteDetail] runs a keyless directions query
+ * from the tapped stop toward the route's headsign, and the returned ride leg carries the
+ * board / intermediate / alight stops with per-stop times. We render them as a vertical
+ * timeline; tapping any stop opens that stop's own board (via [onStopTap]) so the user can
+ * keep tapping down the line, mirroring Google's tap-through.
+ */
+@Composable
+fun RouteDetailSheet(
+    step: TransitStep?,
+    title: String?,
+    loading: Boolean,
+    onClose: () -> Unit,
+    onStopTap: (TransitStopTime) -> Unit,
+) {
+    BackHandler(onBack = onClose)
+    // D-pad: place focus on the back arrow when the sheet opens (same convention as the reviews page),
+    // so a D-pad-only user can immediately scroll the timeline / step onto a stop with no wake-up press.
+    val backFocus = rememberDpadAutoFocus()
+    val dark = isAppInDarkTheme()
+    val ink = if (dark) InkDark else InkLight
+    val dim = if (dark) DimDark else DimLight
+    val lineColor = parseHexColor(step?.line?.colorHex) ?: MaterialTheme.colorScheme.primary
+    // The full ordered call list: board first, then the in-betweens, then alight. Board/alight
+    // are often absent from intermediateStops, so stitch them on the ends and de-dupe by name.
+    val stops = remember(step) {
+        val mid = step?.intermediateStops ?: emptyList()
+        buildList {
+            step?.boardStop?.let { add(it) }
+            addAll(mid)
+            step?.alightStop?.let { a -> if (mid.none { it.name == a.name } && step.boardStop?.name != a.name) add(a) }
+        }
+    }
+    Surface(Modifier.fillMaxSize(), color = if (dark) SheetDark else SheetLight) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()) {
+            // Header: back + the route pill + headsign.
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                IconButton(onClick = onClose, modifier = Modifier.focusRequester(backFocus).dpadHighlight()) {
+                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.place_close), tint = ink)
+                }
+                step?.line?.let { LinePill(it) }
+                Text(
+                    title ?: step?.headsign ?: step?.line?.name.orEmpty(),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = ink,
+                    maxLines = 2,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            step?.numStops?.let { n ->
+                Text(
+                    stringResource(R.string.place_transit_stops, n),
+                    style = MaterialTheme.typography.labelMedium, color = dim,
+                    modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
+                )
+            }
+            HorizontalDivider(color = SheetPalette.row(dark))
+            if (stops.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    if (loading || step == null) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                    else Text(stringResource(R.string.route_detail_unavailable), style = MaterialTheme.typography.bodyMedium, color = dim)
+                }
+                return@Column
+            }
+            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
+                itemsIndexed(stops) { i, stop ->
+                    val isFirst = i == 0
+                    val isLast = i == stops.lastIndex
+                    RouteStopRow(stop, lineColor, ink, dim, isFirst, isLast, onClick = { onStopTap(stop) })
+                }
+            }
+        }
+    }
+}
+
+/** One stop in the [RouteDetailSheet] timeline: a coloured connector rail with a node, the stop
+ *  name (board/alight emphasised) and its call time - the whole row taps through (no chevron;
+ *  the connected rail + the Material ripple are the affordance, like Google's route view). */
+@Composable
+private fun RouteStopRow(
+    stop: TransitStopTime,
+    lineColor: Color,
+    ink: Color,
+    dim: Color,
+    isFirst: Boolean,
+    isLast: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(10.dp))
+            .dpadHighlight(RoundedCornerShape(10.dp))
+            .clickable(onClick = onClick)
+            .padding(start = 6.dp, end = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Vertical rail + node, drawn so the line is continuous between rows. Board/alight get a
+        // bigger node; intermediate stops a smaller one - all solid in the line colour so they read
+        // on any sheet background.
+        val big = isFirst || isLast
+        Box(Modifier.width(24.dp).height(48.dp), contentAlignment = Alignment.Center) {
+            if (!isFirst) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.TopCenter).background(lineColor))
+            if (!isLast) Box(Modifier.width(3.dp).fillMaxHeight().align(Alignment.BottomCenter).background(lineColor))
+            Box(Modifier.size(if (big) 14.dp else 9.dp).clip(CircleShape).background(lineColor))
+        }
+        Spacer(Modifier.width(10.dp))
+        Text(
+            stop.name,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = if (isFirst || isLast) FontWeight.SemiBold else FontWeight.Normal,
+            color = ink,
+            maxLines = 2,
+            modifier = Modifier.weight(1f).padding(vertical = 10.dp),
+        )
+        stop.timeText?.let {
+            Text(it, style = MaterialTheme.typography.labelMedium, color = dim, modifier = Modifier.padding(start = 8.dp))
+        }
+    }
+}
+
+private fun modeIcon(mode: TransitMode) = when (mode) {
+    TransitMode.BUS -> Icons.Default.DirectionsBus
+    TransitMode.SUBWAY -> Icons.Default.DirectionsSubway
+    TransitMode.TRAIN -> Icons.Default.Train
+    TransitMode.TRAM -> Icons.Default.Tram
+    TransitMode.FERRY -> Icons.Default.DirectionsBoat
+    else -> Icons.Default.DirectionsTransit
 }
 
 /** A colour-filled line badge (e.g. a blue "Amtrak Thruway"), mirroring Google's
@@ -3008,14 +3336,20 @@ private fun ReviewsTab(
                 }
                 if (!loading && reviews.size >= 5) {
                     Spacer(Modifier.width(8.dp))
-                    IconButton(
-                        onClick = {
-                            reviewSearchOpen = !reviewSearchOpen
-                            if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
-                        },
+                    // A Box, NOT an IconButton: IconButton forces its own (smaller) box size, so a
+                    // 44dp background circle overflowed it and clipped on the right against the sheet
+                    // edge (user 2026-07-12). A clipped, sized Box draws the circle cleanly at 44dp.
+                    Box(
                         modifier = Modifier
                             .size(44.dp)
-                            .background(dim.copy(alpha = 0.12f), androidx.compose.foundation.shape.CircleShape),
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                            .background(dim.copy(alpha = 0.12f))
+                            .dpadHighlight(androidx.compose.foundation.shape.CircleShape)
+                            .clickable {
+                                reviewSearchOpen = !reviewSearchOpen
+                                if (!reviewSearchOpen) reviewQuery = "" // a hidden filter must not keep filtering
+                            },
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             if (reviewSearchOpen) Icons.Default.Close else Icons.Default.Search,
@@ -3285,10 +3619,33 @@ private fun ShareIconButton(place: Place, tint: Color) {
         open = false
     }
 
+    // Open this exact place on the Google Maps website (in the browser), not share a link. Prefer the
+    // place's own cid deep-link (opens the real place page); fall back to a name+coords query.
+    fun openWeb() {
+        val cid = place.featureId?.substringAfter(":", "")?.removePrefix("0x")?.takeIf { it.isNotBlank() }
+            ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
+        val url = if (cid != null) "https://www.google.com/maps?cid=$cid"
+            else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
+        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        open = false
+    }
+
+    // Copy the place's Google Maps link straight to the clipboard (a quiet toast confirms).
+    fun copyLink() {
+        val url = "https://www.google.com/maps/search/?api=1&query=$lat%2C$lng"
+        runCatching {
+            val cm = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            cm.setPrimaryClip(android.content.ClipData.newPlainText(place.name, url))
+            Toast.makeText(context, context.getString(R.string.place_link_copied), Toast.LENGTH_SHORT).show()
+        }
+        open = false
+    }
+
     Box {
         HeaderCircleButton(Icons.Default.Share, stringResource(R.string.place_share), tint, tint) { open = true }
         VelaMenu(expanded = open, onDismissRequest = { open = false }) {
-            item(stringResource(R.string.place_share_gmaps_link)) { share("${place.name}\nhttps://www.google.com/maps/search/?api=1&query=$lat%2C$lng") }
+            item(stringResource(R.string.place_open_web)) { openWeb() }
+            item(stringResource(R.string.place_copy_link)) { copyLink() }
             // A geo: URI opens in ANY maps app (incl. Vela) — no google.com, the
             // degoogled-friendly way to send a pin.
             item(stringResource(R.string.place_share_map_pin)) { share("${place.name}\ngeo:$lat,$lng?q=$lat,$lng(${Uri.encode(place.name)})") }
