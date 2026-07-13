@@ -1398,45 +1398,61 @@ class MapViewModel @Inject constructor(
      *  No new keyless scraping. Needs the line's headsign (its destination) to aim the query. */
     fun openRouteDetail(line: app.vela.core.model.StopDepartureLine) {
         val origin = _state.value.selected?.location ?: return
-        val dest = line.headsign?.takeIf { it.isNotBlank() } ?: run {
-            flashStatus(appContext.getString(R.string.route_detail_unavailable)); return
-        }
-        val title = listOfNotNull(line.label, dest).joinToString(" · ")
+        val title = listOfNotNull(line.label, line.headsign?.takeIf { it.isNotBlank() }).joinToString(" · ")
         _state.update { it.copy(routeDetailLoading = true, routeDetailTitle = title, routeDetail = null) }
         routeDetailJob?.cancel()
         routeDetailJob = viewModelScope.launch {
-            // Aim at the route's destination (geocode the headsign near the stop), then ride transit there.
-            // A bare headsign is often ambiguous ("Richmond" is a city district AND a far-off city), so
-            // prefer a candidate that is itself a transit place (station/airport/terminal) and, among
-            // those, the one nearest the tapped stop - a sanity filter that rejects a same-named place
-            // across the country. (The RIDE-LEG match below is what actually pins the tapped line.)
-            val cands = runCatching { dataSource.search(dest, origin).places }.getOrDefault(emptyList())
-            val transitish = cands.filter { it.category?.let { c ->
-                listOf("station", "transit", "stop", "airport", "terminal", "bart", "metro", "rail")
-                    .any { k -> c.contains(k, ignoreCase = true) }
-            } == true }
-            val destLoc = (transitish.minByOrNull { it.location.distanceTo(origin) }
-                ?: cands.minByOrNull { it.location.distanceTo(origin) })?.location
-            if (destLoc == null) {
-                _state.update { it.copy(routeDetailLoading = false) }
-                flashStatus(appContext.getString(R.string.route_detail_unavailable)); return@launch
+            // PRIMARY: the GTFS trip itself. Transitous boards stamp each departure with its tripId,
+            // and /trip returns that run's REAL stop sequence with per-stop realtime and CANCELLED
+            // flags straight from the agency feed - exact where the itinerary reuse below has to
+            // guess at a matching leg, and no headsign geocode at all. Google-fallback boards carry
+            // no tripId, and a failed trip fetch falls through to the itinerary path.
+            val tripId = line.upcoming.firstOrNull { it.tripId != null }?.tripId
+            val gtfs = tripId?.let {
+                withContext(Dispatchers.IO) {
+                    runCatching {
+                        app.vela.core.data.transit.Transitous.tripStops(http, it, origin.lat, origin.lng)
+                    }.getOrNull()
+                }
             }
-            val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
-            val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
-            // Pick the leg the user actually tapped. Rank by the tapped LINE first (a short board label
-            // like "N" matches a longer itinerary name "N-Judah"), then by how close its board stop is to
-            // the tapped stop - so a same-line leg heading the OTHER way (boarding far off) loses to the
-            // one boarding here. Falls back to whatever leg boards at this stop, then the first ride.
-            val boardDist = { s: TransitStep -> s.boardStop?.location?.distanceTo(origin) ?: Double.MAX_VALUE }
-            val step = rides.filter { lineLabelMatches(line.label, it.line?.name) }.minByOrNull { boardDist(it) }
-                ?: rides.filter { boardDist(it) <= 500.0 }.minByOrNull { boardDist(it) }
-                ?: rides.firstOrNull()
-            android.util.Log.d("VelaRouteDetail", "'$dest' rides=${rides.size} -> ${step?.line?.name} (${step?.intermediateStops?.size} stops)")
+            android.util.Log.d("VelaRouteDetail", "gtfs=${gtfs != null} tripId=${tripId != null}")
+            val step = gtfs ?: itineraryStep(line, origin)
             _state.update {
                 if (step == null) { flashStatus(appContext.getString(R.string.route_detail_unavailable)); it.copy(routeDetailLoading = false) }
                 else it.copy(routeDetail = step, routeDetailLoading = false)
             }
         }
+    }
+
+    /** The pre-GTFS fallback for the stop timeline: geocode the line's headsign near the stop and
+     *  reuse a transit itinerary's matching ride leg. Used for Google-fallback boards (their
+     *  departures carry no tripId) and when the trip fetch fails. Null when nothing usable. */
+    private suspend fun itineraryStep(line: app.vela.core.model.StopDepartureLine, origin: LatLng): TransitStep? {
+        val dest = line.headsign?.takeIf { it.isNotBlank() } ?: return null
+        // Aim at the route's destination (geocode the headsign near the stop), then ride transit there.
+        // A bare headsign is often ambiguous ("Richmond" is a city district AND a far-off city), so
+        // prefer a candidate that is itself a transit place (station/airport/terminal) and, among
+        // those, the one nearest the tapped stop - a sanity filter that rejects a same-named place
+        // across the country. (The RIDE-LEG match below is what actually pins the tapped line.)
+        val cands = runCatching { dataSource.search(dest, origin).places }.getOrDefault(emptyList())
+        val transitish = cands.filter { it.category?.let { c ->
+            listOf("station", "transit", "stop", "airport", "terminal", "bart", "metro", "rail")
+                .any { k -> c.contains(k, ignoreCase = true) }
+        } == true }
+        val destLoc = (transitish.minByOrNull { it.location.distanceTo(origin) }
+            ?: cands.minByOrNull { it.location.distanceTo(origin) })?.location ?: return null
+        val trips = runCatching { webDirections.transit(origin, destLoc) }.getOrDefault(emptyList())
+        val rides = trips.flatMap { it.steps }.filter { it.line != null && it.intermediateStops.isNotEmpty() }
+        // Pick the leg the user actually tapped. Rank by the tapped LINE first (a short board label
+        // like "N" matches a longer itinerary name "N-Judah"), then by how close its board stop is to
+        // the tapped stop - so a same-line leg heading the OTHER way (boarding far off) loses to the
+        // one boarding here. Falls back to whatever leg boards at this stop, then the first ride.
+        val boardDist = { s: TransitStep -> s.boardStop?.location?.distanceTo(origin) ?: Double.MAX_VALUE }
+        val step = rides.filter { lineLabelMatches(line.label, it.line?.name) }.minByOrNull { boardDist(it) }
+            ?: rides.filter { boardDist(it) <= 500.0 }.minByOrNull { boardDist(it) }
+            ?: rides.firstOrNull()
+        android.util.Log.d("VelaRouteDetail", "'$dest' rides=${rides.size} -> ${step?.line?.name} (${step?.intermediateStops?.size} stops)")
+        return step
     }
 
     /** Does a departure-board line label (a short route code, "N" / "42") match an itinerary line name

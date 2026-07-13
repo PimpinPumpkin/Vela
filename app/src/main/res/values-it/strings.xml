@@ -445,6 +445,7 @@
     <string name="place_transit_view_stops">Fermate</string>
     <string name="place_transit_live">In diretta</string>
     <string name="place_transit_scheduled">Programmato</string>
+    <string name="place_transit_cancelled">Cancellato</string>
     <string name="place_departures">Partenze</string>
     <string name="place_every">Ogni %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Sei arrivato.</string>

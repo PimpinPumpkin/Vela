@@ -481,6 +481,7 @@
     <string name="place_transit_view_stops">Stops</string>
     <string name="place_transit_live">Live</string>
     <string name="place_transit_scheduled">Scheduled</string>
+    <string name="place_transit_cancelled">Cancelled</string>
     <string name="place_departures">Departures</string>
     <string name="place_every">Every %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">You have arrived.</string>

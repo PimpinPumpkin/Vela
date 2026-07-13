@@ -447,6 +447,7 @@
     <string name="place_transit_view_stops">Зупинки</string>
     <string name="place_transit_live">Наживо</string>
     <string name="place_transit_scheduled">За розкладом</string>
+    <string name="place_transit_cancelled">Скасовано</string>
     <string name="place_departures">Відправлення</string>
     <string name="place_every">Кожні %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Ви прибули.</string>

@@ -22,6 +22,7 @@ data class TransitStopTime(
     val timeText: String? = null,       // the shown (real-time if live) time, "4:35 PM"
     val scheduledText: String? = null,  // the timetable time when it differs, "4:30 PM"
     val location: LatLng? = null,       // stop position (for drawing / walk-leg routing)
+    val cancelled: Boolean = false,     // this call is cancelled (GTFS-Realtime; Google data never sets it)
 )
 
 /**

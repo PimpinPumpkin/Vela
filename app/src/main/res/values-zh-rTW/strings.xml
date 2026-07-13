@@ -466,6 +466,7 @@
     <string name="place_transit_view_stops">站點</string>
     <string name="place_transit_live">即時</string>
     <string name="place_transit_scheduled">已排定</string>
+    <string name="place_transit_cancelled">已取消</string>
     <string name="place_departures">發車時刻</string>
     <string name="place_every">每 %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">你已抵達目的地。</string>

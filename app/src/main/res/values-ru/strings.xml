@@ -447,6 +447,7 @@
     <string name="place_transit_view_stops">Остановки</string>
     <string name="place_transit_live">Онлайн</string>
     <string name="place_transit_scheduled">По расписанию</string>
+    <string name="place_transit_cancelled">Отменён</string>
     <string name="place_departures">Отправления</string>
     <string name="place_every">Каждые %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Вы прибыли.</string>

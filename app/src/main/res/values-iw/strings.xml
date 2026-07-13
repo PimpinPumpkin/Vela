@@ -443,6 +443,7 @@
     <string name="place_transit_view_stops">תחנות</string>
     <string name="place_transit_live">בשידור חי</string>
     <string name="place_transit_scheduled">מתוכנן</string>
+    <string name="place_transit_cancelled">בוטל</string>
     <string name="place_departures">יציאות</string>
     <string name="place_every">כל %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">הגעת.</string>

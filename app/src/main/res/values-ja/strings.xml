@@ -466,6 +466,7 @@
     <string name="place_transit_view_stops">停留所</string>
     <string name="place_transit_live">リアルタイム</string>
     <string name="place_transit_scheduled">定刻</string>
+    <string name="place_transit_cancelled">運休</string>
     <string name="place_departures">発車時刻</string>
     <string name="place_every">%1$s ごと</string> <!-- format -->
     <string name="transit_nav_arrived">目的地に到着しました。</string>

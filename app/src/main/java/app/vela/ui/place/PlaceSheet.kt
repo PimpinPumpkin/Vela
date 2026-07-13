@@ -180,6 +180,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.graphicsLayer
@@ -2693,12 +2694,23 @@ private fun RouteStopRow(
                         time,
                         style = if (isFirst) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
                         fontWeight = if (isFirst) FontWeight.SemiBold else FontWeight.Normal,
-                        color = ink,
+                        color = if (stop.cancelled) dim else ink,
+                        textDecoration = if (stop.cancelled) TextDecoration.LineThrough else null,
                     )
                     Text(
-                        stringResource(if (live) R.string.place_transit_live else R.string.place_transit_scheduled),
+                        stringResource(
+                            when {
+                                stop.cancelled -> R.string.place_transit_cancelled
+                                live -> R.string.place_transit_live
+                                else -> R.string.place_transit_scheduled
+                            },
+                        ),
                         style = MaterialTheme.typography.labelSmall,
-                        color = if (live) SheetPalette.TrafficGreen else dim,
+                        color = when {
+                            stop.cancelled -> SheetPalette.TrafficRed
+                            live -> SheetPalette.TrafficGreen
+                            else -> dim
+                        },
                     )
                 }
             }
@@ -2708,7 +2720,9 @@ private fun RouteStopRow(
         if (!isLast) {
             HorizontalDivider(
                 Modifier.align(Alignment.BottomCenter).padding(start = 40.dp),
-                color = SheetPalette.row(dark),
+                // A step above the row-surface tint: SheetPalette.row was near-invisible on the
+                // dark sheet (user 2026-07-13).
+                color = dim.copy(alpha = 0.35f),
             )
         }
     }

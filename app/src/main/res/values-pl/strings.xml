@@ -447,6 +447,7 @@
     <string name="place_transit_view_stops">Przystanki</string>
     <string name="place_transit_live">Na żywo</string>
     <string name="place_transit_scheduled">Planowy</string>
+    <string name="place_transit_cancelled">Odwołany</string>
     <string name="place_departures">Odjazdy</string>
     <string name="place_every">Co %1$s</string> <!-- format -->
     <string name="transit_nav_arrived">Dotarłeś na miejsce.</string>

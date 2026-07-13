@@ -3,7 +3,10 @@ package app.vela.core.data.transit
 import app.vela.core.model.StopDeparture
 import app.vela.core.model.StopDepartureLine
 import app.vela.core.model.StopDepartures
+import app.vela.core.model.TransitLine
 import app.vela.core.model.TransitMode
+import app.vela.core.model.TransitStep
+import app.vela.core.model.TransitStopTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
@@ -56,6 +59,9 @@ object Transitous {
         val headsign: String? = null,
         val routeShortName: String? = null,
         val routeColor: String? = null,
+        val tripId: String? = null,       // keys the /trip stop-sequence fetch
+        val cancelled: Boolean = false,   // this stop's call is cancelled
+        val tripCancelled: Boolean = false, // the whole run is cancelled
     )
 
     @Serializable
@@ -107,7 +113,7 @@ object Transitous {
         data class Key(val label: String?, val headsign: String?)
         val groups = LinkedHashMap<Key, MutableList<StopTime>>()
         for (t in times) {
-            if (t.place.cancelled) continue
+            if (t.place.cancelled || t.cancelled || t.tripCancelled) continue
             groups.getOrPut(Key(t.routeShortName, t.headsign)) { mutableListOf() }.add(t)
         }
         if (groups.isEmpty()) return null
@@ -120,6 +126,7 @@ object Transitous {
                     epochSec = epoch,
                     // realTime = the feed is live-tracking this run; that's the green-dot signal.
                     realtime = t.realTime,
+                    tripId = t.tripId,
                 )
             }.sortedBy { it.epochSec ?: Long.MAX_VALUE }
             StopDepartureLine(
@@ -135,6 +142,105 @@ object Transitous {
             .sortedBy { it.upcoming.firstOrNull()?.epochSec ?: Long.MAX_VALUE }
         if (lines.isEmpty()) return null
         return StopDepartures(stationName = stationName?.takeIf { it.isNotBlank() }, lines = lines)
+    }
+
+    // --- trip stop sequence (the "Stops" timeline) -------------------------------------------------
+
+    @Serializable
+    private data class TripResp(val legs: List<TripLeg> = emptyList())
+
+    @Serializable
+    data class TripLeg(
+        val from: TripStop = TripStop(),
+        val to: TripStop = TripStop(),
+        val intermediateStops: List<TripStop> = emptyList(),
+        val mode: String? = null,
+        val headsign: String? = null,
+        val routeShortName: String? = null,
+        val displayName: String? = null,
+        val routeColor: String? = null,
+        val routeTextColor: String? = null,
+        val realTime: Boolean = false,
+        val cancelled: Boolean = false,
+    )
+
+    @Serializable
+    data class TripStop(
+        val name: String = "",
+        val stopId: String = "",
+        val lat: Double = 0.0,
+        val lon: Double = 0.0,
+        val arrival: String? = null,
+        val departure: String? = null,
+        val scheduledArrival: String? = null,
+        val scheduledDeparture: String? = null,
+        val cancelled: Boolean = false,
+        val tz: String? = null,
+        val stopCode: String? = null,
+    )
+
+    /**
+     * The FULL stop sequence of one GTFS run - the "Stops" timeline behind a departure-board line.
+     * `/api/v1/trip` returns the actual trip the tapped departure belongs to: every stop it calls at,
+     * with per-stop realtime vs timetable times AND per-stop/-run CANCELLED flags straight from the
+     * agency feed - none of which the Google itinerary reuse could provide. The result is trimmed to
+     * start at the stop nearest ([atLat],[atLng]) (the stop whose board was tapped), mapped into the
+     * SAME [TransitStep] the timeline UI already renders. Null on any failure - the caller falls back
+     * to the itinerary-reuse path.
+     */
+    fun tripStops(http: OkHttpClient, tripId: String, atLat: Double, atLng: Double): TransitStep? {
+        val body = get(http, "$BASE/api/v1/trip?tripId=${URLEncoder.encode(tripId, "UTF-8")}") ?: return null
+        val leg = runCatching { json.decodeFromString<TripResp>(body).legs.firstOrNull() }.getOrNull() ?: return null
+        return buildTripStep(leg, atLat, atLng)
+    }
+
+    /** Pure mapping of a trip leg into the timeline's [TransitStep] (unit-tested; no network). */
+    internal fun buildTripStep(leg: TripLeg, atLat: Double, atLng: Double): TransitStep? {
+        val all = buildList {
+            add(leg.from)
+            addAll(leg.intermediateStops)
+            add(leg.to)
+        }.filter { it.name.isNotBlank() }
+        if (all.size < 2) return null
+        // Start the timeline at the tapped stop (the run begins at its origin terminal, often far
+        // before the user's stop). Nearest-by-distance, so it works from a canonical GTFS stop AND
+        // from a Google-resolved listing on a different corner. A terminus tap keeps the full run.
+        val idx = all.indices.minByOrNull { i -> distM(atLat, atLng, all[i].lat, all[i].lon) } ?: 0
+        val stops = if (idx >= all.size - 1) all else all.subList(idx, all.size)
+        val mapped = stops.map { st -> stopTime(st, legCancelled = leg.cancelled) }
+        return TransitStep(
+            mode = modeOf(leg.mode),
+            line = TransitLine(
+                name = leg.routeShortName ?: leg.displayName ?: "",
+                mode = modeOf(leg.mode),
+                colorHex = leg.routeColor?.takeIf { it.isNotBlank() }?.let { if (it.startsWith("#")) it else "#$it" },
+                textColorHex = leg.routeTextColor?.takeIf { it.isNotBlank() }?.let { if (it.startsWith("#")) it else "#$it" },
+            ),
+            headsign = leg.headsign,
+            boardStop = mapped.first(),
+            alightStop = mapped.last(),
+            intermediateStops = mapped.drop(1).dropLast(1),
+            numStops = mapped.size - 1,
+            departText = mapped.first().timeText,
+            arriveText = mapped.last().timeText,
+        )
+    }
+
+    private fun stopTime(st: TripStop, legCancelled: Boolean): TransitStopTime {
+        val shown = st.departure ?: st.arrival ?: st.scheduledDeparture ?: st.scheduledArrival
+        val sched = st.scheduledDeparture ?: st.scheduledArrival
+        val shownEpoch = shown?.let { parseIso(it) }
+        val schedEpoch = sched?.let { parseIso(it) }
+        return TransitStopTime(
+            name = st.name,
+            code = st.stopCode,
+            timeText = shownEpoch?.let { clockText(it, st.tz) },
+            // The timetable time, kept ONLY when realtime moved the shown time - the row UI reads
+            // "scheduled differs" as the live signal, same contract as the itinerary parser.
+            scheduledText = schedEpoch?.takeIf { shownEpoch != null && it != shownEpoch }?.let { clockText(it, st.tz) },
+            location = app.vela.core.model.LatLng(st.lat, st.lon),
+            cancelled = st.cancelled || legCancelled,
+        )
     }
 
     // --- helpers ----------------------------------------------------------------------------------
