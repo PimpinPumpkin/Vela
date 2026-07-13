@@ -107,6 +107,9 @@ private const val CONTROLS_LAYER = "vela-controls"
 private const val CONTROLS_CLAIM_LAYER = "vela-controls-claim" // invisible collision box over the labels
 private const val SIGNAL_IMG = "vela-signal"
 private const val STOP_IMG = "vela-stop"
+private const val FLOCK_SRC = "vela-flock-src" // ALPR/Flock cameras (DeFlock/OSM) drawn at high zoom
+private const val FLOCK_LAYER = "vela-flock"
+private const val FLOCK_IMG = "vela-flock-cam"
 private const val AMBIENT_INDEX_PROP = "vela-ambient-index"
 private const val ACCURACY_SRC = "vela-me-accuracy-src"
 private const val ACCURACY_LAYER = "vela-me-accuracy"
@@ -155,6 +158,7 @@ private var lastAccuracyLoc: LatLng? = null
 private var lastAccuracyM: Float? = null
 private var parkingApplied = false // distinguishes "never applied" from "applied null"
 private var lastAppliedControls: List<app.vela.core.data.TrafficControl>? = null
+private var lastAppliedFlock: List<app.vela.core.data.AlprCamera>? = null
 private var lastOsmPoiVis: String? = null // identity-gate the basemap-POI visibility flips
 private var lastControlsVis: String? = null // identity-gate the traffic-control visibility flips
 private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the route upload — applyData runs
@@ -215,8 +219,9 @@ fun VelaMapView(
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
+    topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
-    onPoiTap: (name: String, location: LatLng) -> Unit,
+    onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
     onParkingTap: () -> Unit = {},
@@ -224,7 +229,11 @@ fun VelaMapView(
     onAmbientTap: (index: Int) -> Unit = {},
     buildingOverlays: List<String> = emptyList(), // full pmtiles:// source URIs (file:// downloaded / https:// streamed)
     addressOverlays: List<String> = emptyList(), // pmtiles:// URIs for house-number labels (streamed, OpenAddresses)
+    maxspeedOverlays: List<String> = emptyList(), // pmtiles:// URIs for the posted-speed overlay (streamed); read under the puck
+    onRoadLimitKmh: (Double?) -> Unit = {}, // reports the maxspeed (km/h) read from the overlay under the puck, or null
+    speedOverlayOn: Boolean = false, // only query the overlay while it can matter (driving / navigating)
     trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights + stop signs drawn at high zoom
+    flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras drawn at high zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
@@ -396,12 +405,25 @@ fun VelaMapView(
         // (theme flip mid-effect), and a dead style throws on ANY access, not just mutation.
         runCatching { style.layers.filter { it.id.startsWith("vela-ovl-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-ovl-src-") }.forEach { style.removeSource(it) } }
-        // MUST equal the OSM `building` fill/outline in applyDark/applyLight, or the
-        // Microsoft-only footprints read as a second building colour beside the OSM
-        // ones (the "some buildings are still grey" report after the pixel-sampled
-        // palette landed - this pair was left on the old greys, user 2026-07-11).
-        val fill = if (darkTheme) "#1c3b69" else "#e2e3e9"
-        val line = if (darkTheme) "#2e3d6d" else "#c4c9d1"
+        // MUST equal the OSM `building` fill/outline in applyDark/applyLight AND
+        // applyClassicDark/applyClassicLight, or the Microsoft-only footprints read as a second
+        // building colour beside the OSM ones. This pair is keyed on darkTheme but ALSO has to honour
+        // the Modern/Classic palette: it was hardcoded to Modern, so switching to Classic left the
+        // overlay houses Google-navy while the OSM ones went grey ("houses still bluish in classic",
+        // user 2026-07-12). MapColors.current() feeds the styleKey, so a palette switch reloads the
+        // style and re-runs this effect; reading classic() here picks up the new palette.
+        val classic = app.vela.ui.MapColors.classic()
+        val fill = when {
+            classic && darkTheme -> "#383d45" // == applyClassicDark building
+            classic -> "#dde1e7"              // == applyClassicLight building
+            darkTheme -> "#1c3b69"            // == applyDark building
+            else -> "#e2e3e9"                 // == applyLight building
+        }
+        val line = when {
+            classic && darkTheme -> "#464c56"
+            darkTheme -> "#2e3d6d"
+            else -> "#c4c9d1" // classic-light + modern-light share this outline
+        }
         val below = runCatching { style.getLayer("building")?.id }.getOrNull() // beneath OSM buildings so they win wherever OSM has them
         buildingOverlays.forEachIndexed { i, uri ->
             runCatching {
@@ -414,6 +436,63 @@ fun VelaMapView(
                 }
                 if (below != null) style.addLayerBelow(layer, below) else style.addLayer(layer)
             }
+        }
+    }
+
+    // Posted-speed-limit overlay (OSM maxspeed PMTiles, streamed): an INVISIBLE-but-queryable line layer.
+    // We never draw it (transparent), but a wide-ish line means queryRenderedFeatures under the puck reliably
+    // hits the road segment, and reading its `maxspeed` tag gives the "Speed B" online limit without a
+    // downloaded routing graph. minZoom low so it's present at nav/free-drive zoom (z16 tiles overzoom).
+    LaunchedEffect(maxspeedOverlays, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching { style.layers.filter { it.id.startsWith("vela-ms-") }.forEach { style.removeLayer(it) } }
+        runCatching { style.sources.filter { it.id.startsWith("vela-ms-src-") }.forEach { style.removeSource(it) } }
+        maxspeedOverlays.forEachIndexed { i, uri ->
+            runCatching {
+                val srcId = "vela-ms-src-$i"
+                style.addSource(VectorSource(srcId, uri))
+                val layer = LineLayer("vela-ms-$i", srcId).apply {
+                    setSourceLayer("maxspeed") // tippecanoe layer name (build-maxspeed-region.sh: -l maxspeed)
+                    setMinZoom(11f)
+                    setProperties(
+                        PropertyFactory.lineColor("#00000000"), // fully transparent - present for querying, never seen
+                        PropertyFactory.lineWidth(12f),          // wide hit target for the point query
+                    )
+                }
+                style.addLayer(layer)
+            }
+        }
+    }
+
+    // Poll the streamed maxspeed overlay under the puck (~2.5 s) while driving/navigating and report the
+    // posted limit up, so a sign shows online with no routing graph. Uses the RAW fix (maxspeed needs no
+    // sub-metre precision), projected to screen, queried off the invisible line layer. Main-thread (Compose)
+    // so queryRenderedFeatures is legal; runCatching guards a mid-teardown style.
+    val latestFix = rememberUpdatedState(myLocation)
+    val latestMs = rememberUpdatedState(maxspeedOverlays)
+    LaunchedEffect(speedOverlayOn) {
+        if (!speedOverlayOn) { onRoadLimitKmh(null); return@LaunchedEffect }
+        while (true) {
+            val m = mapRef
+            val fix = latestFix.value
+            if (m != null && fix != null && latestMs.value.isNotEmpty()) {
+                val kmh = runCatching {
+                    val p = m.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(fix.lat, fix.lng))
+                    val r = 14f
+                    val layers = latestMs.value.indices.map { "vela-ms-$it" }.toTypedArray()
+                    m.queryRenderedFeatures(android.graphics.RectF(p.x - r, p.y - r, p.x + r, p.y + r), *layers)
+                        .asSequence()
+                        .mapNotNull { f ->
+                            app.vela.core.data.OsmMaxspeed.fromTags(
+                                f.getStringProperty("maxspeed"),
+                                f.getStringProperty("maxspeed:forward"),
+                                f.getStringProperty("maxspeed:backward"),
+                            )
+                        }.firstOrNull()
+                }.getOrNull()
+                onRoadLimitKmh(kmh)
+            }
+            kotlinx.coroutines.delay(2500)
         }
     }
 
@@ -521,8 +600,18 @@ fun VelaMapView(
             if (cam != null && !scaling[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
-                    browseCam[0] = cp.target?.latitude ?: loc.lat
-                    browseCam[1] = cp.target?.longitude ?: loc.lng
+                    // First follow-engagement. If the camera is zoomed OUT past street level - a cold
+                    // launch, or a crash relaunch where MapLibre restored the whole-region view - snap
+                    // onto the fix at street zoom. Otherwise the follow only eases the TARGET (moveCamera
+                    // below preserves zoom), so it would centre on you but leave you zoomed out (the
+                    // "came back zoomed to the whole US" report). A normal street camera is preserved.
+                    if (cp.zoom < 14.0) {
+                        cam.moveCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5))
+                        browseCam[0] = loc.lat; browseCam[1] = loc.lng
+                    } else {
+                        browseCam[0] = cp.target?.latitude ?: loc.lat
+                        browseCam[1] = cp.target?.longitude ?: loc.lng
+                    }
                 }
                 val k = (1f - kotlin.math.exp(-dt / 0.16f)).toDouble()
                 browseCam[0] += (loc.lat - browseCam[0]) * k
@@ -545,6 +634,28 @@ fun VelaMapView(
                 }
                 lastBrowse[0] = camLat; lastBrowse[1] = camLng; lastBrowse[2] = beam.toDouble()
             }
+        }
+    }
+
+    // Centre on the user ONCE per session, the moment the map AND the first fix are both ready. A cold
+    // launch gets this for free, but a crash relaunch restores MapLibre's last (wide) camera and the
+    // seeded centre doesn't reliably override it (user 2026-07-12: "came back zoomed to the whole US;
+    // it can take a sec for the location to resolve"). Runs in the VIEW layer, so it fires AFTER the map
+    // is ready and the fix has landed - and waits for that fix however long it takes. Skipped once the
+    // user has taken the wheel (a pan, or a search/route already owns the camera).
+    val didLaunchCentre = remember { booleanArrayOf(false) }
+    LaunchedEffect(mapRef, myLocation, navMode) {
+        if (didLaunchCentre[0]) return@LaunchedEffect
+        val cam = mapRef ?: return@LaunchedEffect
+        val loc = myLocation ?: return@LaunchedEffect
+        // Nav owns the camera, or the user already took control → don't grab it; just retire the one-shot.
+        if (navMode || gestureMove[0] || markers.isNotEmpty() || routePolyline.isNotEmpty()) {
+            didLaunchCentre[0] = true
+            return@LaunchedEffect
+        }
+        didLaunchCentre[0] = true
+        runCatching {
+            cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5), 650)
         }
     }
 
@@ -812,7 +923,11 @@ fun VelaMapView(
                     val hit = feats.firstOrNull { it.geometry() is Point && nameOf(it) != null }
                     if (hit != null) {
                         val pt = hit.geometry() as Point
-                        poiTap.value(nameOf(hit)!!, LatLng(pt.latitude(), pt.longitude()))
+                        // The POI's kind (OMT subclass, e.g. "bus_stop"/"station", else class) tells
+                        // onPoiTap whether it's a transit stop, so it can resolve to the STOP rather than
+                        // the road junction its intersection-name would otherwise search to (issue #71).
+                        val kind = hit.getStringProperty("subclass") ?: hit.getStringProperty("class")
+                        poiTap.value(nameOf(hit)!!, LatLng(pt.latitude(), pt.longitude()), kind)
                         return@handleTap true
                     }
                     val box = RectF(p.x - r, p.y - r, p.x + r, p.y + r)
@@ -1171,19 +1286,22 @@ fun VelaMapView(
                 parkingApplied = false
                 lastAppliedAmbient = null
                 lastAppliedControls = null
+                lastAppliedFlock = null
                 lastAppliedRouteLine = null
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
+                ensureTopography(style, topographyOn)
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
+                ensureTopography(it, topographyOn)
             }
         }
 
@@ -1783,6 +1901,32 @@ private fun ensureLayers(style: Style) {
             AMBIENT_LAYER,
         )
     }
+    // ALPR / "Flock" surveillance cameras (community DeFlock mapping in OSM). Its own high-zoom
+    // symbol layer, populated only when the Settings toggle is on (empty source otherwise). Drawn
+    // ABOVE the ambient POIs so a camera you're trying to spot isn't hidden behind a shop icon;
+    // sparse enough that allowOverlap is fine.
+    if (style.getImage(FLOCK_IMG) == null) style.addImage(FLOCK_IMG, alprCameraBitmap())
+    if (style.getSource(FLOCK_SRC) == null) {
+        style.addSource(GeoJsonSource(FLOCK_SRC))
+        val flockSize = Expression.interpolate(
+            Expression.linear(), Expression.zoom(),
+            Expression.stop(14f, 0.7f),
+            Expression.stop(17f, 1.0f),
+            Expression.stop(19f, 1.35f),
+        )
+        style.addLayer(
+            SymbolLayer(FLOCK_LAYER, FLOCK_SRC).apply {
+                setMinZoom(13.5f)
+                setProperties(
+                    PropertyFactory.iconImage(FLOCK_IMG),
+                    PropertyFactory.iconSize(flockSize),
+                    PropertyFactory.iconAllowOverlap(true),
+                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconPadding(2f),
+                )
+            },
+        )
+    }
     if (style.getSource(ACCURACY_SRC) == null) {
         style.addSource(GeoJsonSource(ACCURACY_SRC))
         // The accuracy halo: a translucent disc drawn at the fix's REAL uncertainty radius, so an
@@ -1861,6 +2005,9 @@ private fun ensureHillshade(style: Style) {
             PropertyFactory.hillshadeShadowColor("#6b7280"),
             PropertyFactory.hillshadeHighlightColor("#ffffff"),
             PropertyFactory.hillshadeAccentColor("#9aa0a6"),
+            // OFF by default (Google doesn't shade terrain unless you ask) - the Topography toggle
+            // flips it via ensureTopography. Added hidden so a fresh style starts flat.
+            PropertyFactory.visibility(Property.NONE),
         )
         hs.setMaxZoom(16f)
         // Below the first road layer → above water/landuse (so terrain shades the
@@ -1868,6 +2015,16 @@ private fun ensureHillshade(style: Style) {
         val firstRoad = style.layers.firstOrNull { it.id.startsWith("road") }?.id
         if (firstRoad != null) style.addLayerBelow(hs, firstRoad) else style.addLayer(hs)
     }
+}
+
+/** Show/hide the terrain-relief hillshade per the Settings > Map "Topography" toggle. Mirrors
+ *  ensureTraffic/ensureTransit: called from applyData on every recomposition, so flipping the pref
+ *  re-applies without a style reload. The DEM raster + layer already exist (ensureHillshade); this
+ *  only flips visibility, so turning it OFF costs nothing and stops the DEM tiles fetching. */
+private fun ensureTopography(style: Style, on: Boolean) {
+    style.getLayer(HILLSHADE_LAYER)?.setProperties(
+        PropertyFactory.visibility(if (on) Property.VISIBLE else Property.NONE),
+    )
 }
 
 /** Toggle Google's live-traffic raster overlay. Inserted below the route line +
@@ -2662,6 +2819,7 @@ private fun applyData(
     markers: List<MapMarker>,
     ambientPois: List<MapMarker>,
     trafficControls: List<app.vela.core.data.TrafficControl>,
+    flockCameras: List<app.vela.core.data.AlprCamera>,
     me: LatLng?,
     bearing: Float?,
     meAccuracyM: Float?,
@@ -2866,6 +3024,18 @@ private fun applyData(
         )
         style.getSourceAs<GeoJsonSource>(CONTROLS_SRC)?.setGeoJson(controlsFc)
         lastAppliedControls = trafficControls
+    }
+
+    // ALPR/Flock cameras → icon features (identity-gated like the controls). Empty when the layer's
+    // off or zoomed out, which clears the source.
+    if (flockCameras != lastAppliedFlock) {
+        val flockFc = FeatureCollection.fromFeatures(
+            flockCameras.map { cam ->
+                Feature.fromGeometry(Point.fromLngLat(cam.loc.lng, cam.loc.lat))
+            },
+        )
+        style.getSourceAs<GeoJsonSource>(FLOCK_SRC)?.setGeoJson(flockFc)
+        lastAppliedFlock = flockCameras
     }
 
     // The location source: in browse mode applyData owns it (set it from the fix here);
@@ -3085,5 +3255,29 @@ private fun stopSignBitmap(): Bitmap {
         typeface = android.graphics.Typeface.DEFAULT_BOLD
     }
     c.drawText("STOP", cx, cy + 4f, label)
+    return bmp
+}
+
+/** ALPR / "Flock" surveillance-camera marker: a maroon rounded badge with a white CCTV-camera glyph,
+ *  deliberately distinct from the POI dots and the traffic controls so a plate reader reads as a
+ *  "watch out" pin, not a place. */
+private fun alprCameraBitmap(): Bitmap {
+    val s = 46
+    val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
+    val c = Canvas(bmp)
+    val white = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() }
+    val maroon = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF7B1FA2.toInt() } // purple: distinct from red controls
+    // Rounded-square badge (white rim + purple field).
+    c.drawRoundRect(2f, 2f, s - 2f, s - 2f, 11f, 11f, white)
+    c.drawRoundRect(4.5f, 4.5f, s - 4.5f, s - 4.5f, 9f, 9f, maroon)
+    // A simple CCTV camera in white: body, lens, and a mount arm.
+    val body = android.graphics.RectF(12f, 18f, 30f, 27f)
+    c.drawRoundRect(body, 2f, 2f, white)
+    c.drawCircle(31f, 22.5f, 4.2f, white) // lens housing at the front
+    c.drawCircle(31f, 22.5f, 2.0f, maroon) // lens glass
+    // Mount: a short arm up to the top rail.
+    val arm = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt(); strokeWidth = 2.4f; style = Paint.Style.STROKE }
+    c.drawLine(17f, 18f, 17f, 12f, arm)
+    c.drawLine(12f, 12f, 24f, 12f, arm)
     return bmp
 }
