@@ -273,6 +273,8 @@ object StopDeparturesParser {
         }
     }
 
-    private const val MAX_TIMES = 8 // upcoming departures kept per line — Google shows a similar depth on a busy stop
+    // Keep every upcoming departure the board embeds per line (rendered as a vertical list). The board
+    // blob only carries the next several, not the whole day, so 30 is a safety ceiling, not a real limit.
+    private const val MAX_TIMES = 30
     private const val MAX_LINES = 24
 }
