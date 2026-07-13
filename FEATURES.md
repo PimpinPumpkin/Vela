@@ -933,6 +933,16 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   boarding leg's **"N min late/early"** is surfaced right in the header (it was only in the
   drill-down before). Pure render off already-parsed fields (`TransitItinerary.departureEpochSec`,
   `TransitStep.delayText`), no extra fetch; localized in all 11 languages.
+- ✅ **Canonical transit stops on the map (2026-07-13, Transitous, device-verified).** At street
+  zoom the bus stops you see are the agencies' own GTFS stop positions from Transitous (`map/stops`
+  per viewport, area-cached), drawn as a blue bus badge with the official stop name - one icon per
+  station (bays collapse onto their parent). **Tapping a stop opens its live departure board
+  instantly by stop id** - no Google lookup, no name matching, so intersection-named stops and
+  multi-bay hubs just work. Where this layer has coverage the OSM basemap's bus icons hide (no
+  doubled stops); rail/airport icons stay basemap. **Stops keep working offline**: every area you
+  browse online is cached to disk (24-area LRU) and redraws with no signal - the same
+  continuously-fresh property as the surveillance-camera dataset; never-visited areas fall back
+  to the OSM icons.
 - ✅ **Live stop departure board (2026-07-12, keyless + device-verified).** Tapping a transit
   station (subway / rail / BART / bus stop) shows Google's **"See departure board"** right in the
   place sheet: each line and direction with its **route number in its real line colour** (the "14"/

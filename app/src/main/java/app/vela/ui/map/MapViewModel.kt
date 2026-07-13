@@ -133,6 +133,7 @@ data class MapUiState(
                                                       // .pmtiles — rendered beneath OSM to fill gaps
     val trafficControls: List<app.vela.core.data.TrafficControl> = emptyList(), // OSM lights+stop signs drawn at high zoom
     val flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras (DeFlock/OSM), high zoom
+    val transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops (Transitous), high zoom
     val directionsOpen: Boolean = false,
     val directionsReversed: Boolean = false, // route from the place back to you
     val directionsOrigin: Place? = null,     // custom "From" (null = your live location)
@@ -3467,6 +3468,7 @@ class MapViewModel @Inject constructor(
         refreshTrafficControls(south, west, north, east, zoom) // + traffic lights / stop signs at high zoom
         lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
         refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
+        refreshTransitStops(south, west, north, east, zoom) // + canonical GTFS stop icons at street zoom
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -3840,6 +3842,9 @@ class MapViewModel @Inject constructor(
     private var controlsJob: Job? = null
     private var controlsBox: DoubleArray? = null // [s,w,n,e] of the last fetched (padded) box
     private var flockBox: DoubleArray? = null
+    private var transitStopsBox: DoubleArray? = null
+    private var transitStopsJob: Job? = null
+    private val transitStopCache by lazy { app.vela.data.TransitStopCache(appContext) }
     private var lastFlockViewport: DoubleArray? = null
     private var flockJob: Job? = null
 
@@ -3895,6 +3900,85 @@ class MapViewModel @Inject constructor(
      *  so turning it on shows cameras without needing a pan first. */
     fun refreshFlockNow() {
         lastFlockViewport?.let { refreshFlock(it[0], it[1], it[2], it[3], it[4]) }
+    }
+
+    /** Canonical GTFS transit stops for the viewport (Transitous `map/stops`), the same area-cached,
+     *  350 ms-debounced contract as the traffic-controls layer. Every ONLINE fetch also refreshes the
+     *  DISK cache ([TransitStopCache]) - the offline floor: with no network, a previously visited
+     *  area's stops still draw (the OSM basemap icons cover never-visited areas). Stops replace the
+     *  OSM bus icons wherever this layer has coverage (VelaMapView hides poi_transit's bus class then). */
+    private fun refreshTransitStops(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        if (zoom < TRANSIT_STOPS_MIN_ZOOM) {
+            transitStopsBox = null
+            transitStopsJob?.cancel()
+            if (_state.value.transitStops.isNotEmpty()) _state.update { it.copy(transitStops = emptyList()) }
+            return
+        }
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        transitStopsBox?.let { b ->
+            val insLat = (b[2] - b[0]) * 0.25; val insLng = (b[3] - b[1]) * 0.25
+            if (cLat in (b[0] + insLat)..(b[2] - insLat) && cLng in (b[1] + insLng)..(b[3] - insLng)) return
+        }
+        transitStopsJob?.cancel()
+        transitStopsJob = viewModelScope.launch {
+            delay(350)
+            val padLat = (north - south) * 0.5; val padLng = (east - west) * 0.5
+            val s0 = south - padLat; val n0 = north + padLat; val w0 = west - padLng; val e0 = east + padLng
+            val live = withContext(Dispatchers.IO) {
+                runCatching { app.vela.core.data.transit.Transitous.stopsInBox(http, s0, w0, n0, e0) }.getOrNull()
+            }
+            val stops = if (live != null) {
+                withContext(Dispatchers.IO) { runCatching { transitStopCache.store(s0, w0, n0, e0, live) } }
+                live
+            } else {
+                // Offline / fetch failed: the disk cache is the floor. Null there too -> keep whatever
+                // is drawn (don't blank the layer on a blip) and leave the box unset so we retry.
+                withContext(Dispatchers.IO) { runCatching { transitStopCache.lookup(s0, w0, n0, e0) }.getOrNull() } ?: return@launch
+            }
+            transitStopsBox = doubleArrayOf(s0, w0, n0, e0)
+            // One icon per station: bays collapse onto their parent (the board queries the parent anyway).
+            val deduped = stops.groupBy { it.parentId ?: it.stopId }.map { (_, group) -> group.first() }
+            _state.update { it.copy(transitStops = deduped) }
+        }
+    }
+
+    /** A tapped Transitous stop icon: open a lightweight place at the stop and fetch its board
+     *  DIRECTLY by stop id - no Google resolution, no name correlation. */
+    fun onTransitStopTap(stop: app.vela.core.data.transit.Transitous.MapStop) {
+        val placeholder = Place(
+            id = "gtfs:${stop.stopId}",
+            name = stop.name,
+            location = app.vela.core.model.LatLng(stop.lat, stop.lon),
+            category = "Bus stop",
+        )
+        reviewsJob?.cancel()
+        _state.update {
+            it.copy(
+                selected = placeholder,
+                results = emptyList(),
+                center = placeholder.location,
+                placesHere = emptyList(),
+                reviews = emptyList(),
+                stopDepartures = null,
+                stopDeparturesLoading = true,
+                reviewsLoading = false,
+                reviewsFound = 0,
+                loadingDetails = false,
+                photosLoading = false,
+                pickingOrigin = false,
+                pickingStop = false,
+                directionsOpen = false,
+            )
+        }
+        viewModelScope.launch {
+            val board = withContext(Dispatchers.IO) {
+                runCatching { app.vela.core.data.transit.Transitous.boardFor(http, stop) }.getOrNull()
+            }
+            _state.update { st ->
+                if (st.selected?.id != placeholder.id) st
+                else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
+            }
+        }
     }
 
     /** ALPR/Flock cameras for the viewport, when the layer is on. Mirrors [refreshTrafficControls]:
@@ -4140,6 +4224,7 @@ class MapViewModel @Inject constructor(
         // 2026-07-13). Back to 13: the box is bounded, and the fetch is now streamed (OverpassAlprCameras)
         // so it can't blow the heap. Route-overview visibility is a separate follow-up.
         const val FLOCK_MIN_ZOOM = 13.0
+        const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
                                               // symbol is re-collided per drag frame (budget-GPU jank)
