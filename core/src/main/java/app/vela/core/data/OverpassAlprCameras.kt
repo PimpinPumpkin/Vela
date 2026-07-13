@@ -35,14 +35,17 @@ private data class OverpassNode(
 object OverpassAlprCameras {
     private val json = Json { ignoreUnknownKeys = true }
 
-    // Overpass can be slow; the shared scrape client's 12 s callTimeout aborts mid-response and the
-    // failure reads as "no cameras" (a reliability complaint). Derive a longer-timeout sibling ONCE.
-    // Memory is bounded regardless now (streaming parse), so a longer read is safe.
+    // Per-endpoint client for the failover runner. The ALPR query is TINY (one tag over a viewport box,
+    // <1 s from a healthy server), so a modest 15 s cap is ample - and it BOUNDS the failover: with four
+    // endpoints, a dead/overloaded mirror that hangs would otherwise cost 25 s each (~90 s all-in, observed
+    // on-device when the primary 504'd and mirrors were slow). 15 s call + 8 s connect abandons a bad
+    // endpoint fast enough to reach a working one, while still tolerating a briefly-slow-but-alive server.
     @Volatile private var slowHttp: OkHttpClient? = null
     private fun slow(base: OkHttpClient): OkHttpClient =
         slowHttp ?: base.newBuilder()
-            .callTimeout(25, TimeUnit.SECONDS)
-            .readTimeout(25, TimeUnit.SECONDS)
+            .callTimeout(15, TimeUnit.SECONDS)
+            .connectTimeout(8, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
             .build()
             .also { slowHttp = it }
 
