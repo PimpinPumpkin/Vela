@@ -861,6 +861,13 @@ Defaults that make the safe path the easy one:
   on frame 1);
   the map is key-driven via `app/ui/map/MapDpadController.kt` (wired in `VelaMapView`, key
   handling + crosshair + zoom buttons in `MapScreen`).
+  **AdaptiveDensity (2026-07-13, from the vela-dpad fork by ars18/alltechdev):** `ui/AdaptiveDensity.wrap`
+  (chained FIRST in both `attachBaseContext`s) shrinks the app's effective density so tiny feature-phone
+  screens report >= 360dp of logical width - chips/dialogs/rows fit instead of clipping. It is a HARD
+  NO-OP at >= 360dp (ordinary phones byte-identical); tuned visually on 240x320-class flip phones by the
+  fork author. Same commit brought `Modifier.dpadAutoFocus(requester)` (confirm-until-landed retry on a
+  caller-owned requester - the weak rememberDpadAutoFocus can bail before focus actually lands) and the
+  Settings DOWN-from-Back bridge (TopAppBar -> content Column crossing clears focus otherwise).
   **Detection is CONSERVATIVE - do not loosen it (fixed 2026-07-08).** `rememberDpadFirstDevice`
   (`detectDpadFirst`) returns true ONLY for a genuinely touchless device (`!FEATURE_TOUCHSCREEN`)
   or a PHYSICAL (non-virtual) `InputDevice` with `SOURCE_DPAD`. It must NOT count the framework's
