@@ -21,6 +21,20 @@ data class MapLink(val query: String? = null, val lat: Double? = null, val lng: 
  */
 object MapLinkParser {
     private val COORD = Regex("""(-?\d{1,3}\.\d+),\s*(-?\d{1,3}\.\d+)""")
+
+    /** A BARE typed coordinate ("37.77, -122.42", also "geo:37.77,-122.42"), so pasting
+     *  coordinates into the search box drops a pin instead of running a text search.
+     *  Strict: the whole string must be the pair (a street address with numbers stays a
+     *  search), both halves need a decimal point, and the values must be a plausible
+     *  lat/lng. Null otherwise. */
+    fun parseBareCoordinate(raw: String): MapLink? {
+        val text = raw.trim().removePrefix("geo:").trim()
+        val m = COORD.matchEntire(text) ?: return null
+        val lat = m.groupValues[1].toDoubleOrNull() ?: return null
+        val lng = m.groupValues[2].toDoubleOrNull() ?: return null
+        if (lat !in -90.0..90.0 || lng !in -180.0..180.0) return null
+        return MapLink(lat = lat, lng = lng)
+    }
     private val AT = Regex("""@(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)""")
 
     /** A pasted share link worth resolving over the network (short links carry nothing
