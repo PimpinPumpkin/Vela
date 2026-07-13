@@ -671,7 +671,7 @@ Defaults that make the safe path the easy one:
   the faint `building-3d` extrusion). The fill needs a matching **`setMaxZoom(24f)`** to re-open the top;
   keep it. `building-3d` (fill-extrusion) is gated to **z16+** on purpose (the flat fill carries the
   browse-zoom footprint look; extrusion is the per-pixel-expensive part on a Pixel 5a). (2) **House
-  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, `minZoom 17.5` - Google shows house numbers only at street level; 16 surfaced them too soon, user 2026-07-06) - 
+  numbers** render via the runtime `vela-housenumber` SymbolLayer (OMT `housenumber` source-layer, `minZoom 19` - numbers only at the ~50 ft scale-bar view; 17.5 still carpeted whole blocks, user 2026-07-13) - 
   OpenFreeMap **does** serve that source-layer (verified vs the live TileJSON + z14 tiles), so it works;
   coverage is OSM `addr:housenumber` (partial), not a render bug. The `vela-addr-*` overlay number
   layers anchor to `CONTROLS_CLAIM_LAYER` (above basemap labels, below the ambient icons) - NOT the
@@ -1775,7 +1775,7 @@ architecture note.
   with `number`/`street`; **42 US states have a `statewide` source**, the rest are county-only). Render:
   `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
   `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, grey +
-  white halo, **minZoom 17.5** (in lockstep with the basemap `vela-housenumber` layer - Google shows house numbers only at true street level ~z17.5-18; 16 carpeted the 200-400 ft views, user 2026-07-06) - 
+  white halo, **minZoom 19** (in lockstep with the basemap `vela-housenumber` layer - numbers only at the ~50 ft scale-bar view; 17.5 still carpeted whole blocks, user 2026-07-13) - 
   inserted below `vela-controls` (see the LAYER ORDER warning below). **Streams online exactly like buildings**
   (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → the union of up to the 3
   smallest covering regions' `pmtiles://https://…` URIs - same spilled-bbox shadowing fix as the building

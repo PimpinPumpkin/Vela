@@ -505,7 +505,7 @@ fun VelaMapView(
     // House-number labels from the open ADDRESS overlay (OpenAddresses PMTiles of points): a SymbolLayer of the
     // `number` field, STREAMED for the region in view — fills in house numbers where OSM has no `addr:housenumber`
     // (the same gap the building overlay fills for footprints). Matched to the basemap `vela-housenumber` style
-    // (Noto Sans 10, grey + white halo). minZoom 17.5 so numbers only appear at street level (Google-style) and
+    // (Noto Sans 10, grey + white halo). minZoom 19 so numbers only appear when truly close (~50 ft scale) and
     // collision thins dense blocks. INSERTED BELOW the controls CLAIM layer (which sits below the ambient POI
     // icons) — NOT addLayer/top: MapLibre places symbols TOPMOST-LAYER-FIRST, so numbers stacked above the
     // ambient layer grabbed their collision boxes before the business icons placed, EVICTING them at z16+
@@ -532,7 +532,7 @@ fun VelaMapView(
                 val layer =
                     SymbolLayer("vela-addr-$i", srcId).apply {
                         setSourceLayer("address") // tippecanoe layer name (build-address-region.sh: -l address)
-                        setMinZoom(17.5f) // Google shows house numbers only at STREET level (~z17.5-18); 16 carpeted the map in numbers ("too soon")
+                        setMinZoom(19f) // numbers only when truly close (~50 ft scale bar); 17.5 still carpeted whole blocks (user 2026-07-13)
                         setProperties(
                             PropertyFactory.textField(Expression.get("number")),
                             PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
@@ -1636,9 +1636,10 @@ private fun ensureLayers(style: Style) {
                 setSourceLayer("housenumber")
                 // OpenFreeMap DOES serve the OMT `housenumber` source-layer (verified against the
                 // live TileJSON + z14 tiles), so this renders where OSM has `addr:housenumber`.
-                // 17.5 matches Google: house numbers only at true street level, not neighbourhood zoom
+                // 19 = the ~50 ft scale-bar view: numbers only when truly close, in lockstep with the
+                // address-overlay layers; 17.5 still carpeted whole blocks in numbers (user 2026-07-13)
                 // (16 carpeted the map — user 2026-07-06). Keep in lockstep with the vela-addr overlay.
-                setMinZoom(17.5f)
+                setMinZoom(19f)
                 setProperties(
                     PropertyFactory.textField(Expression.get("housenumber")),
                     PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
