@@ -778,6 +778,11 @@ fun MapScreen(
 
             trafficControls = state.trafficControls,
             flockCameras = state.flockCameras,
+            // Hide the tapped stop's own badge while it is selected - the red selected-place pin
+            // drops at the same coordinate and the two bus glyphs stacked read as a glitch
+            // (user 2026-07-13). Structural list equality keeps the identity gate quiet.
+            transitStops = state.transitStops.filterNot { st -> state.selected?.id == "gtfs:${st.stopId}" },
+            onTransitStopTap = vm::onTransitStopTap,
             navBannerBottomPx = if (state.navigating) navBannerBottomPx else 0,
             onAmbientTap = { i -> state.ambientPois.getOrNull(i)?.let(vm::selectPlace) },
             onCameraIdle = vm::onCameraIdle,
