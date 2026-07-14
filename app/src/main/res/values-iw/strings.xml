@@ -231,7 +231,11 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">חפש בביקורות</string>
     <string name="place_sort_reviews">מיין ביקורות</string>
-    <string name="place_review_count">%1$d ביקורות</string>
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">ביקורת אחת</item>
+        <item quantity="two">%1$d ביקורות</item>
+        <item quantity="other">%1$d ביקורות</item>
+    </plurals>
     <string name="place_all_n_reviews">כל %1$d הביקורות · מיון &amp; חיפוש</string>
     <string name="place_all_reviews">כל הביקורות · מיון &amp; חיפוש</string>
     <string name="place_reviews_progress">ביקורות · %1$d מתוך כ-%2$d</string>
@@ -432,7 +436,11 @@
     <string name="settings_update_checking">בודק…</string>
     <string name="settings_update_none">אתה בגרסה העדכנית ביותר.</string>
     <string name="settings_place_pages">עמודי מקומות</string>
-    <string name="place_transit_stops">%1$d תחנות</string>
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">תחנה אחת</item>
+        <item quantity="two">%1$d תחנות</item>
+        <item quantity="other">%1$d תחנות</item>
+    </plurals>
     <string name="place_transit_stop_id">תחנה %1$s</string>
     <string name="place_transit_tickets">כרטיסים &amp; מידע</string>
     <string name="route_detail_unavailable">פרטי הקו אינם זמינים</string>

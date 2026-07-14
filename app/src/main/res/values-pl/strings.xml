@@ -232,7 +232,12 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Szukaj w opiniach</string>
     <string name="place_sort_reviews">Sortuj opinie</string>
-    <string name="place_review_count">%1$d opinii</string>
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">%1$d opinia</item>
+        <item quantity="few">%1$d opinie</item>
+        <item quantity="many">%1$d opinii</item>
+        <item quantity="other">%1$d opinii</item>
+    </plurals>
     <string name="place_all_n_reviews">Wszystkie %1$d opinii · sortuj i szukaj</string>
     <string name="place_all_reviews">Wszystkie opinie · sortuj i szukaj</string>
     <string name="place_reviews_progress">Opinie · %1$d z około %2$d</string>
@@ -436,7 +441,12 @@
     <string name="settings_update_checking">Sprawdzanie…</string>
     <string name="settings_update_none">Masz najnowszą wersję.</string>
     <string name="settings_place_pages">Strony miejsc</string>
-    <string name="place_transit_stops">%1$d przystanków</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">%1$d przystanek</item>
+        <item quantity="few">%1$d przystanki</item>
+        <item quantity="many">%1$d przystanków</item>
+        <item quantity="other">%1$d przystanków</item>
+    </plurals>
     <string name="place_transit_stop_id">Przystanek %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Bilety i informacje</string>
     <string name="route_detail_unavailable">Szczegóły linii niedostępne</string>
