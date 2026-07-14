@@ -2061,9 +2061,13 @@ architecture note.
   (`StopDeparture.tripId`), and `Transitous.tripStops` (`/api/v1/trip`) returns that run's REAL stop
   sequence - per-stop realtime vs timetable times AND per-stop/-run CANCELLED flags straight from the
   agency feed (`TransitStopTime.cancelled` renders a red "Cancelled" + struck-through time,
-  `place_transit_cancelled` in all 15 locales). `buildTripStep` (pure, unit-tested) trims the run to
-  start at the tapped stop (nearest stop to the tapped coordinate; a terminus tap keeps the whole
-  run). The headsign-geocode + itinerary-reuse path (`itineraryStep`) remains the FALLBACK for
+  `place_transit_cancelled` in all 15 locales). `buildTripStep` (pure, unit-tested) BOARDS at the tapped stop
+  (nearest to the tapped coordinate; a terminus tap boards at the origin) and puts the stops the
+  run already called at into `TransitStep.priorStops` - the sheet renders them GREYED above with a
+  grey rail (the coloured rail starts at your stop, Google's treatment) and opens scrolled to the
+  boarding stop (`rememberLazyListState(initialFirstVisibleItemIndex = priors)`). A moved time
+  renders the timetable time struck through beside the live one - red when late, green when early
+  or on time (`TransitStopTime.delayMin`, signed; the feed carries EARLY runs too, verified live). The headsign-geocode + itinerary-reuse path (`itineraryStep`) remains the FALLBACK for
   Google-fallback boards (their departures carry no tripId) and trip-fetch failures. NB transit
   DIRECTIONS still ride Google on purpose (traffic-aware ETAs) - this moved only the stops list.
   Boards still DROP fully-cancelled runs (`cancelled`/`tripCancelled`/`place.cancelled`); showing
