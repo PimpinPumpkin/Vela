@@ -778,7 +778,15 @@ class MapViewModel @Inject constructor(
             val spanM0 = vp0?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
             val res = runCatching { dataSource.search(term, near, spanM0).places }.getOrDefault(emptyList())
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
-                _state.update { it.copy(suggestions = res.take(8)) }
+                // Google gets the viewport bias, but keyless ranking for a PARTIAL address is
+                // weak - "123 main st" happily led with matches states away while the one in
+                // town sat below (user report). Bucket by metro distance (stable sort: within
+                // each bucket Google's own relevance order is preserved) so nearby matches
+                // surface first and a famous far match still shows, just lower.
+                val ranked = if (near == null) res else res.sortedBy { p ->
+                    if (p.location.distanceTo(near) <= SUGGEST_NEAR_M) 0 else 1
+                }
+                _state.update { it.copy(suggestions = ranked.take(8)) }
             }
         }
     }
@@ -4349,6 +4357,7 @@ class MapViewModel @Inject constructor(
         // 2026-07-13). Back to 13: the box is bounded, and the fetch is now streamed (OverpassAlprCameras)
         // so it can't blow the heap. Route-overview visibility is a separate follow-up.
         const val FLOCK_MIN_ZOOM = 13.0
+        const val SUGGEST_NEAR_M = 80_000.0 // ~a metro radius: suggestions inside it rank first
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
