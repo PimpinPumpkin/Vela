@@ -40,50 +40,55 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
 
 ## What you get
 
-- **Real turn-by-turn navigation.** Spoken directions from a neural voice that runs
-  entirely on your phone, lane diagrams, exit shields, a speedometer, automatic
-  reroutes, and a heads-up (on a card and out loud) when your destination closes
-  within an hour of your arrival.
+- **Live traffic, straight from Google.** Vela reads the same real-time traffic
+  Google Maps shows, so ETAs are traffic-aware, the fastest route leads the list,
+  and every option says light, moderate or heavy traffic in plain words next to
+  its green/amber/red time. Turn-by-turn navigation rides on it: lane diagrams,
+  exit shields, a speedometer with the posted limit, and automatic reroutes when
+  a jam builds ahead.
+- **Real info about places (points of interest, or POIs).** Hours with holidays
+  included, reviews you can search, photo galleries, busy times, phone and
+  website - the things you actually check before driving somewhere, with a
+  warning if a place would be closed when you arrive.
+- **Zero Google on your phone, and almost zero in your life.** No Play Services,
+  no account, no app key, no ads, no telemetry. Google answers the occasional
+  anonymous question; it never sees your GPS trace, your map browsing, or who
+  you are. The full breakdown is in the [Privacy](#privacy) section below.
+- **The plate readers, on the map.** Mapped ALPR surveillance cameras (the
+  community DeFlock project's OpenStreetMap data) draw out of the box, and the
+  optional **Settings → Map → Avoid surveillance cameras** counts the cameras on
+  each route and quietly picks a lower-camera option when the detour is small.
+  The dataset lives on your phone and refreshes itself weekly.
+- **Vela Voice.** Spoken turn-by-turn from a neural voice that runs entirely on
+  your phone, and a mic that transcribes your search on-device too. Nothing you
+  say ever touches a cloud speech service.
 
-  🔊 **Hear Vela's nav voice** - the actual in-app voice at the default
-  pace:
+  🔊 **Hear it** - the actual in-app voice at the default pace:
 
   https://github.com/user-attachments/assets/17f246e4-51c8-4d01-998b-dcd7f29dc15f
 
+- **Parking memory.** Tap **P** when you park, tap the pin later for walking
+  directions back, long-press for your parking history.
+- **Material You theming, if you want it.** An optional toggle tints Vela's
+  chrome with your wallpaper colors (Android 12+); off by default, and the map
+  itself stays clean either way.
+- **Offline maps and routing.** Download a state or country once and its maps,
+  turn-by-turn routing, and every place in it stay searchable with no signal -
+  typed street addresses included.
+- **Live gas prices.** Search for gas and every station's current price is right
+  on its map marker, in the result list, and on the place page.
+- **Live public transit.** Departure boards and station-by-station stop timelines
+  come from open GTFS feeds (the schedules and realtime updates transit agencies
+  publish, served by the community Transitous project), supplemented with Google
+  for traffic-aware transit directions. Tap a stop for live times, tap a route
+  for every stop it makes.
 - **Fixes itself when Google moves things.** The scraping recipes live in a signed
   config the app checks at launch - when Google shifts a field or an endpoint, a
   repair ships to every install in minutes, no update needed. The same channel can
   push a heads-up notice ("search is down, fix coming") straight onto the map.
-
-- **Talk to it.** Tap the mic and say what you want. Vela Voice transcribes speech
-  on the phone (a one-time 58 MB download), or hands off to a voice-input app you
-  already have. Either way, nothing you say goes to a cloud speech service.
-- **Works offline.** Download a state or country once and its maps, turn-by-turn
-  routing, and every place in it stay searchable with no signal - typed street
-  addresses included.
-- **Real place info.** Hours (holidays included), reviews you can search, photo
-  galleries, busy times, phone and website - the things you actually check before
-  driving somewhere, with a warning if it would be closed when you arrive.
-- **Traffic you can read.** Route choices say light, moderate or heavy traffic in
-  words next to their green/amber/red times, and the fastest route leads the list.
-- **Live gas prices.** Search for gas and every station's current price is right
-  on its map marker, in the result list, and on the place page.
-- **See the plate readers.** Mapped ALPR surveillance cameras (the community
-  DeFlock project's OpenStreetMap data) show on the map out of the box, and an
-  optional routing setting counts the cameras on each route and quietly picks a
-  lower-camera option when the detour is small. The dataset lives on your phone
-  and refreshes itself weekly, no account and nothing sent anywhere.
-- **Material You theming, if you want it.** An optional toggle tints Vela's chrome
-  with your wallpaper colors (Android 12+); off by default, and the map itself
-  stays clean either way.
-- **Public transit.** Itineraries with line pills, station-by-station stops, and
-  step-by-step guidance to the platform. A tapped station shows a live departure
-  board, and tapping a route opens its stop timeline you can keep tapping through.
-- **No account, no tracking.** No Google account, no GMS, no telemetry. What
-  Google's servers can and cannot see is documented plainly in [PRIVACY.md](PRIVACY.md).
-- **The rest.** Android Auto, 15 languages (incl. Hebrew, the first RTL locale), in-app light/dark, full D-pad operation
-  for keypad phones, parking memory, place lists, and a built-in updater with
-  weekly-stable or nightly channels.
+- **The rest.** Android Auto, 15 languages (incl. Hebrew, the first RTL locale),
+  in-app light/dark, full D-pad operation for keypad phones, place lists, and a
+  built-in updater with weekly-stable or nightly channels.
 
 The complete running feature list lives in [FEATURES.md](FEATURES.md).
 
