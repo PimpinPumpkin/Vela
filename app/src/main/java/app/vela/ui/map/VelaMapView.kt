@@ -783,6 +783,10 @@ fun VelaMapView(
     LaunchedEffect(navMode, routePolyline) {
         if (!navMode) {
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
+            // Camera padding is STICKY MapLibre state: the nav view's puck-low offset (top padding,
+            // set on every follow frame + the pre-engage case) would otherwise shift the browse
+            // camera's centre for the rest of the session.
+            mapRef?.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
             return@LaunchedEffect
         }
         navPuck.engaged = false
@@ -879,6 +883,12 @@ fun VelaMapView(
                                 .bearing(camState[2])
                                 .zoom(camState[3])
                                 .tilt(55.0)
+                                // Puck LOW on the screen, Google-style: a top padding of ~0.45x
+                                // the view height renders the target at ~72% down, so the road
+                                // AHEAD owns the view instead of splitting it with what's behind
+                                // (user 2026-07-14). Padding is sticky camera state - the nav
+                                // teardown below resets it for the browse map.
+                                .padding(0.0, cam.height * 0.45, 0.0, 0.0)
                                 .build(),
                         ),
                     )
@@ -1521,7 +1531,10 @@ fun VelaMapView(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
                                     .target(MLLatLng(loc.lat, loc.lng))
-                                    .zoom(zoom).tilt(55.0).bearing(brg.toDouble()).build(),
+                                    .zoom(zoom).tilt(55.0).bearing(brg.toDouble())
+                                    // Same puck-low offset as the engaged follow ticker.
+                                    .padding(0.0, map.height * 0.45, 0.0, 0.0)
+                                    .build(),
                             ),
                             550,
                         )

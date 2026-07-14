@@ -921,6 +921,13 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                     )
                 }
             }) { Text(stringResource(R.string.settings_privacy_button)) }
+            Spacer(Modifier.height(4.dp))
+            var liveRechecks by remember { mutableStateOf(vm.liveRechecksOn()) }
+            ToggleRow(stringResource(R.string.settings_live_rechecks), liveRechecks) { on ->
+                liveRechecks = on
+                vm.setLiveRechecks(on)
+            }
+            Hint(stringResource(R.string.settings_live_rechecks_hint))
 
             Spacer(Modifier.height(20.dp))
             SectionTitle(stringResource(R.string.settings_diagnostics))

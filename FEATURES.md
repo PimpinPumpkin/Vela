@@ -1173,6 +1173,22 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Periodic live re-routing** - every ~2 min while underway Vela re-checks
   traffic and, when a meaningfully faster route exists, announces it and offers
   a one-tap switch (`NavSession.maybeRecheck`, RECHECK_INTERVAL_MS = 2 min)
+- ✅ **The road ahead owns the nav view (2026-07-14).** The follow camera renders the puck low on
+  the screen (~72% down, via a sticky top camera padding reset when nav ends) instead of dead
+  centre, so the view shows what's coming instead of splitting evenly with what's behind -
+  Google's framing. Applies to the engaged follow and the pre-engage stationary framing alike.
+- ✅ **Step preview no longer fights the follow camera (2026-07-14).** Swiping the maneuver cards
+  flies the camera to the previewed turn, but the 60 fps follow ticker kept re-pointing it at the
+  puck in the same frames - the two fought and the preview barely moved. Follow now yields while
+  a preview is up (the puck keeps updating the whole time, only the camera steps aside), and
+  Re-center or ending the preview hands the camera back with the usual smooth re-attach.
+- ✅ **"Live traffic re-checks" privacy toggle (2026-07-14, Settings → Data & privacy).** The
+  ~2-minute in-drive re-check sends your CURRENT position to Google - that's what makes a
+  from-here candidate possible, and it's a periodic location beacon on top of the origin sent at
+  start and on reroutes. It's now opt-out-able: off means no periodic requests (and therefore no
+  faster-route offers, live ETA recalibration or abbreviated-steps self-heal); off-course
+  reroutes still work, because navigation can't without them. PRIVACY.md documents the whole
+  in-drive picture.
 - ✅ **The traffic fetch retries like the router does (2026-07-14, from a real-drive report).**
   Google's keyless directions reply intermittently comes back degraded or empty (worst right
   after a burst of requests, like ending a route and restarting it), and it used to get exactly

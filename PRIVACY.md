@@ -25,6 +25,7 @@
 |---|---|---|---|
 | **google.com** (search/place) | every search, place open | your IP, the query text, the map viewport (lat/lng), a logged-out session cookie | your Google account, name, device ID, contacts |
 | **google.com** (directions) | planning a route | your IP, origin + destination coordinates, viewport | account; your live position isn't sent unless you navigate |
+| **google.com** (directions, in-drive) | while NAVIGATING: on every off-course reroute, and every ~2 min for the live traffic re-check | your IP, your **current position** + the destination | account. The periodic re-check is what powers faster-route offers, the live arrival time and step recovery; it can be turned off in Settings → Data & privacy ("Live traffic re-checks"), leaving only the off-course reroutes, which navigation can't work without |
 | **google.com** (reviews/photos) | opening reviews / the photo gallery | your IP, the place's feature id | account (photos load via an **anonymous** hidden WebView - see below) |
 | **google.com/maps/vt** (traffic) | traffic overlay on | your IP, the tile coordinates you're viewing | anything tied to you beyond IP |
 | **OpenFreeMap** | viewing the map | your IP, which map tiles you pan over | no search/place text - just tile coordinates |
