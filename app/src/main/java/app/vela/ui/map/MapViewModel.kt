@@ -3029,7 +3029,17 @@ class MapViewModel @Inject constructor(
         tripStore.finishTrip() // close + persist the recorded trip (drops too-short ones)
         clearSpeedLimit() // clear the speed-limit badge for the next drive
         clearPersistedNav() // this drive is over → don't offer to resume it next launch
-        _state.update { it.copy(showSteps = false, previewStepIndex = null, navCameraDetached = false, speedLimitKmh = null) }
+        _state.update {
+            it.copy(
+                showSteps = false, previewStepIndex = null, navCameraDetached = false, speedLimitKmh = null,
+                // The drive is over: drop the route + chooser leftovers too. The nav observer
+                // deliberately KEEPS activeRoute when navigating flips false (the arrival card
+                // still shows the route), so the explicit end is where it clears - Ending a
+                // drive used to leave the blue line drawn on the bare map (user 2026-07-14).
+                activeRoute = null, routes = emptyList(), directionsOpen = false,
+                directionsWaypoints = emptyList(), flockOnRoute = emptyList(),
+            )
+        }
     }
 
     /** Reset the speed-limit badge + its throttle state (shared by nav-stop and replay-teardown so the
