@@ -2184,6 +2184,7 @@ private fun ensureTransit(style: Style, on: Boolean) {
 
 private const val SAT_SRC = "vela-sat-src"
 private const val SAT_LAYER = "vela-sat"
+private const val SAT_ROADS_LAYER = "vela-sat-roads"
 // Esri World Imagery, the openly usable satellite tile service (attribution shown by the map UI
 // while the layer is on). z/y/x order; 19 is the safe global max.
 private const val SAT_TILES = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
@@ -2214,8 +2215,43 @@ private fun ensureSatellite(style: Style, on: Boolean) {
             else -> style.layers.lastOrNull { it !is SymbolLayer }?.let { style.addLayerAbove(layer, it.id) }
                 ?: style.addLayer(layer)
         }
+        // Ghost roads over the photo (Google hybrid does this): a single translucent white line
+        // layer from the basemap's transportation source, above the raster, below the labels -
+        // without it the road network disappears into tree cover and the map stops being
+        // navigable as a map (user 2026-07-13).
+        if (style.getLayer(SAT_ROADS_LAYER) == null && style.getSource("openmaptiles") != null) {
+            val roads = LineLayer(SAT_ROADS_LAYER, "openmaptiles").apply {
+                setSourceLayer("transportation")
+                setProperties(
+                    PropertyFactory.lineColor("#FFFFFF"),
+                    PropertyFactory.lineOpacity(0.38f),
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    PropertyFactory.lineWidth(
+                        Expression.interpolate(
+                            Expression.exponential(1.5f), Expression.zoom(),
+                            Expression.stop(8, Expression.match(
+                                Expression.get("class"),
+                                Expression.literal("motorway"), Expression.literal(1.6f),
+                                Expression.literal("trunk"), Expression.literal(1.4f),
+                                Expression.literal(0.6f),
+                            )),
+                            Expression.stop(18, Expression.match(
+                                Expression.get("class"),
+                                Expression.literal("motorway"), Expression.literal(14f),
+                                Expression.literal("trunk"), Expression.literal(12f),
+                                Expression.literal("primary"), Expression.literal(10f),
+                                Expression.literal(7f),
+                            )),
+                        ),
+                    ),
+                )
+            }
+            style.addLayerAbove(roads, SAT_LAYER)
+        }
     } else if (!on && present) {
         runCatching { style.removeLayer(SAT_LAYER) }
+        runCatching { style.removeLayer(SAT_ROADS_LAYER) }
     }
 }
 
