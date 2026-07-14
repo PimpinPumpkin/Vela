@@ -153,6 +153,7 @@ Deeper still is [`SPEC.md`](SPEC.md).
 | [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | Every capability, the keyless method behind it, and the file to read first |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Building from source, module architecture, and the release pipeline |
 | [`docs/LANGUAGES.md`](docs/LANGUAGES.md) | The 15 supported languages, layer by layer (UI, spoken nav, neural voice, dictation), and how to add one |
+| [`docs/TRANSLATING.md`](docs/TRANSLATING.md) | Translating Vela on Weblate - no git needed |
 | [`FEATURES.md`](FEATURES.md) | The full, categorised list of every shipped capability (the encyclopaedia) |
 | [`SPEC.md`](SPEC.md) | The authoritative **rebuild spec** - architecture, extractor contract (pb layouts + response indices), resilience layer, hard constraints |
 | [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |

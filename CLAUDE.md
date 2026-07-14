@@ -270,7 +270,7 @@ Defaults that make the safe path the easy one:
   demo drive, simulate location, trip recording (each "turn off for real use"). The two **content
   filters (hide-adult, hide-external-links) stay in Place pages** with the other place-content
   toggles (user 2026-07-10), NOT Advanced. **Offline maps** (renamed from "Offline") sits right below Language, ABOVE Search (people reach it often, user 2026-07-10). Its two subheads were reframed 2026-07-10 (user: region vs routing region read confusing): **"Local area"** (the viewport download: map + roads + addresses for where you are) and **"States & countries"** (renamed from "Routing regions": the whole-region graph + place pack, framed as "everything to get around a state/province/country offline"). The region filter field just says "Search" (the old "Filter N regions…" wrapped to multiple lines). **Language is a "Follow
-  system language" ToggleRow** that reveals the 11-language picker only when OFF (seeded with
+  system language" ToggleRow** that reveals the language picker (all supported languages) only when OFF (seeded with
   `AppLocale.deviceDefaultSupported()`); most people never see the list. **The Voice library is a
   DEDICATED screen** (`VoiceBrowseScreen`, reached by the "Browse voices" `OutlinedButton` in the
   Voice section) not an inline accordion - `SettingsScreen` early-returns to it when
@@ -302,7 +302,7 @@ Defaults that make the safe path the easy one:
   leave/depart/arrive) keep the M3 filled-when-selected contrast on purpose - filling those
   would erase the selection signal. Past picks are impossible: the date picker greys out days
   before today and a confirmed past time clamps to the next 5-minute mark now, WITH a toast
-  (`place_time_past_toast`, all 11 locales): the pill shows a different time than the pick,
+  (`place_time_past_toast`, all locales): the pill shows a different time than the pick,
   and a silent rewrite of explicit input reads as a bug.
 - **The directions ENDPOINTS live in a TOP card now (`RouteTopCard`, 2026-07-13):** while the
   chooser is open the search bar swaps for a Google-style card at the top of the screen - origin /
@@ -345,7 +345,7 @@ Defaults that make the safe path the easy one:
 - **Directions "Leave now" ETA line (2026-07-10):** "Arrive at 5:30 PM" renders titleMedium
   SemiBold in ink - the small dim line with a "current traffic" note under it was clutter (the
   traffic-coloured per-route ETAs already carry that signal); the "Usually X-Y min" typical-range
-  note stays. `place_current_traffic` was deleted from all 11 locales.
+  note stays. `place_current_traffic` was deleted from all locales.
 - **The sheet physics recipe is SHARED (2026-07-11):** the place sheet, the search-results sheet
   and the DirectionsPanel body all use the same grammar - a hand-driven `Animatable` (height for
   the sheets, a 0..1 body FRACTION for the chooser) dragged 1:1 (handle + content-at-top nested
@@ -962,7 +962,7 @@ Defaults that make the safe path the easy one:
   hint) rather than reading, e.g., Russian nav text through the English Piper model (see the voice bullet under
   Degoogled constraints). (2) **UI chrome** - 
   all ~330 user-facing `:app` strings live in `res/values/strings.xml` (English) + `res/values-<lang>/` for
-  the 13 translated languages (fr de es it pt nl ru pl sv uk + zh zh-rTW ja, CJK added 2026-07-11),
+  the 14 translated languages (fr de es it pt nl ru pl sv uk iw + zh zh-rTW ja; CJK added 2026-07-11, Hebrew 2026-07-13),
   referenced via `stringResource`/`getString`. **CJK notes (2026-07-11):** Chinese ships as
   `values-zh` (Simplified, also the fallback for any zh region without its own folder) +
   `values-zh-rTW` (Traditional, Taiwan wording - issue #55); the in-app picker codes are "zh",
@@ -1009,8 +1009,12 @@ Defaults that make the safe path the easy one:
   strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
   search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
   they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA - never
-  translated.** Adding a user-facing string means: add it to `values/strings.xml` AND all `values-<lang>/`,
-  and match the `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
+  translated.** **Translations flow through WEBLATE now (2026-07-14, docs/TRANSLATING.md):** adding a
+  user-facing string means adding it to the ENGLISH base `values/strings.xml` only - translators fill the
+  locales via hosted Weblate (its PRs are reviewed like any other; the em-dash + placeholder rules are the
+  review checklist) and a missing translation falls back to English. Hand-filling every `values-<lang>/` in
+  the same commit (the old rule) is still fine for small batches but no longer required. Match the
+  `%1$s`/`%2$d` placeholder TYPE to the arg (Int → `%d`, else `%s`; a `%d` fed a String crashes).
   **Count strings use `<plurals>`, not a bare `%d X` (2026-07-11, issue #56 "1 results"):** the
   results-count bar is a `<plurals name="mapscreen_results_count">` read via `pluralStringResource(...,
   n, n)`. Use the CORRECT CLDR categories PER LANGUAGE - en/de/es/it/pt/nl/sv/fr = `one`+`other`
@@ -1313,7 +1317,7 @@ architecture note.
   keeps only complete dirs → a partial download self-heals), the pick persists in **`voice_model`**, and
   **speaker choice is per-voice** (`voice_speaker_<id>`; the legacy global `voice_speaker` is migrated onto
   libritts_r). The browsable catalog is `PiperCatalog` in `:core` (pure data, unit-tested, ~40 curated
-  voices across 11 languages - en_US/en_GB plus the 10 i18n languages; URL = `…/tts-models/vits-piper-<id>.tar.bz2`). `PiperSynth.ensureLoaded` reloads when
+  voices across the languages Piper covers (en_US/en_GB, the 10 original i18n languages, Mandarin; ja/he have NO Piper voice and ride the system-TTS fallback); URL = `…/tts-models/vits-piper-<id>.tar.bz2`). `PiperSynth.ensureLoaded` reloads when
   the selected voice changes; `PiperSynth.reloadVoice()` is the SINGLE switch trigger - it bumps the
   generation counter (aborting any in-flight utterance) then tears down + rebuilds on the same serial
   worker, so `tts` is never freed mid-`generate()`. `MapViewModel.migrateFlatLayoutIfNeeded` (first thing
@@ -1436,7 +1440,7 @@ architecture note.
   card where Google shows nothing (user report). Applied on BOTH routers (OSRM `parseOsrmRoute` + GraphHopper
   `toRoute`); a genuine-fork CONTINUE (`continueHasGenuineFork`, spoken) and STRAIGHT (a junction straight-through)
   are left alone. Unit-tested. (3) **Feet steps**
- - `formatDistance` (banner) + all 11 `NavStrings.spokenDistance` (voice) round feet Google-style: 50 ft at/above
+ - `formatDistance` (banner) + every `NavStrings.spokenDistance` table (voice) round feet Google-style: 50 ft at/above
   100 ft, 10 ft below. (4) **Voice K/C** - `EnNavStrings.expandForSpeech` rewrites `<XX>-<n>` (CA-99, SR-99) →
   "State Route n" so espeak's G2P doesn't mangle the bare 2-letter code's onset. **(4b) "take" → "tyke"
   (2026-07-11):** espeak's G2P is context-sensitive - on a full "take the ramp toward Woodland" it
@@ -2133,7 +2137,7 @@ architecture note.
   closed" device report). No live stop listing at the coordinate -> the lightweight name+location
   placeholder stays (a stop name beats an Intersection card; no board without a real stop listing, which
   is correct). Best-effort: an ungeocodable headsign / no ride leg flashes
-  `route_detail_unavailable` (localized in all 11 langs) and the overlay closes. State on `MapUiState`:
+  `route_detail_unavailable` (localized in all supported languages) and the overlay closes. State on `MapUiState`:
   `routeDetail: TransitStep?`, `routeDetailTitle`, `routeDetailLoading`, guarded by `routeDetailJob`.
   The board cap was raised 8 -> 24 lines (`StopDepartureBoard` + parser `MAX_LINES`) so busy stops show
   more routes. **Timeline rows are Google's treatment (2026-07-13):** taller rows with a hairline

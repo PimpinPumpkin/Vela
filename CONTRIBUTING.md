@@ -32,12 +32,14 @@ too).
    `README.md`, `FEATURES.md`, `SPEC.md` and `CLAUDE.md` as the change needs. Stale
    docs are treated as a bug. If a change genuinely needs no doc edit, say why in the
    commit message.
-6. **Every user-facing string ships in all 15 languages** (the full matrix is in
-   [docs/LANGUAGES.md](docs/LANGUAGES.md)). Add it to
-   `res/values/strings.xml` and each `res/values-<lang>/strings.xml` (de es fr it nl
-   pl pt ru sv uk). Match placeholder types to the arguments (an Int needs `%d`; a
-   `%d` fed a String crashes). Place names, addresses and reviews are data and are
-   never translated.
+6. **Every user-facing string is translatable** (the 15-language matrix is in
+   [docs/LANGUAGES.md](docs/LANGUAGES.md)). Add new strings to the English base
+   `res/values/strings.xml`; translations flow in through **Weblate** (see
+   [docs/TRANSLATING.md](docs/TRANSLATING.md)), and an untranslated string falls
+   back to English until they do. Match placeholder types to the arguments (an Int
+   needs `%d`; a `%d` fed a String crashes). Place names, addresses and reviews are
+   data and are never translated. Want to translate rather than code? Weblate is
+   the place, no git needed.
 
 ## Practical rules you will hit quickly
 
