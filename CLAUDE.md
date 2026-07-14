@@ -1802,7 +1802,17 @@ architecture note.
   with `number`/`street`; **42 US states have a `statewide` source**, the rest are county-only). Render:
   `VelaMapView`'s `LaunchedEffect(addressOverlays, …)` adds a `VectorSource` (the URI) + a **`SymbolLayer`**
   `setSourceLayer("address")`, `textField(get("number"))`, `textFont(["Noto Sans Regular"])`, size 10, grey +
-  white halo, **minZoom 19** (in lockstep with the basemap `vela-housenumber` layer - numbers only at the ~50 ft scale-bar view; 17.5 still carpeted whole blocks, user 2026-07-13) - 
+  white halo, **minZoom 17 + stepped textOpacity (0 below z19, 1 at 19+)** - the visible behaviour is
+  still numbers-only-at-the-~50-ft-view (17.5 carpeted whole blocks, user 2026-07-13), but the zoom gate
+  CANNOT live in the layer's minZoom: the address archives carry tiles **only at z16-17**, and **MapLibre's
+  pmtiles path never cold-fetches a tile clamped 2+ levels below the camera on a cold source** - minZoom 19
+  meant a fresh launch that zoomed straight in fetched nothing, silently (`querySourceFeatures` = 0 forever),
+  and it *looked* intermittent because tiles resident from a lower-zoom browse overzoom fine. The layer
+  arms at 17 (being in zoom range is what drives tile fetching, even with the text invisible) and the 50 ft
+  gate is the opacity step (found + fixed by alltechdev in the vela-dpad fork, ported 2026-07-13; issue #131).
+  Residual edge: a session whose camera STARTS past ~z19 without ever dipping lower still fetches nothing - rare,
+  the camera restores to browse zoom. NB the opacity-0 = invisible-to-queryRenderedFeatures gotcha (PR #125)
+  doesn't bite here: below z19 the numbers were never tappable anyway - 
   inserted below `vela-controls` (see the LAYER ORDER warning below). **Streams online exactly like buildings**
   (`MapViewModel.refreshAddressOverlays(center)` on every camera-idle → the union of up to the 3
   smallest covering regions' `pmtiles://https://…` URIs - same spilled-bbox shadowing fix as the building
