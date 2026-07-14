@@ -319,6 +319,9 @@ class MapViewModel @Inject constructor(
         navSession.liveRechecks = appContext
             .getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
             .getBoolean("nav_live_rechecks", true)
+        // Tunnel dead reckoning: keeps nav estimating along the route when GPS drops (see the
+        // loop's own comment). Runs for the process lifetime; every tick self-gates on nav state.
+        viewModelScope.launch { tunnelDeadReckonLoop() }
         // Region bias for the scrape (gl=): the cell network's country is the honest "where is
         // the phone" signal (roaming-aware, no GPS wait, no permission), falling back to the
         // locale's region. Refreshed each launch. Fixes the US-shaped results a non-US user got
@@ -565,7 +568,8 @@ class MapViewModel @Inject constructor(
             var lastFixRtNanos = 0L
             var lastGpsMs = 0L
             var lastSpeedEvidenceMs = 0L
-            var lastNavFedMs = android.os.SystemClock.elapsedRealtime()
+            // Field, not a local: the tunnel dead-reckon loop reads it to detect a quiet feed.
+            lastNavFedMs = android.os.SystemClock.elapsedRealtime()
             var prevWasGps = false
             val posOutlierStreak = intArrayOf(0)
             locationProvider.updates().collect { loc ->
@@ -723,6 +727,85 @@ class MapViewModel @Inject constructor(
 
     /** Grey the location dot if no live fix arrives for a while (Google-style) — the
      *  seeded last-known position starts stale and turns blue on the first real fix. */
+    // --- tunnel dead reckoning (route-constrained) --------------------------------------------
+    // GPS dies in a tunnel and the whole nav stack used to freeze with it: the view's puck reckons
+    // ~3 s blind then decays, and the ENGINE only advances on fixes, so the banner/ETA/voice all
+    // stopped (real drive 2026-07-14; Google keeps estimating along the route). When the feed goes
+    // quiet mid-drive while solidly ON route, this loop synthesizes fixes ALONG THE ROUTE at the
+    // last speed (decaying, tau DR_DECAY_S) and feeds them through the normal navSession path, so
+    // guidance keeps counting down and turns still announce. Honesty: navStarved stays true, so
+    // the "Searching for GPS" chip shows over the moving arrow. Never in replays/demos, never
+    // off-route, never from a standstill, bounded by DR_MAX_M; the first real fix re-anchors
+    // everything (synthetic positions are route-plausible, so the outlier gate passes it).
+    private var drProgressM = Double.NaN
+    private var drSpeed = 0.0
+    private var drTotalM = 0.0
+    private var drLastMs = 0L
+    @Volatile private var lastNavFedMs = 0L // last time a guidance-quality fix fed navSession
+
+    private suspend fun tunnelDeadReckonLoop() {
+        while (true) {
+            delay(1_000)
+            val s = _state.value
+            val route = s.activeRoute
+            val now = android.os.SystemClock.elapsedRealtime()
+            val sinceFix = now - lastNavFedMs
+            val eligible = s.navigating && !s.replaying && route != null && route.polyline.size >= 2 &&
+                !s.nav.offRoute && lastNavFedMs > 0L && sinceFix > DR_START_MS
+            if (!eligible) {
+                drProgressM = Double.NaN
+                continue
+            }
+            if (drProgressM.isNaN()) {
+                // The feed just went quiet: seed from the engine's along-route progress + the
+                // last shown speed. A standstill at signal loss never starts reckoning.
+                drSpeed = (s.mySpeed ?: 0f).toDouble()
+                if (drSpeed < DR_MIN_SPEED) continue
+                drProgressM = s.nav.traveledM
+                drTotalM = 0.0
+                drLastMs = now
+                continue
+            }
+            val dt = ((now - drLastMs) / 1000.0).coerceIn(0.5, 3.0)
+            drLastMs = now
+            drSpeed *= kotlin.math.exp(-dt / DR_DECAY_S)
+            if (drSpeed < DR_MIN_SPEED || drTotalM > DR_MAX_M) continue // hold position, stay honest
+            val step = drSpeed * dt
+            drProgressM += step
+            drTotalM += step
+            val pt = pointAlongPolyline(route.polyline, drProgressM) ?: continue
+            _state.update {
+                it.copy(
+                    myLocation = pt, mySpeed = drSpeed.toFloat(), mySpeedRaw = null,
+                    center = pt, myLocationStale = false,
+                    navStarved = it.navStarved || sinceFix > NAV_STARVED_MS,
+                )
+            }
+            restartStaleTimer() // keep the dot/arrow blue while the estimate runs
+            navSession.onLocation(pt, app.vela.ui.Units.imperial.value, drSpeed)
+        }
+    }
+
+    /** The point [m] metres along [poly] (clamped to the ends). Linear walk — called at 1 Hz. */
+    private fun pointAlongPolyline(poly: List<LatLng>, m: Double): LatLng? {
+        if (poly.size < 2) return null
+        if (m <= 0.0) return poly.first()
+        var acc = 0.0
+        for (i in 1 until poly.size) {
+            val seg = poly[i - 1].distanceTo(poly[i])
+            if (seg <= 0.0) continue
+            if (acc + seg >= m) {
+                val f = ((m - acc) / seg).coerceIn(0.0, 1.0)
+                return LatLng(
+                    poly[i - 1].lat + (poly[i].lat - poly[i - 1].lat) * f,
+                    poly[i - 1].lng + (poly[i].lng - poly[i - 1].lng) * f,
+                )
+            }
+            acc += seg
+        }
+        return poly.last()
+    }
+
     private fun restartStaleTimer() {
         staleTimerJob?.cancel()
         staleTimerJob = viewModelScope.launch {
@@ -4285,6 +4368,10 @@ class MapViewModel @Inject constructor(
     }
 
     private fun refreshTransitStops(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
+        // No stop icons during turn-by-turn (user drive 2026-07-14) - the layer hides in the nav
+        // declutter effect, and skipping the fetch here saves the per-viewport Transitous calls a
+        // whole drive would otherwise fire at nav zoom.
+        if (_state.value.navigating) return
         if (zoom < TRANSIT_STOPS_MIN_ZOOM) {
             transitStopsBox = null
             transitStopsJob?.cancel()
@@ -4621,6 +4708,13 @@ class MapViewModel @Inject constructor(
         const val NETWORK_FIX_QUIET_MS = 12_000L // use a NETWORK fix (dot only) when GPS has been quiet
                                                  // this long (OsmAnd's NOT_SWITCH_TO_NETWORK window)
         const val NAV_STARVED_MS = 10_000L // navigating without a guidance-quality fix this long → chip
+        // Tunnel dead reckoning (route-constrained): when the GPS feed stops mid-drive while
+        // solidly on-route, keep advancing along the route at the last speed (decaying) so the
+        // puck, banner, ETA and voice keep working through the outage - Google's behaviour.
+        const val DR_START_MS = 3_500L    // feed gap before synthesis starts (the view's own 3 s blind reckon covers less)
+        const val DR_DECAY_S = 60.0       // the assumed speed decays with this tau (no evidence we're still moving)
+        const val DR_MIN_SPEED = 1.5      // stop synthesizing below this (and never start from a standstill)
+        const val DR_MAX_M = 3_000.0      // hard cap on blind travel - longer than any common tunnel, short enough to bound a wrong guess
         const val SPEED_LIMIT_FORGET_M = 300.0 // drive this far past the last KNOWN limit with only
                                                // untagged snaps → clear the badge (don't show a stale limit)
         const val RESUME_MAX_AGE_MS = 60 * 60 * 1000L // a persisted nav older than this = that drive is long

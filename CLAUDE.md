@@ -1442,7 +1442,9 @@ architecture note.
 - Nav guidance discipline (2026-07-04 audit): prompt/turn-now distances SCALE WITH SPEED in
   `NavEngine` (max(fixed, v×T); `spoken` stores band SLOTS not metres), one prompt per update speaking
   the TRUE distance, silent catch-up past maneuvers >75 m behind, proximity arrival (crow ≤40 m) +
-  no rerouting within 150 m of the destination or while stationary, off-route measured on the
+  no rerouting within 150 m of the destination or while stationary (EXCEPT a FAR deviation:
+  `FAR_OFF_M` 90 m counts at ANY speed since 2026-07-14 - parking-lot creep sits under the 2 m/s
+  moving floor forever and the reroute/redrawn line never came), off-route measured on the
   windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
   latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and
   ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed), and since
@@ -1450,7 +1452,16 @@ architecture note.
   CURRENT course (`RouteGeometry.divergent` under `SAME_COURSE_M` = 250 m), resets `etaScale`
   (NavSession, multiplicative, clamped 0.5-2.5, applied at the publish site only - the engine's
   own value stays pristine; reset to 1.0 on every route swap) so the shown arrival time follows
-  evolving traffic instead of the ratio frozen at the last route fetch. The route line's
+  evolving traffic instead of the ratio frozen at the last route fetch. **TUNNEL DEAD RECKONING
+  (2026-07-14, `MapViewModel.tunnelDeadReckonLoop`):** the engine only advances on fixes, so a
+  GPS outage froze the whole stack; when the guidance feed goes quiet >3.5 s while navigating,
+  on-route, not replaying and not from a standstill, the VM synthesizes 1 Hz fixes ALONG the
+  route at the last speed (decay tau 60 s, floor 1.5 m/s, cap 3 km) through the NORMAL
+  `navSession.onLocation` path - puck/banner/voice keep working, `navStarved` keeps the
+  "Searching for GPS" chip up for honesty, the first real fix re-anchors (route-plausible
+  synthetics pass the outlier gate). Never feeds `tripStore.record` (no fake points in trips).
+  Nav zoom range is 18.0→15.5 (2026-07-14, was 17.3→15.0); GTFS stop icons hide during nav
+  (declutter effect + the VM skips the fetch). The route line's
   driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a traversed-grey full line) - 
   MapLibre bakes line-gradients into a 256-texel texture, so a gradient stop can never render a crisp
   cut and there is no `line-trim-offset` in MapLibre; don't "simplify" it back to a gradient.

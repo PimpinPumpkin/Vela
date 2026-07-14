@@ -1193,6 +1193,24 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the step list behind a pull-up on its ETA bar; Vela keeps the dedicated Steps button instead -
   the bar has three controls and room for them, and the overview button is the part that earns
   its place.)
+- ✅ **A slow deviation still reroutes (2026-07-14, real drive).** Off-route counting is gated off
+  while stationary so red-light multipath can't reroute a parked car, but creeping out of a
+  parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
+  the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
+  beyond anything stationary jitter invents) now counts at any speed.
+- ✅ **Tunnels: navigation keeps estimating (2026-07-14).** When GPS dies mid-drive while solidly
+  on route, Vela now synthesizes position ALONG THE ROUTE at the last speed (decaying over ~a
+  minute, capped at 3 km of blind travel) and feeds it through the normal guidance path - so the
+  arrow keeps moving, the banner keeps counting down, and turns still announce inside the tunnel,
+  Google-style. The "Searching for GPS" chip stays up the whole time so the estimate is honest,
+  and the first real fix re-anchors everything. Never during replays, never off-route, never
+  from a standstill.
+- ✅ **Nav declutter: no bus stops (2026-07-14).** The canonical transit-stop icons and their name
+  labels hide during turn-by-turn (browse furniture, not a driving aid) and the per-viewport stop
+  fetch skips while navigating.
+- ✅ **Closer nav zoom (2026-07-14).** The speed-adaptive follow zoom now runs 18.0 (stopped) down
+  to 15.5 (highway), up from 17.3-15.0 - with the puck riding low, the extra zoom is all road
+  ahead. Pinch still overrides.
 - ✅ **The road ahead owns the nav view (2026-07-14).** The follow camera renders the puck low on
   the screen (~72% down, via a sticky top camera padding reset when nav ends) instead of dead
   centre, so the view shows what's coming instead of splitting evenly with what's behind -

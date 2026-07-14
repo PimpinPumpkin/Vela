@@ -425,6 +425,13 @@ fun VelaMapView(
             (style.getLayer(CONTROLS_LAYER))?.minZoom = minZ
             (style.getLayer(CONTROLS_CLAIM_LAYER))?.minZoom = minZ
         }
+        // Bus-stop icons + their name labels are browse furniture, not a driving aid — hide the
+        // canonical GTFS stops layer during turn-by-turn (user drive 2026-07-14) and restore on
+        // exit. The per-viewport stop FETCH is also skipped while navigating (MapViewModel).
+        runCatching {
+            style.getLayer(TRANSIT_STOPS_LAYER)
+                ?.setProperties(PropertyFactory.visibility(if (navMode) Property.NONE else Property.VISIBLE))
+        }
     }
 
     // Open building-footprint overlays (Microsoft, ODbL — PMTiles): render each region's footprints in a fill
@@ -874,18 +881,21 @@ fun VelaMapView(
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
             // Camera padding is STICKY MapLibre state: the nav view's puck-low offset (top padding,
             // set on every follow frame + the pre-engage case) would otherwise shift the browse
-            // camera's centre for the rest of the session. Bearing + tilt are sticky the same way -
-            // ending a drive left the browse map tilted 55 and heading-up (the free-drive follow
-            // eases them back too, but it doesn't run while a sheet owns the camera).
-            mapRef?.let { m ->
-                m.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
-                m.animateCamera(
-                    CameraUpdateFactory.newCameraPosition(
-                        CameraPosition.Builder().bearing(0.0).tilt(0.0).build(),
-                    ),
-                    450,
-                )
-            }
+            // camera's centre for the rest of the session. Bearing + tilt are sticky the same way.
+            // ONE INSTANT move, not an animate: the 450 ms level-out used to get CANCELLED
+            // mid-flight by the next camera write (a browse recenter, the follow ticker seeding)
+            // and left the map PARTIALLY rotated after a drive - the "still not quite north-up"
+            // report (user 2026-07-14). A snap can't be interrupted; the free-drive follow's
+            // live-read ease still smooths any rotation that arrives later.
+            mapRef?.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .bearing(0.0)
+                        .tilt(0.0)
+                        .padding(0.0, 0.0, 0.0, 0.0)
+                        .build(),
+                ),
+            )
             return@LaunchedEffect
         }
         navPuck.engaged = false
@@ -961,7 +971,7 @@ fun VelaMapView(
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
                     navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtE / 0.6f))
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                        else 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0)
+                        else 18.0 - (navZoomSpeed[0] / 30f) * (18.0 - 15.5) // closer default (user drive 2026-07-14); speed still zooms out
                     if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
                         val cp = cam.cameraPosition
                         camState[0] = cp.target?.latitude ?: pt.lat
@@ -1658,7 +1668,7 @@ fun VelaMapView(
                         val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f)
                         navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
                         val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                            else 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0)
+                            else 18.0 - (navZoomSpeed[0] / 30f) * (18.0 - 15.5) // closer default (user drive 2026-07-14); speed still zooms out
                         map.animateCamera(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
