@@ -65,8 +65,18 @@ class MainActivity : ComponentActivity() {
     /** Vela registers for `geo:` URIs and Google-Maps web links so it can be the
      *  system maps handler; turn whichever we got into a search or a dropped pin. */
     private fun handleIntent(intent: Intent?) {
-        if (intent?.action != Intent.ACTION_VIEW) return
-        val data = intent.data?.toString() ?: return
-        MapLinkParser.parse(data)?.let { vm.openDeepLink(it) }
+        when (intent?.action) {
+            Intent.ACTION_VIEW -> {
+                val data = intent.data?.toString() ?: return
+                MapLinkParser.parse(data)?.let { vm.openDeepLink(it) }
+            }
+            // Share TO Vela: a Google Maps share link imports without the copy-paste dance, a
+            // geo:/maps URL opens like a deep link, plain text (an address someone texted you)
+            // just searches.
+            Intent.ACTION_SEND -> {
+                val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return
+                vm.openSharedText(text)
+            }
+        }
     }
 }
