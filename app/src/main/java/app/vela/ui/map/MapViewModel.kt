@@ -1343,6 +1343,30 @@ class MapViewModel @Inject constructor(
     /** A transit stop's live departure board, from the station's own place page (keyless, anonymous).
      *  Only fired for places whose category reads like a transit stop AND that carry a feature id
      *  (needed for the `?cid=` deep-link); guarded to the still-selected place when it returns. */
+    private var boardRefreshJob: kotlinx.coroutines.Job? = null
+
+    /** Keep a Transitous board fresh while its sheet is open: re-query the open feed every 30 s
+     *  (one small JSON call, same cadence as the countdown clock) and swap the board in place.
+     *  Ends itself the moment the selection changes. Google-page boards are NOT refreshed - that
+     *  path is a full WebView load, and its realtime drift is the price of the fallback. */
+    private fun startBoardRefresh(selId: String, lat: Double, lng: Double) {
+        boardRefreshJob?.cancel()
+        boardRefreshJob = viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(30_000)
+                if (_state.value.selected?.id != selId) return@launch
+                val fresh = withContext(Dispatchers.IO) {
+                    runCatching { app.vela.core.data.transit.Transitous.board(http, lat, lng) }.getOrNull()
+                }
+                if (fresh != null && fresh.lines.isNotEmpty()) {
+                    _state.update { st ->
+                        if (st.selected?.id == selId) st.copy(stopDepartures = fresh) else st
+                    }
+                }
+            }
+        }
+    }
+
     private fun fetchStopDepartures(p: Place) {
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
@@ -1365,6 +1389,7 @@ class MapViewModel @Inject constructor(
                     if (st.selected?.featureId != fid) st
                     else st.copy(stopDepartures = board, stopDeparturesLoading = false)
                 }
+                startBoardRefresh(p.id, p.location.lat, p.location.lng)
                 return@launch
             }
             // FALLBACK: the Google place-page blob (agency-dependent, one route at hubs - but better
@@ -1969,6 +1994,9 @@ class MapViewModel @Inject constructor(
                             stopDeparturesLoading = false,
                         )
                     } else it
+                }
+                if (board != null && board.lines.isNotEmpty()) {
+                    startBoardRefresh(placeholder.id, location.lat, location.lng)
                 }
             }
         }
@@ -4048,6 +4076,7 @@ class MapViewModel @Inject constructor(
                 if (st.selected?.id != placeholder.id) st
                 else st.copy(stopDepartures = board?.takeIf { it.lines.isNotEmpty() }, stopDeparturesLoading = false)
             }
+            if (board != null && board.lines.isNotEmpty()) startBoardRefresh(placeholder.id, stop.lat, stop.lon)
         }
     }
 
