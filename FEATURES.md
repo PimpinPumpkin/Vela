@@ -48,13 +48,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   draw as their own teal line layer, split out of the green foot-trail network. On-street
   painted lanes are not in the keyless tile schema (Overpass follow-up in ROADMAP).
 - ✅ **"1 result" is finally singular (2026-07-11, issue #56).** The results-count bar uses real
-  Android plurals in all 11 locales, with the correct plural categories per language (Russian,
+  Android plurals in all locales, with the correct plural categories per language (Russian,
   Polish and Ukrainian get their one/few/many forms).
 - ✅ **Result filters grew up (2026-07-10).** The rating and price chips open real menus (rating
   tiers 3.5+/4.0+/4.5+ like Google, price levels $ through $$$$) and Sort is a menu of
   Relevance / Rating / Distance, instead of chips that blindly cycled through hidden states. New
   "Wheelchair accessible" filter — the one place attribute Google's response carries per result
-  keyless (parsed off the language-neutral attribute id, so it works in all 11 languages);
+  keyless (parsed off the language-neutral attribute id, so it works in all supported languages);
   deeper attribute facets (vegetarian, reservations, …) only exist in the per-place About data,
   so they can't filter a result list keyless. Cuisine facets are deliberately absent: in a
   search-first app the query is the cuisine filter, and Vela's filters are local to the fetched
@@ -121,7 +121,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   scrape used to tag whatever was on screen while a category tab was selected, page chrome and
   the previous grid's leftover tiles included. It now snapshots the screen before each tab click
   and tags only what appears after the switch, dwells more than twice as long on menu tabs so
-  long menus are walked to the end, and recognizes the menu tab's name in all 11 app languages.
+  long menus are walked to the end, and recognizes the menu tab's name in all supported app languages.
 
 - ✅ **Settings reorganized + navigation UI refresh (2026-07-08, user request).** Settings had grown
   disjointed, so the sections now follow how you actually use the app: Appearance, then Map (traffic,
@@ -146,7 +146,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   order; (3) a new **Settings → Map → 3D buildings** toggle (on by default) controls the z16+
   fill-extrusion layer - extrusion is the most fragment-expensive thing the map draws, so turning it off is
   the one-tap fix on weaker GPUs; the flat footprints stay either way. Localized.
-- ✅ **Highlight transit lines (train + subway, 2026-07-07, user request).** Settings → Map → **Highlight transit lines** draws rail on the map in colour, Google-transit-layer style: heavy rail in purple, subway/light-rail/tram in teal. The data is already in the keyless OpenFreeMap basemap tiles (OpenMapTiles `transportation` source-layer, `class` = rail / transit), so this is just a coloured `LineLayer` over the existing tiles, **no new data source, no network** (`ensureTransit` in `VelaMapView`, width zoom-interpolated, inserted below the first symbol layer so station/road labels stay on top). **ON by default (2026-07-07, user call - rail is useful to see and the data's already in the tiles at no cost)**, persisted (`TransitLayer` holder). Device-verified: a metro's light-rail line draws in teal downtown. Removes cleanly when off; no-op on a non-OpenMapTiles basemap (a MapTiler variant / the demo style). Localized in all 11 languages. *(Station markers are a possible follow-up; this ships the lines.)*
+- ✅ **Highlight transit lines (train + subway, 2026-07-07, user request).** Settings → Map → **Highlight transit lines** draws rail on the map in colour, Google-transit-layer style: heavy rail in purple, subway/light-rail/tram in teal. The data is already in the keyless OpenFreeMap basemap tiles (OpenMapTiles `transportation` source-layer, `class` = rail / transit), so this is just a coloured `LineLayer` over the existing tiles, **no new data source, no network** (`ensureTransit` in `VelaMapView`, width zoom-interpolated, inserted below the first symbol layer so station/road labels stay on top). **ON by default (2026-07-07, user call - rail is useful to see and the data's already in the tiles at no cost)**, persisted (`TransitLayer` holder). Device-verified: a metro's light-rail line draws in teal downtown. Removes cleanly when off; no-op on a non-OpenMapTiles basemap (a MapTiler variant / the demo style). Localized in all supported languages. *(Station markers are a possible follow-up; this ships the lines.)*
 - ✅ **Terrain shading is a toggle, OFF by default (2026-07-12, user request).** Google doesn't shade
   topography unless you ask, and the hillshade muddied Vela's clean flat basemap, so Settings → Map →
   **Terrain shading** now controls it and it starts off. It was never baked into the tiles - the relief
@@ -157,7 +157,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   "All reviews" was an `IconButton` with a 44dp background circle; IconButton forces its own smaller
   box, so the circle overflowed and clipped on the right against the sheet edge. Now a plain sized,
   clipped `Box` draws the circle cleanly.
-- ✅ **Build a route between two points on the map ("Choose on map", 2026-07-07, user request).** You could always route from your GPS location to a tapped place, but not pick an arbitrary START (or stop). The origin/stop picker now has a **Choose on map** row: tapping it leaves the search overlay and shows the live map with a **centre crosshair**, a hint banner, and a **Set start / Set stop** button (Google's "Choose on map"). Move the map under the crosshair and confirm, **or long-press** anywhere to set the point directly (both work). The picked point is reverse-geocoded (falls back to a bare pin) and the route recomputes. So a route between two arbitrary points is: long-press a destination, open Directions, tap From, Choose on map, set the start. `MapPick` enum + `pickOnMap` state; `chooseOriginOnMap`/`chooseStopOnMap`/`confirmMapPick`/`cancelChooseOnMap` in the VM; `onMapLongPress` honors the mode; the directions panel / place sheet / top search bar hide while the crosshair is up, and system-back cancels it. Localized in all 11 languages.
+- ✅ **Build a route between two points on the map ("Choose on map", 2026-07-07, user request).** You could always route from your GPS location to a tapped place, but not pick an arbitrary START (or stop). The origin/stop picker now has a **Choose on map** row: tapping it leaves the search overlay and shows the live map with a **centre crosshair**, a hint banner, and a **Set start / Set stop** button (Google's "Choose on map"). Move the map under the crosshair and confirm, **or long-press** anywhere to set the point directly (both work). The picked point is reverse-geocoded (falls back to a bare pin) and the route recomputes. So a route between two arbitrary points is: long-press a destination, open Directions, tap From, Choose on map, set the start. `MapPick` enum + `pickOnMap` state; `chooseOriginOnMap`/`chooseStopOnMap`/`confirmMapPick`/`cancelChooseOnMap` in the VM; `onMapLongPress` honors the mode; the directions panel / place sheet / top search bar hide while the crosshair is up, and system-back cancels it. Localized in all supported languages.
 - ✅ **Camera stays put when you close a place sheet or exit Settings (2026-07-07, reported bug).** Two separate causes. (1) Closing a place sheet dropped the map's bottom inset to 0, which nulled `lastCameraTarget` in `VelaMapView` and let the fall-through camera branch re-center on the now-stale `state.center` (the tapped place) at the zoomed-out browse level, so the map jumped back to the place and zoomed out after you'd panned away. The inset handler now only re-frames when the sheet APPEARS or grows, never when it closes. (2) `VelaRoot` swapped `MapScreen` out for `SettingsScreen`, disposing the remembered MapLibre `MapView`; returning rebuilt the map from scratch and re-seeded it from the stale center at the default zoom. Settings now draws as an opaque overlay ON TOP of a still-composed `MapScreen`, so the map view (and its camera/zoom) survives the round trip. **Follow-on fix (2026-07-07):** because closing a place no longer moves the camera, the ambient POI dots (loaded for the previous centre, and opening a place pans the camera to it) could end up off-screen with nothing to reload them. `clearSelection` now refreshes the ambient POIs for the current view, so they come back when you close a place.
 - ✅ **Snaps to you on launch, even after a crash relaunch (2026-07-12, reported bug).** A cold launch centres on your location once GPS resolves, but a **crash relaunch** came back **zoomed to the whole US** - the process restart wipes the in-memory `center`, and MapLibre restored its last (wide) camera before the first fix landed, and the gentle `center = center ?: here` didn't override it. Now a **view-layer one-shot** centres on you the moment the map AND the first fix are both ready (it waits for the fix, however long GPS takes) - running in the view, after MapLibre has restored its camera, so it reliably overrides the stale wide view. Skipped once you've taken the wheel (a pan, or a search/route already owns the camera). One-shot per session. *(An earlier VM-side gate couldn't work: `center` is seeded from the last-known fix at init, so it was never null.)*
 - ✅ MapLibre Native vector rendering (Compose-wrapped)
@@ -189,7 +189,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Per-travel-mode "Vibrate on turns" (2026-07-03).** The single haptics toggle became **four** - Driving / Walking / Cycling / Transit - so you can buzz on turns while cycling/walking but stay silent driving. `Haptics.cue(type, approaching, mode)` checks the per-mode pref (`haptics_<mode>`). **Default = on for walk/bike/transit, OFF for driving** (`Haptics.defaultFor`) - in a car you've got the screen + spoken directions, so a buzz every turn is noise; an existing legacy `haptics_on=false` still wins.
 - ✅ **Place-sheet header + actions, Google-style (2026-07-03, settled after a couple of iterations).** **Header:** name + **Save (★) · Share · ⋮ · ✕** as compact 40dp icon buttons; the name is `titleLarge` (22sp) with `maxLines=2`, so even "Starbucks Coffee Company" fits two clean lines beside the icons without ellipsising. **Action pills:** a highlighted **Directions** + short **Call / Website** (`ActionPill`, horizontally-scrollable as a safety) - the *fast path*. **Phone number + website live as their own tappable rows below the address** (showing "(425) 332-6175" and the domain), exactly where Google puts the detail. The collapsed **Hours** row no longer lets a long holiday value ("5 AM–1 AM · 4th of July (Observed)") squeeze the label into "Ho/urs" - fixed-width label, summary stripped to just the hours (`substringBefore("·")`) + ellipsised. Review-loading copy is the calm "Gathering reviews…". *(Iteration history: tried Save/Share in the header + a full-width Directions button, then all-in-scrollable-pills with the number in the Call pill - landed here: Save/Share on top like the previous build the user liked, short action pills, contact detail as rows.)*
 - ✅ **Search targets the panned viewport, not GPS (2026-07-03).** Running a search now biases to the **map centre you're looking at** (`mapCenter ?: myLocation`), Google-style - so panning to another neighbourhood/city then searching returns results *there*, not back at your GPS location. Autocomplete suggestions do the same. (The "Search this area" button after a search is unchanged.)
-- ✅ **A search that finds nothing says so (2026-07-12).** A successful-but-empty online search used to set the result list to empty AND clear the status, so the screen just went blank with no feedback (the "POI list isn't showing up" report). Now an empty online result first falls back to the **on-device OSM index** (a small local place Google may miss can still surface), and only if that's empty too shows a plain **"No results for X"** message instead of a blank screen. The offline fallback is now one shared path (`offlineSearch`) used by both the empty-result and the network-failure branches. Localized in all 11 languages.
+- ✅ **A search that finds nothing says so (2026-07-12).** A successful-but-empty online search used to set the result list to empty AND clear the status, so the screen just went blank with no feedback (the "POI list isn't showing up" report). Now an empty online result first falls back to the **on-device OSM index** (a small local place Google may miss can still surface), and only if that's empty too shows a plain **"No results for X"** message instead of a blank screen. The offline fallback is now one shared path (`offlineSearch`) used by both the empty-result and the network-failure branches. Localized in all supported languages.
 - ✅ **Faster POI loading via HTTP concurrency (2026-07-03).** The ambient-POI load fires ~13 parallel `google.com` category queries, but OkHttp's default **5-requests-per-host** serialised them into ~3 rounds - on a slow connection that's the "POIs take ~10 s to load" report (3 rounds × a slow round). Raised `Dispatcher.maxRequestsPerHost` to 24 so they all fire in one round, and added a 12 s `callTimeout` so one hung scrape can't stall the whole fan-out. (Device-measured ~2 s per fetch on wifi - that ~2 s is Google's own keyless response latency, the floor; the fix removes the ×3 serialisation penalty that dominates on slower links. Revisits are already instant via the ambient cache.) **Multi-area LRU cache (2026-07-03):** the single-slot ambient cache became a **16-entry LRU with a 30-min TTL** - revisiting *any* recently-viewed area (not just the last one) repaints its POIs instantly instead of re-waiting the ~2 s, and the TTL stops a since-closed shop lingering all session. *(A multi-agent exploration confirmed the honest ceiling: ~2 s per BRAND-NEW area is Google's own keyless response latency and can't be cut without a different data pipeline; the real wins are HTTP concurrency + this cache + not blanking the map. Progressive streaming / single-broad-query / vector-tile POI decoding were explored and rejected as dead ends.)*
 - ✅ **POI dots reappear instantly on zoom-back (2026-07-03).** Zooming out cleared the ambient dots (they're off below z14) and zooming back in showed a beat of small OSM icons before the Google POIs popped in bigger. Now the last fetch is **cached** (`ambientCache`) and repainted immediately (re-centred + view-filtered) when you return to a nearby area, so there's no empty→OSM-flash→ambient "small then pop" - the network fetch then refines it. The settle debounce also dropped 500 → 300 ms for snappier first paint.
 - ✅ **Voice settings decluttered + default speed 0.8× (2026-07-03).** Settings → Voice now shows just the essentials (pick voice · Test voice · System voice settings) with the rest - the playground, the speed stepper, the 900-voice variant picker - tucked behind a collapsed **"Advanced voice options"** header (most people never touch them). The default spoken-directions speed is **0.8×** (compiled + calibration v13; briefly 0.72 on 2026-07-06, reverted 2026-07-07), the user’s preferred cadence. And the review-loading copy that read "…this can take half a minute" is now a calm "**Gathering reviews…**" / "Reviews · N of ~M".
@@ -243,21 +243,21 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   persist (`ShowReviews` / `LoadPhotos` holders, same shape as the other reactive settings) and gate BOTH the
   fetch in the ViewModel and the render in the place sheet, so off means no traffic, not just hidden UI.
   Device-verified: with both off, an Applebee's sheet opens with rating, hours, phone and attributes but no
-  photos and no review section. Localized in all 11 languages.
+  photos and no review section. Localized in all supported languages.
 - ✅ **"Hide adult categories" toggle (2026-07-08).** Settings → Map, **off by default**. On = drops places whose
   Google CATEGORY is adult / nightlife / alcohol / gambling / smoking (bars, clubs, casinos, liquor stores,
   hookah, cannabis, adult, …) from **both** search results and the ambient map. Matching is on the free-text
   category **only, never the name** (a place categorised "Restaurant" is always kept), and it's PRECISE - food
   "…bar" categories (sushi/juice/coffee/salad bar) stay. Because Google returns the category **localized**
-  (`hl=<lang>`), the keyword list carries the equivalent terms for all 11 UI languages, so the filter works in
+  (`hl=<lang>`), the keyword list carries the equivalent terms for all supported UI languages, so the filter works in
   every locale, not just English. Pure `:core` `CategoryFilter` (unit-tested) applied at the data-source seam
   (`GoogleMapsDataSource.search` + `nearbyPlaces`); gated by a `:core`-visible `enabled` flag the `HideAdult`
-  holder flips, so `:core` needn't depend on the app's reactive state. Localized in all 11 languages.
+  holder flips, so `:core` needn't depend on the app's reactive state. Localized in all supported languages.
 - ✅ **"Hide website & external links" toggle (2026-07-08).** Settings → Map, **off by default**. On =
   place pages don't show the **Website** pill/row, the **Street View** pano, or the **Book / Reserve /
   Order** action, so no place-detail control launches an arbitrary external site. Internal actions
   (dial, directions, share a `geo:` pin) are unaffected. Plain `HideExternalLinks` holder
-  (`ui/PlaceContent.kt`, same shape as `ShowReviews`/`LoadPhotos`). Localized in all 11 languages.
+  (`ui/PlaceContent.kt`, same shape as `ShowReviews`/`LoadPhotos`). Localized in all supported languages.
   (Adapted from a community PR; the PR's separate "restricted" build flavor was not taken.)
 - ✅ Place search - name, category, **full address (street, city, state, ZIP)**, rating, review count, coordinates
 - ✅ Searching a **specific/far address** resolves to that single geocoded location (handles the response's single-result shape, not just the POI list - fixes the old "calibration error" on far addresses); genuinely-empty searches now show "no results" instead of an error
@@ -292,7 +292,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   restarts) and the button turns teal while one is set. The map draws a teal "P" pin at the spot;
   tapping the pin (or the teal button) opens a "Parked car" place sheet with a car glyph beside
   the name, the normal Directions action (defaults to WALK for a parking spot) and a Clear
-  parking pill. The camera frames the spot when opened from afar. All strings in 11 locales.
+  parking pill. The camera frames the spot when opened from afar. All strings in all locales.
   *(v1 was a long-press on the locate FAB + a chip - reverted: undiscoverable, and Compose's
   FloatingActionButton consumes the down so outer long-press detectors never fire.)*
   **Re-parking hub (2026-07-11, user - "setting parking again when you already have a spot is a
@@ -323,7 +323,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **On-device voice search (2026-07-10).** Voice search now works with **no other app at all**:
   the mic is always in the search bar, and with nothing installed tapping it offers the one-time 58 MB Vela voice download. Once it's there, tapping the mic records and
   transcribes **entirely on your phone** with a bundled Whisper model, then runs the text as a
-  search. Nothing is uploaded, no account, and it covers all 11 of Vela's languages. A listening
+  search. Nothing is uploaded, no account, and it covers all of Vela's languages. A listening
   sheet shows the mic pulsing with your voice; it stops on its own after a beat of silence (or tap
   Done), and the microphone permission is asked only the first time you tap the mic. When both Vela voice and a
   voice-input app are present, a Settings picker chooses which to use (Vela voice by default). Device-verified end to end: download, install, the mic appears, the permission prompt,
@@ -559,7 +559,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Satellite view + a layers panel (2026-07-13/14)** - a map-corner Layers button (optional, Settings toggle) opens a Google-style panel: **Satellite view** (open Esri World Imagery tiles, keyless, attribution shown with the area's **capture year** under it), plus the live traffic, transit-lines and terrain overlays in one place. Satellite mode is a real hybrid: translucent **ghost roads** keep the network readable under tree cover (freeways tinted yellow like the Google app), every map label flips to **white with a black halo**, and the POI teardrops go white so icons read over imagery. Overlays layer correctly above the photo; toggling back restores the normal palette cleanly.
 - ✅ **Numbered stop pins on the map (2026-07-14)** - a trip's intermediate stops draw as teal pins numbered in visit order while the chooser is open or the drive is running; reordering stops in the editor re-numbers the pins immediately.
 - ✅ **Multi-stop directions (waypoints)** (2026-07-01) - an **"Add stop"** row between From and To (Google-style) opens the same place picker; the pick becomes an intermediate stop and the route recomputes **straight through it**, with each stop **removable** (×). Routes OSRM through `origin → stops… → destination` (`routeVia`, which filters the spurious per-via arrive/depart into one continuous trip) and overlays Google's live in-traffic ETA ratio; a waypointed trip is a **single route** (no alternates). Stops reverse with **⇄**. Device-verified (Davis→Sacramento: adding a mall stop rerouted the trip a few minutes longer via a through-path, remove reverted to the direct route + alternates). *Stops editor 2026-07-08 (user: the inline arrow/X cram was ambiguous):* the panel header now shows ONE compact tappable summary of the stops; tapping it (or the pencil) opens a **dedicated stops editor sheet** (`StopsEditorSheet`) - origin at top, each stop a row with a **drag handle** (drag past a neighbour's midpoint to swap), numbered dot, and X, destination pinned last, Add stop + Done under the list. Edits are local until **Done** applies them in ONE reroute (`applyStops`); back/X discards. Under D-pad the rows show up/down arrows instead of the (undraggable-by-key) handle. *Glyph grammar (2026-07-08):* the origin wears a **location-blue pin** when it's your current position (the non-verbal "this is you"), the destination a **checkered flag** - in the directions header AND the editor; header rows share a fixed-width icon rail so the glyphs align, and the stop summary shows the first stop plus a **+N** badge.
-- ✅ **Long-press to route through a point (2026-07-12).** While a route is being planned (the directions panel is up), **long-pressing any spot on the map adds it as a via-stop** and the route reroutes straight through it, with a "Stop added" confirmation. It's the quick, Google-like way to grab an arbitrary point - no search, no crosshair - and it's the practical way to steer a route **around** an area (a construction zone, a Flock-camera stretch): Google's keyless directions and OSRM can't be told "avoid this region", but a hand-placed waypoint forces the detour. The stop sits at the exact point pressed (the reverse-geocode only names it), reuses the existing multi-stop pipeline (removable/reorderable in the stops editor), and only fires while planning so a normal long-press still drops an inspect pin. **Device-verified** (a long-press mid-route added a trailhead as a stop and the ETA/line rerouted through it). Localized in all 11 languages.
+- ✅ **Long-press to route through a point (2026-07-12).** While a route is being planned (the directions panel is up), **long-pressing any spot on the map adds it as a via-stop** and the route reroutes straight through it, with a "Stop added" confirmation. It's the quick, Google-like way to grab an arbitrary point - no search, no crosshair - and it's the practical way to steer a route **around** an area (a construction zone, a Flock-camera stretch): Google's keyless directions and OSRM can't be told "avoid this region", but a hand-placed waypoint forces the detour. The stop sits at the exact point pressed (the reverse-geocode only names it), reuses the existing multi-stop pipeline (removable/reorderable in the stops editor), and only fires while planning so a normal long-press still drops an inspect pin. **Device-verified** (a long-press mid-route added a trailhead as a stop and the ETA/line rerouted through it). Localized in all supported languages.
 - ✅ **Multi-stop follow-ups** (2026-07-01): (1) **per-stop arrival cue** - nav announces "You've reached &lt;stop&gt;" as you pass each waypoint (`NavEngine.stopMarks` projects each stop onto the route line → an along-route metre "mark"; `NavSession` fires the voice cue in order as progress passes it - unit-tested, `NavEngine` untouched); (2) **reroute-through-remaining** - an off-route reroute (and the faster-route recheck) now route through the stops you **haven't reached yet**, instead of straight to the final destination (which used to silently drop them); the reaches-dest nav-safety guards are unchanged (the route still ends at the same dest). (3) **Reorder** - up/down arrows on each stop row (with 2+ stops) reorder them and re-route (`moveStop`).
 - ✅ **Depart / arrive time (+ date, + Last available)** - one **Leave now / Depart at / Arrive by** chooser at the top of the directions panel (a **Last available** chip too in transit), applying to all modes, with **both a time field AND a date field** (plan any upcoming day, Google-style). Picking a time **re-fetches transit** for that moment: Google's board is time-dependent, so `WebDirectionsFetcher` inserts Google's time block into the `/maps/dir/…` data param - `!4m6!4m5!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>!3e3` (the `!4m` wrappers are *descendant* counts, verified against a real Google transit-with-time URL; an earlier `!4m8!4m7` guess had the wrong counts and Google silently fell back to "now"). For drive it also shows the honest arrival/leave **window** from Google's own typical best→worst spread (`summary[10][4]` → `Route.typicalRangeSeconds`, e.g. "arrive 6:08–6:27 PM · in typical traffic"). Per-*minute* future-traffic prediction on drive stays login/Android-app-only, so drive surfaces the spread Google itself plans with rather than a false-precision single time
 - ✅ **Search along route** - with a trip planned, the directions panel shows **Gas / Food / Coffee / Groceries** chips; tapping one searches near the route and shows only the results **within ~3 km of the route line, ordered start → destination** (so you find stops actually on the way). The route stays drawn. *Overhauled 2026-07-08:* each result now shows its **distance along the trip** (metres from the route start to where it sits), not the old crow-flies distance from the route midpoint (two stations at opposite ends both read "5.9 mi"); **tapping a result adds it as a STOP on the trip** and returns to the directions panel with the destination intact (it used to open the place's own sheet, whose Directions button silently replaced the whole trip); picking the destination itself or closing the results (X) just returns to the panel. The trip's destination is stashed in `alongRouteDest` while browsing. **Works DURING nav too (2026-07-13):** a search button floats on the nav map's right edge (with the volume toggle - the bottom bar keeps just ETA, Steps and End) and opens the chips PLUS a free-text field for arbitrary searches above the bar; a pick searches the remaining route, the results list takes the bottom slot (BACK peels it, never ends the drive), and tapping a result inserts it as the NEXT stop on the live drive (`NavSession.addStop` replans through it, voice says rerouting, remaining stops keep their order).
@@ -706,7 +706,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   restored** - OSRM's TWO-STEP roundabout (`roundabout` enter + `exit roundabout`/`exit rotary` exit, the
   latter carrying `maneuver.exit`) had the exit step unmodelled → it fell to a bland "Continue onto X" ("it
   was considered the same road"). `osrmType` now maps the exit types to EXIT_ROUNDABOUT and `NavStrings.phrase`
-  (11 languages) phrases the exit number ("take exit N onto …"). (3) **fastest route reliably leads the
+  (all supported languages) phrases the exit number ("take exit N onto …"). (3) **fastest route reliably leads the
   picker** - the sort key put traffic-inflated Google alts on a different axis than un-inflated free-flow
   OSRM routes; now every route is normalised onto one in-traffic axis (`?: durationSeconds * gRatio`) with a
   provisional/named tie-break. *Second hole closed 2026-07-08:* naming a picked (or top-sorted) provisional
@@ -796,7 +796,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   TRUE distance ("In 50 meters, turn left" - it used to fire both bands back-to-back announcing the literal
   thresholds). After a GPS gap, maneuvers passed in the tunnel advance SILENTLY (each used to replay as an
   at-the-turn command + firm haptic, one per second). Arrival gets an approach cue ("In 400 feet, your
-  destination will be ahead" - new `NavStrings.destinationAhead`, 11 languages) and fires on PROXIMITY too
+  destination will be ahead" - new `NavStrings.destinationAhead`, all supported languages) and fires on PROXIMITY too
   (crow ≤40 m of the snapped endpoint, or stationary within 50 m remaining - parking short used to never
   arrive, then "Rerouting" fired in the lot). Lane arrows + the compound "then" row gate on a speed-scaled
   approach distance (~30 s; the "then" row used to sit on the banner for 12 km when a merge followed a far
@@ -827,7 +827,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   abandon the other mid-sentence (music un-ducked OVER "Turn right onto Main St"), interrupts stranded the
   count (no `onStop` override), and there was no focus-change listener at all (guidance talked over
   incoming calls; it now stops speaking when a call takes focus). Session lines ("Rerouting", the
-  faster-route offer, the stops notice) now speak in all 11 languages via `NavStrings`.
+  faster-route offer, the stops notice) now speak in all supported languages via `NavStrings`.
   **Steadier ducking (2026-07-04, user: "not ducking enough, and it didn't reliably duck every time"):** the
   root cause was **flapping** - focus was abandoned the instant each prompt ended, so the driver's music
   snapped back to full volume between (and within) closely-spaced prompts, reading as weak/unreliable
@@ -843,7 +843,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   hold is what actually makes it read as ducked.
   **Lifecycle/UX:** arrival tears the foreground service down (dismissable notification; the location-typed
   FGS + ongoing notification + 1 Hz GPS used to run FOREVER if you pocketed the phone without tapping
-  Done), and a "Searching for GPS…" chip (11 languages) shows during nav when fixes stop - the banner used
+  Done), and a "Searching for GPS…" chip (all supported languages) shows during nav when fixes stop - the banner used
   to freeze with a confident blue arrow and zero indication. `RouteGeometry.reposition` also placed every
   maneuver one full step late (off-by-one vs the placeManeuvers convention) - fixed. Unit-tested
   (`NavAuditRegressionTest`: speed-scaled prompts, single-prompt short steps, silent catch-up, proximity
@@ -934,7 +934,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   differs from the timetable) the countdown reads **green** with a **Live** dot, and the
   boarding leg's **"N min late/early"** is surfaced right in the header (it was only in the
   drill-down before). Pure render off already-parsed fields (`TransitItinerary.departureEpochSec`,
-  `TransitStep.delayText`), no extra fetch; localized in all 11 languages.
+  `TransitStep.delayText`), no extra fetch; localized in all supported languages.
 - ✅ **Canonical transit stops on the map (2026-07-13, Transitous, device-verified).** At street
   zoom the bus stops you see are the agencies' own GTFS stop positions from Transitous (`map/stops`
   per viewport, area-cached), drawn as a blue bus badge with the official stop name - one icon per
@@ -968,7 +968,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   business. **Device-verified: BART Powell St rendered 8 lines** (Daly City / Richmond / SFO-Millbrae
   / Antioch / SFO) with their next departures. **Coverage is agency-dependent** - major systems that
   feed Google real-time carry the board (NYC MTA, SF BART confirmed); a place with none shows nothing
-  (a small light-rail agency like SacRT was confirmed empty, correctly). Localized in all 11 languages.
+  (a small light-rail agency like SacRT was confirmed empty, correctly). Localized in all supported languages.
 - ✅ **Tap-through route stop timeline (2026-07-12, keyless + device-verified).** Every route on the
   departure board is tappable (a **`>` chevron** hints it): tapping one opens a full-screen **stop
   timeline** for that route - the **board stop**, **every intermediate stop with its call time**, and
@@ -983,7 +983,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   to a quiet "Route details unavailable". **Device-verified: BART Powell St -> Yellow-S to SFO showed
   all 11 stops (Powell -> Civic Center -> 16th/24th St Mission -> Glen/Balboa Park -> Daly City ->
   Colma -> South SF -> San Bruno -> SFO) with times 12:23-12:54 PM, and tapping 16th St Mission opened
-  that stop's own board.** Localized (`route_detail_unavailable`) in all 11 languages.
+  that stop's own board.** Localized (`route_detail_unavailable`) in all supported languages.
 - ✅ Transit **leg drill-down with full stop detail** - tap an itinerary to expand
   its ordered legs. A ride leg shows Google's whole layout: the **line pill + "towards …"
   headsign**, the **board stop** (name + agency **Stop ID** + real-time board time, with
@@ -1007,7 +1007,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   drill-down), the remaining legs as a timeline, and **Back / Next** controls. It **advances
   automatically** as GPS reaches each leg's end (board/alight stop or the walk destination) and
   **speaks each instruction** ("Take Route 9 towards Aventura, get off at …", "Walk 7 min",
-  "You have arrived") through the selected voice, localized in all 11 languages. The auto-advance is
+  "You have arrived") through the selected voice, localized in all supported languages. The auto-advance is
   **latched** (`MapViewModel`, `TransitNavState`): a leg must first be ARMED by being >90 m from its
   end, then advances on entering the 40 m radius - so a transfer hub with two leg-ends close together
   can't cascade and a short final walk can't fire a premature "arrived". Back exits guidance.
@@ -1287,7 +1287,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **Upgrade nudge for older saved areas (2026-07-07).** Because the address index is built at download time,
   areas saved before this feature have tiles + POIs but no address data. Settings → Offline shows a one-tap
   "Update saved areas" card when you have saved areas but the index is empty; it re-fetches the address/street
-  data for every saved area so you don't have to re-download each one by hand. Localized in all 11 languages.
+  data for every saved area so you don't have to re-download each one by hand. Localized in all supported languages.
 - ✅ **Whole-region offline place packs - Organic-Maps-style state-wide search (2026-07-07, device-verified).**
   The gap this closes: Organic Maps finds "pel meni" in Fremont from anywhere in Washington offline, because its
   download carries the whole state's POI index; Vela's offline search only knew the small viewport areas you'd
@@ -1306,7 +1306,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Pel'Meni Dumpling Tzar · 3518 Fremont Place North (plus the Capitol Hill and Bellingham ones),
   ranked by relevance then distance, and its place sheet opened with address/hours/phone/website - all OSM,
   no signal. Typed-address geocoding also gains the whole state (the pack's addr/street tables feed the same
-  layered geocoder). Localized in all 11 languages.
+  layered geocoder). Localized in all supported languages.
 - ✅ **Place packs stay fresh: monthly rebuilds, an Update button, and small delta downloads (2026-07-07,
   device-verified).** OSM never stops changing, so the packs can't be a one-time bake. Three pieces. First,
   `poi-packs.yml` runs on a monthly cron and rebuilds every published region from the current Geofabrik
@@ -1438,7 +1438,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 - Destination side on arrival: the approach banner and the spoken arrival say "Your
   destination is on the left/right" when the router knows it (OSRM arrive modifier), in
-  all 11 languages.
+  all supported languages.
 - Sticky travel mode: the last-used mode is the default for the next directions session
   (parked-car routing still forces Walk).
 - Zoomed-out searches cover the visible viewport instead of a fixed ~25 km window.
@@ -1463,3 +1463,9 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the old code on-device). RTL is automatic: the app already declares `android:supportsRtl` and
   re-creates the Activity with a Hebrew config, so Compose's `LayoutDirection` flips (a whole-app scan
   found no hardcoded left/right, `Absolute` arrangements or forced `LayoutDirection`). Unit-tested.
+- ✅ **Community translations via Weblate (2026-07-14).** UI-string translation moved to hosted
+  Weblate so anyone can translate or fix strings in a web editor, no git required - see
+  [docs/TRANSLATING.md](docs/TRANSLATING.md) for the project link, the rules (placeholders, CLDR
+  plural categories, no em dashes) and the maintainer component config. New strings are added to
+  the English base only; Weblate opens PRs to fill the locales, and untranslated strings fall
+  back to English in the meantime.
