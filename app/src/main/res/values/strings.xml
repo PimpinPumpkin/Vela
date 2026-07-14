@@ -88,7 +88,6 @@
     <string name="settings_flock_route_alert" translatable="false">Avoid surveillance cameras</string>
     <string name="settings_flock_route_alert_hint" translatable="false">Counts the license-plate reader (Flock) cameras on each route and auto-picks a lower-camera one when it costs only a little longer. It never sends you far out of the way, so where cameras are unavoidable it just shows the counts and leaves the choice to you. Long-press the map to route through a point yourself. Off by default.</string>
     <string name="dir_cameras_on_route" translatable="false">%1$d cameras on this route</string> <!-- format -->
-    <string name="mapvm_flock_avoided" translatable="false">Rerouted to avoid cameras</string>
 
     <string name="settings_read_all_reviews">“Read all reviews” button</string>
     <string name="settings_read_all_reviews_hint">Adds a “Read all reviews” button that opens Google\'s full reviews page inside the app, with every review. Off = Vela\'s own review list only.</string>
