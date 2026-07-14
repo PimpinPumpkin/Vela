@@ -1263,9 +1263,9 @@ architecture note.
   "lef" instead of "left". A `;` is appended to any fragment ending in a letter/digit (the same
   semicolon-contour finding the user A/B'd on "You have arrived;"); punctuation is language-neutral, so
   it's safe for every Piper voice. Spoken text also runs through
-  `SpeechText.spokenNumbers` in `EnNavStrings.expandForSpeech` - 3-digit **street ordinals** ("128th" →
+  `SpeechText.spokenNumbers` in `EnNavStrings.expandForSpeech` - 3-digit **street ordinals** ("120th" →
   "one twenty eighth", **space not hyphen** - the hyphenated compound got a reduced/flapped "-ty" from
-  the neural voice, "5th" came out sounding like "one third second" on a real drive, 2026-07-07) are
+  the neural voice, "152nd" came out sounding like "one fifth second" in testing) are
   pre-expanded so the neural G2P doesn't mangle them into "one, hundred
   and 28th" (only 100–999; 1–2 digit + 4-digit+ are left for espeak). And `NavEngine` **does not
   announce the DEPART maneuver** - `NavSession.start` speaks it once ("Starting navigation. Head
@@ -1370,7 +1370,7 @@ architecture note.
   are on). directions() tries the on-device avoid route FIRST when a toggle is on; a graph
   without the profiles returns EMPTY (never silently routes through a toll) and the online
   chain falls back to a NORMAL route. **LIVE since 2026-07-11: all 135 regions are rebaked as the v2 generation**
-  (`<id>-v2.zip` + `routing-manifest-v2.json` beside the untouched v1 assets on the
+  (`<id>-v2.zip` + `routing-manifest-v2.json` beside the v1 assets (v1 was deleted 2026-07-13 after the cutover; v2 is the only live generation) on the
   `routing-graphs` release - the workflow's `variant` input publishes parallel generations)
   and the app's `ROUTING_MANIFEST_URL` default points at the v2 manifest; rollback = revert
   that one build.gradle.kts line. Graphs installed before the cutover keep working (the
@@ -1810,11 +1810,11 @@ architecture note.
   **⚠️ LAYER ORDER (2026-07-06, device-verified fix):** the addr layers are inserted **BELOW `vela-controls`**
   (→ below the ambient POI icons), NOT `addLayer`/top - MapLibre places symbols TOPMOST-FIRST, so numbers
   stacked above the ambient layer grabbed collision boxes before the business icons placed and **EVICTED them
-  at z16+** (the "Applebee's icon disappears on zoom-in" bug: reproduced on the 5710 building - big
+  at z16+** (the "Applebee's icon disappears on zoom-in" bug: reproduced on a big storefront building -
   prominence-scaled icons collide the most; small neighbours survived). Below the icons, numbers place last
   and yield - Google's behaviour. Also: while the overlay is active the basemap `vela-housenumber` layer is
   hidden (visibility NONE in the same LaunchedEffect) - both drew the SAME address at a slight offset
-  (device-seen doubled "5611"/"5607"). **NOT** the
+  (device-seen: the same number doubled at a slight offset). **NOT** the
   building overlay (different data + a Symbol not Fill layer + its own release/manifest). CI:
   `.github/workflows/address-overlays.yml` (clone of building-overlays), catalog `tools/address-regions.json`.
   **The house numbers fill the exact gap the basemap `vela-housenumber` (OSM `addr:housenumber`) leaves in new
@@ -1936,7 +1936,7 @@ architecture note.
   `TransitStopCache` persists `sib` so offline redraws keep the merge. `boardFor` (badge tap) and
   `board(lat,lng)` (proximity/Google-place path) merge stoptimes across representative + siblings,
   and `buildBoard`'s (route, headsign) grouping naturally shows both directions as separate rows.
-  Direction-suffixed names (Swift-style "NB Station"/"SB Station") differ as strings so they never
+  Direction-suffixed names (BRT-style "NB Station"/"SB Station") differ as strings so they never
   merge; geometry-based direction labels were rejected because the feed has no bearing data and
   street diagonals make guessing unreliable. Transit directions are untouched - they walk to the
   itinerary's exact boarding coordinate. Unit-tested (pair -> midpoint + sibling; same name across
