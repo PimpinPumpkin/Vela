@@ -68,6 +68,10 @@ data class Calibration(
     // Alternation terms for the transit-category gate (each becomes part of one case-insensitive
     // regex; plain words or small regex fragments both work).
     val transitCategoryWords: List<String>? = null,
+    // Categories the transit gate must REJECT even when a word above matches - "Gas station"
+    // contains "station", and boards now fetch by proximity, so a fuel stop next to a bus stop
+    // showed that stop's departures (device report 2026-07-13). Multilingual like the gate itself.
+    val transitExcludeWords: List<String>? = null,
 ) {
     companion object {
         // libritts_r speaker 14 — picked by ear as the clearest default (2026-07-02).

@@ -3421,8 +3421,9 @@ private fun SpeedWidget(
     val overColor = Color(0xFFE8514A)
     val signInk = Color(0xFF202124)
 
-    // ONE box: the posted limit as a regulatory sign on top (US "SPEED LIMIT" square / metric red
-    // roundel) when known, the current speed always below. Reads clean as just a speed with no limit.
+    // ONE box, Google's layout: the regulatory sign (US "SPEED LIMIT" square / metric red roundel)
+    // sits BESIDE the current speed (stacking them read as two widgets, user 2026-07-13). With no
+    // posted limit the sign just isn't there and the same box shows only the speed.
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = SheetPalette.bg(dark),
@@ -3430,10 +3431,10 @@ private fun SpeedWidget(
         shadowElevation = 4.dp,
         modifier = modifier.widthIn(min = 58.dp),
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(5.dp),
-            modifier = Modifier.padding(6.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
         ) {
             if (limitDisp != null) {
                 if (imperial) {
@@ -3464,8 +3465,10 @@ private fun SpeedWidget(
                     }
                 }
             }
-            Text("$value", fontSize = 25.sp, fontWeight = FontWeight.Bold, lineHeight = 27.sp, color = if (over) overColor else SheetPalette.ink(dark))
-            Text(unit, fontSize = 9.sp, color = SheetPalette.dim(dark), lineHeight = 10.sp)
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("$value", fontSize = 25.sp, fontWeight = FontWeight.Bold, lineHeight = 27.sp, color = if (over) overColor else SheetPalette.ink(dark))
+                Text(unit, fontSize = 9.sp, color = SheetPalette.dim(dark), lineHeight = 10.sp)
+            }
         }
     }
 }
