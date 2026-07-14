@@ -552,14 +552,20 @@ fun VelaMapView(
                         // cold-fetches a tile clamped 2+ levels below the camera - a layer minZoom of 19
                         // meant a cold source (fresh launch, zoom straight in) fetched nothing, silently,
                         // until some lower-zoom browse made tiles resident. So the layer arms at 17
-                        // (in-zoom-range is what drives fetching) and the 50 ft UX gate lives in
-                        // textOpacity instead (0 below 19; 17.5 still carpeted whole blocks, user 2026-07-13).
+                        // (in-zoom-range is what drives fetching) and the 50 ft UX gate lives in the
+                        // TEXT FIELD: empty below z19, the number at 19+. Empty text means no symbols
+                        // exist at 17-18.9 at all - an opacity-0 gate was tried first and worked, but
+                        // it left every number doing invisible placement work each frame in the densest
+                        // band on the map (19 still = the ~50 ft view; 17.5 carpeted whole blocks,
+                        // user 2026-07-13).
                         setMinZoom(17f)
                         setProperties(
-                            PropertyFactory.textOpacity(
-                                Expression.step(Expression.zoom(), Expression.literal(0f), Expression.stop(19f, 1f)),
+                            PropertyFactory.textField(
+                                Expression.step(
+                                    Expression.zoom(), Expression.literal(""),
+                                    Expression.stop(19f, Expression.get("number")),
+                                ),
                             ),
-                            PropertyFactory.textField(Expression.get("number")),
                             PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                             PropertyFactory.textSize(10f),
                             PropertyFactory.textColor(txt),
