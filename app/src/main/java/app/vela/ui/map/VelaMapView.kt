@@ -1529,8 +1529,13 @@ fun VelaMapView(
                 }
             }
 
-            routePolyline.size >= 2 && routePolyline.hashCode() != lastFittedRouteKey -> {
-                lastFittedRouteKey = routePolyline.hashCode()
+            // Keyed on the insets too, not just the geometry: minimizing the chooser shrinks the
+            // bottom inset, and re-running the fit then re-frames the route CLOSER over the freed
+            // map (user 2026-07-14); the top-card measurement landing a frame late corrects the
+            // same way instead of leaving a fit that ignored it.
+            routePolyline.size >= 2 &&
+                (routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedRouteKey -> {
+                lastFittedRouteKey = routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
                 val builder = MLLatLngBounds.Builder()
                 routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
                 // Reserve room at the bottom for the directions panel AND at the top for the

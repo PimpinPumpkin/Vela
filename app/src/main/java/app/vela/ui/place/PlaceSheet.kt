@@ -1313,6 +1313,7 @@ fun DirectionsPanel(
     onStartTransit: (TransitItinerary) -> Unit = {},
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
+    onCollapsedChange: (Boolean) -> Unit = {}, // MapScreen shrinks the route-fit camera inset while minimized
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -1334,6 +1335,7 @@ fun DirectionsPanel(
     val dirDensity = LocalDensity.current
     val dirBodyScroll = rememberScrollState()
     LaunchedEffect(collapsed.value) {
+        onCollapsedChange(collapsed.value)
         val target = if (collapsed.value) 0f else bodyMax
         // Skip when a drag-release settle already targets this end - restarting would zero
         // the coast velocity mid-glide (same guard as the place sheet's detent effect).
