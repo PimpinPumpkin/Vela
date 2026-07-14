@@ -230,7 +230,9 @@ Defaults that make the safe path the easy one:
   the wire size in transient heap and OOM'd mid-read; it's what a Flock `out body 4000` fetch per pan
   did - fixed in `OverpassAlprCameras`; `OverpassTrafficSignals` (limit 6000) is the same pattern and a
   pending follow-up). And **NEVER lower a per-viewport Overpass fetch's min-zoom** without shrinking the
-  box - dropping `FLOCK_MIN_ZOOM` 13->11 made the box ~16x bigger and was the tipping point.
+  box - dropping `FLOCK_MIN_ZOOM` 13->11 made the box ~16x bigger and was the tipping point. (The z11 gate
+  returned 2026-07-13 ONLY because the bundled on-device dataset answers the fetch with no network and the
+  Overpass fallback stream-parses - the rule stands for any layer still doing per-pan Overpass DOM parses.)
 
 ## Layout
 
@@ -1860,7 +1862,9 @@ architecture note.
   OFF by default since it changes route choice) draws the
   community DeFlock project's `node["surveillance:type"="ALPR"]` OSM nodes as a purple camera badge, keyless via
   Overpass, sibling of the traffic-controls layer (per-viewport, area-cached `flockBox`, 350 ms settle, `FLOCK_MIN_ZOOM`
-  13 fetch / layer minZoom 13.5). **TWO bugs found in device verification (both fixed):** (1) the Overpass `out`
+  **11** fetch AND layer minZoom **11** - route-overview visibility, re-landed 2026-07-13 now that the bundled
+  dataset + stream-parse killed the giant-box OOM that reverted the first z11 try; keep the two gates IN LOCKSTEP,
+  the 13 fetch / 13.5 layer era proved a fetch-without-draw dead band, vela-dpad issue #131). **TWO bugs found in device verification (both fixed):** (1) the Overpass `out`
   statement was `out tags`, which for a NODE returns id + tags but **omits lat/lon** - so `OverpassAlprCameras` parsed
   every element to null (no coords) and the layer was ALWAYS empty (this is why it "never drew"); fixed to `out body`
   (verified: Atlanta Ponce City Market went 0 -> 5 cameras, purple badges visible). (2) `Flock.init` was NOT called in

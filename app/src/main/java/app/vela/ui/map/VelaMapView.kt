@@ -1958,35 +1958,47 @@ private fun ensureLayers(style: Style) {
             AMBIENT_LAYER,
         )
     }
-    // ALPR / "Flock" surveillance cameras (community DeFlock mapping in OSM). Its own high-zoom
-    // symbol layer, populated only when the Settings toggle is on (empty source otherwise). Drawn
-    // ABOVE the ambient POIs so a camera you're trying to spot isn't hidden behind a shop icon;
-    // sparse enough that allowOverlap is fine.
+    // ALPR / "Flock" surveillance cameras (community DeFlock mapping in OSM). Its own symbol
+    // layer, populated only when the Settings toggle is on (empty source otherwise). Drawn BELOW
+    // the ambient POIs (user 2026-07-13, was above): where a camera and a business icon/label
+    // share a spot the business wins. The camera itself always draws (allowOverlap) AND claims
+    // its collision box (ignorePlacement=false, the controls-claim trick): symbols placing after
+    // it - the basemap street names and labels below this layer - dodge the badge instead of
+    // rendering half-covered under it (user saw a camera sitting on a street name). The POI
+    // stack places before this layer, so it is unaffected by the claim and still wins on top.
     if (style.getImage(FLOCK_IMG) == null) style.addImage(FLOCK_IMG, alprCameraBitmap())
     if (style.getSource(FLOCK_SRC) == null) {
         style.addSource(GeoJsonSource(FLOCK_SRC))
         val flockSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
+            Expression.stop(11f, 0.55f),
             Expression.stop(14f, 0.7f),
             Expression.stop(17f, 1.0f),
             Expression.stop(19f, 1.35f),
         )
-        style.addLayer(
+        val flockLayer =
             SymbolLayer(FLOCK_LAYER, FLOCK_SRC).apply {
-                setMinZoom(13.5f)
+                // Must match the VM's FLOCK_MIN_ZOOM fetch gate: clamped at 13.5 this layer sat on
+                // fetched cameras without drawing them (z13-13.5 was a dead band, and route-overview
+                // zoom showed nothing at all - the half-done state vela-dpad caught, issue #131).
+                setMinZoom(11f)
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_IMG),
                     PropertyFactory.iconSize(flockSize),
-                    PropertyFactory.iconAllowOverlap(true),
-                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconAllowOverlap(true), // never yields itself...
+                    PropertyFactory.iconIgnorePlacement(false), // ...and later symbols (street names) dodge it
                     PropertyFactory.iconPadding(2f),
                 )
-            },
-        )
+            }
+        when {
+            style.getLayer(AMBIENT_LAYER) != null -> style.addLayerBelow(flockLayer, AMBIENT_LAYER)
+            style.getLayer(CONTROLS_CLAIM_LAYER) != null -> style.addLayerBelow(flockLayer, CONTROLS_CLAIM_LAYER)
+            else -> style.addLayer(flockLayer)
+        }
     }
     // Canonical GTFS transit stops (Transitous). One icon per station (bays dedupe in the VM);
     // replaces the OSM basemap bus icons wherever this layer has coverage (poi_transit filter flips
-    // in applyData). Drawn beneath the flock layer, above the ambient POIs.
+    // in applyData). Drawn above the ambient POIs (and above the flock layer, which yields to both).
     if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
     if (style.getSource(TRANSIT_STOPS_SRC) == null) {
         style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC))
