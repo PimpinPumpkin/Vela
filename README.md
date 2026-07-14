@@ -48,13 +48,11 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
   a jam builds ahead.
 - **Real info about places (points of interest, or POIs).** Hours with holidays
   included, reviews you can search, photo galleries, busy times, phone and
-  website - the things you actually check before driving somewhere, with a
-  warning if a place would be closed when you arrive.
+  website, with a warning if a place would be closed when you arrive.
 - **Zero Google on your phone, and almost zero in your life.** No Play Services,
-  no account, no app key, no ads, no telemetry. Google answers the occasional
-  anonymous question; it never sees your GPS trace, your map browsing, or who
+  no account, no app key, no ads, no telemetry. Google never sees your GPS trace, your map browsing, or who
   you are. The full breakdown is in the [Privacy](#privacy) section below.
-- **The plate readers, on the map.** Mapped ALPR surveillance cameras (the
+- **Flock cameras, on the map.** Mapped ALPR surveillance cameras (the
   community DeFlock project's OpenStreetMap data) draw out of the box, and the
   optional **Settings → Map → Avoid surveillance cameras** counts the cameras on
   each route and quietly picks a lower-camera option when the detour is small.
@@ -82,6 +80,12 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
   publish, served by the community Transitous project), supplemented with Google
   for traffic-aware transit directions. Tap a stop for live times, tap a route
   for every stop it makes.
+- **Lists**: the bookmark button next to the category chips opens **Your lists**.
+  Create one there, or add any place from its page (⋮ → Save to list), with a note
+  per place. Lists back up to a file from Settings.
+- **Import a Google Maps list**: paste a `maps.app.goo.gl` share link into the
+  search bar. The list's places show up as results with the owner's notes; tap
+  **Save list** to keep a local copy.
 - **Fixes itself when Google moves things.** The scraping recipes live in a signed
   config the app checks at launch - when Google shifts a field or an endpoint, a
   repair ships to every install in minutes, no update needed. The same channel can
@@ -92,17 +96,6 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
 
 The complete running feature list lives in [FEATURES.md](FEATURES.md).
 
-## Everyday features in ten seconds
-
-- **Save your parking**: tap the **P** button on the map when you park. Tap the teal
-  pin later for walking directions back, or the pin's Clear button when you leave.
-  Long-press **P** for your parking history in case you overwrote a spot by mistake.
-- **Lists**: the bookmark button next to the category chips opens **Your lists**.
-  Create one there, or add any place from its page (⋮ → Save to list), with a note
-  per place. Lists back up to a file from Settings.
-- **Import a Google Maps list**: paste a `maps.app.goo.gl` share link into the
-  search bar. The list's places show up as results with the owner's notes; tap
-  **Save list** to keep a local copy.
 
 ## Why a degoogled app uses Google
 
