@@ -15,6 +15,17 @@ class MapLinkParserTest {
         assertNull(l.query)
     }
 
+    @Test fun geoZoomIsHonoured() {
+        val l = MapLinkParser.parse("geo:38.5449,-121.7405?z=17")!!
+        assertEquals(17.0, l.zoom!!, 1e-6)
+        // Junk/out-of-range zooms are dropped, never crash.
+        assertNull(MapLinkParser.parse("geo:38.5449,-121.7405?z=potato")!!.zoom)
+        assertNull(MapLinkParser.parse("geo:38.5449,-121.7405?z=99")!!.zoom)
+        // Google web links carry it after the @coords.
+        val g = MapLinkParser.parse("https://www.google.com/maps/place/Foo/@38.5,-121.7,15z")!!
+        assertEquals(15.0, g.zoom!!, 1e-6)
+    }
+
     @Test fun geoZeroWithQueryIsSearch() {
         val l = MapLinkParser.parse("geo:0,0?q=Temple%20Coffee")!!
         assertEquals("Temple Coffee", l.query)
