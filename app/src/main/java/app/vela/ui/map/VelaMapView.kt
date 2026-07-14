@@ -227,6 +227,7 @@ fun VelaMapView(
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
+    satelliteOn: Boolean = false, // Esri World Imagery raster under the symbol layers (map button)
     topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
@@ -529,7 +530,7 @@ fun VelaMapView(
     // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
     // neighbours survived because the prominence-scaled big icons collide the most). Below the icons, numbers
     // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
-    LaunchedEffect(addressOverlays, styleRef, darkTheme) {
+    LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { style.removeSource(it) } }
@@ -540,8 +541,10 @@ fun VelaMapView(
                 PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE),
             )
         }
-        val txt = if (darkTheme) "#9aa0a6" else "#8a8a8a"
-        val halo = if (darkTheme) "#1b2432" else "#ffffff"
+        // Over satellite imagery: white-with-black-halo like every other label (these layers
+        // mount AFTER applySatelliteLabels' style-load sweep, so they style themselves).
+        val txt = if (satelliteOn) "#ffffff" else if (darkTheme) "#9aa0a6" else "#8a8a8a"
+        val halo = if (satelliteOn) "#000000" else if (darkTheme) "#1b2432" else "#ffffff"
         addressOverlays.forEachIndexed { i, uri ->
             runCatching {
                 val srcId = "vela-addr-src-$i"
@@ -571,7 +574,7 @@ fun VelaMapView(
                             PropertyFactory.textSize(10f),
                             PropertyFactory.textColor(txt),
                             PropertyFactory.textHaloColor(halo),
-                            PropertyFactory.textHaloWidth(1f),
+                            PropertyFactory.textHaloWidth(if (satelliteOn) 1.8f else 1f),
                             // Numbers still YIELD to icons/labels (allow-overlap stays false), but they
                             // never enter the collision index themselves: nothing needs to dodge a house
                             // number, and keeping hundreds of them out of the index makes each placement
@@ -598,7 +601,10 @@ fun VelaMapView(
     // Extrusion is the most fragment-expensive thing the map draws, so this is the direct
     // lever for zoomed-in pan stutter on weaker GPUs. applyLight/applyDark colour the layer
     // but never touch visibility, so this effect owns it (re-applied on style reload too).
-    val buildings3d = app.vela.ui.Buildings3d.on.value
+    // Extrusions also hide while SATELLITE imagery is on: the grey 3D boxes drew on top of the
+    // photo roofs (they sit above the raster in the layer stack) - wrong-looking AND the most
+    // fragment-expensive thing on screen (user 2026-07-13).
+    val buildings3d = app.vela.ui.Buildings3d.on.value && !satelliteOn
     LaunchedEffect(buildings3d, styleRef) {
         runCatching {
             styleRef?.getLayer("building-3d")?.setProperties(
@@ -1305,7 +1311,7 @@ fun VelaMapView(
             navPuck.rawBearing = myBearing
         }
         // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
-        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}"
+        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             val builder = if (styleUri.startsWith("asset://")) {
@@ -1346,9 +1352,12 @@ fun VelaMapView(
                 origPoiTransitFilter = null
                 lastAppliedRouteLine = null
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
+                PoiIcons.satellite = satelliteOn
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
+                if (satelliteOn) applySatelliteLabels(style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                ensureSatellite(style, satelliteOn)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
                 ensureTopography(style, topographyOn)
@@ -1356,6 +1365,7 @@ fun VelaMapView(
         } else {
             styleRef?.let {
                 applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                ensureSatellite(it, satelliteOn)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
                 ensureTopography(it, topographyOn)
@@ -2157,9 +2167,15 @@ private fun ensureTraffic(style: Style, on: Boolean) {
         )
         // ALWAYS below the first symbol layer, so POI icons + labels stay on top and
         // the traffic tiles never render over them (the earlier "above the route line"
-        // placement pushed it over POIs).
+        // placement pushed it over POIs). With satellite on, anchor above the imagery
+        // instead - the raster otherwise buries the traffic tiles entirely.
+        val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
         val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+        when {
+            satTop != null -> style.addLayerAbove(layer, satTop.id)
+            firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
+            else -> style.addLayer(layer)
+        }
     } else if (!on && present) {
         style.removeLayer(TRAFFIC_LAYER)
         style.getSource(TRAFFIC_SRC)?.let { runCatching { style.removeSource(it) } }
@@ -2204,10 +2220,133 @@ private fun ensureTransit(style: Style, on: Boolean) {
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             )
         }
+        // Above the satellite raster when imagery is on (the raster otherwise buries this -
+        // same anchor bug the building overlay had); below the labels either way.
+        val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
         val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+        when {
+            satTop != null -> style.addLayerAbove(layer, satTop.id)
+            firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
+            else -> style.addLayer(layer)
+        }
     } else if (!on && present) {
         runCatching { style.removeLayer(TRANSIT_LAYER) }
+    }
+}
+
+private const val SAT_SRC = "vela-sat-src"
+private const val SAT_LAYER = "vela-sat"
+private const val SAT_ROADS_LAYER = "vela-sat-roads"
+// Esri World Imagery, the openly usable satellite tile service (attribution shown by the map UI
+// while the layer is on). z/y/x order; 19 is the safe global max.
+private const val SAT_TILES = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+/** Satellite imagery under the SYMBOL stack: the raster covers the vector fills and road lines,
+ *  but every label, POI, route line and Vela layer keeps drawing on top (hybrid look). Same
+ *  add/remove idempotence as [ensureTransit]; removing restores the vector map untouched. */
+private fun ensureSatellite(style: Style, on: Boolean) {
+    val present = style.getLayer(SAT_LAYER) != null
+    if (on && !present) {
+        if (style.getSource(SAT_SRC) == null) {
+            style.addSource(RasterSource(SAT_SRC, TileSet("2.2.0", SAT_TILES).apply { maxZoom = 19f }, 256))
+        }
+        val layer = RasterLayer(SAT_LAYER, SAT_SRC).withProperties(
+            // Dim + desaturate a touch so the white-halo labels stay readable over bright
+            // roofs/concrete (Google's hybrid does the same; full-brightness imagery drowned
+            // street names, user 2026-07-13).
+            PropertyFactory.rasterBrightnessMax(0.80f),
+            PropertyFactory.rasterSaturation(-0.1f),
+        )
+        // Anchor ABOVE the building stack: that's where the basemap's geometry ends and its
+        // labels begin. "Below the first symbol layer" was wrong - Liberty interleaves a low
+        // symbol layer beneath the road/building fills, so the raster sank under half the
+        // geometry and blue footprints + roads drew on top of the photo (user 2026-07-13).
+        val geomTop = style.getLayer("building-3d") ?: style.getLayer("building")
+        when {
+            geomTop != null -> style.addLayerAbove(layer, geomTop.id)
+            else -> style.layers.lastOrNull { it !is SymbolLayer }?.let { style.addLayerAbove(layer, it.id) }
+                ?: style.addLayer(layer)
+        }
+        // Ghost roads over the photo (Google hybrid does this): a single translucent white line
+        // layer from the basemap's transportation source, above the raster, below the labels -
+        // without it the road network disappears into tree cover and the map stops being
+        // navigable as a map (user 2026-07-13).
+        // Re-seat the overlay lines above the fresh raster: they were anchored for the vector
+        // map and the raster would bury them (transit lines vanished under imagery, user
+        // 2026-07-13). Removing here lets this same pass's ensureTraffic/ensureTransit re-add
+        // them with the satellite-aware anchor.
+        runCatching { style.removeLayer(TRANSIT_LAYER) }
+        runCatching { style.removeLayer(TRAFFIC_LAYER) }
+        if (style.getLayer(SAT_ROADS_LAYER) == null && style.getSource("openmaptiles") != null) {
+            val roads = LineLayer(SAT_ROADS_LAYER, "openmaptiles").apply {
+                setSourceLayer("transportation")
+                setProperties(
+                    // Freeways read YELLOW like the Google app's hybrid layer; everything else
+                    // stays the translucent white (user 2026-07-13).
+                    PropertyFactory.lineColor(
+                        Expression.match(
+                            Expression.get("class"),
+                            Expression.literal("motorway"), Expression.literal("#F7DD7C"),
+                            Expression.literal("trunk"), Expression.literal("#F7DD7C"),
+                            Expression.literal("#FFFFFF"),
+                        ),
+                    ),
+                    PropertyFactory.lineOpacity(
+                        Expression.match(
+                            Expression.get("class"),
+                            Expression.literal("motorway"), Expression.literal(0.55f),
+                            Expression.literal("trunk"), Expression.literal(0.50f),
+                            Expression.literal(0.38f),
+                        ),
+                    ),
+                    PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+                    PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+                    PropertyFactory.lineWidth(
+                        Expression.interpolate(
+                            Expression.exponential(1.5f), Expression.zoom(),
+                            Expression.stop(8, Expression.match(
+                                Expression.get("class"),
+                                Expression.literal("motorway"), Expression.literal(1.6f),
+                                Expression.literal("trunk"), Expression.literal(1.4f),
+                                Expression.literal(0.6f),
+                            )),
+                            Expression.stop(18, Expression.match(
+                                Expression.get("class"),
+                                Expression.literal("motorway"), Expression.literal(14f),
+                                Expression.literal("trunk"), Expression.literal(12f),
+                                Expression.literal("primary"), Expression.literal(10f),
+                                Expression.literal(7f),
+                            )),
+                        ),
+                    ),
+                )
+            }
+            style.addLayerAbove(roads, SAT_LAYER)
+        }
+    } else if (!on && present) {
+        runCatching { style.removeLayer(SAT_LAYER) }
+        runCatching { style.removeLayer(SAT_ROADS_LAYER) }
+    }
+}
+
+/**
+ * Satellite label treatment: EVERY text on the map goes white with a robust black halo -
+ * street names already got this look, and over imagery it's the only combination that reads
+ * on both dark tree cover and bright rooftops (Google hybrid does the same for POIs, cities,
+ * water, everything). Runs AFTER applyMapTheme/applyToLiberty so it overrides the category
+ * tints; the satellite toggle reloads the style (styleKey carries sat=), so switching back
+ * restores the normal palette from a clean slate. Shield layers are skipped - their text
+ * sits INSIDE a shield icon and white-on-white would erase the route number.
+ */
+private fun applySatelliteLabels(style: Style) {
+    style.layers.forEach { layer ->
+        if (layer !is SymbolLayer) return@forEach
+        if (layer.id.contains("shield")) return@forEach
+        layer.setProperties(
+            PropertyFactory.textColor("#FFFFFF"),
+            PropertyFactory.textHaloColor("#000000"),
+            PropertyFactory.textHaloWidth(1.8f),
+        )
     }
 }
 

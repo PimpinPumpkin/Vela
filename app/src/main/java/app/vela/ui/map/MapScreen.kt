@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PublicOff
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Work
@@ -191,6 +192,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import app.vela.ui.toggleItem
 import app.vela.ui.dpadHighlight
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.rememberDpadFirstDevice
@@ -319,6 +321,7 @@ fun MapScreen(
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
     var followMe by remember { mutableStateOf(true) }
+    var layersOpen by remember { mutableStateOf(false) } // the top-right layers panel
     // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
     // coordinate, a deep link) means the user went to look somewhere else - drop follow exactly
     // like a pan would. Without this, follow was only SUSPENDED while the place sheet owned the
@@ -775,6 +778,7 @@ fun MapScreen(
             // the user explicitly enables it in Settings → Map.
             trafficOn = Traffic.on.value,
             transitOn = app.vela.ui.TransitLayer.on.value,
+            satelliteOn = app.vela.ui.SatelliteLayer.on.value,
             topographyOn = app.vela.ui.Topography.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
@@ -1673,6 +1677,84 @@ fun MapScreen(
             // Scale bar, bottom-left just past the attribution ⓘ. Hidden only while ACTUALLY
             // free-driving (moving, speed box on screen) - `!driveFollowing` alone hid it on the
             // whole browse map, since follow is armed by default (regression, 0.4.542..wave).
+            // Satellite toggle, top-right under the search bar + chips (browse map only): flips
+            // the Esri World Imagery raster under the symbol stack. Filled tint = on.
+            if (app.vela.ui.LayersButton.on.value && state.selected == null && !searchOpen &&
+                !state.navigating && !state.replaying && state.results.isEmpty()
+            ) {
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                val anyLayerOn = app.vela.ui.SatelliteLayer.on.value || Traffic.on.value ||
+                    app.vela.ui.TransitLayer.on.value || app.vela.ui.Topography.on.value
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(top = 128.dp, end = 14.dp),
+                ) {
+                    Surface(
+                        color = SheetPalette.bg(darkTheme).copy(alpha = 0.9f),
+                        shape = CircleShape,
+                        shadowElevation = 3.dp,
+                        modifier = Modifier.size(42.dp),
+                    ) {
+                        IconButton(onClick = { layersOpen = true }) {
+                            Icon(
+                                Icons.Default.Layers,
+                                contentDescription = stringResource(R.string.map_layers),
+                                tint = if (anyLayerOn) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(2.dp),
+                            )
+                        }
+                    }
+                    // The layers panel, Google-style: SATELLITE swaps the base look, the rest are
+                    // overlays. Same holders Settings flips, so the two stay in sync. VelaMenu, not
+                    // a bare DropdownMenu - the D-pad rule (docs/dpad.md): a Popup can't be
+                    // pre-focused, so key-first devices get the auto-focusing chooser dialog.
+                    app.vela.ui.VelaMenu(
+                        expanded = layersOpen,
+                        onDismissRequest = { layersOpen = false },
+                    ) {
+                        toggleItem(stringResource(R.string.map_satellite_toggle), app.vela.ui.SatelliteLayer.on.value) {
+                            app.vela.ui.SatelliteLayer.set(ctx, it)
+                            vm.onSatelliteToggled()
+                        }
+                        toggleItem(stringResource(R.string.settings_live_traffic), Traffic.on.value) {
+                            Traffic.set(ctx, it)
+                        }
+                        toggleItem(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) {
+                            app.vela.ui.TransitLayer.set(ctx, it)
+                        }
+                        toggleItem(stringResource(R.string.settings_topography), app.vela.ui.Topography.on.value) {
+                            app.vela.ui.Topography.set(ctx, it)
+                        }
+                    }
+                }
+            }
+            // Required Esri attribution while the imagery is on - bottom center, clear of the
+            // scale bar and FABs, the year centered on its own line under the credit.
+            if (app.vela.ui.SatelliteLayer.on.value) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(bottom = 16.dp + chromeLift),
+                ) {
+                    Text(
+                        stringResource(R.string.map_satellite_attribution),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                    )
+                    state.imageryYear?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                        )
+                    }
+                }
+            }
             if (!(driveFollowing && speedOverlayArmed)) {
                 ScaleBar(
                     metersPerPixel = metersPerPixel,

@@ -46,6 +46,14 @@ object PoiIcons {
     /** The category colour for a dot group (the ambient mini-dot tier tints circles with it). */
     fun colorFor(group: String): String = GROUPS.firstOrNull { it.first == group }?.third ?: "#5F6368"
 
+    /** Set by VelaMapView at style load: over satellite imagery the teardrop backings render
+     *  WHITE (Google hybrid's treatment) instead of the muted grey - grey sank into rooftops.
+     *  A satellite toggle reloads the style (it's in the styleKey), so every bitmap regenerates
+     *  through this flag; ensureResultIcon's on-demand pins pick it up live too. */
+    @Volatile var satellite: Boolean = false
+
+    private fun backing(): Int = Color.parseColor(if (satellite) "#FFFFFF" else "#9AA0A6")
+
     fun addTo(context: Context, style: Style) {
         val tf = typeface(context) ?: return
         GROUPS.forEach { (key, codepoint, color) ->
@@ -175,7 +183,7 @@ object PoiIcons {
             maskFilter = BlurMaskFilter(w * 0.05f, BlurMaskFilter.Blur.NORMAL)
         })
         canvas.restore()
-        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0A6") })
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = backing() })
         canvas.drawCircle(cx, bodyCy, w * 0.27f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(RESULT_RED) })
         val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             typeface = tf
@@ -514,7 +522,7 @@ object PoiIcons {
         })
         canvas.restore()
         // Grey teardrop backing.
-        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#9AA0A6") })
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = backing() })
         // Category-coloured dot.
         canvas.drawCircle(cx, bodyCy, dotR, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor(colorHex) })
         // White Material glyph centred on the dot.
