@@ -1741,16 +1741,15 @@ fun MapScreen(
                     }
                 }
             }
-            // Required Esri attribution while the imagery is on, tucked by the scale bar.
-            // The capture year sits centered on its own line under the credit: appended
-            // inline it pushed the single line wide enough to run under other chrome.
+            // Required Esri attribution while the imagery is on - bottom center, clear of the
+            // scale bar and FABs, the year centered on its own line under the credit.
             if (app.vela.ui.SatelliteLayer.on.value) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
-                        .align(Alignment.BottomStart)
+                        .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(start = 46.dp, bottom = 48.dp + chromeLift),
+                        .padding(bottom = 16.dp + chromeLift),
                 ) {
                     Text(
                         stringResource(R.string.map_satellite_attribution),
