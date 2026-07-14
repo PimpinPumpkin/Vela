@@ -3042,9 +3042,19 @@ private fun PanelControls(
             IconButton(onClick = { sortOpen = true }) {
                 Icon(Icons.AutoMirrored.Filled.Sort, contentDescription = stringResource(R.string.place_sort_reviews), tint = dim)
             }
+            // Display label localizes; the SECOND element stays the English LOGIC KEY - onSort
+            // drives the live Google panel (loaded hl=en) by clicking the option with that
+            // exact label, so the key must match Google's English UI (i18n follow-ups,
+            // 2026-07-14: the last dual-purpose literals split from their keys).
+            val sortOptions = listOf(
+                stringResource(R.string.place_sort_relevant) to "Most relevant",
+                stringResource(R.string.place_sort_newest) to "Newest",
+                stringResource(R.string.place_sort_highest) to "Highest rating",
+                stringResource(R.string.place_sort_lowest) to "Lowest rating",
+            )
             VelaMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
-                listOf("Most relevant", "Newest", "Highest rating", "Lowest rating").forEach { o ->
-                    item(o) { sortOpen = false; onSort(o) }
+                sortOptions.forEach { (label, key) ->
+                    item(label) { sortOpen = false; onSort(key) }
                 }
             }
         }
@@ -3162,8 +3172,16 @@ private fun PlaceTabs(
                 contentColor = ink,
             ) {
                 tabs.forEachIndexed { i, title ->
-                    // The Menu tab shows Google's own (localized) gallery-tab name.
-                    val display = if (title == "Menu") (menuTabName ?: title) else title
+                    // The list carries LOGIC KEYS ("Reviews"/"Menu"/"About" branch the `when`
+                    // below); the visible label localizes separately - the last of the
+                    // dual-purpose literals split from their keys (i18n follow-ups, 2026-07-14).
+                    // The Menu tab still prefers Google's own (already localized) gallery-tab name.
+                    val display = when (title) {
+                        "Reviews" -> stringResource(R.string.place_tab_reviews)
+                        "Menu" -> menuTabName ?: stringResource(R.string.place_tab_menu)
+                        "About" -> stringResource(R.string.place_tab_about)
+                        else -> title
+                    }
                     Tab(selected = i == selected, onClick = { sel = i }, text = { Text(display) })
                 }
             }
