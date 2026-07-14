@@ -565,4 +565,7 @@
     <string name="settings_topography">Terreinschaduw</string>
     <string name="settings_topography_hint">Arceert heuvels en bergen op de kaart. Standaard uit.</string>
     <string name="map_satellite_toggle">Satellietweergave</string>
+    <string name="map_layers">Lagen</string>
+    <string name="settings_layers_button">Lagenknop tonen</string>
+    <string name="settings_layers_button_hint">De kaartknop voor satelliet, verkeer, ov en terrein.</string>
 </resources>

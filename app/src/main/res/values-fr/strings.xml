@@ -565,4 +565,7 @@
     <string name="settings_topography">Ombrage du relief</string>
     <string name="settings_topography_hint">Ombre les collines et les montagnes sur la carte. Désactivé par défaut.</string>
     <string name="map_satellite_toggle">Vue satellite</string>
+    <string name="map_layers">Calques</string>
+    <string name="settings_layers_button">Afficher le bouton calques</string>
+    <string name="settings_layers_button_hint">Le bouton de la carte pour satellite, trafic, transports et relief.</string>
 </resources>
