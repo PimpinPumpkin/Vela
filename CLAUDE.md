@@ -701,7 +701,11 @@ Defaults that make the safe path the easy one:
   and every map-drawn colour (tiles, route blue, puck). Rules when adding UI: new chrome or
   transient surfaces take colorScheme tokens (they'll theme themselves); content inside a sheet
   takes SheetPalette; don't mix the two on one surface or one of the theme x dynamic combos
-  will look wrong. The dynamic scheme is luminance-sanity-checked in VelaTheme (a ROM handing a
+  will look wrong. AND pick token pairs whose contrast the scheme GUARANTEES: on a coloured
+  container, buttons must use that container's own on-colour, never a default from a different
+  role - the faster-route card's default-primary TextButton all but vanished on its
+  tertiaryContainer under a wallpaper scheme (both roles derive from the same wallpaper hues;
+  fixed 2026-07-14 with onTertiaryContainer text + an inverse-fill confirm). The dynamic scheme is luminance-sanity-checked in VelaTheme (a ROM handing a
   light background for the dark scheme falls back to Vela colours - seen on GrapheneOS). NB
   Google Maps itself is a dynamic-colour HOLDOUT (M3 components, zero wallpaper tinting) -
   Vela tinting its chrome already exceeds it; the split is our own design call.
