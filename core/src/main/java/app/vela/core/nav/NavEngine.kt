@@ -253,7 +253,14 @@ object NavEngine {
         val redundantContinue =
             (target.type == ManeuverType.CONTINUE || target.type == ManeuverType.STRAIGHT) &&
                 !app.vela.core.model.continueHasGenuineFork(target.lanes)
-        val voiceSilent = isDepart || redundantContinue
+        // MUTE turn guidance while off-route (Google's behaviour): the progress snap still maps
+        // the driver onto the OLD route while a reroute is pending (or failing in a dead spot),
+        // and as the phantom snap drifts past old maneuvers the engine happily announced them -
+        // "turn right onto X" spoken on a street that turn doesn't exist on (the wrong-direction
+        // report, 2026-07-13). "Rerouting" is the only thing worth saying until a route matches
+        // the road under the wheels. Step advance below stays live so progress/back-on-course
+        // bookkeeping is untouched.
+        val voiceSilent = isDepart || redundantContinue || offRoute
 
         // Approach prompts, SPEED-SCALED (Google/OsmAnd scale announcements with speed — the fixed
         // 400 m gave a 75 mph driver 12 s to cross three lanes for an exit). max(fixed, v×T) keeps

@@ -123,6 +123,41 @@ class NavEngineTest {
         assertEquals(1, reroutes)
     }
 
+    /** Off-route mutes turn guidance: while a reroute is pending the progress snap still maps the
+     *  driver onto the OLD route, and the engine used to announce that route's maneuvers as the
+     *  phantom snap drifted past them ("turn right onto X" spoken on a street it doesn't exist
+     *  on). Muted while the latch is up; guidance resumes the moment the driver is back on line. */
+    @Test
+    fun offRouteMutesOldRouteTurnPrompts() {
+        val a = LatLng(37.0000, -122.0000)
+        val mid = LatLng(37.0050, -122.0000)
+        val b = LatLng(37.0100, -122.0000)
+        val route = Route(
+            polyline = listOf(a, mid, b),
+            legs = listOf(
+                RouteLeg(
+                    distanceMeters = 1100.0, durationSeconds = 80.0, durationInTrafficSeconds = null,
+                    maneuvers = listOf(
+                        Maneuver(ManeuverType.DEPART, "Head north", a, 550.0, 40.0),
+                        Maneuver(ManeuverType.TURN_RIGHT, "Turn right onto Oak", mid, 550.0, 40.0),
+                        Maneuver(ManeuverType.ARRIVE, "Arrive", b, 0.0, 0.0),
+                    ),
+                ),
+            ),
+            distanceMeters = 1100.0, durationSeconds = 80.0, durationInTrafficSeconds = null,
+        )
+        // Drive OFF the line (~400 m east) until the off-route latch is up.
+        var state = NavState()
+        repeat(6) { state = NavEngine.update(route, state, LatLng(37.0020, -121.9955)).first }
+        assertTrue("latched off-route", state.offRoute)
+        // Still off-route, the phantom snap drifts into the turn's approach band: stay silent.
+        val (next, muted) = NavEngine.update(route, state, LatLng(37.0037, -121.9955))
+        assertTrue("no old-route turn prompts while off-route", muted.none { it is NavEvent.Speak })
+        // Back ON the line short of the turn: the latch clears and guidance resumes.
+        val (_, resumed) = NavEngine.update(route, next, LatLng(37.0040, -122.0000))
+        assertTrue("guidance resumes once back on the route", resumed.any { it is NavEvent.Speak })
+    }
+
     @Test
     fun offRouteClearsWhenBackOnPath() {
         val route = straightRoute()
