@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Fail if any translatable string is missing from a locale, or a placeholder count drifts.
+"""Fail on placeholder drift; WARN (not fail) on missing translations.
 
-Android lint's MissingTranslation doesn't run on assemble/test, so gaps ship silently (a missed
-backfill just shows English for that key). This is the cheap guard: it treats the default
-res/values/strings.xml as the source of truth, skips anything marked translatable="false"
-(brand names, the intentionally-English-only Flock strings), and requires every other
-<string>/<plurals> key to exist in each res/values-<lang>/strings.xml. It also checks that the
-%1$s / %2$d placeholder set matches the default, so a %d fed a String (a runtime crash) is caught.
+Translations flow through Weblate now (docs/TRANSLATING.md): new strings are added to the
+English base only and translators fill the locales via PRs, with untranslated keys falling back
+to English by design - so a missing key is expected life-cycle state, not a bug, and it prints
+as a warning. What stays FATAL is placeholder drift: a translation whose %1$s / %2$d set differs
+from the default is a runtime crash (a %d fed a String), and Weblate PRs are hand-merged, so
+this is the net that catches a bad one. translatable="false" keys (brand names, the
+intentionally-English-only Flock strings) are skipped entirely.
 
-Run: python3 tools/check-translations.py   (exit 1 on any gap). Wired into CI before the build.
+Run: python3 tools/check-translations.py   (exit 1 only on placeholder drift). Wired into CI.
 """
 import glob
 import os
@@ -45,22 +46,25 @@ def main():
         print("could not read default strings.xml", file=sys.stderr)
         return 1
     problems = []
+    missing = []
     for locale_file in sorted(glob.glob(os.path.join(RES, "values-*", "strings.xml"))):
         lang = os.path.basename(os.path.dirname(locale_file)).replace("values-", "")
         loc = parse(locale_file)
         for name, ph in base.items():
             if name not in loc:
-                problems.append(f"{lang}: missing '{name}'")
+                missing.append(f"{lang}: '{name}'")
             elif loc[name] != ph:
                 problems.append(f"{lang}: '{name}' placeholders {sorted(loc[name])} != default {sorted(ph)}")
-    if problems:
-        print("Translation check FAILED:\n  " + "\n  ".join(problems))
+    if missing:
         print(
-            "\nFix: add the key to every values-<lang>/strings.xml, or mark it "
-            'translatable="false" in the default file if it is intentionally English-only.'
+            f"Translation gaps ({len(missing)} key/locale pairs, English fallback shows until "
+            "Weblate fills them - see docs/TRANSLATING.md):\n  " + "\n  ".join(missing)
         )
+    if problems:
+        print("Translation check FAILED (placeholder drift = runtime crash):\n  " + "\n  ".join(problems))
+        print("\nFix: make the translation's %n$s/%n$d set match the default file exactly.")
         return 1
-    print(f"Translation check OK: {len(base)} translatable keys present in every locale.")
+    print(f"Translation check OK: {len(base)} translatable keys, no placeholder drift.")
     return 0
 
 
