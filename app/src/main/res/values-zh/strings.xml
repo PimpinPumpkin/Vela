@@ -247,7 +247,9 @@
     <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
     <string name="place_search_reviews">搜索评价</string>
     <string name="place_sort_reviews">评价排序</string>
-    <string name="place_review_count">%1$d 条评价</string> <!-- format -->
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="other">%1$d 条评价</item>
+    </plurals>
     <string name="place_all_n_reviews">全部 %1$d 条评价 · 排序和搜索</string> <!-- format -->
     <string name="place_all_reviews">全部评价 · 排序和搜索</string>
     <string name="place_reviews_progress">评价 · 已加载 %1$d 条，共约 %2$d 条</string> <!-- format -->
@@ -455,7 +457,9 @@
     <string name="settings_update_checking">正在检查…</string>
     <string name="settings_update_none">已是最新版本。</string>
     <string name="settings_place_pages">地点页面</string>
-    <string name="place_transit_stops">%1$d 站</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="other">%1$d 站</item>
+    </plurals>
     <string name="place_transit_stop_id">站点 %1$s</string> <!-- format -->
     <string name="place_transit_tickets">购票与信息</string>
     <string name="route_detail_unavailable">无法获取线路详情</string>
