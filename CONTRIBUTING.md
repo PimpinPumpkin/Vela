@@ -32,7 +32,8 @@ too).
    `README.md`, `FEATURES.md`, `SPEC.md` and `CLAUDE.md` as the change needs. Stale
    docs are treated as a bug. If a change genuinely needs no doc edit, say why in the
    commit message.
-6. **Every user-facing string ships in all 14 languages.** Add it to
+6. **Every user-facing string ships in all 15 languages** (the full matrix is in
+   [docs/LANGUAGES.md](docs/LANGUAGES.md)). Add it to
    `res/values/strings.xml` and each `res/values-<lang>/strings.xml` (de es fr it nl
    pl pt ru sv uk). Match placeholder types to the arguments (an Int needs `%d`; a
    `%d` fed a String crashes). Place names, addresses and reviews are data and are

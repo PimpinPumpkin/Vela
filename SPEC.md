@@ -3,11 +3,11 @@
 > The single authoritative description of **what Vela is, how it's built, and every
 > load-bearing decision** - the target to rebuild against if the codebase is ever
 > lost or reimplemented. Paired with [`FEATURES.md`](FEATURES.md) (the exhaustive
-> feature catalogue), [`README.md`](README.md) (the public overview + calibration
+> feature catalogue), [`README.md`](README.md) (the public overview; the calibration
 > walk-through) and [`CLAUDE.md`](CLAUDE.md) (build rules + gotchas). When behaviour,
 > calibration, or architecture changes, **update this file in the same commit.**
 
-Last reviewed: 2026-07-08.
+Last reviewed: 2026-07-13.
 
 ---
 
@@ -136,7 +136,7 @@ build `pb` (`SearchPb`) + `GET` → **optional JS override** (`JsTransforms`, §
 > These field numbers / array indices are what *drift* when Google reshapes things.
 > The **live source of truth is [`calibration.json`](calibration.json)** (fetched at
 > runtime, §5); `Calibration.DEFAULT` is the compiled fallback and must be kept in
-> sync at release. The README §"How the scraping works" has the prose walk-through.
+> sync at release. [`docs/CALIBRATION.md`](docs/CALIBRATION.md) has the prose walk-through.
 > `PbBuilder` grammar and `PolylineCodec` are **stable**; field indices are **not**.
 
 ### Endpoints (all keyless, google.com only - host-allowlisted)
@@ -391,7 +391,11 @@ globe-slash chip on the basemap.
   scroll → tag its photos) then sweeps "All" for the rest, returning `category⇥url` lines → `Photo.category`
   / index-aligned `Place.photoCategories` → filter chips on the sheet. **Posted-dates deferred:** the tiles
   carry only the URL; the date is per-**focused** photo (lightbox), too costly to harvest per tile.
-- **Transit**: a plain keyless transit request is silently downgraded to *driving*, so
+- **Transit**: departure boards, stop icons and trip stop-sequences come from the open
+  GTFS feeds via **Transitous** (`core/data/transit/Transitous.kt`, keyless MOTIS API) with
+  the Google place-page blob as fallback; see docs/HOW-IT-WORKS.md "Transit data: who
+  provides what". Transit DIRECTIONS stay Google: a plain keyless transit request is
+  silently downgraded to *driving*, so
   `app/web/WebDirectionsFetcher` navigates the `/maps/dir/…/data=…!3e3` page and reads
   `window.APP_INITIALIZATION_STATE`. The payload is the **longest** `)]}'`-guarded
   string under slot `[3]` (poll for it; a stub sits alongside). `TransitParser`: trips
@@ -658,7 +662,7 @@ enforces same-package/same-signature. Launch check throttled to ~daily behind th
   `release` buildType** - always build release for on-device (debug lags the map).
 - **CI** (`.github/workflows/ci.yml`): every push to `main` builds + tests + signs the
   APK and publishes a nightly PRERELEASE **`v0.4.<run>`** (versionName
-  `0.3.<run>`, versionCode `2000+run`); a weekly workflow promotes the newest
+  `0.4.<run>`, versionCode `2000+run`); a weekly workflow promotes the newest
   nightly to the stable release (same APK). Obtainium tracks stable by default,
   nightlies via its prerelease toggle; the in-app updater follows stable.
 - **APK signing**: release keystore `~/.vela-signing/vela-release.jks` (alias `vela`,
