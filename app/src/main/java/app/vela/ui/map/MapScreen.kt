@@ -1282,7 +1282,10 @@ fun MapScreen(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
-                    .padding(start = 16.dp, bottom = navBarClearance),
+                    // During nav the box clears the ETA bar; free-driving there is no bar, so it
+                    // sits low in the corner, level with the locate FAB (user 2026-07-14). The
+                    // scale bar yields the spot while the box is there (below).
+                    .padding(start = 16.dp, bottom = if (state.navigating) navBarClearance else 16.dp + chromeLift),
             )
         }
 
@@ -1839,7 +1842,10 @@ fun MapScreen(
                     }
                 }
             }
-            if (!(driveFollowing && speedOverlayArmed)) {
+            // Also step aside while the free-drive speed box occupies the low corner (it moved
+            // down level with the locate FAB, user 2026-07-14) - the follow gate alone missed a
+            // moving-but-panned map, where both used to want the same spot.
+            if (!(driveFollowing && speedOverlayArmed) && !movingFree) {
                 ScaleBar(
                     metersPerPixel = metersPerPixel,
                     dark = darkTheme,
