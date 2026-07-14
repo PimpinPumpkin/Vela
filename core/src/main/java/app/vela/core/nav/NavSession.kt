@@ -178,6 +178,59 @@ class NavSession @Inject constructor(
         _state.value = State()
     }
 
+    /** In-nav "search along route" pick: [stop] becomes the NEXT stop and the drive replans
+     *  through it from [loc]. Same fetch shape as [reroute] minus the deviation bookkeeping -
+     *  this reroute is USER-ORDERED, so no back-on-course discard, no cooldown, and it cancels
+     *  any in-flight deviation reroute (the user's plan supersedes it). The stop joins the plan
+     *  IMMEDIATELY (marks null until the new route lands), so even a failed fetch keeps it -
+     *  the next reroute/recheck routes through it once the network recovers. */
+    fun addStop(stop: NavStop, loc: LatLng) {
+        val dest = destination ?: return
+        val newRemaining = synchronized(stopLock) {
+            val remaining = listOf(stop) + stops.drop(passedStops)
+            stops = remaining
+            stopMarks = List(remaining.size) { null } // measured against no route yet: cues hold
+            passedStops = 0
+            remaining
+        }
+        voice.speak(app.vela.core.i18n.NavStringsRegistry.current().rerouting(), interrupt = true)
+        diag.record("nav", "add stop mid-nav → ${stop.label}")
+        val gen = sessionGen
+        rerouteJob?.cancel()
+        rerouteJob = scope.launch {
+            val r = runCatching { dataSource.directions(loc, dest, mode, newRemaining.map { it.location }) }
+                .getOrNull()?.firstOrNull()?.takeIf { it.reaches(dest) }
+            if (gen != sessionGen) return@launch
+            if (r == null) {
+                diag.record("nav", "add-stop reroute FAILED — stop kept, next reroute/recheck retries")
+                return@launch
+            }
+            val marks = NavEngine.stopMarks(r, newRemaining.map { it.location })
+            synchronized(stopLock) {
+                stops = newRemaining
+                stopMarks = marks
+                passedStops = 0
+                planRoute = r
+            }
+            lastRecheckMs = SystemClock.elapsedRealtime()
+            lastRerouteAdoptMs = SystemClock.elapsedRealtime()
+            _state.update {
+                it.copy(
+                    route = r,
+                    nav = NavState(
+                        distanceToNextManeuver = r.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+                        remainingDistance = r.distanceMeters,
+                        remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
+                    ),
+                    maneuverText = r.maneuvers.firstOrNull()?.instruction.orEmpty(),
+                    remainingDistance = r.distanceMeters,
+                    remainingDuration = r.durationInTrafficSeconds ?: r.durationSeconds,
+                    fasterRoute = null,
+                )
+            }
+        }
+    }
+
     fun onLocation(loc: LatLng, imperial: Boolean = false, speedMps: Double? = null) {
         val s = _state.value
         val route = s.route ?: return
