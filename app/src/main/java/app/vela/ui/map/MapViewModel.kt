@@ -49,6 +49,7 @@ import app.vela.web.WebReviewsFetcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -782,9 +783,41 @@ class MapViewModel @Inject constructor(
             val near = mapCenter ?: _state.value.myLocation // suggestions near the viewport, like search
             val vp0 = viewport
             val spanM0 = vp0?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+            // ADDRESS queries ("123 main st") get a parallel Photon (OSM) lookup: it honours the
+            // location bias properly, which is where Google's keyless suggest falls down. The two
+            // fetches race concurrently; Photon's nearby addresses lead, Google's places follow.
+            val photonDeferred: kotlinx.coroutines.Deferred<List<Place>>? = if (app.vela.core.data.PhotonGeocoder.looksLikeAddress(term)) {
+                async(Dispatchers.IO) {
+                    runCatching {
+                        app.vela.core.data.PhotonGeocoder.suggest(
+                            http, term, near, app.vela.ui.AppLocale.effective().language,
+                        )
+                    }.getOrDefault(emptyList())
+                }
+            } else null
             val res = runCatching { dataSource.search(term, near, spanM0).places }.getOrDefault(emptyList())
+            val photon = photonDeferred?.await().orEmpty()
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
-                _state.update { it.copy(suggestions = res.take(8)) }
+                // Google gets the viewport bias, but keyless ranking for a PARTIAL address is
+                // weak - "123 main st" happily led with matches states away while the one in
+                // town sat below (user report). Bucket by metro distance (stable sort: within
+                // each bucket Google's own relevance order is preserved) so nearby matches
+                // surface first and a famous far match still shows, just lower.
+                // ...but never demote Google's TOP suggestion or an exact name match: for a
+                // plain entity query ("tacoma") the #1 result IS the entity - the city itself -
+                // and bucketing it under every nearby Tacoma-named business pushed it off the
+                // list entirely (user report 2026-07-13). Addresses are unaffected: Photon still
+                // leads those, so a famous far "123 Main Street" at #1 sits below the local hits.
+                val ranked = if (near == null) res else res.withIndex().sortedBy { (i, p) ->
+                    val entity = i == 0 || p.name.equals(term, ignoreCase = true)
+                    if (entity || p.location.distanceTo(near) <= SUGGEST_NEAR_M) 0 else 1
+                }.map { it.value }
+                // Photon's nearby addresses lead; drop its far strays (a metro away isn't what a
+                // partial address means) and anything Google already covers within a block.
+                val photonNear = photon.filter { p ->
+                    near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M
+                }.filter { p -> ranked.none { g -> g.location.distanceTo(p.location) < 120.0 } }
+                _state.update { it.copy(suggestions = (photonNear + ranked).take(8)) }
             }
         }
     }
@@ -4439,6 +4472,13 @@ class MapViewModel @Inject constructor(
         // exists now: the BUNDLED on-device dataset answers fetchInBox with no network and the Overpass
         // fallback stream-parses, so z11 is back (alltechdev re-proved it in the vela-dpad fork, #131).
         const val FLOCK_MIN_ZOOM = 11.0
+        // Show ALPR cameras from a NEIGHBOURHOOD zoom. Briefly lowered to 11 (2026-07-13) to catch a
+        // whole-route overview, but that made the padded Overpass box ~16x bigger, and with an `out
+        // body 4000` full-body read + full-DOM parse per pan it filled the heap and OOM'd (device
+        // 2026-07-13). Back to 13: the box is bounded, and the fetch is now streamed (OverpassAlprCameras)
+        // so it can't blow the heap. Route-overview visibility is a separate follow-up.
+        const val FLOCK_MIN_ZOOM = 13.0
+        const val SUGGEST_NEAR_M = 80_000.0 // ~a metro radius: suggestions inside it rank first
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
