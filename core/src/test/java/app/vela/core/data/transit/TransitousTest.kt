@@ -65,23 +65,37 @@ class TransitousTest {
             to = ts("End Terminal", "s5", 37.04, -122.00, "2026-01-01T10:40:00Z"),
             mode = "BUS", headsign = "End Terminal", routeShortName = "42", routeColor = "00aa00",
         )
-        // Tapped at Main St -> the timeline starts there, not at the origin terminal.
+        // Tapped at Main St -> the timeline BOARDS there; the origin terminal it already
+        // passed goes into priorStops (shown greyed above, Google-style).
         val step = Transitous.buildTripStep(leg, atLat = 37.01, atLng = -122.00)!!
         assertEquals("Main St", step.boardStop?.name)
+        assertEquals(listOf("Origin Terminal"), step.priorStops.map { it.name })
         assertEquals("End Terminal", step.alightStop?.name)
         assertEquals(listOf("Oak Ave", "Pine Rd"), step.intermediateStops.map { it.name })
         assertEquals(3, step.numStops)
         assertEquals("42", step.line?.name)
         assertEquals("#00aa00", step.line?.colorHex)
-        // Realtime stop keeps the differing timetable time; on-time stops carry none.
+        // Realtime stop keeps the differing timetable time + a signed delay (3 min late here);
+        // on-time stops carry neither.
         val oak = step.intermediateStops[0]
         assertEquals("10:23 AM", oak.timeText)
         assertEquals("10:20 AM", oak.scheduledText)
+        assertEquals(3, oak.delayMin)
         assertNull(step.boardStop?.scheduledText)
+        assertNull(step.boardStop?.delayMin)
         assertTrue(step.intermediateStops[1].cancelled)
-        // Tapping the terminus keeps the whole run.
+        // An EARLY call carries a negative delay.
+        val earlyLeg = leg.copy(
+            intermediateStops = listOf(
+                ts("Main St", "s2", 37.01, -122.00, "2026-01-01T10:08:00Z", sched = "2026-01-01T10:10:00Z"),
+            ),
+        )
+        val early = Transitous.buildTripStep(earlyLeg, atLat = 37.00, atLng = -122.00)!!
+        assertEquals(-2, early.intermediateStops[0].delayMin)
+        // Tapping the terminus keeps the whole run boarding at the origin, nothing prior.
         val full = Transitous.buildTripStep(leg, atLat = 37.04, atLng = -122.00)!!
         assertEquals("Origin Terminal", full.boardStop?.name)
+        assertTrue(full.priorStops.isEmpty())
     }
 
     @Test
