@@ -3597,15 +3597,15 @@ private fun SpeedWidget(
     val overColor = Color(0xFFE8514A)
     val signInk = Color(0xFF202124)
 
-    // ONE box, Google's layout: the regulatory sign (US "SPEED LIMIT" square / metric red roundel)
-    // sits BESIDE the current speed (stacking them read as two widgets, user 2026-07-13). With no
-    // posted limit the sign just isn't there and the same box shows only the speed.
+    // ONE rounded rectangle in both states (user 2026-07-14): without a posted limit it's a
+    // snug box around just the speed, and when a limit is known the box simply WIDENS as the
+    // sign joins it - the same surface growing, never a second widget or a shape change.
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = SheetPalette.bg(dark),
         contentColor = SheetPalette.ink(dark),
         shadowElevation = 4.dp,
-        modifier = modifier.widthIn(min = 58.dp),
+        modifier = modifier,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
