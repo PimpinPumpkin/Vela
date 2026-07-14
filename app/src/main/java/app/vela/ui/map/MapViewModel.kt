@@ -2724,10 +2724,8 @@ class MapViewModel @Inject constructor(
                 val best = counts.indices.minByOrNull { counts[it] * 1_000_000L + eta(cur[it]).toLong() } ?: 0
                 val extra = eta(cur[best]) - eta0
                 val cap = minOf(eta0 * 0.25, 600.0)
-                // No heads-up flash for the swap (removed 2026-07-13): the route rows show the
-                // per-route camera counts and the selected route is visibly the low-camera one;
-                // the banner was noise and sat on the endpoints card.
-                if (counts[best] < counts[0] && extra <= cap && best != 0) selectRoute(best)
+                // No heads-up flash for the swap (removed 2026-07-13): the reorder below makes
+                // the pick visible at the top of the list; the banner was noise on the card.
                 if (counts[best] < counts[0] && extra <= cap && best != 0) {
                     // The avoided route LEADS the list (user 2026-07-14): with avoid-cameras on
                     // the ranking is augmented by camera counts, not pure ETA - the low-camera
