@@ -1332,6 +1332,7 @@ fun VelaMapView(
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
+                emphasizeShields(style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
@@ -2173,6 +2174,21 @@ private fun ensureTransit(style: Style, on: Boolean) {
         if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
     } else if (!on && present) {
         runCatching { style.removeLayer(TRANSIT_LAYER) }
+    }
+}
+
+/** Route shields (the I-5 / US-2 / SR badges and their international `road_N` cousins) render
+ *  at Liberty's defaults: icon-size 1, 10pt regular text - small and thin next to Google's.
+ *  Scale badge + text together (text 10->12.5 matches icon 1->1.25, so the ref stays centered)
+ *  and bolden, like Google. The generic non-US shield layer gets the same bump, so it reads
+ *  everywhere, not just on US networks. Runs after the theme pass on every style (re)load. */
+private fun emphasizeShields(style: Style) {
+    listOf("highway-shield-non-us", "highway-shield-us-interstate", "road_shield_us").forEach { id ->
+        style.getLayer(id)?.setProperties(
+            PropertyFactory.iconSize(1.25f),
+            PropertyFactory.textSize(12.5f),
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+        )
     }
 }
 
