@@ -360,6 +360,13 @@ fun VelaMapView(
     // redundant re-animations that make the follow shimmer/lag (see the nav branch).
     var lastNavTarget by remember { mutableStateOf<LatLng?>(null) }
     var lastNavBearing by remember { mutableStateOf<Float?>(null) }
+    // Re-arm the pre-engage nav camera whenever follow is REGAINED (the re-center tap): its
+    // moved-4m/turned-2deg gate compares against the last fix it used, so a stationary driver
+    // who panned away and tapped re-center matched "nothing changed" and the camera never came
+    // back (user 2026-07-14). Nulling the baselines makes the next pass move unconditionally.
+    LaunchedEffect(navFollowing) {
+        if (navFollowing) { lastNavTarget = null; lastNavBearing = null }
+    }
     val navPuck = remember { NavPuck() }
     val routeCum = remember(routePolyline) { cumLengths(routePolyline) }
     // Accelerometer feed for the puck's speed Kalman — collected only during nav, written into a
@@ -1133,6 +1140,10 @@ fun VelaMapView(
         val map = mapRef ?: return@AndroidView
         // Keep the compass clear of the status bar (insets are ready post-layout).
         map.uiSettings.setCompassMargins(0, compassTopPx, compassRightPx, 0)
+        // Browse keeps Google's fade-when-north; NAV shows the compass the whole drive - a
+        // stationary route start is often still north-up, which faded it out right when the
+        // user looked for it (user 2026-07-14; Google pins it during nav too).
+        map.uiSettings.setCompassFadeFacingNorth(!navMode)
 
         // Fraction of the route already driven (for the traversed-grey gradient) —
         // 0 unless we're navigating and on the line.
