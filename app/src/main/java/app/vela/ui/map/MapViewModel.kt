@@ -4343,12 +4343,13 @@ class MapViewModel @Inject constructor(
     companion object {
         const val KEY_DISMISSED = "dismissed"
         const val CONTROLS_MIN_ZOOM = 16.0 // draw traffic lights/stop signs only when zoomed in this close
-        // Show ALPR cameras from a NEIGHBOURHOOD zoom. Briefly lowered to 11 (2026-07-13) to catch a
-        // whole-route overview, but that made the padded Overpass box ~16x bigger, and with an `out
-        // body 4000` full-body read + full-DOM parse per pan it filled the heap and OOM'd (device
-        // 2026-07-13). Back to 13: the box is bounded, and the fetch is now streamed (OverpassAlprCameras)
-        // so it can't blow the heap. Route-overview visibility is a separate follow-up.
-        const val FLOCK_MIN_ZOOM = 13.0
+        // Show ALPR cameras from ROUTE-OVERVIEW zoom (~z11-12), the "I know this route has cameras but
+        // don't see any" view. z11 was tried 2026-07-13 and reverted the same day because the padded
+        // Overpass box (~16x bigger) with a full-body read + full-DOM parse per pan OOM'd the heap; the
+        // follow-up note said route-overview visibility needed a path without the giant box. That path
+        // exists now: the BUNDLED on-device dataset answers fetchInBox with no network and the Overpass
+        // fallback stream-parses, so z11 is back (alltechdev re-proved it in the vela-dpad fork, #131).
+        const val FLOCK_MIN_ZOOM = 11.0
         const val TRANSIT_STOPS_MIN_ZOOM = 15.0 // GTFS stop icons from street-ish zoom (denser than cameras)
         const val CONTROLS_ONSCREEN_CAP = 400 // max controls handed to the map (nearest-to-center wins) — a
                                               // dense metro's padded box can carry 1000+, and every handed
