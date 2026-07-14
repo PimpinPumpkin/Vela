@@ -2622,10 +2622,10 @@ class MapViewModel @Inject constructor(
                 val best = counts.indices.minByOrNull { counts[it] * 1_000_000L + eta(cur[it]).toLong() } ?: 0
                 val extra = eta(cur[best]) - eta0
                 val cap = minOf(eta0 * 0.25, 600.0)
-                if (counts[best] < counts[0] && extra <= cap && best != 0) {
-                    selectRoute(best)
-                    flashStatus(appContext.getString(R.string.mapvm_flock_avoided))
-                }
+                // No heads-up flash for the swap (removed 2026-07-13): the route rows show the
+                // per-route camera counts and the selected route is visibly the low-camera one;
+                // the banner was noise and sat on the endpoints card.
+                if (counts[best] < counts[0] && extra <= cap && best != 0) selectRoute(best)
             }
         }
     }
