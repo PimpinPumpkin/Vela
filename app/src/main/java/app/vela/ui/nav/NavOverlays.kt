@@ -29,6 +29,23 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalGroceryStore
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -62,6 +79,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import app.vela.ui.dpadFieldEscape
 import app.vela.ui.dpadHighlight
 
 /**
@@ -491,6 +509,93 @@ private fun DrawScope.laneHead(indication: String, color: Color, baseX: Float, b
     }
 }
 
+/** In-nav search-along-route chips: one row above the controls bar while the search button is
+ *  armed. Same one-shot categories as the route chooser's row; a pick searches the REMAINING
+ *  route and the results list takes the bottom slot. */
+@Composable
+fun NavSearchChips(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onPick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val dark = isAppInDarkTheme()
+    Card(
+        modifier,
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = SheetPalette.bg(dark),
+            contentColor = SheetPalette.ink(dark),
+        ),
+    ) {
+      Column(Modifier.padding(vertical = 6.dp)) {
+        // Free-text along-route search above the canned chips - the chips cover the common
+        // stops, the field covers everything else (user 2026-07-14). Same search either way.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        ) {
+            Icon(Icons.Default.Search, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = SheetPalette.ink(dark)),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { if (query.isNotBlank()) onPick(query.trim()) }),
+                decorationBox = { inner ->
+                    if (query.isEmpty()) {
+                        Text(
+                            stringResource(R.string.place_search_along_route),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SheetPalette.dim(dark),
+                        )
+                    }
+                    inner()
+                },
+                // dpadFieldEscape: UP/DOWN leave the field instead of being eaten as cursor
+                // moves, so the chips below stay key-reachable (docs/dpad.md).
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 8.dp)
+                    .dpadFieldEscape(),
+            )
+        }
+        Row(
+            Modifier.padding(horizontal = 12.dp).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
+            listOf(
+                Triple(R.string.cat_gas, "Gas", Icons.Default.LocalGasStation),
+                Triple(R.string.cat_food, "Food", Icons.Default.Restaurant),
+                Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
+                Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
+            ).forEach { (labelRes, query, icon) ->
+                FilterChip(
+                    selected = false,
+                    onClick = { onPick(query) },
+                    border = null,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (dark) Color(0xFF333539) else Color(0xFFF1F3F4),
+                        labelColor = SheetPalette.ink(dark),
+                    ),
+                    label = { Text(stringResource(labelRes)) },
+                    leadingIcon = {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = SheetPalette.dim(dark))
+                    },
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                )
+            }
+        }
+      }
+    }
+}
+
 /** Bottom bar during navigation: remaining time/distance + an End button. */
 @Composable
 fun NavControls(
@@ -499,8 +604,6 @@ fun NavControls(
     offRoute: Boolean,
     onStop: () -> Unit,
     onSteps: () -> Unit,
-    voiceMuted: Boolean = false,
-    onToggleVoice: () -> Unit = {},
     trafficRatio: Double? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -551,13 +654,6 @@ fun NavControls(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons,
                 // 26dp glyphs; End matches the height so the row reads as one control set.
-                FilledTonalIconButton(onClick = onToggleVoice, modifier = Modifier.size(54.dp)) {
-                    Icon(
-                        if (voiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                        contentDescription = if (voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
                 FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
                 }
