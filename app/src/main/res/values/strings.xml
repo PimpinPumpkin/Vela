@@ -257,7 +257,10 @@
     <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
     <string name="place_search_reviews">Search reviews</string>
     <string name="place_sort_reviews">Sort reviews</string>
-    <string name="place_review_count">%1$d reviews</string> <!-- format -->
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">%1$d review</item>
+        <item quantity="other">%1$d reviews</item>
+    </plurals>
     <string name="place_all_n_reviews">All %1$d reviews · sort &amp; search</string> <!-- format -->
     <string name="place_all_reviews">All reviews · sort &amp; search</string>
     <string name="place_reviews_progress">Reviews · %1$d of about %2$d</string> <!-- format -->
@@ -470,7 +473,10 @@
     <string name="settings_update_checking">Checking…</string>
     <string name="settings_update_none">You\'re on the latest version.</string>
     <string name="settings_place_pages">Place pages</string>
-    <string name="place_transit_stops">%1$d stops</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">%1$d stop</item>
+        <item quantity="other">%1$d stops</item>
+    </plurals>
     <string name="place_transit_stop_id">Stop %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Tickets &amp; info</string>
     <string name="route_detail_unavailable">Route details unavailable</string>

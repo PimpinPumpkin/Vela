@@ -232,7 +232,10 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Sök recensioner</string>
     <string name="place_sort_reviews">Sortera recensioner</string>
-    <string name="place_review_count">%1$d recensioner</string>
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">%1$d recension</item>
+        <item quantity="other">%1$d recensioner</item>
+    </plurals>
     <string name="place_all_n_reviews">Alla %1$d recensioner · sortera &amp;amp; sök</string>
     <string name="place_all_reviews">Alla recensioner · sortera &amp;amp; sök</string>
     <string name="place_reviews_progress">Recensioner · %1$d av cirka %2$d</string>
@@ -434,7 +437,10 @@
     <string name="settings_update_checking">Kontrollerar…</string>
     <string name="settings_update_none">Du har den senaste versionen.</string>
     <string name="settings_place_pages">Platssidor</string>
-    <string name="place_transit_stops">%1$d hållplatser</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">%1$d hållplats</item>
+        <item quantity="other">%1$d hållplatser</item>
+    </plurals>
     <string name="place_transit_stop_id">Hållplats %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Biljetter &amp; info</string>
     <string name="route_detail_unavailable">Linjedetaljer ej tillgängliga</string>
