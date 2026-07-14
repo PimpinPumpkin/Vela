@@ -146,12 +146,25 @@ fun RouteTopCard(
                     }
                 }
             }
-            IconButton(onClick = onSwap, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
-                Icon(
-                    Icons.Default.SwapVert,
-                    contentDescription = stringResource(R.string.place_swap_start_destination),
-                    tint = dim,
-                )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                IconButton(onClick = onSwap, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                    Icon(
+                        Icons.Default.SwapVert,
+                        contentDescription = stringResource(R.string.place_swap_start_destination),
+                        tint = dim,
+                    )
+                }
+                // With stops in play the labeled Add-stop row is gone (the stops summary row took
+                // its slot), so adding ANOTHER stop gets this compact + under the swap.
+                if (showStopControls && onAddStop != null && stops.isNotEmpty()) {
+                    IconButton(onClick = onAddStop, modifier = Modifier.size(40.dp).dpadHighlight(CircleShape)) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = stringResource(R.string.place_add_stop),
+                            tint = dim,
+                        )
+                    }
+                }
             }
         }
     }
