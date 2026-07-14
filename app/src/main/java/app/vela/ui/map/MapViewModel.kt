@@ -4067,7 +4067,10 @@ class MapViewModel @Inject constructor(
                     }
                 }.getOrNull()
             }
-            imageryYearBox = doubleArrayOf(south, west, north, east)
+            // Cache the area only on SUCCESS - caching a failed/empty identify latched "no
+            // year" for the whole box and nothing ever retried (year vanished after one blip,
+            // user 2026-07-14). On failure the box stays null, so the next camera idle retries.
+            if (year != null) imageryYearBox = doubleArrayOf(south, west, north, east)
             _state.update { it.copy(imageryYear = year) }
         }
     }
