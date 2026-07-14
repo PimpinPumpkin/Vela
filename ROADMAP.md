@@ -4,9 +4,17 @@
 > [`SPEC.md`](SPEC.md) is **how it's built**; this file is **what's planned** and the
 > bigger bets. Keep it current - add ideas here the moment they come up.
 
-Last updated: 2026-07-08.
+Last updated: 2026-07-13.
 
 ## Recently shipped
+- **Transit on open GTFS (2026-07-12/13).** Transitous (community MOTIS) is the primary source for
+  departure boards, canonical stop icons on the map (offline-cached per area), and the tap-through
+  stop timeline, which now reads the actual GTFS run: passed stops grey out, moved times show
+  struck-through, canceled runs drop. Boards refresh every 30 s while open. Same-named curb pairs
+  draw as one icon with both directions on one board. Google keeps transit directions on purpose
+  (traffic-aware ETAs).
+- **Speed limit on the road (2026-07-11).** OSM maxspeed streams in everywhere online; the posted
+  sign sits next to your speed in one Google-style box.
 - **Whole-state offline place packs + self-updating packs (2026-07-07).** Downloading a state pulls a
   CI-baked SQLite of the entire region's OSM POIs/addresses/streets, so offline search works
   Organic-Maps-style anywhere in the state. Packs rebuild monthly from fresh OSM and installed ones
@@ -97,13 +105,13 @@ from the `directions` diag), offline highway refs (a graph rebuild - parked).
   "Parked car" destination, and clears with a hold. Follow-up ideas: offer to save
   automatically when a drive ends; distance/age on the chip; a note or photo.
 
-- **Import Google Maps saved lists** (issue #1) - **first cut SHIPPED 2026-07-08,
+- **Import Google Maps saved lists** (issue #1) - **SHIPPED 2026-07-08,
   device-verified**: paste a share link into the search bar → the list's places land as
   results with a Save-list pill (opt-in; nothing saved until tapped) and the owner's
   per-place notes shown on each sheet (extraction documented in
   SPEC: share link resolves logged-out, page embeds a complete getlist request, parser
-  unit-tested). Remaining: first-class LOCAL lists (create/rename/icon, import INTO a
-  list, per-place notes editable) - the full issue #1 ask - plus a share-TO-Vela intent
+  unit-tested). First-class LOCAL lists shipped the same day (create/rename/icon+color,
+  import INTO a list, per-place notes, file backup). Remaining: a share-TO-Vela intent
   so the link never needs copying.
 
 - **D-pad polish** (base support SHIPPED + full-function sweep done 2026-07-07 - see
@@ -204,8 +212,8 @@ from the `directions` diag), offline highway refs (a graph rebuild - parked).
  - **also DONE 2026-07-01**: per-stop "You've reached &lt;stop&gt;" voice cue (`NavEngine.stopMarks`,
     unit-tested), reroute-through-remaining (off-route reroute + faster-recheck now go through unreached
     stops, reaches-dest guards intact), and up/down reorder arrows (`moveStop`).
-    **avoid tolls/highways** (a directions-`pb` options field - see Known-hard), **explicit lists/labels** for
-    saved places.
+    ~~avoid tolls/highways~~ (SHIPPED 2026-07-11 as on-device graph profiles - see Queued near-term),
+    ~~explicit lists/labels for saved places~~ (SHIPPED 2026-07-08 - local lists with icons/colors/notes).
   - *Not feasible keyless / out of scope:* Street View (key-gated - see Known-hard),
     satellite imagery (no open keyless source), account features (your contributions,
     timeline, writing reviews - degoogled by design), flights/hotels booking tabs.
