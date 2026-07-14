@@ -144,8 +144,6 @@ Every capability, the keyless method behind it, and the file to read first is la
 (basemap, the Google scrape, open routing, the offline stack, remote self-repair, …).
 Deeper still is [`SPEC.md`](SPEC.md).
 
-## Docs - where to look
-
 | File | What's in it |
 |---|---|
 | [`README.md`](README.md) | This - what Vela is, why, and the privacy comparison |
