@@ -150,8 +150,9 @@ Deeper still is [`SPEC.md`](SPEC.md).
 
 | File | What's in it |
 |---|---|
-| [`README.md`](README.md) | This - what Vela is, why, the privacy comparison, and build/run |
+| [`README.md`](README.md) | This - what Vela is, why, and the privacy comparison |
 | [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | Every capability, the keyless method behind it, and the file to read first |
+| [`docs/BUILDING.md`](docs/BUILDING.md) | Building from source, module architecture, and the release pipeline |
 | [`FEATURES.md`](FEATURES.md) | The full, categorised list of every shipped capability (the encyclopaedia) |
 | [`SPEC.md`](SPEC.md) | The authoritative **rebuild spec** - architecture, extractor contract (pb layouts + response indices), resilience layer, hard constraints |
 | [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |
@@ -160,45 +161,6 @@ Deeper still is [`SPEC.md`](SPEC.md).
 | [`docs/dpad.md`](docs/dpad.md) | D-pad / no-touchscreen operation - design, findings, per-surface audit, and the merge-with-upstream policy |
 | [`docs/CALIBRATION.md`](docs/CALIBRATION.md) | The Google extractor + the signed remote-repair channel, in depth |
 | [`docs/MAP-STYLE.md`](docs/MAP-STYLE.md) | Basemap, fonts, custom layers and theming details |
-
-## Architecture
-
-Two Gradle modules with a strict boundary (AGP 8.7.3, Kotlin 2.1, Compose, Hilt,
-R8 release builds): **`:core`** is the UI-agnostic "extractor" in the
-NewPipeExtractor mold - models, the Google scraper and parsers, the open routers,
-the pure nav engine, and the remote-config layer - and **`:app`** is the Compose
-UI over MapLibre. `MapDataSource` is the load-bearing seam between them: Mock for
-offline dev, Google today, and a future Overture/OSM source or self-hostable
-backend drops in the same way. The full module tree and every seam are in
-[`SPEC.md`](SPEC.md).
-
-## Build & run
-
-Standard Android toolchain:
-
-```bash
-# debug build (compile check / local install)
-./gradlew :app:assembleDebug
-
-# the real distribution build - R8 + resource shrinking.
-# Always ship release: debug builds visibly lag during map scroll/nav.
-./gradlew :app:assembleRelease
-
-# unit tests for the pure logic (polyline codec, nav engine)
-./gradlew :core:test
-```
-
-Release signing comes from CI env vars (`VELA_KEYSTORE_PATH`,
-`VELA_KEYSTORE_PASSWORD`, `VELA_KEY_ALIAS`); local builds fall back to the
-debug keystore so `adb install` still works.
-
-**CI**: every push to `main` builds, tests, and publishes a signed nightly
-prerelease (`v0.4.<run>`); a weekly job promotes the newest nightly to the
-stable release, and the F-Droid repo index rebuilds off both. The release
-pipeline details (secrets, channels, versioning) live in
-[`CLAUDE.md`](CLAUDE.md). Out of the box the app talks to the live Google
-source over the keyless OpenFreeMap basemap; `MockMapDataSource` is the
-offline fallback.
 
 ## The Google extractor & calibration
 
@@ -227,7 +189,6 @@ release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
 - [ ] Restaurant menu reliability (Google tags menu photos inconsistently; digging in)
 - [ ] Satellite imagery layer (open Esri World Imagery)
-- [ ] **Predictive** (future-traffic) depart-time ETA - needs a directions-`pb` calibration
 - [ ] Optional offline highway refs
 - [ ] Embedded Mapillary/KartaView street imagery (needs a token; Street View currently opens Google's keyless pano in the browser)
 - [ ] F-Droid submission + reproducible build
@@ -241,8 +202,7 @@ Vela's whole point is that no account and no server ever sees you.
 ## A note on the name
 
 **Vela Maps** (`app.vela`) - the navigator's constellation "the Sails", and
-"sail" in several languages. The name was vetted clear of maps-app and
-trademark collisions.
+"sail" in several languages.
 
 ## Contributing
 
