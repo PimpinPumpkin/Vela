@@ -2,8 +2,9 @@ package app.vela.core.data
 
 import java.net.URLDecoder
 
-/** A target extracted from an external `geo:` URI or Google-Maps web link. */
-data class MapLink(val query: String? = null, val lat: Double? = null, val lng: Double? = null) {
+/** A target extracted from an external `geo:` URI or Google-Maps web link. [zoom] is the
+ *  caller's requested camera zoom (`geo:...?z=17`, `/@lat,lng,15z`) when it carried one. */
+data class MapLink(val query: String? = null, val lat: Double? = null, val lng: Double? = null, val zoom: Double? = null) {
     val hasTarget: Boolean get() = !query.isNullOrBlank() || (lat != null && lng != null)
 }
 
@@ -60,6 +61,8 @@ object MapLinkParser {
         var lat = COORD.find(coordPart)?.groupValues?.get(1)?.toDoubleOrNull()
         var lng = COORD.find(coordPart)?.groupValues?.get(2)?.toDoubleOrNull()
         if (lat == 0.0 && lng == 0.0) { lat = null; lng = null } // 0,0 = "no point, see ?q"
+        // RFC-style zoom: geo:lat,lng?z=17 (1..21). Honoured for the camera; junk is ignored.
+        val zoom = queryParam(raw, "z")?.toDoubleOrNull()?.takeIf { it in 1.0..21.0 }
 
         val q = queryParam(raw, "q")?.let { decode(it) }
         if (!q.isNullOrBlank()) {
@@ -67,26 +70,29 @@ object MapLinkParser {
             val label = Regex("""\(([^)]+)\)""").find(q)?.groupValues?.get(1)
             val qc = COORD.find(q)
             if (qc != null && lat == null) {
-                return MapLink(query = label, lat = qc.groupValues[1].toDoubleOrNull(), lng = qc.groupValues[2].toDoubleOrNull())
+                return MapLink(query = label, lat = qc.groupValues[1].toDoubleOrNull(), lng = qc.groupValues[2].toDoubleOrNull(), zoom = zoom)
             }
             val text = label ?: q.takeUnless { COORD.matches(it.trim()) }
-            return MapLink(query = text, lat = lat, lng = lng)
+            return MapLink(query = text, lat = lat, lng = lng, zoom = zoom)
         }
-        return MapLink(lat = lat, lng = lng)
+        return MapLink(lat = lat, lng = lng, zoom = zoom)
     }
 
     private fun parseMaps(raw: String): MapLink {
         val lat = AT.find(raw)?.groupValues?.get(1)?.toDoubleOrNull()
         val lng = AT.find(raw)?.groupValues?.get(2)?.toDoubleOrNull()
+        // Google web links carry zoom after the @coords: /@38.5,-121.7,15z (sometimes fractional).
+        val zoom = Regex("""@-?\d{1,3}\.\d+,-?\d{1,3}\.\d+,(\d+(?:\.\d+)?)z""")
+            .find(raw)?.groupValues?.get(1)?.toDoubleOrNull()?.takeIf { it in 1.0..21.0 }
         val place = Regex("""/place/([^/@?]+)""").find(raw)?.groupValues?.get(1)
         val search = Regex("""/search/([^/@?]+)""").find(raw)?.groupValues?.get(1)
         val q = queryParam(raw, "q") ?: queryParam(raw, "query")
         val query = (place ?: search ?: q)?.let { decode(it.replace('+', ' ')) }?.takeIf { it.isNotBlank() }
         // A query that's really coordinates → treat as a point.
         query?.trim()?.let { COORD.matchEntire(it) }?.let {
-            return MapLink(lat = it.groupValues[1].toDoubleOrNull(), lng = it.groupValues[2].toDoubleOrNull())
+            return MapLink(lat = it.groupValues[1].toDoubleOrNull(), lng = it.groupValues[2].toDoubleOrNull(), zoom = zoom)
         }
-        return MapLink(query = query, lat = lat, lng = lng)
+        return MapLink(query = query, lat = lat, lng = lng, zoom = zoom)
     }
 
     private fun queryParam(raw: String, key: String): String? {
