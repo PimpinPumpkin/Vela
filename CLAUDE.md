@@ -1477,7 +1477,12 @@ architecture note.
   toward `myLocation` north-up (k = 1-exp(-dt/**0.22** s), loosened from 0.16 2026-07-13 so the camera keeps
   CHASING between the ~1 Hz fixes instead of coasting to each and stopping = a continuous glide, nearer the nav
   feel), driving the ME source (`setMeSource`) + `moveCamera` each frame, with an idle-skip when neither moved
-  (a settled follow doesn't re-upload 60x/s). **The PUCK draws at the EASED position (`browseCam`), not the raw
+  (a settled follow doesn't re-upload 60x/s). **NORTH-UP is ENFORCED, not assumed (2026-07-14):**
+  `moveCamera(newLatLng)` moves only the target, so a leftover bearing/tilt (a previous nav's heading-up
+  camera, an old manual rotate) survived into the follow and a drive tracked DOWN the screen -
+  `browseAtt` now eases both back to 0 with the same k (zoom stays untouched, so a pinch level
+  survives), and the nav-exit teardown also levels bearing/tilt (+ resets the sticky puck-low camera
+  padding) for the not-following case. A manual rotate is a gesture, which drops follow - never fight it. **The PUCK draws at the EASED position (`browseCam`), not the raw
   fix (2026-07-13):** at the raw fix the dot teleported forward on the map each fix while the camera eased to
   catch up (the visible hop); at the eased position it stays centred and glides with the map, the locked
   puck+camera the nav follow has. (A fuller constant-velocity dead-reckon between fixes is the next step if it

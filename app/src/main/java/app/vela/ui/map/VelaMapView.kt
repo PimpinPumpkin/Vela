@@ -237,6 +237,7 @@ fun VelaMapView(
     satelliteOn: Boolean = false, // Esri World Imagery raster under the symbol layers (map button)
     topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
+    navOverviewTick: Int = 0, // bumped by the in-nav Overview button — fly the camera out to the whole route
     onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
     onMarkerTap: (index: Int) -> Unit,
     parkingSpot: LatLng? = null, // saved "parked here" pin; tap → onParkingTap
@@ -301,6 +302,7 @@ fun VelaMapView(
     val driveFollowingHolder = rememberUpdatedState(driveFollowing)
     val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
     val browseBeam = remember { floatArrayOf(Float.NaN) }              // smoothed browse heading (NaN = idle, use raw)
+    val browseAtt = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased [bearing (signed, ->0), tilt (->0)]; NaN = re-seed
     val lastBrowse = remember { doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) } // last applied [lat,lng,bearing] (skip no-op frames)
     val viewport = rememberUpdatedState(onViewport)
     val dpadHolder = rememberUpdatedState(dpadController)
@@ -679,6 +681,7 @@ fun VelaMapView(
         if (navMode || !driveFollowing) {
             browseBeam[0] = Float.NaN   // applyData paints the raw fix again once we're not following
             browseCam[0] = Double.NaN
+            browseAtt[0] = Double.NaN
             lastBrowse[0] = Double.NaN
             return@LaunchedEffect
         }
@@ -720,13 +723,29 @@ fun VelaMapView(
                 browseCam[0] += (loc.lat - browseCam[0]) * k
                 browseCam[1] += (loc.lng - browseCam[1]) * k
                 camLat = browseCam[0]; camLng = browseCam[1]
+                // NORTH-UP, FLAT: ease any leftover rotation/tilt away. moveCamera(newLatLng) only
+                // moves the target, so a stale bearing (a previous nav's heading-up camera, an old
+                // two-finger rotate) survived into the follow and made a drive track DOWN the screen
+                // (user 2026-07-14). Browse follow is north-up like Google's; the built-in compass
+                // shows while it settles and fades once it faces north. A manual rotate mid-follow
+                // is a gesture, which drops follow anyway.
+                if (browseAtt[0].isNaN()) {
+                    val cp = cam.cameraPosition
+                    browseAtt[0] = ((cp.bearing + 540.0) % 360.0) - 180.0 // signed, eases to 0
+                    browseAtt[1] = cp.tilt
+                }
+                browseAtt[0] *= (1.0 - k)
+                browseAtt[1] *= (1.0 - k)
             } else {
                 browseCam[0] = Double.NaN // released (pinch) → re-seed from the live camera on re-attach
+                browseAtt[0] = Double.NaN
             }
             // Skip the native calls when nothing moved enough to see (a settled follow at a red
             // light shouldn't re-upload the point + re-drive the camera 60×/s). ~1e-6 deg is well
             // under a pixel at street zoom; 0.4 deg of heading is invisible on the cone.
-            val moved = lastBrowse[0].isNaN() ||
+            val attSettling = !browseAtt[0].isNaN() &&
+                (kotlin.math.abs(browseAtt[0]) > 0.1 || browseAtt[1] > 0.1)
+            val moved = lastBrowse[0].isNaN() || attSettling ||
                 kotlin.math.abs(camLat - lastBrowse[0]) > 1e-6 ||
                 kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
                 kotlin.math.abs(beam - lastBrowse[2]) > 0.4
@@ -739,10 +758,47 @@ fun VelaMapView(
                 val puckAt = if (cam != null && !scaling[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0]) {
-                    cam.moveCamera(CameraUpdateFactory.newLatLng(MLLatLng(camLat, camLng)))
+                    if (attSettling) {
+                        // Still easing rotation/tilt back to north-up flat: drive them alongside
+                        // the target (zoom left unset = preserved, so a pinch level survives).
+                        cam.moveCamera(
+                            CameraUpdateFactory.newCameraPosition(
+                                CameraPosition.Builder()
+                                    .target(MLLatLng(camLat, camLng))
+                                    .bearing((browseAtt[0] + 360.0) % 360.0)
+                                    .tilt(browseAtt[1].coerceAtLeast(0.0))
+                                    .build(),
+                            ),
+                        )
+                    } else {
+                        cam.moveCamera(CameraUpdateFactory.newLatLng(MLLatLng(camLat, camLng)))
+                    }
                 }
                 lastBrowse[0] = camLat; lastBrowse[1] = camLng; lastBrowse[2] = beam.toDouble()
             }
+        }
+    }
+
+    // The in-nav ROUTE OVERVIEW (Google's fly-over): fit the whole route while the drive keeps
+    // navigating - the VM marked the camera detached, so the follow ticker has already stepped
+    // aside and the existing Re-center button glides back into the puck-low follow. Camera only;
+    // guidance, voice and the puck (which keeps moving along the overview) are untouched.
+    LaunchedEffect(navOverviewTick) {
+        if (navOverviewTick == 0 || !navMode || routePolyline.size < 2) return@LaunchedEffect
+        val map = mapRef ?: return@LaunchedEffect
+        // The puck-low top padding would skew a bounds fit; the follow re-applies it per frame
+        // when Re-center re-attaches.
+        map.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
+        val b = MLLatLngBounds.Builder()
+        routePolyline.forEach { b.include(MLLatLng(it.lat, it.lng)) }
+        runCatching {
+            map.animateCamera(
+                CameraUpdateFactory.newLatLngBounds(
+                    b.build(),
+                    70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
+                ),
+                700,
+            )
         }
     }
 
@@ -785,8 +841,18 @@ fun VelaMapView(
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
             // Camera padding is STICKY MapLibre state: the nav view's puck-low offset (top padding,
             // set on every follow frame + the pre-engage case) would otherwise shift the browse
-            // camera's centre for the rest of the session.
-            mapRef?.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
+            // camera's centre for the rest of the session. Bearing + tilt are sticky the same way -
+            // ending a drive left the browse map tilted 55 and heading-up (the free-drive follow
+            // eases them back too, but it doesn't run while a sheet owns the camera).
+            mapRef?.let { m ->
+                m.moveCamera(CameraUpdateFactory.paddingTo(0.0, 0.0, 0.0, 0.0))
+                m.animateCamera(
+                    CameraUpdateFactory.newCameraPosition(
+                        CameraPosition.Builder().bearing(0.0).tilt(0.0).build(),
+                    ),
+                    450,
+                )
+            }
             return@LaunchedEffect
         }
         navPuck.engaged = false
