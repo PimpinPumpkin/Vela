@@ -93,6 +93,7 @@ fun VelaMenuScope.toggleItem(text: String, checked: Boolean, onToggle: (Boolean)
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
+                .dpadHighlight(RoundedCornerShape(8.dp))
                 .clickable { onToggle(!checked) }
                 .padding(horizontal = 16.dp, vertical = 4.dp)
                 .fillMaxWidth(),
