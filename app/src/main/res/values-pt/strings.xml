@@ -570,4 +570,8 @@
     <string name="mapvm_voice_lang_system">As indicações em %1$s usam a voz do telemóvel. Adicione uma nas definições de voz do sistema.</string>
     <string name="settings_topography">Sombreamento do relevo</string>
     <string name="settings_topography_hint">Sombreia colinas e montanhas no mapa. Desativado por padrão.</string>
+    <string name="map_satellite_toggle">Vista de satélite</string>
+    <string name="map_layers">Camadas</string>
+    <string name="settings_layers_button">Mostrar botão de camadas</string>
+    <string name="settings_layers_button_hint">O botão do mapa para satélite, trânsito, transporte e terreno.</string>
 </resources>

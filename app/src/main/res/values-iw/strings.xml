@@ -572,4 +572,8 @@
     <string name="settings_topography">הצללת שטח</string>
     <string name="settings_topography_hint">מוסיף הצללה לגבעות ולהרים במפה. כבוי כברירת מחדל.</string>
     <string name="settings_version_copied">הגרסה הועתקה</string>
+    <string name="map_satellite_toggle">תצוגת לוויין</string>
+    <string name="map_layers">שכבות</string>
+    <string name="settings_layers_button">הצגת כפתור השכבות</string>
+    <string name="settings_layers_button_hint">כפתור המפה למעבר בין לוויין, תנועה, תחבורה ותבליט.</string>
 </resources>

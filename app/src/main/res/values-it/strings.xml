@@ -570,4 +570,8 @@
     <string name="mapvm_voice_lang_system">Le indicazioni in %1$s usano la voce del telefono. Aggiungine una nelle impostazioni voce di sistema.</string>
     <string name="settings_topography">Ombreggiatura del terreno</string>
     <string name="settings_topography_hint">Ombreggia colline e montagne sulla mappa. Disattivata per impostazione predefinita.</string>
+    <string name="map_satellite_toggle">Vista satellite</string>
+    <string name="map_layers">Livelli</string>
+    <string name="settings_layers_button">Mostra pulsante livelli</string>
+    <string name="settings_layers_button_hint">Il pulsante della mappa per satellite, traffico, trasporti e terreno.</string>
 </resources>
