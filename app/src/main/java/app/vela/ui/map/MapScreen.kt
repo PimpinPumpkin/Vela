@@ -2252,6 +2252,32 @@ private fun SearchResults(
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
+                    // Sort: a menu (Relevance / Rating / Distance). LEFT of the filters like
+                    // Google's results header (user 2026-07-13).
+                    Box {
+                        ElevatedFilterChip(
+                            selected = sortMode > 0,
+                            onClick = { sortMenu = true },
+                            label = {
+                                Text(
+                                    when (sortMode) {
+                                        1 -> stringResource(R.string.mapscreen_sort_rating)
+                                        2 -> stringResource(R.string.mapscreen_sort_distance)
+                                        else -> stringResource(R.string.mapscreen_sort)
+                                    },
+                                )
+                            },
+                            shape = androidx.compose.foundation.shape.CircleShape,
+                            colors = chipColors,
+                            border = null,
+                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                        )
+                        VelaMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
+                            item(stringResource(R.string.mapscreen_sort_relevance)) { sortMode = 0; sortMenu = false }
+                            item(stringResource(R.string.mapscreen_sort_rating_item)) { sortMode = 1; sortMenu = false }
+                            item(stringResource(R.string.mapscreen_sort_distance_item)) { sortMode = 2; sortMenu = false }
+                        }
+                    }
                     // Rating floor: a MENU of Google's tiers (3.5+/4.0+/4.5+) — the old fixed
                     // 4.0★ toggle couldn't say what it did or offer another bar.
                     Box {
@@ -2301,31 +2327,6 @@ private fun SearchResults(
                             { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }
                         } else null,
                     )
-                    // Sort: a menu (Relevance / Rating / Distance) instead of blind cycling.
-                    Box {
-                        ElevatedFilterChip(
-                            selected = sortMode > 0,
-                            onClick = { sortMenu = true },
-                            label = {
-                                Text(
-                                    when (sortMode) {
-                                        1 -> stringResource(R.string.mapscreen_sort_rating)
-                                        2 -> stringResource(R.string.mapscreen_sort_distance)
-                                        else -> stringResource(R.string.mapscreen_sort)
-                                    },
-                                )
-                            },
-                            shape = androidx.compose.foundation.shape.CircleShape,
-                            colors = chipColors,
-                            border = null,
-                            trailingIcon = { Icon(Icons.Default.KeyboardArrowDown, contentDescription = null, modifier = Modifier.size(18.dp)) },
-                        )
-                        VelaMenu(expanded = sortMenu, onDismissRequest = { sortMenu = false }) {
-                            item(stringResource(R.string.mapscreen_sort_relevance)) { sortMode = 0; sortMenu = false }
-                            item(stringResource(R.string.mapscreen_sort_rating_item)) { sortMode = 1; sortMenu = false }
-                            item(stringResource(R.string.mapscreen_sort_distance_item)) { sortMode = 2; sortMenu = false }
-                        }
-                    }
                 }
                 Divider()
                 } // SheetFold - chips
