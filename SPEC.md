@@ -645,7 +645,7 @@ handed - no filesystem, network, or device access.
 
 **In-app updater** (`app/update/SelfUpdater.kt`): checks
 `api.github.com/repos/PimpinPumpkin/Vela/releases/latest`, derives versionCode from the
-`v0.3.<run>` tag (`2000 + run`), and when newer offers a card on the map
+`v0.4.<run>` tag (`2000 + run`), and when newer offers a card on the map
 (`MapUiState.updateInfo`). Download uses a no-call-timeout client (the APK is ~80 MB),
 zip-magic-checks the body, then hands the file to the system installer via the app
 FileProvider (`filesDir/updates/`, same plumbing as the voice-engine installer) - the OS
@@ -657,7 +657,7 @@ enforces same-package/same-signature. Launch check throttled to ~daily behind th
   compileSdk 35, minSdk 26, Java 17**, Compose + Hilt + version catalog. **R8 in the
   `release` buildType** - always build release for on-device (debug lags the map).
 - **CI** (`.github/workflows/ci.yml`): every push to `main` builds + tests + signs the
-  APK and publishes a nightly PRERELEASE **`v0.3.<run>`** (versionName
+  APK and publishes a nightly PRERELEASE **`v0.4.<run>`** (versionName
   `0.3.<run>`, versionCode `2000+run`); a weekly workflow promotes the newest
   nightly to the stable release (same APK). Obtainium tracks stable by default,
   nightlies via its prerelease toggle; the in-app updater follows stable.
