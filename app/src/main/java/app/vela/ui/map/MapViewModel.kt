@@ -797,9 +797,15 @@ class MapViewModel @Inject constructor(
                 // town sat below (user report). Bucket by metro distance (stable sort: within
                 // each bucket Google's own relevance order is preserved) so nearby matches
                 // surface first and a famous far match still shows, just lower.
-                val ranked = if (near == null) res else res.sortedBy { p ->
-                    if (p.location.distanceTo(near) <= SUGGEST_NEAR_M) 0 else 1
-                }
+                // ...but never demote Google's TOP suggestion or an exact name match: for a
+                // plain entity query ("fresno") the #1 result IS the entity - the city itself -
+                // and bucketing it under every nearby Fresno-named business pushed it off the
+                // list entirely (user report 2026-07-13). Addresses are unaffected: Photon still
+                // leads those, so a famous far "123 Main Street" at #1 sits below the local hits.
+                val ranked = if (near == null) res else res.withIndex().sortedBy { (i, p) ->
+                    val entity = i == 0 || p.name.equals(term, ignoreCase = true)
+                    if (entity || p.location.distanceTo(near) <= SUGGEST_NEAR_M) 0 else 1
+                }.map { it.value }
                 // Photon's nearby addresses lead; drop its far strays (a metro away isn't what a
                 // partial address means) and anything Google already covers within a block.
                 val photonNear = photon.filter { p ->
