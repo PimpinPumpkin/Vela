@@ -1522,6 +1522,7 @@ fun MapScreen(
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
                         .padding(top = 76.dp)
+                        .dpadHighlight(RoundedCornerShape(20.dp))
                         .clickable {
                             vm.saveImportedList()
                             Toast.makeText(context, savedMsg, Toast.LENGTH_SHORT).show()
@@ -1699,42 +1700,31 @@ fun MapScreen(
                         ),
                     )
                     // The parking hub, anchored to the button. Only reachable when a spot is set.
-                    DropdownMenu(expanded = showParkingMenu, onDismissRequest = { showParkingMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.map_parking_find)) },
-                            leadingIcon = { Icon(Icons.Default.DirectionsCar, contentDescription = null) },
-                            onClick = { showParkingMenu = false; vm.showParkedCar(parkedCarLabel) },
-                        )
+                    // VelaMenu, not a bare DropdownMenu - the D-pad rule (docs/dpad.md): a popup
+                    // can't be pre-focused, so key-first devices get the auto-focusing chooser.
+                    app.vela.ui.VelaMenu(expanded = showParkingMenu, onDismissRequest = { showParkingMenu = false }) {
+                        item(stringResource(R.string.map_parking_find), Icons.Default.DirectionsCar) {
+                            showParkingMenu = false; vm.showParkedCar(parkedCarLabel)
+                        }
                         // "Move parking here" overwrites the current spot with your live fix; the old
                         // one is not lost - saveParkingSpot archives it to history. Hidden with no fix.
                         if (state.myLocation != null) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.map_parking_move_here)) },
-                                leadingIcon = { Icon(Icons.Default.MyLocation, contentDescription = null) },
-                                onClick = {
-                                    showParkingMenu = false
-                                    val msg = if (vm.saveParkingSpot()) parkingMovedMsg else parkingNoFixMsg
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                },
-                            )
+                            item(stringResource(R.string.map_parking_move_here), Icons.Default.MyLocation) {
+                                showParkingMenu = false
+                                val msg = if (vm.saveParkingSpot()) parkingMovedMsg else parkingNoFixMsg
+                                Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                            }
                         }
                         if (state.parkingHistory.size > 1) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.map_parking_earlier)) },
-                                leadingIcon = { Icon(Icons.Default.History, contentDescription = null) },
-                                onClick = { showParkingMenu = false; showParkingHistory = true },
-                            )
+                            item(stringResource(R.string.map_parking_earlier), Icons.Default.History) {
+                                showParkingMenu = false; showParkingHistory = true
+                            }
                         }
-                        Divider()
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.map_parking_clear)) },
-                            leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
-                            onClick = {
-                                showParkingMenu = false
-                                vm.clearParkingSpot()
-                                Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
-                            },
-                        )
+                        item(stringResource(R.string.map_parking_clear), Icons.Default.Delete) {
+                            showParkingMenu = false
+                            vm.clearParkingSpot()
+                            Toast.makeText(context, parkingClearedMsg, Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }
@@ -2246,8 +2236,23 @@ private fun SearchResults(
                         )
                     },
             ) {
+                // The handle pill is a real focus stop under D-pad: OK steps the sheet up a
+                // detent (the tap grammar), BACK steps it down as always - the tap/drag gestures
+                // on the Column above have no key path of their own (docs/dpad.md).
                 Box(
-                    Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 2.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 2.dp)
+                        .dpadHighlight(RoundedCornerShape(6.dp))
+                        .onKeyEvent { ev ->
+                            if ((ev.key == Key.DirectionCenter || ev.key == Key.Enter) && ev.type == KeyEventType.KeyUp) {
+                                if (collapsed) onExpand() else onExpandedChange(!expanded)
+                                true
+                            } else {
+                                false
+                            }
+                        }
+                        .focusable(),
                     contentAlignment = Alignment.Center,
                 ) {
                     Box(
