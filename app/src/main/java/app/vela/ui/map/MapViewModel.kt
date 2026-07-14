@@ -49,6 +49,7 @@ import app.vela.web.WebReviewsFetcher
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
@@ -776,7 +777,20 @@ class MapViewModel @Inject constructor(
             val near = mapCenter ?: _state.value.myLocation // suggestions near the viewport, like search
             val vp0 = viewport
             val spanM0 = vp0?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
+            // ADDRESS queries ("123 main st") get a parallel Photon (OSM) lookup: it honours the
+            // location bias properly, which is where Google's keyless suggest falls down. The two
+            // fetches race concurrently; Photon's nearby addresses lead, Google's places follow.
+            val photonDeferred: kotlinx.coroutines.Deferred<List<Place>>? = if (app.vela.core.data.PhotonGeocoder.looksLikeAddress(term)) {
+                async(Dispatchers.IO) {
+                    runCatching {
+                        app.vela.core.data.PhotonGeocoder.suggest(
+                            http, term, near, app.vela.ui.AppLocale.effective().language,
+                        )
+                    }.getOrDefault(emptyList())
+                }
+            } else null
             val res = runCatching { dataSource.search(term, near, spanM0).places }.getOrDefault(emptyList())
+            val photon = photonDeferred?.await().orEmpty()
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
                 // Google gets the viewport bias, but keyless ranking for a PARTIAL address is
                 // weak - "123 main st" happily led with matches states away while the one in
@@ -786,7 +800,12 @@ class MapViewModel @Inject constructor(
                 val ranked = if (near == null) res else res.sortedBy { p ->
                     if (p.location.distanceTo(near) <= SUGGEST_NEAR_M) 0 else 1
                 }
-                _state.update { it.copy(suggestions = ranked.take(8)) }
+                // Photon's nearby addresses lead; drop its far strays (a metro away isn't what a
+                // partial address means) and anything Google already covers within a block.
+                val photonNear = photon.filter { p ->
+                    near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M
+                }.filter { p -> ranked.none { g -> g.location.distanceTo(p.location) < 120.0 } }
+                _state.update { it.copy(suggestions = (photonNear + ranked).take(8)) }
             }
         }
     }
