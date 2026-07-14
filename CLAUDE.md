@@ -1050,9 +1050,12 @@ architecture note.
   twin layer must be coloured in ALL FOUR apply fns. **Same trap bit the maxspeed "Speed B" query
   layer (fixed 2026-07-13):** its `lineColor("#00000000")` 8-digit-hex string was REJECTED by
   MapLibre's colour parser and fell back to the default OPAQUE BLACK - a 12dp black stripe over
-  every road on the browse map (device report). For an invisible-but-queryable layer use the
-  `@ColorInt` `Color.TRANSPARENT` overload (no string parse) + `lineOpacity(0f)`, and only ADD it
-  while it's needed. **`speedOverlayOn` is MOTION-ARMED (`speedOverlayArmed` in MapScreen, 2026-07-13):**
+  every road on the browse map (device report). **BUT opacity 0 kills the query (2026-07-13, found by ars18 in the
+  vela-dpad fork, A/B-proven on device):** MapLibre skips fully transparent features at render
+  time and queryRenderedFeatures only sees rendered features, so the transparent Speed B layer
+  returned NOTHING and the badge was dead from the moment the black-roads fix landed. An
+  invisible-but-queryable layer needs `lineColor(Color.BLACK)` + `lineOpacity(0.004f)` (one alpha
+  step - invisible on any basemap, still queryable), and only ADD it while it's needed. **`speedOverlayOn` is MOTION-ARMED (`speedOverlayArmed` in MapScreen, 2026-07-13):**
   armed the moment `navigating || mySpeed > 3 m/s`, disarmed after 2 min of stillness - NEVER keyed on
   `driveFollowing` alone. driveFollowing is true on the bare browse map (followMe defaults on), and
   keying the overlay off it mounted the PMTiles sources while browsing AND removed them from the style
