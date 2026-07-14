@@ -1620,7 +1620,16 @@ architecture note.
   reports time as `distance_m/speed` as if `car_average_speed` (km/h) were m/s - 3.6× too fast - so the
   engine AND `graphbuilder` override `calcEdgeMillis` to `distance_m·3600/kmh`; keep them identical.
   **Encoded values = `car_access, car_average_speed, road_access, max_speed`** - the string is byte-identical
-  in `GraphBuilder.java` and `GraphHopperRouteEngine.kt` (a mismatch fails graph load); keep it so. `max_speed`
+  in `GraphBuilder.java` and `GraphHopperRouteEngine.kt` (a mismatch fails graph load); keep it so.
+  **Highway refs/destinations are NOT encoded values (learned 2026-07-13, saved a world rebake):** GraphHopper
+  stores `street_ref`/`street_destination`/`street_destination_ref`/`motorway_junction` as per-edge KEY-VALUES
+  whenever `parseWayNames` is on - and it defaults ON and GraphBuilder never disabled it, so every graph ever
+  shipped already carries them (same storage that makes `Instruction.getName()` work offline).
+  `InstructionsFromEdges` copies them onto each instruction's `extraInfoJSON`; `toRoute` reads them so offline
+  steps get shields (`Maneuver.ref`), "toward" sign text and "Take exit N" phrasing like the OSRM path
+  (`road = name ?: ref`; a fork/ramp carrying `motorway_junction` uses the off-ramp phrase). NB GraphHopper
+  joins a multi-ref with ", " where OSRM keeps ";" - the shield pick splits on both. Verified against a fresh
+  unchanged-config bake: refs/destinations present on a 47 mi toll-road route's instructions. `max_speed`
   (added 2026-07-04) is the OSM `maxspeed` posted limit (km/h), a **passive stored column** (`OSMMaxSpeedParser`
   auto-registers; NOT in the weighting/CH, so it doesn't change routes) read by the speed-limit badge via
   `GraphHopperRouteEngine.currentRoadLimit(lat,lng)` - a `LocationIndex` snap + `EdgeIteratorState.get` off the

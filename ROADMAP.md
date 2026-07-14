@@ -95,7 +95,9 @@ journeys below under Big bets / Known-hard:
   free-flow best (`SNAP_ETA_MARGIN`), so a divergent-but-not-faster snap no longer wins.
 
 *Still to validate on real drives:* route-speed parity vs Google (the snap-guard threshold is tunable
-from the `directions` diag), offline highway refs (a graph rebuild - parked).
+from the `directions` diag), offline highway refs (shipped 2026-07-13 with NO rebake - GraphHopper had
+been storing street_ref/street_destination on every edge all along, the engine just never read them;
+worth an offline drive past a signed exit to hear it).
 
 ## Near-term (next up)
 
