@@ -38,6 +38,13 @@ import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -506,6 +513,7 @@ private fun DrawScope.laneHead(indication: String, color: Color, baseX: Float, b
 @Composable
 fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
     val dark = isAppInDarkTheme()
+    var query by remember { mutableStateOf("") }
     Card(
         modifier,
         shape = RoundedCornerShape(28.dp),
@@ -515,8 +523,38 @@ fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
             contentColor = SheetPalette.ink(dark),
         ),
     ) {
+      Column(Modifier.padding(vertical = 6.dp)) {
+        // Free-text along-route search above the canned chips - the chips cover the common
+        // stops, the field covers everything else (user 2026-07-14). Same search either way.
         Row(
-            Modifier.padding(horizontal = 12.dp, vertical = 6.dp).horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+        ) {
+            Icon(Icons.Default.Search, contentDescription = null, tint = SheetPalette.dim(dark), modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(10.dp))
+            BasicTextField(
+                value = query,
+                onValueChange = { query = it },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = SheetPalette.ink(dark)),
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { if (query.isNotBlank()) onPick(query.trim()) }),
+                decorationBox = { inner ->
+                    if (query.isEmpty()) {
+                        Text(
+                            stringResource(R.string.place_search_along_route),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = SheetPalette.dim(dark),
+                        )
+                    }
+                    inner()
+                },
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+            )
+        }
+        Row(
+            Modifier.padding(horizontal = 12.dp).horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
@@ -543,6 +581,7 @@ fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
                 )
             }
         }
+      }
     }
 }
 
@@ -554,10 +593,7 @@ fun NavControls(
     offRoute: Boolean,
     onStop: () -> Unit,
     onSteps: () -> Unit,
-    voiceMuted: Boolean = false,
-    onToggleVoice: () -> Unit = {},
     trafficRatio: Double? = null,
-    onSearchAlong: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -607,22 +643,6 @@ fun NavControls(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons,
                 // 26dp glyphs; End matches the height so the row reads as one control set.
-                if (onSearchAlong != null) {
-                    FilledTonalIconButton(onClick = onSearchAlong, modifier = Modifier.size(54.dp)) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = stringResource(R.string.place_search_along_route),
-                            modifier = Modifier.size(26.dp),
-                        )
-                    }
-                }
-                FilledTonalIconButton(onClick = onToggleVoice, modifier = Modifier.size(54.dp)) {
-                    Icon(
-                        if (voiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                        contentDescription = if (voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
-                        modifier = Modifier.size(26.dp),
-                    )
-                }
                 FilledTonalIconButton(onClick = onSteps, modifier = Modifier.size(54.dp)) {
                     Icon(Icons.AutoMirrored.Filled.List, contentDescription = stringResource(R.string.nav_steps), modifier = Modifier.size(26.dp))
                 }
