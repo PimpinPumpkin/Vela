@@ -86,6 +86,15 @@ class NavSession @Inject constructor(
     // dismissed every recheck; a similar route must beat the dismissed saving by a real margin.
     private var dismissedFasterKey: Long = 0L
     private var dismissedFasterSaving = 0.0
+    // Live ETA calibration for the CURRENT course. Each recheck fetches a fresh traffic-aware
+    // route from the live position anyway; when that candidate follows the road we're already
+    // driving, its ETA is the freshest read of the traffic ahead - so instead of discarding it
+    // (the shown ETA used to ride the traffic ratio captured at the LAST route fetch for the
+    // whole drive), the session keeps a multiplicative correction applied to every published
+    // remaining duration. Reset to 1.0 whenever the route itself is swapped (start / reroute /
+    // faster-route / replay) - a fresh route carries fresh traffic of its own. Volatile: written
+    // by the recheck coroutine, read on the location thread's publish path.
+    @Volatile private var etaScale = 1.0
     // Replay hermeticity: a trip REPLAY must be deterministic — no live reroute fetches, no
     // faster-route rechecks (a live fetch mid-replay swapped the route and the recorded fixes
     // were then matched against a route the driver never drove: arrow on another street, the
@@ -125,6 +134,7 @@ class NavSession @Inject constructor(
         pendingLatchClear.set(false)  // a stale clear from the previous session must not leak in
         dismissedFasterKey = 0L
         dismissedFasterSaving = 0.0
+        etaScale = 1.0
         synchronized(stopLock) {
             this.stops = stops
             this.stopMarks = NavEngine.stopMarks(route, stops.map { it.location })
@@ -214,6 +224,7 @@ class NavSession @Inject constructor(
             }
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
+            etaScale = 1.0 // the fresh route carries fresh traffic
             _state.update {
                 it.copy(
                     route = r,
@@ -260,11 +271,15 @@ class NavSession @Inject constructor(
         _state.update {
             if (it.route !== route) it else {
                 applied = true
+                // The live-traffic ETA calibration (etaScale, set by the recheck) applies to the
+                // PUBLISHED remaining time only - the engine's own value stays pristine (it never
+                // reads it back; it recomputes from the route's step durations each fix).
+                val scaledNav = if (etaScale == 1.0) next else next.copy(remainingDuration = next.remainingDuration * etaScale)
                 it.copy(
-                    nav = next,
+                    nav = scaledNav,
                     maneuverText = maneuver?.instruction.orEmpty(),
                     remainingDistance = next.remainingDistance,
-                    remainingDuration = next.remainingDuration,
+                    remainingDuration = scaledNav.remainingDuration,
                 )
             }
         }
@@ -330,6 +345,7 @@ class NavSession @Inject constructor(
             planRoute = faster
         }
         lastRecheckMs = SystemClock.elapsedRealtime()
+        etaScale = 1.0 // the accepted route carries fresh traffic
         _state.update {
             it.copy(
                 route = faster,
@@ -387,6 +403,21 @@ class NavSession @Inject constructor(
             ) return@launch
             val candidateEta = candidate.durationInTrafficSeconds ?: candidate.durationSeconds
             val remaining = _state.value.remainingDuration
+            // Even with NO course change the traffic ahead keeps evolving, and this candidate IS
+            // a fresh traffic-aware ETA from the live position. When it follows the route we're
+            // already driving (every sampled point within SAME_COURSE_M of the current line -
+            // tighter than the 700 m jam-detour test, which can't tell a parallel alternate from
+            // "same road"), recalibrate the published ETA to it instead of throwing it away: the
+            // engine's remaining time otherwise rides the traffic ratio captured at the LAST
+            // route fetch for the entire drive (user 2026-07-14). The multiplicative form makes
+            // the new scale independent of the old one (remaining already carries etaScale), and
+            // the offer logic below then compares candidates against a LIVE baseline too.
+            val current = _state.value.route
+            if (current != null && remaining > 120.0 && candidateEta > 0.0 &&
+                !app.vela.core.data.RouteGeometry.divergent(current, candidate, SAME_COURSE_M)
+            ) {
+                etaScale = (etaScale * candidateEta / remaining).coerceIn(0.5, 2.5)
+            }
             val saving = remaining - candidateEta
             // A candidate similar to one the user DISMISSED is only re-offered when it beats the
             // dismissed saving by a real margin — not re-spoken verbatim every 2 minutes.
@@ -421,6 +452,7 @@ class NavSession @Inject constructor(
     fun replaySetRoute(r: Route) {
         if (r.polyline.size < 2) return
         synchronized(stopLock) { stops = emptyList(); stopMarks = emptyList(); passedStops = 0; planRoute = r }
+        etaScale = 1.0
         diag.record("nav", "replay: route swap (${r.maneuvers.size} steps)")
         _state.update {
             it.copy(
@@ -516,6 +548,7 @@ class NavSession @Inject constructor(
             }
             lastRecheckMs = SystemClock.elapsedRealtime()
             lastRerouteAdoptMs = SystemClock.elapsedRealtime()
+            etaScale = 1.0 // the fresh route carries fresh traffic
             _state.update {
                 it.copy(
                     route = r,
@@ -542,6 +575,11 @@ class NavSession @Inject constructor(
     // the tuning constants stay implementation detail by convention.
     companion object {
         const val RECHECK_INTERVAL_MS = 120_000L   // re-check traffic every ~2 min
+        // A recheck candidate whose sampled points all sit within this of the current route line
+        // counts as the SAME course -> its fresh ETA recalibrates the shown arrival time. Tighter
+        // than the 700 m divergence default: a parallel arterial can sit inside 700 m of a highway
+        // for miles, and calibrating our ETA from a route we are not driving would lie.
+        const val SAME_COURSE_M = 250.0
         const val MIN_RECHECK_DISTANCE_M = 1_500.0 // don't bother near the destination
         const val FASTER_THRESHOLD_S = 90.0        // only offer if it saves real time
         const val REROUTE_COOLDOWN_MS = 10_000L    // min gap between ADOPTED reroutes (no reroute storms)
