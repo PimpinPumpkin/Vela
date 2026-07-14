@@ -1322,7 +1322,7 @@ class MapViewModel @Inject constructor(
     // 2026-07-13). Localized like the gate: fuel/EV/emergency/broadcast words across the app
     // languages.
     private val NON_TRANSIT_CAT_COMPILED = Regex(
-        """gas|fuel|petrol|gasolin|benzin|essence|carburant|paliw|бензин|заправ|азс|tank|""" +
+        """gas|fuel|petrol|filling|gasolin|benzin|essence|carburant|paliw|бензин|заправ|азс|tank|""" +
             """station-service|servicio|serviço|servizio|加油|ガソリン|주유|דלק|""" +
             """charging|laadstation|ladestation|recharge|recarga|ricarica|зарядн|טעינה|充电|充電|""" +
             """fire|police|power|pumping|weigh|radio|television|\btv\b|pompiers|bomberos|feuerwehr""",
