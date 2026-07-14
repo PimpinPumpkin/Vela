@@ -18,6 +18,8 @@ import kotlin.math.roundToInt
 object NavEngine {
     private const val OFF_ROUTE_M = 45.0
     private const val OFF_ROUTE_HITS = 4      // debounce GPS jitter before rerouting
+    private const val FAR_OFF_M = 90.0        // this far off counts toward a reroute at ANY speed
+                                              // (parking-lot creep sits under the moving floor)
     private const val ARRIVE_RADIUS_M = 25.0
     private const val ARRIVE_PROX_M = 40.0    // crow-flies arrival fallback (dest snapped to the road; lots/driveways)
     private const val DEST_ZONE_M = 150.0     // no rerouting this close to the destination (arrival territory)
@@ -135,10 +137,15 @@ object NavEngine {
         // a parked car (Google visibly refuses to reroute while stationary). The stationary floor
         // is MODE-AWARE ([movingFloorMps]): a walker's 1.4 m/s must count as moving or pedestrian
         // rerouting is dead. Unknown speed counts as moving so tests/replays keep old behaviour.
+        // EXCEPTION - a FAR deviation counts at ANY speed (real drive 2026-07-14): creeping out of
+        // a parking lot sits under the 2 m/s floor the whole way, so a driver leaving the route at
+        // walking pace never accumulated hits and the reroute (and the redrawn line) never came.
+        // Stationary multipath jitter is tens of metres at worst; FAR_OFF_M is comfortably beyond
+        // anything a parked car's GPS invents, so counting it can't bring back red-light reroutes.
         val moving = (speedMps ?: 99.0) >= movingFloorMps
         val offHits = when {
             offDist <= OFF_ROUTE_M -> 0
-            !moving -> state.offRouteHits
+            !moving && offDist <= FAR_OFF_M -> state.offRouteHits
             else -> state.offRouteHits + 1
         }
         val offRoute = offHits >= OFF_ROUTE_HITS
