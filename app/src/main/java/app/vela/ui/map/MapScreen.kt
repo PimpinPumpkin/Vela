@@ -744,6 +744,8 @@ fun MapScreen(
             onSelectAlternate = vm::selectRoute,
             markers = markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
+            // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
+            stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
