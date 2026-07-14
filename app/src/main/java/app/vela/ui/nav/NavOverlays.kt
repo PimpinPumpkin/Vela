@@ -45,6 +45,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -512,9 +513,14 @@ private fun DrawScope.laneHead(indication: String, color: Color, baseX: Float, b
  *  armed. Same one-shot categories as the route chooser's row; a pick searches the REMAINING
  *  route and the results list takes the bottom slot. */
 @Composable
-fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+fun NavSearchChips(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onPick: (String) -> Unit,
+    onFieldFocused: (Boolean) -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
     val dark = isAppInDarkTheme()
-    var query by remember { mutableStateOf("") }
     Card(
         modifier,
         shape = RoundedCornerShape(28.dp),
@@ -535,7 +541,7 @@ fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
             Spacer(Modifier.width(10.dp))
             BasicTextField(
                 value = query,
-                onValueChange = { query = it },
+                onValueChange = onQueryChange,
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = SheetPalette.ink(dark)),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -553,7 +559,11 @@ fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
                 },
                 // dpadFieldEscape: UP/DOWN leave the field instead of being eaten as cursor
                 // moves, so the chips below stay key-reachable (docs/dpad.md).
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp).dpadFieldEscape(),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(vertical = 8.dp)
+                    .onFocusChanged { onFieldFocused(it.isFocused) }
+                    .dpadFieldEscape(),
             )
         }
         Row(
