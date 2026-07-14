@@ -1261,7 +1261,15 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(query = q, center = near ?: it.center) }
                 runSearch(q, near ?: _state.value.myLocation ?: _state.value.center)
             }
-            near != null -> onMapLongPress(near)
+            near != null -> {
+                // A long-press pin assumes the camera is already there (the user pressed the
+                // screen); a deep link's coordinate is usually far away, so move the camera
+                // too - without this the pin sheet opened while the map stayed put (device
+                // 2026-07-13). Setting center also trips the follow-disarm rule, correctly:
+                // a coordinate link means "look over there".
+                _state.update { it.copy(center = near) }
+                onMapLongPress(near)
+            }
         }
     }
 
