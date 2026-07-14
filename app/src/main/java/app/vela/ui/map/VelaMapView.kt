@@ -2001,6 +2001,13 @@ private fun ensureLayers(style: Style) {
                     PropertyFactory.textColor("#7f8ba0"),
                     PropertyFactory.textHaloColor("#0e1626"),
                     PropertyFactory.textHaloWidth(1.1f),
+                    // Google-style: bare badges from z15, NAMES only from z17 (user 2026-07-13) -
+                    // a stop every block meant a wall of grey text at street zoom. Opacity step,
+                    // not a second layer: the label still participates in collision (textOptional
+                    // keeps the icon when a name can't fit), it's just invisible until close.
+                    PropertyFactory.textOpacity(
+                        Expression.step(Expression.zoom(), Expression.literal(0f), Expression.stop(17f, 1f)),
+                    ),
                 )
             },
         )
