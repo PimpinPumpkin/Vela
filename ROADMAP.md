@@ -215,7 +215,7 @@ from the `directions` diag), offline highway refs (a graph rebuild - parked).
     ~~avoid tolls/highways~~ (SHIPPED 2026-07-11 as on-device graph profiles - see Queued near-term),
     ~~explicit lists/labels for saved places~~ (SHIPPED 2026-07-08 - local lists with icons/colors/notes).
   - *Not feasible keyless / out of scope:* Street View (key-gated - see Known-hard),
-    satellite imagery (no open keyless source), account features (your contributions,
+    account features (your contributions,
     timeline, writing reviews - degoogled by design), flights/hotels booking tabs.
   Recommended order: the *cheap* group first (one parser+UI pass, reuses the
   enrichment plumbing), then Q&A, then review-topic chips.
@@ -647,5 +647,4 @@ project's core promise is that neither exists:
 - Restaurant menu reliability: instrument the gallery walk to classify tab-less fetches,
   stop caching a tab-less result forever, and separate device render timing from Google-side
   variance.
-- Satellite imagery layer via open Esri World Imagery tiles (attribution required).
 - Performance pass: frame profiling of dense-marker pans and the POI sheet in/out churn.
