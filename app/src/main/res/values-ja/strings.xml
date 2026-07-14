@@ -586,4 +586,7 @@
     <string name="settings_topography">地形の陰影</string>
     <string name="settings_topography_hint">地図上の丘や山に陰影を付けます。既定ではオフです。</string>
     <string name="settings_version_copied">バージョンをコピーしました</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="other">+%d件の経由地</item>
+    </plurals>
 </resources>

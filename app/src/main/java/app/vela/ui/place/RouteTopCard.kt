@@ -33,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -107,13 +108,26 @@ fun RouteTopCard(
                 ConnectorRow(dim)
                 if (stops.isNotEmpty() && showStopControls) {
                     EndpointRow(
-                        text = if (stops.size > 1) "${stops.first()}  +${stops.size - 1}" else stops.first(),
+                        text = stops.first(),
                         textColor = ink,
                         editable = true,
                         editLabel = stringResource(R.string.stops_edit),
                         onClick = onEditStops,
                     ) {
                         Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
+                    }
+                    // Extra stops read as their own quiet line under the first (the old inline
+                    // "+N" was easy to miss, user 2026-07-14). Plain label - the stops row above
+                    // is the tap target for the editor.
+                    if (stops.size > 1) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Spacer(Modifier.width(GLYPH_RAIL + 8.dp))
+                            Text(
+                                pluralStringResource(R.plurals.topcard_more_stops, stops.size - 1, stops.size - 1),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = dim,
+                            )
+                        }
                     }
                     ConnectorRow(dim)
                 }

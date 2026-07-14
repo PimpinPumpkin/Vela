@@ -586,4 +586,7 @@
     <string name="settings_topography">地形陰影</string>
     <string name="settings_topography_hint">在地圖上為丘陵和山脈加上陰影。預設關閉。</string>
     <string name="settings_version_copied">已複製版本號</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="other">+%d個途經點</item>
+    </plurals>
 </resources>
