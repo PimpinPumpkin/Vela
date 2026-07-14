@@ -1022,8 +1022,13 @@ Defaults that make the safe path the easy one:
   proved those ints are span/style markers, not open/closed codes (closed pharmacies carried "open" 6,
   an Open-24-hours place carried 13/4 and rendered red) - the hl=fr pin agreeing was a coincidence.
   `placeStatusColor(status, openNow)` colours from the boolean and refuses to green English text that
-  literally reads closed even if fed `openNow=true`. `gl` (region) still `us` - GPS-region `gl`
-  is a follow-up. **Dual-purpose literals stay inline on purpose** - 
+  literally reads closed even if fed `openNow=true`. **`gl` (region) follows the PHONE's region
+  (2026-07-14):** `GoogleMapsDataSource.glRegion` (set by the VM at init from the cell network's
+  country, locale fallback) rewrites `gl=us` in `regionalized()` - clean 2-letter codes only, US
+  phones byte-identical; region tunes ranking/bias, not response shape. **Dual-purpose literals
+  stay inline on purpose** (NB the REVIEW SORT menu + the place-sheet TAB titles were split
+  2026-07-14: localized display labels over English logic keys - the sort KEY must stay English
+  because it drives the live hl=en Google panel by clicking the matching option) - 
   strings that double as a logic key (place "Open"/"Closed" → status-colour parser, the map category chips /
   search-along-route chips are also the query, review sort/tab labels branch a `when`) are NOT in strings.xml;
   they localize only once display text is split from the logic key. **Names/addresses/reviews are DATA - never
