@@ -79,6 +79,9 @@ data class TransitNavState(
 
 data class MapUiState(
     val center: LatLng? = null,
+    // Camera zoom requested by a deep link (geo:...?z=17); one-shot - any ordinary selection
+    // (place tap, long-press, search) clears it back to the default framing zooms.
+    val centerZoom: Double? = null,
     val recenterTick: Int = 0, // bumped per recenter tap so the map force-moves even if "centered"
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
@@ -1258,10 +1261,17 @@ class MapViewModel @Inject constructor(
         val q = link.query
         when {
             !q.isNullOrBlank() -> {
-                _state.update { it.copy(query = q, center = near ?: it.center) }
+                _state.update { it.copy(query = q, center = near ?: it.center, centerZoom = link.zoom) }
                 runSearch(q, near ?: _state.value.myLocation ?: _state.value.center)
             }
-            near != null -> onMapLongPress(near)
+            near != null -> {
+                onMapLongPress(near)
+                // A long-press is always at an on-screen point, so it never moves the camera. A
+                // deep link's point can be anywhere: fly there too (honouring its z= when given),
+                // or the sheet opens for a place the map isn't showing (the camera stayed home on
+                // every geo: URI, cold or warm).
+                _state.update { it.copy(center = near, centerZoom = link.zoom) }
+            }
         }
     }
 
@@ -1284,7 +1294,7 @@ class MapViewModel @Inject constructor(
         routeJob?.cancel() // a directions fetch in flight must not resurrect the stale panel
         _state.update {
             it.copy(
-                selected = withListNote(p), center = p.location, reviews = emptyList(), suggestions = emptyList(),
+                selected = withListNote(p), center = p.location, centerZoom = null, reviews = emptyList(), suggestions = emptyList(),
                 placesHere = othersAt(p, it.results), loadingDetails = false, photosLoading = false,
                 // Picking a NEW place while a route chooser is open closes it: the chooser
                 // belonged to the previous destination and kept covering the fresh place
