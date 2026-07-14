@@ -117,16 +117,30 @@ fun RouteTopCard(
                         Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
                     }
                     // Extra stops read as their own quiet line under the first (the old inline
-                    // "+N" was easy to miss, user 2026-07-14). Plain label - the stops row above
-                    // is the tap target for the editor.
+                    // "+N" was easy to miss, user 2026-07-14) - tappable with a pencil, a second
+                    // door into the stops editor (user 2026-07-14).
                     if (stops.size > 1) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .dpadHighlight(RoundedCornerShape(8.dp))
+                                .clickable { onEditStops() },
+                        ) {
                             Spacer(Modifier.width(GLYPH_RAIL + 8.dp))
                             Text(
                                 pluralStringResource(R.plurals.topcard_more_stops, stops.size - 1, stops.size - 1),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = dim,
                             )
+                            Spacer(Modifier.width(6.dp))
+                            Icon(
+                                Icons.Default.Edit,
+                                contentDescription = stringResource(R.string.stops_edit),
+                                tint = dim,
+                                modifier = Modifier.size(12.dp).padding(end = 0.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
                         }
                     }
                     ConnectorRow(dim)
