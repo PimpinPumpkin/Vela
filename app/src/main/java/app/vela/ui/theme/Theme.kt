@@ -22,6 +22,11 @@ private val LightColors = lightColorScheme(
     secondaryContainer = androidx.compose.ui.graphics.Color(0xFFCDE9E3),
     onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFF06201C),
     tertiary = VelaAmber,
+    // Attention surfaces (the faster-route offer, warn-level notices) ride tertiaryContainer.
+    // Without these, Material's baseline kicked in and drew them PINK (user 2026-07-14) -
+    // amber tints keep them on-brand with the VelaAmber accent.
+    tertiaryContainer = androidx.compose.ui.graphics.Color(0xFFFFDCBE),
+    onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFF2C1600),
 )
 
 private val DarkColors = darkColorScheme(
@@ -33,6 +38,9 @@ private val DarkColors = darkColorScheme(
     secondaryContainer = androidx.compose.ui.graphics.Color(0xFF1F4A44),
     onSecondaryContainer = androidx.compose.ui.graphics.Color(0xFFCDE9E3),
     tertiary = VelaAmber,
+    // See LightColors: baseline tertiaryContainer is pink; keep the attention cards amber.
+    tertiaryContainer = androidx.compose.ui.graphics.Color(0xFF6B4520),
+    onTertiaryContainer = androidx.compose.ui.graphics.Color(0xFFFFDCBE),
 )
 
 /**
