@@ -1993,7 +1993,15 @@ architecture note.
   measured **89 m** from its junction point (device 2026-07-13) - just past the OLD 80 m cut, which is exactly
   why boards never showed at these corners; another junction's stops sit ~575 m out, so 250 m catches the
   right one only) and pulls ITS board onto the intersection sheet. No co-located Google
-  listing (a rare OSM-only stop) -> no board, correctly. **The transit gates are MULTILINGUAL (issue #71, 2026-07-13):** categories arrive in the
+  listing (a rare OSM-only stop) -> no board, correctly. **The transit gate needs the EXCLUSION list too (2026-07-13):** "Gas station" /
+  "Charging station" / "Fire station" all contain "station", and boards fetch by PROXIMITY now, so
+  the fuel stop beside a bus stop showed that stop's departures (device report). `isTransitCategory`
+  = gate word matches AND no NON_TRANSIT_CAT word does (fuel/EV/emergency/broadcast, localized);
+  both regexes remote-overridable (`transitCategoryWords` / `transitExcludeWords`, calibration v17).
+  v17 ALSO guards the shipped word list itself (lookbehind/lookahead on station/stazione/estaci/
+  станц/תחנ) so pre-exclusion installs get the fix remotely - a unit test reads the REAL
+  calibration.json and asserts the fuel/EV/emergency categories are rejected while every real
+  transit category still matches (a broken edit fails CI, not the fleet). **The transit gates are MULTILINGUAL (issue #71, 2026-07-13):** categories arrive in the
   device language (hl=), so TRANSIT_CAT carries keyword stems for all 15 app languages - Hebrew was
   missing entirely, which made every stop tap in a Hebrew-locale install dead-end as a name-only
   sheet (the reporter's Jerusalem screenshot: no category match -> no live-stop pick -> no board,

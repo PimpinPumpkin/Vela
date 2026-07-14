@@ -1316,10 +1316,29 @@ class MapViewModel @Inject constructor(
         RegexOption.IGNORE_CASE,
     )
 
-    // Remote-overridable via the signed calibration bundle (transitCategoryWords - each term joins
-    // one case-insensitive alternation): a missing word in some language becomes a config edit, not
-    // an app release. Falls back to the compiled regex when absent or unbuildable.
+    // Categories that must NOT count as transit even though a gate word matches - "Gas station" /
+    // "Charging station" / "Fire station" all contain "station", and the board fetch is by
+    // PROXIMITY now, so a fuel stop beside a bus stop showed that stop's departures (device report
+    // 2026-07-13). Localized like the gate: fuel/EV/emergency/broadcast words across the app
+    // languages.
+    private val NON_TRANSIT_CAT_COMPILED = Regex(
+        """gas|fuel|petrol|gasolin|benzin|essence|carburant|paliw|бензин|заправ|азс|tank|""" +
+            """station-service|servicio|serviço|servizio|加油|ガソリン|주유|דלק|""" +
+            """charging|laadstation|ladestation|recharge|recarga|ricarica|зарядн|טעינה|充电|充電|""" +
+            """fire|police|power|pumping|weigh|radio|television|\btv\b|pompiers|bomberos|feuerwehr""",
+        RegexOption.IGNORE_CASE,
+    )
+
+    // Remote-overridable via the signed calibration bundle (transitCategoryWords /
+    // transitExcludeWords - each term joins one case-insensitive alternation): a missing or wrong
+    // word in some language becomes a config edit, not an app release. Falls back to the compiled
+    // regexes when absent or unbuildable.
     @Volatile private var TRANSIT_CAT = TRANSIT_CAT_COMPILED
+    @Volatile private var NON_TRANSIT_CAT = NON_TRANSIT_CAT_COMPILED
+
+    /** The ONE transit-category predicate: a gate word must match AND no exclusion word may. */
+    private fun isTransitCategory(cat: String): Boolean =
+        TRANSIT_CAT.containsMatchIn(cat) && !NON_TRANSIT_CAT.containsMatchIn(cat)
 
     /** Push the calibration bundle's keyword-table overrides into their consumers (called at init
      *  and again after the remote refresh). Absent fields leave the compiled tables in place. */
@@ -1330,6 +1349,9 @@ class MapViewModel @Inject constructor(
         TRANSIT_CAT = cal.transitCategoryWords?.takeIf { it.isNotEmpty() }?.let { words ->
             runCatching { Regex(words.joinToString("|"), RegexOption.IGNORE_CASE) }.getOrNull()
         } ?: TRANSIT_CAT_COMPILED
+        NON_TRANSIT_CAT = cal.transitExcludeWords?.takeIf { it.isNotEmpty() }?.let { words ->
+            runCatching { Regex(words.joinToString("|"), RegexOption.IGNORE_CASE) }.getOrNull()
+        } ?: NON_TRANSIT_CAT_COMPILED
     }
 
     /** The nearest LIVE transit-category listing to [at] among [results], within [radiusM]. Shared by the
@@ -1337,7 +1359,7 @@ class MapViewModel @Inject constructor(
     private fun nearestLiveStop(results: List<Place>, at: LatLng, radiusM: Double = 250.0): Place? =
         results.asSequence()
             .filter { !it.permanentlyClosed && it.location.distanceTo(at) < radiusM }
-            .filter { p -> p.category?.let { TRANSIT_CAT.containsMatchIn(it) } == true }
+            .filter { p -> p.category?.let { isTransitCategory(it) } == true }
             .minByOrNull { it.location.distanceTo(at) }
 
     /** A transit stop's live departure board, from the station's own place page (keyless, anonymous).
@@ -1347,7 +1369,7 @@ class MapViewModel @Inject constructor(
         val fid = p.featureId
         if (fid.isNullOrBlank() || !fid.contains(":")) return
         val cat = p.category ?: ""
-        val isTransit = TRANSIT_CAT.containsMatchIn(cat)
+        val isTransit = isTransitCategory(cat)
         val isIntersection = cat.contains("intersection", ignoreCase = true)
         if (!isTransit && !isIntersection) return
         // PRIMARY: Transitous (open GTFS + realtime, keyless). One proximity lookup at the place's own
@@ -1707,7 +1729,7 @@ class MapViewModel @Inject constructor(
         // "transit-category AND UNRATED", not category alone - a rated transit CENTER (a real building
         // people review) must KEEP its reviews (user 2026-07-13: broad category gate wrongly killed
         // them). Real buildings carry a Google rating; bare stops don't.
-        if (p.rating == null && p.category?.let { TRANSIT_CAT.containsMatchIn(it) } == true) return
+        if (p.rating == null && p.category?.let { isTransitCategory(it) } == true) return
         // Supersede any in-flight scrape: the fetcher serializes on a Mutex, so an abandoned
         // 40 s Taco Bell grind would otherwise make the NEXT place's reviews queue behind it
         // (~90 s worst case to first review). Cancelling frees the mutex immediately, and this
