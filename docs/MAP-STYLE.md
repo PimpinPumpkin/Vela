@@ -3,7 +3,7 @@
 The basemap, fonts, custom layers and theming details.
 
 The active basemap is the keyless **OpenFreeMap Liberty** style (full street
-detail; we inject house-number labels at z17), loaded **by URL** - the only setup
+detail; we inject house-number labels, visible from z19), loaded **by URL** - the only setup
 that reliably renders vector tiles on-device. Over it we apply a Google-like look
 at **runtime**, by system theme:
 
@@ -18,7 +18,8 @@ at **runtime**, by system theme:
   what made it look un-Google); soft-yellow motorways; bridges mirror their tier.
 - **Building footprints + house numbers** - flat grey footprints with a crisp
   outline from neighbourhood zoom (3D extrusions at street zoom), and OSM house
-  numbers from ~z16, both keyless from the OpenFreeMap tiles. Density follows
+  numbers at close zoom (the layer arms at z17 for tile fetch, text shows from z19), both
+  keyless from the OpenFreeMap tiles. Density follows
   OpenStreetMap coverage (dense in metros, patchy in some suburbs).
 - **Neutralised landuse** - the tan/yellow residential/commercial/school fills are
   flattened into the land (Google keeps these untinted), so no colored blobs.
