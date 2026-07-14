@@ -566,4 +566,5 @@
     <string name="mapvm_voice_lang_system">Вказівки для мови %1$s використовують голос телефону. Додайте його в системних налаштуваннях голосу.</string>
     <string name="settings_topography">Затінення рельєфу</string>
     <string name="settings_topography_hint">Затінює пагорби та гори на карті. Вимкнено за замовчуванням.</string>
+    <string name="map_satellite_toggle">Супутниковий вигляд</string>
 </resources>

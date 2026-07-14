@@ -226,6 +226,7 @@ fun VelaMapView(
     applyKeylessTheme: Boolean,
     trafficOn: Boolean,
     transitOn: Boolean = false, // highlight rail (train + subway/tram) lines from the basemap tiles
+    satelliteOn: Boolean = false, // Esri World Imagery raster under the symbol layers (map button)
     topographyOn: Boolean = false, // terrain-relief hillshade; OFF by default (Google-style)
     previewTarget: LatLng?,
     onPoiTap: (name: String, location: LatLng, poiKind: String?) -> Unit,
@@ -1335,6 +1336,7 @@ fun VelaMapView(
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
+                ensureSatellite(style, satelliteOn)
                 ensureTopography(style, topographyOn)
             }
         } else {
@@ -1342,6 +1344,7 @@ fun VelaMapView(
                 applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
+                ensureSatellite(it, satelliteOn)
                 ensureTopography(it, topographyOn)
             }
         }
@@ -2173,6 +2176,29 @@ private fun ensureTransit(style: Style, on: Boolean) {
         if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
     } else if (!on && present) {
         runCatching { style.removeLayer(TRANSIT_LAYER) }
+    }
+}
+
+private const val SAT_SRC = "vela-sat-src"
+private const val SAT_LAYER = "vela-sat"
+// Esri World Imagery, the openly usable satellite tile service (attribution shown by the map UI
+// while the layer is on). z/y/x order; 19 is the safe global max.
+private const val SAT_TILES = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+
+/** Satellite imagery under the SYMBOL stack: the raster covers the vector fills and road lines,
+ *  but every label, POI, route line and Vela layer keeps drawing on top (hybrid look). Same
+ *  add/remove idempotence as [ensureTransit]; removing restores the vector map untouched. */
+private fun ensureSatellite(style: Style, on: Boolean) {
+    val present = style.getLayer(SAT_LAYER) != null
+    if (on && !present) {
+        if (style.getSource(SAT_SRC) == null) {
+            style.addSource(RasterSource(SAT_SRC, TileSet("2.2.0", SAT_TILES).apply { maxZoom = 19f }, 256))
+        }
+        val layer = RasterLayer(SAT_LAYER, SAT_SRC)
+        val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
+        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+    } else if (!on && present) {
+        runCatching { style.removeLayer(SAT_LAYER) }
     }
 }
 
