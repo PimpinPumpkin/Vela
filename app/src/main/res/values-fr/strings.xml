@@ -232,7 +232,10 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Rechercher dans les avis</string>
     <string name="place_sort_reviews">Trier les avis</string>
-    <string name="place_review_count">%1$d avis</string>
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">%1$d avis</item>
+        <item quantity="other">%1$d avis</item>
+    </plurals>
     <string name="place_all_n_reviews">Tous les %1$d avis · trier et rechercher</string>
     <string name="place_all_reviews">Tous les avis · trier et rechercher</string>
     <string name="place_reviews_progress">Avis · %1$d sur environ %2$d</string>
@@ -434,7 +437,10 @@
     <string name="settings_update_checking">Vérification…</string>
     <string name="settings_update_none">Tu as la version la plus récente.</string>
     <string name="settings_place_pages">Fiches de lieux</string>
-    <string name="place_transit_stops">%1$d arrêts</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">%1$d arrêt</item>
+        <item quantity="other">%1$d arrêts</item>
+    </plurals>
     <string name="place_transit_stop_id">Arrêt %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Billets et infos</string>
     <string name="route_detail_unavailable">Détails de la ligne indisponibles</string>

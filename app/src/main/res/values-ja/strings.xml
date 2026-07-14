@@ -247,7 +247,9 @@
     <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
     <string name="place_search_reviews">クチコミを検索</string>
     <string name="place_sort_reviews">クチコミを並べ替え</string>
-    <string name="place_review_count">クチコミ %1$d 件</string> <!-- format -->
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="other">クチコミ %1$d 件</item>
+    </plurals>
     <string name="place_all_n_reviews">クチコミ全 %1$d 件 · 並べ替えと検索</string> <!-- format -->
     <string name="place_all_reviews">すべてのクチコミ · 並べ替えと検索</string>
     <string name="place_reviews_progress">クチコミ · 約 %2$d 件中 %1$d 件</string> <!-- format -->
@@ -455,7 +457,9 @@
     <string name="settings_update_checking">確認しています…</string>
     <string name="settings_update_none">最新バージョンを使用しています。</string>
     <string name="settings_place_pages">場所のページ</string>
-    <string name="place_transit_stops">%1$d 停留所</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="other">%1$d 停留所</item>
+    </plurals>
     <string name="place_transit_stop_id">停留所 %1$s</string> <!-- format -->
     <string name="place_transit_tickets">チケット・運行情報</string>
     <string name="route_detail_unavailable">路線の詳細を取得できません</string>
