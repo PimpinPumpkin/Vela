@@ -564,4 +564,8 @@
     <string name="mapvm_voice_lang_system">Ansagen auf %1$s nutzen die Stimme Ihres Telefons. Fügen Sie eine in den System-Sprachausgabe-Einstellungen hinzu.</string>
     <string name="settings_topography">Geländeschattierung</string>
     <string name="settings_topography_hint">Schattiert Hügel und Berge auf der Karte. Standardmäßig aus.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d weiterer Stopp</item>
+        <item quantity="other">+%d weitere Stopps</item>
+    </plurals>
 </resources>

@@ -564,4 +564,10 @@
     <string name="settings_topography">הצללת שטח</string>
     <string name="settings_topography_hint">מוסיף הצללה לגבעות ולהרים במפה. כבוי כברירת מחדל.</string>
     <string name="settings_version_copied">הגרסה הועתקה</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">עצירה נוספת (%d)</item>
+        <item quantity="two">+%d עצירות נוספות</item>
+        <item quantity="many">+%d עצירות נוספות</item>
+        <item quantity="other">+%d עצירות נוספות</item>
+    </plurals>
 </resources>

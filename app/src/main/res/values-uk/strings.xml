@@ -566,4 +566,10 @@
     <string name="mapvm_voice_lang_system">Вказівки для мови %1$s використовують голос телефону. Додайте його в системних налаштуваннях голосу.</string>
     <string name="settings_topography">Затінення рельєфу</string>
     <string name="settings_topography_hint">Затінює пагорби та гори на карті. Вимкнено за замовчуванням.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">ще %d зупинка</item>
+        <item quantity="few">ще %d зупинки</item>
+        <item quantity="many">ще %d зупинок</item>
+        <item quantity="other">ще %d зупинки</item>
+    </plurals>
 </resources>

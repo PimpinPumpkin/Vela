@@ -564,4 +564,8 @@
     <string name="mapvm_voice_lang_system">Las indicaciones en %1$s usan la voz de tu teléfono. Añade una en los ajustes de voz del sistema.</string>
     <string name="settings_topography">Sombreado del terreno</string>
     <string name="settings_topography_hint">Sombrea colinas y montañas en el mapa. Desactivado por defecto.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d parada más</item>
+        <item quantity="other">+%d paradas más</item>
+    </plurals>
 </resources>
