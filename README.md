@@ -81,8 +81,6 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
   for traffic-aware transit directions. Tap a stop for live times, tap a route
   for every stop it makes.
 - **Satellite imagery map**: See the world from a birds-eye view, powered by Esri.
-  Create one there, or add any place from its page (⋮ → Save to list), with a note
-  per place. Lists back up to a file from Settings.
 - **Lists**: the bookmark button next to the category chips opens **Your lists**.
   Create one there, or add any place from its page (⋮ → Save to list), with a note
   per place. Lists back up to a file from Settings.
