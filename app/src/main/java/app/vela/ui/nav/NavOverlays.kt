@@ -29,6 +29,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.filled.LocalCafe
+import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.LocalGroceryStore
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -491,6 +500,52 @@ private fun DrawScope.laneHead(indication: String, color: Color, baseX: Float, b
     }
 }
 
+/** In-nav search-along-route chips: one row above the controls bar while the search button is
+ *  armed. Same one-shot categories as the route chooser's row; a pick searches the REMAINING
+ *  route and the results list takes the bottom slot. */
+@Composable
+fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
+    val dark = isAppInDarkTheme()
+    Card(
+        modifier,
+        shape = RoundedCornerShape(28.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = SheetPalette.bg(dark),
+            contentColor = SheetPalette.ink(dark),
+        ),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 12.dp, vertical = 6.dp).horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            // (localized label, STABLE English query, icon) — query is the logic key, label localizes.
+            listOf(
+                Triple(R.string.cat_gas, "Gas", Icons.Default.LocalGasStation),
+                Triple(R.string.cat_food, "Food", Icons.Default.Restaurant),
+                Triple(R.string.cat_coffee, "Coffee", Icons.Default.LocalCafe),
+                Triple(R.string.cat_groceries, "Groceries", Icons.Default.LocalGroceryStore),
+            ).forEach { (labelRes, query, icon) ->
+                FilterChip(
+                    selected = false,
+                    onClick = { onPick(query) },
+                    border = null,
+                    shape = androidx.compose.foundation.shape.CircleShape,
+                    colors = FilterChipDefaults.filterChipColors(
+                        containerColor = if (dark) Color(0xFF333539) else Color(0xFFF1F3F4),
+                        labelColor = SheetPalette.ink(dark),
+                    ),
+                    label = { Text(stringResource(labelRes)) },
+                    leadingIcon = {
+                        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = SheetPalette.dim(dark))
+                    },
+                    modifier = Modifier.dpadHighlight(androidx.compose.foundation.shape.CircleShape),
+                )
+            }
+        }
+    }
+}
+
 /** Bottom bar during navigation: remaining time/distance + an End button. */
 @Composable
 fun NavControls(
@@ -502,6 +557,7 @@ fun NavControls(
     voiceMuted: Boolean = false,
     onToggleVoice: () -> Unit = {},
     trafficRatio: Double? = null,
+    onSearchAlong: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -551,6 +607,15 @@ fun NavControls(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 // Bigger driving targets (user 2026-07-11, car-screen use): 54dp buttons,
                 // 26dp glyphs; End matches the height so the row reads as one control set.
+                if (onSearchAlong != null) {
+                    FilledTonalIconButton(onClick = onSearchAlong, modifier = Modifier.size(54.dp)) {
+                        Icon(
+                            Icons.Default.Search,
+                            contentDescription = stringResource(R.string.place_search_along_route),
+                            modifier = Modifier.size(26.dp),
+                        )
+                    }
+                }
                 FilledTonalIconButton(onClick = onToggleVoice, modifier = Modifier.size(54.dp)) {
                     Icon(
                         if (voiceMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
