@@ -2055,7 +2055,6 @@ class MapViewModel @Inject constructor(
         viewModelScope.launch {
             val resolved = runCatching {
                 val results = dataSource.search(searchQuery, location).places
-                val nearest = results.minByOrNull { p -> p.location.distanceTo(location) }
                 val pick = if (transitHint != null) {
                     // Transit tap: pick the OPERATING stop, not the nearest/most-reviewed thing at the
                     // coordinate. A stop's spot usually ALSO has a road junction (Google's "Intersection")
@@ -2075,18 +2074,26 @@ class MapViewModel @Inject constructor(
                         ?: runCatching { dataSource.search(transitHint, location).places }.getOrNull()
                             ?.let { nearestLiveStop(it, location) }
                 } else {
-                    // A tapped POI can map to several Google listings at one spot - e.g. a co-branded
-                    // "SpeeDee Midas" has a rich "SpeeDee" profile (543 reviews) AND a sparse "Midas" one,
-                    // both at 2000 F St. Among listings ~AT the tap (35 m) the most-reviewed is the
-                    // maintained, canonical one, but two genuinely distinct shops can also share a spot
-                    // (a strip mall), so only override nearest when the canonical listing CLEARLY dominates
-                    // by review count (a true duplicate, not a close call).
-                    val canonical = results
+                    // NAME AGREEMENT with the tapped label comes FIRST (user 2026-07-14: tapping a
+                    // sushi restaurant in a strip mall opened the dessert shop two doors down). We
+                    // searched for the tapped POI's own name, but the pick then ignored it: in a
+                    // shared building Google's per-listing pins are loose enough that a NEIGHBOUR
+                    // can sit nearer the tapped icon than the business the icon belongs to, and the
+                    // 35 m most-reviewed override (built for co-branded DUPLICATES of one business)
+                    // cemented the wrong shop whenever the neighbour was more popular. So the pick
+                    // pool is the listings whose name shares the tapped name's words; only when
+                    // NOTHING agrees (a renamed or closed business) does the full result set - the
+                    // old behaviour - apply. Within the pool, nearest still wins and the clear-
+                    // dominance override still promotes the rich profile of a true duplicate
+                    // (a "SpeeDee Midas" tap matches both the SpeeDee and the Midas listings).
+                    val pool = results.filter { nameAgrees(name, it.name) }.ifEmpty { results }
+                    val poolNearest = pool.minByOrNull { it.location.distanceTo(location) }
+                    val canonical = pool
                         .filter { it.location.distanceTo(location) < 35.0 }
                         .maxByOrNull { it.reviewCount ?: 0 }
-                    if (canonical != null && nearest != null &&
-                        (canonical.reviewCount ?: 0) >= 2 * (nearest.reviewCount ?: 0) + 5
-                    ) canonical else nearest
+                    if (canonical != null && poolNearest != null &&
+                        (canonical.reviewCount ?: 0) >= 2 * (poolNearest.reviewCount ?: 0) + 5
+                    ) canonical else poolNearest
                 }
                 pick to results
             }.getOrNull()
@@ -2125,6 +2132,25 @@ class MapViewModel @Inject constructor(
                 }
             }
         }
+    }
+
+    /** Does a Google [listing] name agree with the [tapped] basemap label? Word-set overlap on
+     *  normalized tokens, needing the SHORTER name's words (capped at 2) to appear in the other:
+     *  "Wild Wasabi Signature" agrees with "Wild Wasabi" (2 shared) but not "Belletreats Dessert"
+     *  (0); "SpeeDee Midas" agrees with both the "SpeeDee" and "Midas" listings (a co-brand's
+     *  duplicate profiles both stay in the pick pool). Single-character tokens are dropped so
+     *  "&"/initials can't fake agreement. */
+    private fun nameAgrees(tapped: String, listing: String?): Boolean {
+        if (listing.isNullOrBlank()) return false
+        fun words(s: String) = s.lowercase()
+            .replace(Regex("[^\\p{L}\\p{N} ]"), " ")
+            .split(Regex("\\s+"))
+            .filter { it.length > 1 }
+            .toSet()
+        val a = words(tapped)
+        val b = words(listing)
+        if (a.isEmpty() || b.isEmpty()) return false
+        return a.intersect(b).size >= minOf(a.size, b.size).coerceAtMost(2)
     }
 
     /** Other Google listings essentially at the same spot as [place] (within ~40 m) —
