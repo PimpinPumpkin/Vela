@@ -2404,6 +2404,14 @@ private fun applyMapTheme(style: Style, dark: Boolean) {
         PropertyFactory.textColor(PoiIcons.ambientLabelColor(dark)),
         PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
     )
+    // Canonical GTFS stop names take the TRANSIT category colour per theme - blue in light,
+    // its pastel tint in dark, the same grammar every POI label follows. The creation-time
+    // colours in ensureLayers were hardcoded for dark (no theme there) and read as grey with
+    // a navy halo on the light map (issue #71 follow-up, 2026-07-14).
+    (style.getLayer(TRANSIT_STOPS_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.textColor(PoiIcons.labelColorFor("transit", dark)),
+        PropertyFactory.textHaloColor(if (dark) "#11161C" else "#FFFFFF"),
+    )
     // Search-result labels stay NEUTRAL ink - Google doesn't category-tint result labels the
     // way it tints ambient POI labels (the red pin is the result signal, not the text colour).
     (style.getLayer(MARKERS_LAYER) as? SymbolLayer)?.setProperties(
