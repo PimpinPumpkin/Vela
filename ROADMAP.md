@@ -20,9 +20,9 @@ Last updated: 2026-07-13.
   Organic-Maps-style anywhere in the state. Packs rebuild monthly from fresh OSM and installed ones
   update in place through small row-level deltas (a Washington test delta was 5.6 KB against the 143 MB
   pack). Offline typed-address geocoding shipped alongside (house-precise, interpolated, street fallback).
-- **Android Auto, first cut (2026-07-08).** Vela appears in the car launcher (AA "Unknown sources" for
+- **Android Auto (2026-07-08).** Vela appears in the car launcher (AA "Unknown sources" for
   sideloads): live map, puck, route, and the current-maneuver card from the same NavSession the phone
-  runs. Car-side search/route-start is the follow-up.
+  runs, plus car-side search and route start (see docs/ANDROID-AUTO.md).
 - **Open building + house-number overlays (2026-07-04/05).** Microsoft footprints (ODbL) and OpenAddresses
   numbers as per-region PMTiles, streamed over the map by default where OSM is thin, downloadable for
   full offline. Traffic lights + stop signs draw at close zoom (keyless Overpass).
@@ -245,7 +245,7 @@ licensing heterogeneity; out of scope by decision 2026-06-19).
 Goals, **strictly opt-in**, off by default:
 
 1. **Developer diagnostics - ✅ SHIPPED (2026-06-19, local-only).** Settings →
-   Diagnostics (off by default) keeps an in-memory breadcrumb log (searches, routes,
+   Diagnostics (off by default) keeps a local breadcrumb log (searches, routes,
    parser drift, nav start/reroute/arrival) the user can **Export debug session** and
    hand to a dev via the share sheet. **No backend, no auto-upload** - user-initiated +
    user-routed (`core/diag/DiagLog`, `app/diag/DiagExporter`). The remaining piece here
@@ -535,7 +535,7 @@ free-flow → a traffic overlay + traffic-aware ETAs that don't need Google. Sta
   - **Graph HOSTING - LIVE 2026-06-30.** Region CH graphs + `routing-manifest.json` are published as assets on
     the **`routing-graphs` GitHub release** (a fixed-tag *prerelease*, so it never becomes the "Latest" the APK
     tracks). `ROUTING_MANIFEST_URL` defaults to `releases/download/routing-graphs/routing-manifest.json`.
-    Seeded with **Washington (147 MB), the metro metro (21 MB), Washington DC (6 MB)**. **Verified end-to-end on
+    Seeded with **Washington (147 MB), a metro region (21 MB), Washington DC (6 MB)**. **Verified end-to-end on
     a Pixel 5a with a production build** (no localhost): fetched the GitHub manifest → downloaded Washington
     (147 MB) from the release → routed a ~22 mi metro trip offline (28 min, named turn-by-turn).
   - **World catalog + parallel build pipeline - DONE 2026-06-30.** The catalog is now a curated
