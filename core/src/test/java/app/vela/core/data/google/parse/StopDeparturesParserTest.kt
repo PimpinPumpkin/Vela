@@ -124,6 +124,24 @@ class StopDeparturesParserTest {
         assertNull(StopDeparturesParser.parse(")]}'\n$root"))
     }
 
+    /** The remote-repair handle: a pushed calibration can re-point the parse's positional
+     *  anchors without an app release. Move the transit node to a WRONG index AND make the
+     *  shape scan useless by overriding only the node anchor - the override must find it. */
+    @Test
+    fun `remote indices re-point the transit node anchor`() {
+        try {
+            // Transit node parked at place[30] instead of 62.
+            val place = "[" + "null,".repeat(30) + transit + "]"
+            val root = ")]}'\n[null,null,null,null,null,null,$place]"
+            StopDeparturesParser.remoteIndices = mapOf("node" to 30)
+            val d = StopDeparturesParser.parse(root)!!
+            assertEquals("Times Sq-42 St", d.stationName)
+            assertEquals(2, d.lines.size)
+        } finally {
+            StopDeparturesParser.remoteIndices = null
+        }
+    }
+
     @Test
     fun `finds the transit node even if its field index shifts`() {
         // put the transit node at a different place index; the shape-search fallback must find it
