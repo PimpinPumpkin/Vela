@@ -471,8 +471,13 @@ fun VelaMapView(
                     setSourceLayer("maxspeed") // tippecanoe layer name (build-maxspeed-region.sh: -l maxspeed)
                     setMinZoom(11f)
                     setProperties(
-                        PropertyFactory.lineColor(android.graphics.Color.TRANSPARENT), // @ColorInt, unambiguously transparent
-                        PropertyFactory.lineOpacity(0f),         // belt-and-suspenders: never drawn
+                        // NOT opacity 0: MapLibre skips fully transparent features at render time, and
+                        // queryRenderedFeatures only sees what rendered - the transparent version returned
+                        // nothing, ever, so the badge died with the black-roads fix (found by ars18 in the
+                        // vela-dpad fork; A/B-proven here, 35 mph vs null over the same road). 0.004 is one
+                        // alpha step of black: invisible on any basemap, but the features stay queryable.
+                        PropertyFactory.lineColor(android.graphics.Color.BLACK),
+                        PropertyFactory.lineOpacity(0.004f),
                         PropertyFactory.lineWidth(12f),          // wide hit target for the point query
                     )
                 }
