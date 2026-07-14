@@ -2740,6 +2740,10 @@ class MapViewModel @Inject constructor(
 
     fun startNav() {
         val route = _state.value.activeRoute ?: return
+        // The pre-nav search's results are stale junk once driving - and the nav bottom slot
+        // yields to a NON-EMPTY results list (the in-nav along-route flow), so leftovers from
+        // planning made the chooser's Start bar render over a live drive (device 2026-07-14).
+        _state.update { it.copy(results = emptyList(), query = "", resultsCollapsed = false) }
         viewModelScope.launch {
             // If they hit Start before a picked alternate finished naming, name it first.
             val named = if (route.provisional) nameIfNeeded(route).also { _state.update { s -> s.copy(activeRoute = it) } } else route
