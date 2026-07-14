@@ -85,6 +85,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Share TO Vela: a Google Maps share link, a URL, or a plain address from any
+                 app's share sheet opens/imports/searches without the copy-paste dance. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
             <!-- geo: links from other apps → Vela can be your default maps handler. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
