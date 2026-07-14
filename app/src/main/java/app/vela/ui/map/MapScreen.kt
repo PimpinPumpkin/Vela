@@ -78,6 +78,8 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -364,8 +366,10 @@ fun MapScreen(
     // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
     // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
     var navBannerBottomPx by remember { mutableStateOf(0) }
-    // In-nav search-along-route: the controls-bar magnifier arms a chip row above the bar.
+    // In-nav search-along-route: the map search FAB arms a panel (text field + chips) above
+    // the bar. Reset when nav ends so a stale-open panel can't greet the next drive.
     var navSearchOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(state.navigating) { if (!state.navigating) navSearchOpen = false }
     // Measured height of the nav BOTTOM bar (ETA + End) → everything stacked above it (speedometer,
     // speed-limit sign, re-center FAB, GPS-lost chip) offsets from the REAL height instead of a fixed
     // 132dp guess. The bar grows with the system font size, and at a larger font scale the fixed offset
@@ -1119,19 +1123,39 @@ fun MapScreen(
         // (The faster-route offer renders in the stacked notification column below, so it can
         // never sit under the turn card or on top of another card.)
 
-        // After panning away during nav — or swiping the banner ahead to preview a
-        // later step — a Re-center button reattaches the follow-camera AND snaps the
-        // banner back to the current step (Google-style); hidden while following live.
-        if (state.navigating && (state.navCameraDetached || state.previewStepIndex != null)) {
-            // Icon-only, tucked to the right and lifted clear of the bottom bar.
-            FloatingActionButton(
-                onClick = vm::recenterNav,
+        // Right-edge nav FAB stack: volume + search live ON THE MAP (the bottom bar was
+        // cramming four controls - user 2026-07-14; Google floats these there too), with the
+        // re-center button joining the stack when panned away / previewing a step. Hidden
+        // while the along-route results own the bottom slot.
+        if (state.navigating && state.results.isEmpty()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .dpadHighlight(RoundedCornerShape(16.dp))
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(end = 16.dp, bottom = navBarClearance),
-            ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
+            ) {
+                if (state.navCameraDetached || state.previewStepIndex != null) {
+                    FloatingActionButton(
+                        onClick = vm::recenterNav,
+                        modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                    ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
+                }
+                FloatingActionButton(
+                    onClick = vm::toggleVoice,
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                ) {
+                    Icon(
+                        if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
+                    )
+                }
+                FloatingActionButton(
+                    onClick = { navSearchOpen = !navSearchOpen },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                ) { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.place_search_along_route)) }
+            }
         }
 
         // "Searching for GPS" chip — the banner distance/ETA freeze silently on signal loss
@@ -1288,10 +1312,7 @@ fun MapScreen(
                     offRoute = state.nav.offRoute,
                     onStop = vm::stopNav,
                     onSteps = vm::openSteps,
-                    voiceMuted = state.voiceMuted,
-                    onToggleVoice = vm::toggleVoice,
                     trafficRatio = state.activeRoute?.trafficRatio,
-                    onSearchAlong = { navSearchOpen = !navSearchOpen },
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
                     modifier = Modifier.onGloballyPositioned { navBarHeightPx = it.size.height },
