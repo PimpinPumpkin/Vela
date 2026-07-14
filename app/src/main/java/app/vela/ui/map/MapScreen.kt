@@ -192,6 +192,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import app.vela.ui.toggleItem
 import app.vela.ui.dpadHighlight
 import app.vela.ui.rememberDpadMode
 import app.vela.ui.rememberDpadFirstDevice
@@ -1706,36 +1707,24 @@ fun MapScreen(
                         }
                     }
                     // The layers panel, Google-style: SATELLITE swaps the base look, the rest are
-                    // overlays. Same holders Settings flips, so the two stay in sync.
-                    androidx.compose.material3.DropdownMenu(
+                    // overlays. Same holders Settings flips, so the two stay in sync. VelaMenu, not
+                    // a bare DropdownMenu - the D-pad rule (docs/dpad.md): a Popup can't be
+                    // pre-focused, so key-first devices get the auto-focusing chooser dialog.
+                    app.vela.ui.VelaMenu(
                         expanded = layersOpen,
                         onDismissRequest = { layersOpen = false },
                     ) {
-                        @Composable
-                        fun layerRow(label: String, on: Boolean, flip: (Boolean) -> Unit) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .clickable { flip(!on) }
-                                    .padding(horizontal = 16.dp, vertical = 4.dp)
-                                    .fillMaxWidth(),
-                            ) {
-                                Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                                Spacer(Modifier.width(16.dp))
-                                androidx.compose.material3.Switch(checked = on, onCheckedChange = { flip(it) })
-                            }
-                        }
-                        layerRow(stringResource(R.string.map_satellite_toggle), app.vela.ui.SatelliteLayer.on.value) {
+                        toggleItem(stringResource(R.string.map_satellite_toggle), app.vela.ui.SatelliteLayer.on.value) {
                             app.vela.ui.SatelliteLayer.set(ctx, it)
                             vm.onSatelliteToggled()
                         }
-                        layerRow(stringResource(R.string.settings_live_traffic), Traffic.on.value) {
+                        toggleItem(stringResource(R.string.settings_live_traffic), Traffic.on.value) {
                             Traffic.set(ctx, it)
                         }
-                        layerRow(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) {
+                        toggleItem(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) {
                             app.vela.ui.TransitLayer.set(ctx, it)
                         }
-                        layerRow(stringResource(R.string.settings_topography), app.vela.ui.Topography.on.value) {
+                        toggleItem(stringResource(R.string.settings_topography), app.vela.ui.Topography.on.value) {
                             app.vela.ui.Topography.set(ctx, it)
                         }
                     }
