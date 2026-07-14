@@ -62,6 +62,16 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
     }
 
+    override fun onStart() {
+        super.onStart()
+        app.vela.ui.AppVisibility.foreground.value = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        app.vela.ui.AppVisibility.foreground.value = false
+    }
+
     /** Vela registers for `geo:` URIs and Google-Maps web links so it can be the
      *  system maps handler; turn whichever we got into a search or a dropped pin. */
     private fun handleIntent(intent: Intent?) {
