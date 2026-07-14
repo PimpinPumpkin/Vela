@@ -314,7 +314,13 @@ Defaults that make the safe path the easy one:
   hides the endpoints (Google's layout, better on small screens). The card hides while the search
   overlay, steps preview or stops editor own the screen; chrome colours (colorScheme tokens, NOT
   SheetPalette - it replaces the search bar). Device-verified: card, edit rows, swap-reroutes,
-  collapse-keeps-card.
+  collapse-keeps-card. **Minimizing the chooser re-frames the route closer (2026-07-14):** the
+  panel reports its collapsed state up (DirectionsPanel `onCollapsedChange` -> MapScreen
+  `dirMinimized`), the camera bottom inset drops 0.58 -> 0.14 of the screen, and the route fit
+  in VelaMapView keys on the insets as well as the geometry so the inset change re-runs it -
+  with only the Start bar left, the route gets nearly the whole map. Deliberately NOT
+  auto-minimized after a beat: the list is what you're choosing from, and surprise motion
+  right after opening reads as the UI fighting you; one flick down now has a real payoff.
 - **The directions chooser drags like the other sheets (2026-07-11):** its settle flips
   `collapsed` AFTER the glide, never before - flipping first fired `LaunchedEffect(collapsed)`
   into a SECOND animateTo racing the decay (the "bounces off the top" on swipe-up-to-reopen,
@@ -371,7 +377,12 @@ Defaults that make the safe path the easy one:
   (user-ordered replan: the pick becomes the NEXT stop, marks null until the new route lands so
   a failed fetch keeps the stop for the next reroute/recheck; no back-on-course discard, no
   cooldown). BACK order: results list, then the chip row, then end-nav - browsing gas stations
-  must never end the drive.
+  must never end the drive. **Only a RESULTS pick adds a stop (2026-07-14):** every map tap
+  during a drive funnels into selectPlace too (ambient dots, resolved POIs), and a stray tap
+  used to silently pin itself onto the route - selectPlace's nav gate now requires the results
+  list to be open, and onPoiTap / onMapLongPress / onAddressLabelTap / onTransitStopTap
+  early-return while navigating (their invisible selection popped up as a ghost sheet when
+  the drive ended).
 - **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat

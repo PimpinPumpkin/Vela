@@ -106,7 +106,7 @@ class SpeechTextTest {
 
     // --- Street-ordinal reading (128th → "one twenty eighth") ---
     // Space, not hyphen, between tens and ordinal: the hyphenated compound got a reduced "-ty"
-    // from the neural voice ("5th" → sounded like "one third second" on a real drive).
+    // from the neural voice ("152nd" → sounded like "one fifth second" on a real drive).
 
     private fun num(t: String) = SpeechText.spokenNumbers(t)
 
@@ -114,7 +114,7 @@ class SpeechTextTest {
         assertEquals("Turn right onto one twenty eighth Street", num("Turn right onto 128th Street"))
         assertEquals("one forty fifth Avenue", num("145th Avenue"))
         assertEquals("two thirty third", num("233rd"))
-        assertEquals("one thirty second Street", num("5th Street")) // the real-drive report
+        assertEquals("one fifty second Street", num("152nd Street")) // the real-drive report
     }
 
     @Test fun `round hundred and low remainder`() {

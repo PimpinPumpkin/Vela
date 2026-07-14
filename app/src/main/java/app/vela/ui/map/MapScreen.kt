@@ -222,9 +222,15 @@ fun MapScreen(
     val placeSheetUp = state.selected != null && !state.directionsOpen && !state.navigating
     // Push the optical centre up so the place sheet / directions panel doesn't sit on
     // top of the pin or the route (the directions panel is tall — fit the route above it).
+    // The route chooser reports its minimized state up: with only the Start bar left on
+    // screen the route fit gets nearly the whole map back, so it re-frames closer instead
+    // of staying at the zoomed-out framing the full-height panel needed (user 2026-07-14).
+    var dirMinimized by remember { mutableStateOf(false) }
+    LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) dirMinimized = false }
     val cameraBottomInset = when {
         placeSheetUp -> (screenHeightPx * 0.56f).toInt()
-        state.directionsOpen && !state.navigating -> (screenHeightPx * 0.58f).toInt()
+        state.directionsOpen && !state.navigating ->
+            (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
         // Results bottom sheet at peek covers ~the bottom half: frame the result pins
         // in the visible top half, not behind the sheet.
         state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed &&
@@ -1429,6 +1435,7 @@ fun MapScreen(
                 onWalkDirections = vm::walkDirections,
                 onStartTransit = vm::startTransitNav,
                 onTimeSelected = vm::setDirectionsTime,
+                onCollapsedChange = { dirMinimized = it },
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
