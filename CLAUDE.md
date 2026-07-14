@@ -1422,7 +1422,12 @@ architecture note.
   no rerouting within 150 m of the destination or while stationary, off-route measured on the
   windowed/anchored projection (never whole-polyline min), reroutes are single-flight + cooldown +
   latch-clear-on-failure (a failed fetch must NOT kill rerouting - the event is edge-triggered), and
-  ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed). The route line's
+  ETA sums the remaining STEP durations × traffic ratio (never remaining/avg-speed), and since
+  2026-07-14 that ratio is LIVE-CALIBRATED: the ~2-min recheck's candidate, when it follows the
+  CURRENT course (`RouteGeometry.divergent` under `SAME_COURSE_M` = 250 m), resets `etaScale`
+  (NavSession, multiplicative, clamped 0.5-2.5, applied at the publish site only - the engine's
+  own value stays pristine; reset to 1.0 on every route swap) so the shown arrival time follows
+  evolving traffic instead of the ratio frozen at the last route fetch. The route line's
   driven/ahead cut is a GEOMETRY split (`ROUTE_AHEAD_LAYER` suffix over a traversed-grey full line) - 
   MapLibre bakes line-gradients into a 256-texel texture, so a gradient stop can never render a crisp
   cut and there is no `line-trim-offset` in MapLibre; don't "simplify" it back to a gradient.

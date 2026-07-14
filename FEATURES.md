@@ -1173,6 +1173,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Periodic live re-routing** - every ~2 min while underway Vela re-checks
   traffic and, when a meaningfully faster route exists, announces it and offers
   a one-tap switch (`NavSession.maybeRecheck`, RECHECK_INTERVAL_MS = 2 min)
+- ✅ **The arrival ETA tracks LIVE traffic even with no course change (2026-07-14).** The engine's
+  remaining time scales the leftover step durations by the route's traffic ratio, which used to be
+  frozen at whatever the traffic looked like at the LAST route fetch (nav start, or a reroute) for
+  the entire drive - a jam forming ahead never moved the arrival time until you deviated. Now the
+  same ~2-minute recheck that hunts for faster routes also RECALIBRATES the shown ETA: when the
+  fetched candidate follows the route you're already driving (all sampled points within 250 m of
+  the current line - `SAME_COURSE_M`, deliberately tighter than the 700 m jam-detour test so a
+  parallel alternate can't calibrate the wrong road), its fresh traffic-aware ETA becomes the new
+  baseline (`etaScale`, a multiplicative correction on every published remaining duration - the
+  phone banner, the notification and the Android Auto card all read it). The correction resets
+  whenever the route itself is swapped (a fresh route carries fresh traffic), is clamped to
+  0.5-2.5x against a bad candidate, and the faster-route offer logic now compares against this
+  live baseline too. Hermetic replays never recalibrate (no live fetches, as before).
 - 🟡 **Posted speed-limit badge (app-side done 2026-07-04; needs the graph re-bake to light up).** During
   nav a Google-style speed-limit sign shows by the speedometer - **US MUTCD** style (white rounded rect,
   "SPEED LIMIT" + number) in imperial, **EU/RoW** (white disc + red ring) in metric, and the number reddens
