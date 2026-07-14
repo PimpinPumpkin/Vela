@@ -576,4 +576,10 @@
     <string name="map_layers">שכבות</string>
     <string name="settings_layers_button">הצגת כפתור השכבות</string>
     <string name="settings_layers_button_hint">כפתור המפה למעבר בין לוויין, תנועה, תחבורה ותבליט.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">עצירה נוספת (%d)</item>
+        <item quantity="two">+%d עצירות נוספות</item>
+        <item quantity="many">+%d עצירות נוספות</item>
+        <item quantity="other">+%d עצירות נוספות</item>
+    </plurals>
 </resources>
