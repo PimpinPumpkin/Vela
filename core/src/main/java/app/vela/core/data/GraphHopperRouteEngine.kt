@@ -210,18 +210,33 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
         val poly = path.points.let { pts -> (0 until pts.size()).map { LatLng(pts.getLat(it), pts.getLon(it)) } }
         val rawManeuvers = path.instructions.mapIndexed { i, ins ->
             val type = ghType(ins.sign, first = i == 0)
-            val road = ins.name?.takeIf { it.isNotBlank() }
+            val name = ins.name?.takeIf { it.isNotBlank() }
             val at = ins.points.let { if (it.size() > 0) LatLng(it.getLat(0), it.getLon(0)) else poly.firstOrNull() ?: LatLng(0.0, 0.0) }
             // A roundabout instruction carries its exit number — thread it so the phrase reads "take exit N"
             // (without it, ROUNDABOUT fell to the "Enter the roundabout" branch and lost the exit).
             val rbExit = (ins as? com.graphhopper.util.RoundaboutInstruction)?.exitNumber?.takeIf { it > 0 }
+            // Highways identify by REF, signs by DESTINATION — the same fields the OSRM path reads
+            // (RouteGeometry.parseOsrmRoute). GraphHopper stores them per edge as key-values whenever
+            // the graph was imported with way names on (parseWayNames defaults true, and GraphBuilder
+            // never turns it off — so EVERY shipped graph already carries them; no rebake) and
+            // InstructionsFromEdges copies them onto each instruction's extraInfo.
+            val extra = ins.extraInfoJSON
+            // First ref -> the shield. GraphHopper joins an OSM multi-ref with ", " (OSRM keeps ";").
+            val ref = (extra["street_ref"] as? String)?.takeIf { it.isNotBlank() }
+                ?.split(';', ',')?.first()?.trim()?.takeIf { it.isNotEmpty() }
+            val dest = (extra["street_destination"] as? String)?.takeIf { it.isNotBlank() }
+                ?: (extra["street_destination_ref"] as? String)?.takeIf { it.isNotBlank() }
+            val exitNo = (extra["motorway_junction"] as? String)?.takeIf { it.isNotBlank() }
+            // road = name ?: ref, mirroring OSRM: surface streets read by name, highways by shield.
+            val road = name ?: ref
             Maneuver(
                 type = type,
-                instruction = ghPhrase(type, road, rbExit),
+                instruction = ghPhrase(type, road, rbExit, dest, exitNo),
                 location = at,
                 distanceMeters = ins.distance,
                 durationSeconds = ins.time / 1000.0,
                 road = road,
+                ref = ref,
             )
         }
         // Fold pure-rename CONTINUE steps out of the card/step list too (same as the OSRM path).
@@ -285,7 +300,7 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
          *  same 11 tables, with zero new translations (audit 2026-07-06: this used to hardcode English, so
          *  offline routes were never localized unlike the OSRM path). English output is byte-identical to
          *  the old literals for the shipped cases. */
-        internal fun ghPhrase(type: ManeuverType, road: String?, rbExit: Int? = null): String {
+        internal fun ghPhrase(type: ManeuverType, road: String?, rbExit: Int? = null, dest: String? = null, exitNo: String? = null): String {
             val (t, mod) = when (type) {
                 ManeuverType.DEPART -> "depart" to null
                 ManeuverType.ARRIVE -> "arrive" to null
@@ -305,7 +320,10 @@ class GraphHopperRouteEngine(private val graphsRoot: File) : RouteEngine {
                 ManeuverType.EXIT_ROUNDABOUT -> "exit roundabout" to null
                 ManeuverType.UNKNOWN -> "continue" to null
             }
-            return app.vela.core.i18n.NavStringsRegistry.current().phrase(t, mod, road, null, null, rbExit)
+            // GraphHopper marks a motorway exit as a fork/ramp carrying the junction's exit number;
+            // the off-ramp phrase is the one that reads it ("Take exit 72B toward ..."), same as Google.
+            val tt = if (exitNo != null && (t == "fork" || t == "ramp")) "off ramp" else t
+            return app.vela.core.i18n.NavStringsRegistry.current().phrase(tt, mod, road, dest, exitNo, rbExit)
         }
     }
 }
