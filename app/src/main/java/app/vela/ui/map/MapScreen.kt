@@ -1742,17 +1742,29 @@ fun MapScreen(
                 }
             }
             // Required Esri attribution while the imagery is on, tucked by the scale bar.
+            // The capture year sits centered on its own line under the credit: appended
+            // inline it pushed the single line wide enough to run under other chrome.
             if (app.vela.ui.SatelliteLayer.on.value) {
-                Text(
-                    stringResource(R.string.map_satellite_attribution) +
-                        (state.imageryYear?.let { " · $it" } ?: ""),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .align(Alignment.BottomStart)
                         .navigationBarsPadding()
                         .padding(start = 46.dp, bottom = 48.dp + chromeLift),
-                )
+                ) {
+                    Text(
+                        stringResource(R.string.map_satellite_attribution),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                    )
+                    state.imageryYear?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                        )
+                    }
+                }
             }
             if (!(driveFollowing && speedOverlayArmed)) {
                 ScaleBar(
