@@ -134,6 +134,8 @@ private const val HILLSHADE_LAYER = "vela-hillshade"
 private const val TERRARIUM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png"
 
 private const val TRAFFIC_SRC = "vela-traffic-src"
+private const val STOPNUM_SRC = "vela-stopnums-src"
+private const val STOPNUM_LAYER = "vela-stopnums"
 private const val TRAFFIC_LAYER = "vela-traffic"
 // Rail-highlight layer (train + subway/tram), drawn over the basemap's own transportation lines.
 private const val TRANSIT_LAYER = "vela-transit"
@@ -211,6 +213,9 @@ fun VelaMapView(
     altColor: String = "#9AA0A6",
     onSelectAlternate: (Int) -> Unit = {},
     markers: List<MapMarker>,
+    // Intermediate trip stops in VISIT ORDER - drawn as numbered teal pins (1, 2, ...) while a
+    // trip is planned or driven; reordering the stops re-numbers the pins (list identity keys it).
+    stopPins: List<LatLng> = emptyList(),
     frameMarkers: Boolean,
     navMode: Boolean,
     navFollowing: Boolean = true,
@@ -528,6 +533,47 @@ fun VelaMapView(
     // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
     // neighbours survived because the prominence-scaled big icons collide the most). Below the icons, numbers
     // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
+    // Numbered stop pins: one teal pin per intermediate stop, numbered in visit order. The
+    // whole feature set re-uploads whenever the list (or its order) changes, so a reorder in
+    // the stops editor re-numbers the map immediately. Icons register on demand per number.
+    LaunchedEffect(stopPins, styleRef) {
+        val style = styleRef ?: return@LaunchedEffect
+        runCatching {
+            if (stopPins.isEmpty()) {
+                style.getLayer(STOPNUM_LAYER)?.let { style.removeLayer(it) }
+                style.getSource(STOPNUM_SRC)?.let { style.removeSource(it) }
+                return@LaunchedEffect
+            }
+            val feats = stopPins.mapIndexed { i, p ->
+                PoiIcons.ensureStopNumberIcon(style, i + 1)
+                Feature.fromGeometry(Point.fromLngLat(p.lng, p.lat)).apply {
+                    addStringProperty("icon", "vela-stopnum-${i + 1}")
+                }
+            }
+            val existing = style.getSource(STOPNUM_SRC) as? GeoJsonSource
+            if (existing != null) {
+                existing.setGeoJson(FeatureCollection.fromFeatures(feats))
+            } else {
+                style.addSource(GeoJsonSource(STOPNUM_SRC, FeatureCollection.fromFeatures(feats)))
+            }
+            if (style.getLayer(STOPNUM_LAYER) == null) {
+                val layer = SymbolLayer(STOPNUM_LAYER, STOPNUM_SRC).withProperties(
+                    PropertyFactory.iconImage(Expression.get("icon")),
+                    PropertyFactory.iconSize(0.9f),
+                    PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM), // tip marks the stop
+                    PropertyFactory.iconAllowOverlap(true), // a handful of pins, always visible
+                    PropertyFactory.iconIgnorePlacement(true),
+                )
+                // Beside the result markers in the stack: above the route line and geometry,
+                // below the basemap labels the markers already sit under.
+                when {
+                    style.getLayer(MARKERS_LAYER) != null -> style.addLayerAbove(layer, MARKERS_LAYER)
+                    else -> style.addLayer(layer)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(addressOverlays, styleRef, darkTheme) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { style.removeLayer(it) } }
