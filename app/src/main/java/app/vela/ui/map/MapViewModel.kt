@@ -4056,9 +4056,13 @@ class MapViewModel @Inject constructor(
                 withContext(Dispatchers.IO) { runCatching { transitStopCache.lookup(s0, w0, n0, e0) }.getOrNull() } ?: return@launch
             }
             transitStopsBox = doubleArrayOf(s0, w0, n0, e0)
-            // One icon per station: bays collapse onto their parent (the board queries the parent anyway).
+            // One icon per station: bays collapse onto their parent (the board queries the parent
+            // anyway), and a same-named directional pair folds into ONE icon at its midpoint whose
+            // board carries both directions (Transitous.mergeDirectionalPairs; user 2026-07-13 -
+            // the two curbs reading as a doubled stop). Direction-suffixed names differ, so a
+            // "NB Station"/"SB Station" pair naturally stays separate.
             val deduped = stops.groupBy { it.parentId ?: it.stopId }.map { (_, group) -> group.first() }
-            _state.update { it.copy(transitStops = deduped) }
+            _state.update { it.copy(transitStops = app.vela.core.data.transit.Transitous.mergeDirectionalPairs(deduped)) }
         }
     }
 
