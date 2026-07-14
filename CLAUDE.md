@@ -579,7 +579,15 @@ Defaults that make the safe path the easy one:
   coordinate pin on empty land, as before). NB the long-press-while-planning "route through here"
   add-stop no longer flashes a heads-up banner (2026-07-13): the route refetch reset `status` a beat
   later so it blinked unreadably, and the stop appearing in the chooser + the route redrawing IS the
-  feedback (`mapvm_stop_added` string removed from all locales). **The house-number case must SNAP to the tapped number:**
+  feedback (`mapvm_stop_added` string removed from all locales). **The named-POI resolve is
+  NAME-AGREEING first (2026-07-14):** onPoiTap searches the tapped name, but the pick used to
+  ignore it - bare `nearest` plus the 35 m most-reviewed override let a strip mall's popular
+  NEIGHBOUR steal the tap (Google's per-listing pins in a shared building are loose; a sushi
+  tap opened the dessert shop two doors down). The pick pool is now the listings whose name
+  shares the tapped label's words (`nameAgrees`, word-set overlap needing the shorter name's
+  tokens, cap 2); only an EMPTY pool (renamed/closed business) falls back to all results. The
+  clear-dominance duplicate override still runs WITHIN the pool (a co-brand's two profiles both
+  agree with the tapped label, and the rich one should win). **The house-number case must SNAP to the tapped number:**
   `MapViewModel.onAddressLabelTap` LEADS the pin with the label's own number and uses the reverse-
   geocode only for the street/city, replacing whatever house number the geocode led with (a regex
   strips `^\s*\d+\S*\s+` then prepends the tapped number). Reason: Google's reverse-geocode snaps to
