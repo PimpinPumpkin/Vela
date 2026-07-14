@@ -122,6 +122,61 @@ object PoiIcons {
         style.addImage(key, bmp)
     }
 
+    /** Register a NUMBERED STOP pin ("vela-stopnum-<n>"): brand-teal circle, white ring and
+     *  number, a short tail so the tip marks the spot - the trip's intermediate stops drawn in
+     *  visit order (theme-independent; the teal is VelaTeal, bitmaps can't read the theme). */
+    fun ensureStopNumberIcon(style: Style, n: Int): String {
+        val key = "vela-stopnum-$n"
+        if (style.getImage(key) != null) return key
+        val w = 84
+        val h = 100
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bmp)
+        val cx = w / 2f
+        val bodyCy = h * 0.38f
+        val bodyR = w * 0.36f
+        val tipY = h - 6f
+        val d = tipY - bodyCy
+        val sin = (bodyR / d).coerceAtMost(0.985f)
+        val cos = kotlin.math.sqrt(1f - sin * sin)
+        val teardrop = Path().apply {
+            addCircle(cx, bodyCy, bodyR, Path.Direction.CW)
+            op(
+                Path().apply {
+                    moveTo(cx - bodyR * sin, bodyCy + bodyR * cos)
+                    lineTo(cx, tipY)
+                    lineTo(cx + bodyR * sin, bodyCy + bodyR * cos)
+                    close()
+                },
+                Path.Op.UNION,
+            )
+        }
+        canvas.save()
+        canvas.translate(0f, w * 0.02f)
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = 0x40000000
+            maskFilter = BlurMaskFilter(w * 0.05f, BlurMaskFilter.Blur.NORMAL)
+        })
+        canvas.restore()
+        // White outline so the pin separates from any basemap/imagery, then the teal body.
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.WHITE
+            setStyle(Paint.Style.STROKE) // explicit setter - `style` resolves to the fn param
+            strokeWidth = w * 0.06f
+        })
+        canvas.drawPath(teardrop, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#14857A") })
+        val text = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            typeface = Typeface.DEFAULT_BOLD // plain sans - the class typeface() is the ICON font
+            color = Color.WHITE
+            textSize = w * 0.40f
+            textAlign = Paint.Align.CENTER
+        }
+        val fm = text.fontMetrics
+        canvas.drawText("$n", cx, bodyCy - (fm.ascent + fm.descent) / 2f, text)
+        style.addImage(key, bmp)
+        return key
+    }
+
     /** Register the collapsed-result dot (theme-independent, one image). */
     fun addResultDot(style: Style) {
         if (style.getImage(RESULT_DOT_IMG) != null) return
