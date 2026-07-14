@@ -767,6 +767,8 @@ fun MapScreen(
             // The endpoints card's measured bottom edge: the route fit frames start/end in the
             // strip between the card and the chooser instead of hiding either behind chrome.
             cameraTopInsetPx = if (state.directionsOpen && !state.navigating) topCardBottomPx else 0,
+            // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
+            stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
