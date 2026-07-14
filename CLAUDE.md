@@ -1924,6 +1924,20 @@ architecture note.
   back to the OSM basemap icons (filter restored). A fetch blip never blanks drawn stops.
   Regional GTFS stop packs (whole-state stops baked into the poi-pack pipeline) are the future
   hard-offline version - see task/ROADMAP.
+- **Directional curb pairs merge into ONE icon (2026-07-13, device-verified).** US GTFS names both
+  curbs of an intersection identically and carries NO direction field (verified against the raw
+  `map/stops` JSON), so the map drew two overlapping same-named badges and each tap showed only
+  half the departures. `Transitous.mergeDirectionalPairs` (same NAME within `PAIR_MERGE_M` = 160 m,
+  proximity-clustered) collapses a pair to one representative at the pair's midpoint carrying the
+  other ids in `MapStop.siblingIds`; the VM applies it after the parentId dedupe, and
+  `TransitStopCache` persists `sib` so offline redraws keep the merge. `boardFor` (badge tap) and
+  `board(lat,lng)` (proximity/Google-place path) merge stoptimes across representative + siblings,
+  and `buildBoard`'s (route, headsign) grouping naturally shows both directions as separate rows.
+  Direction-suffixed names (Swift-style "NB Station"/"SB Station") differ as strings so they never
+  merge; geometry-based direction labels were rejected because the feed has no bearing data and
+  street diagonals make guessing unreliable. Transit directions are untouched - they walk to the
+  itinerary's exact boarding coordinate. Unit-tested (pair -> midpoint + sibling; same name across
+  town stays separate; NB/SB stays separate).
 - **Share diagnostics is functional now (2026-07-13):** `DiagLog` (opt-in breadcrumb ring, :core)
   PERSISTS to a bounded `filesDir/diag_log.jsonl` (appended per event, reloaded at init, deleted on
   opt-out) - it was in-memory only, and since the bug being reported usually killed or preceded a

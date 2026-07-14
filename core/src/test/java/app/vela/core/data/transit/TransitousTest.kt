@@ -100,4 +100,28 @@ class TransitousTest {
         assertEquals("8:26 PM", Transitous.clockText(epoch, "UTC"))
         assertNull(Transitous.parseIso("not-a-time"))
     }
+
+    @Test
+    fun `directional pairs merge into one stop with siblings`() {
+        fun stop(id: String, name: String, lat: Double, lng: Double, parent: String? = null) =
+            Transitous.MapStop(name = name, stopId = id, parentId = parent, lat = lat, lon = lng)
+        val merged = Transitous.mergeDirectionalPairs(
+            listOf(
+                // a directional pair ~25 m apart, same name -> one icon at the midpoint
+                stop("a1", "Main St & 1st Ave", 47.0000, -122.0000),
+                stop("a2", "Main St & 1st Ave", 47.0002, -122.0001),
+                // same name across town -> stays its own stop
+                stop("b1", "Main St & 1st Ave", 47.1000, -122.0000),
+                // direction-suffixed names differ -> never merged
+                stop("c1", "Hub NB Station", 47.0500, -122.0000),
+                stop("c2", "Hub SB Station", 47.0501, -122.0000),
+            ),
+        )
+        assertEquals(4, merged.size)
+        val pair = merged.first { it.stopId == "a1" }
+        assertEquals(listOf("a2"), pair.siblingIds)
+        assertEquals(47.0001, pair.lat, 1e-9)
+        assertTrue(merged.any { it.stopId == "b1" && it.siblingIds.isEmpty() })
+        assertTrue(merged.any { it.stopId == "c1" } && merged.any { it.stopId == "c2" })
+    }
 }
