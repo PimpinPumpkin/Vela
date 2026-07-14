@@ -232,7 +232,12 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Поиск по отзывам</string>
     <string name="place_sort_reviews">Сортировать отзывы</string>
-    <string name="place_review_count">%1$d отзывов</string>
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">%1$d отзыв</item>
+        <item quantity="few">%1$d отзыва</item>
+        <item quantity="many">%1$d отзывов</item>
+        <item quantity="other">%1$d отзыва</item>
+    </plurals>
     <string name="place_all_n_reviews">Все отзывы (%1$d) · сортировка и поиск</string>
     <string name="place_all_reviews">Все отзывы · сортировка и поиск</string>
     <string name="place_reviews_progress">Отзывы · %1$d из примерно %2$d</string>
@@ -436,7 +441,12 @@
     <string name="settings_update_checking">Проверка…</string>
     <string name="settings_update_none">У вас самая новая версия.</string>
     <string name="settings_place_pages">Страницы мест</string>
-    <string name="place_transit_stops">%1$d остановок</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">%1$d остановка</item>
+        <item quantity="few">%1$d остановки</item>
+        <item quantity="many">%1$d остановок</item>
+        <item quantity="other">%1$d остановки</item>
+    </plurals>
     <string name="place_transit_stop_id">Остановка %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Билеты и информация</string>
     <string name="route_detail_unavailable">Сведения о маршруте недоступны</string>

@@ -174,6 +174,7 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import app.vela.R
 import androidx.compose.ui.text.SpanStyle
@@ -2343,7 +2344,7 @@ private fun TransitStepRow(s: TransitStep, ink: Color, dim: Color, onWalkDirecti
             s.boardStop?.let { StopLine(it, ink, dim, emphasize = true, delay = s.delayText) }
             val rideLabel = listOfNotNull(
                 s.durationText,
-                s.numStops?.let { stringResource(R.string.place_transit_stops, it) },
+                s.numStops?.let { pluralStringResource(R.plurals.place_transit_stops, it, it) },
             ).joinToString("  ·  ")
             if (s.intermediateStops.isNotEmpty()) {
                 Row(
@@ -2620,7 +2621,7 @@ fun RouteDetailSheet(
             }
             step?.numStops?.let { n ->
                 Text(
-                    stringResource(R.string.place_transit_stops, n),
+                    pluralStringResource(R.plurals.place_transit_stops, n, n),
                     style = MaterialTheme.typography.labelMedium, color = dim,
                     modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                 )
@@ -3453,7 +3454,7 @@ private fun ReviewsTab(
                     RatingStars(r)
                     place.reviewCount?.let {
                         Text(
-                            stringResource(R.string.place_review_count, it),
+                            pluralStringResource(R.plurals.place_review_count, it, it),
                             style = MaterialTheme.typography.bodyMedium,
                             color = dim,
                             modifier = Modifier.padding(top = 3.dp),
