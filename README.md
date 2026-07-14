@@ -50,7 +50,7 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
   included, reviews you can search, photo galleries, busy times, phone and
   website, with a warning if a place would be closed when you arrive.
 - **Zero Google on your phone, and almost zero in your life.** No Play Services,
-  no account, no app key, no ads, no telemetry. Google never sees your GPS trace, your map browsing, or who
+  no account, no app key, no ads, no GCM/FCM, no Play Integrity. Google never sees your GPS trace, your map browsing, or who
   you are. The full breakdown is in the [Privacy](#privacy) section below.
 - **Flock cameras, on the map.** Mapped ALPR surveillance cameras (the
   community DeFlock project's OpenStreetMap data) draw out of the box, and the
@@ -89,8 +89,8 @@ setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
 - **Fixes itself when Google moves things.** The scraping recipes live in a signed
   config the app checks at launch - when Google shifts a field or an endpoint, a
   repair ships to every install in minutes, no update needed. The same channel can
-  push a heads-up notice ("search is down, fix coming") straight onto the map.
-- **The rest.** Android Auto, 15 languages (incl. Hebrew, the first RTL locale),
+  push a heads-up notice ("search is down, fix coming") straight onto the map. See [`docs/CALIBRATION.md`](docs/CALIBRATION.md): for details.
+- **The rest.** Android Auto, 15 languages,
   in-app light/dark, full D-pad operation for keypad phones, place lists, and a
   built-in updater with weekly-stable or nightly channels.
 
@@ -160,25 +160,11 @@ Deeper still is [`SPEC.md`](SPEC.md).
 | [`docs/CALIBRATION.md`](docs/CALIBRATION.md) | The Google extractor + the signed remote-repair channel, in depth |
 | [`docs/MAP-STYLE.md`](docs/MAP-STYLE.md) | Basemap, fonts, custom layers and theming details |
 
-## The Google extractor & calibration
-
-The full write-up moved to [`docs/CALIBRATION.md`](docs/CALIBRATION.md): the per-user
-extractor, the signed remote-repair channel, and the recalibration playbook.
-
 ## Degoogled / GrapheneOS notes
 
 - **Location:** AOSP `LocationManager`, never `FusedLocationProviderClient`. On
   GrapheneOS, enabling PSDS (Settings → Location) drops the cold GPS fix from
   ~30s to a few seconds - Vela shows a one-time tip when it notices a slow fix.
-- **Voice:** the neural nav voice and Whisper voice search both run entirely
-  on-device (bundled sherpa-onnx runtime, models downloaded in-app); any system
-  TTS engine can be selected instead. Details in [FEATURES.md](FEATURES.md).
-- **No GMS anywhere:** no Fused location, no FCM, no Firebase, no Play
-  Integrity. Everything (MapLibre, OkHttp, Compose, Hilt) is pure AOSP.
-
-## Map style
-
-Details moved to [`docs/MAP-STYLE.md`](docs/MAP-STYLE.md).
 
 ## Roadmap
 
