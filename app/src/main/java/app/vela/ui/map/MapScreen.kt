@@ -364,6 +364,9 @@ fun MapScreen(
     // Measured screen-Y of the maneuver banner's bottom edge → so VelaMapView can sit the compass just below
     // it during nav (the banner's height varies with lane guidance + a "then" row, so it can't be guessed).
     var navBannerBottomPx by remember { mutableStateOf(0) }
+    // The endpoints card's bottom edge, so the notification column can sit under it in
+    // directions mode instead of printing over it (user 2026-07-13).
+    var topCardBottomPx by remember { mutableStateOf(0) }
     // Measured height of the nav BOTTOM bar (ETA + End) → everything stacked above it (speedometer,
     // speed-limit sign, re-center FAB, GPS-lost chip) offsets from the REAL height instead of a fixed
     // 132dp guess. The bar grows with the system font size, and at a larger font scale the fixed offset
@@ -1002,6 +1005,9 @@ fun MapScreen(
                     // stops editor own the screen.
                     if (state.directionsOpen && !searchOpen && state.pickOnMap == null && !state.showSteps && !state.editingStops) {
                         app.vela.ui.place.RouteTopCard(
+                            modifier = Modifier.onGloballyPositioned {
+                                topCardBottomPx = (it.positionInRoot().y + it.size.height).roundToInt()
+                            },
                             originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
                             else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
                             originIsMe = !state.directionsReversed && state.directionsOrigin == null,
@@ -1729,6 +1735,13 @@ fun MapScreen(
                         if (state.navigating && navBannerBottomPx > 0) {
                             // positionInRoot already spans the status bar — no statusBarsPadding here.
                             Modifier.padding(top = bannerBottom + 10.dp, start = 12.dp, end = 12.dp)
+                        } else if (state.directionsOpen && !searchOpen && topCardBottomPx > 0) {
+                            // Below the endpoints card, which is taller than the search bar the
+                            // 132dp constant was tuned for (cards printed over it otherwise).
+                            Modifier.padding(
+                                top = with(LocalDensity.current) { topCardBottomPx.toDp() } + 10.dp,
+                                start = 12.dp, end = 12.dp,
+                            )
                         } else {
                             Modifier.statusBarsPadding().padding(top = 132.dp, start = 12.dp, end = 12.dp)
                         },
