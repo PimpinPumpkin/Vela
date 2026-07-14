@@ -1896,7 +1896,11 @@ architecture note.
   and `stoptimes` on the nearest stop's PARENT station id returns EVERY route with realtime flags and
   the agency's own route colours - a hub's bays merge for free (device-verified: a corner that gave 1
   route via the Google blob shows 6 lines with official pill colours + live countdowns). The result maps
-  into the SAME StopDepartures model, so the whole board UI renders unchanged. The Google blob paths
+  into the SAME StopDepartures model, so the whole board UI renders unchanged. **Transitous boards
+  REFRESH every 30 s while the sheet is open (2026-07-13):** `startBoardRefresh` re-queries the open
+  feed on the countdown clock's cadence and swaps the board in place, self-cancelling the moment the
+  selection changes; Google-fallback boards stay one-shot on purpose (a refresh there is a whole
+  WebView load). The Google blob paths
   (fetchBoardFrom / resolveIntersectionStopBoard) remain the FALLBACK where Transitous lacks coverage.
   `buildBoard` is pure + unit-tested (TransitousTest). Remaining phase-2 candidate: transit
   directions via `/api/v1/plan` as a FALLBACK only - Google stays the primary transit router on
