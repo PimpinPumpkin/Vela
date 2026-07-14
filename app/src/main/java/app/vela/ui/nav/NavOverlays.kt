@@ -517,7 +517,6 @@ fun NavSearchChips(
     query: String,
     onQueryChange: (String) -> Unit,
     onPick: (String) -> Unit,
-    onFieldFocused: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val dark = isAppInDarkTheme()
@@ -562,7 +561,6 @@ fun NavSearchChips(
                 modifier = Modifier
                     .weight(1f)
                     .padding(vertical = 8.dp)
-                    .onFocusChanged { onFieldFocused(it.isFocused) }
                     .dpadFieldEscape(),
             )
         }
