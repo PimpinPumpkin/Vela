@@ -122,6 +122,11 @@ data class Route(
     // placeholder — it gets NAMED (map-matched / snapped) only when you actually pick it to navigate,
     // so the picker loads fast and we don't snap routes you never drive. Primary route is never provisional.
     val provisional: Boolean = false,
+    // Google's keyless fallback steps: the polyline is complete but the maneuvers are ABBREVIATED
+    // for longer trips (a 6-mile route once carried 2 of ~10 turns) — the banner can't match the
+    // drawn line. Set only on the OSRM-down fallback branches; NavSession's recheck silently
+    // upgrades an adopted abbreviated route to full steps once the open router recovers.
+    val abbreviatedSteps: Boolean = false,
 ) {
     val hasLiveTraffic: Boolean get() = durationInTrafficSeconds != null
     val maneuvers: List<Maneuver> get() = legs.flatMap { it.maneuvers }

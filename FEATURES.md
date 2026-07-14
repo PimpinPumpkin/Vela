@@ -1173,6 +1173,22 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Periodic live re-routing** - every ~2 min while underway Vela re-checks
   traffic and, when a meaningfully faster route exists, announces it and offers
   a one-tap switch (`NavSession.maybeRecheck`, RECHECK_INTERVAL_MS = 2 min)
+- ✅ **The traffic fetch retries like the router does (2026-07-14, from a real-drive report).**
+  Google's keyless directions reply intermittently comes back degraded or empty (worst right
+  after a burst of requests, like ending a route and restarting it), and it used to get exactly
+  ONE attempt while OSRM got three - a single miss cost the whole fetch its traffic ratio, its
+  jam-avoiding snap AND Google's alternates, so the picker led with free-flow OSRM routes whose
+  white, trafficless ETAs read minutes faster than anything traffic-aware and varied drastically
+  between restarts. `googleDirectionsRetried` now gives it the same 3-attempt backoff; a
+  genuinely unreachable Google still degrades to free-flow, just honestly rarer.
+- ✅ **Abbreviated-steps self-heal mid-drive (2026-07-14, from the same report).** If the open
+  router is unreachable when a reroute fires, the fallback is Google's keyless route: complete
+  polyline, ABBREVIATED maneuvers (a 6-mile route once carried 2 of ~10 turns) - the banner and
+  voice then disagree with the blue line, and the line is the one telling the truth. Those
+  routes are now tagged at the source (`Route.abbreviatedSteps`, also set when naming a picked
+  alternate fails), and the ~2-minute recheck upgrades an adopted one SILENTLY the moment a
+  full-stepped same-course candidate comes back: same path, fresh traffic, real turns, instead
+  of staying degraded for the rest of the drive.
 - ✅ **The arrival ETA tracks LIVE traffic even with no course change (2026-07-14).** The engine's
   remaining time scales the leftover step durations by the route's traffic ratio, which used to be
   frozen at whatever the traffic looked like at the LAST route fetch (nav start, or a reroute) for

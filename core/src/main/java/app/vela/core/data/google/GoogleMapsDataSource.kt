@@ -276,7 +276,7 @@ class GoogleMapsDataSource @Inject constructor(
         if (waypoints.isNotEmpty()) {
             return@io coroutineScope {
                 val viaD = async { RouteGeometry.routeVia(http, listOf(origin) + waypoints + destination, mode, avoidTolls, avoidHighways) }
-                val gD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
+                val gD = async { googleDirectionsRetried(origin, destination, mode) }
                 val via = viaD.await().firstOrNull()
                 // OSRM unreachable → route the legs on-device (origin→w1→…→dest chained), like the
                 // single-destination path's offline fallback; only then fall to Google's DIRECT route
@@ -286,7 +286,7 @@ class GoogleMapsDataSource @Inject constructor(
                 val result = when {
                     via != null -> listOf(applyTrafficRatio(via, gD.await().firstOrNull()))
                     onDevice != null -> listOf(onDevice)
-                    else -> gD.await().take(1)
+                    else -> gD.await().take(1).map { it.copy(abbreviatedSteps = true) }
                 }
                 diag.record(
                     "directions",
@@ -304,7 +304,7 @@ class GoogleMapsDataSource @Inject constructor(
             // (a 6-mi route came back with 2 of ~10 turns), so Google is only the FALLBACK + the
             // live-traffic source. Fetch both in parallel so the traffic round-trip is free.
             val openD = async { RouteGeometry.route(http, origin, destination, mode, avoidTolls, avoidHighways) }
-            val googleD = async { runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty() }
+            val googleD = async { googleDirectionsRetried(origin, destination, mode) }
             val open = openD.await()
             val google = googleD.await()
             val gTop = google.firstOrNull()
@@ -358,8 +358,10 @@ class GoogleMapsDataSource @Inject constructor(
                 "",
             )
             if (open.isEmpty()) {
-                // OSRM unreachable → the on-device offline route, or Google's abbreviated one, whichever we have.
-                if (onDevice.isNotEmpty()) onDevice else google
+                // OSRM unreachable → the on-device offline route, or Google's abbreviated one, whichever
+                // we have. The Google routes are TAGGED abbreviated so an adopted one can be silently
+                // upgraded to full steps by the nav recheck once the open router recovers.
+                if (onDevice.isNotEmpty()) onDevice else google.map { it.copy(abbreviatedSteps = true) }
             } else {
                 val primary = if (snapWorthIt) (listOf(trafficRoute!!) + open).map { applyTraffic(it, gTop) }
                     else open.map { applyTraffic(it, gTop) }
@@ -493,7 +495,29 @@ class GoogleMapsDataSource @Inject constructor(
             durationSeconds = route.durationSeconds,
             durationInTrafficSeconds = route.durationInTrafficSeconds,
         )
-        else route.copy(provisional = false)
+        // Naming failed: nav runs on Google's abbreviated steps. Tagged so the in-drive recheck
+        // can silently upgrade to full steps once the open router answers again.
+        else route.copy(provisional = false, abbreviatedSteps = true)
+    }
+
+    /** [googleDirections] with the same transient-blip retry the OSRM path has (routeOsrm goes
+     *  3x with backoff; Google got ONE shot). The keyless endpoint intermittently hands back a
+     *  degraded or empty reply — worst right after a burst of requests, e.g. ending a route and
+     *  restarting it — and a single miss used to cost the whole fetch its traffic ratio, its
+     *  jam-avoiding snap AND Google's alternates: the picker then led with free-flow OSRM routes
+     *  whose white, trafficless ETAs read minutes faster than anything traffic-aware and varied
+     *  drastically between restarts (user real-drive report 2026-07-14). Two short backoff
+     *  retries recover the routine blips; a genuinely unreachable Google still degrades to
+     *  free-flow exactly as before, just honestly rarer. */
+    private suspend fun googleDirectionsRetried(origin: LatLng, destination: LatLng, mode: TravelMode): List<Route> {
+        var routes: List<Route> = emptyList()
+        for (attempt in 0..2) {
+            if (attempt > 0) kotlinx.coroutines.delay(300L * attempt)
+            routes = runCatching { googleDirections(origin, destination, mode) }.getOrNull().orEmpty()
+            if (routes.isNotEmpty()) return routes
+        }
+        diag.record("directions", "google directions empty after 3 attempts — trafficless fetch")
+        return routes
     }
 
     /** Google's keyless directions — now the FALLBACK router (OSRM unreachable) and the
