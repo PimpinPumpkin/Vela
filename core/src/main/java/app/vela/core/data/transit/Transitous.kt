@@ -48,6 +48,9 @@ object Transitous {
         val parentId: String? = null,
         val lat: Double = 0.0,
         val lon: Double = 0.0,
+        // Same-named directional siblings folded into this icon (never on the wire - filled by
+        // mergeDirectionalPairs). Their boards merge into this stop's board.
+        val siblingIds: List<String> = emptyList(),
     )
 
     @Serializable
@@ -94,7 +97,8 @@ object Transitous {
     /** The board for a KNOWN stop (a tapped map icon) - no proximity lookup needed. Queries the
      *  parent station when the stop has one, so a hub icon shows the whole merged board. */
     fun boardFor(http: OkHttpClient, stop: MapStop): StopDepartures? {
-        val times = stopTimes(http, stop.parentId ?: stop.stopId).ifEmpty { return null }
+        val ids = (listOf(stop.parentId ?: stop.stopId) + stop.siblingIds).distinct()
+        val times = ids.flatMap { stopTimes(http, it) }.ifEmpty { return null }
         return buildBoard(times, stationName = stop.name)
     }
 
@@ -115,12 +119,43 @@ object Transitous {
     fun board(http: OkHttpClient, lat: Double, lng: Double): StopDepartures? {
         val stops = stopsNear(http, lat, lng)
         if (stops.isEmpty()) return null
-        // Prefer the nearest stop's PARENT station (aggregates every bay); fall back to the stop itself.
+        // Prefer the nearest stop's PARENT station (aggregates every bay), and fold in any
+        // same-named sibling nearby - the two curbs of a directional pair - so one board carries
+        // both directions, told apart by their headsigns (Google's treatment).
         val nearest = stops.first()
-        val queryId = nearest.parentId ?: nearest.stopId
-        val times = stopTimes(http, queryId).ifEmpty { return null }
+        val ids = stops
+            .filter { it.name == nearest.name && distM(nearest.lat, nearest.lon, it.lat, it.lon) < PAIR_MERGE_M }
+            .map { it.parentId ?: it.stopId }
+            .distinct()
+        val times = ids.flatMap { stopTimes(http, it) }.ifEmpty { return null }
         return buildBoard(times, stationName = nearest.name)
     }
+
+    /** Fold same-named stops within [radiusM] into ONE map icon at the cluster midpoint, carrying
+     *  the rest as [MapStop.siblingIds] - the two curbs of a directional pair become one stop like
+     *  Google's POI, and the merged board's headsigns tell the directions apart. Distinct names
+     *  (a "NB Station"/"SB Station" pair) and far-apart same names both stay separate. */
+    fun mergeDirectionalPairs(stops: List<MapStop>, radiusM: Double = PAIR_MERGE_M): List<MapStop> =
+        stops.groupBy { it.name }.flatMap { (_, group) ->
+            if (group.size < 2) return@flatMap group
+            val clusters = mutableListOf<MutableList<MapStop>>()
+            for (st in group) {
+                val home = clusters.firstOrNull { cl ->
+                    cl.any { distM(it.lat, it.lon, st.lat, st.lon) < radiusM }
+                }
+                if (home != null) home.add(st) else clusters.add(mutableListOf(st))
+            }
+            clusters.map { cl ->
+                if (cl.size == 1) cl.first()
+                else cl.first().copy(
+                    lat = cl.sumOf { it.lat } / cl.size,
+                    lon = cl.sumOf { it.lon } / cl.size,
+                    siblingIds = cl.drop(1).map { it.stopId },
+                )
+            }
+        }
+
+    private const val PAIR_MERGE_M = 160.0
 
     /** Pure grouping of raw stop times into the board model (unit-tested; no network). */
     internal fun buildBoard(times: List<StopTime>, stationName: String?, nowMs: Long = System.currentTimeMillis()): StopDepartures? {
