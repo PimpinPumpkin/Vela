@@ -458,6 +458,10 @@ object PoiIcons {
 
     /** The label colour for a category [group] per theme: the icon colour in light, its pastel
      *  tint in dark (Google's own dark-mode treatment — full saturation vanishes on a dark map). */
+    /** Public single-group variant of [labelColor] for layers styled outside this file
+     *  (the canonical GTFS stop labels take the transit category colour per theme). */
+    fun labelColorFor(group: String, dark: Boolean): String = labelColor(group, dark)
+
     private fun labelColor(group: String, dark: Boolean): String {
         val base = GROUPS.first { it.first == group }.third
         return if (dark) lighten(base, 0.55f) else base
