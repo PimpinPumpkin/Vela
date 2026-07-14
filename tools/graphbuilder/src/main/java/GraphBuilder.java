@@ -110,15 +110,22 @@ public class GraphBuilder {
                 System.out.println("route smoke check: " + Math.round(rs.getBest().getDistance() / 1609.0)
                         + " mi in " + (System.currentTimeMillis() - t) + " ms (CH)");
                 // Do the built instructions carry STREET NAMES? (offline turn-by-turn reads Instruction.getName())
-                int named = 0, total = 0;
+                // And REFS/DESTINATIONS? (the shield badge + "toward" text read extraInfo street_ref /
+                // street_destination / motorway_junction — stored whenever parseWayNames is on, the default)
+                int named = 0, reffed = 0, total = 0;
                 for (Instruction ins : rs.getBest().getInstructions()) {
                     total++;
                     String nm = ins.getName();
                     if (nm != null && !nm.isEmpty()) named++;
-                    if (total <= 8) System.out.println("    instr sign=" + ins.getSign() + " name='" + nm + "'");
+                    Object ref = ins.getExtraInfoJSON().get("street_ref");
+                    if (ref != null && !ref.toString().isEmpty()) reffed++;
+                    if (total <= 8) System.out.println("    instr sign=" + ins.getSign() + " name='" + nm
+                            + "' extra=" + ins.getExtraInfoJSON());
                 }
                 System.out.println("NAMED INSTRUCTIONS: " + named + "/" + total
                         + (named == 0 ? "  <<< NO STREET NAMES IN GRAPH" : ""));
+                System.out.println("REF-CARRYING INSTRUCTIONS: " + reffed + "/" + total
+                        + " (0 is fine for a route with no signed highways)");
             }
         } catch (Exception e) {
             System.out.println("route smoke check skipped: " + e.getMessage());
