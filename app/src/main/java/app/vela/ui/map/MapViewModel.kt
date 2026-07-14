@@ -1382,6 +1382,7 @@ class MapViewModel @Inject constructor(
         val cal = calibration.current()
         app.vela.core.data.google.parse.SearchParser.remoteClosedWords = cal.statusClosedWords
         app.vela.core.data.google.parse.SearchParser.remoteOpenWords = cal.statusOpenWords
+        app.vela.core.data.google.parse.StopDeparturesParser.remoteIndices = cal.stopBoardIndices
         TRANSIT_CAT = cal.transitCategoryWords?.takeIf { it.isNotEmpty() }?.let { words ->
             runCatching { Regex(words.joinToString("|"), RegexOption.IGNORE_CASE) }.getOrNull()
         } ?: TRANSIT_CAT_COMPILED
