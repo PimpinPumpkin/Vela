@@ -2455,8 +2455,10 @@ private fun ChooseOnMapOverlay(
 ) {
     Box(Modifier.fillMaxSize()) {
         Surface(
-            color = MaterialTheme.colorScheme.inverseSurface,
-            contentColor = MaterialTheme.colorScheme.inverseOnSurface,
+            // Theme-following surface: the old inverseSurface is INVERTED by definition, which
+            // put a light banner on the dark app (user 2026-07-14).
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = MaterialTheme.colorScheme.onSurface,
             shape = RoundedCornerShape(12.dp),
             tonalElevation = 3.dp,
             modifier = Modifier
@@ -2789,27 +2791,31 @@ private fun AssignBanner(kind: ShortcutKind, onCancel: () -> Unit) {
     }
 }
 
-/** A slim banner while picking a place to add as a directions stop — without it the Add-stop
- *  picker is visually identical to plain search (no hint you're in a mode, no way out but Back). */
+/** A quiet mode label while picking a place to add as a directions stop — without it the
+ *  Add-stop picker is visually identical to plain search. The old full banner with its own
+ *  Cancel button read as clutter sitting right above the Choose-on-map row (user 2026-07-14);
+ *  the search bar's back arrow and hardware BACK are the way out, like every other search mode. */
 @Composable
-private fun PickStopBanner(onCancel: () -> Unit) {
+private fun PickStopBanner(@Suppress("UNUSED_PARAMETER") onCancel: () -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Default.AddLocationAlt, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(12.dp))
+        Icon(
+            Icons.Default.AddLocationAlt,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(18.dp),
+        )
+        Spacer(Modifier.width(10.dp))
         Text(
             stringResource(R.string.mapscreen_pick_stop_hint),
-            style = MaterialTheme.typography.bodyMedium,
-            // Explicit colour, same reason as AssignBanner: no Surface on the search page means
-            // no LocalContentColor — a colourless Text renders BLACK on the dark sheet.
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelLarge,
+            // Explicit colour: no Surface on the search page means no LocalContentColor.
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        TextButton(onClick = onCancel) { Text(stringResource(R.string.mapscreen_cancel)) }
     }
 }
 
