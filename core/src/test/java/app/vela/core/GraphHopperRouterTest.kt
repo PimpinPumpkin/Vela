@@ -44,6 +44,27 @@ class GraphHopperRouterTest {
         assertEquals("At the roundabout, take exit 2 onto Elm St", GraphHopperRouteEngine.ghPhrase(ManeuverType.ROUNDABOUT, "Elm St", 2))
     }
 
+    /** Highway steps read like the OSRM path now: sign destinations on ramps/forks/merges, and a
+     *  fork that carries a motorway_junction exit number becomes the off-ramp phrase ("Take exit
+     *  72B toward ..."), Google's wording. Surface turns never pick these up (no dest/exit data). */
+    @Test fun highwayPhrasesUseRefsAndDestinations() {
+        assertEquals(
+            "Take exit 72B toward Sacramento",
+            GraphHopperRouteEngine.ghPhrase(ManeuverType.KEEP_RIGHT, null, dest = "Sacramento", exitNo = "72B"),
+        )
+        assertEquals(
+            "Take the ramp toward I-80 East",
+            GraphHopperRouteEngine.ghPhrase(ManeuverType.RAMP_RIGHT, null, dest = "I-80 East"),
+        )
+        assertEquals(
+            "Keep left toward Davis",
+            GraphHopperRouteEngine.ghPhrase(ManeuverType.KEEP_LEFT, null, dest = "Davis"),
+        )
+        assertEquals("Merge onto I 80", GraphHopperRouteEngine.ghPhrase(ManeuverType.MERGE, "I 80"))
+        // No destination/exit data (every surface street): byte-identical to the old phrases.
+        assertEquals("Turn right onto Elm St", GraphHopperRouteEngine.ghPhrase(ManeuverType.TURN_RIGHT, "Elm St", dest = null, exitNo = null))
+    }
+
     /** Multi-region: a trip routes on the first installed region whose box covers BOTH endpoints. */
     @Test fun regionBoxCoversEndpoints() {
         // the metro metro box [S, W, N, E]
