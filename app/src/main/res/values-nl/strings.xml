@@ -232,7 +232,10 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Recensies zoeken</string>
     <string name="place_sort_reviews">Recensies sorteren</string>
-    <string name="place_review_count">%1$d recensies</string>
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">%1$d recensie</item>
+        <item quantity="other">%1$d recensies</item>
+    </plurals>
     <string name="place_all_n_reviews">Alle %1$d recensies · sorteren en zoeken</string>
     <string name="place_all_reviews">Alle recensies · sorteren en zoeken</string>
     <string name="place_reviews_progress">Recensies · %1$d van ongeveer %2$d</string>
@@ -434,7 +437,10 @@
     <string name="settings_update_checking">Controleren…</string>
     <string name="settings_update_none">Je hebt de nieuwste versie.</string>
     <string name="settings_place_pages">Plaatspagina\'s</string>
-    <string name="place_transit_stops">%1$d haltes</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">%1$d halte</item>
+        <item quantity="other">%1$d haltes</item>
+    </plurals>
     <string name="place_transit_stop_id">Halte %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Tickets &amp; info</string>
     <string name="route_detail_unavailable">Lijndetails niet beschikbaar</string>
