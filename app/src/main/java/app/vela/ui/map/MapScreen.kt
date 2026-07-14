@@ -81,6 +81,7 @@ import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.ZoomOutMap
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -223,6 +224,8 @@ fun MapScreen(
     val placeSheetUp = state.selected != null && !state.directionsOpen && !state.navigating
     // Push the optical centre up so the place sheet / directions panel doesn't sit on
     // top of the pin or the route (the directions panel is tall — fit the route above it).
+    // Bumped by the in-nav Overview button; VelaMapView fits the whole route on each bump.
+    var navOverviewTick by remember { mutableStateOf(0) }
     // The route chooser reports its minimized state up: with only the Start bar left on
     // screen the route fit gets nearly the whole map back, so it re-frames closer instead
     // of staying at the zoomed-out framing the full-height panel needed (user 2026-07-14).
@@ -819,6 +822,7 @@ fun MapScreen(
             satelliteOn = app.vela.ui.SatelliteLayer.on.value,
             topographyOn = app.vela.ui.Topography.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
+            navOverviewTick = navOverviewTick,
             onPoiTap = vm::onPoiTap,
             onMarkerTap = { i -> displayedPlaces(state).getOrNull(i)?.let(vm::selectPlace) },
             parkingSpot = state.parkingSpot,
@@ -1224,6 +1228,16 @@ fun MapScreen(
                         modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                     ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
                 }
+                // Whole-route overview (Google's fly-over): camera only, the drive keeps
+                // navigating; Re-center (above, it appears the moment this detaches the
+                // camera) glides straight back into the follow.
+                FloatingActionButton(
+                    onClick = {
+                        vm.navOverview()
+                        navOverviewTick++
+                    },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                ) { Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview)) }
                 FloatingActionButton(
                     onClick = vm::toggleVoice,
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
