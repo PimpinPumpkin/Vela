@@ -590,4 +590,8 @@
     <string name="settings_topography">地形陰影</string>
     <string name="settings_topography_hint">在地圖上為丘陵和山脈加上陰影。預設關閉。</string>
     <string name="settings_version_copied">已複製版本號</string>
+    <string name="map_satellite_toggle">衛星檢視</string>
+    <string name="map_layers">圖層</string>
+    <string name="settings_layers_button">顯示圖層按鈕</string>
+    <string name="settings_layers_button_hint">地圖上切換衛星、路況、大眾運輸與地形的按鈕。</string>
 </resources>
