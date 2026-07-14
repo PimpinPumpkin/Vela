@@ -78,6 +78,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
+import app.vela.ui.dpadFieldEscape
 import app.vela.ui.dpadHighlight
 
 /**
@@ -550,7 +551,9 @@ fun NavSearchChips(onPick: (String) -> Unit, modifier: Modifier = Modifier) {
                     }
                     inner()
                 },
-                modifier = Modifier.weight(1f).padding(vertical = 8.dp),
+                // dpadFieldEscape: UP/DOWN leave the field instead of being eaten as cursor
+                // moves, so the chips below stay key-reachable (docs/dpad.md).
+                modifier = Modifier.weight(1f).padding(vertical = 8.dp).dpadFieldEscape(),
             )
         }
         Row(
