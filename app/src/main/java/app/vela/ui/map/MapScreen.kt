@@ -995,9 +995,34 @@ fun MapScreen(
                     ),
             ) {
                 Column(Modifier.statusBarsPadding().padding(12.dp)) {
+                    // Directions mode: the search bar swaps for the Google-style endpoints card
+                    // (origin / stops / destination, swap, back) — the rows that used to sit in
+                    // the bottom chooser. Hidden while the search overlay is up (picking an
+                    // origin/stop runs the normal search page) and while the steps preview or
+                    // stops editor own the screen.
+                    if (state.directionsOpen && !searchOpen && state.pickOnMap == null && !state.showSteps && !state.editingStops) {
+                        app.vela.ui.place.RouteTopCard(
+                            originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
+                            else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
+                            originIsMe = !state.directionsReversed && state.directionsOrigin == null,
+                            destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
+                            else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
+                            stops = state.directionsWaypoints.map { it.name },
+                            showStopControls = state.travelMode != app.vela.core.model.TravelMode.TRANSIT,
+                            onEditOrigin = if (state.directionsReversed) null else vm::beginPickOrigin,
+                            onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else null,
+                            onEditStops = vm::openStopsEditor,
+                            onAddStop = vm::openStopsEditor,
+                            onSwap = vm::swapDirections,
+                            onClose = vm::clearRoute,
+                        )
+                    }
                     // The bar hides while an expanded place sheet covers it: the visible sliver
-                    // still took taps and opened search OVER the card (user 2026-07-11).
-                    if (!(state.selected != null && placeSheetExpanded && !searchOpen)) {
+                    // still took taps and opened search OVER the card (user 2026-07-11) — and
+                    // while the endpoints card above replaces it in directions mode.
+                    if (!(state.selected != null && placeSheetExpanded && !searchOpen) &&
+                        !(state.directionsOpen && !searchOpen)
+                    ) {
                     SearchBar(
                         query = state.query,
                         searching = state.searching,
@@ -1300,23 +1325,8 @@ fun MapScreen(
             // Hidden while the search overlay is up (e.g. picking a custom origin) so
             // the panel doesn't render over it.
             state.directionsOpen && !searchOpen && state.pickOnMap == null -> DirectionsPanel(
-                originName = if (state.directionsReversed) (state.selected?.name ?: stringResource(R.string.mapscreen_place))
-                else (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location)),
-                originIsMe = !state.directionsReversed && state.directionsOrigin == null,
                 destinationName = if (state.directionsReversed) (state.directionsOrigin?.name ?: stringResource(R.string.mapscreen_your_location))
                 else (state.selected?.name ?: stringResource(R.string.mapscreen_destination)),
-                // Tap the custom endpoint to route to/from somewhere other than your
-                // location — the "From" row normally, or the "To" row when reversed (that's
-                // where the editable endpoint sits). Both open the search to pick a place.
-                onEditOrigin = if (state.directionsReversed) null else vm::beginPickOrigin,
-                onEditDestination = if (state.directionsReversed) vm::beginPickOrigin else null,
-                stops = state.directionsWaypoints.map { it.name },
-                // EVERY stop action goes through the stops editor (one mental model): Add stop
-                // opens the editor too, and its own Add stop row arms the place picker. Tapping
-                // the summary row and tapping Add stop now land in the same place.
-                onAddStop = vm::openStopsEditor,
-                onEditStops = vm::openStopsEditor,
-                onSwap = vm::swapDirections,
                 currentMode = state.travelMode,
                 routes = state.routes,
                 activeRoute = state.activeRoute,
@@ -1335,7 +1345,6 @@ fun MapScreen(
                 onSearchAlongRoute = vm::searchAlongRoute,
                 onWalkDirections = vm::walkDirections,
                 onStartTransit = vm::startTransitNav,
-                onClose = vm::clearRoute,
                 onTimeSelected = vm::setDirectionsTime,
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
