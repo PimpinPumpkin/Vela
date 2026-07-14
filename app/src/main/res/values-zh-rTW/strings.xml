@@ -594,4 +594,7 @@
     <string name="map_layers">圖層</string>
     <string name="settings_layers_button">顯示圖層按鈕</string>
     <string name="settings_layers_button_hint">地圖上切換衛星、路況、大眾運輸與地形的按鈕。</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="other">+%d個途經點</item>
+    </plurals>
 </resources>
