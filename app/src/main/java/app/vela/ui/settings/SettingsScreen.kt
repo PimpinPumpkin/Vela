@@ -570,6 +570,8 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
 
             ToggleRow(stringResource(R.string.settings_topography), app.vela.ui.Topography.on.value) { app.vela.ui.Topography.set(context, it) }
             Hint(stringResource(R.string.settings_topography_hint))
+            ToggleRow(stringResource(R.string.settings_layers_button), app.vela.ui.LayersButton.on.value) { app.vela.ui.LayersButton.set(context, it) }
+            Hint(stringResource(R.string.settings_layers_button_hint))
             ToggleRow(stringResource(R.string.settings_flock), app.vela.ui.Flock.on.value) { app.vela.ui.Flock.set(context, it) }
             Hint(stringResource(R.string.settings_flock_hint))
 

@@ -583,7 +583,10 @@ fun VelaMapView(
     // Extrusion is the most fragment-expensive thing the map draws, so this is the direct
     // lever for zoomed-in pan stutter on weaker GPUs. applyLight/applyDark colour the layer
     // but never touch visibility, so this effect owns it (re-applied on style reload too).
-    val buildings3d = app.vela.ui.Buildings3d.on.value
+    // Extrusions also hide while SATELLITE imagery is on: the grey 3D boxes drew on top of the
+    // photo roofs (they sit above the raster in the layer stack) - wrong-looking AND the most
+    // fragment-expensive thing on screen (user 2026-07-13).
+    val buildings3d = app.vela.ui.Buildings3d.on.value && !satelliteOn
     LaunchedEffect(buildings3d, styleRef) {
         runCatching {
             styleRef?.getLayer("building-3d")?.setProperties(
@@ -2194,9 +2197,23 @@ private fun ensureSatellite(style: Style, on: Boolean) {
         if (style.getSource(SAT_SRC) == null) {
             style.addSource(RasterSource(SAT_SRC, TileSet("2.2.0", SAT_TILES).apply { maxZoom = 19f }, 256))
         }
-        val layer = RasterLayer(SAT_LAYER, SAT_SRC)
-        val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+        val layer = RasterLayer(SAT_LAYER, SAT_SRC).withProperties(
+            // Dim + desaturate a touch so the white-halo labels stay readable over bright
+            // roofs/concrete (Google's hybrid does the same; full-brightness imagery drowned
+            // street names, user 2026-07-13).
+            PropertyFactory.rasterBrightnessMax(0.80f),
+            PropertyFactory.rasterSaturation(-0.1f),
+        )
+        // Anchor ABOVE the building stack: that's where the basemap's geometry ends and its
+        // labels begin. "Below the first symbol layer" was wrong - Liberty interleaves a low
+        // symbol layer beneath the road/building fills, so the raster sank under half the
+        // geometry and blue footprints + roads drew on top of the photo (user 2026-07-13).
+        val geomTop = style.getLayer("building-3d") ?: style.getLayer("building")
+        when {
+            geomTop != null -> style.addLayerAbove(layer, geomTop.id)
+            else -> style.layers.lastOrNull { it !is SymbolLayer }?.let { style.addLayerAbove(layer, it.id) }
+                ?: style.addLayer(layer)
+        }
     } else if (!on && present) {
         runCatching { style.removeLayer(SAT_LAYER) }
     }

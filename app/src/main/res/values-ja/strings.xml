@@ -587,4 +587,7 @@
     <string name="settings_topography_hint">地図上の丘や山に陰影を付けます。既定ではオフです。</string>
     <string name="settings_version_copied">バージョンをコピーしました</string>
     <string name="map_satellite_toggle">航空写真</string>
+    <string name="map_layers">レイヤ</string>
+    <string name="settings_layers_button">レイヤボタンを表示</string>
+    <string name="settings_layers_button_hint">航空写真・交通状況・路線・地形を切り替える地図上のボタン。</string>
 </resources>

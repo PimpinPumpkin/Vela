@@ -50,7 +50,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PublicOff
-import androidx.compose.material.icons.filled.SatelliteAlt
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Work
@@ -320,6 +320,7 @@ fun MapScreen(
     // tap raises it again. Suppressed whenever a focus surface owns the camera (search, a place,
     // directions, the results list) so it never fights that framing. Nav has its own follow.
     var followMe by remember { mutableStateOf(true) }
+    var layersOpen by remember { mutableStateOf(false) } // the top-right layers panel
     // A programmatic camera jump far from the fix (a recents pick, a search hit, a pasted
     // coordinate, a deep link) means the user went to look somewhere else - drop follow exactly
     // like a pan would. Without this, follow was only SUSPENDED while the place sheet owned the
@@ -1676,29 +1677,66 @@ fun MapScreen(
             // whole browse map, since follow is armed by default (regression, 0.4.542..wave).
             // Satellite toggle, top-right under the search bar + chips (browse map only): flips
             // the Esri World Imagery raster under the symbol stack. Filled tint = on.
-            if (state.selected == null && !searchOpen && !state.navigating && !state.replaying &&
-                state.results.isEmpty()
+            if (app.vela.ui.LayersButton.on.value && state.selected == null && !searchOpen &&
+                !state.navigating && !state.replaying && state.results.isEmpty()
             ) {
-                val satOn = app.vela.ui.SatelliteLayer.on.value
                 val ctx = androidx.compose.ui.platform.LocalContext.current
-                Surface(
-                    color = SheetPalette.bg(darkTheme).copy(alpha = 0.9f),
-                    shape = CircleShape,
-                    shadowElevation = 3.dp,
+                val anyLayerOn = app.vela.ui.SatelliteLayer.on.value || Traffic.on.value ||
+                    app.vela.ui.TransitLayer.on.value || app.vela.ui.Topography.on.value
+                Box(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .statusBarsPadding()
-                        .padding(top = 128.dp, end = 14.dp)
-                        .size(42.dp),
+                        .padding(top = 128.dp, end = 14.dp),
                 ) {
-                    IconButton(onClick = { app.vela.ui.SatelliteLayer.set(ctx, !satOn) }) {
-                        Icon(
-                            Icons.Default.SatelliteAlt,
-                            contentDescription = stringResource(R.string.map_satellite_toggle),
-                            tint = if (satOn) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(2.dp),
-                        )
+                    Surface(
+                        color = SheetPalette.bg(darkTheme).copy(alpha = 0.9f),
+                        shape = CircleShape,
+                        shadowElevation = 3.dp,
+                        modifier = Modifier.size(42.dp),
+                    ) {
+                        IconButton(onClick = { layersOpen = true }) {
+                            Icon(
+                                Icons.Default.Layers,
+                                contentDescription = stringResource(R.string.map_layers),
+                                tint = if (anyLayerOn) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(2.dp),
+                            )
+                        }
+                    }
+                    // The layers panel, Google-style: SATELLITE swaps the base look, the rest are
+                    // overlays. Same holders Settings flips, so the two stay in sync.
+                    androidx.compose.material3.DropdownMenu(
+                        expanded = layersOpen,
+                        onDismissRequest = { layersOpen = false },
+                    ) {
+                        @Composable
+                        fun layerRow(label: String, on: Boolean, flip: (Boolean) -> Unit) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clickable { flip(!on) }
+                                    .padding(horizontal = 16.dp, vertical = 4.dp)
+                                    .fillMaxWidth(),
+                            ) {
+                                Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
+                                Spacer(Modifier.width(16.dp))
+                                androidx.compose.material3.Switch(checked = on, onCheckedChange = { flip(it) })
+                            }
+                        }
+                        layerRow(stringResource(R.string.map_satellite_toggle), app.vela.ui.SatelliteLayer.on.value) {
+                            app.vela.ui.SatelliteLayer.set(ctx, it)
+                        }
+                        layerRow(stringResource(R.string.settings_live_traffic), Traffic.on.value) {
+                            Traffic.set(ctx, it)
+                        }
+                        layerRow(stringResource(R.string.settings_transit_layer), app.vela.ui.TransitLayer.on.value) {
+                            app.vela.ui.TransitLayer.set(ctx, it)
+                        }
+                        layerRow(stringResource(R.string.settings_topography), app.vela.ui.Topography.on.value) {
+                            app.vela.ui.Topography.set(ctx, it)
+                        }
                     }
                 }
             }

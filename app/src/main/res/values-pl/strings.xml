@@ -567,4 +567,7 @@
     <string name="settings_topography">Cieniowanie terenu</string>
     <string name="settings_topography_hint">Cieniuje wzgórza i góry na mapie. Domyślnie wyłączone.</string>
     <string name="map_satellite_toggle">Widok satelitarny</string>
+    <string name="map_layers">Warstwy</string>
+    <string name="settings_layers_button">Pokaż przycisk warstw</string>
+    <string name="settings_layers_button_hint">Przycisk mapy do przełączania satelity, ruchu, transportu i terenu.</string>
 </resources>

@@ -567,4 +567,7 @@
     <string name="settings_topography">Затенение рельефа</string>
     <string name="settings_topography_hint">Затеняет холмы и горы на карте. По умолчанию выключено.</string>
     <string name="map_satellite_toggle">Спутниковый вид</string>
+    <string name="map_layers">Слои</string>
+    <string name="settings_layers_button">Показывать кнопку слоёв</string>
+    <string name="settings_layers_button_hint">Кнопка на карте для спутника, пробок, транспорта и рельефа.</string>
 </resources>
