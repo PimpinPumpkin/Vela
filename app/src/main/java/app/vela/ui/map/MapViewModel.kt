@@ -1261,7 +1261,13 @@ class MapViewModel @Inject constructor(
                 _state.update { it.copy(query = q, center = near ?: it.center) }
                 runSearch(q, near ?: _state.value.myLocation ?: _state.value.center)
             }
-            near != null -> onMapLongPress(near)
+            near != null -> {
+                onMapLongPress(near)
+                // A long-press is always at an on-screen point, so it never moves the camera. A
+                // deep link's point can be anywhere: fly there too, or the sheet opens for a place
+                // the map isn't showing (the camera stayed home on every geo: URI, cold or warm).
+                _state.update { it.copy(center = near) }
+            }
         }
     }
 
