@@ -198,6 +198,7 @@ fun VelaMapView(
     compassHeading: Float? = null, // device facing (sensor); points the browse cone when stopped
     locationStale: Boolean = false,
     cameraTarget: LatLng?,
+    cameraTargetZoom: Double? = null, // deep-link z= override for the target fly (null = default framing)
     recenterTick: Int = 0, // bumped on each recenter tap → force a move even if already "centered"
     cameraBottomInsetPx: Int = 0,
     routePolyline: List<LatLng>,
@@ -1504,8 +1505,8 @@ fun VelaMapView(
                 if (target != null && target != lastCameraTarget) {
                     lastCameraTarget = target
                     // Zoom in closer when a place sheet is up (focusing a single pin),
-                    // looser for a plain recenter.
-                    val zoom = if (cameraBottomInsetPx > 0) 16.5 else 14.5
+                    // looser for a plain recenter - unless a deep link asked for its own zoom.
+                    val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) 16.5 else 14.5
                     map.animateCamera(
                         CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom),
                     )
