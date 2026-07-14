@@ -545,7 +545,6 @@ fun VelaMapView(
     // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
     // neighbours survived because the prominence-scaled big icons collide the most). Below the icons, numbers
     // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
-    LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
     // Numbered stop pins: one teal pin per intermediate stop, numbered in visit order. The
     // whole feature set re-uploads whenever the list (or its order) changes, so a reorder in
     // the stops editor re-numbers the map immediately. Icons register on demand per number.
@@ -587,7 +586,7 @@ fun VelaMapView(
         }
     }
 
-    LaunchedEffect(addressOverlays, styleRef, darkTheme) {
+    LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { style.removeSource(it) } }
@@ -2423,6 +2422,10 @@ private fun applySatelliteLabels(style: Style) {
             PropertyFactory.textColor("#FFFFFF"),
             PropertyFactory.textHaloColor("#000000"),
             PropertyFactory.textHaloWidth(1.8f),
+        )
+    }
+}
+
 /** Route shields (the I-5 / US-2 / SR badges and their international `road_N` cousins) render
  *  at Liberty's defaults: icon-size 1, 10pt regular text - small and thin next to Google's.
  *  Scale badge + text together (text 10->12.5 matches icon 1->1.25, so the ref stays centered)
