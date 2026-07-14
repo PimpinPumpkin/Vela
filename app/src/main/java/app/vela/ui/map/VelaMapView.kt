@@ -1337,17 +1337,17 @@ fun VelaMapView(
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                ensureSatellite(style, satelliteOn)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
-                ensureSatellite(style, satelliteOn)
                 ensureTopography(style, topographyOn)
             }
         } else {
             styleRef?.let {
                 applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                ensureSatellite(it, satelliteOn)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
-                ensureSatellite(it, satelliteOn)
                 ensureTopography(it, topographyOn)
             }
         }
@@ -2128,9 +2128,15 @@ private fun ensureTraffic(style: Style, on: Boolean) {
         )
         // ALWAYS below the first symbol layer, so POI icons + labels stay on top and
         // the traffic tiles never render over them (the earlier "above the route line"
-        // placement pushed it over POIs).
+        // placement pushed it over POIs). With satellite on, anchor above the imagery
+        // instead - the raster otherwise buries the traffic tiles entirely.
+        val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
         val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+        when {
+            satTop != null -> style.addLayerAbove(layer, satTop.id)
+            firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
+            else -> style.addLayer(layer)
+        }
     } else if (!on && present) {
         style.removeLayer(TRAFFIC_LAYER)
         style.getSource(TRAFFIC_SRC)?.let { runCatching { style.removeSource(it) } }
@@ -2175,8 +2181,15 @@ private fun ensureTransit(style: Style, on: Boolean) {
                 PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             )
         }
+        // Above the satellite raster when imagery is on (the raster otherwise buries this -
+        // same anchor bug the building overlay had); below the labels either way.
+        val satTop = style.getLayer(SAT_ROADS_LAYER) ?: style.getLayer(SAT_LAYER)
         val firstSymbol = style.layers.firstOrNull { it is SymbolLayer }?.id
-        if (firstSymbol != null) style.addLayerBelow(layer, firstSymbol) else style.addLayer(layer)
+        when {
+            satTop != null -> style.addLayerAbove(layer, satTop.id)
+            firstSymbol != null -> style.addLayerBelow(layer, firstSymbol)
+            else -> style.addLayer(layer)
+        }
     } else if (!on && present) {
         runCatching { style.removeLayer(TRANSIT_LAYER) }
     }
@@ -2219,6 +2232,12 @@ private fun ensureSatellite(style: Style, on: Boolean) {
         // layer from the basemap's transportation source, above the raster, below the labels -
         // without it the road network disappears into tree cover and the map stops being
         // navigable as a map (user 2026-07-13).
+        // Re-seat the overlay lines above the fresh raster: they were anchored for the vector
+        // map and the raster would bury them (transit lines vanished under imagery, user
+        // 2026-07-13). Removing here lets this same pass's ensureTraffic/ensureTransit re-add
+        // them with the satellite-aware anchor.
+        runCatching { style.removeLayer(TRANSIT_LAYER) }
+        runCatching { style.removeLayer(TRAFFIC_LAYER) }
         if (style.getLayer(SAT_ROADS_LAYER) == null && style.getSource("openmaptiles") != null) {
             val roads = LineLayer(SAT_ROADS_LAYER, "openmaptiles").apply {
                 setSourceLayer("transportation")
