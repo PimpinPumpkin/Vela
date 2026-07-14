@@ -565,4 +565,7 @@
     <string name="settings_topography">Terrängskuggning</string>
     <string name="settings_topography_hint">Skuggar kullar och berg på kartan. Av som standard.</string>
     <string name="map_satellite_toggle">Satellitvy</string>
+    <string name="map_layers">Lager</string>
+    <string name="settings_layers_button">Visa lagerknappen</string>
+    <string name="settings_layers_button_hint">Kartknappen för satellit, trafik, kollektivtrafik och terräng.</string>
 </resources>

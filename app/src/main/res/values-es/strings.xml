@@ -565,4 +565,7 @@
     <string name="settings_topography">Sombreado del terreno</string>
     <string name="settings_topography_hint">Sombrea colinas y montañas en el mapa. Desactivado por defecto.</string>
     <string name="map_satellite_toggle">Vista satélite</string>
+    <string name="map_layers">Capas</string>
+    <string name="settings_layers_button">Mostrar botón de capas</string>
+    <string name="settings_layers_button_hint">El botón del mapa para satélite, tráfico, transporte y terreno.</string>
 </resources>

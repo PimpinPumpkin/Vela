@@ -37,6 +37,7 @@ class VelaApp : Application() {
         Traffic.init(this)
         TransitLayer.init(this)
         app.vela.ui.SatelliteLayer.init(this) // persisted satellite-imagery toggle
+        app.vela.ui.LayersButton.init(this) // persisted show/hide of the map layers button
         app.vela.ui.Topography.init(this)
         app.vela.ui.Flock.init(this) // load the persisted surveillance-camera toggle (else it read false every launch)
         app.vela.ui.FlockRouteAlert.init(this) // load the persisted "warn about cameras on route" toggle
