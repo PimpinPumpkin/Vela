@@ -1267,7 +1267,7 @@ class MapViewModel @Inject constructor(
                     resultsCollapsed = false, recents = recentStore.recent(),
                     // Stash the trip's destination: browsing stop candidates must not lose the trip.
                     // While this is set, picking a result ADDS IT AS A STOP and returns to the panel.
-                    alongRouteDest = it.selected ?: it.alongRouteDest,
+                    alongRouteDest = if (it.navigating) null else (it.selected ?: it.alongRouteDest),
                 )
             }
             try {
@@ -1345,6 +1345,10 @@ class MapViewModel @Inject constructor(
 
     fun selectPlace(p: Place) {
         if (consumeAssign(SavedPlace.of(p))) return
+        // NAVIGATING: any place picked (the in-nav search-along-route list) becomes a stop on
+        // the LIVE drive - the normal selection path below would null activeRoute/open sheets
+        // that nav's bottom slot doesn't render. Google's in-nav pick does the same.
+        if (_state.value.navigating) { addStopDuringNav(p); return }
         // Search-along-route pick: the tapped place becomes a STOP on the stashed trip (Google's
         // flow), not a new destination — tapping "Directions" on it used to silently replace the
         // whole trip. Restore the destination first so the panel reopens showing the real trip;
@@ -2520,6 +2524,21 @@ class MapViewModel @Inject constructor(
     fun cancelPickStop() = _state.update { it.copy(pickingStop = false) }
 
     /** Append an intermediate stop and re-route through it. */
+    /** In-nav stop insert: hand the pick to the session (it replans the drive through it) and
+     *  clear the search chrome so the nav view is what's on screen again. The chooser's waypoint
+     *  list gains it too, so ending nav back into the panel shows the real trip. */
+    fun addStopDuringNav(p: Place) {
+        val loc = _state.value.myLocation ?: return
+        navSession.addStop(app.vela.core.nav.NavSession.NavStop(p.location, p.name), loc)
+        _state.update {
+            it.copy(
+                directionsWaypoints = it.directionsWaypoints + p,
+                results = emptyList(), query = "", suggestions = emptyList(),
+                selected = null, alongRouteDest = null, resultsCollapsed = false,
+            )
+        }
+    }
+
     fun addStop(p: Place) {
         _state.update {
             it.copy(
@@ -2804,6 +2823,10 @@ class MapViewModel @Inject constructor(
 
     fun startNav() {
         val route = _state.value.activeRoute ?: return
+        // The pre-nav search's results are stale junk once driving - and the nav bottom slot
+        // yields to a NON-EMPTY results list (the in-nav along-route flow), so leftovers from
+        // planning made the chooser's Start bar render over a live drive (device 2026-07-14).
+        _state.update { it.copy(results = emptyList(), query = "", resultsCollapsed = false) }
         viewModelScope.launch {
             // If they hit Start before a picked alternate finished naming, name it first.
             val named = if (route.provisional) nameIfNeeded(route).also { _state.update { s -> s.copy(activeRoute = it) } } else route
