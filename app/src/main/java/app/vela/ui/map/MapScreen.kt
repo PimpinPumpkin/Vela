@@ -50,6 +50,7 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.PublicOff
+import androidx.compose.material.icons.filled.SatelliteAlt
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Work
@@ -774,6 +775,7 @@ fun MapScreen(
             // the user explicitly enables it in Settings → Map.
             trafficOn = Traffic.on.value,
             transitOn = app.vela.ui.TransitLayer.on.value,
+            satelliteOn = app.vela.ui.SatelliteLayer.on.value,
             topographyOn = app.vela.ui.Topography.on.value,
             previewTarget = state.previewStepIndex?.let { state.activeRoute?.maneuvers?.getOrNull(it)?.location },
             onPoiTap = vm::onPoiTap,
@@ -1672,6 +1674,46 @@ fun MapScreen(
             // Scale bar, bottom-left just past the attribution ⓘ. Hidden only while ACTUALLY
             // free-driving (moving, speed box on screen) - `!driveFollowing` alone hid it on the
             // whole browse map, since follow is armed by default (regression, 0.4.542..wave).
+            // Satellite toggle, top-right under the search bar + chips (browse map only): flips
+            // the Esri World Imagery raster under the symbol stack. Filled tint = on.
+            if (state.selected == null && !searchOpen && !state.navigating && !state.replaying &&
+                state.results.isEmpty()
+            ) {
+                val satOn = app.vela.ui.SatelliteLayer.on.value
+                val ctx = androidx.compose.ui.platform.LocalContext.current
+                Surface(
+                    color = SheetPalette.bg(darkTheme).copy(alpha = 0.9f),
+                    shape = CircleShape,
+                    shadowElevation = 3.dp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .statusBarsPadding()
+                        .padding(top = 128.dp, end = 14.dp)
+                        .size(42.dp),
+                ) {
+                    IconButton(onClick = { app.vela.ui.SatelliteLayer.set(ctx, !satOn) }) {
+                        Icon(
+                            Icons.Default.SatelliteAlt,
+                            contentDescription = stringResource(R.string.map_satellite_toggle),
+                            tint = if (satOn) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(2.dp),
+                        )
+                    }
+                }
+            }
+            // Required Esri attribution while the imagery is on, tucked by the scale bar.
+            if (app.vela.ui.SatelliteLayer.on.value) {
+                Text(
+                    stringResource(R.string.map_satellite_attribution),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .navigationBarsPadding()
+                        .padding(start = 46.dp, bottom = 48.dp + chromeLift),
+                )
+            }
             if (!(driveFollowing && speedOverlayArmed)) {
                 ScaleBar(
                     metersPerPixel = metersPerPixel,
