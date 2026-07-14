@@ -3421,9 +3421,30 @@ private fun SpeedWidget(
     val overColor = Color(0xFFE8514A)
     val signInk = Color(0xFF202124)
 
+    // With NO posted limit, the wide sign-beside-speed box read as a widget missing its other
+    // half (user 2026-07-14) - so the plain state is Google's compact speed BLOB: a small circle
+    // with just the number. The rounded-rect row only appears once a limit exists to sit in it.
+    if (limitDisp == null) {
+        Surface(
+            shape = CircleShape,
+            color = SheetPalette.bg(dark),
+            contentColor = SheetPalette.ink(dark),
+            shadowElevation = 4.dp,
+            modifier = modifier.size(56.dp),
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                Text("$value", fontSize = 19.sp, fontWeight = FontWeight.Bold, lineHeight = 20.sp, color = SheetPalette.ink(dark))
+                Text(unit, fontSize = 9.sp, color = SheetPalette.dim(dark), lineHeight = 10.sp)
+            }
+        }
+        return
+    }
     // ONE box, Google's layout: the regulatory sign (US "SPEED LIMIT" square / metric red roundel)
-    // sits BESIDE the current speed (stacking them read as two widgets, user 2026-07-13). With no
-    // posted limit the sign just isn't there and the same box shows only the speed.
+    // sits BESIDE the current speed (stacking them read as two widgets, user 2026-07-13).
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = SheetPalette.bg(dark),
