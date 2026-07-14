@@ -1345,10 +1345,16 @@ class MapViewModel @Inject constructor(
 
     fun selectPlace(p: Place) {
         if (consumeAssign(SavedPlace.of(p))) return
-        // NAVIGATING: any place picked (the in-nav search-along-route list) becomes a stop on
-        // the LIVE drive - the normal selection path below would null activeRoute/open sheets
-        // that nav's bottom slot doesn't render. Google's in-nav pick does the same.
-        if (_state.value.navigating) { addStopDuringNav(p); return }
+        // NAVIGATING: a pick from the in-nav search-along-route list becomes a stop on the
+        // LIVE drive - the normal selection path below would null activeRoute/open sheets
+        // that nav's bottom slot doesn't render. Google's in-nav pick does the same. ONLY
+        // a results pick though: every map tap during a drive funnels here too (ambient
+        // dots, resolved POIs), and a stray tap used to silently pin itself onto the route
+        // (user 2026-07-14). With no results list open, a tap during nav does nothing.
+        if (_state.value.navigating) {
+            if (_state.value.results.isNotEmpty()) addStopDuringNav(p)
+            return
+        }
         // Search-along-route pick: the tapped place becomes a STOP on the stashed trip (Google's
         // flow), not a new destination — tapping "Directions" on it used to silently replace the
         // whole trip. Restore the destination first so the panel reopens showing the real trip;
@@ -1979,6 +1985,10 @@ class MapViewModel @Inject constructor(
     /** Tapped a POI on the map: show it immediately, then enrich with full
      *  details (hours, rating, …) from a search for that name nearby. */
     fun onPoiTap(name: String, location: LatLng, poiKind: String? = null) {
+        // Dead during a live drive: the map is carpeted with tappable POIs at nav zoom, the
+        // sheet this would build can't render under nav's bottom slot, and the stale selection
+        // popped up when the drive ended. In-nav picks go through the search results instead.
+        if (_state.value.navigating) return
         if (consumeAssign(SavedPlace(id = "poi:" + name.hashCode(), name = name, lat = location.lat, lng = location.lng))) return
         // Picking the route origin (or a stop) by tapping the map → adopt this POI, don't open it.
         if (_state.value.pickingStop) {
@@ -2044,8 +2054,8 @@ class MapViewModel @Inject constructor(
                     // Transit tap: pick the OPERATING stop, not the nearest/most-reviewed thing at the
                     // coordinate. A stop's spot usually ALSO has a road junction (Google's "Intersection")
                     // and can carry a stale PERMANENTLY-CLOSED old shelter; nearest/most-reviewed lands on
-                    // those (device 2026-07-13: "a suburban junction" opened a Permanently-closed old
-                    // stop; the route tap-through threw you to a corner). Take the nearest LIVE
+                    // those (device 2026-07-13: a suburban highway-and-boulevard corner opened a
+                    // Permanently-closed old stop; the route tap-through threw you to a corner). Take the nearest LIVE
                     // transit-category listing near the tap, and SKIP the most-reviewed override (a
                     // defunct-but-reviewed shelter must not beat the live stop). No such listing -> null,
                     // so the lightweight name+location placeholder set above stays (a stop name beats a
@@ -2149,6 +2159,9 @@ class MapViewModel @Inject constructor(
     /** Long-press the map (or a building) → drop a pin and reverse-geocode it
      *  to an address, like Google's press-and-hold. */
     fun onMapLongPress(location: LatLng) {
+        // Dead during a live drive, same as onPoiTap: building/unnamed-POI taps route here too,
+        // and an invisible dropped pin surfacing after the drive read as a ghost selection.
+        if (_state.value.navigating) return
         // "Choose on map" is active → a long-press sets that endpoint directly (the quick half of the
         // crosshair flow) instead of dropping a destination pin.
         val pick = _state.value.pickOnMap
@@ -2199,6 +2212,11 @@ class MapViewModel @Inject constructor(
                 loadingDetails = false,
                 pickingOrigin = false,
                 pickingStop = false,
+                // A pin dropped right after viewing a transit stop kept that stop's departure
+                // board (and its loading spinner) on the pin sheet - the board fields were the
+                // one pair this reset missed (device 2026-07-13).
+                stopDepartures = null,
+                stopDeparturesLoading = false,
             )
         }
         viewModelScope.launch {
@@ -2215,6 +2233,7 @@ class MapViewModel @Inject constructor(
      *  reverse-geocode can snap to a neighbour (tapped 1020, got 1040), which is exactly the "doesn't
      *  snap to the house number" complaint. A real business sitting on the point still wins. */
     fun onAddressLabelTap(number: String, location: LatLng) {
+        if (_state.value.navigating) return // dead during a live drive, like onPoiTap
         if (_state.value.pickOnMap != null) { onMapLongPress(location); return } // pick-mode reuses the endpoint flow
         reviewsJob?.cancel()
         val id = "addr:$number@${location.lat},${location.lng}"
@@ -2946,6 +2965,10 @@ class MapViewModel @Inject constructor(
                             routes = emptyList(), activeRoute = null, directionsOpen = false,
                             showSteps = false, previewStepIndex = null,
                             myLocation = resumeLoc ?: it.myLocation,
+                            // The last simulated speed otherwise outlives the drive: parked with
+                            // sim-location on, no fresh fix ever zeroes it, so the speed readout
+                            // (movingFree keys on mySpeed) stuck on screen (device 2026-07-13).
+                            mySpeed = null, mySpeedRaw = null,
                         )
                     }
                     startLocation()
@@ -3182,6 +3205,9 @@ class MapViewModel @Inject constructor(
                                 showSteps = false, previewStepIndex = null,
                                 myLocation = resumeLoc ?: it.myLocation,
                                 center = resumeLoc ?: it.center,
+                                // Same stale-speed hole the demo teardown had: the trace's last
+                                // speed outlives the replay when no fresh fix follows to zero it.
+                                mySpeed = null, mySpeedRaw = null,
                             )
                         } else {
                             // Replay rode an already-active nav session — leave its route/location alone.
@@ -4234,6 +4260,7 @@ class MapViewModel @Inject constructor(
     /** A tapped Transitous stop icon: open a lightweight place at the stop and fetch its board
      *  DIRECTLY by stop id - no Google resolution, no name correlation. */
     fun onTransitStopTap(stop: app.vela.core.data.transit.Transitous.MapStop) {
+        if (_state.value.navigating) return // dead during a live drive, like onPoiTap
         val placeholder = Place(
             id = "gtfs:${stop.stopId}",
             name = stop.name,
