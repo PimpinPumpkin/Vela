@@ -1,6 +1,6 @@
 # Map style
 
-Split out of the README. The basemap, fonts, custom layers and theming details.
+The basemap, fonts, custom layers and theming details.
 
 The active basemap is the keyless **OpenFreeMap Liberty** style (full street
 detail; we inject house-number labels at z17), loaded **by URL** - the only setup
@@ -21,7 +21,7 @@ at **runtime**, by system theme:
   numbers from ~z16, both keyless from the OpenFreeMap tiles. Density follows
   OpenStreetMap coverage (dense in metros, patchy in some suburbs).
 - **Neutralised landuse** - the tan/yellow residential/commercial/school fills are
-  flattened into the land (Google keeps these untinted), so no coloured blobs.
+  flattened into the land (Google keeps these untinted), so no colored blobs.
 - **Light / dark** - a light-grey-land light palette and Google's canonical night
   palette for dark; casings blend into the land in **both** so roads stay clean.
   (Palette tuned live in a MapLibre GL JS harness against Google, then verified
@@ -34,7 +34,7 @@ at **runtime**, by system theme:
 
 A `MAPTILER_KEY` (CI secret) path stays wired but **off** (`USE_MAPTILER` in
 `MapScreen`): with a key it switches to **MapTiler Streets / Streets Dark**
-(proper fonts) instead of the keyless recolour. The old keyless font ceiling is
+(proper fonts) instead of the keyless recolor. The old keyless font ceiling is
 gone: map labels render in Roboto from a self-hosted glyph set (Roboto
 composited over OpenFreeMap's Noto per glyph, so every non-Latin script keeps
 full coverage; `ui/map/MapFonts` patches the live style's glyphs URL at launch
@@ -47,7 +47,7 @@ without an app release.
 
 The palette that shipped between the flat-vegetation work and the final
 pixel-sampled match of the Google app (2026-07-11). No longer just an archive:
-since 2026-07-11 it ships compiled as the **Classic** colour set
+since 2026-07-11 it ships compiled as the **Classic** color set
 (`applyClassicLight`/`applyClassicDark`), selectable in Settings → Appearance →
 Map colors; the Google-sampled palette is **Modern**, the default (remote-
 defaultable via calibration.json `defaultMapPalette`). The values below stay
