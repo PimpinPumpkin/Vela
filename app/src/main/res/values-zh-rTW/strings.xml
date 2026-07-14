@@ -247,7 +247,9 @@
     <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
     <string name="place_search_reviews">搜尋評論</string>
     <string name="place_sort_reviews">排序評論</string>
-    <string name="place_review_count">%1$d 篇評論</string> <!-- format -->
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="other">%1$d 篇評論</item>
+    </plurals>
     <string name="place_all_n_reviews">全部 %1$d 篇評論 · 排序與搜尋</string> <!-- format -->
     <string name="place_all_reviews">所有評論 · 排序與搜尋</string>
     <string name="place_reviews_progress">評論 · %1$d／約 %2$d 篇</string> <!-- format -->
@@ -455,7 +457,9 @@
     <string name="settings_update_checking">檢查中…</string>
     <string name="settings_update_none">你使用的已是最新版本。</string>
     <string name="settings_place_pages">地點頁面</string>
-    <string name="place_transit_stops">%1$d 站</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="other">%1$d 站</item>
+    </plurals>
     <string name="place_transit_stop_id">站牌 %1$s</string> <!-- format -->
     <string name="place_transit_tickets">票券與資訊</string>
     <string name="route_detail_unavailable">無法取得路線詳情</string>
