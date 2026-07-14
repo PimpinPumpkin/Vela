@@ -35,6 +35,8 @@ the same signed APKs, weekly stable by default (fingerprint and nightly-channel
 setup in [FDROID.md](FDROID.md)). Or grab an APK straight from
 [Releases](https://github.com/PimpinPumpkin/Vela/releases).
 
+[![Support Vela on Buy Me a Coffee](https://img.shields.io/badge/support%20vela-buy%20me%20a%20coffee-ffdd00)](https://buymeacoffee.com/PimpinPumpkin)
+
 ---
 
 
