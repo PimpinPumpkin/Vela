@@ -319,6 +319,14 @@ class MapViewModel @Inject constructor(
         navSession.liveRechecks = appContext
             .getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
             .getBoolean("nav_live_rechecks", true)
+        // Region bias for the scrape (gl=): the cell network's country is the honest "where is
+        // the phone" signal (roaming-aware, no GPS wait, no permission), falling back to the
+        // locale's region. Refreshed each launch. Fixes the US-shaped results a non-US user got
+        // regardless of language (the gl half of issue #71); a US phone is byte-identical.
+        (dataSource as? app.vela.core.data.google.GoogleMapsDataSource)?.glRegion = runCatching {
+            val tm = appContext.getSystemService(Context.TELEPHONY_SERVICE) as? android.telephony.TelephonyManager
+            tm?.networkCountryIso?.takeIf { it.isNotBlank() } ?: tm?.simCountryIso?.takeIf { it.isNotBlank() }
+        }.getOrNull() ?: java.util.Locale.getDefault().country.takeIf { it.isNotBlank() }
         // A simulated location (Settings → demo) wins the seed so the app opens "there".
         val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }

@@ -88,6 +88,10 @@ class GoogleMapsDataSource @Inject constructor(
     private val routeEngine: RouteEngine,
 ) : MapDataSource {
 
+    /** ISO 3166 alpha-2 of the region the phone is in (cell-network country, falling back to the
+     *  locale's) — set by the app layer at startup; drives the `gl=` rewrite in [regionalized]. */
+    @Volatile var glRegion: String? = null
+
     override suspend fun search(query: String, near: LatLng?, spanMeters: Double?): SearchResult = io {
         session.ensure()
         // Results are viewport-driven, so a location is required; callers
@@ -618,13 +622,14 @@ class GoogleMapsDataSource @Inject constructor(
      *  (AppLocale sets it) or the system locale. **No-op for English → English users are
      *  byte-for-byte unchanged.** */
     private fun String.localized(): String {
+        val out = regionalized()
         val locale = java.util.Locale.getDefault()
         val lang = locale.language.lowercase()
         // Only rewrite to a language the STATUS parser can read (SearchParser.STATUS_LANGS). For any
         // other locale, keep hl=en: an unparseable status string leaves openNow null forever and the
         // UI can't colour open/closed — English status text the English table handles is the safer
         // fallback than localized-but-unparseable (audit 2026-07-06).
-        if (lang == "en" || lang !in SearchParser.STATUS_LANGS) return this
+        if (lang == "en" || lang !in SearchParser.STATUS_LANGS) return out
         // Chinese needs the SCRIPT in the hl tag: hl=zh-TW answers Traditional, hl=zh-CN Simplified
         // (bare hl=zh is treated as Simplified). parseOpenNow keys on the bare "zh" either way —
         // its keyword table carries both scripts.
@@ -633,7 +638,20 @@ class GoogleMapsDataSource @Inject constructor(
                 locale.country.uppercase() in setOf("TW", "HK", "MO")
             if (hant) "zh-TW" else "zh-CN"
         } else lang
-        return replace("hl=en", "hl=$hl")
+        return out.replace("hl=en", "hl=$hl")
+    }
+
+    /** Rewrite `gl=us` to the REGION the phone is actually in ([glRegion], set by the app layer
+     *  from the cell network's country, falling back to the locale's) so results are biased to
+     *  where the user is, not to the US — the "US-shaped results in Jerusalem" half of issue #71.
+     *  Region only tunes ranking/bias, not the response SHAPE (hl already varies per language and
+     *  the parsers are shape-searched), so this is safe for any 2-letter code; anything else is
+     *  ignored and gl=us stays. No-op for US users: byte-for-byte unchanged. */
+    private fun String.regionalized(): String {
+        val region = glRegion?.lowercase()?.takeIf { it.length == 2 && it.all { c -> c in 'a'..'z' } }
+            ?: return this
+        if (region == "us") return this
+        return replace("gl=us", "gl=$region")
     }
 
     private companion object {

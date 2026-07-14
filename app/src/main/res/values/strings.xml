@@ -259,6 +259,13 @@
     <string name="place_gallery_counter">%1$d / %2$d</string> <!-- format -->
     <string name="place_search_reviews">Search reviews</string>
     <string name="place_sort_reviews">Sort reviews</string>
+    <string name="place_tab_reviews">Reviews</string>
+    <string name="place_tab_menu">Menu</string>
+    <string name="place_tab_about">About</string>
+    <string name="place_sort_relevant">Most relevant</string>
+    <string name="place_sort_newest">Newest</string>
+    <string name="place_sort_highest">Highest rating</string>
+    <string name="place_sort_lowest">Lowest rating</string>
     <plurals name="place_review_count"> <!-- format -->
         <item quantity="one">%1$d review</item>
         <item quantity="other">%1$d reviews</item>
