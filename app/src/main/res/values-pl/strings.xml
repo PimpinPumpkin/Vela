@@ -566,4 +566,10 @@
     <string name="mapvm_voice_lang_system">Wskazówki dla języka %1$s używają głosu telefonu. Dodaj go w systemowych ustawieniach głosu.</string>
     <string name="settings_topography">Cieniowanie terenu</string>
     <string name="settings_topography_hint">Cieniuje wzgórza i góry na mapie. Domyślnie wyłączone.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d kolejny przystanek</item>
+        <item quantity="few">+%d kolejne przystanki</item>
+        <item quantity="many">+%d kolejnych przystanków</item>
+        <item quantity="other">+%d kolejnego przystanku</item>
+    </plurals>
 </resources>
