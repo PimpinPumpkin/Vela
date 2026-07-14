@@ -1293,7 +1293,7 @@ fun VelaMapView(
             navPuck.rawBearing = myBearing
         }
         // Palette in the key so a Settings colour-set switch reloads the style, same as a theme flip.
-        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}"
+        val styleKey = "$styleUri|dark=$darkTheme|pal=${app.vela.ui.MapColors.current()}|sat=$satelliteOn"
         if (appliedStyleKey != styleKey) {
             appliedStyleKey = styleKey
             val builder = if (styleUri.startsWith("asset://")) {
@@ -1334,8 +1334,10 @@ fun VelaMapView(
                 origPoiTransitFilter = null
                 lastAppliedRouteLine = null
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
+                PoiIcons.satellite = satelliteOn
                 PoiIcons.addTo(context, style)
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
+                if (satelliteOn) applySatelliteLabels(style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, displayLoc, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
                 ensureSatellite(style, satelliteOn)
                 ensureTraffic(style, trafficOn)
@@ -2242,8 +2244,24 @@ private fun ensureSatellite(style: Style, on: Boolean) {
             val roads = LineLayer(SAT_ROADS_LAYER, "openmaptiles").apply {
                 setSourceLayer("transportation")
                 setProperties(
-                    PropertyFactory.lineColor("#FFFFFF"),
-                    PropertyFactory.lineOpacity(0.38f),
+                    // Freeways read YELLOW like the Google app's hybrid layer; everything else
+                    // stays the translucent white (user 2026-07-13).
+                    PropertyFactory.lineColor(
+                        Expression.match(
+                            Expression.get("class"),
+                            Expression.literal("motorway"), Expression.literal("#F7DD7C"),
+                            Expression.literal("trunk"), Expression.literal("#F7DD7C"),
+                            Expression.literal("#FFFFFF"),
+                        ),
+                    ),
+                    PropertyFactory.lineOpacity(
+                        Expression.match(
+                            Expression.get("class"),
+                            Expression.literal("motorway"), Expression.literal(0.55f),
+                            Expression.literal("trunk"), Expression.literal(0.50f),
+                            Expression.literal(0.38f),
+                        ),
+                    ),
                     PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
                     PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
                     PropertyFactory.lineWidth(
@@ -2271,6 +2289,27 @@ private fun ensureSatellite(style: Style, on: Boolean) {
     } else if (!on && present) {
         runCatching { style.removeLayer(SAT_LAYER) }
         runCatching { style.removeLayer(SAT_ROADS_LAYER) }
+    }
+}
+
+/**
+ * Satellite label treatment: EVERY text on the map goes white with a robust black halo -
+ * street names already got this look, and over imagery it's the only combination that reads
+ * on both dark tree cover and bright rooftops (Google hybrid does the same for POIs, cities,
+ * water, everything). Runs AFTER applyMapTheme/applyToLiberty so it overrides the category
+ * tints; the satellite toggle reloads the style (styleKey carries sat=), so switching back
+ * restores the normal palette from a clean slate. Shield layers are skipped - their text
+ * sits INSIDE a shield icon and white-on-white would erase the route number.
+ */
+private fun applySatelliteLabels(style: Style) {
+    style.layers.forEach { layer ->
+        if (layer !is SymbolLayer) return@forEach
+        if (layer.id.contains("shield")) return@forEach
+        layer.setProperties(
+            PropertyFactory.textColor("#FFFFFF"),
+            PropertyFactory.textHaloColor("#000000"),
+            PropertyFactory.textHaloWidth(1.8f),
+        )
     }
 }
 
