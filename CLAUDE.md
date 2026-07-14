@@ -568,10 +568,16 @@ Defaults that make the safe path the easy one:
   halves need a decimal point, range-checked, unit-tested) -> the same reverse-geocoded pin a
   long-press drops, instead of hitting the search endpoint as text. Addresses with numbers still
   search normally. External geo:/Maps links were already handled (`openDeepLink`).
-- **Map tap resolution order (`VelaMapView` click listener, 2026-07-08).** A single tap (24dp hit box)
-  resolves, in priority: (1) our search-result pin → `onMarkerTap`; (2) an ambient Google POI dot →
-  `onAmbientTap`; (3) a greyed alternate route line → `onSelectAlternate`; (4) a NAMED basemap POI
-  (a business) → `onPoiTap`; (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber`
+- **Map tap resolution order (`VelaMapView` click listener, 2026-07-08; nearest-to-finger 2026-07-14).**
+  Every candidate class picks the feature NEAREST the tap in SCREEN pixels (`screenDist2`) - every
+  pick used to be `firstOrNull` on `queryRenderedFeatures`, which returns RENDER-STACK order, so
+  the generous 48dp hit box at street zoom handed the tap to whichever neighbour the renderer
+  listed first (the dense-strip-mall wrong-POI reports). A single tap resolves, in priority:
+  (1) our search-result pin → `onMarkerTap`; (2) a canonical GTFS stop icon; (3) a greyed
+  alternate route line → `onSelectAlternate`; (4) a BUSINESS - the ambient Google POI dots/icons
+  and the NAMED basemap POIs compete BY DISTANCE, not by class (absolute ambient priority let a
+  few-px ambient dot anywhere in the box steal a tap landed dead on a basemap icon): nearest of
+  the two → `onAmbientTap` / `onPoiTap`; (5) a **HOUSE-NUMBER label** (basemap `vela-housenumber` `housenumber`
   or the address overlay `vela-addr-*` `number`, queried by layer id) → `onAddressLabelTap(number,
   labelPoint)`; (6) an unnamed POI icon (has `class`, no name) → reverse-geocode at the tap; (7) a
   **BUILDING footprint** (`building`/`building-3d` basemap fill or the `vela-ovl-*` overlay fill,

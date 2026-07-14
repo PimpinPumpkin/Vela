@@ -1109,30 +1109,44 @@ fun VelaMapView(
                     // a tight box made the bigger markers feel un-tappable.
                     val r = density.density * 24f
                     val feats = map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r))
+                    // NEAREST-TO-FINGER, in screen pixels. queryRenderedFeatures returns render-stack
+                    // order, and every pick here used to take firstOrNull - so with the generous 48dp
+                    // hit box swallowing several icons at street zoom, "whichever the renderer listed
+                    // first" won, not the icon under the finger (user 2026-07-14, dense strip mall:
+                    // taps kept opening a neighbour even dead-on the right icon).
+                    fun screenDist2(f: Feature): Double {
+                        val pt = f.geometry() as? Point ?: return Double.MAX_VALUE
+                        val sp = map.projection.toScreenLocation(MLLatLng(pt.latitude(), pt.longitude()))
+                        val dx = (sp.x - p.x).toDouble()
+                        val dy = (sp.y - p.y).toDouble()
+                        return dx * dx + dy * dy
+                    }
                     // The parking pin outranks everything — it's a single deliberate object.
                     if (map.queryRenderedFeatures(RectF(p.x - r, p.y - r, p.x + r, p.y + r), PARKING_LAYER).isNotEmpty()) {
                         parkingTap.value()
                         return@handleTap true
                     }
                     // Our own search-result pins take priority over basemap POI labels.
-                    val pin = feats.firstOrNull { it.hasProperty(MARKER_INDEX_PROP) }
+                    val pin = feats.filter { it.hasProperty(MARKER_INDEX_PROP) }.minByOrNull(::screenDist2)
                     if (pin != null) {
                         markerTap.value(pin.getNumberProperty(MARKER_INDEX_PROP).toInt())
                         return@handleTap true
                     }
-                    // An ambient Google POI dot — opens the place (priority over basemap POI labels).
-                    val amb = feats.firstOrNull { it.hasProperty(AMBIENT_INDEX_PROP) }
-                    if (amb != null) {
-                        ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
-                        return@handleTap true
-                    }
                     // A canonical GTFS stop icon (Transitous layer): open the stop's board directly
                     // by stop id - no name resolution at all.
-                    val gtfsStop = feats.firstOrNull { it.hasProperty(TRANSIT_STOP_INDEX_PROP) }
+                    val gtfsStop = feats.filter { it.hasProperty(TRANSIT_STOP_INDEX_PROP) }.minByOrNull(::screenDist2)
                     if (gtfsStop != null) {
                         transitStopsNow.value.getOrNull(gtfsStop.getNumberProperty(TRANSIT_STOP_INDEX_PROP).toInt())
                             ?.let { st -> transitStopTap.value(st); return@handleTap true }
                     }
+                    // Ambient Google POIs and NAMED basemap POIs are the same kind of thing at street
+                    // zoom - two interleaved layers of businesses - so they compete by DISTANCE, not by
+                    // class: the old absolute priority let an ambient DOT (a few px wide, all but
+                    // invisible) anywhere in the box steal a tap landed dead on a basemap icon. The
+                    // nearest candidate across both wins; ambient still carries its richer data when
+                    // it IS the nearest. (Handled below, after the alternate-route check, so a route
+                    // pick keeps its priority.)
+                    val amb = feats.filter { it.hasProperty(AMBIENT_INDEX_PROP) }.minByOrNull(::screenDist2)
                     // Tap a greyed alternate route line to switch to it (Google-style).
                     val altHit = map.queryRenderedFeatures(
                         RectF(p.x - r, p.y - r, p.x + r, p.y + r), ALT_ROUTE_LAYER,
@@ -1146,7 +1160,18 @@ fun VelaMapView(
                     fun nameOf(f: Feature): String? = sequenceOf("name", "name:latin", "name:en")
                         .firstOrNull { f.hasProperty(it) && !f.getStringProperty(it).isNullOrBlank() }
                         ?.let { f.getStringProperty(it) }
-                    val hit = feats.firstOrNull { it.geometry() is Point && nameOf(it) != null }
+                    val hit = feats
+                        .filter {
+                            it.geometry() is Point && nameOf(it) != null &&
+                                !it.hasProperty(AMBIENT_INDEX_PROP) && !it.hasProperty(MARKER_INDEX_PROP) &&
+                                !it.hasProperty(TRANSIT_STOP_INDEX_PROP)
+                        }
+                        .minByOrNull(::screenDist2)
+                    // The BUSINESS pick: ambient vs basemap POI by distance to the finger (see above).
+                    if (amb != null && (hit == null || screenDist2(amb) <= screenDist2(hit))) {
+                        ambientTap.value(amb.getNumberProperty(AMBIENT_INDEX_PROP).toInt())
+                        return@handleTap true
+                    }
                     if (hit != null) {
                         val pt = hit.geometry() as Point
                         // The POI's kind (OMT subclass, e.g. "bus_stop"/"station", else class) tells
@@ -1166,7 +1191,10 @@ fun VelaMapView(
                         (map.style?.layers?.asSequence()?.map { it.id }?.filter { it.startsWith("vela-addr-") }
                             ?: emptySequence())).toList().toTypedArray()
                     val addrHit = if (addrLayers.isNotEmpty()) {
-                        map.queryRenderedFeatures(box, *addrLayers).firstOrNull { it.geometry() is Point }
+                        // Nearest number to the finger, not render order — two house numbers can share
+                        // the 48dp box on adjacent townhomes.
+                        map.queryRenderedFeatures(box, *addrLayers).filter { it.geometry() is Point }
+                            .minByOrNull(::screenDist2)
                     } else null
                     if (addrHit != null) {
                         val pt = addrHit.geometry() as Point
