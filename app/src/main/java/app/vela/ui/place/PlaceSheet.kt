@@ -1529,10 +1529,14 @@ fun DirectionsPanel(
                     // so the "+N min" deltas are robust even if two tie) → each slower route shows how much
                     // longer it is, Google-style, so you can weigh the alternates at a glance.
                     val fastestEta = routes.minOf { it.durationInTrafficSeconds ?: it.durationSeconds }
+                    // The tag follows the ETA, not the position: with avoid-cameras on, the
+                    // low-camera pick leads the list and the true fastest can sit below it -
+                    // tagging row 0 called a slower route "Fastest" (screenshot-caught 2026-07-14).
+                    val fastestIdx = routes.indexOfFirst { (it.durationInTrafficSeconds ?: it.durationSeconds) == fastestEta }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         routes.forEachIndexed { i, r ->
                             val selected = r === activeRoute || (activeRoute == null && i == 0)
-                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == 0, dark = dark, ink = ink, dim = dim, flockCount = flockOnRoute.getOrElse(i) { 0 }) { onSelectRoute(i) }
+                            RouteOption(r, selected, fastestEtaSeconds = fastestEta, isFastest = i == fastestIdx, dark = dark, ink = ink, dim = dim, flockCount = flockOnRoute.getOrElse(i) { 0 }) { onSelectRoute(i) }
                         }
                     }
                     Spacer(Modifier.height(14.dp))
