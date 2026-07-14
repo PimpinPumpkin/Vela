@@ -574,4 +574,8 @@
     <string name="map_layers">Ebenen</string>
     <string name="settings_layers_button">Ebenen-Schaltfläche anzeigen</string>
     <string name="settings_layers_button_hint">Die Karten-Schaltfläche für Satellit, Verkehr, Nahverkehr und Gelände.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d weiterer Stopp</item>
+        <item quantity="other">+%d weitere Stopps</item>
+    </plurals>
 </resources>

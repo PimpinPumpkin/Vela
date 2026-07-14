@@ -574,4 +574,8 @@
     <string name="map_layers">Lager</string>
     <string name="settings_layers_button">Visa lagerknappen</string>
     <string name="settings_layers_button_hint">Kartknappen för satellit, trafik, kollektivtrafik och terräng.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d stopp till</item>
+        <item quantity="other">+%d stopp till</item>
+    </plurals>
 </resources>

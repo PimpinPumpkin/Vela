@@ -574,4 +574,8 @@
     <string name="map_layers">Lagen</string>
     <string name="settings_layers_button">Lagenknop tonen</string>
     <string name="settings_layers_button_hint">De kaartknop voor satelliet, verkeer, ov en terrein.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d extra stop</item>
+        <item quantity="other">+%d extra stops</item>
+    </plurals>
 </resources>

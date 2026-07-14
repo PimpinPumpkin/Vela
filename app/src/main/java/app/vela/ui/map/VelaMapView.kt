@@ -201,6 +201,7 @@ fun VelaMapView(
     cameraTargetZoom: Double? = null, // deep-link z= override for the target fly (null = default framing)
     recenterTick: Int = 0, // bumped on each recenter tap → force a move even if already "centered"
     cameraBottomInsetPx: Int = 0,
+    cameraTopInsetPx: Int = 0, // measured top chrome (the endpoints card) - the route fit clears it
     routePolyline: List<LatLng>,
     routeColor: String,
     routeDashed: Boolean = false, // draw the route dashed (walking / biking), Google-style
@@ -1472,13 +1473,27 @@ fun VelaMapView(
                 lastFittedRouteKey = routePolyline.hashCode()
                 val builder = MLLatLngBounds.Builder()
                 routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
-                // Reserve room at the bottom for the directions panel so the whole route
-                // (and its greyed alternates) frames ABOVE it, not behind it (Google-style).
+                // Reserve room at the bottom for the directions panel AND at the top for the
+                // endpoints card, so the route's start/end frame in the VISIBLE strip between
+                // them instead of hiding behind either (user 2026-07-14).
                 val pad = 140
                 val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
+                val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                val bounds = builder.build()
+                // A continental trip fit zooms out until nothing has context; past ~12 degrees
+                // of span, frame the DESTINATION area instead - the end point is the part worth
+                // seeing (user 2026-07-14), and the route line still leads off-screen toward it.
+                val huge = bounds.latitudeSpan > 12.0 || bounds.longitudeSpan > 14.0
                 runCatching {
+                    if (huge) {
+                        val end = routePolyline.last()
+                        map.animateCamera(
+                            CameraUpdateFactory.newLatLngZoom(MLLatLng(end.lat, end.lng), 9.0), 800,
+                        )
+                        return@runCatching
+                    }
                     map.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(), pad, pad, pad, bottom), 800,
+                        CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800,
                     )
                 }
             }

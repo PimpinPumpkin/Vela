@@ -580,4 +580,10 @@
     <string name="map_layers">Шари</string>
     <string name="settings_layers_button">Показувати кнопку шарів</string>
     <string name="settings_layers_button_hint">Кнопка на мапі для супутника, заторів, транспорту та рельєфу.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">ще %d зупинка</item>
+        <item quantity="few">ще %d зупинки</item>
+        <item quantity="many">ще %d зупинок</item>
+        <item quantity="other">ще %d зупинки</item>
+    </plurals>
 </resources>
