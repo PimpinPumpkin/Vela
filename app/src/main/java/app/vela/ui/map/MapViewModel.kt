@@ -59,6 +59,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -1386,6 +1387,10 @@ class MapViewModel @Inject constructor(
         boardRefreshJob = viewModelScope.launch {
             while (true) {
                 kotlinx.coroutines.delay(30_000)
+                // Backgrounding with a stop sheet open used to keep this polling every 30 s
+                // (viewModelScope outlives the screen). Park until the app is visible again;
+                // the first tick after coming back refreshes immediately.
+                app.vela.ui.AppVisibility.foreground.first { it }
                 if (_state.value.selected?.id != selId) return@launch
                 val fresh = withContext(Dispatchers.IO) {
                     runCatching { app.vela.core.data.transit.Transitous.board(http, lat, lng) }.getOrNull()
