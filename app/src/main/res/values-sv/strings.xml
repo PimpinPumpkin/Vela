@@ -564,4 +564,8 @@
     <string name="mapvm_voice_lang_system">Vägbeskrivningar på %1$s använder telefonens röst. Lägg till en i systemets röstinställningar.</string>
     <string name="settings_topography">Terrängskuggning</string>
     <string name="settings_topography_hint">Skuggar kullar och berg på kartan. Av som standard.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d stopp till</item>
+        <item quantity="other">+%d stopp till</item>
+    </plurals>
 </resources>
