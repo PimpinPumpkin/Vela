@@ -304,6 +304,17 @@ Defaults that make the safe path the easy one:
   before today and a confirmed past time clamps to the next 5-minute mark now, WITH a toast
   (`place_time_past_toast`, all 11 locales): the pill shows a different time than the pick,
   and a silent rewrite of explicit input reads as a bug.
+- **The directions ENDPOINTS live in a TOP card now (`RouteTopCard`, 2026-07-13):** while the
+  chooser is open the search bar swaps for a Google-style card at the top of the screen - origin /
+  stops / destination rows down a glyph rail (teal ring = your location, connector dots, red pin =
+  destination, matching PoiIcons.RESULT_RED), back arrow left, swap right, an Add stop row when no
+  stops exist; rows tap through to the same beginPickOrigin/openStopsEditor actions. The bottom
+  DirectionsPanel LOST its header (and the originName/onEdit*/stops/onSwap/onClose params) - it
+  keeps mode chips / time chooser / routes / Start, so collapsing it to the Start bar no longer
+  hides the endpoints (Google's layout, better on small screens). The card hides while the search
+  overlay, steps preview or stops editor own the screen; chrome colours (colorScheme tokens, NOT
+  SheetPalette - it replaces the search bar). Device-verified: card, edit rows, swap-reroutes,
+  collapse-keeps-card.
 - **The directions chooser drags like the other sheets (2026-07-11):** its settle flips
   `collapsed` AFTER the glide, never before - flipping first fired `LaunchedEffect(collapsed)`
   into a SECOND animateTo racing the decay (the "bounces off the top" on swipe-up-to-reopen,
