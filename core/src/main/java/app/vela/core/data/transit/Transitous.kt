@@ -178,6 +178,13 @@ object Transitous {
                     tripId = t.tripId,
                 )
             }.sortedBy { it.epochSec ?: Long.MAX_VALUE }
+                // Two agencies (or a parent + its curb twin) can both publish the same physical
+                // stop, and the sibling merge then feeds the same run in twice - every departure
+                // showed doubled (7:25, 7:25, 8:23, 8:23; device-seen 2026-07-13). Same line +
+                // same departure minute is the same bus regardless of which feed copy it rode in
+                // on, so collapse on the epoch (tripIds differ across agency copies - can't key
+                // on those).
+                .distinctBy { it.epochSec }
             StopDepartureLine(
                 label = k.label,
                 mode = modeOf(ts.firstOrNull()?.mode),
