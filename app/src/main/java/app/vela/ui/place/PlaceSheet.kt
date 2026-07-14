@@ -628,6 +628,7 @@ fun PlaceSheet(
                     // Minimized: a single tap ANYWHERE on the card pops it back to peek (Google) —
                     // the action pills keep their own taps since inner clickables win their bounds.
                     // Inert (enabled=false) whenever the full body is showing.
+                    .dpadHighlight(RoundedCornerShape(20.dp))
                     .clickable(enabled = minimizedState.value && !singleDetent) { minimizedState.value = false }
                     .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
             ) {
