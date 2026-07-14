@@ -85,6 +85,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Divider
@@ -3307,8 +3308,23 @@ private fun FasterRouteCard(
                     style = MaterialTheme.typography.bodySmall,
                 )
             }
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.mapscreen_no)) }
-            Button(onClick = onSwitch) { Text(stringResource(R.string.mapscreen_switch)) }
+            // Explicit contrast pairs, not the button defaults: under Material You the default
+            // TextButton primary and this card's tertiaryContainer both derive from the wallpaper
+            // and routinely land on near-identical pastels - the "No" all but vanished and the
+            // "Switch" fill could blend into the card (user 2026-07-14). onTertiaryContainer is
+            // contrast-guaranteed against tertiaryContainer in every scheme, so the dismiss reads
+            // everywhere, and the confirm wears the inverse fill for the same guarantee.
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onTertiaryContainer),
+            ) { Text(stringResource(R.string.mapscreen_no)) }
+            Button(
+                onClick = onSwitch,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                    contentColor = MaterialTheme.colorScheme.tertiaryContainer,
+                ),
+            ) { Text(stringResource(R.string.mapscreen_switch)) }
         }
     }
 }
