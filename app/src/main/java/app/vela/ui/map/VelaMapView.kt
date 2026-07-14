@@ -298,11 +298,16 @@ fun VelaMapView(
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
+    val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
     val compassHeadingHolder = rememberUpdatedState(compassHeading) // device facing, for the beam
     val driveFollowingHolder = rememberUpdatedState(driveFollowing)
     val browseCam = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased free-drive camera [lat,lng]; NaN = re-seed
     val browseBeam = remember { floatArrayOf(Float.NaN) }              // smoothed browse heading (NaN = idle, use raw)
     val browseAtt = remember { doubleArrayOf(Double.NaN, Double.NaN) } // eased [bearing (signed, ->0), tilt (->0)]; NaN = re-seed
+    // Free-drive dead reckon: the last fix + its speed/course, so the follow target GLIDES between
+    // the ~1 Hz fixes instead of jumping and sitting (the per-second surge-and-stall jitter).
+    val browseFix = remember { doubleArrayOf(0.0, 0.0, 0.0, 0.0, Double.NaN) } // [lat, lng, atMs, speed m/s, course deg]
+    val browseFixRef = remember { arrayOfNulls<Any>(1) } // identity of the fix browseFix was taken from
     val lastBrowse = remember { doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) } // last applied [lat,lng,bearing] (skip no-op frames)
     val viewport = rememberUpdatedState(onViewport)
     val dpadHolder = rememberUpdatedState(dpadController)
@@ -697,9 +702,39 @@ fun VelaMapView(
             val tgt = compassHeadingHolder.value ?: myBearingHolder.value
             if (tgt != null) browseBeam[0] = if (browseBeam[0].isNaN()) tgt else smoothBearing(browseBeam[0], tgt, dt, 0.15f)
             val beam = if (browseBeam[0].isNaN()) 0f else browseBeam[0]
-            // Ease the camera toward the fix (skipped while pinching - the fingers win).
+            // DEAD-RECKON the follow target between fixes (user 2026-07-14: "not a smooth inertial
+            // glide like navigation"). Easing toward the RAW fix chases a target that jumps once a
+            // second and then sits still - the camera surges after each fix and stalls before the
+            // next, the visible jitter. Nav glides because its puck integrates speed every frame;
+            // the browse equivalent is a constant-velocity projection of the last fix along its
+            // own course, so the ease chases a target that MOVES like the car. Gated to a real
+            // driving speed with a known course; capped at 2.5 s so a dropped signal can't run the
+            // camera away (the next fix re-anchors and the ease absorbs the correction smoothly).
+            if (browseFixRef[0] !== loc) {
+                browseFixRef[0] = loc
+                browseFix[0] = loc.lat; browseFix[1] = loc.lng
+                browseFix[2] = android.os.SystemClock.elapsedRealtime().toDouble()
+                browseFix[3] = (mySpeedHolder.value ?: 0f).toDouble()
+                browseFix[4] = myBearingHolder.value?.toDouble() ?: Double.NaN
+            }
+            val sinceFix = (android.os.SystemClock.elapsedRealtime() - browseFix[2]) / 1000.0
+            val drM = if (browseFix[3] > 1.5 && !browseFix[4].isNaN()) {
+                browseFix[3] * sinceFix.coerceAtMost(2.5)
+            } else 0.0
+            val tgtLat: Double
+            val tgtLng: Double
+            if (drM > 0.0) {
+                val br = Math.toRadians(browseFix[4])
+                tgtLat = browseFix[0] + drM * kotlin.math.cos(br) / 111_320.0
+                tgtLng = browseFix[1] + drM * kotlin.math.sin(br) /
+                    (111_320.0 * kotlin.math.cos(Math.toRadians(browseFix[0])).coerceAtLeast(0.1))
+            } else {
+                tgtLat = loc.lat
+                tgtLng = loc.lng
+            }
+            // Ease the camera toward the (reckoned) target (skipped while pinching - the fingers win).
             val cam = mapRef
-            var camLat = loc.lat; var camLng = loc.lng
+            var camLat = tgtLat; var camLng = tgtLng
             if (cam != null && !scaling[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
@@ -720,8 +755,8 @@ fun VelaMapView(
                 // between the ~1 Hz fixes instead of coasting to each one and stopping, so the follow
                 // reads as a continuous glide (closer to the nav feel) rather than a per-second ease.
                 val k = (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
-                browseCam[0] += (loc.lat - browseCam[0]) * k
-                browseCam[1] += (loc.lng - browseCam[1]) * k
+                browseCam[0] += (tgtLat - browseCam[0]) * k
+                browseCam[1] += (tgtLng - browseCam[1]) * k
                 camLat = browseCam[0]; camLng = browseCam[1]
                 // NORTH-UP, FLAT: ease any leftover rotation/tilt away. moveCamera(newLatLng) only
                 // moves the target, so a stale bearing (a previous nav's heading-up camera, an old

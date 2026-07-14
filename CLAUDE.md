@@ -1482,7 +1482,14 @@ architecture note.
   camera, an old manual rotate) survived into the follow and a drive tracked DOWN the screen -
   `browseAtt` now eases both back to 0 with the same k (zoom stays untouched, so a pinch level
   survives), and the nav-exit teardown also levels bearing/tilt (+ resets the sticky puck-low camera
-  padding) for the not-following case. A manual rotate is a gesture, which drops follow - never fight it. **The PUCK draws at the EASED position (`browseCam`), not the raw
+  padding) for the not-following case. A manual rotate is a gesture, which drops follow - never fight it.
+  **The follow target DEAD-RECKONS between fixes (2026-07-14):** easing toward the raw ~1 Hz fix
+  chased a target that jumps then sits - the per-second surge-and-stall jitter (user report). The
+  ticker now projects the last fix forward along its own speed + course every frame (constant
+  velocity, gated to >1.5 m/s with a known course, capped 2.5 s blind) and eases toward THAT, so
+  the camera chases a target moving like the car - the nav glide, no route needed. The next fix
+  re-anchors and the ease absorbs the correction. This CLOSES the "fuller dead-reckon is the next
+  step" note above; tuning (the 2.5 s cap, the 1.5 m/s gate) still wants a real drive. **The PUCK draws at the EASED position (`browseCam`), not the raw
   fix (2026-07-13):** at the raw fix the dot teleported forward on the map each fix while the camera eased to
   catch up (the visible hop); at the eased position it stays centred and glides with the map, the locked
   puck+camera the nav follow has. (A fuller constant-velocity dead-reckon between fixes is the next step if it

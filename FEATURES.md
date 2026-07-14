@@ -1173,6 +1173,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Periodic live re-routing** - every ~2 min while underway Vela re-checks
   traffic and, when a meaningfully faster route exists, announces it and offers
   a one-tap switch (`NavSession.maybeRecheck`, RECHECK_INTERVAL_MS = 2 min)
+- ✅ **Free-drive follow glides like navigation (2026-07-14).** The follow camera used to ease
+  toward the raw once-a-second fix - a target that jumps and then sits still, so the camera surged
+  and stalled every second (the reported jitter and snap-back). It now dead-reckons the target
+  forward between fixes along the last fix's own speed and course, exactly the trick the nav puck
+  uses, so the camera chases something that moves like the car: a continuous inertial glide, no
+  route required. Bounded to 2.5 s of blind projection and only while genuinely moving; each new
+  fix re-anchors and the ease soaks up the correction instead of snapping.
 - ✅ **Free-drive follow is NORTH-UP for real (2026-07-14).** The browse follow only ever moved
   the camera's target, so a leftover rotation or tilt (a previous drive's heading-up camera, an
   old two-finger rotate) survived into it and a drive could track DOWN the screen. The follow now
