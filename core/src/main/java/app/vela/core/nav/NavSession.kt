@@ -413,10 +413,49 @@ class NavSession @Inject constructor(
             // the new scale independent of the old one (remaining already carries etaScale), and
             // the offer logic below then compares candidates against a LIVE baseline too.
             val current = _state.value.route
-            if (current != null && remaining > 120.0 && candidateEta > 0.0 &&
+            val sameCourse = current != null && candidateEta > 0.0 &&
                 !app.vela.core.data.RouteGeometry.divergent(current, candidate, SAME_COURSE_M)
-            ) {
+            if (sameCourse && remaining > 120.0) {
                 etaScale = (etaScale * candidateEta / remaining).coerceIn(0.5, 2.5)
+            }
+            // ABBREVIATED-STEPS SELF-HEAL: an OSRM blip mid-drive makes a reroute fall back to
+            // Google's abbreviated steps (complete polyline, a fraction of the turns - the banner
+            // and voice disagree with the blue line, user real-drive report 2026-07-14), and an
+            // adopted one used to stay degraded for the REST of the drive because this recheck
+            // only cared about faster routes. When the open router has recovered, the same-course
+            // candidate carries the full step list - adopt it silently: same path, fresh traffic,
+            // real turns. Tagged at the source (Route.abbreviatedSteps), so a healthy route can
+            // never be churned by this.
+            if (sameCourse && current!!.abbreviatedSteps && !candidate.abbreviatedSteps && !candidate.provisional) {
+                val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
+                synchronized(stopLock) {
+                    stops = remainingStops
+                    stopMarks = marks
+                    passedStops = 0
+                    planRoute = candidate
+                }
+                lastRerouteAdoptMs = SystemClock.elapsedRealtime()
+                etaScale = 1.0
+                _state.update {
+                    it.copy(
+                        route = candidate,
+                        nav = NavState(
+                            distanceToNextManeuver = candidate.maneuvers.firstOrNull()?.distanceMeters ?: 0.0,
+                            remainingDistance = candidate.distanceMeters,
+                            remainingDuration = candidateEta,
+                        ),
+                        maneuverText = candidate.maneuvers.firstOrNull()?.instruction.orEmpty(),
+                        remainingDistance = candidate.distanceMeters,
+                        remainingDuration = candidateEta,
+                        fasterRoute = null,
+                    )
+                }
+                diag.record(
+                    "nav",
+                    "recheck upgraded abbreviated route to full steps " +
+                        "(${current.maneuvers.size} -> ${candidate.maneuvers.size} maneuvers)",
+                )
+                return@launch
             }
             val saving = remaining - candidateEta
             // A candidate similar to one the user DISMISSED is only re-offered when it beats the
