@@ -1173,6 +1173,19 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Periodic live re-routing** - every ~2 min while underway Vela re-checks
   traffic and, when a meaningfully faster route exists, announces it and offers
   a one-tap switch (`NavSession.maybeRecheck`, RECHECK_INTERVAL_MS = 2 min)
+- ✅ **Free-drive follow is NORTH-UP for real (2026-07-14).** The browse follow only ever moved
+  the camera's target, so a leftover rotation or tilt (a previous drive's heading-up camera, an
+  old two-finger rotate) survived into it and a drive could track DOWN the screen. The follow now
+  eases bearing and tilt back to north-up flat as it engages (the compass shows while it settles
+  and fades at north), and ending navigation levels the camera too. A manual rotate is a gesture,
+  which drops follow, so nothing fights the user's hand.
+- ✅ **Route overview button during navigation (2026-07-14).** A new fly-over button in the nav
+  button stack fits the whole route on screen - camera only, Google-style: guidance and voice
+  keep running and the puck keeps moving along the overview. It marks the camera detached, so
+  the existing Re-center button appears and glides straight back into the follow. (Google hides
+  the step list behind a pull-up on its ETA bar; Vela keeps the dedicated Steps button instead -
+  the bar has three controls and room for them, and the overview button is the part that earns
+  its place.)
 - ✅ **The road ahead owns the nav view (2026-07-14).** The follow camera renders the puck low on
   the screen (~72% down, via a sticky top camera padding reset when nav ends) instead of dead
   centre, so the view shows what's coming instead of splitting evenly with what's behind -
