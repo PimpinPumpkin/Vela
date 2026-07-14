@@ -44,8 +44,8 @@ object Onboarding {
      *  once the model is present or the user has answered. */
     val showVoicePrompt = mutableStateOf(false)
 
-    // Replace with your own funding page (Liberapay / Ko-fi / GitHub Sponsors).
-    const val DONATE_URL = "https://github.com/sponsors/PimpinPumpkin"
+    // Forks: point this at your own funding page.
+    const val DONATE_URL = "https://buymeacoffee.com/PimpinPumpkin"
 
     private const val PREFS = "vela_onboarding"
     private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000
