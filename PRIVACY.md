@@ -60,7 +60,7 @@ can't link them to a Google account or your real-world identity. The honest limi
 inherent to fetching from them. If you want to hide that too, run Vela over a **VPN or
 Tor**; it works over any network.
 
-Row by row, that comparison (moved here from the README):
+Row by row, the same comparison the README summarizes:
 
 | What Google gets | Google Maps app | Google Maps web | Vela |
 | --- | --- | --- | --- |
@@ -129,7 +129,8 @@ keeps a short **local** log of what it did - your searches, the routes it comput
 any "needs recalibration" hiccups - so that if something misbehaves you can **export it
 and hand it to a developer** to debug. Specifics:
 
-- **Nothing is uploaded by Vela.** The log lives only in memory on your phone. The only
+- **Nothing is uploaded by Vela.** The log lives only on your phone (a small local file while
+  the opt-in is on). The only
   way it leaves is if *you* tap **Export debug session** and then choose where to send it
   (email, a chat app, Files…). You see it's a file; you pick the destination.
 - **It contains** the breadcrumbs above - which can include your search terms, the
@@ -138,7 +139,8 @@ and hand it to a developer** to debug. Specifics:
   "GPS gap" markers noting where the signal dropped and for how long - for debugging a
   bad route or *tuning the turn-by-turn*). No account, no contacts, no continuous
   location trail.
-- **Turning it off wipes the log**, and it clears when the app closes anyway.
+- **Turning it off wipes the log.** Exports also scrub coordinates down to ~1 km before the
+  share sheet ever sees them, so a pasted report can't pinpoint you.
 
 ## Trip recording (separate opt-in, off by default)
 
