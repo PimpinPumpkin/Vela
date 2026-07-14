@@ -28,8 +28,10 @@ import java.util.TimeZone
  * colours. Querying a stop's PARENT station id aggregates all its child stops/bays (verified live),
  * so a multi-bay transit center gets one complete merged board for free.
  *
- * Google's blob parse stays as the FALLBACK where Transitous has no coverage. Fair use: called once
- * per opened stop (no polling); the User-Agent identifies the app per the Transitous policy.
+ * Google's blob parse stays as the FALLBACK where Transitous has no coverage. Fair use: one fetch
+ * per opened stop plus a 30 s refresh while its sheet stays open (the VM's startBoardRefresh, same
+ * cadence as the countdown clock, self-cancelling on selection change); the User-Agent identifies
+ * the app per the Transitous policy.
  */
 object Transitous {
     // The community instance. A self-hosted MOTIS is a drop-in swap if Vela ever outgrows fair use.
