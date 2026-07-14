@@ -171,7 +171,6 @@ release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
 - [ ] Restaurant menu reliability (Google tags menu photos inconsistently; digging in)
 - [ ] Satellite imagery layer (open Esri World Imagery)
-- [ ] Optional offline highway refs
 - [ ] Embedded Mapillary/KartaView street imagery (needs a token; Street View currently opens Google's keyless pano in the browser)
 - [ ] F-Droid submission + reproducible build
 
