@@ -111,6 +111,17 @@ class TransitousTest {
     }
 
     @Test
+    fun `board collapses the same run fed in twice by merged siblings`() {
+        // Two feed copies of the same physical stop (two agencies, or a parent + curb twin)
+        // deliver the same departures with different trip ids; the board must not list 7:25 twice.
+        val a = st("102", "Downtown", "2026-01-01T10:00:00Z").copy(tripId = "ct-1")
+        val b = st("102", "Downtown", "2026-01-01T10:00:00Z").copy(tripId = "et-1")
+        val later = st("102", "Downtown", "2026-01-01T11:00:00Z").copy(tripId = "ct-2")
+        val board = Transitous.buildBoard(listOf(a, b, later), null)!!
+        assertEquals(listOf(2), board.lines.map { it.upcoming.size })
+    }
+
+    @Test
     fun `iso parse and clock text`() {
         val epoch = Transitous.parseIso("2026-01-01T20:26:00Z")!!
         assertEquals(1767299160L, epoch)
