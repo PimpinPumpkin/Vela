@@ -79,6 +79,8 @@ data class TransitNavState(
 
 data class MapUiState(
     val center: LatLng? = null,
+    // The satellite imagery's capture year for the viewport (Esri metadata), shown in the attribution.
+    val imageryYear: String? = null,
     val recenterTick: Int = 0, // bumped per recenter tap so the map force-moves even if "centered"
     val myLocation: LatLng? = null,
     val myBearing: Float? = null,
@@ -3589,6 +3591,7 @@ class MapViewModel @Inject constructor(
         lastFlockViewport = doubleArrayOf(south, west, north, east, zoom)
         refreshFlock(south, west, north, east, zoom) // + ALPR/Flock cameras when the layer is on
         refreshTransitStops(south, west, north, east, zoom) // + canonical GTFS stop icons at street zoom
+        refreshImageryYear(south, west, north, east) // + the capture year for the satellite attribution
         // Half-diagonal of the visible box — used to hand the map only the POIs near the view (the
         // rest can't render anyway), so an old budget phone isn't dragging 800 symbols through the
         // collider every frame.
@@ -4027,6 +4030,48 @@ class MapViewModel @Inject constructor(
      *  DISK cache ([TransitStopCache]) - the offline floor: with no network, a previously visited
      *  area's stops still draw (the OSM basemap icons cover never-visited areas). Stops replace the
      *  OSM bus icons wherever this layer has coverage (VelaMapView hides poi_transit's bus class then). */
+    /** The satellite attribution's capture year: while imagery is on, one small keyless Esri
+     *  identify at the viewport center tells when this area was photographed (the metadata rides
+     *  the same World_Imagery service the tiles come from). Area-cached like the other viewport
+     *  fetches; best-effort, the attribution just shows no year until it lands. */
+    /** Kick the year fetch the moment satellite flips on (the layers panel calls this) - the
+     *  normal path only runs on camera idle, so the year otherwise waited for the first pan. */
+    fun onSatelliteToggled() {
+        imageryYearBox = null
+        viewport?.let { refreshImageryYear(it[0], it[1], it[2], it[3]) }
+    }
+
+    private var imageryYearBox: DoubleArray? = null
+    private var imageryYearJob: kotlinx.coroutines.Job? = null
+    private fun refreshImageryYear(south: Double, west: Double, north: Double, east: Double) {
+        if (!app.vela.ui.SatelliteLayer.on.value) {
+            imageryYearBox = null
+            if (_state.value.imageryYear != null) _state.update { it.copy(imageryYear = null) }
+            return
+        }
+        val cLat = (south + north) / 2; val cLng = (west + east) / 2
+        imageryYearBox?.let { b -> if (cLat in b[0]..b[2] && cLng in b[1]..b[3]) return }
+        imageryYearJob?.cancel()
+        imageryYearJob = viewModelScope.launch {
+            val year = withContext(Dispatchers.IO) {
+                runCatching {
+                    val url = "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/identify" +
+                        "?geometry=$cLng,$cLat&geometryType=esriGeometryPoint&sr=4326&layers=top&tolerance=1" +
+                        "&mapExtent=$west,$south,$east,$north&imageDisplay=400,400,96&returnGeometry=false&f=json"
+                    val body = http.newCall(okhttp3.Request.Builder().url(url).build()).execute()
+                        .use { if (it.isSuccessful) it.body?.string() else null } ?: return@runCatching null
+                    val results = org.json.JSONObject(body).optJSONArray("results") ?: return@runCatching null
+                    (0 until results.length()).firstNotNullOfOrNull { i ->
+                        results.getJSONObject(i).optJSONObject("attributes")
+                            ?.optString("DATE (YYYYMMDD)")?.takeIf { d -> d.length >= 4 }?.take(4)
+                    }
+                }.getOrNull()
+            }
+            imageryYearBox = doubleArrayOf(south, west, north, east)
+            _state.update { it.copy(imageryYear = year) }
+        }
+    }
+
     private fun refreshTransitStops(south: Double, west: Double, north: Double, east: Double, zoom: Double) {
         if (zoom < TRANSIT_STOPS_MIN_ZOOM) {
             transitStopsBox = null

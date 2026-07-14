@@ -1727,6 +1727,7 @@ fun MapScreen(
                         }
                         layerRow(stringResource(R.string.map_satellite_toggle), app.vela.ui.SatelliteLayer.on.value) {
                             app.vela.ui.SatelliteLayer.set(ctx, it)
+                            vm.onSatelliteToggled()
                         }
                         layerRow(stringResource(R.string.settings_live_traffic), Traffic.on.value) {
                             Traffic.set(ctx, it)
@@ -1743,7 +1744,8 @@ fun MapScreen(
             // Required Esri attribution while the imagery is on, tucked by the scale bar.
             if (app.vela.ui.SatelliteLayer.on.value) {
                 Text(
-                    stringResource(R.string.map_satellite_attribution),
+                    stringResource(R.string.map_satellite_attribution) +
+                        (state.imageryYear?.let { " · $it" } ?: ""),
                     style = MaterialTheme.typography.labelSmall,
                     color = if (darkTheme) Color(0xFFB8C2CC) else Color(0xFF4A4A4A),
                     modifier = Modifier
