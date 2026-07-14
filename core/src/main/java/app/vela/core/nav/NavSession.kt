@@ -101,6 +101,12 @@ class NavSession @Inject constructor(
     // faster-route sheet popping up over a replay). Route swaps that happened in the REAL drive
     // are recorded in the trip and played back via [replaySetRoute].
     @Volatile var replayMode = false
+    // Settings -> Data & privacy -> "Live traffic re-checks". Each recheck sends the CURRENT
+    // position to Google (that's what makes a from-here candidate possible), which is a periodic
+    // in-drive location beacon on top of the origin already sent at start + on reroutes. Off =
+    // no periodic requests: no faster-route offers, no live ETA recalibration, no
+    // abbreviated-steps self-heal; reroutes still fire when off course (they're what nav IS).
+    @Volatile var liveRechecks = true
     // Multi-stop: intermediate waypoints (in travel order), each with its along-route "pass mark" so we can
     // announce "you've reached <stop>" as progress passes it, and reroute through the REMAINING ones.
     // The whole plan (stops + marks + counter + the route the marks were measured on) is guarded by
@@ -378,6 +384,7 @@ class NavSession @Inject constructor(
 
     private fun maybeRecheck(loc: LatLng, nav: NavState) {
         if (replayMode) return // hermetic replays never fetch live traffic/routes
+        if (!liveRechecks) return // privacy opt-out: no periodic current-position requests
         val now = SystemClock.elapsedRealtime()
         if (now - lastRecheckMs < RECHECK_INTERVAL_MS) return
         if (nav.offRoute || nav.remainingDistance < MIN_RECHECK_DISTANCE_M) return
