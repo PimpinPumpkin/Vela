@@ -747,6 +747,9 @@ fun MapScreen(
             onSelectAlternate = vm::selectRoute,
             markers = markersOf(state, filteredResultIds),
             frameMarkers = state.results.isNotEmpty() && state.selected == null && !state.resultsCollapsed,
+            // The endpoints card's measured bottom edge: the route fit frames start/end in the
+            // strip between the card and the chooser instead of hiding either behind chrome.
+            cameraTopInsetPx = if (state.directionsOpen && !state.navigating) topCardBottomPx else 0,
             navMode = state.navigating,
             navFollowing = !state.navCameraDetached,
             onNavPanned = vm::onNavPanned,
