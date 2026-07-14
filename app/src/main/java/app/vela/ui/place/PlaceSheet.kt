@@ -76,6 +76,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.TextButton
 import androidx.compose.material.icons.filled.MyLocation
@@ -2584,11 +2585,14 @@ fun RouteDetailSheet(
     val ink = if (dark) InkDark else InkLight
     val dim = if (dark) DimDark else DimLight
     val lineColor = parseHexColor(step?.line?.colorHex) ?: MaterialTheme.colorScheme.primary
-    // The full ordered call list: board first, then the in-betweens, then alight. Board/alight
-    // are often absent from intermediateStops, so stitch them on the ends and de-dupe by name.
+    // The full ordered call list: the stops the run ALREADY passed (greyed above, Google-style),
+    // then board, the in-betweens, and alight. Board/alight are often absent from
+    // intermediateStops, so stitch them on the ends and de-dupe by name.
+    val prior = step?.priorStops ?: emptyList()
     val stops = remember(step) {
         val mid = step?.intermediateStops ?: emptyList()
         buildList {
+            addAll(prior)
             step?.boardStop?.let { add(it) }
             addAll(mid)
             step?.alightStop?.let { a -> if (mid.none { it.name == a.name } && step.boardStop?.name != a.name) add(a) }
@@ -2629,11 +2633,13 @@ fun RouteDetailSheet(
                 }
                 return@Column
             }
-            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 4.dp)) {
+            // Open ON the boarding stop; the already-passed stops are a scroll-up away.
+            val listState = rememberLazyListState(initialFirstVisibleItemIndex = prior.size)
+            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 4.dp), state = listState) {
                 itemsIndexed(stops) { i, stop ->
-                    val isFirst = i == 0
+                    val isBoard = i == prior.size
                     val isLast = i == stops.lastIndex
-                    RouteStopRow(stop, lineColor, ink, dim, isFirst, isLast, dark, onClick = { onStopTap(stop) })
+                    RouteStopRow(stop, lineColor, ink, dim, isBoard, isLast, dark, past = i < prior.size, isTop = i == 0, onClick = { onStopTap(stop) })
                 }
             }
         }
@@ -2655,6 +2661,8 @@ private fun RouteStopRow(
     isFirst: Boolean,
     isLast: Boolean,
     dark: Boolean,
+    past: Boolean = false, // the run already called here - greyed, no status word (Google-style)
+    isTop: Boolean = isFirst, // first VISIBLE row (no rail above); differs from isFirst when priors show
     onClick: () -> Unit,
 ) {
     Box(
@@ -2672,17 +2680,22 @@ private fun RouteStopRow(
             // bigger node; intermediate stops a smaller one - all solid in the line colour so they read
             // on any sheet background.
             val big = isFirst || isLast
+            // Passed stops grey their node and the rail segments touching them, so the coloured
+            // line visually STARTS at the boarding stop (Google's treatment).
+            val nodeColor = if (past) dim.copy(alpha = 0.45f) else lineColor
+            val topRail = if (past || isFirst) dim.copy(alpha = 0.45f) else lineColor
+            val bottomRail = if (past) dim.copy(alpha = 0.45f) else lineColor
             Box(Modifier.width(24.dp).fillMaxHeight().heightIn(min = 64.dp), contentAlignment = Alignment.Center) {
-                if (!isFirst) Box(Modifier.width(3.dp).fillMaxHeight(0.5f).align(Alignment.TopCenter).background(lineColor))
-                if (!isLast) Box(Modifier.width(3.dp).fillMaxHeight(0.5f).align(Alignment.BottomCenter).background(lineColor))
-                Box(Modifier.size(if (big) 14.dp else 9.dp).clip(CircleShape).background(lineColor))
+                if (!isTop) Box(Modifier.width(3.dp).fillMaxHeight(0.5f).align(Alignment.TopCenter).background(topRail))
+                if (!isLast) Box(Modifier.width(3.dp).fillMaxHeight(0.5f).align(Alignment.BottomCenter).background(bottomRail))
+                Box(Modifier.size(if (big) 14.dp else 9.dp).clip(CircleShape).background(nodeColor))
             }
             Spacer(Modifier.width(10.dp))
             Text(
                 stop.name,
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isFirst || isLast) FontWeight.SemiBold else FontWeight.Normal,
-                color = ink,
+                color = if (past) dim else ink,
                 maxLines = 2,
                 modifier = Modifier.weight(1f).padding(vertical = 14.dp),
             )
@@ -2690,28 +2703,49 @@ private fun RouteStopRow(
                 // Realtime = the feed gave this stop an adjusted time distinct from the timetable.
                 val live = stop.scheduledText != null && stop.scheduledText != stop.timeText
                 Column(Modifier.padding(start = 8.dp), horizontalAlignment = Alignment.End) {
-                    Text(
-                        time,
-                        style = if (isFirst) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
-                        fontWeight = if (isFirst) FontWeight.SemiBold else FontWeight.Normal,
-                        color = if (stop.cancelled) dim else ink,
-                        textDecoration = if (stop.cancelled) TextDecoration.LineThrough else null,
-                    )
-                    Text(
-                        stringResource(
-                            when {
-                                stop.cancelled -> R.string.place_transit_cancelled
-                                live -> R.string.place_transit_live
-                                else -> R.string.place_transit_scheduled
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Google's treatment for a moved time: the timetable time crossed out
+                        // beside the live one, green when on time or early, red when late.
+                        if (live && !past && !stop.cancelled) {
+                            Text(
+                                stop.scheduledText!!,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = dim,
+                                textDecoration = TextDecoration.LineThrough,
+                                modifier = Modifier.padding(end = 6.dp),
+                            )
+                        }
+                        Text(
+                            time,
+                            style = if (isFirst) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium,
+                            fontWeight = if (isFirst) FontWeight.SemiBold else FontWeight.Normal,
+                            color = when {
+                                stop.cancelled || past -> dim
+                                live && (stop.delayMin ?: 0) > 0 -> SheetPalette.TrafficRed
+                                live -> SheetPalette.TrafficGreen
+                                else -> ink
                             },
-                        ),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when {
-                            stop.cancelled -> SheetPalette.TrafficRed
-                            live -> SheetPalette.TrafficGreen
-                            else -> dim
-                        },
-                    )
+                            textDecoration = if (stop.cancelled) TextDecoration.LineThrough else null,
+                        )
+                    }
+                    // Passed stops carry no status word - the grey says it already.
+                    if (!past) {
+                        Text(
+                            stringResource(
+                                when {
+                                    stop.cancelled -> R.string.place_transit_cancelled
+                                    live -> R.string.place_transit_live
+                                    else -> R.string.place_transit_scheduled
+                                },
+                            ),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = when {
+                                stop.cancelled -> SheetPalette.TrafficRed
+                                live -> SheetPalette.TrafficGreen
+                                else -> dim
+                            },
+                        )
+                    }
                 }
             }
         }

@@ -23,6 +23,7 @@ data class TransitStopTime(
     val scheduledText: String? = null,  // the timetable time when it differs, "4:30 PM"
     val location: LatLng? = null,       // stop position (for drawing / walk-leg routing)
     val cancelled: Boolean = false,     // this call is cancelled (GTFS-Realtime; Google data never sets it)
+    val delayMin: Int? = null,          // realtime minus timetable, minutes; negative = running early
 )
 
 /**
@@ -45,6 +46,9 @@ data class TransitStep(
     val numStops: Int? = null,                // "Ride 17 stops"
     val delayText: String? = null,            // "5 min late" / "2 min early" (real-time)
     val intermediateStops: List<TransitStopTime> = emptyList(), // the in-between stops
+    // Stops the run calls at BEFORE the boarding stop (the stop-timeline view shows them greyed
+    // above your stop, Google-style). Empty for itinerary-sourced steps.
+    val priorStops: List<TransitStopTime> = emptyList(),
     // Walk-leg endpoints (from the adjacent stops / itinerary origin+dest) — used to fetch
     // turn-by-turn walking directions for the leg on demand (OSRM foot). Null for ride legs.
     val walkFrom: LatLng? = null,
