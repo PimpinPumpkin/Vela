@@ -1,11 +1,10 @@
 package app.vela.core.data
 
 import app.vela.core.model.LatLng
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.decodeFromStream
 import okhttp3.OkHttpClient
 
 /**
@@ -19,6 +18,16 @@ import okhttp3.OkHttpClient
 /** A drawn traffic control at [loc]: a traffic light (`stop == false`) or a stop sign (`stop == true`). */
 data class TrafficControl(val loc: LatLng, val stop: Boolean)
 
+@Serializable
+private data class SignalsResp(val elements: List<SignalNode> = emptyList())
+
+@Serializable
+private data class SignalNode(
+    val lat: Double? = null,
+    val lon: Double? = null,
+    val tags: Map<String, String>? = null,
+)
+
 object OverpassTrafficSignals {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -31,6 +40,7 @@ object OverpassTrafficSignals {
      * authoritative "no controls here" would blank the layer until the user pans out of the cached box.
      * Queried per padded viewport by the caller (which area-caches it, since controls are static), NOT per fix.
      */
+    @OptIn(ExperimentalSerializationApi::class)
     fun fetchControlsInBox(
         http: OkHttpClient,
         south: Double, west: Double, north: Double, east: Double,
@@ -42,18 +52,19 @@ object OverpassTrafficSignals {
         // Failover across mirrors (see OverpassEndpoints): a 504 from the primary no longer blanks the layer.
         // run() returns null only when EVERY endpoint fails — a real failure, not a genuine empty area.
         return OverpassEndpoints.run(http, query) { body ->
-            val root = json.parseToJsonElement(body.string()).jsonObject
-            root["elements"]?.jsonArray?.mapNotNull { el ->
-                val o = el.jsonObject
-                val lat = (o["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
-                val lng = (o["lon"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
-                val kind = (o["tags"]?.jsonObject?.get("highway") as? JsonPrimitive)?.content
-                TrafficControl(LatLng(lat, lng), stop = kind == "stop")
-            }.orEmpty()
+            // STREAM into a tiny DTO, same as OverpassAlprCameras: an `out 6000` dense-metro response
+            // held as a String + full JsonElement DOM cost ~5-10x the wire size in transient heap —
+            // the same churn that OOM'd the flock fetch (this was its named follow-up).
+            json.decodeFromStream<SignalsResp>(body.byteStream()).elements.mapNotNull { n ->
+                val lat = n.lat ?: return@mapNotNull null
+                val lng = n.lon ?: return@mapNotNull null
+                TrafficControl(LatLng(lat, lng), stop = n.tags?.get("highway") == "stop")
+            }
         }
     }
 
     /** Traffic-signal node coordinates within the route's bounding box (padded a little). */
+    @OptIn(ExperimentalSerializationApi::class)
     fun fetchAlong(http: OkHttpClient, polyline: List<LatLng>, limit: Int = 4000): List<LatLng> {
         if (polyline.size < 2) return emptyList()
         val pad = 0.003 // ~300 m, so a signal just off the sampled line still lands in the box
@@ -63,13 +74,11 @@ object OverpassTrafficSignals {
         val e = polyline.maxOf { it.lng } + pad
         val query = "[out:json][timeout:25];node[\"highway\"=\"traffic_signals\"]($s,$w,$n,$e);out $limit;"
         return OverpassEndpoints.run(http, query) { body ->
-            val root = json.parseToJsonElement(body.string()).jsonObject
-            root["elements"]?.jsonArray?.mapNotNull { el ->
-                val o = el.jsonObject
-                val lat = (o["lat"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
-                val lng = (o["lon"] as? JsonPrimitive)?.doubleOrNull ?: return@mapNotNull null
+            json.decodeFromStream<SignalsResp>(body.byteStream()).elements.mapNotNull { node ->
+                val lat = node.lat ?: return@mapNotNull null
+                val lng = node.lon ?: return@mapNotNull null
                 LatLng(lat, lng)
-            }.orEmpty()
+            }
         } ?: emptyList()
     }
 }
