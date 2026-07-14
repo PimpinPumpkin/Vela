@@ -1946,8 +1946,11 @@ private fun ensureLayers(style: Style) {
     // ALPR / "Flock" surveillance cameras (community DeFlock mapping in OSM). Its own symbol
     // layer, populated only when the Settings toggle is on (empty source otherwise). Drawn BELOW
     // the ambient POIs (user 2026-07-13, was above): where a camera and a business icon/label
-    // share a spot the business wins; allowOverlap keeps the camera drawn everywhere else, and
-    // ignorePlacement means it never claims collision space from the POI stack either way.
+    // share a spot the business wins. The camera itself always draws (allowOverlap) AND claims
+    // its collision box (ignorePlacement=false, the controls-claim trick): symbols placing after
+    // it - the basemap street names and labels below this layer - dodge the badge instead of
+    // rendering half-covered under it (user saw a camera sitting on a street name). The POI
+    // stack places before this layer, so it is unaffected by the claim and still wins on top.
     if (style.getImage(FLOCK_IMG) == null) style.addImage(FLOCK_IMG, alprCameraBitmap())
     if (style.getSource(FLOCK_SRC) == null) {
         style.addSource(GeoJsonSource(FLOCK_SRC))
@@ -1967,8 +1970,8 @@ private fun ensureLayers(style: Style) {
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_IMG),
                     PropertyFactory.iconSize(flockSize),
-                    PropertyFactory.iconAllowOverlap(true),
-                    PropertyFactory.iconIgnorePlacement(true),
+                    PropertyFactory.iconAllowOverlap(true), // never yields itself...
+                    PropertyFactory.iconIgnorePlacement(false), // ...and later symbols (street names) dodge it
                     PropertyFactory.iconPadding(2f),
                 )
             }
