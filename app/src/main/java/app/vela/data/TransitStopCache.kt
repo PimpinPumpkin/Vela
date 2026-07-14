@@ -57,6 +57,7 @@ class TransitStopCache(private val context: Context) {
                     val stops = ArrayList<Transitous.MapStop>(stopsArr.length())
                     for (j in 0 until stopsArr.length()) {
                         val st = stopsArr.getJSONObject(j)
+                        val sib = st.optJSONArray("sib")
                         stops.add(
                             Transitous.MapStop(
                                 name = st.optString("n"),
@@ -64,6 +65,7 @@ class TransitStopCache(private val context: Context) {
                                 parentId = st.optString("p").takeIf { it.isNotEmpty() },
                                 lat = st.optDouble("la"),
                                 lon = st.optDouble("lo"),
+                                siblingIds = sib?.let { arr -> List(arr.length()) { arr.getString(it) } } ?: emptyList(),
                             ),
                         )
                     }
@@ -84,7 +86,8 @@ class TransitStopCache(private val context: Context) {
                     stops.put(
                         JSONObject()
                             .put("n", st.name).put("i", st.stopId).put("p", st.parentId ?: "")
-                            .put("la", st.lat).put("lo", st.lon),
+                            .put("la", st.lat).put("lo", st.lon)
+                            .put("sib", JSONArray(st.siblingIds)),
                     )
                 }
                 arr.put(

@@ -942,7 +942,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   doubled stops); rail/airport icons stay basemap. **Stops keep working offline**: every area you
   browse online is cached to disk (24-area LRU) and redraws with no signal - the same
   continuously-fresh property as the surveillance-camera dataset; never-visited areas fall back
-  to the OSM icons.
+  to the OSM icons. **Directional curb pairs merge into one icon (2026-07-13, device-verified).**
+  US feeds name both sides of the street identically with no direction field, so the same
+  intersection used to draw two overlapping same-named badges. Same-named stops within 160 m now
+  collapse to a single icon at their midpoint, and its board merges both curbs' departures - the
+  headsigns distinguish the directions (one row heads to the regional hub, another to the opposite
+  terminus), the way Google presents an intersection stop. Transit directions are unaffected: they
+  already walk you to the exact boarding coordinate of the specific curb. Stops whose names carry
+  the direction (NB/SB station styles) never merge.
 - ✅ **Live stop departure board (2026-07-12, keyless + device-verified).** Tapping a transit
   station (subway / rail / BART / bus stop) shows Google's **"See departure board"** right in the
   place sheet: each line and direction with its **route number in its real line colour** (the "14"/
