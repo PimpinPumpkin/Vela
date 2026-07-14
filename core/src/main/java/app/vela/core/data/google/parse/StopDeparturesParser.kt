@@ -41,6 +41,13 @@ object StopDeparturesParser {
 
     private const val TRANSIT_NODE_INDEX = 62
 
+    /** Positional anchors, remotely repairable via the signed calibration bundle
+     *  (Calibration.stopBoardIndices, adopted at config load). Null = compiled defaults.
+     *  The shape searches (findTransitNode's scan, findBadge, collectDepartures) still run
+     *  after these anchors, so a push is only needed when both the index AND shape drift. */
+    @Volatile var remoteIndices: Map<String, Int>? = null
+    private fun idx(key: String, def: Int) = remoteIndices?.get(key) ?: def
+
     /** Parse a raw `)]}'`-guarded place body (what the WebView reads out of
      *  `APP_INITIALIZATION_STATE`). Returns null for a place that isn't a transit stop. */
     fun parse(body: String): StopDepartures? = parse(GoogleResponse.parse(body))
@@ -48,7 +55,7 @@ object StopDeparturesParser {
     fun parse(root: JsonElement): StopDepartures? {
         val place = root.at(6) ?: return null
         val transit = findTransitNode(place) ?: return null
-        val groups = transit.at(1).arr() ?: return null
+        val groups = transit.at(idx("groups", 1)).arr() ?: return null
         // Two layouts show up: a station/subway groups entries by LINE -> DIRECTION -> departures,
         // while a busy bus stop lists each upcoming departure FLAT, every one tagged with its own
         // route badge (the "14R" pill). Rather than assume one shape, walk each group's entries,
@@ -57,7 +64,7 @@ object StopDeparturesParser {
         val merged = LinkedHashMap<String, MutableLine>()
         for (group in groups) {
             val mode = modeFor(group.at(1).str(), group)
-            val entries = group.at(2).arr() ?: continue
+            val entries = group.at(idx("entries", 2)).arr() ?: continue
             for (entry in entries) {
                 for ((headsign, node) in directionsOf(entry)) {
                     val deps = collectDepartures(node)
@@ -80,7 +87,7 @@ object StopDeparturesParser {
             .sortedBy { it.upcoming.firstOrNull()?.epochSec ?: Long.MAX_VALUE }
             .take(MAX_LINES)
         if (lines.isEmpty()) throw CalibrationNeededException("stop departures: 0 lines after grouping")
-        return StopDepartures(stationName = transit.at(0).str()?.takeIf { it.isNotBlank() }, lines = lines)
+        return StopDepartures(stationName = transit.at(idx("name", 0)).str()?.takeIf { it.isNotBlank() }, lines = lines)
     }
 
     /** Accumulates all departures seen for one (route, direction) across the flat entry list. */
@@ -162,7 +169,7 @@ object StopDeparturesParser {
     /** The transit-services node hangs off the place at [TRANSIT_NODE_INDEX]; if that field
      *  has shifted, fall back to the first place child whose subtree holds a departure tuple. */
     private fun findTransitNode(place: JsonElement): JsonElement? {
-        place.at(TRANSIT_NODE_INDEX)?.let { if (hasTimeTuple(it, 0)) return it }
+        place.at(idx("node", TRANSIT_NODE_INDEX))?.let { if (hasTimeTuple(it, 0)) return it }
         return place.arr()?.firstOrNull { hasTimeTuple(it, 0) }
     }
 
