@@ -122,18 +122,22 @@ never leave the device. **[Read the full breakdown of exactly what each service
 receives → `PRIVACY.md`](PRIVACY.md).**
 
 The short version: Google shrinks from *knowing who you are and everywhere you go* to
-*occasionally answering an anonymous question*. And the parts that matter most while
-driving - your GPS trace, your map browsing - never reach Google at all.
+*occasionally answering an anonymous question*. Your map browsing never reaches Google
+at all, and your GPS trace is never uploaded anywhere. While you're actively navigating,
+Vela does ask Google for fresh traffic from your current position every couple of
+minutes - that's what powers the faster-route offers and the live arrival time - and
+that re-check can be turned off in **Settings → Data & privacy** ("Live traffic
+re-checks"); off-course re-routes remain, since turn-by-turn can't work without them.
 
 | What Google gets | Google Maps app | Google Maps web | Vela |
 | --- | --- | --- | --- |
 | Tied to your Google account | Yes, always signed in | Yes unless incognito | Never - there is no login |
 | A persistent device identifier | Yes (device + ad IDs via Play Services) | Browser cookies | No account, no app key; just an IP like any website visitor |
-| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never sent. Position stays on the phone; searches send the map area you are looking at |
+| Your precise GPS position | Continuously while open, plus Location History if enabled | While the tab is open | Never while browsing - position stays on the phone; searches send the map area you are looking at. While navigating, anonymous re-routes and the optional live-traffic re-check send your current position (toggleable in Settings → Data & privacy) |
 | Every pan and zoom of the map | Yes - their servers render the map | Yes | No - map tiles come from OpenFreeMap, so Google never sees you browse |
 | Your searches | Yes, saved to your account history | Yes | The query text reaches Google anonymously, only when you search |
 | Place pages you open | Yes | Yes | The place lookup reaches Google anonymously |
-| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM/GraphHopper; Google sees one anonymous ETA check, never your live position |
+| Turn-by-turn routes | Yes, full trip telemetry | Yes | Routing runs on open OSRM/GraphHopper; Google answers anonymous traffic checks - at planning, and during the drive for re-routes and the optional faster-route scanning |
 | Saved places, home, work | Stored on their servers | Stored on their servers | Stored only on your phone |
 | Ad profile building | Feeds your ads profile | Feeds your ads profile | Nothing to attach it to |
 | Works with no Google contact at all | No | No | Yes - downloaded regions search, route, and navigate fully offline |
