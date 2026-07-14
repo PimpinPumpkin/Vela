@@ -79,6 +79,8 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
@@ -370,6 +372,13 @@ fun MapScreen(
     // The endpoints card's bottom edge, so the notification column can sit under it in
     // directions mode instead of printing over it (user 2026-07-13).
     var topCardBottomPx by remember { mutableStateOf(0) }
+    // In-nav search-along-route: the map search FAB arms a panel (text field + chips) above
+    // the bar. Reset when nav ends so a stale-open panel can't greet the next drive.
+    var navSearchOpen by remember { mutableStateOf(false) }
+    var navSearchQuery by remember { mutableStateOf("") }
+    LaunchedEffect(state.navigating) {
+        if (!state.navigating) { navSearchOpen = false; navSearchQuery = "" }
+    }
     // Measured height of the nav BOTTOM bar (ETA + End) → everything stacked above it (speedometer,
     // speed-limit sign, re-center FAB, GPS-lost chip) offsets from the REAL height instead of a fixed
     // 132dp guess. The bar grows with the system font size, and at a larger font scale the fixed offset
@@ -409,6 +418,10 @@ fun MapScreen(
             searchOpen -> { searchExpanded = false; focusManager.clearFocus(); vm.cancelPickOrigin(); vm.cancelPickStop() }
             state.editingStops -> vm.closeStopsEditor()
             state.showSteps -> vm.closeSteps()
+            // In-nav search: BACK peels the results list / the chip row before it can end the
+            // whole drive - ending nav because you browsed gas stations would be brutal.
+            state.navigating && state.results.isNotEmpty() -> vm.clearSearch()
+            state.navigating && navSearchOpen -> { navSearchOpen = false; focusManager.clearFocus() }
             state.navigating -> vm.stopNav()
             state.directionsOpen || state.activeRoute != null || state.routes.isNotEmpty() ||
                 state.transit.isNotEmpty() || state.transitLoading -> vm.clearRoute()
@@ -762,6 +775,11 @@ fun MapScreen(
             // to look at (Google does the same): the results sheet to its bar, the place sheet to
             // its minimized card. The bar / a drag brings them back.
             driveFollowing = driveFollowing,
+            onMapTap = {
+                // Tapping the map with the along-route panel up dismisses it, same as a pan
+                // ("tap off of it should close it", user 2026-07-14).
+                if (navSearchOpen) { navSearchOpen = false; focusManager.clearFocus() }
+            },
             onUserPan = {
                 // Grabbing the map is an explicit "let me look around" - stop tracking until the
                 // locate tap re-arms it (Google drops follow the moment you pan).
@@ -769,6 +787,7 @@ fun MapScreen(
                 // Bump ticks, don't flip state here: each sheet GLIDES down first and only then
                 // flips its collapsed state, so the bar/card swap happens invisibly (flipping
                 // straight away unmounted the content mid-drop — the "pops down" report).
+                if (navSearchOpen) { navSearchOpen = false; focusManager.clearFocus() }
                 if (resultsShown) resultsPanTick++
                 if (state.selected != null && !searchOpen) sheetPanTick++
                 if (state.directionsOpen && !searchOpen) dirPanTick++
@@ -1152,19 +1171,63 @@ fun MapScreen(
         // (The faster-route offer renders in the stacked notification column below, so it can
         // never sit under the turn card or on top of another card.)
 
-        // After panning away during nav — or swiping the banner ahead to preview a
-        // later step — a Re-center button reattaches the follow-camera AND snaps the
-        // banner back to the current step (Google-style); hidden while following live.
-        if (state.navigating && (state.navCameraDetached || state.previewStepIndex != null)) {
-            // Icon-only, tucked to the right and lifted clear of the bottom bar.
-            FloatingActionButton(
-                onClick = vm::recenterNav,
+        // The along-route search panel lives at the TOP, under the turn banner where the
+        // heads-up cards go (user 2026-07-14): one stable position - the keyboard can never
+        // cover it (no focus-driven move), and it can't collide with the FAB stack or the
+        // bottom bar. Transient heads-up cards may draw over it; they're rare and short-lived.
+        if (state.navigating && navSearchOpen && state.results.isEmpty()) {
+            val panelBannerBottom = with(LocalDensity.current) { navBannerBottomPx.toDp() }
+            app.vela.ui.nav.NavSearchChips(
+                query = navSearchQuery,
+                onQueryChange = { navSearchQuery = it },
+                onPick = { q ->
+                    navSearchOpen = false
+                    navSearchQuery = ""
+                    focusManager.clearFocus()
+                    vm.searchAlongRoute(q)
+                },
                 modifier = Modifier
-                    .dpadHighlight(RoundedCornerShape(16.dp))
+                    .align(Alignment.TopCenter)
+                    .padding(top = panelBannerBottom + 10.dp, start = 12.dp, end = 12.dp),
+            )
+        }
+
+        // Right-edge nav FAB stack: volume + search live ON THE MAP (the bottom bar was
+        // cramming four controls - user 2026-07-14; Google floats these there too), with the
+        // re-center button joining the stack when panned away / previewing a step. Hidden
+        // while the along-route results own the bottom slot.
+        if (state.navigating && state.results.isEmpty()) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
                     .padding(end = 16.dp, bottom = navBarClearance),
-            ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
+            ) {
+                if (state.navCameraDetached || state.previewStepIndex != null) {
+                    FloatingActionButton(
+                        onClick = vm::recenterNav,
+                        modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                    ) { Icon(Icons.Default.MyLocation, contentDescription = stringResource(R.string.mapscreen_recenter)) }
+                }
+                FloatingActionButton(
+                    onClick = vm::toggleVoice,
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                ) {
+                    Icon(
+                        if (state.voiceMuted) Icons.Default.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
+                        contentDescription = if (state.voiceMuted) stringResource(R.string.nav_unmute_voice) else stringResource(R.string.nav_mute_voice),
+                    )
+                }
+                FloatingActionButton(
+                    onClick = {
+                        navSearchOpen = !navSearchOpen
+                        if (!navSearchOpen) focusManager.clearFocus()
+                    },
+                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
+                ) { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.place_search_along_route)) }
+            }
         }
 
         // "Searching for GPS" chip — the banner distance/ETA freeze silently on signal loss
@@ -1300,23 +1363,27 @@ fun MapScreen(
                 modifier = Modifier.align(Alignment.BottomCenter),
             )
 
-            state.navigating -> NavControls(
-                remainingDistanceMeters = state.nav.remainingDistance,
-                remainingSeconds = state.nav.remainingDuration,
-                offRoute = state.nav.offRoute,
-                onStop = vm::stopNav,
-                onSteps = vm::openSteps,
-                voiceMuted = state.voiceMuted,
-                onToggleVoice = vm::toggleVoice,
-                trafficRatio = state.activeRoute?.trafficRatio,
-                modifier = Modifier
+            // While an in-nav search has results, the results branch below takes the bottom
+            // slot (Google's in-nav list does the same); clearing it brings the bar back.
+            state.navigating && state.results.isEmpty() -> Column(
+                Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(16.dp)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                NavControls(
+                    remainingDistanceMeters = state.nav.remainingDistance,
+                    remainingSeconds = state.nav.remainingDuration,
+                    offRoute = state.nav.offRoute,
+                    onStop = vm::stopNav,
+                    onSteps = vm::openSteps,
+                    trafficRatio = state.activeRoute?.trafficRatio,
                     // Measured AFTER the padding → the bar surface itself; navBarClearance adds the
                     // padding + gap back. Everything stacked above the bar keys off this.
-                    .onGloballyPositioned { navBarHeightPx = it.size.height },
-            )
+                    modifier = Modifier.onGloballyPositioned { navBarHeightPx = it.size.height },
+                )
+            }
 
             // The dedicated stops editor covers the directions panel while open (drag to
             // reorder, remove, add; one reroute on Done).

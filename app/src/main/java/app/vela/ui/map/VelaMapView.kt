@@ -223,6 +223,7 @@ fun VelaMapView(
     onNavPanned: () -> Unit = {},
     ambientCoversView: Boolean = false, // viewport inside the ambient-Google fetch area → OSM POIs yield
     onUserPan: () -> Unit = {},
+    onMapTap: () -> Unit = {}, // ANY map tap, before POI/marker resolution - dismiss-transients hook
     onScaleChanged: (metersPerPixel: Double) -> Unit = {},
     darkTheme: Boolean,
     applyKeylessTheme: Boolean,
@@ -274,6 +275,7 @@ fun VelaMapView(
     }
     val compassRightPx = with(density) { 8.dp.roundToPx() }
     val poiTap = rememberUpdatedState(onPoiTap)
+    val mapTap = rememberUpdatedState(onMapTap)
     val markerTap = rememberUpdatedState(onMarkerTap)
     val ambientTap = rememberUpdatedState(onAmbientTap)
     val transitStopTap = rememberUpdatedState(onTransitStopTap)
@@ -939,6 +941,7 @@ fun VelaMapView(
                 // controller's OK-at-crosshair runs the EXACT same resolution path;
                 // docs/dpad.md.)
                 val handleTap = handleTap@{ tapped: MLLatLng ->
+                    mapTap.value()
                     val p = map.projection.toScreenLocation(tapped)
                     // Generous hit radius (~16dp) so taps near a POI icon register —
                     // a tight box made the bigger markers feel un-tappable.

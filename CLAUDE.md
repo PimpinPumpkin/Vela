@@ -361,6 +361,17 @@ Defaults that make the safe path the easy one:
   threshold and hopped there - the "staccato" feel. State flips from taps / the reviews panel /
   auto-expand still animate via a LaunchedEffect that SKIPS when a settle is already targeting
   that detent (restarting would zero the coast velocity). A swipe still never CLOSES the sheet.
+- **In-nav search along route (2026-07-13, map-FAB layout 2026-07-14):** a right-edge FAB STACK
+  on the nav map (recenter-when-detached + volume + search - the bottom bar was cramming four
+  controls, and Google floats these) arms `NavSearchChips` (a free-text field + Gas/Food/Coffee/
+  Groceries chips, `NavOverlays.kt`) above the bar; the bar itself is ETA + Steps + End only; a pick runs the normal
+  `searchAlongRoute` (which skips stashing `alongRouteDest` while navigating), the nav branch of
+  MapScreen's bottom `when` steps aside while `state.results` is non-empty so the results sheet
+  shows, and `selectPlace` gates on `navigating` -> `addStopDuringNav` -> `NavSession.addStop`
+  (user-ordered replan: the pick becomes the NEXT stop, marks null until the new route lands so
+  a failed fetch keeps the stop for the next reroute/recheck; no back-on-course discard, no
+  cooldown). BACK order: results list, then the chip row, then end-nav - browsing gas stations
+  must never end the drive.
 - **Nav UI style (2026-07-08):** ManeuverBanner + NavControls are RoundedCornerShape(24/28dp)
   Cards with elevation 6dp, 54dp turn glyph, headlineMedium-bold distance, titleMedium-medium road
   name, FilledTonalIconButton for mute/steps. Keep new nav chrome on this treatment (no flat
