@@ -232,7 +232,12 @@
     <string name="place_gallery_counter">%1$d / %2$d</string>
     <string name="place_search_reviews">Пошук у відгуках</string>
     <string name="place_sort_reviews">Сортувати відгуки</string>
-    <string name="place_review_count">%1$d відгуків</string>
+    <plurals name="place_review_count"> <!-- format -->
+        <item quantity="one">%1$d відгук</item>
+        <item quantity="few">%1$d відгуки</item>
+        <item quantity="many">%1$d відгуків</item>
+        <item quantity="other">%1$d відгуку</item>
+    </plurals>
     <string name="place_all_n_reviews">Усі %1$d відгуків · сортування й пошук</string>
     <string name="place_all_reviews">Усі відгуки · сортування й пошук</string>
     <string name="place_reviews_progress">Відгуки · %1$d з приблизно %2$d</string>
@@ -436,7 +441,12 @@
     <string name="settings_update_checking">Перевірка…</string>
     <string name="settings_update_none">У вас найновіша версія.</string>
     <string name="settings_place_pages">Сторінки місць</string>
-    <string name="place_transit_stops">%1$d зупинок</string> <!-- format -->
+    <plurals name="place_transit_stops"> <!-- format -->
+        <item quantity="one">%1$d зупинка</item>
+        <item quantity="few">%1$d зупинки</item>
+        <item quantity="many">%1$d зупинок</item>
+        <item quantity="other">%1$d зупинки</item>
+    </plurals>
     <string name="place_transit_stop_id">Зупинка %1$s</string> <!-- format -->
     <string name="place_transit_tickets">Квитки та інформація</string>
     <string name="route_detail_unavailable">Деталі маршруту недоступні</string>
