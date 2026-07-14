@@ -1489,7 +1489,14 @@ architecture note.
   velocity, gated to >1.5 m/s with a known course, capped 2.5 s blind) and eases toward THAT, so
   the camera chases a target moving like the car - the nav glide, no route needed. The next fix
   re-anchors and the ease absorbs the correction. This CLOSES the "fuller dead-reckon is the next
-  step" note above; tuning (the 2.5 s cap, the 1.5 m/s gate) still wants a real drive. **The PUCK draws at the EASED position (`browseCam`), not the raw
+  step" note above; tuning (the 2.5 s cap, the 1.5 m/s gate) still wants a real drive.
+  **Drive-verified follow-ups (2026-07-14 evening):** (1) the DOT still jolted 1 Hz after the
+  camera went smooth - applyData's recomposition paint used the RAW fix while the ticker drew the
+  eased point, the exact bug the meBearing guard fixed for the ANGLE; `mePaint` (the eased point
+  while following) is the position twin - any new me-source writer must respect the ticker's
+  ownership of BOTH. (2) north-up is enforced against the LIVE camera bearing/tilt each frame,
+  not a copy seeded at engage - the shadow copy went blind to any rotation arriving from outside
+  the ticker and the map stayed rotated. **The PUCK draws at the EASED position (`browseCam`), not the raw
   fix (2026-07-13):** at the raw fix the dot teleported forward on the map each fix while the camera eased to
   catch up (the visible hop); at the eased position it stays centred and glides with the map, the locked
   puck+camera the nav follow has. (A fuller constant-velocity dead-reckon between fixes is the next step if it
