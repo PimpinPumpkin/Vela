@@ -548,8 +548,17 @@ fun VelaMapView(
                 val layer =
                     SymbolLayer("vela-addr-$i", srcId).apply {
                         setSourceLayer("address") // tippecanoe layer name (build-address-region.sh: -l address)
-                        setMinZoom(19f) // numbers only when truly close (~50 ft scale bar); 17.5 still carpeted whole blocks (user 2026-07-13)
+                        // The archive carries tiles only at z16-17, and MapLibre's pmtiles path never
+                        // cold-fetches a tile clamped 2+ levels below the camera - a layer minZoom of 19
+                        // meant a cold source (fresh launch, zoom straight in) fetched nothing, silently,
+                        // until some lower-zoom browse made tiles resident. So the layer arms at 17
+                        // (in-zoom-range is what drives fetching) and the 50 ft UX gate lives in
+                        // textOpacity instead (0 below 19; 17.5 still carpeted whole blocks, user 2026-07-13).
+                        setMinZoom(17f)
                         setProperties(
+                            PropertyFactory.textOpacity(
+                                Expression.step(Expression.zoom(), Expression.literal(0f), Expression.stop(19f, 1f)),
+                            ),
                             PropertyFactory.textField(Expression.get("number")),
                             PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                             PropertyFactory.textSize(10f),
