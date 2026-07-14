@@ -1292,15 +1292,7 @@ private fun NoteEditorDialog(
  */
 @Composable
 fun DirectionsPanel(
-    originName: String,
-    originIsMe: Boolean = true,
     destinationName: String,
-    onEditOrigin: (() -> Unit)? = null,
-    onEditDestination: (() -> Unit)? = null,
-    stops: List<String> = emptyList(),
-    onAddStop: (() -> Unit)? = null,
-    onEditStops: () -> Unit = {},
-    onSwap: () -> Unit,
     currentMode: TravelMode,
     routes: List<Route>,
     activeRoute: Route?,
@@ -1318,7 +1310,6 @@ fun DirectionsPanel(
     onSearchAlongRoute: (String) -> Unit,
     onWalkDirections: suspend (LatLng, LatLng) -> List<String> = { _, _ -> emptyList() },
     onStartTransit: (TransitItinerary) -> Unit = {},
-    onClose: () -> Unit,
     onTimeSelected: (Int, Long?) -> Unit = { _, _ -> },
     minimizeTick: Int = 0, // bumped when the user grabs the map — glide down, then flip collapsed
     modifier: Modifier = Modifier,
@@ -1441,140 +1432,9 @@ fun DirectionsPanel(
             ) {
                 Box(Modifier.width(36.dp).height(4.dp).clip(CircleShape).background(dim.copy(alpha = 0.4f)))
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    // The "From" row — tappable to route from a different place (Google
-                    // shows an edit affordance; here a pencil + accent text when editable).
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = if (onEditOrigin != null) {
-                            Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditOrigin() }.padding(vertical = 2.dp)
-                        } else Modifier,
-                    ) {
-                        // Origin wears the PIN — LOCATION-BLUE when it's your current position (the
-                        // non-verbal "this is you", like the map dot) — and the destination the
-                        // checkered FLAG. Every header row leads with the same fixed-width icon
-                        // slot so the glyphs align into one rail (the mixed sizes read "weird").
-                        Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                            Icon(
-                                Icons.Default.Place,
-                                contentDescription = null,
-                                // Teal = "the app means YOU" (red is the map's result-pin colour,
-                                // blue read as a foreign accent; teal matches the rest of the UI).
-                                tint = if (originIsMe) MaterialTheme.colorScheme.primary else dim,
-                                modifier = Modifier.size(17.dp),
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            originName,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = if (onEditOrigin != null) MaterialTheme.colorScheme.primary else dim,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (onEditOrigin != null) {
-                            Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.place_change_start), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                        }
-                    }
-                    Spacer(Modifier.height(3.dp))
-                    // Intermediate stops (multi-stop), between From and To like Google — each removable,
-                    // then an "Add stop" row. Only shown for drive/walk/bike (transit has no waypoints).
-                    if (currentMode != TravelMode.TRANSIT) {
-                        // Stops live in the dedicated editor now (drag to reorder, one reroute on
-                        // Done) — the header shows ONE compact tappable summary row instead of
-                        // stacking every stop with arrow/X buttons (that cram didn't scale past
-                        // two stops and invited mis-taps; user 2026-07-08).
-                        if (stops.isNotEmpty()) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditStops() }.padding(vertical = 2.dp),
-                            ) {
-                                Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                                    Box(Modifier.size(8.dp).clip(CircleShape).background(dim))
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                // First stop + a "+N" count, not every name joined (that still
-                                // read crammed with 2+ stops); the editor holds the full list.
-                                Text(
-                                    stops.first(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = dim,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    modifier = Modifier.weight(1f, fill = false),
-                                )
-                                if (stops.size > 1) {
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(
-                                        "+${stops.size - 1}",
-                                        style = MaterialTheme.typography.labelMedium,
-                                        color = dim,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(dim.copy(alpha = 0.15f))
-                                            .padding(horizontal = 5.dp, vertical = 1.dp),
-                                    )
-                                }
-                                Spacer(Modifier.width(6.dp))
-                                Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.stops_edit), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                            }
-                            Spacer(Modifier.height(3.dp))
-                        }
-                        if (onAddStop != null) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onAddStop() }.padding(vertical = 2.dp),
-                            ) {
-                                Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                                    Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(16.dp))
-                                }
-                                Spacer(Modifier.width(8.dp))
-                                Text(stringResource(R.string.place_add_stop), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
-                            }
-                            Spacer(Modifier.height(3.dp))
-                        }
-                    }
-                    // The "To" row — editable in the same way as "From", used when the
-                    // route is *reversed* (then the custom endpoint is the destination).
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = if (onEditDestination != null) {
-                            Modifier.clip(RoundedCornerShape(6.dp)).dpadHighlight(RoundedCornerShape(6.dp)).clickable { onEditDestination() }.padding(vertical = 2.dp)
-                        } else Modifier,
-                    ) {
-                        Box(Modifier.width(22.dp), contentAlignment = Alignment.Center) {
-                            // Flag in INK (theme-reactive white/black) — the finish marker is about
-                            // the PLACE, not an accent; teal is reserved for "you" (the origin pin).
-                            Icon(Icons.Default.SportsScore, contentDescription = null, tint = ink, modifier = Modifier.size(18.dp))
-                        }
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            destinationName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = ink,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (onEditDestination != null) {
-                            Spacer(Modifier.width(6.dp))
-                            Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.place_change_destination), tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(14.dp))
-                        }
-                    }
-                }
-                IconButton(onClick = onSwap) {
-                    Icon(Icons.Default.SwapVert, contentDescription = stringResource(R.string.place_swap_start_destination), tint = MaterialTheme.colorScheme.primary)
-                }
-                // Circled like the place-sheet header X (one close language). The SWAP stays a
-                // bare glyph on purpose: it's an inline utility between the from/to rows, and two
-                // circles side by side read heavier than the header needs.
-                Spacer(Modifier.width(4.dp))
-                HeaderCircleButton(Icons.Default.Close, stringResource(R.string.place_close_directions), tint = ink, bg = dim) { onClose() }
-            }
+            // The endpoint rows (origin / stops / destination, swap, close) live in the
+            // Google-style RouteTopCard at the top of the screen now — this panel keeps the
+            // mode chips, time chooser, routes and Start.
             // The body caps at the ANIMATED height (bodyMax when open = the old ~58% screen cap,
             // still scrollable inside) and fades over its last stretch; composed while any of it
             // shows, unmounted once settled at zero (the extras-gate pattern).

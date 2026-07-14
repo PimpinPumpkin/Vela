@@ -594,4 +594,7 @@
     <string name="map_layers">レイヤ</string>
     <string name="settings_layers_button">レイヤボタンを表示</string>
     <string name="settings_layers_button_hint">航空写真・交通状況・路線・地形を切り替える地図上のボタン。</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="other">+%d件の経由地</item>
+    </plurals>
 </resources>

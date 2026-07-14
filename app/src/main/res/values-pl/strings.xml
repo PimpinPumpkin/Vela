@@ -580,4 +580,10 @@
     <string name="map_layers">Warstwy</string>
     <string name="settings_layers_button">Pokaż przycisk warstw</string>
     <string name="settings_layers_button_hint">Przycisk mapy do przełączania satelity, ruchu, transportu i terenu.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d kolejny przystanek</item>
+        <item quantity="few">+%d kolejne przystanki</item>
+        <item quantity="many">+%d kolejnych przystanków</item>
+        <item quantity="other">+%d kolejnego przystanku</item>
+    </plurals>
 </resources>

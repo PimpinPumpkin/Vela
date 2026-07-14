@@ -594,4 +594,7 @@
     <string name="map_layers">图层</string>
     <string name="settings_layers_button">显示图层按钮</string>
     <string name="settings_layers_button_hint">地图上用于切换卫星、路况、公交和地形的按钮。</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="other">+%d个途经点</item>
+    </plurals>
 </resources>

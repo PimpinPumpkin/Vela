@@ -574,4 +574,8 @@
     <string name="map_layers">Livelli</string>
     <string name="settings_layers_button">Mostra pulsante livelli</string>
     <string name="settings_layers_button_hint">Il pulsante della mappa per satellite, traffico, trasporti e terreno.</string>
+    <plurals name="topcard_more_stops">
+        <item quantity="one">+%d altra fermata</item>
+        <item quantity="other">+%d altre fermate</item>
+    </plurals>
 </resources>
