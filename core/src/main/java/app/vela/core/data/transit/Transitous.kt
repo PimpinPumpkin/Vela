@@ -214,12 +214,14 @@ object Transitous {
             add(leg.to)
         }.filter { it.name.isNotBlank() }
         if (all.size < 2) return null
-        // Start the timeline at the tapped stop (the run begins at its origin terminal, often far
-        // before the user's stop). Nearest-by-distance, so it works from a canonical GTFS stop AND
-        // from a Google-resolved listing on a different corner. A terminus tap keeps the full run.
-        val idx = all.indices.minByOrNull { i -> distM(atLat, atLng, all[i].lat, all[i].lon) } ?: 0
-        val stops = if (idx >= all.size - 1) all else all.subList(idx, all.size)
-        val mapped = stops.map { st -> stopTime(st, legCancelled = leg.cancelled) }
+        // The timeline BOARDS at the tapped stop (nearest-by-distance, so it works from a canonical
+        // GTFS stop AND from a Google-resolved listing on a different corner); the stops the run
+        // already called at go into priorStops so the view can show them greyed above, Google-style.
+        // A terminus tap boards at the origin instead (an arrivals-only view has no ride left).
+        val idx = (all.indices.minByOrNull { i -> distM(atLat, atLng, all[i].lat, all[i].lon) } ?: 0)
+            .let { if (it >= all.size - 1) 0 else it }
+        val prior = all.subList(0, idx).map { st -> stopTime(st, legCancelled = leg.cancelled) }
+        val mapped = all.subList(idx, all.size).map { st -> stopTime(st, legCancelled = leg.cancelled) }
         return TransitStep(
             mode = modeOf(leg.mode),
             line = TransitLine(
@@ -235,6 +237,7 @@ object Transitous {
             numStops = mapped.size - 1,
             departText = mapped.first().timeText,
             arriveText = mapped.last().timeText,
+            priorStops = prior,
         )
     }
 
@@ -243,15 +246,19 @@ object Transitous {
         val sched = st.scheduledDeparture ?: st.scheduledArrival
         val shownEpoch = shown?.let { parseIso(it) }
         val schedEpoch = sched?.let { parseIso(it) }
+        val moved = schedEpoch != null && shownEpoch != null && schedEpoch != shownEpoch
         return TransitStopTime(
             name = st.name,
             code = st.stopCode,
             timeText = shownEpoch?.let { clockText(it, st.tz) },
             // The timetable time, kept ONLY when realtime moved the shown time - the row UI reads
             // "scheduled differs" as the live signal, same contract as the itinerary parser.
-            scheduledText = schedEpoch?.takeIf { shownEpoch != null && it != shownEpoch }?.let { clockText(it, st.tz) },
+            scheduledText = if (moved) clockText(schedEpoch!!, st.tz) else null,
             location = app.vela.core.model.LatLng(st.lat, st.lon),
             cancelled = st.cancelled || legCancelled,
+            // Signed minutes off the timetable (negative = early) so the row can colour a late
+            // call differently from an early one - the feed carries both (verified live).
+            delayMin = if (moved) (((shownEpoch!! - schedEpoch!!) / 60).toInt()) else null,
         )
     }
 
