@@ -45,6 +45,26 @@ class WebStopDeparturesFetcher @Inject constructor(
     private val pending = java.util.concurrent.ConcurrentHashMap<String, CompletableDeferred<String>>()
     @Volatile private var currentId: String = ""
     @Volatile private var webView: WebView? = null
+    private var reap: Runnable? = null
+
+    /** Free the WebView after a quiet period. A warm fetcher otherwise pins a full
+     *  maps.google.com page (DOM + renderer) for the rest of the session, and several warm
+     *  fetchers at once is real memory pressure (issue #182). The next fetch after a reap
+     *  just re-creates it - a one-off warm-up, only after minutes of not using the feature. */
+    private fun scheduleReap() {
+        reap?.let(main::removeCallbacks)
+        val r = Runnable {
+            webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
+            webView = null
+        }
+        reap = r
+        main.postDelayed(r, REAP_IDLE_MS)
+    }
+
+    private fun cancelReap() {
+        reap?.let(main::removeCallbacks)
+        reap = null
+    }
 
     private inner class Bridge {
         @JavascriptInterface
@@ -56,6 +76,15 @@ class WebStopDeparturesFetcher @Inject constructor(
     /** The departure board for the station with [featureId] (`0x..:0x..`), or null on any
      *  failure/timeout, or when the place isn't a transit stop (no board in its payload). */
     suspend fun fetch(featureId: String): StopDepartures? = mutex.withLock {
+        cancelReap()
+        try {
+            fetchLocked(featureId)
+        } finally {
+            scheduleReap()
+        }
+    }
+
+    private suspend fun fetchLocked(featureId: String): StopDepartures? {
         val cid = cidOf(featureId) ?: return null
         // hl=en to match the app's existing transit board (WebDirectionsFetcher also pins en); the
         // clock times/headway come back in 12-hour form the parser reads. gl=us keeps the schedule US-shaped.
@@ -77,7 +106,7 @@ class WebStopDeparturesFetcher @Inject constructor(
         if (app.vela.BuildConfig.DEBUG && !raw.isNullOrEmpty()) {
             runCatching { java.io.File(context.filesDir, "depdump.txt").writeText(raw) }
         }
-        if (raw.isNullOrEmpty()) null
+        return if (raw.isNullOrEmpty()) null
         else runCatching { StopDeparturesParser.parse(raw) }.getOrNull()
     }
 
@@ -112,6 +141,7 @@ class WebStopDeparturesFetcher @Inject constructor(
 
     private companion object {
         const val TOTAL_TIMEOUT_MS = 20_000L
+        const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 1_600L
 
         /** Pull the place-details string out of APP_INITIALIZATION_STATE — the longest
