@@ -529,7 +529,7 @@ fun VelaMapView(
     // (device-reproduced: Applebee's icon on the "5710" building vanished the moment numbers appeared; small
     // neighbours survived because the prominence-scaled big icons collide the most). Below the icons, numbers
     // place last and yield — Google's exact behaviour (a house number never displaces a business icon).
-    LaunchedEffect(addressOverlays, styleRef, darkTheme) {
+    LaunchedEffect(addressOverlays, styleRef, darkTheme, satelliteOn) {
         val style = styleRef ?: return@LaunchedEffect
         runCatching { style.layers.filter { it.id.startsWith("vela-addr-") }.forEach { style.removeLayer(it) } }
         runCatching { style.sources.filter { it.id.startsWith("vela-addr-src-") }.forEach { style.removeSource(it) } }
@@ -540,8 +540,10 @@ fun VelaMapView(
                 PropertyFactory.visibility(if (addressOverlays.isEmpty()) Property.VISIBLE else Property.NONE),
             )
         }
-        val txt = if (darkTheme) "#9aa0a6" else "#8a8a8a"
-        val halo = if (darkTheme) "#1b2432" else "#ffffff"
+        // Over satellite imagery: white-with-black-halo like every other label (these layers
+        // mount AFTER applySatelliteLabels' style-load sweep, so they style themselves).
+        val txt = if (satelliteOn) "#ffffff" else if (darkTheme) "#9aa0a6" else "#8a8a8a"
+        val halo = if (satelliteOn) "#000000" else if (darkTheme) "#1b2432" else "#ffffff"
         addressOverlays.forEachIndexed { i, uri ->
             runCatching {
                 val srcId = "vela-addr-src-$i"
@@ -556,7 +558,7 @@ fun VelaMapView(
                             PropertyFactory.textSize(10f),
                             PropertyFactory.textColor(txt),
                             PropertyFactory.textHaloColor(halo),
-                            PropertyFactory.textHaloWidth(1f),
+                            PropertyFactory.textHaloWidth(if (satelliteOn) 1.8f else 1f),
                             // Numbers still YIELD to icons/labels (allow-overlap stays false), but they
                             // never enter the collision index themselves: nothing needs to dodge a house
                             // number, and keeping hundreds of them out of the index makes each placement
