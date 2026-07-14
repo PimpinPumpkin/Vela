@@ -1588,7 +1588,16 @@ architecture note.
   captures `ref`/`destinations`/`exits` (not just `name`) and `osrmPhrase` uses them ("Take exit 72B
   toward …"); `Maneuver.ref` feeds the banner shield even when the text shows a name (fixed 2026-06-30 - 
   before, highway steps were nameless + shield-less). **`routeOsrm` retries 3× w/ backoff** - a transient
-  community-server blip otherwise drops nav to Google's abbreviated (nameless) steps. Google's keyless
+  community-server blip otherwise drops nav to Google's abbreviated (nameless) steps. **And
+  `googleDirectionsRetried` gives the GOOGLE side the same 3-attempt backoff (2026-07-14):** it had
+  ONE shot, and a single degraded/empty keyless reply cost the whole fetch its traffic ratio,
+  jam-snap and alternates - the picker then led with white-ETA free-flow OSRM routes that read
+  minutes faster than the traffic-aware set and varied wildly between restarts (real-drive report).
+  **Abbreviated fallback routes are TAGGED (`Route.abbreviatedSteps`, set on the OSRM-down branches
+  + the nameRoute failure path) and SELF-HEAL:** `maybeRecheck` silently adopts a full-stepped
+  same-course candidate over an adopted abbreviated route (same 250 m divergence test the ETA
+  calibration uses), so a mid-drive OSRM blip no longer leaves the banner disagreeing with the
+  blue line for the rest of the drive. Google's keyless
   `/maps/preview/directions` returns
   **abbreviated** steps for longer routes (a 6-mi route came back with 2 of ~10 turns), so it's
   demoted to (a) the **live-traffic source** - `GoogleMapsDataSource.applyTraffic` scales OSRM's
