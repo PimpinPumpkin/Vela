@@ -777,7 +777,11 @@ fun MapScreen(
             // Numbered stop pins while the trip UI is active (chooser, editor or the drive itself).
             stopPins = if (state.directionsOpen || state.navigating) state.directionsWaypoints.map { it.location } else emptyList(),
             navMode = state.navigating,
-            navFollowing = !state.navCameraDetached,
+            // Follow yields to a manual pan AND to step preview: the per-frame follow ticker used
+            // to keep re-pointing the camera at the puck while a banner swipe was trying to fly to
+            // the previewed turn - the two fought at 60 fps (user 2026-07-14). The puck itself
+            // keeps updating either way; only the camera steps aside.
+            navFollowing = !state.navCameraDetached && state.previewStepIndex == null,
             onNavPanned = vm::onNavPanned,
             ambientCoversView = state.ambientCoversView,
             // Grabbing the map with a sheet up drops it down out of the way so the map is yours

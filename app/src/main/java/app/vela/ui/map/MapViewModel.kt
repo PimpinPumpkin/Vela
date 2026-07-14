@@ -313,6 +313,12 @@ class MapViewModel @Inject constructor(
 
     init {
         loadAmbientCacheFromDisk() // ambient LRU survives restarts (paint-then-refine)
+        // Privacy toggle (Settings -> Data & privacy): periodic in-drive traffic re-checks send
+        // the CURRENT position to Google; the opt-out lives on the session so :core enforces it.
+        // (Raw prefs read: the settingsPrefs property is declared below this init block.)
+        navSession.liveRechecks = appContext
+            .getSharedPreferences("vela_settings", Context.MODE_PRIVATE)
+            .getBoolean("nav_live_rechecks", true)
         // A simulated location (Settings → demo) wins the seed so the app opens "there".
         val seed = app.vela.ui.SimLocation.point.value ?: locationProvider.lastKnown()
         _state.update { it.copy(center = seed, myLocation = it.myLocation ?: seed) }
@@ -3073,6 +3079,16 @@ class MapViewModel @Inject constructor(
         voice.muted = !on
         settingsPrefs.edit().putBoolean("spoken_directions", on).apply()
         _state.update { it.copy(voiceMuted = !on) }
+    }
+
+    /** Settings -> Data & privacy: periodic in-drive traffic re-checks (they send the current
+     *  position to Google every couple of minutes while navigating). Off kills the faster-route
+     *  offers, the live ETA recalibration and the abbreviated-steps self-heal; off-course
+     *  reroutes still work. */
+    fun liveRechecksOn() = settingsPrefs.getBoolean("nav_live_rechecks", true)
+    fun setLiveRechecks(on: Boolean) {
+        settingsPrefs.edit().putBoolean("nav_live_rechecks", on).apply()
+        navSession.liveRechecks = on
     }
 
     /** Reflect the persisted opt-in diagnostics flag into UI state (Settings reads it). */
