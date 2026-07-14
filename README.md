@@ -150,6 +150,7 @@ Deeper still is [`SPEC.md`](SPEC.md).
 | [`README.md`](README.md) | This - what Vela is, why, and the privacy comparison |
 | [`docs/HOW-IT-WORKS.md`](docs/HOW-IT-WORKS.md) | Every capability, the keyless method behind it, and the file to read first |
 | [`docs/BUILDING.md`](docs/BUILDING.md) | Building from source, module architecture, and the release pipeline |
+| [`docs/LANGUAGES.md`](docs/LANGUAGES.md) | The 15 supported languages, layer by layer (UI, spoken nav, neural voice, dictation), and how to add one |
 | [`FEATURES.md`](FEATURES.md) | The full, categorised list of every shipped capability (the encyclopaedia) |
 | [`SPEC.md`](SPEC.md) | The authoritative **rebuild spec** - architecture, extractor contract (pb layouts + response indices), resilience layer, hard constraints |
 | [`ROADMAP.md`](ROADMAP.md) | Planned work + big bets (opt-in telemetry, a Vela-own traffic layer, giant-country graph splits, …) |
@@ -190,7 +191,7 @@ Vela's whole point is that no account and no server ever sees you.
 
 Read [`CONTRIBUTING.md`](CONTRIBUTING.md) first - it covers the hard rules (no
 backend, no static Google keys, degoogled runtime, the `:core`/`:app` module
-boundary, docs-in-the-same-commit, and translations for all 14 locales) and how to
+boundary, docs-in-the-same-commit, and translations for all 15 languages) and how to
 send a change. There is no separate code-of-conduct document by design: keep it
 about the code. Security issues go through [`SECURITY.md`](SECURITY.md) (GitHub
 private vulnerability reporting), not a public issue.
