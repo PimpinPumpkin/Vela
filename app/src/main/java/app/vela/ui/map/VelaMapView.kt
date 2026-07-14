@@ -1952,13 +1952,17 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(FLOCK_SRC))
         val flockSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
+            Expression.stop(11f, 0.55f),
             Expression.stop(14f, 0.7f),
             Expression.stop(17f, 1.0f),
             Expression.stop(19f, 1.35f),
         )
         style.addLayer(
             SymbolLayer(FLOCK_LAYER, FLOCK_SRC).apply {
-                setMinZoom(13.5f)
+                // Must match the VM's FLOCK_MIN_ZOOM fetch gate: clamped at 13.5 this layer sat on
+                // fetched cameras without drawing them (z13-13.5 was a dead band, and route-overview
+                // zoom showed nothing at all - the half-done state vela-dpad caught, issue #131).
+                setMinZoom(11f)
                 setProperties(
                     PropertyFactory.iconImage(FLOCK_IMG),
                     PropertyFactory.iconSize(flockSize),
