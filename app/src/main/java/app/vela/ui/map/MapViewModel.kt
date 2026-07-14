@@ -1253,6 +1253,31 @@ class MapViewModel @Inject constructor(
     /** Handle an external `geo:` / Google-Maps link (Vela as the system maps
      *  handler): a query runs a search biased to any coordinates in the link; a
      *  bare point drops a reverse-geocoded pin there. */
+    /** Text SHARED to Vela (the system share sheet): a Google Maps share link imports like a
+     *  pasted one, a geo:/maps URL opens like a deep link, and anything else - an address, a
+     *  place name - just searches. Share payloads are usually "Check out X! https://..." so the
+     *  link is fished out of the prose first. */
+    fun openSharedText(raw: String) {
+        val token = raw.trim().split(Regex("\\s+")).firstOrNull {
+            MapLinkParser.isShareLink(it) || it.startsWith("http", ignoreCase = true) || it.startsWith("geo:", ignoreCase = true)
+        }
+        when {
+            token != null && MapLinkParser.isShareLink(token) -> {
+                _state.update { it.copy(query = token) }
+                runSearch(token, _state.value.myLocation ?: _state.value.center)
+            }
+            token != null -> {
+                val link = MapLinkParser.parse(token)
+                if (link != null) openDeepLink(link)
+                else runSearch(raw.trim(), _state.value.myLocation ?: _state.value.center)
+            }
+            raw.isNotBlank() -> {
+                _state.update { it.copy(query = raw.trim()) }
+                runSearch(raw.trim(), _state.value.myLocation ?: _state.value.center)
+            }
+        }
+    }
+
     fun openDeepLink(link: MapLink) {
         val near = link.lat?.let { la -> link.lng?.let { ln -> LatLng(la, ln) } }
         val q = link.query
