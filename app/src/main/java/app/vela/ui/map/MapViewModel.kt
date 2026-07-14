@@ -3071,6 +3071,12 @@ class MapViewModel @Inject constructor(
      *  step — so recenter undoes both a manual pan and a swipe-ahead step preview. */
     fun recenterNav() = _state.update { it.copy(navCameraDetached = false, previewStepIndex = null) }
 
+    /** The in-nav whole-route overview (Google's fly-over). CAMERA ONLY — guidance, voice and the
+     *  moving puck are untouched; marking the camera detached makes the follow step aside and puts
+     *  the Re-center button up, which glides straight back into the follow. The view layer does the
+     *  actual bounds fit off MapScreen's overview tick. */
+    fun navOverview() = _state.update { it.copy(navCameraDetached = true, previewStepIndex = null) }
+
     /** Mute / unmute spoken guidance (the in-nav speaker button). Persisted. */
     fun toggleVoice() = setSpokenDirections(voice.muted)
 
