@@ -2623,8 +2623,19 @@ class MapViewModel @Inject constructor(
                 val extra = eta(cur[best]) - eta0
                 val cap = minOf(eta0 * 0.25, 600.0)
                 if (counts[best] < counts[0] && extra <= cap && best != 0) {
-                    selectRoute(best)
-                    flashStatus(appContext.getString(R.string.mapvm_flock_avoided))
+                    // The avoided route LEADS the list (user 2026-07-14): with avoid-cameras on
+                    // the ranking is augmented by camera counts, not pure ETA - the low-camera
+                    // pick moves to the top for visibility and its count badge moves with it.
+                    // The "Fastest" tag still lands on the true fastest row (it keys off the
+                    // shown ETA, not list position), so the tradeoff stays legible.
+                    val order = listOf(best) + counts.indices.filter { it != best }
+                    _state.update {
+                        it.copy(
+                            routes = order.map { i -> cur[i] },
+                            flockOnRoute = order.map { i -> counts[i] },
+                        )
+                    }
+                    selectRoute(0)
                 }
             }
         }
