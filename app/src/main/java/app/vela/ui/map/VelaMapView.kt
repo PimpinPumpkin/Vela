@@ -271,6 +271,8 @@ fun VelaMapView(
     // Compass tap: return true to CONSUME (nav uses it to toggle heading-up/north-up); false runs
     // the default reorient-to-north animation.
     onCompassTap: () -> Boolean = { false },
+    poisEnabled: Boolean = true, // master "Show places on the map" - also hides the OSM fallback POIs
+    poiIconScale: Float = 1f, // Settings icon-size multiplier (low-density car screens want < 1)
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onAddressLabelTap: (number: String, location: LatLng) -> Unit = { _, _ -> },
@@ -711,6 +713,57 @@ fun VelaMapView(
             styleRef?.getLayer("building-3d")?.setProperties(
                 PropertyFactory.visibility(if (buildings3d) Property.VISIBLE else Property.NONE),
             )
+        }
+    }
+
+    // POI icon-size multiplier (user 2026-07-15): re-set the size expressions with the scale
+    // baked in. The base curves live at layer creation; this re-applies them scaled on style
+    // (re)load and whenever the Settings value changes. Low-density screens (car head units)
+    // render the fixed-px bitmaps physically huge - a 0.7x here is the fix that doesn't touch
+    // phones (their default stays 1.0).
+    LaunchedEffect(styleRef, poiIconScale) {
+        val st = styleRef ?: return@LaunchedEffect
+        val sc = poiIconScale
+        runCatching {
+            st.getLayer(AMBIENT_LAYER)?.setProperties(
+                PropertyFactory.iconSize(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.get("prominence"),
+                        Expression.stop(0.0, 0.78f * sc), Expression.stop(8.0, 1.3f * sc),
+                    ),
+                ),
+                PropertyFactory.textSize(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.get("prominence"),
+                        Expression.stop(0.0, 11f * sc), Expression.stop(8.0, 14f * sc),
+                    ),
+                ),
+            )
+            st.getLayer(AMBIENT_DOT_LAYER)?.setProperties(
+                PropertyFactory.circleRadius(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.get("prominence"),
+                        Expression.stop(0.0, 2.6f * sc), Expression.stop(8.0, 4.2f * sc),
+                    ),
+                ),
+            )
+            listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
+                st.getLayer(id)?.setProperties(PropertyFactory.iconSize(0.8f * sc))
+            }
+            st.getLayer(TRANSIT_STOPS_LAYER)?.setProperties(
+                PropertyFactory.iconSize(
+                    Expression.interpolate(
+                        Expression.linear(), Expression.zoom(),
+                        Expression.stop(15f, 0.78f * sc), Expression.stop(17f, 1.1f * sc), Expression.stop(19f, 1.4f * sc),
+                    ),
+                ),
+            )
+            val controlsScaled = Expression.interpolate(
+                Expression.linear(), Expression.zoom(),
+                Expression.stop(15.5f, 0.75f * sc), Expression.stop(17f, 1.05f * sc), Expression.stop(19f, 1.5f * sc),
+            )
+            st.getLayer(CONTROLS_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
+            st.getLayer(CONTROLS_CLAIM_LAYER)?.setProperties(PropertyFactory.iconSize(controlsScaled))
         }
     }
 
@@ -1739,7 +1792,7 @@ fun VelaMapView(
                 if (applyKeylessTheme) applyMapTheme(style, darkTheme) else tuneMapTiler(style, darkTheme)
                 if (satelliteOn) applySatelliteLabels(style)
                 emphasizeShields(style)
-                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled)
                 ensureSatellite(style, satelliteOn)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
@@ -1747,7 +1800,7 @@ fun VelaMapView(
             }
         } else {
             styleRef?.let {
-                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
+                applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled)
                 ensureSatellite(it, satelliteOn)
                 ensureTraffic(it, trafficOn)
                 ensureTransit(it, transitOn)
@@ -3589,6 +3642,7 @@ private fun applyData(
     routeProgress: Float,
     navMode: Boolean,
     parkingSpot: LatLng? = null,
+    poisEnabled: Boolean = true,
 ) {
     // Accuracy halo: shown only for a vague fix (see ACCURACY_HALO_MIN_M) and never during nav,
     // where the puck snaps to the road anyway. Identity-gated like everything else here.
@@ -3760,7 +3814,9 @@ private fun applyData(
     // viewport truly sits inside the ambient fetch's covered area — pan or zoom past it and the
     // OSM icons return immediately (the ambient dots still draw where they exist, so the covered
     // core keeps Google's data and the outskirts keep OSM's, merging as fresh fetches land).
-    val osmPoiVis = if (ambientCoversView || markers.size > 1) Property.NONE else Property.VISIBLE
+    // Master POI switch (user 2026-07-15): off hides the OSM fallback business POIs too, so the
+    // basemap is genuinely clean; searched results/pins are unaffected.
+    val osmPoiVis = if (!poisEnabled || ambientCoversView || markers.size > 1) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))

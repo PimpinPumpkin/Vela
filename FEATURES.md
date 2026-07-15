@@ -1256,6 +1256,20 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   level was wherever the animation happened to be when interrupted. While the follow is
   active the standard zoom now rides the follow ticker itself (position and zoom ease
   together, uncancellable); the plain animation stays for the not-following case.
+- ✅ **Places-on-the-map controls (2026-07-15, Settings).** A new section with a master "Show
+  places" switch (off = a clean basemap - the ambient layer, its fetch AND the OSM fallback
+  business POIs all hide; searched results still draw), a "Parks, schools and civic places"
+  toggle (drops the non-business tier from the ambient pool, filtered in state so tap
+  indices stay aligned), a "Transit stops" toggle (icons + their per-viewport fetch), and a
+  "Place icon size" choice (Small / Default / Large) that scales the ambient icons+labels,
+  the mini-dot tier, the OSM POI icons, transit stops and traffic controls together - Small
+  exists for low-density car head units (a 1024x600 screen renders the fixed-px bitmaps
+  physically huge); phones default to 1.0 and are untouched. All toggles act immediately.
+- ✅ **Fire stations are not bus stops anymore (2026-07-15).** The category classifier's
+  transit branch matched the bare word "station" before the civic branch could claim "fire
+  station", so fire houses drew with the transit icon. Civic now classifies first, and the
+  bare "station" keyword excludes the non-transit flavors (power, pumping, radio, ranger,
+  weigh, polling stations and friends).
 - ✅ **House-number searches resolve locally, like Google (2026-07-15, reported with two
   local test addresses).** Two holes closed. The on-device address geocoder (exact and
   interpolated house numbers from the downloaded pack) now joins ONLINE searches and
