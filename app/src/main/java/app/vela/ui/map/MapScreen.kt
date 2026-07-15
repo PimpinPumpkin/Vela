@@ -246,6 +246,8 @@ fun MapScreen(
     LaunchedEffect(dirMinimized) { vm.onDirectionsCollapsed(dirMinimized) }
     LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) dirMinimized = false }
     val cameraBottomInset = when {
+        // Street View pane up: the sheet yields, so no bottom inset (the SV top inset takes over).
+        state.streetView != null || state.streetViewLoading -> 0
         placeSheetUp -> (screenHeightPx * 0.56f).toInt()
         state.directionsOpen && !state.navigating ->
             (screenHeightPx * (if (dirMinimized) 0.14f else 0.58f)).toInt()
@@ -854,6 +856,7 @@ fun MapScreen(
             parkingSpot = state.parkingSpot,
             onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
             svPose = svPose,
+            svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,

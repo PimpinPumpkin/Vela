@@ -119,9 +119,14 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
     private class PanoRenderer : Renderer {
         // Camera state (radians / degrees), touched from the UI thread but read on the GL thread;
         // volatile is enough for these scalars (a slightly stale frame is invisible).
+        // Zoom is canonically the HORIZONTAL field of view: when the pane grows (half-screen ->
+        // full screen) a fixed vertical fov would NARROW the horizontal view (fovX = fovY*aspect,
+        // aspect shrinks) - fullscreen read as "it just zoomed in". Holding fovX keeps the same
+        // horizontal framing and reveals more sky/ground instead, and it's also the value the
+        // walk-arrow overlay needs (it projects bearings across the screen WIDTH).
         @Volatile private var yaw = 0f
         @Volatile private var pitch = 0f
-        @Volatile private var fovY = 75f
+        @Volatile private var fovX = 75f
 
         private var program = 0
         private var aPos = 0
@@ -146,19 +151,27 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
         fun setYaw(r: Float) { yaw = r }
         fun yawRad(): Float = yaw
-        fun fovDeg(): Float = fovY
+        fun fovDeg(): Float = fovX
+
+        /** Vertical fov (deg) derived from the canonical horizontal fov and the live aspect. */
+        private fun vFovDeg(): Float {
+            val a = if (aspect > 0.05f) aspect else 1f
+            return Math.toDegrees(
+                2.0 * Math.atan(Math.tan(Math.toRadians(fovX / 2.0)) / a),
+            ).toFloat()
+        }
 
         fun dragBy(dx: Float, dy: Float, w: Int, h: Int) {
             // 1.7x so a swipe covers more than one field of view - the 1:1 mapping felt sluggish
             // (user 2026-07-15). Still scales with FOV so zoomed-in panning stays proportional.
-            val perPx = Math.toRadians(fovY.toDouble()).toFloat() / max(1, h) * DRAG_SENSITIVITY
+            val perPx = Math.toRadians(vFovDeg().toDouble()).toFloat() / max(1, h) * DRAG_SENSITIVITY
             yaw -= dx * perPx      // drag right -> world rotates left (grab-and-pull)
             pitch += dy * perPx    // drag down -> look down
             val lim = Math.toRadians(85.0).toFloat()
             pitch = pitch.coerceIn(-lim, lim)
         }
 
-        fun zoomBy(scale: Float) { fovY = (fovY / scale).coerceIn(30f, 100f) }
+        fun zoomBy(scale: Float) { fovX = (fovX / scale).coerceIn(30f, 110f) }
 
         fun setTexture(bmp: Bitmap) { pendingBitmap = bmp }
 
@@ -205,7 +218,7 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
             val mix = if (fading) {
                 ((System.nanoTime() - fadeStartNanos).toFloat() / FADE_NANOS).coerceIn(0f, 1f)
             } else 1f
-            val drawFov = fovY - DOLLY_DEG * (1f - mix)
+            val drawFov = vFovDeg() - DOLLY_DEG * (1f - mix)
 
             Matrix.perspectiveM(proj, 0, drawFov, aspect, 0.05f, 20f)
             // Look direction from yaw/pitch (yaw=0 faces -Z). Camera at the origin.
