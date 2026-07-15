@@ -1211,12 +1211,27 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
-- ✅ **In-nav compass toggle: heading-up or north-up (2026-07-15).** A compass button in the
-  nav button stack flips the follow camera between the default heading-up view and a north-up
-  flat view that still follows the puck (position, speed zoom, puck-low framing all kept; the
-  arrow rotates on the map instead of the map rotating under it). The icon leans while
-  heading-up and sits straight, tinted, while north-up; the switch eases over a beat rather
-  than snapping.
+- ✅ **In-nav compass toggle: heading-up or north-up (2026-07-15).** Tapping the compass that
+  already sits below the maneuver card flips the follow camera between the default heading-up
+  view and a north-up flat view that still follows the puck (position, speed zoom, puck-low
+  framing all kept; the arrow rotates on the map instead of the map rotating under it), easing
+  over a beat rather than snapping. Outside navigation the compass keeps its stock
+  reorient-to-north tap. (First cut added a separate button to the nav stack; replaced same
+  day with the existing compass per feedback.)
+- ✅ **Two-finger tilt works during navigation (2026-07-15).** The shove gesture had no guard,
+  so the follow ticker rewrote its own tilt every frame and the gesture jittered and lost.
+  The ticker now steps aside during a shove (like a pinch), the resulting tilt sticks as a
+  per-drive override the way pinch zoom does, and a shove's incidental finger drift no longer
+  reads as a pan that detaches the camera. Cleared when the drive ends.
+- ✅ **Route overview fits the WHOLE route (2026-07-15).** The in-nav overview used to fit the
+  bounds while keeping the follow camera's rotation and 55-degree pitch, which shows less than
+  the whole route however correct the math. It now levels to north-up flat as part of the fit,
+  like Google's overview.
+- ✅ **Locate button restores a consistent zoom (2026-07-15).** The tap's zoom animation was
+  being cancelled mid-flight by the free-drive follow's per-frame camera writes, so the final
+  level was wherever the animation happened to be when interrupted. While the follow is
+  active the standard zoom now rides the follow ticker itself (position and zoom ease
+  together, uncancellable); the plain animation stays for the not-following case.
 - ✅ **House-number searches resolve locally, like Google (2026-07-15, reported with two
   local test addresses).** Two holes closed. The on-device address geocoder (exact and
   interpolated house numbers from the downloaded pack) now joins ONLINE searches and
