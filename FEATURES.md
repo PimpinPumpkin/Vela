@@ -1015,6 +1015,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ⬜ Self-hosted routing backend (replace the FOSSGIS community server)
 
 ## Navigation
+- ✅ **Steps viewer: swipe down anywhere to close + no stray stops while it's up (2026-07-15,
+  user).** The route step list now dismisses with a downward swipe on the BODY once the list is
+  at its top (nested-scroll into the same drag the handle uses; mid-list swipes still scroll),
+  not just via the X. And the route-through-here map press is gated: while the steps viewer or
+  the full route picker covers the map, taps on buildings/unnamed POIs (which share the
+  long-press handler) no longer silently add a stop and reroute - adding a stop by pressing the
+  map works only once the chooser is minimized to its Start bar, where the map is the primary
+  surface. Deliberate flows (Add stop -> choose on map, the origin picker) are untouched.
 - ✅ **Compact turn banner on short screens (2026-07-15, ported from the vela-dpad fork, credit
   ars18).** Below 500dp of screen height (landscape phones, car head units in landscape) the
   maneuver banner shrinks its paddings, glyph and distance type so it stops eating the map;
