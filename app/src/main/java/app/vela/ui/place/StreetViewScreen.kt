@@ -90,8 +90,11 @@ fun StreetViewScreen(
                 // texture) on screen after a walk while the date updated: new date, stale imagery.
                 val view = remember { PanoramaView(ctx) }
                 DisposableEffect(view) { onDispose { view.onPause() } }
-                // Re-aim at each new pano's heading, and feed each new stitched bitmap in.
-                LaunchedEffect(pano.panoId) { view.setInitialYaw(pano.headingDeg.toFloat()) }
+                // Re-aim at each new pano (capture heading = the texture's compass reference; face
+                // the requested compass direction, or down the street), and feed each bitmap in.
+                LaunchedEffect(pano.panoId) {
+                    view.setCompass(pano.headingDeg.toFloat(), (pano.initialFacingDeg ?: pano.headingDeg).toFloat())
+                }
                 LaunchedEffect(bitmap) { bitmap?.let { view.setPanorama(it) } }
                 LaunchedEffect(view) {
                     while (true) {
