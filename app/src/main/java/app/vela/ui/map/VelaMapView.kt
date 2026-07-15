@@ -1940,6 +1940,7 @@ fun VelaMapView(
                 emphasizeShields(style)
                 applyData(map, style, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot, poisEnabled, svPose)
                 ensureSatellite(style, satelliteOn)
+                ensureNavRoadLabels(style, navMode, darkTheme)
                 ensureTraffic(style, trafficOn)
                 ensureTransit(style, transitOn)
                 ensureTopography(style, topographyOn)
@@ -1953,9 +1954,11 @@ fun VelaMapView(
                 // when their toggle actually flips; the style-reload branch above still calls
                 // them unconditionally on a fresh style.
                 val ensureKey = (if (satelliteOn) 1 else 0) or (if (trafficOn) 2 else 0) or
-                    (if (transitOn) 4 else 0) or (if (topographyOn) 8 else 0)
+                    (if (transitOn) 4 else 0) or (if (topographyOn) 8 else 0) or
+                    (if (navMode) 16 else 0) or (if (darkTheme) 32 else 0)
                 if (ensureKey != lastEnsureKey[0]) {
                     lastEnsureKey[0] = ensureKey
+                    ensureNavRoadLabels(it, navMode, darkTheme)
                     ensureSatellite(it, satelliteOn)
                     ensureTraffic(it, trafficOn)
                     ensureTransit(it, transitOn)
@@ -2903,6 +2906,56 @@ private fun ensureTopography(style: Style, on: Boolean) {
 
 /** Toggle Google's live-traffic raster overlay. Inserted below the route line +
  *  labels so they stay on top; keyless public tiles, removed cleanly when off. */
+private const val NAV_ROADLABEL_LAYER = "vela-nav-roadlabels"
+
+/** Google-style floating road labels during NAV: horizontal, viewport-aligned name chips over the
+ *  roads you're crossing or driving beside - far more legible than the line-following basemap
+ *  labels, especially with the camera tilted (user 2026-07-16). A heavy rounded halo gives the
+ *  chip look; LINE_CENTER placement puts one per road with the collision engine decluttering. */
+private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean) {
+    val layer = style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer
+    if (!on) {
+        layer?.setProperties(PropertyFactory.visibility(Property.NONE))
+        return
+    }
+    if (layer == null) {
+        if (style.getSource("openmaptiles") == null) return
+        style.addLayer(
+            SymbolLayer(NAV_ROADLABEL_LAYER, "openmaptiles").withSourceLayer("transportation_name")
+                .withFilter(
+                    Expression.all(
+                        Expression.has("name"),
+                        Expression.match(
+                            Expression.get("class"),
+                            Expression.literal(false),
+                            Expression.stop("motorway", true), Expression.stop("trunk", true),
+                            Expression.stop("primary", true), Expression.stop("secondary", true),
+                            Expression.stop("tertiary", true), Expression.stop("minor", true),
+                        ),
+                    ),
+                )
+                .withProperties(
+                    PropertyFactory.textField(Expression.get("name")),
+                    PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
+                    PropertyFactory.textSize(13f),
+                    PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE_CENTER),
+                    // Horizontal + upright regardless of the road's angle or the camera tilt -
+                    // the whole point vs the line-following basemap labels.
+                    PropertyFactory.textRotationAlignment(Property.TEXT_ROTATION_ALIGNMENT_VIEWPORT),
+                    PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
+                    PropertyFactory.textPadding(8f),
+                    PropertyFactory.textHaloBlur(0.4f),
+                ).apply { minZoom = 13.5f },
+        )
+    }
+    (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)?.setProperties(
+        PropertyFactory.visibility(Property.VISIBLE),
+        PropertyFactory.textColor(if (dark) "#e8eaed" else "#202124"),
+        PropertyFactory.textHaloColor(if (dark) "#2b3648" else "#ffffff"),
+        PropertyFactory.textHaloWidth(2.4f),
+    )
+}
+
 private fun ensureTraffic(style: Style, on: Boolean) {
     val present = style.getLayer(TRAFFIC_LAYER) != null
     if (on && !present) {
@@ -4100,7 +4153,10 @@ private fun applyData(
     // core keeps Google's data and the outskirts keep OSM's, merging as fresh fetches land).
     // Master POI switch (user 2026-07-15): off hides the OSM fallback business POIs too, so the
     // basemap is genuinely clean; searched results/pins are unaffected.
-    val osmPoiVis = if (!poisEnabled || ambientCoversView || markers.size > 1) Property.NONE else Property.VISIBLE
+    // During NAV the basemap POIs stay up (gas stations along the way - user 2026-07-16; Google
+    // shows POIs while navigating too): only the master switch hides them. The ambient-dots and
+    // many-results suppressors apply to the browse map alone.
+    val osmPoiVis = if (!poisEnabled || (!navMode && (ambientCoversView || markers.size > 1))) Property.NONE else Property.VISIBLE
     if (osmPoiVis != lastOsmPoiVis) {
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))

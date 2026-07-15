@@ -452,6 +452,19 @@ class MapViewModel @Inject constructor(
         }
         maybeCheckForUpdate()
 
+        // Returning to the app mid-drive re-attaches the follow camera (Google's behaviour). A
+        // stray pan while backgrounding often left it detached, so the map sat wherever it was
+        // until a manual Re-center tap.
+        viewModelScope.launch {
+            app.vela.ui.AppVisibility.foreground.collect { fg ->
+                if (fg && _state.value.navigating && _state.value.previewStepIndex == null &&
+                    _state.value.navCameraDetached
+                ) {
+                    _state.update { it.copy(navCameraDetached = false) }
+                }
+            }
+        }
+
         viewModelScope.launch {
             navSession.state.collect { ns ->
                 // Persist the recorded trip the instant we arrive, so it survives even if
@@ -473,6 +486,10 @@ class MapViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         navigating = ns.navigating,
+                        // Every drive starts heading-up (Google's default). The compass toggle is
+                        // per-drive, not sticky: a north-up pick from a previous session used to
+                        // leak into the next drive's opening frames.
+                        navNorthUp = if (navStarted) false else it.navNorthUp,
                         arrived = ns.arrived,
                         nav = ns.nav,
                         maneuverText = ns.maneuverText,
