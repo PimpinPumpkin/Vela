@@ -32,6 +32,11 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
     private var lastY = 0f
     private var pointerId = -1
 
+    companion object {
+        /** Crossfade/morph duration between panos. Renderer mirrors this in FADE_NANOS. */
+        const val FADE_MS = 300L
+    }
+
     init {
         setEGLContextClientVersion(2)
         setRenderer(renderer)
@@ -45,10 +50,17 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         })
     }
 
-    /** The stitched equirect (2:1). Uploaded on the GL thread; recycled after upload. */
+    /** The stitched equirect (2:1). Uploaded on the GL thread; the renderer keeps the OUTGOING
+     *  texture and crossfades to this one (a "morph" into the next spot, not a hard snap), so we
+     *  drive continuous rendering for the length of the fade then fall back to render-on-demand. */
     fun setPanorama(bitmap: Bitmap) {
-        queueEvent { renderer.setTexture(bitmap); requestRender() }
+        queueEvent { renderer.setTexture(bitmap) }
+        renderMode = RENDERMODE_CONTINUOUSLY
+        removeCallbacks(stopFade)
+        postDelayed(stopFade, FADE_MS + 100L)
     }
+
+    private val stopFade = Runnable { renderMode = RENDERMODE_WHEN_DIRTY }
 
     /** Initial camera yaw in degrees (the pano's own heading), so it faces down the street. */
     fun setInitialYaw(deg: Float) { renderer.setYaw(Math.toRadians(deg.toDouble()).toFloat()) }
@@ -104,7 +116,10 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         private var aUv = 0
         private var uMvp = 0
         private var uTex = 0
-        private var texId = 0
+        private var uAlpha = 0
+        private var texId = 0        // the current (incoming) panorama
+        private var texPrev = 0      // the outgoing panorama, kept alive until the crossfade ends
+        private var fadeStartNanos = 0L
         private var pendingBitmap: Bitmap? = null
 
         private lateinit var vertices: FloatBuffer
@@ -144,6 +159,10 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
             aUv = GLES20.glGetAttribLocation(program, "aUv")
             uMvp = GLES20.glGetUniformLocation(program, "uMvp")
             uTex = GLES20.glGetUniformLocation(program, "uTex")
+            uAlpha = GLES20.glGetUniformLocation(program, "uAlpha")
+            GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            // A fresh surface has no textures - drop any stale ids so we don't fade from garbage.
+            texId = 0; texPrev = 0; fadeStartNanos = 0L
         }
 
         override fun onSurfaceChanged(gl: javax.microedition.khronos.opengles.GL10?, w: Int, h: Int) {
@@ -152,11 +171,31 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
         }
 
         override fun onDrawFrame(gl: javax.microedition.khronos.opengles.GL10?) {
-            pendingBitmap?.let { uploadTexture(it); pendingBitmap = null }
+            pendingBitmap?.let { bmp ->
+                // Keep the OUTGOING texture around and crossfade into the new one. A new fade that
+                // lands mid-fade just discards the previous outgoing frame (rapid walking).
+                val newId = uploadTexture(bmp)
+                if (texId != 0) {
+                    if (texPrev != 0) GLES20.glDeleteTextures(1, intArrayOf(texPrev), 0)
+                    texPrev = texId
+                    fadeStartNanos = System.nanoTime()
+                }
+                texId = newId
+                pendingBitmap = null
+            }
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT or GLES20.GL_DEPTH_BUFFER_BIT)
             if (texId == 0) return
 
-            Matrix.perspectiveM(proj, 0, fovY, aspect, 0.05f, 20f)
+            // Crossfade progress 0..1. A subtle forward "dolly" (zoom in a few degrees, easing back
+            // out as the fade completes) sells stepping FORWARD into the next pano rather than a flat
+            // dissolve. When texPrev is 0 there's nothing to fade from - draw the new one outright.
+            val fading = texPrev != 0
+            val mix = if (fading) {
+                ((System.nanoTime() - fadeStartNanos).toFloat() / FADE_NANOS).coerceIn(0f, 1f)
+            } else 1f
+            val drawFov = fovY - DOLLY_DEG * (1f - mix)
+
+            Matrix.perspectiveM(proj, 0, drawFov, aspect, 0.05f, 20f)
             // Look direction from yaw/pitch (yaw=0 faces -Z). Camera at the origin.
             val cx = (cos(pitch) * sin(yaw))
             val cy = sin(pitch)
@@ -167,24 +206,42 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
             GLES20.glUseProgram(program)
             GLES20.glUniformMatrix4fv(uMvp, 1, false, mvp, 0)
             GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
             GLES20.glUniform1i(uTex, 0)
-
             GLES20.glEnableVertexAttribArray(aPos)
             GLES20.glVertexAttribPointer(aPos, 3, GLES20.GL_FLOAT, false, 0, vertices)
             GLES20.glEnableVertexAttribArray(aUv)
             GLES20.glVertexAttribPointer(aUv, 2, GLES20.GL_FLOAT, false, 0, uvs)
-            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indices)
+
+            if (fading && mix < 1f) {
+                // Outgoing pano, fully opaque underneath…
+                GLES20.glDisable(GLES20.GL_BLEND)
+                drawSphere(texPrev, 1f)
+                // …incoming pano blended on top, ramping in.
+                GLES20.glEnable(GLES20.GL_BLEND)
+                drawSphere(texId, mix)
+                GLES20.glDisable(GLES20.GL_BLEND)
+            } else {
+                GLES20.glDisable(GLES20.GL_BLEND)
+                drawSphere(texId, 1f)
+                if (texPrev != 0) { GLES20.glDeleteTextures(1, intArrayOf(texPrev), 0); texPrev = 0 }
+            }
+
             GLES20.glDisableVertexAttribArray(aPos)
             GLES20.glDisableVertexAttribArray(aUv)
         }
 
-        private fun uploadTexture(bmp: Bitmap) {
-            if (texId != 0) GLES20.glDeleteTextures(1, intArrayOf(texId), 0)
+        private fun drawSphere(tex: Int, alpha: Float) {
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, tex)
+            GLES20.glUniform1f(uAlpha, alpha)
+            GLES20.glDrawElements(GLES20.GL_TRIANGLES, indexCount, GLES20.GL_UNSIGNED_SHORT, indices)
+        }
+
+        /** Uploads a bitmap to a FRESH texture and returns its id (does not touch [texId]). */
+        private fun uploadTexture(bmp: Bitmap): Int {
             val ids = IntArray(1)
             GLES20.glGenTextures(1, ids, 0)
-            texId = ids[0]
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
+            val id = ids[0]
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, id)
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MIN_FILTER, GLES20.GL_LINEAR)
             GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_MAG_FILTER, GLES20.GL_LINEAR)
             // Horizontal wrap so the 360° seam is continuous (the image is POT); clamp vertically.
@@ -194,6 +251,7 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
             // recycled by its owner (the VM) after this - we don't recycle it here, or the state's
             // reference would double-free / a recompose could re-upload a recycled bitmap.
             GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, bmp, 0)
+            return id
         }
 
         private fun buildSphere(slices: Int, stacks: Int) {
@@ -253,12 +311,14 @@ class PanoramaView(context: Context) : GLSurfaceView(context) {
 
         companion object {
             private const val DRAG_SENSITIVITY = 1.7f
+            private const val DOLLY_DEG = 5f            // forward "step into it" zoom during the fade
+            private const val FADE_NANOS = 300_000_000f // keep in step with PanoramaView.FADE_MS (300 ms)
             private const val VERT =
                 "uniform mat4 uMvp; attribute vec4 aPos; attribute vec2 aUv; varying vec2 vUv;" +
                     "void main(){ vUv = aUv; gl_Position = uMvp * aPos; }"
             private const val FRAG =
-                "precision mediump float; uniform sampler2D uTex; varying vec2 vUv;" +
-                    "void main(){ gl_FragColor = texture2D(uTex, vUv); }"
+                "precision mediump float; uniform sampler2D uTex; uniform float uAlpha; varying vec2 vUv;" +
+                    "void main(){ vec4 c = texture2D(uTex, vUv); gl_FragColor = vec4(c.rgb, c.a * uAlpha); }"
         }
     }
 }
