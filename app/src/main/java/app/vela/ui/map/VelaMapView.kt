@@ -3483,9 +3483,14 @@ private fun applyData(
                     addStringProperty("icon", "vela-poi-$group")
                     addStringProperty("dotColor", PoiIcons.colorFor(group)) // mini-dot tier tint
                     addNumberProperty(AMBIENT_INDEX_PROP, i)
-                    // Collision priority: the data source returns the most prominent places first, so a
-                    // lower index wins its slot (MapLibre places lower symbol-sort-key first).
-                    addNumberProperty("sort", i)
+                    // Collision priority must be STABLE across the streamed partial paints: it used
+                    // to be the list index, and the pool RE-RANKS as search terms land, so the same
+                    // place's priority changed on every upload and the whole layer's placement
+                    // reshuffled - icons visibly consolidated and popped into each other on a cold
+                    // load (user 2026-07-14). Prominence is a property of the PLACE (identical in
+                    // every upload), so priorities hold still while the set grows; the index only
+                    // breaks ties between equally prominent places. Lower sort key places first.
+                    addNumberProperty("sort", (10.0 - m.prominence) * 1000.0 + i)
                     // Prominence drives data-driven icon/text size on the layer (anchors read bigger).
                     addNumberProperty("prominence", m.prominence)
                 }

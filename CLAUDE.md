@@ -1214,7 +1214,14 @@ architecture note.
   and upgrade to icons as slots free up while zooming - Google's tiering. Circles skip the
   collision engine (cheap on the 5a/4a class GPUs); taps work through the same
   AMBIENT_INDEX_PROP rect query. Don't gate the dots on zoom - the ambient FETCH gate
-  (z>=14) already bounds them. 3D extrusions = the flat colour at
+  (z>=14) already bounds them. **The icon layer's `sort` (collision priority) is
+  PROMINENCE-based, never the list index (2026-07-14):** the streamed pool RE-RANKS as terms
+  land, so an index-based key changed every place's priority on each partial upload and the
+  whole layer's placement reshuffled (the cold-load "icons consolidate and pop into each
+  other"). `(10 - prominence) * 1000 + i` holds priorities still across uploads; the streamed
+  partial paints also ESCALATE their batch (10 places first, 25 once >=60 painted,
+  GoogleMapsDataSource) - each partial re-runs whole-layer placement, and halving the passes
+  is most of the dense-area cold-load frame recovery. 3D extrusions = the flat colour at
   opacity 1f (the 0.9f translucency was the "3d buildings render slightly different" wonk)
   AND the style light at intensity 0 + fillExtrusionVerticalGradient(false) - MapLibre's
   default light (0.5) brightens extrusion tops ~40% at z16+ (#1c3b69 rendered #2e5590; the

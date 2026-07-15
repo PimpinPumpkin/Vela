@@ -1193,7 +1193,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   the step list behind a pull-up on its ETA bar; Vela keeps the dedicated Steps button instead -
   the bar has three controls and room for them, and the overview button is the part that earns
   its place.)
-- ✅ **A slow deviation still reroutes (2026-07-14, real drive).** Off-route counting is gated off
+- ✅ **Dense-area cold load: steadier frames, no icon shuffling (2026-07-14).** Two costs fixed in
+  the streamed first paint of a POI-heavy area: the collision priority used to be the place's
+  position in the list, which RE-RANKS as search terms land, so every partial repaint reshuffled
+  the whole layer's placement and icons visibly consolidated and popped into each other - the
+  priority is now the place's own prominence, identical in every upload, so placement holds
+  still while the set grows. And the partial repaints themselves escalate their batch size (10
+  places for the fast first dots, 25 once the map is populated), so a dense downtown runs
+  roughly half the full-layer placement passes during the load. Off-route counting is gated off
   while stationary so red-light multipath can't reroute a parked car, but creeping out of a
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
