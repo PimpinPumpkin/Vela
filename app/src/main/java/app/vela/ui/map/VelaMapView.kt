@@ -303,6 +303,9 @@ fun VelaMapView(
     // Street View pose while the half-screen pano viewer is open: [lat, lng, compassYawDeg].
     // Draws the rotating view cone at the pano and eases the camera there on each pano hop.
     svPose: DoubleArray? = null,
+    // Height (px) of the Street View pane covering the top of the screen: applied as camera TOP
+    // padding while the viewer is open so the pose puck centres in the VISIBLE strip below it.
+    svTopInsetPx: Int = 0,
     ambientPois: List<MapMarker> = emptyList(),
     onAmbientTap: (index: Int) -> Unit = {},
     onTransitStopTap: (app.vela.core.data.transit.Transitous.MapStop) -> Unit = {},
@@ -1946,9 +1949,12 @@ fun VelaMapView(
         if (previewTarget == null) lastPreviewTarget = null
         // Street View open: ease the map under the half-screen viewer to the pano, and again on
         // each walk (position change) - NOT per yaw frame; the cone rotation is data-driven.
+        // Top padding shifts the optical centre into the visible strip below the pane, so the
+        // pose puck sits CENTRED in the mini-map (a plain centre puts it under/behind the pane).
         if (svPose != null) {
             val pos = svPose[0] to svPose[1]
             if (pos != lastSvPos) {
+                if (lastSvPos == null) map.setPadding(0, svTopInsetPx, 0, 0)
                 lastSvPos = pos
                 flightDepth[0]++
                 map.animateCamera(
@@ -1957,8 +1963,9 @@ fun VelaMapView(
                     flightCb(),
                 )
             }
-        } else {
+        } else if (lastSvPos != null) {
             lastSvPos = null
+            map.setPadding(0, 0, 0, cameraBottomInsetPx) // hand padding back to the sheet logic
         }
         // Shift the map's optical centre up by the bottom-sheet height so the
         // focused pin sits in the *visible* strip above the place sheet instead of
@@ -1971,7 +1978,9 @@ fun VelaMapView(
             // yanking the map back to the tapped place and zooming out after you'd panned away.
             val grew = cameraBottomInsetPx > lastInsetPx
             lastInsetPx = cameraBottomInsetPx
-            map.setPadding(0, 0, 0, cameraBottomInsetPx)
+            // While Street View owns the camera padding (top inset), don't clobber it here -
+            // the SV close path restores the sheet padding itself.
+            if (svPose == null) map.setPadding(0, 0, 0, cameraBottomInsetPx)
             if (grew) lastCameraTarget = null // re-frame the current target against the new inset
         }
         // While the results sheet is closed (or a place is selected) forget the last marker fit,
@@ -4320,31 +4329,34 @@ private fun pinBitmap(): Bitmap {
 }
 
 /** The parking pin: same silhouette as the search pin, teal head with a bold white "P". */
-/** Street View pose marker: a blue dot with a translucent view cone, drawn pointing NORTH (up);
- *  the symbol layer rotates it by the viewer's live compass yaw (map-aligned). */
+/** Street View pose marker: the NAV PUCK (white chevron in the navy circle - the same one nav
+ *  uses) with a translucent view cone behind it, drawn pointing NORTH (up); the symbol layer
+ *  rotates the whole thing by the viewer's live compass yaw (map-aligned), so the chevron and
+ *  the cone both aim where you're looking in the pano. */
 private fun svConeBitmap(): Bitmap {
-    val s = 96
+    val s = 200
     val bmp = Bitmap.createBitmap(s, s, Bitmap.Config.ARGB_8888)
     val c = Canvas(bmp)
     val cx = s / 2f
     val cy = s / 2f
     val cone = Path().apply {
         moveTo(cx, cy)
-        lineTo(cx - s * 0.30f, cy - s * 0.46f)
-        lineTo(cx + s * 0.30f, cy - s * 0.46f)
+        lineTo(cx - s * 0.30f, cy - s * 0.48f)
+        lineTo(cx + s * 0.30f, cy - s * 0.48f)
         close()
     }
     c.drawPath(
         cone,
         Paint(Paint.ANTI_ALIAS_FLAG).apply {
             shader = android.graphics.LinearGradient(
-                cx, cy, cx, cy - s * 0.46f,
+                cx, cy, cx, cy - s * 0.48f,
                 0xCC1A73E8.toInt(), 0x001A73E8, android.graphics.Shader.TileMode.CLAMP,
             )
         },
     )
-    c.drawCircle(cx, cy, s * 0.14f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFFFFF.toInt() })
-    c.drawCircle(cx, cy, s * 0.10f, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF1A73E8.toInt() })
+    val puck = navPuckBitmap()
+    val half = s * 0.30f // puck diameter ~60% of the canvas, centred
+    c.drawBitmap(puck, null, RectF(cx - half, cy - half, cx + half, cy + half), Paint(Paint.ANTI_ALIAS_FLAG))
     return bmp
 }
 
