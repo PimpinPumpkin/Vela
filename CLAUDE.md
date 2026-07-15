@@ -531,6 +531,11 @@ Defaults that make the safe path the easy one:
   rotated/tilted or during heading-up nav - never removed, just north-hidden on the browse map.
   Its browse-mode top margin is statusBar + 122dp so it sits BELOW the floating search bar and the
   category chips (8dp under the status bar put it exactly behind the bar - a half-hidden circle, 2026-07-09).
+  **With the LAYERS button enabled the browse margin is statusBar + 200dp instead (2026-07-15):** the
+  layers circle owns statusBar+128dp in the same corner and its IconButton touch overflow reaches
+  ~190dp, which sat exactly on the compass (user report); 200dp clears the touch target, not just
+  the visible circle. Keyed on `LayersButton.on` (the pref), not the button's transient visibility,
+  so the compass doesn't jump around as sheets open.
 - **Search-result markers are Google's result treatment (2026-07-10, `PoiIcons` result section +
   the `vela-markers`/`vela-markers-dots` layers in `VelaMapView`).** Every result keeps the app's own
   marker language - grey teardrop, circle, white glyph - with the circle RED (`resultPin`,
@@ -680,6 +685,18 @@ Defaults that make the safe path the easy one:
   PARTIAL paint never SHRINKS the painted set (after a cache repaint the early pool is leaner
   than the cached set and replacing blinked dots off/on; the final ranked pool still replaces
   outright). Don't re-tighten any of the three.
+  **Tap-a-POI-and-exit stability (2026-07-15, device-verified before/after):** TWO more rules. (d)
+  The ambient layer STAYS UP while a single place sheet is open - `ambientShownOf` in MapScreen
+  (used by BOTH the marker upload and onAmbientTap so the AMBIENT_INDEX_PROP indices align) only
+  drops the selected place's own copy (name-equal within 150 m, so its icon/label don't double-draw
+  under the red pin); the old `selected == null` gate emptied the whole source on every tap and
+  re-placed the entire layer on close ("POIs reload when I tap one then exit"). Still hidden while
+  results / a route preview / nav / replay own the map. (e) A fetch under `AMBIENT_FRESH_MS` (3 min)
+  old that still COVERS the view (the ambientCoversView predicate) is served AS-IS - no network
+  refetch: the tap-frame camera shift trips the 180 m moved-gate, and Google's ranking JITTERS
+  between identical same-area requests, so the post-close refetch randomly swapped/dropped icons
+  (proven on-device: Chipotle vanished, two places flipped to generic pins, ~2 s after closing a
+  sheet). Disk-loaded entries are backdated past the window on purpose - they stay paint-then-refine.
 - **Zoomed-in pan perf (2026-07-08):** (1) `reportScale` (fires per camera-move FRAME) only pushes
   to compose when mpp moved >1% - an unconditional write recomposed the scale bar every pan frame;
   keep the gate. (2) Both house-number layers (`vela-housenumber` basemap + `vela-addr-N` overlay)
