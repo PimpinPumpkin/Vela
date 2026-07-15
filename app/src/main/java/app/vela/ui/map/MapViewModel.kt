@@ -688,7 +688,10 @@ class MapViewModel @Inject constructor(
                 // accuracy for minutes), SAY so — the frozen banner used to be indistinguishable
                 // from working nav (the stale timer never fires while coarse fixes keep coming).
                 if (isGps && (!loc.hasAccuracy() || loc.accuracy <= 50f)) {
-                    navSession.onLocation(here, app.vela.ui.Units.imperial.value, speed?.toDouble())
+                    navSession.onLocation(
+                        here, app.vela.ui.Units.imperial.value, speed?.toDouble(),
+                        accuracyM = if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
+                    )
                     lastNavFedMs = nowMs
                     updateSpeedLimit(here) // posted-limit badge for the road under the puck (off-thread)
                     if (_state.value.navStarved) _state.update { it.copy(navStarved = false) }

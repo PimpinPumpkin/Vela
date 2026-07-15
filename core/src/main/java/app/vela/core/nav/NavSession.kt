@@ -248,7 +248,7 @@ class NavSession @Inject constructor(
         }
     }
 
-    fun onLocation(loc: LatLng, imperial: Boolean = false, speedMps: Double? = null) {
+    fun onLocation(loc: LatLng, imperial: Boolean = false, speedMps: Double? = null, accuracyM: Double? = null) {
         val s = _state.value
         val route = s.route ?: return
         if (!s.navigating || s.arrived) return
@@ -267,20 +267,11 @@ class NavSession @Inject constructor(
             TravelMode.BICYCLE -> 1.0
             else -> 2.0
         }
-        // Off-route corridor is mode-relative too: driving keeps the wide 40 m (lane offset + shallow
-        // divergence lag), but a walker/cyclist is on a known path a few metres wide and sits within
-        // ~5-15 m of it, so a much tighter corridor catches a wrong turn quickly without false-firing.
-        // Far distance (the "no jitter reaches this at speed" escalation) scales down to match.
-        val offRoute = when (mode) {
-            TravelMode.WALK -> 22.0
-            TravelMode.BICYCLE -> 28.0
-            else -> 40.0
-        }
-        val farOff = when (mode) {
-            TravelMode.WALK -> 45.0
-            TravelMode.BICYCLE -> 55.0
-            else -> 90.0
-        }
+        // Off-route corridor is accuracy-scaled AND mode-relative: it widens with the GPS fix's own
+        // reported accuracy (tight when clean, wide when noisy - like OsmAnd), and foot/bike ride
+        // tighter than driving because the path is narrow. See NavEngine.offRouteCorridor.
+        val offRoute = NavEngine.offRouteCorridor(mode, accuracyM)
+        val farOff = NavEngine.farOffDistance(mode, offRoute)
         val (next, events) = NavEngine.update(route, nav, loc, imperial, speedMps, movingFloor, offRoute, farOff)
         val maneuver = route.maneuvers.getOrNull(next.stepIndex)
         // Guard the write on route IDENTITY: a reroute/faster-route can swap route+NavState while

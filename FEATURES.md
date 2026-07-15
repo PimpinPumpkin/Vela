@@ -203,13 +203,14 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   throttled the same way (once per burst, silent retries stay silent); honours the per-mode "Vibrate
   on turns" setting. Demo drives also pass the real travel mode now, so a simulated bike route
   buzzes exactly like the real ride would (it used to run haptics as Driving = silent).
-- ✅ **Mode-aware off-route sensitivity (2026-07-15).** How far you can drift before Vela reroutes now
-  depends on the travel mode. Driving keeps the wide 40 m corridor (a car has lane offset + shallow-angle
-  divergence lag, so a tighter one false-reroutes), but walking and biking are far more precise - you're
-  on a known sidewalk/path a few metres wide - so the corridor tightens to 22 m on foot and 28 m on a bike
-  (with the "unambiguously far" escalation distance scaling down to match). A pedestrian who takes the wrong
-  footpath is caught in a few metres instead of drifting most of a block first. `NavSession` picks the
-  values per mode the same way it already scales the stationary floor; driving behaviour is unchanged.
+- ✅ **Accuracy-scaled off-route sensitivity (2026-07-15).** How far you can drift before Vela reroutes
+  now tracks the GPS fix's own reported accuracy, the way OsmAnd and Google behave - Google doesn't use a
+  fixed distance at all, it map-matches. The corridor is `base + K×accuracy`, clamped: TIGHT when the fix
+  is clean (a wrong turn is caught fast - driving drops well below the old flat 40 m when GPS is good),
+  WIDE when it's noisy (urban-canyon multipath can't trigger a false reroute). It's also mode-relative -
+  foot rides tighter than bike rides tighter than drive, because the PATH is narrow - so a pedestrian who
+  takes the wrong footpath is caught quickly without over-firing when GPS degrades. (An earlier fixed
+  22 m/28 m walk/bike pair was dropped as too aggressive; a scaled corridor is the right tool.)
 - ✅ **Per-travel-mode "Vibrate on turns" (2026-07-03).** The single haptics toggle became **four** - Driving / Walking / Cycling / Transit - so you can buzz on turns while cycling/walking but stay silent driving. `Haptics.cue(type, approaching, mode)` checks the per-mode pref (`haptics_<mode>`). **Default = on for walk/bike/transit, OFF for driving** (`Haptics.defaultFor`) - in a car you've got the screen + spoken directions, so a buzz every turn is noise; an existing legacy `haptics_on=false` still wins.
 - ✅ **Place-sheet header + actions, Google-style (2026-07-03, settled after a couple of iterations).** **Header:** name + **Save (★) · Share · ⋮ · ✕** as compact 40dp icon buttons; the name is `titleLarge` (22sp) with `maxLines=2`, so even "Starbucks Coffee Company" fits two clean lines beside the icons without ellipsising. **Action pills:** a highlighted **Directions** + short **Call / Website** (`ActionPill`, horizontally-scrollable as a safety) - the *fast path*. **Phone number + website live as their own tappable rows below the address** (showing "(425) 332-6175" and the domain), exactly where Google puts the detail. The collapsed **Hours** row no longer lets a long holiday value ("5 AM–1 AM · 4th of July (Observed)") squeeze the label into "Ho/urs" - fixed-width label, summary stripped to just the hours (`substringBefore("·")`) + ellipsised. Review-loading copy is the calm "Gathering reviews…". *(Iteration history: tried Save/Share in the header + a full-width Directions button, then all-in-scrollable-pills with the number in the Call pill - landed here: Save/Share on top like the previous build the user liked, short action pills, contact detail as rows.)*
 - ✅ **Search targets the panned viewport, not GPS (2026-07-03).** Running a search now biases to the **map centre you're looking at** (`mapCenter ?: myLocation`), Google-style - so panning to another neighbourhood/city then searching returns results *there*, not back at your GPS location. Autocomplete suggestions do the same. (The "Search this area" button after a search is unchanged.)
