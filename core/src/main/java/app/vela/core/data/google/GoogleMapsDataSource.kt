@@ -37,6 +37,7 @@ import kotlin.math.log2
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -168,7 +169,7 @@ class GoogleMapsDataSource @Inject constructor(
                 },
             ),
         )
-        val all = coroutineScope {
+        var all = coroutineScope {
             if (onPartial == null) {
                 terms.map { term -> async { fetchTerm(term) } }.awaitAll().flatten()
             } else {
@@ -207,6 +208,25 @@ class GoogleMapsDataSource @Inject constructor(
                     }
                 }.joinAll()
                 pool
+            }
+        }
+        // SLIM-FLAVOR HEAL (live-bisected 2026-07-14): for the first ~3 s of a fresh session Google
+        // serves a stripped per-place block - rating present, review count ABSENT (same query + pb
+        // returns the full block seconds later). A cold-start fan-out lands entirely inside that
+        // window, so the whole ambient pool parsed with reviewCount=null, which zeroed
+        // ambientProminence and silently broke everything keyed on it: prominence ranking, dot
+        // sizing, label tiers - all flat. Detect the flavor (rated places but not one count) and
+        // refetch ONCE; by then the session is warm and the rich pool overwrites the slim one
+        // (and the disk cache stores real counts). Doubles the request burst only on a cold start.
+        // Majority (not all-slim): the session can warm MID-burst, leaving a mixed pool.
+        val rated = all.count { it.rating != null }
+        if (rated >= 3 && all.count { it.rating != null && it.reviewCount == null } > rated / 2) {
+            delay(1200)
+            val healed = coroutineScope { terms.map { term -> async { fetchTerm(term) } }.awaitAll().flatten() }
+            if (healed.any { it.reviewCount != null }) {
+                diag.record("ambient", "slim cold-start pool healed: ${all.size} -> ${healed.size} places with counts")
+                // Healed first so distinctBy keeps the rich copy when a term partially failed.
+                all = healed + all
             }
         }
         finish(all)

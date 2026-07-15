@@ -2094,7 +2094,47 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconIgnorePlacement(false),
                 PropertyFactory.iconPadding(1.5f),
                 PropertyFactory.symbolSortKey(Expression.get("sort")),
-                PropertyFactory.textField(Expression.get("name")),
+                // LABEL DENSITY copies Google (user 2026-07-14): at browse zooms Google names only
+                // the prominent places and lets the rest be bare icons/dots, with more named as you
+                // close in - and even at z17 a chunk stays icon-only (A/B'd against the gmaps app on
+                // the same downtown frame: ~7 named at z15, ~13 + bare dots at z17). Tiered by
+                // zoom x prominence; thresholds map through ambientProminence (ln(reviews+1) x rating
+                // factor): 6.0 ~ 400+ reviews, 5.0 ~ 120+, 3.0 ~ 20+. (7.0 was tried and named ZERO
+                // downtown - the anchors mostly sit 6-7.) This is ALSO a frame win in
+                // dense areas - every label is collision work with four candidate anchors, and an
+                // EMPTY textField skips label placement entirely (a textOpacity of 0 would still
+                // place and collide it, paying the cost invisibly).
+                PropertyFactory.textField(
+                    Expression.step(
+                        Expression.zoom(),
+                        // below z15.5: only true landmarks (malls, big-box, the 1000-review anchors)
+                        Expression.switchCase(
+                            Expression.gte(Expression.get("prominence"), Expression.literal(6.0)),
+                            Expression.get("name"),
+                            Expression.literal(""),
+                        ),
+                        // z15.5+: established places join
+                        Expression.stop(
+                            15.5f,
+                            Expression.switchCase(
+                                Expression.gte(Expression.get("prominence"), Expression.literal(5.0)),
+                                Expression.get("name"),
+                                Expression.literal(""),
+                            ),
+                        ),
+                        // z16.5+ (street level): any real business; 0-review junk stays a bare dot
+                        Expression.stop(
+                            16.5f,
+                            Expression.switchCase(
+                                Expression.gte(Expression.get("prominence"), Expression.literal(3.0)),
+                                Expression.get("name"),
+                                Expression.literal(""),
+                            ),
+                        ),
+                        // z17.5+ (single-lot zoom): everything visible gets its name
+                        Expression.stop(17.5f, Expression.get("name")),
+                    ),
+                ),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(
                     Expression.interpolate(

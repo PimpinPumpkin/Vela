@@ -1205,6 +1205,26 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
+- ✅ **Google's label density at browse zooms (2026-07-14).** The ambient POI layer used to name
+  every dot its collision pass could fit; Google names only a handful of anchors at browse zoom
+  and lets the rest sit as bare icons/dots, with more names joining as you close in (A/B'd
+  against the Google Maps app on the same downtown frame: ~7 named at their z15, ~13 plus bare
+  dots at z17). Labels are now tiered by zoom x prominence: below z15.5 only true landmarks
+  (prominence ≥ 6.0, roughly 400+ reviews) carry names, z15.5+ adds established places (≥ 5.0),
+  z16.5+ names any real business (≥ 3.0, ~20+ reviews) while 0-review junk stays a dot, and
+  z17.5+ names everything visible. Doubles as a dense-area frame win: an empty textField skips
+  that symbol's label placement entirely, so browse zooms in a POI-heavy downtown run far fewer
+  collision candidates per placement pass.
+- ✅ **Fixed: ambient prominence silently zeroed on cold starts (2026-07-14).** Live-bisected on
+  device: for the first ~3 seconds of a fresh session Google serves a stripped per-place block -
+  rating present, review count ABSENT - and the exact same query+pb returns the full block once
+  the session warms. The ambient category fan-out fires immediately at cold start, so its whole
+  pool parsed with no review counts, which zeroed `ambientProminence` and quietly flattened
+  everything keyed on it: prominence ranking (the anchor-beats-tenant logic), data-driven dot
+  sizing, and the new label tiers all ran on zeros (and the disk cache then preserved the
+  zeroed pool). `nearbyPlaces` now detects the slim flavor (rated places but a majority missing
+  counts) and refetches once after the session warms; the rich pool replaces the slim one and
+  the cache stores real counts. Costs one extra fan-out on cold start only.
 - ✅ **Tunnels: navigation keeps estimating (2026-07-14).** When GPS dies mid-drive while solidly
   on route, Vela now synthesizes position ALONG THE ROUTE at the last speed (decaying over ~a
   minute, capped at 3 km of blind travel) and feeds it through the normal guidance path - so the
