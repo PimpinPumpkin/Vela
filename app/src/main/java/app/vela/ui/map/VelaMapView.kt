@@ -2930,7 +2930,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean) {
                             Expression.literal(false),
                             Expression.stop("motorway", true), Expression.stop("trunk", true),
                             Expression.stop("primary", true), Expression.stop("secondary", true),
-                            Expression.stop("tertiary", true), Expression.stop("minor", true),
+                            Expression.stop("tertiary", true),
                         ),
                     ),
                 )
@@ -2945,7 +2945,7 @@ private fun ensureNavRoadLabels(style: Style, on: Boolean, dark: Boolean) {
                     PropertyFactory.textPitchAlignment(Property.TEXT_PITCH_ALIGNMENT_VIEWPORT),
                     PropertyFactory.textPadding(8f),
                     PropertyFactory.textHaloBlur(0.4f),
-                ).apply { minZoom = 13.5f },
+                ).apply { minZoom = 14f }, // sparser, Google-like: cross-street tier only, not every lane
         )
     }
     (style.getLayer(NAV_ROADLABEL_LAYER) as? SymbolLayer)?.setProperties(

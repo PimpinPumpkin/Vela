@@ -205,7 +205,10 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   **Returning to the app mid-drive re-centres automatically** - a stray pan while backgrounding used to
   leave the camera detached until a manual tap. And **ramp instructions say which side**: "Take the
   ramp on the right toward X" instead of just "Take the ramp" (all 15 languages; the banner arrow
-  already pointed the right way, now the words match).
+  already pointed the right way, now the words match). A shared onramp whose sign lists BOTH
+  directions of the target highway ("520 West, 520 East") now announces only the branch you take -
+  the folded fork disambiguates the destination, and its lane diagram survives the fold. Highway
+  shields got roomier too (bigger badge, larger number).
 - ✅ **Wrong-way detection + a real "Rerouting" banner (2026-07-16).** Off-route used to be judged by
   distance from the route line alone, so a wrong turn onto a road running close alongside the planned
   one never registered: no reroute, the old blue line stayed, and guidance kept speaking the old

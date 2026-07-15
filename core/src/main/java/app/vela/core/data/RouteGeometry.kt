@@ -294,12 +294,49 @@ object RouteGeometry {
                     folded += list[j].distanceMeters
                     j++
                 }
-                if (j > i + 1) { out += m.copy(distanceMeters = folded); i = j; continue }
+                if (j > i + 1) {
+                    // The shared ramp's sign often lists BOTH directions of the target highway
+                    // ("520 West, 520 East" - one onramp splitting later); the folded FORK is the
+                    // branch actually taken, so its instruction disambiguates. Keep the ramp's
+                    // phrasing/arrow but drop the not-taken direction from its destination list,
+                    // and adopt the fork's lane diagram when the ramp has none (that split is
+                    // where the lane choice matters). Voice + shield chips both read from the
+                    // instruction, so both stop announcing the wrong direction (user 2026-07-16).
+                    val branch = list.subList(i + 1, j).lastOrNull { it.instruction.isNotBlank() }
+                    out += m.copy(
+                        distanceMeters = folded,
+                        instruction = disambiguateDest(m.instruction, branch?.instruction),
+                        lanes = m.lanes.ifEmpty { branch?.lanes.orEmpty() },
+                        laneHint = m.laneHint ?: branch?.laneHint,
+                    )
+                    i = j
+                    continue
+                }
             }
             out += m
             i++
         }
         return out
+    }
+
+    // Cardinal tokens as signed on US-style destinations ("520 West", "I-80 E").
+    private val DIR_TOKEN = Regex("""\b(North|South|East|West|N|S|E|W)\b""", RegexOption.IGNORE_CASE)
+
+    /** Drop the not-taken direction from a ramp instruction's destination list, using the folded
+     *  branch's instruction as the tiebreak. Conservative: only acts when the ramp text splits into
+     *  multiple parts AND at least one part matches the branch's direction - anything ambiguous
+     *  leaves the instruction untouched. */
+    internal fun disambiguateDest(ramp: String, branch: String?): String {
+        if (branch.isNullOrBlank()) return ramp
+        val branchDirs = DIR_TOKEN.findAll(branch).map { it.value.take(1).uppercase() }.toSet()
+        if (branchDirs.isEmpty()) return ramp
+        val parts = ramp.split(Regex("""\s*[,;/]\s*"""))
+        if (parts.size < 2) return ramp
+        val kept = parts.filter { part ->
+            val dirs = DIR_TOKEN.findAll(part).map { it.value.take(1).uppercase() }.toSet()
+            dirs.isEmpty() || dirs.intersect(branchDirs).isNotEmpty()
+        }
+        return if (kept.size in 1 until parts.size) kept.joinToString(", ") else ramp
     }
 
     /** Fold a pure-rename CONTINUE into the PRECEDING maneuver so it never becomes its own banner card / step.
