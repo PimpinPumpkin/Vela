@@ -178,10 +178,8 @@ Deeper still is [`SPEC.md`](SPEC.md).
 Everything shipped so far is in [FEATURES.md](FEATURES.md) (the complete list) and the
 release notes of each build. Still open (details in [ROADMAP.md](ROADMAP.md)):
 
-- [ ] Restaurant menu reliability (Google tags menu photos inconsistently; digging in)
-- [ ] Satellite imagery layer (open Esri World Imagery)
 - [ ] Embedded Mapillary/KartaView street imagery (needs a token; Street View currently opens Google's keyless pano in the browser)
-- [ ] Move to Weblate translations
+- [ ] Move to Weblate translations (project needs to exist for at least three months)
 - [ ] F-Droid submission + reproducible build
 
 **Not going to happen** - anything that needs you to sign in to Google or hand data to a
