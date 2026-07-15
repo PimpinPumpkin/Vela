@@ -648,6 +648,18 @@ state - upstream's own 13ac02e8 already made the layers panel a VelaMenu):
   pill/row, the Street View pano and the Book/Reserve/Order action in `PlaceSheet`. No restricted build
   flavor / LockableToggle machinery; keep holders in the plain `ShowReviews` shape. Gate any new
   external-link surface on a place page behind this holder.
+- **VelaDialog buttons are a FlowRow: filled pill confirm + text dismiss (upstream 837c7b00 +
+  605ade01, ported 2026-07-15).** The confirm button renders as a filled primary pill (the
+  recommended action reads at a glance), dismiss stays a plain text button, and `dismissLowEmphasis`
+  renders dismiss quieter still (used by the voice offer's "Use system voice"). The button row is a
+  `FlowRow`: when the two labels do not fit one line - "Download Vela Voice" on a small screen - the
+  pill wraps to its own full-width line instead of being squeezed into a mid-word break (the exact
+  "Download Vela / voice" mess a user screenshot showed). D-pad behaviour unchanged: dismiss
+  auto-focuses, arrows reach confirm. **RING CONTRAST RULE (fork fix upstream lacks):** a control
+  FILLED with the primary colour must pass `dpadHighlight(shape, ringColor = onPrimary)` - the
+  default primary ring is invisible on a primary fill (device-found: the focused Download pill
+  showed NO focus indication on a keypad phone). `dpadHighlight`'s `ringColor` param exists for
+  exactly this; use it on any future primary-filled focusable.
 - **External link buttons -> real browser only (`ui/ExternalLinks.kt`, 2026-07-15).** The NINE
   buttons that leave the app for a web page (PlaceSheet: Website pill + row, Street View,
   Book/Reserve/Order, Open in Google Maps; Settings: Support Vela + privacy policy; map: donate

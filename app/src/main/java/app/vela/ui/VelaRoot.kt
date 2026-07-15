@@ -67,7 +67,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                         vm.downloadPiper()
                         Onboarding.dismissVoicePrompt(context)
                     },
-                    onSkip = { Onboarding.dismissVoicePrompt(context) },
+                    onUseExisting = { Onboarding.dismissVoicePrompt(context) },
                 )
             } else if (Onboarding.showOfflinePrompt.value) {
                 OfflinePrompt(
@@ -155,17 +155,21 @@ private fun DiagPrompt(onChoose: (diagnostics: Boolean, trips: Boolean) -> Unit,
  * Settings → Voice. [sizeMb] is the actual download size of the voice that will be fetched, so the
  * number can never go stale. */
 @Composable
-private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onSkip: () -> Unit) {
+private fun VoicePrompt(sizeMb: Int, onDownload: () -> Unit, onUseExisting: () -> Unit) {
     VelaDialog(
-        onDismissRequest = onSkip,
+        onDismissRequest = onUseExisting,
         title = stringResource(R.string.root_voice_title),
         confirmText = stringResource(R.string.root_voice_download),
         onConfirm = onDownload,
-        dismissText = stringResource(R.string.root_not_now),
-        onDismiss = onSkip,
+        dismissText = stringResource(R.string.root_voice_use_system),
+        onDismiss = onUseExisting,
+        dismissLowEmphasis = true,
         text = {
+            // Two short paragraphs: the pitch, then the alternative + where to change it. The blank
+            // line keeps the block from reading as one dense wall on a small screen.
             Text(
-                stringResource(R.string.root_voice_body_intro, sizeMb) + " " +
+                stringResource(R.string.root_voice_body_intro, sizeMb) + "\n\n" +
+                    stringResource(R.string.root_voice_body_system) + " " +
                     stringResource(R.string.root_voice_body_outro),
             )
         },

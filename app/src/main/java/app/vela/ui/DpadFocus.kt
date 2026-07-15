@@ -291,7 +291,13 @@ fun Modifier.dpadFieldEscape(): Modifier = composed {
  * key-driven, so it never appears under touch. Apply it to any interactive element; pass
  * the element's own [shape] so the ring hugs it.
  */
-fun Modifier.dpadHighlight(shape: Shape = RoundedCornerShape(14.dp)): Modifier = composed {
+fun Modifier.dpadHighlight(
+    shape: Shape = RoundedCornerShape(14.dp),
+    // The ring is primary by default; a control FILLED with primary must pass a contrasting
+    // colour (e.g. onPrimary) or the focused state is invisible - a teal ring on a teal pill
+    // (device-found on VelaDialog's filled confirm button, 2026-07-15).
+    ringColor: androidx.compose.ui.graphics.Color? = null,
+): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
     val dpadFirst = rememberDpadFirstDevice()
     val inputModeManager = LocalInputModeManager.current
@@ -302,7 +308,7 @@ fun Modifier.dpadHighlight(shape: Shape = RoundedCornerShape(14.dp)): Modifier =
         .onFocusEvent { focused = it.hasFocus }
         .then(
             if (show) {
-                Modifier.border(2.dp, MaterialTheme.colorScheme.primary, shape)
+                Modifier.border(2.dp, ringColor ?: MaterialTheme.colorScheme.primary, shape)
             } else {
                 Modifier
             },

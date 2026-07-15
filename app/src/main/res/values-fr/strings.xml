@@ -321,9 +321,11 @@
     <string name="root_diag_save">Enregistrer les choix</string>
     <string name="root_not_now">Pas maintenant</string>
     <string name="root_voice_title">Voix de navigation</string>
-    <string name="root_voice_body_intro">Vela dispose de sa propre voix de haute qualité qui fonctionne entièrement sur votre téléphone - les instructions vocales les plus naturelles, sans compte ni application supplémentaire. Recommandée. C\'est un téléchargement unique d\'environ %1$d Mo (Wi-Fi recommandé).</string>
-    <string name="root_voice_body_outro">Vous pouvez changer cela à tout moment dans Paramètres → Voix.</string>
+    <string name="root_voice_body_intro">La voix de Vela tourne entièrement sur votre téléphone : instructions naturelles, pas de compte, pas d\'appli en plus. Recommandée, un téléchargement unique de %1$d Mo.</string>
+    <string name="root_voice_body_outro">Modifiable à tout moment dans Réglages → Voix.</string>
     <string name="root_voice_download">Télécharger la voix Vela</string>
+    <string name="root_voice_body_system">Vous préférez non ? Utilisez une voix déjà sur votre téléphone.</string>
+    <string name="root_voice_use_system">Utiliser la voix du système</string>
     <string name="root_offline_title">Cartes hors ligne</string>
     <string name="root_offline_body">Vela obtient les lieux, la recherche et les itinéraires depuis Google, donc sans réseau seules les zones que vous avez téléchargées fonctionneront. Configurez une zone maintenant pour rester couvert quand vous perdez le signal.</string>
     <string name="root_offline_setup">Configurer hors ligne</string>

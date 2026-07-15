@@ -321,9 +321,11 @@
     <string name="root_diag_save">Spara val</string>
     <string name="root_not_now">Inte nu</string>
     <string name="root_voice_title">Röst för talad navigering</string>
-    <string name="root_voice_body_intro">Vela har en egen högkvalitativ röst som körs helt på din telefon, de mest naturliga talade vägbeskrivningarna, utan konto eller extra app. Rekommenderas. Det är en engångshämtning på ~%1$d MB (wifi rekommenderas).</string>
-    <string name="root_voice_body_outro">Du kan ändra detta när som helst i Inställningar → Röst.</string>
+    <string name="root_voice_body_intro">Velas egen röst körs helt på din telefon: naturliga anvisningar, inget konto, ingen extra app. Rekommenderas, en engångsnedladdning på %1$d MB.</string>
+    <string name="root_voice_body_outro">Ändra det när som helst i Inställningar → Röst.</string>
     <string name="root_voice_download">Hämta Vela-röst</string>
+    <string name="root_voice_body_system">Vill du hellre inte? Använd en röst du redan har i telefonen.</string>
+    <string name="root_voice_use_system">Använd systemröst</string>
     <string name="root_offline_title">Offlinekartor</string>
     <string name="root_offline_body">Vela hämtar platser, sökning och vägbeskrivningar från Google, så utan signal fungerar bara områden du har laddat ner. Ställ in ett område nu så att du är täckt när du tappar täckning.</string>
     <string name="root_offline_setup">Ställ in offline</string>

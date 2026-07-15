@@ -318,6 +318,8 @@
     <string name="root_voice_body_intro">הקול של Vela פועל כולו בטלפון שלך: הוראות מדוברות טבעיות, ללא חשבון, ללא אפליקציה נוספת. מומלץ, הורדה חד-פעמית של %1$d מ\"ב.</string>
     <string name="root_voice_body_outro">שנה זאת בכל עת בהגדרות ← קול.</string>
     <string name="root_voice_download">הורד את Vela Voice</string>
+    <string name="root_voice_body_system">מעדיף שלא? השתמש בקול שכבר בטלפון שלך.</string>
+    <string name="root_voice_use_system">השתמש בקול המערכת</string>
     <string name="nav_maneuver_continue">המשך</string>
     <string name="nav_gps_lost">מחפש GPS…</string>
     <string name="nav_compound_then">ואז</string>

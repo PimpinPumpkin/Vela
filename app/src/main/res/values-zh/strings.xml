@@ -338,6 +338,8 @@
     <string name="root_voice_body_intro">Vela 自带语音完全在您的手机上运行：自然的语音播报，无需账号，也无需额外应用。推荐使用，一次性下载 %1$d MB。</string>
     <string name="root_voice_body_outro">之后可随时在设置 → 语音中更改。</string>
     <string name="root_voice_download">下载 Vela 语音</string>
+    <string name="root_voice_body_system">不想下载？也可以使用手机上已有的语音。</string>
+    <string name="root_voice_use_system">使用系统语音</string>
 
     <!-- nav: NavOverlays.kt -->
     <string name="nav_maneuver_continue">继续直行</string>
