@@ -1211,7 +1211,23 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
-- ✅ **Traffic lights + stop signs draw over the route line (2026-07-15).** The visible
+- ✅ **Perf audit remediation, batch 1 of 2 (2026-07-15).** A 43-agent audit (every finding
+  adversarially verified - see docs/PERF-AUDIT-2026-07.md) confirmed 21 issues; the six
+  camera-seam fixes landed first because they ARE the reported hitches. (1) Re-attaching the
+  nav follow from the route overview eased position/zoom/bearing but snapped tilt and the
+  puck-low padding whole on frame one - both now seed from the live camera and ease in, so
+  Overview -> Re-center glides. (2) Detaching the nav camera (a pan, the Overview tap) let
+  the camera logic fall through to the pre-nav route-fit branch, which fired an uninvited
+  800 ms whole-route flight on the next ~1 Hz recomposition and raced the real overview fit -
+  the branch now swallows during nav. (3) The follow's cold engage from a far-out camera was
+  an instant teleport that also cancelled the launch flight; it is now a single owned flight
+  the follow waits out. (4) The compass pushed up to 16 whole-screen recompositions per
+  second while hand-held; a 200 ms floor caps it. (5) Ending or swapping a route in the
+  CHOOSER ran the nav camera teardown and killed the route-fit flight at frame one - the
+  teardown now fires only after a real drive. (6) All point GeoJSON sources cap their
+  internal tile pyramid (maxZoom 12), cutting re-tiling and placement invalidation during
+  every zoom change. Batch 2 (upload gating, deferred ambient paints during flights, the
+  route-split window, walk/bike dot regen) is queued in the audit doc. The visible
   signal/stop icons sat at the very bottom of the symbol stack - under the bridges and both
   blue route lines - so the (now wider) route stripe painted straight over exactly the icons
   that matter most during a drive. They now draw above the route lines and bridge geometry
