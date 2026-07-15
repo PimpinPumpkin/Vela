@@ -985,6 +985,43 @@ fun SettingsScreen(vm: MapViewModel, onBack: () -> Unit, openOffline: Boolean = 
                 )
             }
 
+            // ---- Places on the map: POI visibility + sizing (user 2026-07-15) ----
+            Spacer(Modifier.height(20.dp))
+            SectionTitle(stringResource(R.string.settings_map_places))
+            ToggleRow(stringResource(R.string.settings_show_pois), app.vela.ui.MapPoiPrefs.showPois.value) {
+                app.vela.ui.MapPoiPrefs.setShowPois(context, it)
+            }
+            Hint(stringResource(R.string.settings_show_pois_hint))
+            if (app.vela.ui.MapPoiPrefs.showPois.value) {
+                ToggleRow(stringResource(R.string.settings_show_civic), app.vela.ui.MapPoiPrefs.showCivic.value) {
+                    app.vela.ui.MapPoiPrefs.setShowCivic(context, it)
+                }
+                Hint(stringResource(R.string.settings_show_civic_hint))
+            }
+            ToggleRow(stringResource(R.string.settings_show_transit_stops), app.vela.ui.MapPoiPrefs.showTransit.value) {
+                app.vela.ui.MapPoiPrefs.setShowTransit(context, it)
+            }
+            Hint(stringResource(R.string.settings_show_transit_stops_hint))
+            Text(stringResource(R.string.settings_poi_icon_size), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(top = 8.dp))
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                listOf(
+                    R.string.settings_poi_size_small to 0.7f,
+                    R.string.settings_poi_size_default to 1.0f,
+                    R.string.settings_poi_size_large to 1.25f,
+                ).forEach { (label, value) ->
+                    val selected = kotlin.math.abs(app.vela.ui.MapPoiPrefs.iconScale.floatValue - value) < 0.01f
+                    if (selected) {
+                        Button(onClick = {}, modifier = Modifier.padding(end = 8.dp)) { Text(stringResource(label)) }
+                    } else {
+                        OutlinedButton(
+                            onClick = { app.vela.ui.MapPoiPrefs.setIconScale(context, value) },
+                            modifier = Modifier.padding(end = 8.dp),
+                        ) { Text(stringResource(label)) }
+                    }
+                }
+            }
+            Hint(stringResource(R.string.settings_poi_icon_size_hint))
+
             // ---- Advanced: niche + experimental toggles, collapsed so they stay out of the way ----
             Spacer(Modifier.height(20.dp))
             var advancedExpanded by remember { mutableStateOf(false) }

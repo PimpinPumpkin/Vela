@@ -617,6 +617,12 @@ fun MapScreen(
     }
     // Reflect whether the on-device model is present, so the mic + Settings update without a relaunch.
     LaunchedEffect(Unit) { vm.refreshAsr() }
+    // POI visibility prefs act immediately (clear + re-resolve), not on the next pan.
+    LaunchedEffect(
+        app.vela.ui.MapPoiPrefs.showPois.value,
+        app.vela.ui.MapPoiPrefs.showTransit.value,
+        app.vela.ui.MapPoiPrefs.showCivic.value,
+    ) { vm.onPoiPrefsChanged() }
     if (voiceListening) {
         app.vela.ui.VoiceCaptureDialog(
             level = voiceLevel,
@@ -789,6 +795,8 @@ fun MapScreen(
             // The compass below the nav card is the heading-up/north-up toggle during a drive
             // (a reorient-to-north tap would be overridden by the follow a frame later anyway).
             onCompassTap = { if (state.navigating) { vm.toggleNavNorthUp(); true } else false },
+            poisEnabled = app.vela.ui.MapPoiPrefs.showPois.value,
+            poiIconScale = app.vela.ui.MapPoiPrefs.iconScale.floatValue,
             onNavPanned = vm::onNavPanned,
             ambientCoversView = state.ambientCoversView,
             // Grabbing the map with a sheet up drops it down out of the way so the map is yours

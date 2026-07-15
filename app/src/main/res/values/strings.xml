@@ -136,6 +136,18 @@
     <string name="settings_data_privacy">Data source &amp; privacy</string>
     <string name="settings_data_privacy_hint">Vela talks to Google\'s public endpoints straight from this device: no backend, no account, no API key. Google sees your IP, query and map area, not who you are.</string>
     <string name="nav_overview">Route overview</string>
+    <string name="settings_map_places">Places on the map</string>
+    <string name="settings_show_pois">Show places</string>
+    <string name="settings_show_pois_hint">Business and place icons on the browse map. Off = a clean map; searched places still show.</string>
+    <string name="settings_show_civic">Parks, schools and civic places</string>
+    <string name="settings_show_civic_hint">The non-business tier of place icons. Off shows businesses only.</string>
+    <string name="settings_show_transit_stops">Transit stops</string>
+    <string name="settings_show_transit_stops_hint">Bus and rail stop icons at street zoom.</string>
+    <string name="settings_poi_icon_size">Place icon size</string>
+    <string name="settings_poi_size_small">Small</string>
+    <string name="settings_poi_size_default">Default</string>
+    <string name="settings_poi_size_large">Large</string>
+    <string name="settings_poi_icon_size_hint">Small suits low-resolution screens like car head units, where the default icons render oversized.</string>
     <string name="settings_live_rechecks">Live traffic re-checks while navigating</string>
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
     <string name="settings_privacy_button">What data Google receives</string>
