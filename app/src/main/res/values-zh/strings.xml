@@ -518,4 +518,5 @@
     <plurals name="topcard_more_stops">
         <item quantity="other">+%d个途经点</item>
     </plurals>
+    <string name="no_browser_installed">您的设备没有浏览器</string>
 </resources>

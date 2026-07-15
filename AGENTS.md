@@ -648,6 +648,28 @@ state - upstream's own 13ac02e8 already made the layers panel a VelaMenu):
   pill/row, the Street View pano and the Book/Reserve/Order action in `PlaceSheet`. No restricted build
   flavor / LockableToggle machinery; keep holders in the plain `ShowReviews` shape. Gate any new
   external-link surface on a place page behind this holder.
+- **External link buttons -> real browser only (`ui/ExternalLinks.kt`, 2026-07-15).** The NINE
+  buttons that leave the app for a web page (PlaceSheet: Website pill + row, Street View,
+  Book/Reserve/Order, Open in Google Maps; Settings: Support Vela + privacy policy; map: donate
+  prompt + notice "Learn more") call `ExternalLinks.open(context, url)` instead of a bare
+  `startActivity(ACTION_VIEW)`. Why: keypad phones ship a preinstalled FAKE browser (a system
+  WebView shell that renders an error page for every URL) and a bare ACTION_VIEW sent every link
+  button into it. `open()` resolves ACTUAL browsers first - an app declaring MAIN +
+  CATEGORY_APP_BROWSER (how real browsers self-identify, incl. system Chrome), or any NON-SYSTEM
+  app handling a generic https VIEW (a user-installed browser APK, whatever it declares). None ->
+  toast `R.string.no_browser_installed` ("Your device does not have a browser", all 15 locales) and
+  nothing opens; default handler not a real browser -> the intent is PINNED (`setPackage`) to a
+  real one, so the shell can never open even as the system default. Gotchas baked in: (1) the
+  manifest `<queries>` entries (https VIEW/BROWSABLE + MAIN/APP_BROWSER) are LOAD-BEARING - without
+  them Android 11+ package visibility hides every browser and all links would toast; (2)
+  SCHEME-LESS urls are web urls - Google's place payload stores bare domains
+  ("moldovarestaurantbrooklyn.com") and the raw-intent passthrough must not see them (device-found
+  hole); (3) non-web schemes (tel:, geo:, package-archive installs) pass through untouched. SCOPE
+  IS LINK BUTTONS ONLY - never route the in-app WebView fetchers, voice/graph downloads, the
+  updater, or share/export intents through this. Route any NEW "open a web page" button through
+  `ExternalLinks.open`. Device-proven on both flavors: toast with no browser, toast after a live
+  root-disable, real-browser open with the fake still the system default. The donate URL it opens
+  is upstream's Buy Me a Coffee page (upstream d6e8230f; donations go to the upstream author).
 - **In-app updater (`app/update/SelfUpdater.kt`).**
   - Reads `releases/latest` from `alltechdev/vela-dpad` → tag `v0.0.<run>` → versionCode = `<run>`
     compared to BuildConfig; newer → `MapUiState.updateInfo` card on the bare map.

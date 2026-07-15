@@ -43,6 +43,18 @@
         <intent>
             <action android:name="android.intent.action.TTS_SERVICE" />
         </intent>
+        <!-- Package visibility (Android 11+) for ExternalLinks' real-browser check: without this,
+             queryIntentActivities sees no browsers and every external link would report "no
+             browser installed" even with one present. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.APP_BROWSER" />
+        </intent>
     </queries>
 
     <application

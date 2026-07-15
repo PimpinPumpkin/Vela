@@ -736,7 +736,7 @@ fun PlaceSheet(
                 if (!app.vela.ui.HideExternalLinks.on.value) {
                     place.website?.let { site ->
                         ActionPill(Icons.Default.Language, stringResource(R.string.place_website)) {
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                            app.vela.ui.ExternalLinks.open(context, site)
                         }
                     }
                     // Street View - opens Google's KEYLESS consumer pano (documented map_action=pano deep
@@ -747,7 +747,7 @@ fun PlaceSheet(
                         val loc = place.location
                         val pano = "https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=" +
                             "%.6f,%.6f".format(java.util.Locale.US, loc.lat, loc.lng)
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(pano))) }
+                        app.vela.ui.ExternalLinks.open(context, pano)
                     }
                 }
             }
@@ -806,7 +806,7 @@ fun PlaceSheet(
             place.website?.takeIf { !app.vela.ui.HideExternalLinks.on.value }?.let { site ->
                 Row(
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).dpadHighlight(RoundedCornerShape(8.dp)).clickable {
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(site))) }
+                        app.vela.ui.ExternalLinks.open(context, site)
                     }.padding(vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -832,7 +832,7 @@ fun PlaceSheet(
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f))
                         .dpadHighlight(RoundedCornerShape(12.dp))
                         .clickable {
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(place.actionUrl))) }
+                            place.actionUrl?.let { app.vela.ui.ExternalLinks.open(context, it) }
                         }
                         .padding(vertical = 12.dp),
                     horizontalArrangement = Arrangement.Center,
@@ -2780,7 +2780,7 @@ private fun ShareIconButton(place: Place, tint: Color) {
             ?.let { runCatching { java.math.BigInteger(it, 16).toString() }.getOrNull() }
         val url = if (cid != null) "https://www.google.com/maps?cid=$cid"
             else "https://www.google.com/maps/search/?api=1&query=${Uri.encode(place.name)}%20$lat%2C$lng"
-        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        app.vela.ui.ExternalLinks.open(context, url)
         open = false
     }
 

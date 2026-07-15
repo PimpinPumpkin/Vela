@@ -498,4 +498,5 @@
         <item quantity="one">+%d altra fermata</item>
         <item quantity="other">+%d altre fermate</item>
     </plurals>
+    <string name="no_browser_installed">Il tuo dispositivo non ha un browser</string>
 </resources>

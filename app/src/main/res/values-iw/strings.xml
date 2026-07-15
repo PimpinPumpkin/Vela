@@ -501,4 +501,5 @@
         <item quantity="many">+%d עצירות נוספות</item>
         <item quantity="other">+%d עצירות נוספות</item>
     </plurals>
+    <string name="no_browser_installed">במכשיר שלך אין דפדפן</string>
 </resources>

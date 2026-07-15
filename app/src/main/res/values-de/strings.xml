@@ -498,4 +498,5 @@
         <item quantity="one">+%d weiterer Stopp</item>
         <item quantity="other">+%d weitere Stopps</item>
     </plurals>
+    <string name="no_browser_installed">Dein Gerät hat keinen Browser</string>
 </resources>

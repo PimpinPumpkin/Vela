@@ -37,8 +37,9 @@ object Onboarding {
      * dead search on the road. Shown once, then never again. */
     val showOfflinePrompt = mutableStateOf(false)
 
-    // Replace with your own funding page (Liberapay / Ko-fi / GitHub Sponsors).
-    const val DONATE_URL = "https://github.com/sponsors/PimpinPumpkin"
+    // Forks: point this at your own funding page. Donations go to the UPSTREAM author
+    // (this fork adds the D-pad/small-screen work; the app is theirs).
+    const val DONATE_URL = "https://buymeacoffee.com/PimpinPumpkin"
 
     private const val PREFS = "vela_onboarding"
     private const val WEEK_MS = 7L * 24 * 60 * 60 * 1000

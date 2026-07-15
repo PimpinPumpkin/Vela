@@ -1,7 +1,5 @@
 package app.vela.ui
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -84,7 +82,7 @@ fun VelaRoot(vm: MapViewModel = hiltViewModel()) {
                 DonatePrompt(
                     onDonate = {
                         runCatching {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(Onboarding.DONATE_URL)))
+                            app.vela.ui.ExternalLinks.open(context, Onboarding.DONATE_URL)
                         }
                         Onboarding.dismissDonatePrompt(context)
                     },

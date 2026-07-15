@@ -506,4 +506,5 @@
         <item quantity="many">ще %d зупинок</item>
         <item quantity="other">ще %d зупинки</item>
     </plurals>
+    <string name="no_browser_installed">На вашому пристрої немає браузера</string>
 </resources>
