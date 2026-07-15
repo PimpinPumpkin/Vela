@@ -75,10 +75,7 @@ import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material3.LocalContentColor
-import androidx.compose.ui.draw.rotate
 import androidx.compose.material.icons.filled.Park
 import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.Restaurant
@@ -789,6 +786,9 @@ fun MapScreen(
             // keeps updating either way; only the camera steps aside.
             navFollowing = !state.navCameraDetached && state.previewStepIndex == null,
             navNorthUp = state.navNorthUp,
+            // The compass below the nav card is the heading-up/north-up toggle during a drive
+            // (a reorient-to-north tap would be overridden by the follow a frame later anyway).
+            onCompassTap = { if (state.navigating) { vm.toggleNavNorthUp(); true } else false },
             onNavPanned = vm::onNavPanned,
             ambientCoversView = state.ambientCoversView,
             // Grabbing the map with a sheet up drops it down out of the way so the map is yours
@@ -1242,19 +1242,6 @@ fun MapScreen(
                     },
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
                 ) { Icon(Icons.Default.ZoomOutMap, contentDescription = stringResource(R.string.nav_overview)) }
-                // Compass: toggle the follow between heading-up (default) and north-up.
-                // The icon leans when heading-up is active, sits straight when north-up.
-                FloatingActionButton(
-                    onClick = vm::toggleNavNorthUp,
-                    modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
-                ) {
-                    Icon(
-                        Icons.Default.Explore,
-                        contentDescription = if (state.navNorthUp) stringResource(R.string.nav_heading_up) else stringResource(R.string.nav_north_up),
-                        modifier = Modifier.rotate(if (state.navNorthUp) 0f else -45f),
-                        tint = if (state.navNorthUp) MaterialTheme.colorScheme.primary else LocalContentColor.current,
-                    )
-                }
                 FloatingActionButton(
                     onClick = vm::toggleVoice,
                     modifier = Modifier.dpadHighlight(RoundedCornerShape(16.dp)),
