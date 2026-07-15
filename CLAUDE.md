@@ -1538,6 +1538,17 @@ architecture note.
   `browseAtt` now eases both back to 0 with the same k (zoom stays untouched, so a pinch level
   survives), and the nav-exit teardown also levels bearing/tilt (+ resets the sticky puck-low camera
   padding) for the not-following case. A manual rotate is a gesture, which drops follow - never fight it.
+  **DRIVING mode = HEADING-UP like nav (2026-07-15, supersedes north-up FOR DRIVING):** the north-up
+  ask was made from a car and what actually felt wrong was sideways puck motion. `browseDrive`
+  ([smoothedSpeed, engagedFlag, courseTarget, lookaheadM]) latches driving on above 2.5 m/s
+  (smoothed) with a known course; while engaged the ticker eases the LIVE camera bearing toward
+  the GPS course (course target updates only >2 m/s - never trust a crawl), tilt toward nav's 55,
+  and aims the camera at a point `speed*5` m (cap 250) AHEAD of the puck along course - the nav
+  puck-low framing WITHOUT sticky padding (nothing to un-stick when follow drops; the puck itself
+  still draws at `browseCam`). A red light HOLDS the attitude (engaged releases only when the
+  follow ends via the effect reset). The beam prefers GPS course over compass while engaged (car
+  bodies wreck magnetometers). North-up flat enforcement still runs for the NOT-engaged regime
+  (walking/slow browse). Don't re-add north-up for driving without re-reading this.
   **The follow target DEAD-RECKONS between fixes (2026-07-14):** easing toward the raw ~1 Hz fix
   chased a target that jumps then sits - the per-second surge-and-stall jitter (user report). The
   ticker now projects the last fix forward along its own speed + course every frame (constant

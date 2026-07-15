@@ -1180,12 +1180,18 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   uses, so the camera chases something that moves like the car: a continuous inertial glide, no
   route required. Bounded to 2.5 s of blind projection and only while genuinely moving; each new
   fix re-anchors and the ease soaks up the correction instead of snapping.
-- ✅ **Free-drive follow is NORTH-UP for real (2026-07-14).** The browse follow only ever moved
-  the camera's target, so a leftover rotation or tilt (a previous drive's heading-up camera, an
-  old two-finger rotate) survived into it and a drive could track DOWN the screen. The follow now
-  eases bearing and tilt back to north-up flat as it engages (the compass shows while it settles
-  and fades at north), and ending navigation levels the camera too. A manual rotate is a gesture,
-  which drops follow, so nothing fights the user's hand.
+- ✅ **Free-drive follow drives HEADING-UP, like navigation (2026-07-15; superseded the
+  2026-07-14 north-up pass for driving).** Driving with no route now rotates the map so the
+  puck always moves up the screen, never sideways - once you're at driving speed the camera
+  eases to the GPS course, tilts to navigation's 55 degrees, and aims a speed-scaled distance
+  ahead of the puck so the road ahead owns the view (the same framing nav gets from camera
+  padding, done here with a projected aim point so nothing sticky survives the follow).
+  Stopping at a light holds the heading; only ending the follow releases driving mode. The
+  puck's own heading prefers GPS course over the compass while driving (car bodies wreck
+  magnetometers), so the arrow and the map always agree. Walking or slow browsing keeps the
+  north-up flat behavior from 2026-07-14 (leftover rotations still self-correct, the compass
+  shows while settling), and a manual rotate is a gesture, which drops follow - nothing
+  fights the user's hand. Pinch zoom is preserved in both regimes.
 - ✅ **Route overview button during navigation (2026-07-14).** A new fly-over button in the nav
   button stack fits the whole route on screen - camera only, Google-style: guidance and voice
   keep running and the puck keeps moving along the overview. It marks the camera detached, so
