@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -53,8 +54,13 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.IntOffset
@@ -107,13 +113,54 @@ fun StepsSheet(
     val dim = SheetPalette.dim(dark)
     // Swipe-down to dismiss (user 2026-07-15): the card rides the finger (down only) and a
     // release commits close on a flick or past a third of the sheet, else springs back - the
-    // shared sheetDragGestures grammar, so it feels like every other sheet. The step LIST
-    // claims its own vertical drags (scroll), so the drag surface is the header/edges,
-    // same as the place sheet.
+    // shared sheetDragGestures grammar, so it feels like every other sheet. The header/edges
+    // drag via the card's own detector; the step LIST joins in through a nested-scroll
+    // connection (dismissConn) so a downward drag on the body with the list AT ITS TOP pulls
+    // the sheet too, the place-sheet grammar (user 2026-07-15: "swipe down anywhere on the
+    // body, not just the chevron").
     val scope = rememberCoroutineScope()
     val drag = remember { Animatable(0f) }
     var sheetHeightPx by remember { mutableIntStateOf(0) }
     val density = LocalDensity.current
+    val settleDrag: (Float) -> Unit = { velocityPxS ->
+        val flick = with(density) { FLING_COMMIT_DPS.dp.toPx() }
+        val committed = velocityPxS > flick ||
+            (drag.value > sheetHeightPx / 3f && velocityPxS > -flick)
+        if (committed) onClose() else scope.launch { drag.animateTo(0f) }
+    }
+    val listState = rememberLazyListState()
+    val dismissConn = remember(listState) {
+        object : NestedScrollConnection {
+            // True once this gesture moved the sheet - its release then settles the sheet and
+            // eats the fling instead of letting the list scroll run away with it.
+            private var draggingSheet = false
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                val atTop = listState.firstVisibleItemIndex == 0 &&
+                    listState.firstVisibleItemScrollOffset == 0
+                // Downward drag with the list at its top pulls the sheet; an upward drag
+                // retracts a pulled sheet before the list scrolls again.
+                if (available.y > 0f && atTop) {
+                    draggingSheet = true
+                    scope.launch { drag.snapTo(drag.value + available.y) }
+                    return available
+                }
+                if (available.y < 0f && drag.value > 0f) {
+                    draggingSheet = true
+                    scope.launch { drag.snapTo((drag.value + available.y).coerceAtLeast(0f)) }
+                    return available
+                }
+                return Offset.Zero
+            }
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (draggingSheet) {
+                    draggingSheet = false
+                    settleDrag(available.y)
+                    return available
+                }
+                return Velocity.Zero
+            }
+        }
+    }
     Card(
         modifier
             .fillMaxWidth()
@@ -122,12 +169,7 @@ fun StepsSheet(
             .pointerInput(Unit) {
                 sheetDragGestures(
                     dragBy = { dy -> scope.launch { drag.snapTo((drag.value + dy).coerceAtLeast(0f)) } },
-                    settle = { velocityPxS ->
-                        val flick = with(density) { FLING_COMMIT_DPS.dp.toPx() }
-                        val committed = velocityPxS > flick ||
-                            (drag.value > sheetHeightPx / 3f && velocityPxS > -flick)
-                        if (committed) onClose() else scope.launch { drag.animateTo(0f) }
-                    },
+                    settle = settleDrag,
                 )
             },
         shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
@@ -158,7 +200,13 @@ fun StepsSheet(
             // D-pad-first (docs/dpad.md): land focus on the first step row when the sheet
             // opens, so it's the active surface (OK previews that step). No-op under touch.
             val stepsAutoFocus = rememberDpadAutoFocus()
-            LazyColumn(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.5f).dp)) {
+            LazyColumn(
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = (LocalConfiguration.current.screenHeightDp * 0.5f).dp)
+                    .nestedScroll(dismissConn),
+                state = listState,
+            ) {
                 itemsIndexed(maneuvers) { i, m ->
                     val highlighted = i == previewIndex
                     val active = i == currentStep

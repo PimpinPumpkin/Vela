@@ -594,7 +594,17 @@ Defaults that make the safe path the easy one:
   coordinate pin on empty land, as before). NB the long-press-while-planning "route through here"
   add-stop no longer flashes a heads-up banner (2026-07-13): the route refetch reset `status` a beat
   later so it blinked unreadably, and the stop appearing in the chooser + the route redrawing IS the
-  feedback (`mapvm_stop_added` string removed from all locales). **The named-POI resolve is
+  feedback (`mapvm_stop_added` string removed from all locales). **And it only fires while the chooser
+  is MINIMIZED to its Start bar with the steps viewer closed (2026-07-15, device-verified):**
+  building/unnamed-POI TAPS funnel into the same handler, so with the full picker (or the step list)
+  covering the map a stray tap on the visible strip silently added a stop and rerouted; suppressed
+  presses do nothing at all (a dropped pin would be an invisible sheet under the open chooser). The
+  chooser's collapsed state reaches the VM via `MapViewModel.onDirectionsCollapsed` (mirrored from
+  MapScreen's dirMinimized); a house-number-label tap while planning delegates to the same gate. The
+  deliberate flows (Add stop -> choose on map, the origin picker) are ungated. The STEPS SHEET also
+  dismisses by a swipe down anywhere on the body once its list is at the top - a nested-scroll
+  connection feeding the card's existing drag offset (the place-sheet dismissConn grammar); mid-list
+  swipes still scroll. **The named-POI resolve is
   NAME-AGREEING first (2026-07-14):** onPoiTap searches the tapped name, but the pick used to
   ignore it - bare `nearest` plus the 35 m most-reviewed override let a strip mall's popular
   NEIGHBOUR steal the tap (Google's per-listing pins in a shared building are loose; a sushi

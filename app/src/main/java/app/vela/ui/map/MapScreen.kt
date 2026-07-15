@@ -230,6 +230,9 @@ fun MapScreen(
     // screen the route fit gets nearly the whole map back, so it re-frames closer instead
     // of staying at the zoomed-out framing the full-height panel needed (user 2026-07-14).
     var dirMinimized by remember { mutableStateOf(false) }
+    // Mirrored into the VM too: the route-through-here press is gated on the chooser being
+    // minimized (stray building taps while the full picker covered the map added stops).
+    LaunchedEffect(dirMinimized) { vm.onDirectionsCollapsed(dirMinimized) }
     LaunchedEffect(state.directionsOpen) { if (!state.directionsOpen) dirMinimized = false }
     val cameraBottomInset = when {
         placeSheetUp -> (screenHeightPx * 0.56f).toInt()

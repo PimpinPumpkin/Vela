@@ -873,6 +873,14 @@ class MapViewModel @Inject constructor(
     // backed out of. Each route() supersedes the previous; a directionsOpen/mode guard is the belt-and-
     // suspenders for the back-out (audit 2026-07-06). Cancelled by clearRoute/clearSelection.
     private var routeJob: Job? = null
+    // Whether the directions chooser is collapsed to its Start bar. UI-owned (the panel's drag
+    // physics live in DirectionsPanel), mirrored here by MapScreen so the route-through-here
+    // long-press can gate on it - only read while directionsOpen, so a stale value between
+    // sessions is harmless (the panel re-reports on composition).
+    private var directionsMinimized = false
+
+    /** MapScreen mirrors the chooser's collapsed state (DirectionsPanel onCollapsedChange). */
+    fun onDirectionsCollapsed(minimized: Boolean) { directionsMinimized = minimized }
 
     /** As the user types, fetch live place suggestions (debounced) so the search
      *  page shows real matches — name + address — to tap, like Google's
@@ -2369,6 +2377,14 @@ class MapViewModel @Inject constructor(
         // region", but a hand-placed waypoint forces the detour. The point itself is what matters, so
         // the stop sits at the exact spot pressed; the reverse-geocode only names it.
         if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+            // Only when the chooser is MINIMIZED to its Start bar and the steps viewer is closed
+            // (user 2026-07-15). Plain building/unnamed-POI taps funnel into this handler too, so
+            // with the full picker (or the step list) covering the map, a stray tap on the visible
+            // strip of map silently added a stop and rerouted the trip. Minimized, the map is the
+            // primary surface and routing through a pressed point is plausibly deliberate. A
+            // suppressed press does nothing at all: dropping a pin instead would load a place
+            // sheet invisibly under the chooser (the ghost-selection class of bug).
+            if (_state.value.showSteps || !directionsMinimized) return
             viewModelScope.launch {
                 val geo = runCatching { dataSource.reverseGeocode(location) }.getOrNull()
                 val stop = (geo ?: Place(id = "pin:${location.lat},${location.lng}", name = appContext.getString(R.string.mapvm_dropped_pin), location = location))
@@ -2422,6 +2438,13 @@ class MapViewModel @Inject constructor(
     fun onAddressLabelTap(number: String, location: LatLng) {
         if (_state.value.navigating) return // dead during a live drive, like onPoiTap
         if (_state.value.pickOnMap != null) { onMapLongPress(location); return } // pick-mode reuses the endpoint flow
+        // While planning a trip, a tapped house number behaves like any other pressed point:
+        // route-through-here when the chooser is minimized, suppressed otherwise (the gate lives
+        // in onMapLongPress). Selecting the address here instead set `selected` under the open
+        // chooser - an invisible sheet that popped up when the chooser closed.
+        if (_state.value.directionsOpen && !_state.value.pickingOrigin && !_state.value.pickingStop) {
+            onMapLongPress(location); return
+        }
         reviewsJob?.cancel()
         val id = "addr:$number@${location.lat},${location.lng}"
         val immediate = Place(id = id, name = number, location = location)
