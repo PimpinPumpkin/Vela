@@ -308,6 +308,11 @@ fun VelaMapView(
     // the ~1 Hz fixes instead of jumping and sitting (the per-second surge-and-stall jitter).
     val browseFix = remember { doubleArrayOf(0.0, 0.0, 0.0, 0.0, Double.NaN) } // [lat, lng, atMs, speed m/s, course deg]
     val browseFixRef = remember { arrayOfNulls<Any>(1) } // identity of the fix browseFix was taken from
+    // Free-drive DRIVING mode (user 2026-07-15): [0] smoothed speed m/s, [1] engaged flag (latches
+    // on at driving speed, released only by the follow ending - a red light must HOLD the heading,
+    // not level the camera out), [2] the course the camera is easing toward, [3] eased forward
+    // lookahead metres (the padding-free puck-low).
+    val browseDrive = remember { doubleArrayOf(0.0, 0.0, Double.NaN, 0.0) }
     val lastBrowse = remember { doubleArrayOf(Double.NaN, Double.NaN, Double.NaN) } // last applied [lat,lng,bearing] (skip no-op frames)
     val viewport = rememberUpdatedState(onViewport)
     val dpadHolder = rememberUpdatedState(dpadController)
@@ -694,6 +699,7 @@ fun VelaMapView(
             browseBeam[0] = Float.NaN   // applyData paints the raw fix again once we're not following
             browseCam[0] = Double.NaN
             lastBrowse[0] = Double.NaN
+            browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
             return@LaunchedEffect
         }
         var lastNanos = 0L
@@ -705,7 +711,10 @@ fun VelaMapView(
             val loc = myLocationHolder.value ?: continue
             // Ease the beam toward the freshest heading (compass when stopped, GPS course when
             // moving). Hold the last angle when neither is available so the cone doesn't snap to 0.
-            val tgt = compassHeadingHolder.value ?: myBearingHolder.value
+            // While DRIVING the GPS course leads - a car body wrecks the magnetometer, and the
+            // heading-up camera below keys off course, so the puck and the map must agree.
+            val tgt = if (browseDrive[1] > 0.5) myBearingHolder.value ?: compassHeadingHolder.value
+            else compassHeadingHolder.value ?: myBearingHolder.value
             if (tgt != null) browseBeam[0] = if (browseBeam[0].isNaN()) tgt else smoothBearing(browseBeam[0], tgt, dt, 0.15f)
             val beam = if (browseBeam[0].isNaN()) 0f else browseBeam[0]
             // DEAD-RECKON the follow target between fixes (user 2026-07-14: "not a smooth inertial
@@ -741,7 +750,8 @@ fun VelaMapView(
             // Ease the camera toward the (reckoned) target (skipped while pinching - the fingers win).
             val cam = mapRef
             var camLat = tgtLat; var camLng = tgtLng
-            var attSettling = false // true while bearing/tilt are still easing back to north-up flat
+            var lookLat = tgtLat; var lookLng = tgtLng // camera aim point (ahead of the puck while driving)
+            var attSettling = false // true while bearing/tilt are still easing (to course-up or north-up)
             if (cam != null && !scaling[0]) {
                 if (browseCam[0].isNaN()) {
                     val cp = cam.cameraPosition
@@ -765,20 +775,48 @@ fun VelaMapView(
                 browseCam[0] += (tgtLat - browseCam[0]) * k
                 browseCam[1] += (tgtLng - browseCam[1]) * k
                 camLat = browseCam[0]; camLng = browseCam[1]
-                // NORTH-UP, FLAT - enforced against the LIVE camera every frame, not a one-shot
-                // shadow: the first cut copied bearing/tilt once when follow engaged and eased
-                // that copy, so any rotation arriving from OUTSIDE the ticker afterwards (a
-                // camera animation, a restored rotated camera - anything that isn't a follow-
-                // dropping gesture) was invisible to it and the map stayed rotated (user drive
-                // 2026-07-14: "still not oriented north all the time"). Reading the real values
-                // each frame self-corrects no matter where the rotation came from; the built-in
-                // compass shows while it settles and fades at north. A manual rotate is a
-                // gesture, which drops follow, so fingers still win.
+                lookLat = camLat; lookLng = camLng
                 val cp = cam.cameraPosition
-                val realBrg = ((cp.bearing + 540.0) % 360.0) - 180.0 // signed, eases to 0
-                attSettling = kotlin.math.abs(realBrg) > 0.15 || cp.tilt > 0.15
-                browseAtt[0] = realBrg * (1.0 - k)
-                browseAtt[1] = cp.tilt * (1.0 - k)
+                // DRIVING mode latches on at driving speed (smoothed, so one noisy fix can't
+                // flip it) and only the follow ending releases it - a red light HOLDS the
+                // heading-up attitude rather than levelling out (user 2026-07-15: the free-drive
+                // camera must track the heading like navigation; the earlier north-up ask turned
+                // out to be about the puck moving SIDEWAYS, and course-up is what Google does).
+                browseDrive[0] += (browseFix[3] - browseDrive[0]) * (1.0 - kotlin.math.exp(-dt / 1.0))
+                if (browseDrive[1] < 0.5 && browseDrive[0] > 2.5 && !browseFix[4].isNaN()) browseDrive[1] = 1.0
+                if (browseDrive[1] > 0.5) {
+                    // Heading-up, nav-style: ease the live camera toward the course (updated only
+                    // while the course is trustworthy - above walking speed), tilt toward nav's 55,
+                    // and aim the camera a speed-scaled distance AHEAD of the puck so the road
+                    // ahead owns the view. Nav gets that framing from sticky camera padding; a
+                    // projected aim point does the same job with nothing to un-stick when the
+                    // follow drops.
+                    if (browseFix[3] > 2.0 && !browseFix[4].isNaN()) browseDrive[2] = browseFix[4]
+                    val crs = if (browseDrive[2].isNaN()) cp.bearing else browseDrive[2]
+                    val db = ((crs - cp.bearing + 540.0) % 360.0) - 180.0
+                    browseAtt[0] = (cp.bearing + db * k + 360.0) % 360.0
+                    browseAtt[1] = cp.tilt + (55.0 - cp.tilt) * k
+                    browseDrive[3] += ((browseDrive[0] * 5.0).coerceAtMost(250.0) - browseDrive[3]) * k
+                    val lr = Math.toRadians(crs)
+                    lookLat = camLat + browseDrive[3] * kotlin.math.cos(lr) / 111_320.0
+                    lookLng = camLng + browseDrive[3] * kotlin.math.sin(lr) /
+                        (111_320.0 * kotlin.math.cos(Math.toRadians(camLat)).coerceAtLeast(0.1))
+                    attSettling = true // camera state is live every frame while driving
+                } else {
+                    // NORTH-UP, FLAT (walking/slow browse) - enforced against the LIVE camera every
+                    // frame, not a one-shot shadow: the first cut copied bearing/tilt once when
+                    // follow engaged and eased that copy, so any rotation arriving from OUTSIDE the
+                    // ticker afterwards (a camera animation, a restored rotated camera - anything
+                    // that isn't a follow-dropping gesture) was invisible to it and the map stayed
+                    // rotated (user drive 2026-07-14). Reading the real values each frame
+                    // self-corrects no matter where the rotation came from; the built-in compass
+                    // shows while it settles and fades at north. A manual rotate is a gesture,
+                    // which drops follow, so fingers still win.
+                    val realBrg = ((cp.bearing + 540.0) % 360.0) - 180.0 // signed, eases to 0
+                    attSettling = kotlin.math.abs(realBrg) > 0.15 || cp.tilt > 0.15
+                    browseAtt[0] = realBrg * (1.0 - k)
+                    browseAtt[1] = cp.tilt * (1.0 - k)
+                }
             } else {
                 browseCam[0] = Double.NaN // released (pinch) → re-seed from the live camera on re-attach
             }
@@ -799,12 +837,14 @@ fun VelaMapView(
                 setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0]) {
                     if (attSettling) {
-                        // Still easing rotation/tilt back to north-up flat: drive them alongside
-                        // the target (zoom left unset = preserved, so a pinch level survives).
+                        // Easing attitude (course-up while driving, back to north-up flat
+                        // otherwise): drive it alongside the aim point (zoom left unset =
+                        // preserved, so a pinch level survives). While driving the aim point
+                        // rides AHEAD of the puck, which puts the puck low on the screen.
                         cam.moveCamera(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
-                                    .target(MLLatLng(camLat, camLng))
+                                    .target(MLLatLng(lookLat, lookLng))
                                     .bearing((browseAtt[0] + 360.0) % 360.0)
                                     .tilt(browseAtt[1].coerceAtLeast(0.0))
                                     .build(),
