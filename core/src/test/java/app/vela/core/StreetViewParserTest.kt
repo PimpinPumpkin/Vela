@@ -74,6 +74,16 @@ class StreetViewParserTest {
         assertEquals("4th st", StreetViewParser.streetOf("2001 4th St"))
         assertEquals("main st", StreetViewParser.streetOf("120 Main Street")) // Street -> st
         assertEquals("1st st", StreetViewParser.streetOf("42B 1st St")) // house 42B dropped, ordinal kept
+        assertEquals("s 12th st", StreetViewParser.streetOf("1107 S 12th St")) // directional kept
+    }
+
+    @Test fun streetOfRejectsNonStreets() {
+        // Needs a suffix or ordinal - a bare city, neighbourhood, or business name is NOT a street,
+        // so it can't shadow the real street (which lives in a different field for address results).
+        assertNull(StreetViewParser.streetOf("Sacramento, California"))
+        assertNull(StreetViewParser.streetOf("Midtown, Sacramento"))
+        assertNull(StreetViewParser.streetOf("Joe's Cafe"))
+        assertNull(StreetViewParser.streetOf(null))
     }
 
     @Test fun streetMatchesAcrossAddressForms() {
