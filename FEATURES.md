@@ -1205,6 +1205,18 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
+- ✅ **A degraded route can no longer masquerade as a "faster route" (2026-07-15, real-drive
+  report).** When the ~2-min recheck's Google fetch fails, the candidate comes back
+  trafficless with abbreviated steps - and its free-flow ETA, compared against the live
+  traffic-aware remaining time, always looks like a big saving. Accepting one explained a
+  whole cluster of symptoms in one drive: a suspiciously fast ETA, white ETA text instead of
+  traffic colours, no lane guidance (abbreviated Google steps carry no lane data), and the
+  time "syncing back" to Google's a recheck later. Three gates now: a trafficless or
+  abbreviated candidate is never OFFERED as faster (its ETA isn't comparable), a trafficless
+  candidate never drives the live ETA recalibration, and the same-course self-heal that
+  already restored full steps after an OSRM blip now also restores live traffic - a white
+  ETA turns traffic-coloured again on the next recheck instead of staying white for the
+  rest of the drive (neither quality can downgrade in the swap).
 - ✅ **Faster wrong-turn rerouting (2026-07-15, reported: "waits far too long").** Three
   coordinated cuts to the off-route detection lag in `NavEngine`: the on-route corridor
   tightened 45 → 40 m (moving GPS error is well under 20 m plus a lane offset, and on a

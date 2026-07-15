@@ -410,6 +410,13 @@ class NavSession @Inject constructor(
             ) return@launch
             val candidateEta = candidate.durationInTrafficSeconds ?: candidate.durationSeconds
             val remaining = _state.value.remainingDuration
+            // A TRAFFICLESS candidate (Google fetch failed -> free-flow ETA) must never drive the
+            // ETA calibration or a faster-route offer: free-flow is systematically optimistic, so
+            // against a traffic-aware baseline it always "wins" - the real-drive 2026-07-15 report
+            // (white suspiciously-fast ETA after accepting, syncing back to reality a recheck
+            // later) was exactly this. Trafficless can still silently heal abbreviated steps
+            // below (same course, so its GEOMETRY is fine even when its ETA is not comparable).
+            val trafficAware = candidate.hasLiveTraffic
             // Even with NO course change the traffic ahead keeps evolving, and this candidate IS
             // a fresh traffic-aware ETA from the live position. When it follows the route we're
             // already driving (every sampled point within SAME_COURSE_M of the current line -
@@ -422,7 +429,7 @@ class NavSession @Inject constructor(
             val current = _state.value.route
             val sameCourse = current != null && candidateEta > 0.0 &&
                 !app.vela.core.data.RouteGeometry.divergent(current, candidate, SAME_COURSE_M)
-            if (sameCourse && remaining > 120.0) {
+            if (sameCourse && remaining > 120.0 && trafficAware) {
                 etaScale = (etaScale * candidateEta / remaining).coerceIn(0.5, 2.5)
             }
             // ABBREVIATED-STEPS SELF-HEAL: an OSRM blip mid-drive makes a reroute fall back to
@@ -432,8 +439,15 @@ class NavSession @Inject constructor(
             // only cared about faster routes. When the open router has recovered, the same-course
             // candidate carries the full step list - adopt it silently: same path, fresh traffic,
             // real turns. Tagged at the source (Route.abbreviatedSteps), so a healthy route can
-            // never be churned by this.
-            if (sameCourse && current!!.abbreviatedSteps && !candidate.abbreviatedSteps && !candidate.provisional) {
+            // never be churned by this. Same self-heal for a TRAFFICLESS current route (white ETA,
+            // real-drive 2026-07-15): once a same-course candidate carries live traffic again,
+            // adopt it so the ETA turns traffic-coloured and honest instead of staying white for
+            // the rest of the drive. Either upgrade qualifies; neither quality may downgrade.
+            val stepsUpgrade = current!!.abbreviatedSteps && !candidate.abbreviatedSteps
+            val trafficUpgrade = !current.hasLiveTraffic && candidate.hasLiveTraffic
+            val noDowngrade = (current.abbreviatedSteps || !candidate.abbreviatedSteps) &&
+                (!current.hasLiveTraffic || candidate.hasLiveTraffic)
+            if (sameCourse && !candidate.provisional && (stepsUpgrade || trafficUpgrade) && noDowngrade) {
                 val marks = NavEngine.stopMarks(candidate, remainingStops.map { it.location })
                 synchronized(stopLock) {
                     stops = remainingStops
@@ -459,8 +473,8 @@ class NavSession @Inject constructor(
                 }
                 diag.record(
                     "nav",
-                    "recheck upgraded abbreviated route to full steps " +
-                        "(${current.maneuvers.size} -> ${candidate.maneuvers.size} maneuvers)",
+                    "recheck upgraded route (steps ${current.maneuvers.size} -> ${candidate.maneuvers.size}, " +
+                        "traffic ${current.hasLiveTraffic} -> ${candidate.hasLiveTraffic})",
                 )
                 return@launch
             }
@@ -469,8 +483,12 @@ class NavSession @Inject constructor(
             // dismissed saving by a real margin — not re-spoken verbatim every 2 minutes.
             if (routeKey(candidate) == dismissedFasterKey && saving < dismissedFasterSaving + 60.0) return@launch
             // Offer it only if it saves real time AND isn't implausibly short — a candidate claiming to cut
-            // the same trip to a fraction of the time left is a bad route, not a real faster path.
-            if (saving > FASTER_THRESHOLD_S && candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)) {
+            // the same trip to a fraction of the time left is a bad route, not a real faster path. And only
+            // when its ETA is traffic-aware and its steps are real (never trade a healthy route for an
+            // abbreviated one on the strength of an incomparable ETA).
+            if (trafficAware && !candidate.abbreviatedSteps &&
+                saving > FASTER_THRESHOLD_S && candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)
+            ) {
                 _state.update { it.copy(fasterRoute = candidate, fasterSavingSeconds = saving) }
                 voice.speak(
                     app.vela.core.i18n.NavStringsRegistry.current()
