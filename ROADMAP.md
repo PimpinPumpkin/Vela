@@ -216,9 +216,9 @@ worth an offline drive past a signed exit to hear it).
     stops, reaches-dest guards intact), and up/down reorder arrows (`moveStop`).
     ~~avoid tolls/highways~~ (SHIPPED 2026-07-11 as on-device graph profiles - see Queued near-term),
     ~~explicit lists/labels for saved places~~ (SHIPPED 2026-07-08 - local lists with icons/colors/notes).
-  - *Not feasible keyless / out of scope:* Street View (key-gated - see Known-hard),
-    account features (your contributions,
+  - *Not feasible keyless / out of scope:* account features (your contributions,
     timeline, writing reviews - degoogled by design), flights/hotels booking tabs.
+    (Street View used to sit here as "key-gated" - it shipped keyless 2026-07-15, see below.)
   Recommended order: the *cheap* group first (one parser+UI pass, reuses the
   enrichment plumbing), then Q&A, then review-topic chips.
 - ~~Traffic browse-overlay - keep, drop, or rebuild?~~ - **RESOLVED 2026-06-19:

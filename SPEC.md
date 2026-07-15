@@ -32,10 +32,12 @@ Services** (GrapheneOS / no-GMS ROMs), distributed via F-Droid/Obtainium, GPLv3.
   built to be **re-calibrated and even hot-patched without an app update** (§5).
 
 ### Non-goals
-- In-app Street View panos (WebGL renders black in a WebView; a pill opens Google’s
-  keyless pano in the browser instead), account sync. (Turn-by-turn *offline* routing
-  and photo author/date, once non-goals, are now DONE - GraphHopper + the reviews DOM
-  scrape.) See `FEATURES.md` "Known debts."
+- Account sync. (In-app Street View, turn-by-turn *offline* routing and photo
+  author/date, once non-goals, are all DONE - the pano viewer renders Google's
+  equirect tiles on its own GL sphere since 2026-07-15 (embedding Google's WebGL
+  page rendered black, which is what originally parked it), GraphHopper covers
+  offline routing, the reviews DOM scrape covers photo author/date.) See
+  `FEATURES.md` "Known debts."
 - **Popular/busy times - DONE keyless (2026-06-19), not a non-goal.** Earlier I wrongly
   ruled it sign-in-gated: the histogram (`[84]`) is stripped from the keyless **OkHttp**
   search (bot-degraded, like photos/transit), but a **warmed hidden WebView's same-origin
@@ -215,7 +217,7 @@ token included) - `GoogleMapsDataSource.importList` lifts it verbatim (regex on
 Response after the `)]}'` guard: `root[0][4]`=title · `[5]`=description · `[3][0]`=author ·
 `[8]`=items, each `[2]`=display name, `[3]`=the owner's personal NOTE, `[1][4]`=address,
 `[1][5][2..3]`=lat/lng, `[1][6]`=feature id as a DECIMAL signed-int64 pair (two's-complement hex
-= the `0x..:0x..` reviews id — `EntityListParser.featureId`). Parser: `EntityListParser`
+= the `0x..:0x..` reviews id - `EntityListParser.featureId`). Parser: `EntityListParser`
 (best-effort, unit-tested on a captured payload).
 
 ### Hours node (`[1][203][0]`) - date-specific, holidays baked in (observed 2026-07-01)
