@@ -91,6 +91,14 @@ private const val ROUTE_DOT_SPACING_PX = 17.0
 // (frame-ticker-updated, traffic spans remapped onto the suffix).
 private const val ROUTE_AHEAD_SRC = "vela-route-ahead-src"
 private const val ROUTE_AHEAD_LAYER = "vela-route-ahead"
+// AUDIT FIX 9 (2026-07-15): the ahead line is split again into a short leading WINDOW (re-uploaded
+// every ~150 ms as the puck moves) and a far TAIL (uploaded once per few km) - re-tessellating the
+// whole remaining route each tick burned frame budget for the entire drive, even during the
+// overview flight. Same paint on both layers; the seam point is computed identically on each side.
+private const val ROUTE_TAIL_SRC = "vela-route-tail-src"
+private const val ROUTE_TAIL_LAYER = "vela-route-tail"
+private const val NAV_WINDOW_M = 3000.0   // leading window length
+private const val NAV_WINDOW_SLACK_M = 500.0 // re-anchor when the puck gets this close to the seam
 // Traversed-route grey, per theme — dimmer than and distinct from the alternates' #9AA0A6 so
 // the driven tail doesn't read as another tappable route.
 private const val TRAVERSED_LIGHT = "#B9BDC2"
@@ -188,6 +196,35 @@ private var lastAppliedRouteLine: List<LatLng>? = null // identity-gate the rout
                                                        // thousands-of-vertices linestring per fix burned
                                                        // frame budget exactly while the ticker eased the camera
 private var lastNavRouteMode = false                   // nav→browse transition clears the ahead-suffix layer once
+// AUDIT FIX 3 (2026-07-15): the rest of applyData's tail gets the same identity gates the
+// markers/ambient/route uploads already had - with the route CHOOSER open, every recomposition
+// (a compass tick, a scale-bar step during the fit flight) re-uploaded all alternate polylines
+// and re-set gradients mid-flight. All reset in the style-reload block (fresh style = empty
+// sources + default props) or the layers go invisible after a theme/palette/satellite flip.
+private var lastAppliedAlternates: List<Pair<Int, List<LatLng>>>? = null
+private var lastAppliedAltColor: String? = null
+private var lastAppliedMe: LatLng? = null
+private var lastAppliedMeBearing: Float? = null
+private var lastAppliedPreview: LatLng? = null
+private var previewApplied = false // distinguishes "never applied" from "applied null"
+private var lastRouteMode = -1     // 0=dashed 1=browse 2=nav; transition one-shots key off this
+private var lastBrowseGradKey: Int? = null
+private var lastMeLayerKey: Int? = null
+private val lastEnsureKey = intArrayOf(-1)
+
+// AUDIT FIX 6 (2026-07-15): discrete animateCamera FLIGHTS (locate, route fit, overview,
+// marker fit - never the per-frame follow tickers, which would starve paints for whole drives)
+// bump this depth counter via flightCb. While it's up, the ambient upload in applyData defers:
+// a whole-layer symbol re-placement landing mid-flight is the "dots pop in during the locate
+// flight" stutter. The data isn't lost - lastAppliedAmbient stays stale, so the next
+// recomposition after landing (a 1 Hz fix, a compass tick - always <=1 s away) uploads it at
+// camera-idle, where placement is invisible.
+private val flightDepth = intArrayOf(0)
+
+private fun flightCb() = object : org.maplibre.android.maps.MapLibreMap.CancelableCallback {
+    override fun onFinish() { if (flightDepth[0] > 0) flightDepth[0]-- }
+    override fun onCancel() { if (flightDepth[0] > 0) flightDepth[0]-- }
+}
 
 /**
  * MapLibre wrapped for Compose. Three camera behaviours:
@@ -559,7 +596,13 @@ fun VelaMapView(
         while (true) {
             val m = mapRef
             val fix = latestFix.value
-            if (m != null && fix != null && latestMs.value.isNotEmpty()) {
+            // AUDIT FIX 11 (2026-07-15): queryRenderedFeatures is a synchronous main-thread call
+            // into the render thread - skip the poll while a discrete flight or a two-finger
+            // gesture is in progress (keyed on those, never "camera moving": the follow tickers
+            // move the camera every frame and a moving-camera gate would starve the badge for
+            // whole drives). The 2.5 s cadence just catches up on the next tick.
+            val busy = flightDepth[0] > 0 || scaling[0] || shoving[0]
+            if (!busy && m != null && fix != null && latestMs.value.isNotEmpty()) {
                 val kmh = runCatching {
                     val p = m.projection.toScreenLocation(org.maplibre.android.geometry.LatLng(fix.lat, fix.lng))
                     val r = 14f
@@ -795,12 +838,13 @@ fun VelaMapView(
                     // glides the difference. A normal street camera is still preserved (else branch).
                     if (cp.zoom < 14.0) {
                         browseFlying[0] = true
+                        flightDepth[0]++
                         cam.animateCamera(
                             CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5),
                             650,
                             object : MapLibreMap.CancelableCallback {
-                                override fun onFinish() { browseFlying[0] = false }
-                                override fun onCancel() { browseFlying[0] = false }
+                                override fun onFinish() { browseFlying[0] = false; if (flightDepth[0] > 0) flightDepth[0]-- }
+                                override fun onCancel() { browseFlying[0] = false; if (flightDepth[0] > 0) flightDepth[0]-- }
                             },
                         )
                         continue
@@ -926,12 +970,14 @@ fun VelaMapView(
             // follow's rotated 55-degree camera, and a tilted, rotated fit shows LESS than the
             // whole route however correct the math (user 2026-07-15: "doesn't quite show the
             // full route") - Google's overview levels out too.
+            flightDepth[0]++
             map.animateCamera(
                 CameraUpdateFactory.newLatLngBounds(
                     b.build(), 0.0, 0.0,
                     70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
                 ),
                 700,
+                flightCb(),
             )
         }
     }
@@ -954,7 +1000,8 @@ fun VelaMapView(
         }
         didLaunchCentre[0] = true
         runCatching {
-            cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5), 650)
+            flightDepth[0]++
+            cam.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(loc.lat, loc.lng), 15.5), 650, flightCb())
         }
     }
 
@@ -1004,6 +1051,7 @@ fun VelaMapView(
         }
         wasNavRef[0] = true
         navPuck.engaged = false
+        val navWin = doubleArrayOf(Double.NaN) // route-split window end (m); relaunch = fresh route = re-anchor
         var lastNanos = 0L
         while (true) {
             val now = withFrameNanos { it }
@@ -1152,21 +1200,60 @@ fun VelaMapView(
                         .getOrDefault(ROUTE_FREEFLOW)
                     val total = routeCum.last()
                     val prog = navPuck.progressM.coerceIn(0.0, total)
+                    // AUDIT FIX 9: only a short leading WINDOW re-uploads per tick; the far tail
+                    // sits on its own layer and refreshes only when the window advances (every few
+                    // km). The seam point is computed with the same pointAtMeters on both sides so
+                    // the two lines meet exactly; spans remap onto each piece's own 0..1. A window
+                    // this short also sharpens the gradient (256 texels over 3 km, not the trip).
+                    if (navWin[0].isNaN() || prog > navWin[0] - NAV_WINDOW_SLACK_M || navWin[0] > total) {
+                        navWin[0] = (prog + NAV_WINDOW_M).coerceAtMost(total)
+                        val tw = navWin[0]
+                        val tailDone = tw >= total - 1.0
+                        val tailFc = if (tailDone) FeatureCollection.fromFeatures(emptyList<Feature>()) else {
+                            val tIdx = indexAtMeters(routeCum, tw)
+                            val (tPt, _) = pointAtMeters(routePolyline, routeCum, tw)
+                            val tPts = ArrayList<Point>(routePolyline.size - tIdx + 1)
+                            tPts.add(Point.fromLngLat(tPt.lng, tPt.lat))
+                            for (i in tIdx until routePolyline.size) {
+                                tPts.add(Point.fromLngLat(routePolyline[i].lng, routePolyline[i].lat))
+                            }
+                            FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(tPts)))
+                        }
+                        style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(tailFc)
+                        val gtw = (tw / total).toFloat()
+                        val tailSpans = if (tailDone || gtw >= 0.999f) emptyList() else routeSpansHolder.value.mapNotNull { (sp, e, lvl) ->
+                            val s2 = ((sp - gtw) / (1f - gtw)).coerceIn(0f, 1f)
+                            val e2 = ((e - gtw) / (1f - gtw)).coerceIn(0f, 1f)
+                            if (e2 <= s2) null else Triple(s2, e2, lvl)
+                        }
+                        style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(
+                            PropertyFactory.visibility(if (tailDone) Property.NONE else Property.VISIBLE),
+                            PropertyFactory.lineGradient(routeGradient(0f, gInt, tailSpans)),
+                        )
+                    }
+                    val wEnd = navWin[0]
                     val cutIdx = indexAtMeters(routeCum, prog)
                     val (cutPt, _) = pointAtMeters(routePolyline, routeCum, prog)
-                    val pts = ArrayList<Point>(routePolyline.size - cutIdx + 1)
+                    val wholeRest = wEnd >= total - 1.0
+                    val wIdx = if (wholeRest) routePolyline.size else indexAtMeters(routeCum, wEnd)
+                    val pts = ArrayList<Point>(wIdx - cutIdx + 2)
                     pts.add(Point.fromLngLat(cutPt.lng, cutPt.lat))
-                    for (i in cutIdx until routePolyline.size) {
+                    for (i in cutIdx until wIdx) {
                         pts.add(Point.fromLngLat(routePolyline[i].lng, routePolyline[i].lat))
+                    }
+                    if (!wholeRest) {
+                        val (wPt, _) = pointAtMeters(routePolyline, routeCum, wEnd)
+                        pts.add(Point.fromLngLat(wPt.lng, wPt.lat))
                     }
                     style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(
                         FeatureCollection.fromFeature(Feature.fromGeometry(LineString.fromLngLats(pts))),
                     )
-                    // Remap the whole-route traffic-span fractions onto the suffix's 0..1.
+                    // Remap the whole-route traffic-span fractions onto the WINDOW's 0..1.
                     val gp = (prog / total).toFloat()
-                    val remapped = if (gp >= 0.999f) emptyList() else routeSpansHolder.value.mapNotNull { (s, e, lvl) ->
-                        val s2 = ((s - gp) / (1f - gp)).coerceIn(0f, 1f)
-                        val e2 = ((e - gp) / (1f - gp)).coerceIn(0f, 1f)
+                    val gw = (wEnd / total).toFloat()
+                    val remapped = if (gw - gp <= 0.001f) emptyList() else routeSpansHolder.value.mapNotNull { (sp, e, lvl) ->
+                        val s2 = ((sp - gp) / (gw - gp)).coerceIn(0f, 1f)
+                        val e2 = ((e - gp) / (gw - gp)).coerceIn(0f, 1f)
                         if (e2 <= s2) null else Triple(s2, e2, lvl)
                     }
                     style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
@@ -1729,6 +1816,16 @@ fun VelaMapView(
                 lastTransitBusHidden = null
                 origPoiTransitFilter = null
                 lastAppliedRouteLine = null
+                lastAppliedAlternates = null
+                lastAppliedAltColor = null
+                lastAppliedMe = null
+                lastAppliedMeBearing = null
+                lastAppliedPreview = null
+                previewApplied = false
+                lastRouteMode = -1
+                lastBrowseGradKey = null
+                lastMeLayerKey = null
+                lastEnsureKey[0] = -1 // fresh style dropped the overlay layers - re-ensure on next pass
                 lastGradM[0] = -1e9 // force the nav split to re-render on the fresh style
                 PoiIcons.satellite = satelliteOn
                 PoiIcons.addTo(context, style)
@@ -1744,10 +1841,20 @@ fun VelaMapView(
         } else {
             styleRef?.let {
                 applyData(map, it, context, darkTheme, ambientCoversView, routePolyline, routeColor, routeDashed, routeTrafficSpans, alternates, altColor, markers, ambientPois, trafficControls, flockCameras, transitStops, mePaint, meBearing, myAccuracyM, locationStale, previewTarget, routeProgress, navMode, parkingSpot)
-                ensureSatellite(it, satelliteOn)
-                ensureTraffic(it, trafficOn)
-                ensureTransit(it, transitOn)
-                ensureTopography(it, topographyOn)
+                // AUDIT FIX 3e (2026-07-15): the ensure* helpers are idempotent but each call
+                // probes the style over JNI (getLayer/getSource) - per recomposition, that's
+                // four probe sets during every camera flight for nothing. They only need to run
+                // when their toggle actually flips; the style-reload branch above still calls
+                // them unconditionally on a fresh style.
+                val ensureKey = (if (satelliteOn) 1 else 0) or (if (trafficOn) 2 else 0) or
+                    (if (transitOn) 4 else 0) or (if (topographyOn) 8 else 0)
+                if (ensureKey != lastEnsureKey[0]) {
+                    lastEnsureKey[0] = ensureKey
+                    ensureSatellite(it, satelliteOn)
+                    ensureTraffic(it, trafficOn)
+                    ensureTransit(it, transitOn)
+                    ensureTopography(it, topographyOn)
+                }
             }
         }
 
@@ -1805,7 +1912,8 @@ fun VelaMapView(
                         // Hand the ticker a zoom GOAL instead; it eases position and zoom together.
                         browseZoomGoal[0] = zoom
                     } else {
-                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(t.lat, t.lng), zoom), 500)
+                        flightDepth[0]++
+                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(t.lat, t.lng), zoom), 500, flightCb())
                     }
                 }
             }
@@ -1815,11 +1923,13 @@ fun VelaMapView(
                 lastNavTarget = null // so nav-follow re-centres cleanly when the preview ends
                 if (previewTarget != lastPreviewTarget) {
                     lastPreviewTarget = previewTarget
+                    flightDepth[0]++
                     map.animateCamera(
                         CameraUpdateFactory.newLatLngZoom(
                             MLLatLng(previewTarget.lat, previewTarget.lng), 16.5,
                         ),
                         700,
+                        flightCb(),
                     )
                 }
             }
@@ -1894,13 +2004,15 @@ fun VelaMapView(
                     runCatching {
                         if (huge) {
                             val end = routePolyline.last()
+                            flightDepth[0]++
                             map.animateCamera(
-                                CameraUpdateFactory.newLatLngZoom(MLLatLng(end.lat, end.lng), 9.0), 800,
+                                CameraUpdateFactory.newLatLngZoom(MLLatLng(end.lat, end.lng), 9.0), 800, flightCb(),
                             )
                             return@runCatching
                         }
+                        flightDepth[0]++
                         map.animateCamera(
-                            CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800,
+                            CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800, flightCb(),
                         )
                     }
                 }
@@ -1926,10 +2038,12 @@ fun VelaMapView(
                 val cutoff = maxOf(dists[dists.size / 2] * 4, 40_000.0)
                 val cluster = pts.filter { it.distanceTo(med) <= cutoff }
                 if (cluster.size == 1) {
+                    flightDepth[0]++
                     map.animateCamera(
                         CameraUpdateFactory.newLatLngZoom(
                             MLLatLng(cluster[0].lat, cluster[0].lng), 15.0,
                         ),
+                        flightCb(),
                     )
                 } else {
                     val builder = MLLatLngBounds.Builder()
@@ -1937,7 +2051,8 @@ fun VelaMapView(
                     // Keep the cluster above the results sheet (peek covers the bottom half).
                     val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + 160 else 160
                     runCatching {
-                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160, 160, 160, bottom), 700)
+                        flightDepth[0]++
+                        map.animateCamera(CameraUpdateFactory.newLatLngBounds(builder.build(), 160, 160, 160, bottom), 700, flightCb())
                     }
                 }
             }
@@ -1956,8 +2071,9 @@ fun VelaMapView(
                     // Zoom in closer when a place sheet is up (focusing a single pin),
                     // looser for a plain recenter - unless a deep link asked for its own zoom.
                     val zoom = cameraTargetZoom ?: if (cameraBottomInsetPx > 0) 16.5 else 14.5
+                    flightDepth[0]++
                     map.animateCamera(
-                        CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom),
+                        CameraUpdateFactory.newLatLngZoom(MLLatLng(target.lat, target.lng), zoom), flightCb(),
                     )
                 }
             }
@@ -2189,6 +2305,16 @@ private fun ensureLayers(style: Style) {
             PropertyFactory.visibility(Property.NONE),
         )
         if (firstLabel != null) style.addLayerBelow(routeAhead, firstLabel) else style.addLayer(routeAhead)
+        // The far-tail twin (AUDIT FIX 9): identical paint, uploaded once per window advance.
+        style.addSource(GeoJsonSource(ROUTE_TAIL_SRC, GeoJsonOptions().withLineMetrics(true)))
+        val routeTail = LineLayer(ROUTE_TAIL_LAYER, ROUTE_TAIL_SRC).withProperties(
+            PropertyFactory.lineColor("#1F6FEB"),
+            PropertyFactory.lineWidth(ROUTE_WIDTH),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+            PropertyFactory.visibility(Property.NONE),
+        )
+        style.addLayerBelow(routeTail, ROUTE_AHEAD_LAYER)
     }
     // Greyed, tappable alternate routes — drawn BELOW the active line (Google-style).
     if (style.getSource(ALT_ROUTE_SRC) == null) {
@@ -3423,11 +3549,27 @@ private fun regenRouteDots(map: org.maplibre.android.maps.MapLibreMap, style: St
     // source; past the cap the spacing grows, which only ever affects far-off-screen dots.
     val count = (total / spacingM).toInt().coerceAtMost(3000)
     val feats = ArrayList<Feature>(count + 1)
+    // AUDIT FIX 10 (2026-07-15): one monotonic pass. This used to call pointAtMeters per dot,
+    // and pointAtMeters scans the polyline from vertex 0 each time - up to 3000 dots x
+    // thousands of vertices = millions of iterations PER REGEN, and a pinch fires ~25
+    // back-to-back regens (one per 0.2 zoom step), all on the main thread. `d` only ever
+    // grows here, so a segment cursor local to this pass makes it O(vertices + dots).
+    // (pointAtMeters itself stays stateless - the nav ticker calls it with arbitrary
+    // distances and a shared cursor would corrupt it.)
     var d = 0.0
     var i = 0
+    var seg = 1
     while (d <= total && i <= count) {
-        val (pt, _) = pointAtMeters(poly, cum, d)
-        feats.add(Feature.fromGeometry(Point.fromLngLat(pt.lng, pt.lat)))
+        while (seg < poly.size - 1 && cum[seg] < d) seg++
+        val a = poly[seg - 1]
+        val b = poly[seg]
+        val segLen = cum[seg] - cum[seg - 1]
+        val t = if (segLen <= 0.0) 0.0 else ((d - cum[seg - 1]) / segLen).coerceIn(0.0, 1.0)
+        feats.add(
+            Feature.fromGeometry(
+                Point.fromLngLat(a.lng + (b.lng - a.lng) * t, a.lat + (b.lat - a.lat) * t),
+            ),
+        )
         d += spacingM
         i += 1
     }
@@ -3623,6 +3765,10 @@ private fun applyData(
         // OLD route's blue suffix ghosted on top for a second. Progress on a fresh route ≈ 0, so
         // "everything is ahead" is the correct seed; the ticker takes over from the next engage.
         if (navMode && !routeDashed && route.size >= 2) {
+            // The OLD route's far tail is stale geometry now - clear it; the relaunched ticker
+            // re-anchors the window on the new route and repopulates the tail (AUDIT FIX 9).
+            style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+            style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
             style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(routeFc)
             val seedInt = runCatching { android.graphics.Color.parseColor(routeColor) }.getOrDefault(ROUTE_FREEFLOW)
             style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(
@@ -3641,56 +3787,85 @@ private fun applyData(
         .getOrDefault(ROUTE_FREEFLOW)
     // 0 when not navigating (no driven-grey); only floor to a visible sliver once moving.
     val p = if (routeProgress <= 0f) 0f else routeProgress.coerceIn(0.001f, 0.998f)
+    // AUDIT FIX 3d (2026-07-15): the visibility flips and the ahead-source clears are mode
+    // TRANSITION work, and the browse gradient only depends on (progress, colour, spans) - none
+    // of it needs to re-run on every recomposition. Transition one-shots key off lastRouteMode;
+    // the gradient keys off its own inputs. The nav→browse ahead-clear (lastNavRouteMode) is
+    // covered by the transition path (browse entered from mode 2).
+    val routeMode = if (routeDashed) 0 else if (!navMode) 1 else 2
+    val modeChanged = routeMode != lastRouteMode
     if (routeDashed) {
-        // Walking / biking: show the dotted line (solid colour, no traffic gradient — there
-        // isn't any for foot/bike), hide the solid one. Re-dot when the route swapped or the
-        // zoom moved enough to change the on-screen spacing (identity + 0.2-zoom gates keep
-        // this cheap on the per-recomposition applyData path).
-        style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
-        // Walk/bike shows ONLY the dots: the solid grey alternate lines (and any leftover nav
-        // ahead-suffix) read as "the car route is still drawn" next to them (user 2026-07-08).
-        // Alternates stay pickable from the route list.
-        style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-        style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-        style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        if (modeChanged) {
+            // Walking / biking: show the dotted line (solid colour, no traffic gradient — there
+            // isn't any for foot/bike), hide the solid one. Walk/bike shows ONLY the dots: the
+            // solid grey alternate lines (and any leftover nav ahead-suffix) read as "the car
+            // route is still drawn" next to them (user 2026-07-08); alternates stay pickable
+            // from the route list.
+            style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+            style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+            style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        }
+        // Re-dot when the route swapped or the zoom moved enough to change the on-screen
+        // spacing (identity + 0.2-zoom gates keep this cheap).
         if (dashDotPoly !== route || kotlin.math.abs(map.cameraPosition.zoom - dashDotZoom) > 0.2) {
             regenRouteDots(map, style, route)
         }
     } else if (!navMode) {
-        // Driving, not navigating (preview / route picker): the solid traffic-coloured line,
-        // no driven-grey. The nav ahead-suffix layer is cleared ONCE on the nav→browse
-        // transition so the last drive's remnant doesn't linger under previews.
-        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-        if (dashDotPoly.isNotEmpty()) regenRouteDots(map, style, emptyList())
-        // Back on a solid (drive) route: the alternates line returns (walk/bike hides it).
-        style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
-        style.getLayer(ROUTE_LAYER)?.setProperties(
-            PropertyFactory.visibility(Property.VISIBLE),
-            PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
-        )
-        if (lastNavRouteMode) {
-            style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
-            style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+        if (modeChanged) {
+            // Driving, not navigating (preview / route picker): the solid traffic-coloured line,
+            // no driven-grey. The nav ahead-suffix layer is cleared ONCE on the nav→browse
+            // transition so the last drive's remnant doesn't linger under previews.
+            style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            if (dashDotPoly.isNotEmpty()) regenRouteDots(map, style, emptyList())
+            style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+            if (lastRouteMode == 2) {
+                style.getSourceAs<GeoJsonSource>(ROUTE_AHEAD_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+                style.getLayer(ROUTE_AHEAD_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+                style.getSourceAs<GeoJsonSource>(ROUTE_TAIL_SRC)?.setGeoJson(FeatureCollection.fromFeatures(emptyList<Feature>()))
+                style.getLayer(ROUTE_TAIL_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            }
+            lastBrowseGradKey = null // fresh mode = re-apply the gradient below
+        }
+        val gradKey = 31 * (31 * p.toRawBits() + routeInt) + trafficSpans.hashCode()
+        if (gradKey != lastBrowseGradKey) {
+            lastBrowseGradKey = gradKey
+            style.getLayer(ROUTE_LAYER)?.setProperties(
+                PropertyFactory.visibility(Property.VISIBLE),
+                PropertyFactory.lineGradient(routeGradient(p, routeInt, trafficSpans)),
+            )
         }
     } else {
         // NAV: the frame ticker owns the route rendering — the driven/ahead GEOMETRY split
         // (ahead suffix on ROUTE_AHEAD_LAYER, traversed grey on ROUTE_LAYER). Writing a
         // gradient from recomposition here would fight it once per fix.
-        style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
-        style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+        if (modeChanged) {
+            style.getLayer(ROUTE_DASH_LAYER)?.setProperties(PropertyFactory.visibility(Property.NONE))
+            style.getLayer(ROUTE_LAYER)?.setProperties(PropertyFactory.visibility(Property.VISIBLE))
+        }
     }
+    lastRouteMode = routeMode
     lastNavRouteMode = navMode && !routeDashed
 
-    val altFc = FeatureCollection.fromFeatures(
-        alternates.filter { it.second.size >= 2 }.map { (idx, line) ->
-            Feature.fromGeometry(
-                LineString.fromLngLats(line.map { Point.fromLngLat(it.lng, it.lat) }),
-            ).apply { addNumberProperty(ALT_INDEX_PROP, idx) }
-        },
-    )
-    style.getSourceAs<GeoJsonSource>(ALT_ROUTE_SRC)?.setGeoJson(altFc)
-    style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(altColor))
+    // AUDIT FIX 3a (2026-07-15): with the chooser open this re-uploaded EVERY alternate polyline
+    // (up to 4 full routes, re-tessellated on the render thread) on every recomposition - during
+    // the exact fit flight the user is watching. Gate like the primary route above.
+    if (alternates != lastAppliedAlternates || altColor != lastAppliedAltColor) {
+        val altFc = FeatureCollection.fromFeatures(
+            alternates.filter { it.second.size >= 2 }.map { (idx, line) ->
+                Feature.fromGeometry(
+                    LineString.fromLngLats(line.map { Point.fromLngLat(it.lng, it.lat) }),
+                ).apply { addNumberProperty(ALT_INDEX_PROP, idx) }
+            },
+        )
+        style.getSourceAs<GeoJsonSource>(ALT_ROUTE_SRC)?.setGeoJson(altFc)
+        style.getLayer(ALT_ROUTE_LAYER)?.setProperties(PropertyFactory.lineColor(altColor))
+        lastAppliedAlternates = alternates
+        lastAppliedAltColor = altColor
+    }
 
     // Only rebuild + re-set the marker/ambient GeoJSON when the DATA actually changed. applyData runs
     // on every recomposition (a nav mySpeed tick, a mute/theme toggle, etc.), and setGeoJson forces a
@@ -3719,7 +3894,9 @@ private fun applyData(
     }
 
     // Ambient Google POIs → category-dot features (icon = vela-poi-<group>, label = name, prominence).
-    if (ambientPois != lastAppliedAmbient) {
+    // Deferred while a camera flight is in the air (AUDIT FIX 6, see flightDepth) - the gate
+    // stays stale so the first recomposition after landing uploads the full set.
+    if (ambientPois != lastAppliedAmbient && flightDepth[0] == 0) {
         val ambientFc = FeatureCollection.fromFeatures(
             ambientPois.mapIndexed { i, m ->
                 Feature.fromGeometry(Point.fromLngLat(m.location.lng, m.location.lat)).apply {
@@ -3840,16 +4017,25 @@ private fun applyData(
     // in NAV the per-frame motion-model ticker owns it (smooth glide), so don't fight it —
     // except to CLEAR it when there's no fix.
     if (!navMode || me == null) {
-        val meFc = if (me != null) {
-            FeatureCollection.fromFeature(
-                Feature.fromGeometry(Point.fromLngLat(me.lng, me.lat)).apply {
-                    addNumberProperty("bearing", bearing ?: 0f)
-                },
-            )
-        } else {
-            FeatureCollection.fromFeatures(emptyList<Feature>())
+        // AUDIT FIX 3b (2026-07-15): value-gated - a recomposition that didn't move the dot
+        // (a sheet drag, a settings flip) re-uploaded the point for nothing. When the browse
+        // ticker owns the source it feeds the SAME eased values through here, so an unchanged
+        // pair is genuinely a no-op; a nav→browse transition always differs and repaints.
+        val meBrg = bearing ?: 0f
+        if (me != lastAppliedMe || meBrg != lastAppliedMeBearing) {
+            val meFc = if (me != null) {
+                FeatureCollection.fromFeature(
+                    Feature.fromGeometry(Point.fromLngLat(me.lng, me.lat)).apply {
+                        addNumberProperty("bearing", meBrg)
+                    },
+                )
+            } else {
+                FeatureCollection.fromFeatures(emptyList<Feature>())
+            }
+            style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(meFc)
+            lastAppliedMe = me
+            lastAppliedMeBearing = meBrg
         }
-        style.getSourceAs<GeoJsonSource>(ME_SRC)?.setGeoJson(meFc)
     }
 
     // Two modes, Google-style. NAV: the puck IS the position — a solid blue arrow — so
@@ -3857,21 +4043,35 @@ private fun applyData(
     // (grey when the fix is stale) + a faint heading cone. The cone/puck both hide while
     // stale (old bearing).
     val showPuck = navMode && me != null && bearing != null && !meStale
-    style.getLayer(ME_LAYER)?.setProperties(
-        PropertyFactory.circleColor(if (meStale) "#9AA0A6" else "#4285F4"),
-        PropertyFactory.visibility(if (showPuck) Property.NONE else Property.VISIBLE),
-    )
-    style.getLayer(ME_ARROW_LAYER)?.setProperties(
-        PropertyFactory.iconImage(if (navMode) NAV_PUCK_IMG else ME_ARROW_IMG),
-        PropertyFactory.visibility(if (me != null && bearing != null && !meStale) Property.VISIBLE else Property.NONE),
-    )
-
-    val previewFc = if (preview != null) {
-        FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(preview.lng, preview.lat)))
-    } else {
-        FeatureCollection.fromFeatures(emptyList<Feature>())
+    // Key-gated (AUDIT FIX 3b): four JNI property sets per recomposition for values that only
+    // change on a mode/staleness flip.
+    val meLayerKey = (if (navMode) 1 else 0) or (if (meStale) 2 else 0) or
+        (if (showPuck) 4 else 0) or (if (me != null && bearing != null) 8 else 0)
+    if (meLayerKey != lastMeLayerKey) {
+        lastMeLayerKey = meLayerKey
+        style.getLayer(ME_LAYER)?.setProperties(
+            PropertyFactory.circleColor(if (meStale) "#9AA0A6" else "#4285F4"),
+            PropertyFactory.visibility(if (showPuck) Property.NONE else Property.VISIBLE),
+        )
+        style.getLayer(ME_ARROW_LAYER)?.setProperties(
+            PropertyFactory.iconImage(if (navMode) NAV_PUCK_IMG else ME_ARROW_IMG),
+            PropertyFactory.visibility(if (me != null && bearing != null && !meStale) Property.VISIBLE else Property.NONE),
+        )
     }
-    style.getSourceAs<GeoJsonSource>(PREVIEW_SRC)?.setGeoJson(previewFc)
+
+    // AUDIT FIX 3c (2026-07-15): the preview pin only changes when a step is (de)selected -
+    // value-gated, with the null-transitions still uploading (previewApplied distinguishes
+    // "never applied" from "applied null" so a fresh style repopulates).
+    if (!previewApplied || preview != lastAppliedPreview) {
+        val previewFc = if (preview != null) {
+            FeatureCollection.fromFeature(Feature.fromGeometry(Point.fromLngLat(preview.lng, preview.lat)))
+        } else {
+            FeatureCollection.fromFeatures(emptyList<Feature>())
+        }
+        style.getSourceAs<GeoJsonSource>(PREVIEW_SRC)?.setGeoJson(previewFc)
+        lastAppliedPreview = preview
+        previewApplied = true
+    }
 }
 
 /** Google-style heading beam: a translucent blue cone whose apex sits at the

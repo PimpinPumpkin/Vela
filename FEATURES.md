@@ -1211,6 +1211,25 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   parking lot sits under that 2 m/s floor the whole way - the deviation never accumulated hits,
   the reroute never fired, and the blue line stayed stale. A FAR deviation (90 m+, comfortably
   beyond anything stationary jitter invents) now counts at any speed.
+- ✅ **Perf audit remediation, batch 2 of 2 (2026-07-15, PR-gated for a canary drive).** The
+  upload-churn surgeries from docs/PERF-AUDIT-2026-07.md. (1) applyData's whole tail is now
+  identity-gated like its head: alternates (up to 4 full polylines re-tessellated per
+  recomposition with the chooser open - during the exact fit flight being watched), the
+  location dot, the step-preview pin, the browse route gradient, the me-layer property sets
+  and the ensure* style probes all skip when nothing changed, with every new gate registered
+  in the style-reload reset so theme/palette/satellite flips still repopulate. Route-mode
+  visibility flips became transition one-shots. (2) Ambient POI uploads DEFER while a discrete
+  camera flight is in the air (a depth counter around the locate/fit/overview/preview flights -
+  never the per-frame follow tickers, which would starve paints for whole drives); the first
+  recomposition after landing uploads the full set at camera-idle where the placement pass is
+  invisible. (3) The in-nav route split re-uploads only a 3 km leading WINDOW every 150 ms;
+  the far tail lives on a twin layer refreshed once per window advance, with traffic spans
+  remapped onto each piece and the seam computed identically on both sides - it also sharpens
+  the traffic gradient (256 texels over 3 km instead of the whole trip). (4) The walk/bike
+  dot regen went from millions of iterations per pinch (a fresh whole-polyline scan per dot)
+  to one monotonic pass. (5) The speed-limit poll skips while a flight or two-finger gesture
+  is in progress. (6) Result-pin bitmaps survive style reloads in a small process LRU instead
+  of re-rasterizing on every theme flip.
 - ✅ **Perf audit remediation, batch 1 of 2 (2026-07-15).** A 43-agent audit (every finding
   adversarially verified - see docs/PERF-AUDIT-2026-07.md) confirmed 21 issues; the six
   camera-seam fixes landed first because they ARE the reported hitches. (1) Re-attaching the
