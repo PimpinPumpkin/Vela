@@ -31,6 +31,7 @@ import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.gestures.MoveGestureDetector
+import org.maplibre.android.gestures.ShoveGestureDetector
 import org.maplibre.android.gestures.StandardScaleGestureDetector
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
@@ -267,6 +268,9 @@ fun VelaMapView(
     flockCameras: List<app.vela.core.data.AlprCamera> = emptyList(), // ALPR/Flock cameras drawn at high zoom
     transitStops: List<app.vela.core.data.transit.Transitous.MapStop> = emptyList(), // canonical GTFS stops at street zoom
     navBannerBottomPx: Int = 0, // measured screen-Y of the maneuver banner's bottom edge; drops the compass below it during nav
+    // Compass tap: return true to CONSUME (nav uses it to toggle heading-up/north-up); false runs
+    // the default reorient-to-north animation.
+    onCompassTap: () -> Boolean = { false },
     onCameraIdle: (center: LatLng) -> Unit,
     onMapLongPress: (location: LatLng) -> Unit,
     onAddressLabelTap: (number: String, location: LatLng) -> Unit = { _, _ -> },
@@ -311,6 +315,10 @@ fun VelaMapView(
     val navFollowingHolder = rememberUpdatedState(navFollowing)
     val navNorthUpHolder = rememberUpdatedState(navNorthUp)
     val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
+    val onCompassTapHolder = rememberUpdatedState(onCompassTap)
+    val shoving = remember { booleanArrayOf(false) } // two-finger tilt gesture in flight - ticker steps aside
+    val navUserTilt = remember { doubleArrayOf(Double.NaN) } // shove-set tilt override (like navUserZoom)
+    val browseZoomGoal = remember { doubleArrayOf(Double.NaN) } // locate-tap standard zoom, eased by the browse ticker
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
@@ -715,6 +723,7 @@ fun VelaMapView(
             browseCam[0] = Double.NaN
             lastBrowse[0] = Double.NaN
             browseDrive[1] = 0.0; browseDrive[2] = Double.NaN; browseDrive[3] = 0.0
+            browseZoomGoal[0] = Double.NaN
             return@LaunchedEffect
         }
         var lastNanos = 0L
@@ -842,7 +851,15 @@ fun VelaMapView(
                 kotlin.math.abs(camLat - lastBrowse[0]) > 1e-6 ||
                 kotlin.math.abs(camLng - lastBrowse[1]) > 1e-6 ||
                 kotlin.math.abs(beam - lastBrowse[2]) > 0.4
-            if (moved) {
+            // The locate tap's standard zoom rides the ticker (an animateCamera would be cancelled
+            // by the ticker's own writes a frame later): ease toward the goal, retire it on arrival.
+            var zoomEase = Double.NaN
+            if (cam != null && !scaling[0] && !browseZoomGoal[0].isNaN()) {
+                val z = cam.cameraPosition.zoom
+                if (kotlin.math.abs(browseZoomGoal[0] - z) < 0.02) browseZoomGoal[0] = Double.NaN
+                else zoomEase = z + (browseZoomGoal[0] - z) * (1f - kotlin.math.exp(-dt / 0.22f)).toDouble()
+            }
+            if (moved || !zoomEase.isNaN()) {
                 // Draw the puck at the EASED follow position (camLat/camLng), not the raw fix: at the
                 // raw fix the dot teleported forward on the map each 1 Hz fix while the camera eased to
                 // catch up (the visible hop). At the eased position the dot stays centred and glides with
@@ -851,7 +868,7 @@ fun VelaMapView(
                 val puckAt = if (cam != null && !scaling[0]) LatLng(camLat, camLng) else loc
                 setMeSource(style, puckAt, beam)
                 if (cam != null && !scaling[0]) {
-                    if (attSettling) {
+                    if (attSettling || !zoomEase.isNaN()) {
                         // Easing attitude (course-up while driving, back to north-up flat
                         // otherwise): drive it alongside the aim point (zoom left unset =
                         // preserved, so a pinch level survives). While driving the aim point
@@ -862,6 +879,7 @@ fun VelaMapView(
                                     .target(MLLatLng(lookLat, lookLng))
                                     .bearing((browseAtt[0] + 360.0) % 360.0)
                                     .tilt(browseAtt[1].coerceAtLeast(0.0))
+                                    .apply { if (!zoomEase.isNaN()) zoom(zoomEase) }
                                     .build(),
                             ),
                         )
@@ -887,9 +905,13 @@ fun VelaMapView(
         val b = MLLatLngBounds.Builder()
         routePolyline.forEach { b.include(MLLatLng(it.lat, it.lng)) }
         runCatching {
+            // Fit NORTH-UP and FLAT (the bearing/tilt overload): the plain bounds fit kept the
+            // follow's rotated 55-degree camera, and a tilted, rotated fit shows LESS than the
+            // whole route however correct the math (user 2026-07-15: "doesn't quite show the
+            // full route") - Google's overview levels out too.
             map.animateCamera(
                 CameraUpdateFactory.newLatLngBounds(
-                    b.build(),
+                    b.build(), 0.0, 0.0,
                     70, (map.height * 0.30).toInt(), 70, (map.height * 0.22).toInt(),
                 ),
                 700,
@@ -934,6 +956,8 @@ fun VelaMapView(
     LaunchedEffect(navMode, routePolyline) {
         if (!navMode) {
             navPuck.kalman.reset() // nav ended — don't carry a stale speed into the next trip
+            navUserTilt[0] = Double.NaN // shove-set tilt is a per-drive override
+            navTiltEase[0] = 55.0 // next drive starts at the default pitch, not wherever this one ended
             // Camera padding is STICKY MapLibre state: the nav view's puck-low offset (top padding,
             // set on every follow frame + the pre-engage case) would otherwise shift the browse
             // camera's centre for the rest of the session. Bearing + tilt are sticky the same way.
@@ -1022,7 +1046,7 @@ fun VelaMapView(
                 // for a smooth hand-off from the pre-engage framing / a Re-center. Skipped while
                 // panning (detached) or pinching (the user's fingers win).
                 val cam = mapRef
-                if (cam != null && navFollowingHolder.value && !scaling[0]) {
+                if (cam != null && navFollowingHolder.value && !scaling[0] && !shoving[0]) {
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
                     navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtE / 0.6f))
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
@@ -1044,7 +1068,13 @@ fun VelaMapView(
                     val db = ((brgTgt - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
                     camState[2] = (camState[2] + db * k + 360.0) % 360.0
                     camState[3] += (tgtZoom - camState[3]) * k
-                    navTiltEase[0] += ((if (navNorthUpHolder.value) 0.0 else 55.0) - navTiltEase[0]) * k
+                    // Tilt: north-up = flat; else a shove-set override wins over the 55 default.
+                    val tiltTgt = when {
+                        navNorthUpHolder.value -> 0.0
+                        !navUserTilt[0].isNaN() -> navUserTilt[0]
+                        else -> 55.0
+                    }
+                    navTiltEase[0] += (tiltTgt - navTiltEase[0]) * k
                     cam.moveCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
@@ -1325,7 +1355,10 @@ fun VelaMapView(
                     // camera detach + stop tracking the instant you zoomed). A pan drops the pinch
                     // zoom too, so a later Re-center returns to auto-zoom. navPanned is idempotent.
                     override fun onMove(detector: MoveGestureDetector) {
-                        if (navModeHolder.value && !scaling[0]) {
+                        // A shove's incidental translation must not read as a pan either (same
+                        // misread the scaling guard fixes for pinch) - it detached the camera the
+                        // moment a two-finger tilt started.
+                        if (navModeHolder.value && !scaling[0] && !shoving[0]) {
                             navPanned.value()
                             navUserZoom[0] = Double.NaN
                         }
@@ -1333,7 +1366,10 @@ fun VelaMapView(
                     override fun onMoveEnd(detector: MoveGestureDetector) {}
                 })
                 map.addOnScaleListener(object : MapLibreMap.OnScaleListener {
-                    override fun onScaleBegin(detector: StandardScaleGestureDetector) { scaling[0] = true }
+                    override fun onScaleBegin(detector: StandardScaleGestureDetector) {
+                        scaling[0] = true
+                        browseZoomGoal[0] = Double.NaN // fingers beat a pending locate-tap zoom
+                    }
                     // Capture the zoom CONTINUOUSLY (not only on end) so the override is set even
                     // if the end callback is missed; we keep FOLLOWING at it and never detach.
                     override fun onScale(detector: StandardScaleGestureDetector) {
@@ -1342,6 +1378,20 @@ fun VelaMapView(
                     override fun onScaleEnd(detector: StandardScaleGestureDetector) {
                         if (navModeHolder.value) navUserZoom[0] = map.cameraPosition.zoom
                         scaling[0] = false
+                    }
+                })
+                // Two-finger TILT (shove). Without this the nav ticker kept writing its own tilt
+                // every frame and the gesture jittered and lost (user 2026-07-15). The shove flag
+                // makes the ticker step aside like a pinch, and the resulting tilt sticks as an
+                // override the same way a pinch zoom does. Cleared when nav ends.
+                map.addOnShoveListener(object : MapLibreMap.OnShoveListener {
+                    override fun onShoveBegin(detector: ShoveGestureDetector) { shoving[0] = true }
+                    override fun onShove(detector: ShoveGestureDetector) {
+                        if (navModeHolder.value) navUserTilt[0] = map.cameraPosition.tilt
+                    }
+                    override fun onShoveEnd(detector: ShoveGestureDetector) {
+                        if (navModeHolder.value) navUserTilt[0] = map.cameraPosition.tilt
+                        shoving[0] = false
                     }
                 })
                 map.addOnCameraIdleListener {
@@ -1411,6 +1461,24 @@ fun VelaMapView(
                     }
                     c.markZoom = { z ->
                         if (navModeHolder.value) navUserZoom[0] = z else gestureMove[0] = true
+                    }
+                }
+                // The built-in compass reorients to north on tap, which the nav follow overrides a
+                // frame later - useless mid-drive. Route the tap through the app instead (nav
+                // toggles heading-up/north-up with it, user 2026-07-15); unconsumed taps get the
+                // stock reorient animation.
+                runCatching {
+                    fun findCompass(v: android.view.View): android.view.View? {
+                        if (v.javaClass.simpleName == "CompassView") return v
+                        if (v is android.view.ViewGroup) {
+                            for (i in 0 until v.childCount) findCompass(v.getChildAt(i))?.let { return it }
+                        }
+                        return null
+                    }
+                    findCompass(mapView)?.setOnClickListener {
+                        if (!onCompassTapHolder.value()) {
+                            map.animateCamera(CameraUpdateFactory.bearingTo(0.0), 300)
+                        }
                     }
                 }
                 mapRef = map
@@ -1692,7 +1760,16 @@ fun VelaMapView(
                         cameraBottomInsetPx > 0 -> 16.5
                         else -> 15.0
                     }
-                    map.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(t.lat, t.lng), zoom), 500)
+                    if (driveFollowing && !navMode) {
+                        // The free-drive ticker owns the camera and its per-frame moveCamera
+                        // CANCELS an animateCamera mid-flight - the zoom landed wherever the
+                        // animation was when interrupted, a different level every tap (user
+                        // 2026-07-15: "doesn't bring me back to the standard zoom consistently").
+                        // Hand the ticker a zoom GOAL instead; it eases position and zoom together.
+                        browseZoomGoal[0] = zoom
+                    } else {
+                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(MLLatLng(t.lat, t.lng), zoom), 500)
+                    }
                 }
             }
             // Previewing a step takes over the camera (and holds, suppressing
