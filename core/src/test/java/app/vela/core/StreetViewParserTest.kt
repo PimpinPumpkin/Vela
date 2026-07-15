@@ -2,6 +2,7 @@ package app.vela.core
 
 import app.vela.core.data.google.StreetViewParser
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -65,5 +66,24 @@ class StreetViewParserTest {
     @Test fun noImageryReturnsNull() {
         assertNull(StreetViewParser.parse("/**/cb && cb( [[5]] )", 0.0, 0.0))
         assertNull(StreetViewParser.parse("garbage", 0.0, 0.0))
+    }
+
+    @Test fun streetOfDropsHouseNumberButKeepsOrdinal() {
+        assertEquals("5th st", StreetViewParser.streetOf("2005 5th St, Sacramento, CA"))
+        assertEquals("5th st", StreetViewParser.streetOf("5th St")) // bare street, no number
+        assertEquals("4th st", StreetViewParser.streetOf("2001 4th St"))
+        assertEquals("main st", StreetViewParser.streetOf("120 Main Street")) // Street -> st
+        assertEquals("1st st", StreetViewParser.streetOf("42B 1st St")) // house 42B dropped, ordinal kept
+    }
+
+    @Test fun streetMatchesAcrossAddressForms() {
+        // An alley/behind pano labelled only with the city must NOT match the address's street.
+        assertFalse(StreetViewParser.streetMatches("Sacramento, California", "2005 5th St, Sacramento, CA"))
+        // A pano on the address's own street matches, house numbers and suffix spelling aside.
+        assertTrue(StreetViewParser.streetMatches("1933 5th St", "2005 5th St, Sacramento, CA"))
+        assertTrue(StreetViewParser.streetMatches("50 Main St", "120 Main Street"))
+        // A parallel street does not.
+        assertFalse(StreetViewParser.streetMatches("2001 4th St", "2005 5th St"))
+        assertFalse(StreetViewParser.streetMatches(null, "2005 5th St"))
     }
 }

@@ -269,7 +269,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (which points down the road whenever Google's geocode sits on the road centreline), the camera snaps to
   the road-perpendicular on the building's side - the metadata heading gives the street's direction - and
   the real bearing nudges it up to 60 deg toward the facade, clamped so it can never swing down the road.
-  Walking aims along the direction you moved. Walk arrows show in historical views
+  Walking aims along the direction you moved. It also **opens on the address's own street**: a mid-block
+  geocode can sit between the avenue and a parallel alley, so the geometrically nearest pano snaps to the
+  alley behind the building; when that pano's street label doesn't match the address, Vela hops to a nearby
+  pano that IS on the address's street (the way Google resolves an address). No-regression - it only
+  overrides on a confident street match, and the extra by-id lookups run only in the mismatch case. Walk arrows show in historical views
   too (the neighbour graph is the base pano's), and they fetch the neighbour BY ID so the year and the
   picture always match. A place with no
   imagery gives a brief "no Street View here" toast. (The old approach - embedding Google's own WebGL

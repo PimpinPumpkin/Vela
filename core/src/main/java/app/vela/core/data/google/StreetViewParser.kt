@@ -142,4 +142,43 @@ object StreetViewParser {
         if (d < -180) d += 360
         return d
     }
+
+    // ---- Address ↔ pano street matching (Google-like "open on the address's street") ----
+
+    private val STREET_SUFFIX = mapOf(
+        "ave" to "ave", "avenue" to "ave", "st" to "st", "street" to "st", "rd" to "rd", "road" to "rd",
+        "blvd" to "blvd", "boulevard" to "blvd", "dr" to "dr", "drive" to "dr", "ln" to "ln", "lane" to "ln",
+        "ct" to "ct", "court" to "ct", "pl" to "pl", "place" to "pl", "way" to "way", "pkwy" to "pkwy",
+        "parkway" to "pkwy", "ter" to "ter", "terrace" to "ter", "hwy" to "hwy", "highway" to "hwy",
+        "cir" to "cir", "circle" to "cir",
+    )
+
+    private val HOUSE_NUMBER = Regex("^\\d+[a-z]?$") // "2005", "2005b" - but NOT ordinals like "5th"
+
+    /**
+     * The street of an address line, normalised for comparison: drops a leading house NUMBER (only a
+     * pure number, so ordinal names like "5th" survive), a trailing unit ("Ste 200"), collapses the
+     * suffix words, lowercased. "2005 5th St, Sacramento, CA" → "5th st"; a bare "5th St" → "5th st"
+     * too; "2001 4th St" → "4th st"; a label with no street ("Sacramento, California") → its city
+     * token, which simply won't equal a real street so it can never produce a false match.
+     */
+    fun streetOf(address: String?): String? {
+        val first = address?.substringBefore(',')?.trim()?.lowercase() ?: return null
+        var toks = first.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (toks.isEmpty()) return null
+        if (HOUSE_NUMBER.matches(toks.first())) toks = toks.drop(1)
+        val unitAt = toks.indexOfFirst { it in setOf("ste", "suite", "unit", "apt", "#", "fl", "floor") }
+        if (unitAt >= 0) toks = toks.take(unitAt)
+        toks = toks.map { STREET_SUFFIX[it] ?: it }
+        val s = toks.joinToString(" ").trim()
+        return s.takeIf { it.isNotBlank() && it.any { c -> c.isLetter() } }
+    }
+
+    /** True when a pano's own address label and [address] resolve to the same street. Both may be
+     *  full lines (house number + street + city); [streetOf] normalises each to the street. */
+    fun streetMatches(panoLabel: String?, address: String): Boolean {
+        val a = streetOf(panoLabel) ?: return false
+        val b = streetOf(address) ?: return false
+        return a == b
+    }
 }
