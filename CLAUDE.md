@@ -500,7 +500,7 @@ Defaults that make the safe path the easy one:
   `VelaMapView.onUserPan` (fired from the camera-move-started listener on REASON_API_GESTURE,
   the same signal "Search this area" keys off) → MapScreen collapses the results sheet to its
   bar while `resultsShown` AND bumps `sheetPanTick` → PlaceSheet's `minimizeTick` effect glides
-  an open place card to its minimized detent — Google's behaviour; programmatic framing (a
+  an open place card to its minimized detent - Google's behaviour; programmatic framing (a
   different move reason) never triggers it. Both drops use a SOFT spring (stiffness 140f, vs
   the 350f settle). Flip order differs BY DESIGN: the RESULTS sheet still GLIDES FIRST and flips
   `resultsCollapsed` after; its FILTER CHIPS + divider fold with the list height over its last
@@ -510,7 +510,7 @@ Defaults that make the safe path the easy one:
   SheetFold extras run concurrently with the height glide (no swap anymore, see the place-sheet
   surface-language bullet) - the same order its drag-release path uses. The minimized results bar leads with the QUERY (or list name) in ink +
   SemiBold with the dim count on its OWN LINE under it (the inline "title · count" floated
-  awkwardly against the right-side buttons) — the bare dim count was easy to miss. BOTH pan-tick
+  awkwardly against the right-side buttons) - the bare dim count was easy to miss. BOTH pan-tick
   effects carry a **seenTick consume-once guard** (initialized to the tick's mount-time value):
   a LaunchedEffect fires on FIRST composition too, so a remounted sheet (pick a place from the
   list, or return from one) used to replay the stale tick and open pre-minimized (user
@@ -662,7 +662,7 @@ Defaults that make the safe path the easy one:
   TRANSPARENT status/nav bar colors + `Modifier.requiredFullScreen()` on the content root (sizes
   to the true display so it fills UNDER the transparent bars) + a top gradient scrim so the
   status bar reads over the photo. Applies to `PhotoGalleryContent`-era gallery + `FullScreenReviews`.
-  Don't reach for hide-bars/dim/decor tricks again — they leave strips. The reviews page uses an
+  Don't reach for hide-bars/dim/decor tricks again - they leave strips. The reviews page uses an
   X (left, matching the gallery) and a top-edge pull-down (panel `onOverscroll`/`onOverscrollEnd`
   → `offset` the Surface → dismiss past 120dp).
 - **In-app updater (`app/update/SelfUpdater.kt`, 2026-07-08).** GitHub releases/latest → tag
@@ -1456,7 +1456,7 @@ architecture note.
   cached copy falls back to the compiled `DEFAULT` for one launch.
 - **Notices.** `calibration.json` carries a `notices` array (`id`/`level`/`title`/
   `body`/`url`) shown as dismissable cards on the bare map; **level "urgent" (2026-07-10)
-  renders as a MODAL VelaDialog instead** (OK dismisses; a `url` adds a Learn-more button) —
+  renders as a MODAL VelaDialog instead** (OK dismisses; a `url` adds a Learn-more button)  - 
   for pushed announcements that must be seen. Cards for routine notes, urgent sparingly. (`MapViewModel.refreshNotices`,
   dismissed ids in `vela_notices` prefs) - push "search is down, fix coming" with no
   app update. Rides the same signed channel.

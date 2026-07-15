@@ -5,7 +5,7 @@ any F-Droid client (F-Droid, Droid-ify, Neo Store) without sideloading.
 
 ## Add the repo
 
-Paste this one line as the repository address — the official F-Droid client,
+Paste this one line as the repository address - the official F-Droid client,
 Droid-ify and Neo Store all accept it and pick up the fingerprint automatically:
 
 ```

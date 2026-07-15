@@ -86,7 +86,7 @@ There's also a one-page tour at
   for traffic-aware transit directions. Tap a stop for live times, tap a route
   for every stop it makes.
 - **Satellite imagery map**: See the world from a birds-eye view, powered by Esri.
-- **Street view**: Scraped from Google, available in Vela.
+- **Street View**: real panoramas in-app, keyless - open on a place, look around, walk the street with arrows, and go back in time through older captures; half-screen over the live map or full screen.
 - **Lists**: the bookmark button next to the category chips opens **Your lists**.
   Create one there, or add any place from its page (⋮ → Save to list), with a note
   per place. Lists back up to a file from Settings.

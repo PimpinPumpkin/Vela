@@ -70,7 +70,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Result filters grew up (2026-07-10).** The rating and price chips open real menus (rating
   tiers 3.5+/4.0+/4.5+ like Google, price levels $ through $$$$) and Sort is a menu of
   Relevance / Rating / Distance, instead of chips that blindly cycled through hidden states. New
-  "Wheelchair accessible" filter — the one place attribute Google's response carries per result
+  "Wheelchair accessible" filter - the one place attribute Google's response carries per result
   keyless (parsed off the language-neutral attribute id, so it works in all supported languages);
   deeper attribute facets (vegetarian, reservations, …) only exist in the per-place About data,
   so they can't filter a result list keyless. Cuisine facets are deliberately absent: in a
@@ -84,11 +84,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 
 - ✅ **Urgent pushed notices can be a modal (2026-07-10).** A calibration.json notice with
   level "urgent" renders as a dialog (OK + optional Learn-more link) instead of a map card, for
-  announcements that must be seen — the "servers overloaded, hang tight" class of message. Same
+  announcements that must be seen - the "servers overloaded, hang tight" class of message. Same
   signed channel, same one-time dismissal.
 - ✅ **Minimizing the place card fades gracefully (2026-07-10).** The photos and body content
   fade out with the height as the sheet glides down instead of vanishing in one frame at the
-  swap, and the compact card (name, stars, action pills) fades in — nothing pops. The header
+  swap, and the compact card (name, stars, action pills) fades in - nothing pops. The header
   circles also became fixed-size plain buttons: the Material button's minimum-touch-target
   machinery kept re-inflating their layout past the visible circle, which is why they overlapped
   through two rounds of shrinking.
@@ -103,7 +103,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   gallery-tab name, tapping through to the full-screen viewer. Google's keyless data carries no
   menu LINK (probed: the search payload has none), so photos are the menu surface; making the
   gallery scrape menu-exhaustive is the known follow-up for places where the tagged set is
-  partial. The inline review search also folds into a magnifier beside the All-reviews pill —
+  partial. The inline review search also folds into a magnifier beside the All-reviews pill  - 
   the stacked text field read as clutter, and the full-screen panel's server-side search stays
   the headline way to dig.
 - ✅ **Gallery survives rotation + the save menu (2026-07-10).** The full-screen photo viewer
@@ -256,7 +256,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   unique within 600 m)**; capped at 50. *(An on/off toggle is the next option.)*
 - 🟡 Self-hosted PMTiles - the no-key, no-quota Google-look path - remains for later
 - ⬜ Protomaps "Google-Maps-ify" style (road hierarchy ✅, hillshade ✅, POI icons ✅ done; this is the bundled-style variant)
-- ⬜ Satellite layer (terrain relief ✅ done; aerial imagery still planned)
+- ✅ Satellite layer - shipped 2026-07-13 via the Layers panel (Esri World Imagery hybrid; see the Layers entry below). Terrain relief ✅ too
 - ✅ Map rotation/tilt + heading-up mode during nav (tilted follow-camera, speed-adaptive zoom)
 
 ## Search & POIs (live Google data)
@@ -523,7 +523,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   to its own line instead of breaking mid-word, and it all still works by D-pad on a feature phone.
 - ✅ **Settings decluttered (2026-07-10).** The Settings page was one very long scroll. The rarely-
   touched toggles now live in two collapsed groups at the bottom: **Advanced** (3D buildings, traffic-
-  light guidance) and **Developer** (simulate driving, simulate location, save trips — the demo/testing
+  light guidance) and **Developer** (simulate driving, simulate location, save trips - the demo/testing
   tools, each labelled "turn off for real use"). The content filters (hide adult categories, hide
   website & external links) sit with the other place-content toggles under Place pages.
   Everything else stays one tap away. **Offline moved up** near the top since you reach it often.
@@ -1486,7 +1486,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   whenever the route itself is swapped (a fresh route carries fresh traffic), is clamped to
   0.5-2.5x against a bad candidate, and the faster-route offer logic now compares against this
   live baseline too. Hermetic replays never recalibrate (no live fetches, as before).
-- 🟡 **Posted speed-limit badge (app-side done 2026-07-04; needs the graph re-bake to light up).** During
+- 🟡 **Posted speed-limit badge (2026-07-04; LIVE everywhere online via the streamed overlay below - only the offline-graph path still needs re-baked graphs).** During
   nav a Google-style speed-limit sign shows by the speedometer - **US MUTCD** style (white rounded rect,
   "SPEED LIMIT" + number) in imperial, **EU/RoW** (white disc + red ring) in metric, and the number reddens
   when you exceed the limit + a tolerance (GPS speed is noisy). Source is **OSM `maxspeed`, keyless + offline**
@@ -1720,7 +1720,7 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
 - ✅ **Simulate my location (demo mode)** (Settings → Navigation → "Simulate my location (demo)", **off by default**) - a sibling of simulate-driving for the *browse* map: flip it on and Vela pretends you're standing at the current map centre, so the location dot, the directions origin ("Your location"), and recenter all read from there instead of your real GPS. Lets the app be shown or photographed from anywhere without leaking a real position (`ui/SimLocation.kt`, a process-wide reactive holder persisted to `vela_settings`; `MapViewModel` pins `myLocation` to the captured point and suspends the live GPS collector, resuming it when you turn the toggle back off). It's how the Davis/Sacramento screenshots were taken from another state. **Turn it off to use real GPS.**
 - ✅ Settings shows the installed app version (name + build code)
 - ✅ **Full D-pad / no-touchscreen operation** (touch is a bonus, not required) - every surface reachable and activatable by focus traversal with a visible focus ring; the map itself is key-drivable (arrows pan, OK "taps" a centre crosshair, hold-OK long-presses/drops a pin, on-screen +/− zoom buttons); key alternatives for every gesture (banner step preview ←/→, sheet-handle OK-toggle, photo-viewer paging); the search overlay's focus traps fixed. A full-function sweep (2026-07-07) exercised every surface end-to-end by D-pad and closed the last gaps: text fields escape UP/DOWN via `dpadFieldEscape` (Settings + reviews search), the search field's DOWN drops into the suggestions, Choose-on-map keeps the map pannable to place the pin, and the directions panel scroll-caps so **Start** is reachable with 4 alternates (the last also fixes a touch layout bug). **Every screen/sheet/panel auto-focuses a sensible element on open (`rememberDpadAutoFocus`), so no keypress is wasted "waking up" focus** - and because a Compose `DropdownMenu`/`AlertDialog` can't be pre-focused (framework limit, ~10 approaches proven), menus and dialogs were rebuilt as **`VelaMenu`** (anchored DropdownMenu under touch, auto-focusing raw-Dialog chooser under D-pad) and **`VelaDialog`** (auto-focusing raw-Dialog), so those land focused too. Affordances appear only in key-driven input mode (`rememberDpadMode`), so touch UX is unchanged. Design/findings/merge policy: [`docs/dpad.md`](docs/dpad.md)
-- ⬜ F-Droid submission + reproducible build
+- 🟡 F-Droid: Vela's OWN repo is live (see FDROID.md - add it to any F-Droid client); official f-droid.org inclusion + reproducible build still open
 - ⬜ UnifiedPush for delay alerts (no FCM)
 - ⬜ ACRA / self-hosted crash reporting
 
