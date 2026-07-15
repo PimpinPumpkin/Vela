@@ -79,6 +79,13 @@ object NavEngine {
         // passes it): 2 m/s for driving, ~0.6 for walking — a walker's 1.4 m/s must count as
         // moving or pedestrian rerouting never fires and walkers "arrive" 50 m early.
         movingFloorMps: Double = 2.0,
+        // Off-route corridor + "unambiguously far" distance, MODE-AWARE (NavSession passes them).
+        // Driving keeps the wide 40 m corridor: a car has lane offset + shallow-angle divergence lag,
+        // so a narrower corridor false-reroutes. Walking/biking is far more precise (a walker is on a
+        // known sidewalk/path a few metres wide), so NavSession hands down a much tighter pair -
+        // otherwise a pedestrian who takes the wrong footpath drifts 40 m before Vela notices.
+        offRouteM: Double = OFF_ROUTE_M,
+        farOffM: Double = FAR_OFF_M,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
@@ -149,12 +156,12 @@ object NavEngine {
         // anything a parked car's GPS invents, so counting it can't bring back red-light reroutes.
         val moving = (speedMps ?: 99.0) >= movingFloorMps
         val offHits = when {
-            offDist <= OFF_ROUTE_M -> 0
-            !moving && offDist <= FAR_OFF_M -> state.offRouteHits
-            // Moving AND unambiguously far: no jitter reaches 90 m at speed, so escalate -
+            offDist <= offRouteM -> 0
+            !moving && offDist <= farOffM -> state.offRouteHits
+            // Moving AND unambiguously far: no jitter reaches the far distance at speed, so escalate -
             // the reroute fires after ~2 fixes instead of a full debounce (user 2026-07-15,
             // "waits far too long after a wrong turn").
-            moving && offDist > FAR_OFF_M -> state.offRouteHits + 2
+            moving && offDist > farOffM -> state.offRouteHits + 2
             else -> state.offRouteHits + 1
         }
         val offRoute = offHits >= OFF_ROUTE_HITS
@@ -164,7 +171,7 @@ object NavEngine {
         // UP only while genuinely on-corridor and moving, and resets the instant we're off — so NavSession's
         // back-on-course discard can require a real, multi-fix rejoin, not a one-frame coincidence.
         val onRouteStreak = when {
-            offDist > OFF_ROUTE_M -> 0
+            offDist > offRouteM -> 0
             !moving -> state.onRouteStreak
             else -> state.onRouteStreak + 1
         }
