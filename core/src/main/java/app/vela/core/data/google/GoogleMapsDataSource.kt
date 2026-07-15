@@ -294,6 +294,26 @@ class GoogleMapsDataSource @Inject constructor(
         runCatching { PhotosParser.parse(post(cal.photosEndpoint, "f.req=${freq.enc()}")) }.getOrDefault(emptyList())
     }
 
+    override suspend fun streetView(location: LatLng): app.vela.core.model.StreetViewPano? = io {
+        // Keyless nearest-pano lookup - the JS Maps API's own GeoPhotoService.SingleImageSearch,
+        // authorised by referer (the get() helper already sends it). `{LAT}`/`{LNG}` in the pb are
+        // the query point; the parser returns null when there's no imagery near the point.
+        val cal = calibration.current()
+        val url = cal.streetViewMetaUrl
+            .replace("{LAT}", "%.7f".format(java.util.Locale.US, location.lat))
+            .replace("{LNG}", "%.7f".format(java.util.Locale.US, location.lng))
+        runCatching { StreetViewParser.parse(get(url), location.lat, location.lng) }.getOrNull()
+    }
+
+    override suspend fun streetViewTile(panoId: String, x: Int, y: Int, zoom: Int): ByteArray? = io {
+        // The consumer equirect tile endpoint (what maps.google.com renders) - keyless, JPEG,
+        // needs only the Google referer. Fixed template, no calibration: the panoid + x/y/zoom
+        // fully address a tile in the standard SV pyramid.
+        val url = "https://streetviewpixels-pa.googleapis.com/v1/tile" +
+            "?cb_client=maps_sv.tactile&panoid=$panoId&x=$x&y=$y&zoom=$zoom&nbt=1&fover=2"
+        runCatching { getBytes(url) }.getOrNull()
+    }
+
     override suspend fun directions(
         origin: LatLng,
         destination: LatLng,
@@ -626,6 +646,19 @@ class GoogleMapsDataSource @Inject constructor(
                 throw CalibrationNeededException("HTTP ${resp.code} from ${req.url.encodedPath}")
             }
             return resp.body?.string().orEmpty()
+        }
+    }
+
+    /** GET raw bytes (Street View tiles) with the Google referer the tile host requires. */
+    private fun getBytes(url: String): ByteArray? {
+        val req = Request.Builder()
+            .url(url)
+            .header("User-Agent", VelaConfig.USER_AGENT)
+            .header("Referer", "https://www.google.com/")
+            .build()
+        http.newCall(req).execute().use { resp ->
+            if (!resp.isSuccessful) return null
+            return resp.body?.bytes()
         }
     }
 

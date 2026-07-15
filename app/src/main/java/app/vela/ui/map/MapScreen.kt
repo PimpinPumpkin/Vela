@@ -1532,6 +1532,7 @@ fun MapScreen(
                 onClose = vm::clearSelection,
                 onToggleSave = vm::toggleSave,
                 onDirections = vm::routeToSelected,
+                onStreetView = { vm.openStreetView(state.selected!!) },
                 onOpenPlace = vm::selectPlace,
                 onOpenSimilar = vm::openSimilar,
                 onSetShortcut = vm::setSelectedAsShortcut,
@@ -1650,6 +1651,17 @@ fun MapScreen(
                 loading = state.routeDetailLoading,
                 onClose = vm::closeRouteDetail,
                 onStopTap = vm::openRouteStop,
+            )
+        }
+
+        // In-app Street View (keyless pano tiles on a GL sphere). Full-screen over everything
+        // while a pano is resolving or shown.
+        if (state.streetView != null || state.streetViewLoading) {
+            app.vela.ui.place.StreetViewScreen(
+                pano = state.streetView,
+                bitmap = state.streetViewBitmap,
+                loading = state.streetViewLoading,
+                onClose = vm::closeStreetView,
             )
         }
 
