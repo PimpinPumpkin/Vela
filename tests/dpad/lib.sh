@@ -278,6 +278,24 @@ assert_focus_ytop_between() {
   local y; y="$(focus_ytop)"
   if [ "$y" -ge "$1" ] && [ "$y" -le "$2" ] 2>/dev/null; then pass "focus Y=$y in [$1,$2] ($3)"; else fail "expected focus Y in [$1,$2] ($3), got $y"; fi
 }
+# assert_focus_covers <exact-text> <label>  - the node with that text sits INSIDE the focused
+# node's bounds. Compose menu/list items report focused=true on a WRAPPER whose text attribute
+# is empty (the label is a child node), so assert_focus_text reads '<none>' even when focus is
+# exactly right - match by geometry instead, the same containment focus_and_ok uses.
+assert_focus_covers() {
+  local tb cy fb fy1 fy2
+  tb="$(find_text "$1")"
+  if [ -z "$tb" ]; then fail "'$1' not on screen (so cannot be focused) ($2)"; return; fi
+  cy="$(ycenter "$tb")"
+  fb="$(focused_bounds)"
+  fy1="$(echo "$fb" | sed -E 's/^\[[0-9]+,([0-9]+)\].*/\1/')"
+  fy2="$(echo "$fb" | sed -E 's/.*\]\[[0-9]+,([0-9]+)\]$/\1/')"
+  if [ -n "$fy1" ] && [ "$cy" -ge "$fy1" ] && [ "$cy" -le "$fy2" ] 2>/dev/null; then
+    pass "focus covers '$1' ($2)"
+  else
+    fail "expected focus covering '$1' ($2), focused bounds '${fb:-<none>}'"
+  fi
+}
 assert_nothing_focused() {
   if [ -z "$(focused)" ]; then pass "nothing focused (as expected: $1)"; else fail "expected nothing focused ($1), got '$(focused)'"; fi
 }

@@ -25,7 +25,7 @@ import kotlin.concurrent.thread
 import timber.log.Timber
 
 @HiltAndroidApp
-class VelaApp : Application() {
+class VelaApp : Application(), coil.ImageLoaderFactory {
     @Inject lateinit var diag: DiagLog
     @Inject lateinit var exitInfo: ExitInfoReader
 
@@ -33,6 +33,20 @@ class VelaApp : Application() {
      * reads fire the same few main-thread-I/O violations repeatedly; deduping here keeps them from
      * flooding the 300-cap DiagLog ring (StrictMode's penaltyLog still logs every one to Logcat). */
     private val seenStrictMode = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    /** Coil with a HARD memory-cache cap. The default budget is ~25% of the app's heap CLASS,
+     *  and largeHeap makes that class huge - on a 512 MB large heap Coil happily retains up to
+     *  ~128 MB of decoded gallery bitmaps by design, which is most of the "rapid place churn
+     *  runs into the ceiling" OOM (issue #182; measured: 3 gallery-bearing places grew the live
+     *  Dalvik heap 14 -> 94 MB). 48 MB still holds a couple of screens of thumbnails + a hero
+     *  or two; everything else re-decodes from Coil's disk cache, which is untouched. */
+    override fun newImageLoader(): coil.ImageLoader = coil.ImageLoader.Builder(this)
+        .memoryCache {
+            coil.memory.MemoryCache.Builder(this)
+                .maxSizeBytes(48 * 1024 * 1024)
+                .build()
+        }
+        .build()
 
     /** Apply the persisted in-app language to the Application context too (no-op when following the
      * system), so `getString` from the ViewModel/nav-notification also localizes - resolved at launch

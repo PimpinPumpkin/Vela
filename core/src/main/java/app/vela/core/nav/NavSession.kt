@@ -392,8 +392,14 @@ class NavSession @Inject constructor(
             // dismissed saving by a real margin - not re-spoken verbatim every 2 minutes.
             if (routeKey(candidate) == dismissedFasterKey && saving < dismissedFasterSaving + 60.0) return@launch
             // Offer it only if it saves real time AND isn't implausibly short - a candidate claiming to cut
-            // the same trip to a fraction of the time left is a bad route, not a real faster path.
-            if (saving > FASTER_THRESHOLD_S && candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)) {
+            // the same trip to a fraction of the time left is a bad route, not a real faster path. And only
+            // when its ETA is traffic-aware (upstream 84b2d02f): when the recheck's Google fetch fails the
+            // candidate comes back with a FREE-FLOW ETA, which is systematically optimistic, so against the
+            // traffic-aware remaining time it always reads as a big saving - a degraded route posing as a
+            // faster one (suspiciously fast ETA that drifts back to reality a recheck later).
+            if (candidate.hasLiveTraffic &&
+                saving > FASTER_THRESHOLD_S && candidateEta in (remaining * MIN_PLAUSIBLE_ETA_FRACTION)..(remaining * 0.9)
+            ) {
                 _state.update { it.copy(fasterRoute = candidate, fasterSavingSeconds = saving) }
                 voice.speak(
                     app.vela.core.i18n.NavStringsRegistry.current()

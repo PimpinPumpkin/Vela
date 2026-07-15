@@ -57,6 +57,25 @@ class WebDirectionsFetcher @Inject constructor(
     private val pending = java.util.concurrent.ConcurrentHashMap<String, CompletableDeferred<String>>()
     @Volatile private var currentId: String = "" // the id of the page being loaded now - baked into its EXTRACT
     @Volatile private var webView: WebView? = null
+    private var reap: Runnable? = null
+
+    /** Free the WebView after a quiet period (issue #182): a warm fetcher pins a full
+     *  maps.google.com page for the rest of the session, and several warm fetchers at once is
+     *  real memory. The next fetch after a reap just re-creates it. */
+    private fun scheduleReap() {
+        reap?.let(main::removeCallbacks)
+        val r = Runnable {
+            webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
+            webView = null
+        }
+        reap = r
+        main.postDelayed(r, REAP_IDLE_MS)
+    }
+
+    private fun cancelReap() {
+        reap?.let(main::removeCallbacks)
+        reap = null
+    }
 
     private inner class Bridge {
         @JavascriptInterface
@@ -75,6 +94,20 @@ class WebDirectionsFetcher @Inject constructor(
         timeMode: Int = 0,
         timeEpochSec: Long? = null,
     ): List<TransitItinerary> = mutex.withLock {
+        cancelReap()
+        try {
+            transitLocked(origin, destination, timeMode, timeEpochSec)
+        } finally {
+            scheduleReap()
+        }
+    }
+
+    private suspend fun transitLocked(
+        origin: LatLng,
+        destination: LatLng,
+        timeMode: Int,
+        timeEpochSec: Long?,
+    ): List<TransitItinerary> {
         // Google's transit data param. Now = the plain `!4m2!4m1!3e3`. For a scheduled time we insert
         // Google's time block `!2m3!6e{0=depart,1=arrive,2=last}!7e2!8j<unix-seconds>` before `!3e3`.
         // The `!4m` wrappers are DESCENDANT counts, so the inner group grows 4m1 → 4m5 (2m3+6e+7e+8j+3e3)
@@ -97,7 +130,7 @@ class WebDirectionsFetcher @Inject constructor(
         } finally {
             pending.remove(id)
         }
-        if (raw.isNullOrEmpty()) emptyList()
+        return if (raw.isNullOrEmpty()) emptyList()
         else runCatching { TransitParser.parse(raw, origin, destination) }.getOrDefault(emptyList())
     }
 
@@ -148,6 +181,7 @@ class WebDirectionsFetcher @Inject constructor(
 
     private companion object {
         const val TOTAL_TIMEOUT_MS = 20_000L
+        const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 1_800L
 
         /** Pull the directions response string out of APP_INITIALIZATION_STATE -

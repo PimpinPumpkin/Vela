@@ -297,6 +297,7 @@ fun VelaMapView(
     val navZoomSpeed = remember { floatArrayOf(0f) }          // low-passed speed driving the nav zoom
     val scaling = remember { booleanArrayOf(false) }          // a pinch-zoom is in progress
     val navUserZoom = remember { doubleArrayOf(Double.NaN) }  // manual nav zoom override (NaN = auto)
+    val wasNavRef = remember { booleanArrayOf(false) } // a drive actually ran - gates the one-shot camera teardown
     val camState = remember { doubleArrayOf(Double.NaN, 0.0, 0.0, 0.0) } // eased follow-camera [lat,lng,bearing,zoom]; lat NaN = needs re-seed
     val routeColorHolder = rememberUpdatedState(routeColor)
     val routeSpansHolder = rememberUpdatedState(routeTrafficSpans)
@@ -372,6 +373,24 @@ fun VelaMapView(
             listOf("poi_r1", "poi_r7", "poi_r20", "poi_transit").forEach { id ->
                 style.getLayer(id)?.setProperties(PropertyFactory.visibility(vis))
             }
+        }
+        // This write races applyData's ambient suppression of the same layers: forcing VISIBLE on
+        // nav end while the ambient identity gate still says NONE left doubled icons until the
+        // next ambient change. Nulling the gate makes the next applyData frame re-assert it.
+        lastAppliedAmbient = null
+        // Bus-stop icons + their name labels are browse furniture, not a driving aid - hide the
+        // canonical GTFS stops layer during turn-by-turn (upstream drive 2026-07-14) and restore
+        // on exit. The per-viewport stop FETCH is also skipped while navigating (MapViewModel).
+        runCatching {
+            style.getLayer(TRANSIT_STOPS_LAYER)
+                ?.setProperties(PropertyFactory.visibility(if (navMode) Property.NONE else Property.VISIBLE))
+            // The AMBIENT pool is bare-map furniture too (maybeLoadAmbientPois's own contract):
+            // the fetch skips during nav but the PRE-DRIVE pool stays in state, so a bus stop or
+            // shop pin fetched while browsing rode along for the whole drive (fork device find
+            // while porting a8f46047 - upstream hid only the GTFS stops layer). Hide the layer;
+            // the pool itself survives for an instant restore when the drive ends.
+            style.getLayer(AMBIENT_LAYER)
+                ?.setProperties(PropertyFactory.visibility(if (navMode) Property.NONE else Property.VISIBLE))
         }
     }
 
@@ -705,9 +724,33 @@ fun VelaMapView(
     // next fix (engaged=false) instead of gliding along stale geometry.
     LaunchedEffect(navMode, routePolyline) {
         if (!navMode) {
+            // Only tear the camera down on an ACTUAL nav exit (upstream f95f0b96): this effect is
+            // keyed on routePolyline too (so reroutes relaunch the puck ticker), which means every
+            // route swap in the CHOOSER (picking an alternate, editing stops) re-runs this branch -
+            // its moveCamera would kill the route-fit flight at frame ~0. wasNavRef makes the
+            // teardown one-shot per real drive.
+            if (!wasNavRef[0]) return@LaunchedEffect
+            wasNavRef[0] = false
             navPuck.kalman.reset() // nav ended - don't carry a stale speed into the next trip
+            // Camera padding is STICKY MapLibre state: the nav view's puck-low offset (top padding,
+            // set on every follow frame + the pre-engage case) would otherwise shift the browse
+            // camera's centre for the rest of the session. Bearing + tilt are sticky the same way.
+            // ONE INSTANT move, not an animate: an animated level-out gets CANCELLED mid-flight
+            // by the next camera write (a browse recenter, the follow ticker seeding) and leaves
+            // the map PARTIALLY rotated after a drive (upstream drive 2026-07-14). A snap can't
+            // be interrupted.
+            mapRef?.moveCamera(
+                CameraUpdateFactory.newCameraPosition(
+                    CameraPosition.Builder()
+                        .bearing(0.0)
+                        .tilt(0.0)
+                        .padding(0.0, 0.0, 0.0, 0.0)
+                        .build(),
+                ),
+            )
             return@LaunchedEffect
         }
+        wasNavRef[0] = true
         navPuck.engaged = false
         var lastNanos = 0L
         while (true) {
@@ -781,7 +824,7 @@ fun VelaMapView(
                     val sp = navPuck.speed.toFloat().coerceIn(0f, 30f)
                     navZoomSpeed[0] += (sp - navZoomSpeed[0]) * (1f - kotlin.math.exp(-dtE / 0.6f))
                     val tgtZoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                        else 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0)
+                        else 18.0 - (navZoomSpeed[0] / 30f) * (18.0 - 15.5) // closer default (user drive 2026-07-14); speed still zooms out
                     if (camState[0].isNaN()) { // (re)seed from the live camera for a smooth hand-off
                         val cp = cam.cameraPosition
                         camState[0] = cp.target?.latitude ?: pt.lat
@@ -1404,7 +1447,7 @@ fun VelaMapView(
                         val rawSp = (mySpeed ?: 0f).coerceIn(0f, 30f)
                         navZoomSpeed[0] += (rawSp - navZoomSpeed[0]) * 0.3f
                         val zoom = if (!navUserZoom[0].isNaN()) navUserZoom[0]
-                            else 17.3 - (navZoomSpeed[0] / 30f) * (17.3 - 15.0)
+                            else 18.0 - (navZoomSpeed[0] / 30f) * (18.0 - 15.5) // closer default (user drive 2026-07-14); speed still zooms out
                         map.animateCamera(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
@@ -1422,32 +1465,38 @@ fun VelaMapView(
             // map (upstream a17eded6); the top-card measurement landing a frame late corrects the
             // same way instead of leaving a fit that ignored it.
             routePolyline.size >= 2 &&
-                (routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedRouteKey -> {
-                lastFittedRouteKey = routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
-                val builder = MLLatLngBounds.Builder()
-                routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
-                // Reserve room at the bottom for the directions panel AND at the top for the
-                // endpoints card, so the route's start/end frame in the VISIBLE strip between
-                // them instead of hiding behind either (upstream b6b7bbd1).
-                val pad = 140
-                val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
-                val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
-                val bounds = builder.build()
-                // A continental trip fit zooms out until nothing has context; past ~12 degrees
-                // of span, frame the DESTINATION area instead - the end point is the part worth
-                // seeing (upstream b6b7bbd1), and the route line still leads off-screen toward it.
-                val huge = bounds.latitudeSpan > 12.0 || bounds.longitudeSpan > 14.0
-                runCatching {
-                    if (huge) {
-                        val end = routePolyline.last()
+                (navMode || (routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx) != lastFittedRouteKey) -> {
+                // Stays MATCHED during nav but swallows the fit (upstream f95f0b96): once the nav
+                // follow branch above stops matching (a mid-drive pan detached the camera), a
+                // reroute's new polyline used to fall through here and fly an uninvited
+                // whole-route fit mid-drive. In-nav framing is owned by the nav branches above.
+                if (!navMode) {
+                    lastFittedRouteKey = routePolyline.hashCode() * 31 + cameraBottomInsetPx * 7 + cameraTopInsetPx
+                    val builder = MLLatLngBounds.Builder()
+                    routePolyline.forEach { builder.include(MLLatLng(it.lat, it.lng)) }
+                    // Reserve room at the bottom for the directions panel AND at the top for the
+                    // endpoints card, so the route's start/end frame in the VISIBLE strip between
+                    // them instead of hiding behind either (upstream b6b7bbd1).
+                    val pad = 140
+                    val bottom = if (cameraBottomInsetPx > 0) cameraBottomInsetPx + pad else pad
+                    val top = if (cameraTopInsetPx > 0) cameraTopInsetPx + pad else pad
+                    val bounds = builder.build()
+                    // A continental trip fit zooms out until nothing has context; past ~12 degrees
+                    // of span, frame the DESTINATION area instead - the end point is the part worth
+                    // seeing (upstream b6b7bbd1), and the route line still leads off-screen toward it.
+                    val huge = bounds.latitudeSpan > 12.0 || bounds.longitudeSpan > 14.0
+                    runCatching {
+                        if (huge) {
+                            val end = routePolyline.last()
+                            map.animateCamera(
+                                CameraUpdateFactory.newLatLngZoom(MLLatLng(end.lat, end.lng), 9.0), 800,
+                            )
+                            return@runCatching
+                        }
                         map.animateCamera(
-                            CameraUpdateFactory.newLatLngZoom(MLLatLng(end.lat, end.lng), 9.0), 800,
+                            CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800,
                         )
-                        return@runCatching
                     }
-                    map.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(bounds, pad, top, pad, bottom), 800,
-                    )
                 }
             }
 
@@ -1612,7 +1661,7 @@ private fun ensureLayers(style: Style) {
     }
     if (style.getImage(PIN_IMG) == null) style.addImage(PIN_IMG, pinBitmap())
     if (style.getSource(MARKERS_SRC) == null) {
-        style.addSource(GeoJsonSource(MARKERS_SRC))
+        style.addSource(GeoJsonSource(MARKERS_SRC, GeoJsonOptions().withMaxZoom(12)))
         style.addLayer(
             SymbolLayer(MARKERS_LAYER, MARKERS_SRC).withProperties(
                 PropertyFactory.iconImage(PIN_IMG),
@@ -1628,7 +1677,7 @@ private fun ensureLayers(style: Style) {
     // The saved parking spot: one teal "P" pin above the search pins, tappable.
     if (style.getImage(PARKING_IMG) == null) style.addImage(PARKING_IMG, parkingBitmap())
     if (style.getSource(PARKING_SRC) == null) {
-        style.addSource(GeoJsonSource(PARKING_SRC))
+        style.addSource(GeoJsonSource(PARKING_SRC, GeoJsonOptions().withMaxZoom(12)))
         style.addLayer(
             SymbolLayer(PARKING_LAYER, PARKING_SRC).withProperties(
                 PropertyFactory.iconImage(PARKING_IMG),
@@ -1639,7 +1688,11 @@ private fun ensureLayers(style: Style) {
         )
     }
     if (style.getSource(AMBIENT_SRC) == null) {
-        style.addSource(GeoJsonSource(AMBIENT_SRC))
+        // Point sources cap their internal tile pyramid at z12 (upstream f95f0b96): geojson-vt
+        // re-cuts the source into tiles at every integer zoom crossed during a flight, and
+        // points gain nothing past z12. Strictly less re-cut + placement invalidation per zoom
+        // change; line sources (route) keep full depth for vertex precision.
+        style.addSource(GeoJsonSource(AMBIENT_SRC, GeoJsonOptions().withMaxZoom(12)))
         style.addLayerBelow(
             SymbolLayer(AMBIENT_LAYER, AMBIENT_SRC).withProperties(
                 PropertyFactory.iconImage(Expression.get("icon")),
@@ -1659,7 +1712,47 @@ private fun ensureLayers(style: Style) {
                 PropertyFactory.iconIgnorePlacement(false),
                 PropertyFactory.iconPadding(1.5f),
                 PropertyFactory.symbolSortKey(Expression.get("sort")),
-                PropertyFactory.textField(Expression.get("name")),
+                // LABEL DENSITY copies Google (upstream bd165ba0): at browse zooms Google names only
+                // the prominent places and lets the rest be bare icons/dots, with more named as you
+                // close in - and even at z17 a chunk stays icon-only (A/B'd against the gmaps app on
+                // the same downtown frame: ~7 named at z15, ~13 + bare dots at z17). Tiered by
+                // zoom x prominence; thresholds map through ambientProminence (ln(reviews+1) x rating
+                // factor): 6.0 ~ 400+ reviews, 5.0 ~ 120+, 3.0 ~ 20+. (7.0 was tried and named ZERO
+                // downtown - the anchors mostly sit 6-7.) This is ALSO a frame win in
+                // dense areas - every label is collision work with four candidate anchors, and an
+                // EMPTY textField skips label placement entirely (a textOpacity of 0 would still
+                // place and collide it, paying the cost invisibly).
+                PropertyFactory.textField(
+                    Expression.step(
+                        Expression.zoom(),
+                        // below z15.5: only true landmarks (malls, big-box, the 1000-review anchors)
+                        Expression.switchCase(
+                            Expression.gte(Expression.get("prominence"), Expression.literal(6.0)),
+                            Expression.get("name"),
+                            Expression.literal(""),
+                        ),
+                        // z15.5+: established places join
+                        Expression.stop(
+                            15.5f,
+                            Expression.switchCase(
+                                Expression.gte(Expression.get("prominence"), Expression.literal(5.0)),
+                                Expression.get("name"),
+                                Expression.literal(""),
+                            ),
+                        ),
+                        // z16.5+ (street level): any real business; 0-review junk stays a bare dot
+                        Expression.stop(
+                            16.5f,
+                            Expression.switchCase(
+                                Expression.gte(Expression.get("prominence"), Expression.literal(3.0)),
+                                Expression.get("name"),
+                                Expression.literal(""),
+                            ),
+                        ),
+                        // z17.5+ (single-lot zoom): everything visible gets its name
+                        Expression.stop(17.5f, Expression.get("name")),
+                    ),
+                ),
                 PropertyFactory.textFont(arrayOf("Noto Sans Regular")),
                 PropertyFactory.textSize(
                     Expression.interpolate(
@@ -1695,7 +1788,7 @@ private fun ensureLayers(style: Style) {
     if (style.getImage(SIGNAL_IMG) == null) style.addImage(SIGNAL_IMG, trafficLightBitmap())
     if (style.getImage(STOP_IMG) == null) style.addImage(STOP_IMG, stopSignBitmap())
     if (style.getSource(CONTROLS_SRC) == null) {
-        style.addSource(GeoJsonSource(CONTROLS_SRC))
+        style.addSource(GeoJsonSource(CONTROLS_SRC, GeoJsonOptions().withMaxZoom(12)))
         style.addLayerBelow(
             SymbolLayer(CONTROLS_LAYER, CONTROLS_SRC).apply {
                 setMinZoom(16f)
@@ -1728,7 +1821,7 @@ private fun ensureLayers(style: Style) {
     // in applyData). Drawn above the ambient POIs (and above the flock layer, which yields to both).
     if (style.getImage(TRANSIT_STOP_IMG) == null) style.addImage(TRANSIT_STOP_IMG, transitStopBitmap())
     if (style.getSource(TRANSIT_STOPS_SRC) == null) {
-        style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC))
+        style.addSource(GeoJsonSource(TRANSIT_STOPS_SRC, GeoJsonOptions().withMaxZoom(12)))
         // Deliberately a touch smaller than the POI markers (stops are dense), but not tiny -
         // the first cut (0.62-1.2) read too small on device (user 2026-07-13).
         val stopSize = Expression.interpolate(
@@ -1780,7 +1873,7 @@ private fun ensureLayers(style: Style) {
     // cameras reads as dots, not clutter.
     if (style.getImage(FLOCK_IMG) == null) style.addImage(FLOCK_IMG, alprCameraBitmap())
     if (style.getSource(FLOCK_SRC) == null) {
-        style.addSource(GeoJsonSource(FLOCK_SRC))
+        style.addSource(GeoJsonSource(FLOCK_SRC, GeoJsonOptions().withMaxZoom(12)))
         val flockSize = Expression.interpolate(
             Expression.linear(), Expression.zoom(),
             Expression.stop(11f, 0.55f),
@@ -1806,7 +1899,7 @@ private fun ensureLayers(style: Style) {
         }
     }
     if (style.getSource(ME_SRC) == null) {
-        style.addSource(GeoJsonSource(ME_SRC))
+        style.addSource(GeoJsonSource(ME_SRC, GeoJsonOptions().withMaxZoom(12)))
         // Heading beam first so it sits BENEATH the dot (Google order): the
         // translucent cone fans out from under the dot in the facing direction.
         style.addLayer(
@@ -2677,9 +2770,14 @@ private fun applyData(
                     addStringProperty("name", m.name)
                     addStringProperty("icon", "vela-poi-${PoiIcons.groupFor(m.name, m.category)}")
                     addNumberProperty(AMBIENT_INDEX_PROP, i)
-                    // Collision priority: the data source returns the most prominent places first, so a
-                    // lower index wins its slot (MapLibre places lower symbol-sort-key first).
-                    addNumberProperty("sort", i)
+                    // Collision priority must be STABLE across uploads: it used to be the list
+                    // index, and a viewport refetch RE-RANKS the pool, so the same place's
+                    // priority changed between uploads and the whole layer's placement reshuffled
+                    // (icons visibly popping into each other; upstream c35eea33). Prominence is a
+                    // property of the PLACE (identical in every upload), so priorities hold still
+                    // while the set changes; the index only breaks ties between equally prominent
+                    // places. Lower sort key places first.
+                    addNumberProperty("sort", (10.0 - m.prominence) * 1000.0 + i)
                     // Prominence drives data-driven icon/text size on the layer (anchors read bigger).
                     addNumberProperty("prominence", m.prominence)
                 }
@@ -2688,8 +2786,11 @@ private fun applyData(
         style.getSourceAs<GeoJsonSource>(AMBIENT_SRC)?.setGeoJson(ambientFc)
         // Google-first: while ambient Google POIs are showing, hide the OSM *business* POIs
         // (poi_r1/r7/r20) so the layers don't duplicate. OSM transit + the whole OSM basemap stay; when
-        // there are no ambient POIs (zoomed out / offline / nav / search) the OSM POIs come back.
-        val osmPoiVis = if (ambientPois.isNotEmpty()) Property.NONE else Property.VISIBLE
+        // there are no ambient POIs (zoomed out / offline / search) the OSM POIs come back. NAV is
+        // spelled out here too: the declutter effect hides these layers at nav start and nulls the
+        // ambient gate, so THIS re-assert runs next frame - without the navMode term it flipped the
+        // basemap POIs right back on over the drive (fork device find while porting a8f46047).
+        val osmPoiVis = if (navMode || ambientPois.isNotEmpty()) Property.NONE else Property.VISIBLE
         listOf("poi_r1", "poi_r7", "poi_r20").forEach { id ->
             style.getLayer(id)?.setProperties(PropertyFactory.visibility(osmPoiVis))
         }

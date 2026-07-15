@@ -52,6 +52,25 @@ class WebReviewsFetcher @Inject constructor(
     private val main = Handler(Looper.getMainLooper())
 
     @Volatile private var webView: WebView? = null
+    private var reap: Runnable? = null
+
+    /** Free the WebView after a quiet period (issue #182): a warm fetcher pins a full
+     *  maps.google.com page for the rest of the session, and several warm fetchers at once is
+     *  real memory. The next fetch after a reap just re-creates it. */
+    private fun scheduleReap() {
+        reap?.let(main::removeCallbacks)
+        val r = Runnable {
+            webView?.let { runCatching { it.loadUrl("about:blank"); it.destroy() } }
+            webView = null
+        }
+        reap = r
+        main.postDelayed(r, REAP_IDLE_MS)
+    }
+
+    private fun cancelReap() {
+        reap?.let(main::removeCallbacks)
+        reap = null
+    }
 
     private inner class Bridge {
         @JavascriptInterface
@@ -88,6 +107,21 @@ class WebReviewsFetcher @Inject constructor(
     ): List<Review> {
         val cid = cidOf(featureId) ?: return emptyList()
         return mutex.withLock {
+            cancelReap()
+            try {
+                fetchLocked(cid, onProgress, onPartial)
+            } finally {
+                scheduleReap()
+            }
+        }
+    }
+
+    private suspend fun fetchLocked(
+        cid: String,
+        onProgress: (Int) -> Unit,
+        onPartial: (List<Review>) -> Unit,
+    ): List<Review> {
+        return run {
             val id = "r" + seq.incrementAndGet()
             val deferred = CompletableDeferred<String>()
             pending[id] = deferred
@@ -366,6 +400,7 @@ class WebReviewsFetcher @Inject constructor(
         // Must outlast the script's own hard stop (60 ticks × 550 ms ≈ 33 s + page load) - if Kotlin
         // times out first we return EMPTY, which is worse than few. Lazy + best-effort as ever.
         const val TOTAL_TIMEOUT_MS = 45_000L
+        const val REAP_IDLE_MS = 120_000L // destroy the idle WebView after this quiet period (issue #182)
         const val SETTLE_MS = 150L
         const val MAX_LOAD_MS = 7_000L
         // Offscreen viewport for the headless WebView - tall so the virtualized review list renders a
