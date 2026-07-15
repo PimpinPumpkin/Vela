@@ -34,6 +34,13 @@ object NavEngine {
     private const val PASSED_SLACK_M = 75.0   // this far PAST a maneuver = it happened during a gap → advance silently
     private const val REACQUIRE_JUMP_M = 1_500.0 // a global re-acquire jumping farther than this needs persistence
     private const val DEFAULT_ACC_M = 12.0    // assumed GPS accuracy when a fix carries none (dead-reckoning)
+    private const val HEADING_OFF_DEG = 60.0  // moving this far AGAINST the route's local direction counts
+                                              // as an off-route hit even INSIDE the distance corridor. A
+                                              // wrong turn onto a nearby-parallel road can sit within the
+                                              // corridor for blocks - distance alone never latched, so the
+                                              // engine kept guiding on the OLD route with no reroute and no
+                                              // redrawn line (device report 2026-07-16). The same 3-hit
+                                              // debounce absorbs turn transients and lane changes.
 
     /**
      * Accuracy-scaled off-route corridor, in metres, for a travel mode. Real navigators (OsmAnd,
@@ -66,6 +73,20 @@ object NavEngine {
             else -> 110.0
         }
         return (offRouteM * 2.0).coerceAtMost(cap)
+    }
+
+    /** Compass bearing of the route segment at [m] metres along, or null on a degenerate line. */
+    private fun routeBearingAt(poly: List<LatLng>, cum: DoubleArray, m: Double): Double? {
+        if (poly.size < 2 || cum.size != poly.size) return null
+        var i = 1
+        while (i < poly.size - 1 && cum[i] < m) i++
+        val a = poly[i - 1]
+        val b = poly[i]
+        val dLng = Math.toRadians(b.lng - a.lng)
+        val y = kotlin.math.sin(dLng) * cos(Math.toRadians(b.lat))
+        val x = cos(Math.toRadians(a.lat)) * kotlin.math.sin(Math.toRadians(b.lat)) -
+            kotlin.math.sin(Math.toRadians(a.lat)) * cos(Math.toRadians(b.lat)) * kotlin.math.cos(dLng)
+        return (Math.toDegrees(kotlin.math.atan2(y, x)) + 360.0) % 360.0
     }
 
     private fun round50(m: Double) = kotlin.math.round(m / 50.0) * 50.0
@@ -121,6 +142,10 @@ object NavEngine {
         // otherwise a pedestrian who takes the wrong footpath drifts 40 m before Vela notices.
         offRouteM: Double = OFF_ROUTE_M,
         farOffM: Double = FAR_OFF_M,
+        // The fix's COURSE (compass deg, from GPS bearing), when known. Off-route detection is
+        // distance-first, but distance alone can't catch a wrong turn onto a road that runs within
+        // the corridor of the planned one - the heading term ([HEADING_OFF_DEG]) does.
+        bearingDeg: Double? = null,
     ): Pair<NavState, List<NavEvent>> {
         val events = mutableListOf<NavEvent>()
         val maneuvers = route.maneuvers
@@ -190,8 +215,19 @@ object NavEngine {
         // Stationary multipath jitter is tens of metres at worst; FAR_OFF_M is comfortably beyond
         // anything a parked car's GPS invents, so counting it can't bring back red-light reroutes.
         val moving = (speedMps ?: 99.0) >= movingFloorMps
+        // Heading term: moving with a course >HEADING_OFF_DEG against the route's local direction is
+        // an off-route hit even INSIDE the distance corridor. A wrong turn onto a nearby-parallel
+        // road (or right after a missed fork, before the roads separate) stays within the corridor
+        // for blocks - the projection kept snapping the driver onto the OLD route and guidance
+        // carried on with its turns, no reroute, no redrawn line. Turn transients and lane changes
+        // are absorbed by the same OFF_ROUTE_HITS debounce; a legit route turn flips the snapped
+        // segment's bearing along with the driver's, so it doesn't accumulate hits.
+        val headingOff = moving && bearingDeg != null &&
+            routeBearingAt(route.polyline, cum, traveled)?.let { rb ->
+                kotlin.math.abs(((bearingDeg - rb + 540.0) % 360.0) - 180.0) > HEADING_OFF_DEG
+            } == true
         val offHits = when {
-            offDist <= offRouteM -> 0
+            offDist <= offRouteM && !headingOff -> 0
             !moving && offDist <= farOffM -> state.offRouteHits
             // Moving AND unambiguously far: no jitter reaches the far distance at speed, so escalate -
             // the reroute fires after ~2 fixes instead of a full debounce (user 2026-07-15,
@@ -206,7 +242,9 @@ object NavEngine {
         // UP only while genuinely on-corridor and moving, and resets the instant we're off — so NavSession's
         // back-on-course discard can require a real, multi-fix rejoin, not a one-frame coincidence.
         val onRouteStreak = when {
-            offDist > offRouteM -> 0
+            // A heading-diverged fix is NOT "back on the line" even inside the corridor - else the
+            // back-on-course check would discard a legitimate wrong-way reroute mid-fetch.
+            offDist > offRouteM || headingOff -> 0
             !moving -> state.onRouteStreak
             else -> state.onRouteStreak + 1
         }
