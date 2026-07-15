@@ -272,9 +272,11 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   Walking aims along the direction you moved. It's **half-screen over the live map** like Google: the pano
   takes the top of the screen and the map below shows the **nav puck with a view cone** at the pano's
   position, centred in the visible strip (the camera pads for the pane) - turn in the pano and the
-  puck+cone turn with you, walk and it hops (the map eases along) - with a corner button to go full screen
-  and back (Back backs out of full screen first; full screen keeps the same horizontal framing and reveals
-  more sky/ground rather than zooming). Best of all, it usually
+  puck+cone turn with you, walk and it hops (the map eases along), and **tapping the mini-map jumps the
+  viewer there** (pegman-drop: nearest pano at the tap, looking toward what you tapped, or down the street
+  when you tapped the street itself) - with a corner button to go truly full screen and back (the mini-map
+  hides entirely; Back backs out of full screen first; full screen keeps the same horizontal framing and
+  reveals more sky/ground rather than zooming). All of this device-verified end-to-end. Best of all, it usually
   **opens on Google's own pick**: the
   search response's Street View thumbnail URL carries the exact pano id and camera yaw the Google app
   itself opens, so Vela uses them verbatim - same imagery, facing the same way, zero extra requests. Only

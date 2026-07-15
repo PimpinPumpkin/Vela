@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -90,17 +91,26 @@ fun StreetViewScreen(
 
             if (pano != null) {
                 val ctx = LocalContext.current
-                // ONE view for the viewer's whole life - NOT keyed on panoId. AndroidView runs its
-                // factory once, so a per-panoId view instance would leave the OLD PanoramaView (old
-                // texture) on screen after a walk while the date updated: new date, stale imagery.
-                val view = remember { PanoramaView(ctx) }
+                // ONE view per PANE SIZE - NOT keyed on panoId (a per-pano instance left the OLD
+                // texture on screen after a walk), but RE-CREATED on the fullscreen toggle: a
+                // SurfaceView's window hole doesn't follow a pure-Compose resize (device-caught
+                // 2026-07-16: the GL render grew to full height but stayed CROPPED in the old
+                // half-screen hole, reading as "fullscreen just zoomed"). key(view) makes
+                // AndroidView actually swap instances; the effects below are view-keyed so the
+                // fresh view gets the texture and the CURRENT look direction re-fed.
+                val view = remember(full) { PanoramaView(ctx) }
                 DisposableEffect(view) { onDispose { view.onPause() } }
-                // Re-aim at each new pano (capture heading = the texture's compass reference; face
-                // the requested compass direction, or down the street), and feed each bitmap in.
-                LaunchedEffect(pano.panoId) {
-                    view.setCompass(pano.headingDeg.toFloat(), (pano.initialFacingDeg ?: pano.headingDeg).toFloat())
+                // Re-aim on each new pano OR new view. A pano we were already showing (fullscreen
+                // toggle) keeps the user's current yaw; a genuinely new pano faces its requested
+                // direction (Google's yaw / look-at target / down the street).
+                var seenPano by remember { mutableStateOf<String?>(null) }
+                LaunchedEffect(view, pano.panoId) {
+                    val face = if (pano.panoId == seenPano) yaw
+                    else (pano.initialFacingDeg ?: pano.headingDeg).toFloat()
+                    seenPano = pano.panoId
+                    view.setCompass(pano.headingDeg.toFloat(), face)
                 }
-                LaunchedEffect(bitmap) { bitmap?.let { view.setPanorama(it) } }
+                LaunchedEffect(view, bitmap) { bitmap?.let { view.setPanorama(it) } }
                 // Report the pose to the map underneath: immediately on each pano (position hop),
                 // then whenever the compass yaw moves ~a degree - not every frame, so the map's
                 // cone update stays a trickle instead of a 60 Hz recomposition storm.
@@ -120,7 +130,9 @@ fun StreetViewScreen(
                         }
                     }
                 }
-                AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
+                key(view) {
+                    AndroidView(factory = { view }, modifier = Modifier.fillMaxSize())
+                }
             }
 
             // Walk arrows: one tappable chevron per neighbour that's within the visible arc. Shown in

@@ -857,6 +857,7 @@ fun MapScreen(
             onParkingTap = { vm.showParkedCar(context.getString(R.string.map_parked_car)) },
             svPose = svPose,
             svTopInsetPx = (screenHeightPx * 0.55f).toInt(),
+            onSvMapTap = vm::moveStreetViewTo,
             ambientPois = ambientMarkersOf(state),
             buildingOverlays = state.buildingOverlays,
             addressOverlays = state.addressOverlays,
