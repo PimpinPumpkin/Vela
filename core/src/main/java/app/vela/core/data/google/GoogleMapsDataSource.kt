@@ -20,6 +20,7 @@ import app.vela.core.model.Review
 import app.vela.core.model.Route
 import app.vela.core.model.SearchResult
 import app.vela.core.model.TravelMode
+import app.vela.core.model.destinationPoint
 import app.vela.core.model.distanceTo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -296,30 +297,45 @@ class GoogleMapsDataSource @Inject constructor(
 
     override suspend fun streetView(location: LatLng, preferStreet: String?): app.vela.core.model.StreetViewPano? = io {
         // Keyless nearest-pano lookup - the JS Maps API's own GeoPhotoService.SingleImageSearch,
-        // authorised by referer (the get() helper already sends it). `{LAT}`/`{LNG}` in the pb are
-        // the query point; the parser returns null when there's no imagery near the point.
+        // authorised by referer (the get() helper already sends it). The parser returns null with no
+        // imagery near the point.
         val cal = calibration.current()
-        val url = cal.streetViewMetaUrl
-            .replace("{LAT}", "%.7f".format(java.util.Locale.US, location.lat))
-            .replace("{LNG}", "%.7f".format(java.util.Locale.US, location.lng))
-        val nearest = runCatching { StreetViewParser.parse(get(url), location.lat, location.lng) }.getOrNull()
-            ?: return@io null
+        val nearest = streetViewNearest(cal.streetViewMetaUrl, location.lat, location.lng) ?: return@io null
 
-        // Address-street preference (Google-like): the geocode for a mid-block address can sit between
-        // the avenue and a parallel alley, so the geometrically nearest pano snaps to the alley. When
-        // the nearest pano is NOT on the address's own street, hop to the nearest neighbour that IS.
-        // No-regression: any miss (no street given, already matches, no labelled match found) keeps
-        // the nearest pano, and the extra by-id lookups only run in the mismatch case.
-        if (preferStreet.isNullOrBlank() || StreetViewParser.streetMatches(nearest.addressLabel, preferStreet)) {
+        // Address-street preference (Google-like). Google's address geocode can sit SET-BACK from the
+        // street - a mid-block building has the frontage on the avenue and a service alley behind, and
+        // the geocode lands nearer the alley. The alley pano is then not just the nearest, its whole
+        // connectivity graph is the back cluster, so the real frontage pano is unreachable by walking.
+        // When the nearest pano isn't on the address's own street, PROBE toward the street: the nearest
+        // pano's heading is the (parallel) street axis, so the frontage sits perpendicular to it. Query
+        // a few points out along both perpendiculars and adopt the nearest pano that IS on the address's
+        // street. No-regression: no street given / already matches / nothing labelled found → keep the
+        // nearest pano, and the probes only fire in the mismatch case.
+        if (preferStreet.isNullOrBlank() ||
+            StreetViewParser.streetOf(preferStreet) == null ||
+            StreetViewParser.streetMatches(nearest.addressLabel, preferStreet)
+        ) {
             return@io nearest
         }
-        for (link in nearest.neighbors.sortedBy { it.distanceM }.take(MAX_STREET_HOPS)) {
-            val candUrl = cal.streetViewPanoUrl.replace("{PANOID}", link.panoId)
-            val cand = runCatching { StreetViewParser.parse(get(candUrl), 0.0, 0.0) }
-                .getOrNull()?.takeIf { it.lat != 0.0 || it.lng != 0.0 } ?: continue
-            if (StreetViewParser.streetMatches(cand.addressLabel, preferStreet)) return@io cand
+        val perpA = (nearest.headingDeg + 90.0) % 360.0
+        val perpB = (nearest.headingDeg + 270.0) % 360.0
+        val probes = STREET_PROBE_RADII_M.flatMap {
+            listOf(location.destinationPoint(it, perpA), location.destinationPoint(it, perpB))
         }
-        nearest
+        val match = coroutineScope {
+            probes.map { pt -> async { streetViewNearest(cal.streetViewMetaUrl, pt.lat, pt.lng) } }.awaitAll()
+        }.filterNotNull()
+            .filter { StreetViewParser.streetMatches(it.addressLabel, preferStreet) }
+            .distinctBy { it.panoId }
+            .minByOrNull { location.distanceTo(LatLng(it.lat, it.lng)) }
+        match ?: nearest
+    }
+
+    private suspend fun streetViewNearest(metaUrl: String, lat: Double, lng: Double): app.vela.core.model.StreetViewPano? {
+        val url = metaUrl
+            .replace("{LAT}", "%.7f".format(java.util.Locale.US, lat))
+            .replace("{LNG}", "%.7f".format(java.util.Locale.US, lng))
+        return runCatching { StreetViewParser.parse(get(url), lat, lng) }.getOrNull()
     }
 
     override suspend fun streetViewByPano(panoId: String): app.vela.core.model.StreetViewPano? = io {
@@ -751,6 +767,8 @@ class GoogleMapsDataSource @Inject constructor(
         const val SNAP_ETA_MARGIN = 1.2
         const val SNAP_REACH_M = 500.0 // the snapped route's last point must be within this of the destination
         const val MAX_ROUTES = 4       // primary + up to 3 alternates in the picker
-        const val MAX_STREET_HOPS = 5  // by-id lookups tried to land Street View on the address's own street
+        // Radii (m) to probe out toward the street when the geocode is set-back from it. Two rings
+        // cover the usual sidewalk+setback distance; each ring probes both perpendiculars → 4 probes.
+        val STREET_PROBE_RADII_M = doubleArrayOf(24.0, 40.0)
     }
 }
