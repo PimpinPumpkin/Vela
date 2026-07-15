@@ -269,14 +269,13 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   (which points down the road whenever Google's geocode sits on the road centreline), the camera snaps to
   the road-perpendicular on the building's side - the metadata heading gives the street's direction - and
   the real bearing nudges it up to 60 deg toward the facade, clamped so it can never swing down the road.
-  Walking aims along the direction you moved. It also **opens on the address's own street**: Google's
-  address geocode often sits set-back from the street (a mid-block building has its frontage on the avenue
-  and a service alley behind, and the geocode lands nearer the alley), so the nearest pano - and its whole
-  connectivity graph - is the back cluster, with the real frontage pano unreachable by walking. When the
-  nearest pano isn't on the address's street, Vela probes a few points out perpendicular to it (the nearest
-  pano's heading is the parallel street axis) and adopts the closest pano that IS on the address's street,
-  the way Google resolves an address to its frontage. No-regression - it only overrides on a confident
-  street match, and the probes fire only in the mismatch case. Walk arrows show in historical views
+  Walking aims along the direction you moved. Best of all, it usually **opens on Google's own pick**: the
+  search response's Street View thumbnail URL carries the exact pano id and camera yaw the Google app
+  itself opens, so Vela uses them verbatim - same imagery, facing the same way, zero extra requests. Only
+  when a response ships no thumbnail does it fall back to heuristics: nearest pano, then (if that pano
+  isn't on the address's own street - a set-back geocode snaps to the alley cluster behind the building,
+  which isn't even graph-connected to the frontage) perpendicular probes that adopt the closest pano that
+  IS on the address's street, facing across the road at the building. Walk arrows show in historical views
   too (the neighbour graph is the base pano's), and they fetch the neighbour BY ID so the year and the
   picture always match. A place with no
   imagery gives a brief "no Street View here" toast. (The old approach - embedding Google's own WebGL

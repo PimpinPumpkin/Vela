@@ -1751,8 +1751,16 @@ architecture note.
   "December 2022" label). (2) the `PanoramaView` must NOT be `remember`ed keyed on panoId - `AndroidView`
   runs its factory once, so a new per-pano view instance leaves the OLD view (old texture) on screen
   after a walk while the date updates (new date, stale imagery); use ONE view for the viewer's life and
-  feed it new bitmaps. Remaining: walking can cross capture epochs (Google stays in-epoch; the neighbour
-  entries carry no date to filter on), exact initial-heading alignment, higher-zoom on pinch.
+  feed it new bitmaps. **Opening pano = COPY GOOGLE (2026-07-16):** the search response's SV thumbnail URL
+  (`streetviewpixels-pa…/thumbnail?panoid=…&yaw=…`) carries the exact pano id + camera yaw the Google app
+  opens; `SearchParser.svThumb` regexes it out of the serialized entry (a distinctive constant, drift-proof
+  vs a pb path) into `Place.svPanoId`/`svYawDeg`, and `openStreetView` uses them verbatim via
+  `streetViewByPano`. The heuristics (nearest pano; street-of-address match; perpendicular probes for
+  set-back geocodes whose alley cluster isn't graph-connected to the frontage; perpendicular-facing with a
+  ±40° nudge) are the FALLBACK for entries with no thumbnail - don't re-order that ladder: geometry alone
+  provably mis-picks (the 2005-address alley saga, 3 attempts before copying Google won). Remaining:
+  walking can cross capture epochs (Google stays in-epoch; the neighbour entries carry no date to filter
+  on), higher-zoom on pinch.
 - **Routing is OPEN, not Google (2026-06-28).** Turn-by-turn comes from **FOSSGIS OSRM**
   (`RouteGeometry.route`, `steps=true`, per-mode `routed-car`/`-bike`/`-foot`) - complete,
   street-named maneuvers + real geometry. **Highways identify by `ref` not `name`** - `parseOsrmRoute`

@@ -77,6 +77,20 @@ class StreetViewParserTest {
         assertEquals("s 12th st", StreetViewParser.streetOf("1107 S 12th St")) // directional kept
     }
 
+    @Test fun svThumbExtractsGooglesOwnPanoAndYaw() {
+        // The search entry carries Google's exact Street View pick as a thumbnail URL - panoid + yaw.
+        val entry = kotlinx.serialization.json.Json.parseToJsonElement(
+            """[null,[null,"https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=USSGIQe-w8dTe9yhxA6SzQ&cb_client=search.gws-prod.gps&w=408&h=240&yaw=221.14272&pitch=0&thumbfov=100",3]]""",
+        )
+        val sv = app.vela.core.data.google.parse.SearchParser.svThumb(entry)
+        assertEquals("USSGIQe-w8dTe9yhxA6SzQ", sv?.first)
+        assertEquals(221.14272, sv?.second ?: 0.0, 1e-6)
+        // No thumbnail in the entry → null, so the heuristic fallback runs.
+        assertNull(app.vela.core.data.google.parse.SearchParser.svThumb(
+            kotlinx.serialization.json.Json.parseToJsonElement("""[null,["no pano here"]]"""),
+        ))
+    }
+
     @Test fun streetOfRejectsNonStreets() {
         // Needs a suffix or ordinal - a bare city, neighbourhood, or business name is NOT a street,
         // so it can't shadow the real street (which lives in a different field for address results).
