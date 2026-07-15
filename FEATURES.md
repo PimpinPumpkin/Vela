@@ -264,9 +264,12 @@ Status legend: ✅ done · 🟡 partial / in progress · ⬜ planned
   when you go back in time; when a spot has more than one capture, a clock chip (raised clear of the
   attribution so they don't overlap) lists them and switches the imagery. **Walking or jumping to another
   date morphs** - the outgoing pano is held and the new one crossfades in over ~300 ms with a subtle
-  forward dolly, so it reads as stepping into the next spot rather than a hard snap. It **opens facing the
-  address you chose** (the initial camera aims from the resolved pano toward the place, not the pano's own
-  capture heading), and walking aims along the direction you moved. Walk arrows show in historical views
+  forward dolly, so it reads as stepping into the next spot rather than a hard snap. It **opens looking
+  across the street at the building**, like Google: rather than a raw bearing to the place coordinate
+  (which points down the road whenever Google's geocode sits on the road centreline), the camera snaps to
+  the road-perpendicular on the building's side - the metadata heading gives the street's direction - and
+  the real bearing nudges it up to 60 deg toward the facade, clamped so it can never swing down the road.
+  Walking aims along the direction you moved. Walk arrows show in historical views
   too (the neighbour graph is the base pano's), and they fetch the neighbour BY ID so the year and the
   picture always match. A place with no
   imagery gives a brief "no Street View here" toast. (The old approach - embedding Google's own WebGL

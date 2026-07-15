@@ -1864,10 +1864,20 @@ class MapViewModel @Inject constructor(
                 flashStatus(appContext.getString(R.string.street_view_none))
                 return@launch
             }
-            // Aim the opening view: toward the chosen address (bearing pano→target) on open, or along
-            // the walked direction on a move. Overriding headingDeg is enough - it's only read to set
-            // the initial yaw. Falls back to the pano's own capture heading when neither is given.
-            val facing = faceToward?.let { LatLng(raw.lat, raw.lng).bearingTo(it) } ?: faceHeading
+            // Aim the opening view like Google: look ACROSS the street at the building, not down the
+            // road. A plain bearing pano->target points down the street whenever Google's geocode sits
+            // on the road centreline (right next to the pano). So we snap to the road-PERPENDICULAR on
+            // the target's side (the metadata heading is the street's direction) and let the real
+            // bearing nudge it up to +-60 deg toward the facade - clamped so it can never swing down
+            // the road. On a move we just face the way we walked (faceHeading).
+            val facing = faceToward?.let { target ->
+                val toTarget = LatLng(raw.lat, raw.lng).bearingTo(target)
+                val perpA = (raw.headingDeg + 90.0).mod(360.0)
+                val perpB = (raw.headingDeg + 270.0).mod(360.0)
+                val perp = if (angleDiff(perpA, toTarget) <= angleDiff(perpB, toTarget)) perpA else perpB
+                val nudge = (((toTarget - perp + 540.0) % 360.0) - 180.0).coerceIn(-60.0, 60.0)
+                (perp + nudge).mod(360.0)
+            } ?: faceHeading
             val pano = if (facing != null) raw.copy(headingDeg = facing) else raw
             _state.update {
                 it.copy(streetView = pano, streetViewBitmap = null,
@@ -4970,3 +4980,7 @@ class MapViewModel @Inject constructor(
         const val GEOCODE_PAD_DEG = 0.09
     }
 }
+
+/** Smallest absolute angle between two compass bearings, in degrees (0..180). */
+private fun angleDiff(a: Double, b: Double): Double =
+    kotlin.math.abs(((a - b + 540.0) % 360.0) - 180.0)
