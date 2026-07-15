@@ -136,6 +136,8 @@
     <string name="settings_data_privacy">Data source &amp; privacy</string>
     <string name="settings_data_privacy_hint">Vela talks to Google\'s public endpoints straight from this device: no backend, no account, no API key. Google sees your IP, query and map area, not who you are.</string>
     <string name="nav_overview">Route overview</string>
+    <string name="nav_north_up">Face north up</string>
+    <string name="nav_heading_up">Face direction of travel up</string>
     <string name="settings_live_rechecks">Live traffic re-checks while navigating</string>
     <string name="settings_live_rechecks_hint">Every couple of minutes during a drive, Vela asks Google for fresh traffic from your current position. That powers faster-route offers and the live arrival time, but it also tells Google where along the route you are. Off: your route still recalculates when you leave it.</string>
     <string name="settings_privacy_button">What data Google receives</string>

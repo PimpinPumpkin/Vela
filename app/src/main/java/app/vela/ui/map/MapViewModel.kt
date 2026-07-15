@@ -174,6 +174,9 @@ data class MapUiState(
     val resumeNavLabel: String? = null, // a nav session was interrupted (process killed mid-drive) and can
                                         // be resumed — drives the "Resume navigation to <label>?" prompt
     val navCameraDetached: Boolean = false,
+    // Nav camera orientation toggle (user 2026-07-15): false = heading-up (default, Google's),
+    // true = north-up while still following the puck. Flipped by the in-nav compass button.
+    val navNorthUp: Boolean = false,
     val voiceMuted: Boolean = false,
     val diagnosticsEnabled: Boolean = false,
     val tripRecordingEnabled: Boolean = false, // record nav GPS traces for replay (more invasive)
@@ -892,8 +895,19 @@ class MapViewModel @Inject constructor(
                     }.getOrDefault(emptyList())
                 }
             } else null
+            // The ON-DEVICE address geocoder joins the race too (user 2026-07-15: local house
+            // numbers Photon can't fuzzy-match - numbered streets with directional suffixes -
+            // resolve fine from the downloaded pack's exact/interpolate/street-fallback layers).
+            // It was online-gated to the Google-failed path before, so a wrong-but-nonempty
+            // Google result set blocked it entirely.
+            val localDeferred: kotlinx.coroutines.Deferred<List<Place>>? = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(term)) {
+                async(Dispatchers.IO) {
+                    runCatching { addressStore.geocode(term, near, limit = 3) }.getOrDefault(emptyList())
+                }
+            } else null
             val res = runCatching { dataSource.search(term, near, spanM0).places }.getOrDefault(emptyList())
             val photon = photonDeferred?.await().orEmpty()
+            val localAddrs = localDeferred?.await().orEmpty()
             if (_state.value.query.trim() == term) { // ignore if the query changed meanwhile
                 // Google gets the viewport bias, but keyless ranking for a PARTIAL address is
                 // weak - "123 main st" happily led with matches states away while the one in
@@ -909,12 +923,22 @@ class MapViewModel @Inject constructor(
                     val entity = i == 0 || p.name.equals(term, ignoreCase = true)
                     if (entity || p.location.distanceTo(near) <= SUGGEST_NEAR_M) 0 else 1
                 }.map { it.value }
-                // Photon's nearby addresses lead; drop its far strays (a metro away isn't what a
-                // partial address means) and anything Google already covers within a block.
-                val photonNear = photon.filter { p ->
-                    near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M
-                }.filter { p -> ranked.none { g -> g.location.distanceTo(p.location) < 120.0 } }
-                _state.update { it.copy(suggestions = (photonNear + ranked).take(8)) }
+                // Address hits lead: the local pack's geocode first (exact house-number layers),
+                // then Photon's nearby OSM hits, then Google. Drop far strays (a metro away isn't
+                // what a partial address means). The old "Google within 120 m covers it" dedupe
+                // was the reported vanishing act - on a commercial road SOME business always sits
+                // within a block of the house, and the ADDRESS suggestion got eaten by it. Only a
+                // Google entry that carries the same HOUSE NUMBER actually covers an address hit.
+                val houseNo = Regex("""^\s*(\d+)""").find(term)?.groupValues?.get(1)
+                fun coveredByGoogle(p: Place) = houseNo != null && ranked.any { g ->
+                    g.location.distanceTo(p.location) < 120.0 &&
+                        (g.name.contains(houseNo) || g.address?.contains(houseNo) == true)
+                }
+                val addrLead = (localAddrs + photon)
+                    .filter { p -> near == null || p.location.distanceTo(near) <= SUGGEST_NEAR_M }
+                    .filter { p -> !coveredByGoogle(p) }
+                    .distinctBy { "${(it.location.lat * 2e4).toInt()},${(it.location.lng * 2e4).toInt()}" }
+                _state.update { it.copy(suggestions = (addrLead + ranked).take(8)) }
             }
         }
     }
@@ -1291,6 +1315,21 @@ class MapViewModel @Inject constructor(
                 val spanM = vp?.let { LatLng(it[0], it[1]).distanceTo(LatLng(it[2], it[1])) }
                 val res = dataSource.search(q, near, spanM)
                 if (res.places.isNotEmpty()) {
+                    // ADDRESS queries: the on-device geocoder's exact house-number hits lead even
+                    // when Google returned results (user 2026-07-15) - Google's keyless ranking
+                    // for a local house number is weak, and a wrong-but-nonempty result set used
+                    // to block the local geocoder entirely. Same house (within a block, same
+                    // number) dedupes in Google's favour - its entry is richer.
+                    val localAddrs = if (app.vela.core.data.OfflineAddressStore.looksLikeAddress(q)) {
+                        withContext(Dispatchers.IO) {
+                            runCatching { addressStore.geocode(q, near, limit = 3) }.getOrDefault(emptyList())
+                        }.filter { a ->
+                            res.places.none { g ->
+                                g.location.distanceTo(a.location) < 120.0 &&
+                                    a.name.takeWhile { it.isDigit() }.let { n -> n.isNotEmpty() && (g.name.contains(n) || g.address?.contains(n) == true) }
+                            }
+                        }
+                    } else emptyList()
                     _state.update {
                         // Keep the directions DESTINATION (held in `selected`) while picking an origin/stop —
                         // else typing the origin query wiped the "To" and the panel showed an empty
@@ -1298,7 +1337,7 @@ class MapViewModel @Inject constructor(
                         // A live scrape succeeding is definitive proof we're online — clear a stuck
                         // offline flag (the network callback can miss an event after doze and leave
                         // `offline` latched until relaunch; seen on-device 2026-07-09).
-                        it.copy(results = res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
+                        it.copy(results = localAddrs + res.places, selected = if (it.pickingOrigin || it.pickingStop) it.selected else null, status = null, searching = false, offline = false)
                     }
                 } else {
                     // Online SUCCEEDED but found nothing. Don't leave a blank screen (the "POI list just
@@ -3193,6 +3232,9 @@ class MapViewModel @Inject constructor(
      *  the Re-center button up, which glides straight back into the follow. The view layer does the
      *  actual bounds fit off MapScreen's overview tick. */
     fun navOverview() = _state.update { it.copy(navCameraDetached = true, previewStepIndex = null) }
+
+    /** The in-nav compass button: toggle the follow camera between heading-up and north-up. */
+    fun toggleNavNorthUp() = _state.update { it.copy(navNorthUp = !it.navNorthUp) }
 
     /** Mute / unmute spoken guidance (the in-nav speaker button). Persisted. */
     fun toggleVoice() = setSpokenDirections(voice.muted)

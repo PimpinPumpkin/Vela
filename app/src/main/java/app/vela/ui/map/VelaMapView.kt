@@ -59,6 +59,18 @@ import org.maplibre.android.geometry.LatLngBounds as MLLatLngBounds
 
 private const val ROUTE_SRC = "vela-route-src"
 private const val ROUTE_LAYER = "vela-route"
+
+// The active route stripe's zoom curve (and the alt routes a step thinner): 6 px was constant at
+// every zoom and read THIN at nav zooms next to Google's fat stripe (user 2026-07-15). Values are
+// Google-eyeballed: browse ~unchanged, street-level noticeably wider.
+private val ROUTE_WIDTH = Expression.interpolate(
+    Expression.exponential(1.5f), Expression.zoom(),
+    Expression.stop(10, 5f), Expression.stop(14, 7f), Expression.stop(16, 10f), Expression.stop(18.5f, 17f),
+)
+private val ALT_ROUTE_WIDTH = Expression.interpolate(
+    Expression.exponential(1.5f), Expression.zoom(),
+    Expression.stop(10, 4f), Expression.stop(14, 5.5f), Expression.stop(16, 8f), Expression.stop(18.5f, 13f),
+)
 // A second line on the SAME route source, drawn dashed (Google-style for walking/biking).
 // Two layers + visibility toggle, because MapLibre's line-dasharray DISABLES line-gradient —
 // so the solid driving line (traffic gradient) and the dashed foot/bike line can't share one.
@@ -221,6 +233,7 @@ fun VelaMapView(
     frameMarkers: Boolean,
     navMode: Boolean,
     navFollowing: Boolean = true,
+    navNorthUp: Boolean = false,
     // Free-drive follow (no route open): when true the camera tracks the live fix north-up and
     // the heading beam is smoothed per frame, the way the puck is during nav. The caller drops it
     // to false on a user pan and raises it again on the locate tap.
@@ -296,6 +309,8 @@ fun VelaMapView(
     val selectAlt = rememberUpdatedState(onSelectAlternate)
     val navModeHolder = rememberUpdatedState(navMode)
     val navFollowingHolder = rememberUpdatedState(navFollowing)
+    val navNorthUpHolder = rememberUpdatedState(navNorthUp)
+    val navTiltEase = remember { doubleArrayOf(55.0) } // eased so the compass toggle glides, not snaps
     val myBearingHolder = rememberUpdatedState(myBearing) // vehicle course for the accel projection
     val myLocationHolder = rememberUpdatedState(myLocation)     // live fix, for the free-drive follow ticker
     val mySpeedHolder = rememberUpdatedState(mySpeed)           // live speed, for the free-drive dead reckon
@@ -1022,16 +1037,21 @@ fun VelaMapView(
                     val k = (1f - kotlin.math.exp(-dtE / 0.12f)).toDouble()
                     camState[0] += (pt.lat - camState[0]) * k
                     camState[1] += (pt.lng - camState[1]) * k
-                    val db = ((navPuck.displayBearing.toDouble() - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
+                    // Compass toggle (user 2026-07-15): north-up keeps the follow (position, zoom,
+                    // puck-low framing) but eases bearing to 0 and the tilt flat; the puck arrow
+                    // then rotates on the north-up map instead of the map rotating under it.
+                    val brgTgt = if (navNorthUpHolder.value) 0.0 else navPuck.displayBearing.toDouble()
+                    val db = ((brgTgt - camState[2] + 540.0) % 360.0) - 180.0 // shortest arc
                     camState[2] = (camState[2] + db * k + 360.0) % 360.0
                     camState[3] += (tgtZoom - camState[3]) * k
+                    navTiltEase[0] += ((if (navNorthUpHolder.value) 0.0 else 55.0) - navTiltEase[0]) * k
                     cam.moveCamera(
                         CameraUpdateFactory.newCameraPosition(
                             CameraPosition.Builder()
                                 .target(MLLatLng(camState[0], camState[1]))
                                 .bearing(camState[2])
                                 .zoom(camState[3])
-                                .tilt(55.0)
+                                .tilt(navTiltEase[0])
                                 // Puck LOW on the screen, Google-style: a top padding of ~0.45x
                                 // the view height renders the target at ~72% down, so the road
                                 // AHEAD owns the view instead of splitting it with what's behind
@@ -1713,7 +1733,9 @@ fun VelaMapView(
                             CameraUpdateFactory.newCameraPosition(
                                 CameraPosition.Builder()
                                     .target(MLLatLng(loc.lat, loc.lng))
-                                    .zoom(zoom).tilt(55.0).bearing(brg.toDouble())
+                                    .zoom(zoom)
+                                    .tilt(if (navNorthUp) 0.0 else 55.0)
+                                    .bearing(if (navNorthUp) 0.0 else brg.toDouble())
                                     // Same puck-low offset as the engaged follow ticker.
                                     .padding(0.0, map.height * 0.45, 0.0, 0.0)
                                     .build(),
@@ -1992,7 +2014,10 @@ private fun ensureLayers(style: Style) {
         // names and POI text stay legible *on top* of it, instead of being painted over.
         val routeLine = LineLayer(ROUTE_LAYER, ROUTE_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
-            PropertyFactory.lineWidth(6f),
+            // Zoom-scaled like Google's stripe (user 2026-07-15: "the blue stripe looks bigger
+            // in Google") - a constant 6 px reads THIN at nav zooms (17-18.5) where Google
+            // draws it fat over the road. Browse zooms barely change.
+            PropertyFactory.lineWidth(ROUTE_WIDTH),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
@@ -2032,7 +2057,7 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(ROUTE_AHEAD_SRC, GeoJsonOptions().withLineMetrics(true)))
         val routeAhead = LineLayer(ROUTE_AHEAD_LAYER, ROUTE_AHEAD_SRC).withProperties(
             PropertyFactory.lineColor("#1F6FEB"),
-            PropertyFactory.lineWidth(6f),
+            PropertyFactory.lineWidth(ROUTE_WIDTH),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
             PropertyFactory.visibility(Property.NONE),
@@ -2044,7 +2069,7 @@ private fun ensureLayers(style: Style) {
         style.addSource(GeoJsonSource(ALT_ROUTE_SRC))
         val alt = LineLayer(ALT_ROUTE_LAYER, ALT_ROUTE_SRC).withProperties(
             PropertyFactory.lineColor("#9AA0A6"),
-            PropertyFactory.lineWidth(5f),
+            PropertyFactory.lineWidth(ALT_ROUTE_WIDTH),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         )
